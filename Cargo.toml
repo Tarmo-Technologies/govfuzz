@@ -109,7 +109,7 @@ serde_json = "1.0"
 sha2 = "0.10"
 tera = "1"
 tempfile = "3"
-thiserror = "1.0"
+thiserror = "2.0"
 toml = "0.8"
 # Floor at 0.26.9: 0.26.8 had a subtree-machinery regression that corrupted a
 # Subtree during parse and segfaulted in ts_subtree_retain (intermittent, heap-

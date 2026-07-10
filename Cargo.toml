@@ -132,4 +132,4 @@ tree-sitter-perl = "1.1.2"
 # clean, same `tree-sitter-language` ABI. ROADMAP §1.2.
 tree-sitter-go = "0.25.0"
 cc = "1"
-which = "6"
+which = "8"

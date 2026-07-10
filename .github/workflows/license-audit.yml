@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: License Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  license-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache cargo-deny
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-deny
+          key: cargo-deny-${{ runner.os }}-latest
+
+      - name: Install cargo-deny
+        run: |
+          if ! command -v cargo-deny >/dev/null 2>&1; then
+            cargo install cargo-deny --locked
+          fi
+
+      - name: Run cargo deny
+        run: cargo deny check
+
+      - name: Run govfuzz license audit
+        run: cargo run -p govfuzz -- license-audit --profile strict-permissive
+
+      - name: Verify vendored tree-sitter-ada license checksum
+        run: |
+          awk '/^license-sha256:/ { print $2 "  vendor/tree-sitter-ada/LICENSE" }' vendor/tree-sitter-ada/VENDORED.md | sha256sum -c -
+
+      - name: Check SPDX headers
+        run: cargo run -p spdx_check -- check
+
+      - name: Verify SPDX manifest
+        run: |
+          cargo run -p spdx_check -- generate
+          git diff --exit-code SPDX/manifest.json
+
+      - name: Test license policy
+        run: cargo test -p license_policy
+
+      - name: Test CLI policy exit code
+        run: cargo test -p govfuzz strict_permissive_gnat_actions_exits_two
+
+      - name: Probe gate rejects build without GOVFUZZ_PROFILE
+        run: |
+          set +e
+          cargo build -p probe_gnat_actions --features enabled 2>build.err
+          rc=$?
+          set -e
+          if [ "$rc" = "0" ]; then
+            echo "expected build failure when GOVFUZZ_PROFILE is unset" >&2
+            exit 1
+          fi
+          grep -q "GOVFUZZ_PROFILE=external-tools or research-lab" build.err
+
+      - name: Probe gate accepts build under external-tools
+        env:
+          GOVFUZZ_PROFILE: external-tools
+        run: cargo build -p probe_gnat_actions --features enabled
+
+      - name: Probe gate rejects build when profile flips back
+        run: |
+          set +e
+          cargo build -p probe_gnat_actions --features enabled 2>build.err
+          rc=$?
+          set -e
+          if [ "$rc" = "0" ]; then
+            echo "expected build failure when GOVFUZZ_PROFILE is unset on rebuild" >&2
+            exit 1
+          fi
+          grep -q "GOVFUZZ_PROFILE=external-tools or research-lab" build.err

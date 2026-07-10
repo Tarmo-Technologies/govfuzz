@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Swallowed Constraint_Error package used for host and aarch64-linux-gnu acceptance"
+expected_outcome = "swallowed_predefined_finding"
+target = "aarch64-linux-gnu"
+qemu_user = "qemu-aarch64"

@@ -1,0 +1,6 @@
+github.com/gorilla/mux v1.8.1 h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=
+github.com/gorilla/mux v1.8.1/go.mod h1:AKf9I4AEqPTmMytcMc0KkNouC66V3BtZ4qD5fmWSiMQ=
+golang.org/x/crypto v0.21.0 h1:X31++rzVUdKhX5sWmSOFZxx8UW/ldWx8S1gkm9g/GDA=
+golang.org/x/crypto v0.21.0/go.mod h1:T+TS6a8TWhwsEz6BxCRv9jxBIIwIGmDqxQ5dxSLMQNA=
+github.com/Azure/go-autorest v14.2.0+incompatible h1:V5VMDjClD3sdwHDnMYAhSgFRsE2+V+NKO0FK5RExdFk=
+github.com/Azure/go-autorest v14.2.0+incompatible/go.mod h1:90/KsvConwnTGpNyMkydkR3rlpTG9hG/bqOtzDUZYlKk=

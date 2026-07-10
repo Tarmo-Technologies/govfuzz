@@ -1,0 +1,8 @@
+--  SPDX-License-Identifier: Apache-2.0
+
+project Ada_Basic is
+   for Languages use ("Ada");
+   for Source_Dirs use (".");
+   for Object_Dir use "obj";
+   for Main use ("harness.adb");
+end Ada_Basic;

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# §27.10 fixture: a crate whose parser lives in a PRIVATE module (`mod internal;`,
+# not re-exported). `internal::Parser` is `pub` but unreachable from an external
+# dependent crate (E0603) — only the IN-CRATE build mode, which builds the harness
+# as a module of this crate (in a copy), can reach `crate::internal::Parser`. An
+# empty `[workspace]` table detaches it from the parent govfuzz workspace.
+
+[package]
+name = "rust_incrate_fixture"
+version = "0.0.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "rust_incrate_fixture"
+path = "src/lib.rs"
+
+# Detach from any ancestor workspace.
+[workspace]

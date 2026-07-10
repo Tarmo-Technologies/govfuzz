@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Fixture crate for the M1.1 Rust discovery lane. Intentionally NOT a workspace
+# member (excluded by the root manifest's explicit `members` list) so a normal
+# `cargo build --workspace` never compiles it; discovery only parses its source.
+
+[package]
+name = "rust_discovery_fixture"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"

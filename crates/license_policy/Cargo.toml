@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "license_policy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+config = { path = "../config" }
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "license_policy"
+path = "src/main.rs"

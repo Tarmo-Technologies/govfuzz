@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "bench_rust-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+bench_rust = { path = ".." }
+
+[[bin]]
+name = "target"
+path = "fuzz_targets/target.rs"
+test = false
+doc = false
+bench = false

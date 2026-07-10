@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>demo</artifactId>
+  <version>1.0.0</version>
+
+  <properties>
+    <jackson.version>2.17.0</jackson.version>
+    <project.version>1.0.0</project.version>
+    <my.artifact>resolved-artifact</my.artifact>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-core</artifactId>
+        <version>6.1.0</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Property-resolved version -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+
+    <!-- Managed version (no <version> element) -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-core</artifactId>
+    </dependency>
+
+    <!-- Unresolvable ${property} → version-unknown -->
+    <dependency>
+      <groupId>org.example</groupId>
+      <artifactId>unknown-prop</artifactId>
+      <version>${missing.property}</version>
+    </dependency>
+
+    <!-- With classifier and non-default type -->
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>some-lib</artifactId>
+      <version>3.0.0</version>
+      <classifier>jdk11</classifier>
+      <type>test-jar</type>
+    </dependency>
+
+    <!-- scope=test -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ${property} in groupId AND artifactId, both resolvable -->
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>${my.artifact}</artifactId>
+      <version>2.5.0</version>
+    </dependency>
+
+    <!-- Unresolvable ${property} in groupId → name-only, no PURL -->
+    <dependency>
+      <groupId>${missing.group}</groupId>
+      <artifactId>orphan-lib</artifactId>
+      <version>9.9.9</version>
+    </dependency>
+  </dependencies>
+
+  <modules>
+    <module>child-module</module>
+  </modules>
+</project>

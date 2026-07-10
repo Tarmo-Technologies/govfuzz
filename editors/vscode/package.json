@@ -1,0 +1,105 @@
+{
+  "name": "govfuzz-vscode",
+  "displayName": "GovFuzz",
+  "description": "Thin VS Code client for GovFuzz findings.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "publisher": "tarmo-technologies",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tarmo-Technologies/govfuzz.git",
+    "directory": "editors/vscode"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:govfuzz.refreshFindings",
+    "onCommand:govfuzz.replayFinding",
+    "onCommand:govfuzz.minimizeFinding",
+    "onCommand:govfuzz.openReproducer"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ada",
+        "aliases": [
+          "Ada",
+          "ada"
+        ],
+        "extensions": [
+          ".adb",
+          ".ads",
+          ".ada"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "govfuzz.refreshFindings",
+        "title": "GovFuzz: Refresh Findings"
+      },
+      {
+        "command": "govfuzz.replayFinding",
+        "title": "GovFuzz: Replay Finding"
+      },
+      {
+        "command": "govfuzz.minimizeFinding",
+        "title": "GovFuzz: Minimize Finding"
+      },
+      {
+        "command": "govfuzz.openReproducer",
+        "title": "GovFuzz: Open Reproducer"
+      }
+    ],
+    "configuration": {
+      "title": "GovFuzz",
+      "properties": {
+        "govfuzz.daemonPath": {
+          "type": "string",
+          "default": "govfuzz-daemon",
+          "description": "Path to the GovFuzz daemon executable."
+        },
+        "govfuzz.cliPath": {
+          "type": "string",
+          "default": "govfuzz",
+          "description": "Path to the GovFuzz CLI executable."
+        },
+        "govfuzz.findingsDir": {
+          "type": "string",
+          "default": "findings",
+          "description": "Findings directory to load through the daemon."
+        },
+        "govfuzz.harnessPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional harness path used by replay and minimize actions."
+        },
+        "govfuzz.minimizeStrategy": {
+          "type": "string",
+          "enum": [
+            "bytes",
+            "typed"
+          ],
+          "default": "bytes",
+          "description": "Minimization strategy used by the Minimize CodeLens action."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "test": "npm run compile && node --test out/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@types/vscode": "1.90.0",
+    "typescript": "^5.5.4"
+  }
+}

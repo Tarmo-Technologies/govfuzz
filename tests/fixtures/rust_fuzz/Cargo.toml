@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# End-to-end fixture crate for the M1.2 native Rust fuzzing lane. NOT a workspace
+# member (the root manifest lists members explicitly), and an empty `[workspace]`
+# table makes it its own workspace root so the generated staticlib harness crate
+# can path-depend on it and build standalone with the sancov+ASan RUSTFLAGS
+# without attaching to the parent govfuzz workspace.
+
+[package]
+name = "rust_fuzz_fixture"
+version = "0.0.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "rust_fuzz_fixture"
+path = "src/lib.rs"
+
+# Detach from any ancestor workspace.
+[workspace]

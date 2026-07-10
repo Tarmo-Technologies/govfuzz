@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+    implementation 'org.springframework:spring-core:6.1.0'
+    testImplementation 'junit:junit:4.13.2'
+    // map form
+    implementation group: 'com.google.guava', name: 'guava', version: '33.0.0-jre'
+    // symbolic version from version catalog
+    implementation libs.commons.lang3
+}

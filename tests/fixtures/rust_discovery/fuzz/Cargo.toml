@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# An existing cargo-fuzz crate, the highest-value Rust discovery (it already
+# compiles and declares fuzzing intent). M1.1 only parses + ranks it; the build
+# + libFuzzer engine route lands in M1.2.
+
+[package]
+name = "rust_discovery_fixture-fuzz"
+version = "0.0.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.rust_discovery_fixture]
+path = ".."
+
+[[bin]]
+name = "existing"
+path = "fuzz_targets/existing.rs"
+test = false
+doc = false
+bench = false

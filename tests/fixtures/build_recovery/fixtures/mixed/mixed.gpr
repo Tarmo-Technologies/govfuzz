@@ -1,0 +1,9 @@
+--  SPDX-License-Identifier: Apache-2.0
+
+project Mixed is
+   for Languages use ("Ada");
+   for Source_Dirs use (".");
+   for Source_Files use ("harness.adb", "pkg.ads", "pkg.adb");
+   for Object_Dir use "obj";
+   for Main use ("harness.adb");
+end Mixed;

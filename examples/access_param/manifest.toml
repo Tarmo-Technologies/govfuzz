@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Access-typed parameter; harness drives via null-only slot table"
+expected_outcome = "harness_compiles"
+expected_constructors_required = 1

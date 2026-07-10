@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: GNAT Matrix
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  full-fixture-matrix:
+    name: GNAT ${{ matrix.gnat }} / ${{ matrix.dialect }} / ${{ matrix.profile }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        gnat: ["11", "12", "13", "14"]
+        dialect: [ada95, ada2005, ada2012, ada2022]
+        profile: [strict-permissive, external-tools]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gprbuild gnat-${{ matrix.gnat }}
+
+      - name: Run fixture matrix cell
+        env:
+          GOVFUZZ_GNAT_VERSION: ${{ matrix.gnat }}
+          GOVFUZZ_ADA_DIALECT: ${{ matrix.dialect }}
+          GOVFUZZ_PROFILE: ${{ matrix.profile }}
+        run: scripts/ci/run-gnat-fixture-matrix.sh

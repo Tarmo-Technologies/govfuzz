@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2012 library-level procedure body"
+dialect_hint = "ada_2012"
+
+[expected]
+ada_standard = "ada_2012"
+unit_kind = "body"
+subprograms = 1
+handlers = 0
+raises = 0
+types = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2012"]
+
+[expected.names]
+subprograms = ["run_2012"]
+handler_choices = []
+type_kinds = []

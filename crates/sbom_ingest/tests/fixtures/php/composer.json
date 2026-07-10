@@ -1,0 +1,12 @@
+{
+    "name": "myvendor/myapp",
+    "require": {
+        "guzzlehttp/guzzle": "^7.0",
+        "php": ">=8.0",
+        "ext-json": "*",
+        "lib-curl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    }
+}

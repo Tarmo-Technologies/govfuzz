@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2005 swallowed Constraint_Error function handler"
+dialect_hint = "ada_2005"
+
+[expected]
+ada_standard = "ada_2005"
+unit_kind = "body"
+subprograms = 1
+handlers = 1
+raises = 0
+types = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2005"]
+
+[expected.names]
+subprograms = ["parse"]
+handler_choices = ["constraint_error"]
+type_kinds = []

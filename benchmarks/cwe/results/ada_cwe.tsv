@@ -1,0 +1,3 @@
+metric	govfuzz	(any other fuzzer)
+buggy subprograms found (of 2)	2	0 (cannot fuzz Ada)
+fuzzes Ada at all	yes	no

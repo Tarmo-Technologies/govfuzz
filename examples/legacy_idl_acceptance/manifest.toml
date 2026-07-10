@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Legacy-style IDL fixture compiles through generated fake CORBA mapping"
+expected_outcome = "legacy_idl_mapping_builds"
+expected_exception = "Legacy.Telemetry.Sensor_Fault"

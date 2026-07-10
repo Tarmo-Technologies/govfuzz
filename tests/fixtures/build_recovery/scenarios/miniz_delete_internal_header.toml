@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "miniz"
+description = "miniz.h missing from the delivered source"
+targets = ["miniz_inflate_fuzz"]
+
+# Auto should at minimum surface the missing header in needed_for_build.
+# must_build_after_repair stays false because this scenario intentionally
+# deletes the public miniz API header. The placeholder header surfaces the
+# gap, but it cannot safely reconstruct the full miniz API contract.
+must_build_after_repair = false
+
+[[missing]]
+kind = "file"
+path = "miniz.h"
+expect_surfaced = "synthesized_headers"

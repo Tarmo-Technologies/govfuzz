@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//! C/C++ line coverage for negative fuzz-confirmation.
+//!
+//! The interpreted lanes get executed-line sets for free from their tracers; the
+//! compiled lanes don't. This builds a source-based-coverage variant of the harness
+//! (`make cov` — clang `-fprofile-instr-generate -fcoverage-mapping`), replays the
+//! fuzz corpus through it (each input a fresh process, so the profile flushes on
+//! exit), merges the profiles with `llvm-profdata`, and exports the covered
+//! `(file, line)` set with `llvm-cov`. The set is written to the harness's
+//! `covered-lines.txt` — the SAME sidecar the interpreted lanes write — so
+//! `confirm::mark_fuzz_exercised_findings` marks a C/C++ static finding whose line
+//! the campaign PROVABLY executed (yet never crashed) as `fuzz_exercised`.
+//!
+//! Best-effort: a missing `llvm-cov`/`llvm-profdata`, a failed coverage build, or an
+//! empty corpus all skip cleanly. Never fatal.
+
+use std::path::Path;
+use std::process::Command;
+
+const MAX_INPUTS: usize = 2000;
+
+/// Build + replay every C/C++ harness's corpus under source coverage, writing each
+/// harness's executed `(file:line)` set to `<harness>/covered-lines.txt`. Returns the
+/// number of harnesses for which a covered-lines set was written.
+pub fn run_coverage_replay(work_dir: &Path) -> usize {
+    let (Some(profdata), Some(cov)) = (llvm_tool("llvm-profdata"), llvm_tool("llvm-cov")) else {
+        return 0; // no llvm-cov toolchain -> the interpreted-lane path still works.
+    };
+    let Ok(harnesses) = std::fs::read_dir(work_dir.join("harnesses")) else {
+        return 0;
+    };
+    let mut wrote = 0usize;
+    for entry in harnesses.flatten() {
+        let hdir = entry.path();
+        let Some(harness_id) = hdir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(ToOwned::to_owned)
+        else {
+            continue;
+        };
+        if replay_one(work_dir, &hdir, &harness_id, &profdata, &cov) {
+            wrote += 1;
+        }
+    }
+    wrote
+}
+
+fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, cov: &str) -> bool {
+    if !hdir.join("Makefile").is_file() {
+        return false;
+    }
+    // Don't clobber a covered-lines set an interpreted lane already wrote.
+    if hdir.join("covered-lines.txt").is_file() {
+        return false;
+    }
+    let built = Command::new("make")
+        .arg("cov")
+        .current_dir(hdir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    let bin = hdir.join("main_cov");
+    if !built || !bin.is_file() {
+        return false;
+    }
+
+    let queue = work_dir.join("corpus").join(harness_id).join("queue");
+    let Ok(inputs) = std::fs::read_dir(&queue) else {
+        return false;
+    };
+    let prof_dir = hdir.join("cov_profraw");
+    let _ = std::fs::remove_dir_all(&prof_dir);
+    if std::fs::create_dir_all(&prof_dir).is_err() {
+        return false;
+    }
+    let mut replayed = 0usize;
+    for (i, input) in inputs.flatten().enumerate() {
+        if replayed >= MAX_INPUTS {
+            break;
+        }
+        let path = input.path();
+        if !path.is_file() {
+            continue;
+        }
+        replayed += 1;
+        // Fresh process per input (argv[1]) so the profile flushes at exit.
+        let _ = Command::new(&bin)
+            .arg(&path)
+            .env(
+                "LLVM_PROFILE_FILE",
+                prof_dir.join(format!("cov-{i}.profraw")),
+            )
+            .output();
+    }
+    if replayed == 0 {
+        return false;
+    }
+
+    // Merge the raw profiles, then export covered lines.
+    let merged = hdir.join("cov.profdata");
+    let raws: Vec<std::path::PathBuf> = std::fs::read_dir(&prof_dir)
+        .map(|d| {
+            d.flatten()
+                .map(|e| e.path())
+                .filter(|p| p.extension().is_some_and(|e| e == "profraw"))
+                .collect()
+        })
+        .unwrap_or_default();
+    if raws.is_empty() {
+        return false;
+    }
+    let merge_ok = Command::new(profdata)
+        .arg("merge")
+        .arg("-sparse")
+        .args(&raws)
+        .arg("-o")
+        .arg(&merged)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    if !merge_ok {
+        return false;
+    }
+    let Ok(export) = Command::new(cov)
+        .args(["export", "--format=lcov"])
+        .arg(format!("-instr-profile={}", merged.display()))
+        .arg(&bin)
+        .output()
+    else {
+        return false;
+    };
+    if !export.status.success() {
+        return false;
+    }
+    let covered = parse_lcov_covered(&String::from_utf8_lossy(&export.stdout));
+    let _ = std::fs::remove_dir_all(&prof_dir);
+    if covered.is_empty() {
+        return false;
+    }
+    std::fs::write(hdir.join("covered-lines.txt"), covered.join("\n")).is_ok()
+}
+
+/// Parse an LCOV export into `<file>:<line>` for each line with a non-zero hit count.
+/// LCOV: `SF:<file>` opens a file section, `DA:<line>,<count>` is a line record.
+fn parse_lcov_covered(lcov: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut file = String::new();
+    for line in lcov.lines() {
+        if let Some(rest) = line.strip_prefix("SF:") {
+            file = rest.trim().to_owned();
+        } else if let Some(rest) = line.strip_prefix("DA:") {
+            let mut parts = rest.split(',');
+            let (Some(line_no), Some(count)) = (parts.next(), parts.next()) else {
+                continue;
+            };
+            let hit = count.trim().parse::<u64>().unwrap_or(0);
+            if hit > 0 && !file.is_empty() {
+                out.push(format!("{file}:{}", line_no.trim()));
+            }
+        }
+    }
+    out
+}
+
+/// Resolve an llvm tool, preferring the versioned name available in this image
+/// (`llvm-cov-18`) and falling back to the unversioned one.
+fn llvm_tool(base: &str) -> Option<String> {
+    [format!("{base}-18"), base.to_owned()]
+        .into_iter()
+        .find(|name| which::which(name).is_ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lcov_export_yields_only_executed_lines() {
+        let lcov = "\
+TN:\n\
+SF:/proj/parse.c\n\
+DA:4,0\n\
+DA:5,12\n\
+DA:6,3\n\
+end_of_record\n\
+SF:/proj/other.c\n\
+DA:1,0\n\
+end_of_record\n";
+        let covered = parse_lcov_covered(lcov);
+        assert_eq!(covered, vec!["/proj/parse.c:5", "/proj/parse.c:6"]);
+    }
+}

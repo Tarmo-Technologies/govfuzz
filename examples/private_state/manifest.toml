@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Package-private state; sequence harness reaches a swallowed underflow after Push, Pop, Pop"
+expected_outcome = "stateful_swallowed_exception"
+expected_sequence = ["Push", "Pop", "Pop"]

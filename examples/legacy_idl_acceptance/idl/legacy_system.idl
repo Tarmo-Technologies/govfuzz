@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma prefix "legacy.example"
+#include "legacy_common.idl"
+
+#define ENABLE_ADMIN
+
+module Legacy {
+  module Telemetry {
+    #pragma version Monitor 2.4
+
+    interface Monitor {
+      readonly attribute string Name;
+      Reading Latest(in Object Source) raises(Sensor_Fault);
+      any Snapshot(in sequence<::Legacy::Telemetry::Reading, LEGACY_READING_LIMIT> Values);
+      void Poll(out long Count, inout Counter_List Counters);
+      oneway void Notify(in Status State);
+    };
+
+#ifdef ENABLE_ADMIN
+    interface Admin : Monitor {
+      void Reset(in long Code) raises(Sensor_Fault);
+    };
+#else
+    interface Admin_Disabled {};
+#endif
+  };
+
+#ifndef OMIT_CONTROL
+  module Control {
+    struct Command {
+      long Id;
+      unsigned long Flags;
+    };
+
+    typedef sequence<long, 4> Command_Id_List;
+
+    interface Controller {
+      void Apply(in Command_Id_List Commands);
+    };
+
+    union Command_Result switch (long) {
+      case 0:
+        long Success_Code;
+      default:
+        long Error_Code;
+    };
+
+    abstract valuetype Audit_Trail {};
+    eventtype Alarm_Event {};
+  };
+#endif
+};

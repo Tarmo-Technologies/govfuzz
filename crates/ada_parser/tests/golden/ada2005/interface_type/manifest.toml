@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2005 plain interface type with abstract primitive"
+dialect_hint = "ada_2005"
+
+[expected]
+ada_standard = "ada_2005"
+unit_kind = "spec"
+subprograms = 1
+handlers = 0
+raises = 0
+types = 1
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2005"]
+
+[expected.names]
+subprograms = ["execute"]
+handler_choices = []
+type_kinds = ["interface.plain"]

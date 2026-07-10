@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "fuzz_engine_libafl_adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "fuzz_engine_libafl_adapter"
+path = "src/main.rs"
+
+[features]
+default = []
+libafl-engine = ["dep:libafl", "dep:libafl_bolts"]
+
+[dependencies]
+corpus = { path = "../../corpus" }
+event_log = { path = "../../event_log" }
+fuzz_engine_builtin = { path = "../builtin" }
+libafl = { version = "0.13.2", default-features = false, features = ["std"], optional = true }
+libafl_bolts = { version = "0.13.2", default-features = false, features = ["std"], optional = true }

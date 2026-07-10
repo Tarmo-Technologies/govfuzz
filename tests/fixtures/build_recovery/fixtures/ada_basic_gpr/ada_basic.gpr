@@ -1,0 +1,13 @@
+--  SPDX-License-Identifier: Apache-2.0
+
+project Ada_Basic is
+   for Languages use ("Ada");
+   for Source_Dirs use (".");
+   for Object_Dir use "obj";
+   for Main use ("harness.adb");
+
+   --  Withs an external project that isn't shipped with the fixture.
+   --  The ada_basic_gpr_import_missing scenario asserts auto surfaces
+   --  this as `missing_gpr_imports`.
+   with "missing.gpr";
+end Ada_Basic;

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+[versions]
+commons-lang3 = "3.14.0"
+jackson = "2.17.0"
+
+[libraries]
+commons-lang3 = { group = "org.apache.commons", name = "commons-lang3", version.ref = "commons-lang3" }
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }

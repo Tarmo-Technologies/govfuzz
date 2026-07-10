@@ -1,0 +1,27 @@
+--  SPDX-License-Identifier: Apache-2.0
+project AdaFuzz is
+   --  C is built alongside Ada so adafuzz_cov.c (the trace-pc edge callback,
+   --  #412) ships in the runtime archive. The C source is compiled at -g only
+   --  (no coverage instrumentation) so the callback is itself uninstrumented and
+   --  cannot recurse into itself.
+   for Languages use ("Ada", "C");
+   for Source_Dirs use (".");
+   for Source_Files use
+     ("adafuzz.ads",
+      "adafuzz-probe.ads",
+      "adafuzz-probe.adb",
+      "adafuzz-input.ads",
+      "adafuzz-input.adb",
+      "adafuzz-decode.ads",
+      "adafuzz-decode.adb",
+      "adafuzz_cov.c");
+   for Object_Dir use "obj";
+   for Library_Name use "adafuzz";
+   for Library_Kind use "static";
+   for Library_Dir use "lib";
+
+   package Compiler is
+      for Default_Switches ("Ada") use ("-g");
+      for Default_Switches ("C") use ("-g");
+   end Compiler;
+end AdaFuzz;

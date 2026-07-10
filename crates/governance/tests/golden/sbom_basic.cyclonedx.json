@@ -1,0 +1,173 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "cargo:demo:0.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "demo",
+      "properties": [
+        {
+          "name": "govfuzz:ecosystem",
+          "value": "cargo"
+        },
+        {
+          "name": "govfuzz:component_type",
+          "value": "source"
+        },
+        {
+          "name": "govfuzz:identity_confidence",
+          "value": "high"
+        },
+        {
+          "name": "govfuzz:matching_method",
+          "value": "cargo_manifest"
+        },
+        {
+          "name": "govfuzz:evidence",
+          "value": "Cargo.toml"
+        },
+        {
+          "name": "govfuzz:runtime_harnesses",
+          "value": ""
+        }
+      ],
+      "purl": "pkg:cargo/demo@0.1.0",
+      "supplier": {
+        "name": "unknown"
+      },
+      "type": "library",
+      "version": "0.1.0"
+    },
+    {
+      "bom-ref": "npm:demo-ui:2.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "demo-ui",
+      "properties": [
+        {
+          "name": "govfuzz:ecosystem",
+          "value": "npm"
+        },
+        {
+          "name": "govfuzz:component_type",
+          "value": "source"
+        },
+        {
+          "name": "govfuzz:identity_confidence",
+          "value": "high"
+        },
+        {
+          "name": "govfuzz:matching_method",
+          "value": "package_json"
+        },
+        {
+          "name": "govfuzz:evidence",
+          "value": "app/package.json"
+        },
+        {
+          "name": "govfuzz:runtime_harnesses",
+          "value": ""
+        }
+      ],
+      "purl": "pkg:npm/demo-ui@2.0.0",
+      "supplier": {
+        "name": "unknown"
+      },
+      "type": "library",
+      "version": "2.0.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "cargo:demo:0.1.0",
+        "npm:demo-ui:2.0.0"
+      ],
+      "ref": "govfuzz:scanned-root"
+    },
+    {
+      "dependsOn": [],
+      "ref": "cargo:demo:0.1.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "npm:demo-ui:2.0.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "govfuzz:scanned-root",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "demo",
+      "properties": [
+        {
+          "name": "govfuzz:root",
+          "value": "<ROOT>"
+        }
+      ],
+      "purl": "pkg:cargo/demo@0.1.0",
+      "supplier": {
+        "name": "unknown"
+      },
+      "type": "application",
+      "version": "0.1.0"
+    },
+    "properties": [
+      {
+        "name": "govfuzz:generation_context",
+        "value": "offline-sbom"
+      }
+    ],
+    "supplier": {
+      "name": "Tarmo Technologies"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "bom-ref": "pkg:cargo/govfuzz@<GOVFUZZ_VERSION>",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "govfuzz",
+          "properties": [
+            {
+              "name": "govfuzz:component_role",
+              "value": "scanner"
+            }
+          ],
+          "purl": "pkg:cargo/govfuzz@<GOVFUZZ_VERSION>",
+          "supplier": {
+            "name": "Tarmo Technologies"
+          },
+          "type": "application",
+          "version": "<GOVFUZZ_VERSION>"
+        }
+      ]
+    }
+  },
+  "specVersion": "1.6",
+  "version": 1
+}

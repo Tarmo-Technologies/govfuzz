@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: Apache-2.0
+# generated_harnesses/{{ harness_id }}/Makefile
+
+ifeq ($(origin CC), default)
+CC = clang
+endif
+# Every govfuzz C direct harness (generated or passthrough) ships its own
+# lightweight `main` — a persistent framed fork-server driver (#399/#398) — so we
+# do NOT link libFuzzer's own `main` (the `fuzzer` sanitizer runtime); mixing the
+# two crashed in driver glue (#388). `trace-pc-guard` feeds the harness's
+# edge-coverage runtime (#385). `trace-cmp` feeds two consumers of comparison
+# operands: the value-profile runtime that mines them into the dictionary (#398)
+# and the RedQueen/cmplog capture that records operand pairs so the mutator can
+# splice them at the offset they were compared (input-to-state, #400). ASan's
+# str/mem-cmp interceptors call the harness's __sanitizer_weak_hook_* family for
+# the same end. The engine drives it persistently.
+# UBSan runs with abort_on_error=1:halt_on_error=1 under the engine, so a check
+# that fires on legitimate-but-technically-UB code aborts on EVERY input and the
+# target is reported as a runtime error with 0 executions instead of being
+# fuzzed. We drop the three checks that fire on pervasive, harmless patterns —
+# the set OSS-Fuzz also excludes: `function` (a typed callback called through a
+# generic fn-pointer signature — every C stream/iterator/vtable interface, e.g.
+# TinySoundFont), `vptr` (C++ vptr checks need RTTI, fire on legitimate
+# downcasts), and `alignment` (binary parsers read `*(uint32_t*)p` at unaligned
+# offsets). All high-signal checks (overflow, shift, OOB, null, return…) stay
+# on. -fno-sanitize= must follow -fsanitize=undefined to subtract from the group.
+CFLAGS ?= -O1 -g -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+# AFL's compiler driver reserves the AFL_ env-var namespace, so the AFL
+# build knobs use the AFLPP_ prefix to avoid colliding with it.
+AFLPP_CC ?= afl-clang-fast
+AFLPP_CFLAGS ?= -O1 -g -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -DGOVFUZZ_AFL
+# MemorySanitizer build: finds reads of UNINITIALIZED memory (CWE-457/908) — a
+# whole bug class ASan/UBSan miss. MSan is mutually exclusive with ASan, so it is a
+# separate binary that `auto` replays the ASan pass's corpus through (no new fuzz
+# loop). track-origins reports where the uninitialized value came from.
+MSAN_CC ?= clang
+MSAN_CFLAGS ?= -O1 -g -fsanitize=memory -fsanitize-memory-track-origins=2 -fno-omit-frame-pointer -fsanitize-coverage=trace-pc-guard,trace-cmp
+# ThreadSanitizer build: finds data races (CWE-362) — concurrent unsynchronized
+# access to shared memory, a bug class ASan/UBSan miss. TSan is mutually exclusive
+# with ASan, so it is a separate binary that `auto` replays the ASan pass's corpus
+# through (no new fuzz loop). A race only surfaces when the target itself spawns
+# threads while processing one input; single-threaded targets simply find none.
+# Built at -O0: the replay binary is for race DETECTION, not speed, and higher
+# optimization elides/reorders the unsynchronized stores TSan keys on (a write with
+# no observed read is dead-store-eliminated), hiding real races.
+TSAN_CC ?= clang
+TSAN_CFLAGS ?= -O0 -g -fsanitize=thread -fsanitize-coverage=trace-pc-guard,trace-cmp
+# Source-based coverage build: `auto` replays the fuzz corpus through it and reads
+# per-line hit counts via llvm-cov to learn which lines the campaign EXECUTED — the
+# positive evidence for negative fuzz-confirmation (a covered-but-survived static
+# finding is a likely false positive) on the C/C++ lanes.
+COV_CC ?= clang
+COV_CFLAGS ?= -O0 -g -fprofile-instr-generate -fcoverage-mapping
+INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
+COMPILE_DB_FLAGS = {% for flag in compile_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
+
+.PHONY: all afl msan tsan cov prov clean
+all: main
+
+# Target sources stay OUT of the prerequisites and live only in the recipe: an
+# absolute Windows source path carries a drive-letter colon (`C:\...`) which GNU
+# make parses as a target:prereq separator ("multiple target patterns"). In the
+# recipe the path is just an argument to the compiler, so the colon is harmless.
+# (govfuzz regenerates the harness dir per attempt, so `main` is always built.)
+main: main.c
+	$(CC) $(CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
+afl: main_afl
+
+main_afl: main.c
+	$(AFLPP_CC) $(AFLPP_CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
+msan: main_msan
+
+main_msan: main.c
+	$(MSAN_CC) $(MSAN_CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
+tsan: main_tsan
+
+main_tsan: main.c
+	$(TSAN_CC) $(TSAN_CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
+cov: main_cov
+
+main_cov: main.c
+	$(COV_CC) $(COV_CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
+# Build-recovery provenance (stub-artifact vs real-defect): the SAME ASan build as
+# `main`, but the injected stubs come from $(AUTO_PROV_SOURCES) — a poisoned copy in
+# which every value-returning stub records its name and _Exit()s on call. Replaying a
+# crash's min input through this binary tells `auto` whether the crash needed a
+# fabricated stub value (a stub fired -> lab_only) or reproduced with none on its
+# path (provably stub-independent -> confidence raised).
+prov: main_prov
+
+main_prov: main.c
+	$(CC) $(CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_PROV_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
+clean:
+	rm -f main main_afl main_msan main_tsan main_cov main_prov

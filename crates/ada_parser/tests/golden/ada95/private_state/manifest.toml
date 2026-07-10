@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "ROADMAP 19.3 private state package body with underflow raise"
+dialect_hint = "ada_95"
+
+[expected]
+ada_standard = "ada_95"
+unit_kind = "body"
+subprograms = 3
+handlers = 0
+raises = 1
+types = 1
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_95"]
+
+[expected.names]
+subprograms = ["push", "pop", "top"]
+handler_choices = []
+type_kinds = ["array"]

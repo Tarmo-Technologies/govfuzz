@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "ada_basic"
+description = """
+aux_pkg.ads goes missing — pkg.adb's `with Aux_Pkg;` then resolves
+to nothing. The classifier emits `MissingAdaWith { unit: "aux_pkg" }`
+and auto now infers a replacement spec from the surviving aux_pkg.adb
+body profile, then routes the repair into
+`needed_for_build.stubbed_ada_units`. The locator is the lowercased
+unit name (gnatmake reports `cannot find aux_pkg.ads`, normalized by
+build_classifier::gnat to `aux_pkg`).
+"""
+must_build_after_repair = true
+
+[[missing]]
+kind = "file"
+path = "aux_pkg.ads"
+expect_surfaced = "stubbed_ada_units"
+# The deletion target is the path aux_pkg.ads, but the classifier's
+# bucket key is the unit name (lowercased, no extension) the way
+# gnatmake emits it in "cannot find aux_pkg".
+locator_override = "aux_pkg"

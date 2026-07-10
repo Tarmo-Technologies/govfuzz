@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "miniz_subdir"
+targets = ["miniz_inflate_fuzz"]
+description = """
+The vendor/ subdirectory goes missing — the harness #include of
+vendor/vendor.h fails to find both the header and the implementation
+file. Auto's repair planner emits a HeaderPlaceholder for the missing
+header and a StubBlind for vendor_helper (no declaration available
+once the header is gone).
+
+First scenario exercising the `directory` Missing kind. Recursive
+unlink of the vendor/ subtree, then assert auto surfaces both the
+synthesized header and the blind stub.
+"""
+must_build_after_repair = false
+
+# Directory removal — operational, recursive unlink before auto runs.
+# The header locator surfaces in synthesized_headers under the same
+# include path the harness used.
+[[missing]]
+kind = "directory"
+path = "vendor"
+expect_surfaced = "synthesized_headers"
+locator_override = "vendor/vendor.h"
+
+# vendor_helper symbol — no declaration survives the directory delete,
+# so the StubBlind path lands in stubbed_symbols_blind.
+[[missing]]
+kind = "system_lib"
+name = "vendor_helper"
+expect_surfaced = "stubbed_symbols_blind"

@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: Apache-2.0
+# dev requirements — matched by requirements*.txt glob
+pytest-cov==5.0.0

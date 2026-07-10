@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2022 package body initializer raise and handler"
+dialect_hint = "ada_2022"
+
+[expected]
+ada_standard = "ada_2022"
+unit_kind = "body"
+subprograms = 0
+handlers = 1
+raises = 1
+types = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2022"]
+
+[expected.names]
+subprograms = []
+handler_choices = ["others"]
+type_kinds = []

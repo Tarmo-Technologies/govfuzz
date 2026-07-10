@@ -1,0 +1,150 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[settings]
+per_target_time = 2
+bounded_subset = ["cjson", "tinyxml2", "adayaml", "ada_util"]
+
+[[repositories]]
+id = "cjson"
+url = "https://github.com/DaveGamble/cJSON.git"
+rev = "fb16e5cf358798aabb049655975cde8427101056"
+language = "c"
+license = "MIT"
+
+[[repositories.prepare]]
+kind = "cmake"
+build_dir = "build"
+args = [
+  "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+  "-DENABLE_CJSON_TEST=OFF",
+  "-DENABLE_CJSON_UTILS=OFF",
+]
+
+[[repositories.checks]]
+kind = "list_targets"
+path = "."
+top = 10
+min_targets = 5
+
+[[repositories.checks]]
+kind = "generate_harness_build"
+source = "cJSON.c"
+target = "cJSON_ParseWithLength"
+harness_id = "H-REAL-CJSON"
+expect_makefile_contains = [
+  "COMPILE_DB_FLAGS =",
+  "-std=c89",
+  "-DCJSON_API_VISIBILITY",
+]
+
+[[repositories.scenarios]]
+id = "cjson_missing_public_header"
+kind = "auto_missing_file"
+description = "Remove cJSON.h from a real cJSON checkout and assert auto reports the missing public API header."
+remove_files = ["cJSON.h"]
+targets = ["cJSON_ParseWithLength"]
+per_target_time = 2
+
+[[repositories.scenarios.expect_needed]]
+bucket = "synthesized_headers"
+locator = "cJSON.h"
+
+[[repositories]]
+id = "tinyxml2"
+url = "https://github.com/leethomason/tinyxml2.git"
+rev = "8224e427b655b83dae5e2298f1e6919523a78737"
+language = "cpp"
+license = "Zlib"
+
+[[repositories.prepare]]
+kind = "cmake"
+build_dir = "build"
+args = ["-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+
+[[repositories.checks]]
+kind = "list_targets"
+path = "."
+top = 10
+min_targets = 5
+
+[[repositories.checks]]
+kind = "generate_harness_build"
+source = "tinyxml2.cpp"
+target = "tinyxml2::XMLDocument::Parse"
+harness_id = "H-REAL-TINYXML2"
+expect_makefile_contains = [
+  "COMPILE_DB_FLAGS =",
+  "BUILD_CONTEXT_PROVENANCE = compile_commands",
+  "BUILD_CONTEXT_CONFIDENCE = high",
+  "-D_FILE_OFFSET_BITS=64",
+]
+
+[[repositories.scenarios]]
+id = "tinyxml2_missing_public_header"
+kind = "auto_missing_file"
+description = "Remove tinyxml2.h from a real tinyxml2 checkout and assert auto reports the missing public API header."
+remove_files = ["tinyxml2.h"]
+targets = ["tinyxml2::XMLDocument::Parse"]
+per_target_time = 2
+
+[[repositories.scenarios.expect_needed]]
+bucket = "synthesized_headers"
+locator = "tinyxml2.h"
+
+[[repositories]]
+id = "adayaml"
+url = "https://github.com/yaml/AdaYaml.git"
+rev = "7fde22a1a564bbece3e97430f469717ac46e5842"
+language = "ada"
+license = "MIT"
+
+[[repositories.checks]]
+kind = "list_targets"
+path = "."
+top = 10
+min_targets = 10
+
+[[repositories.checks]]
+kind = "scan"
+path = "."
+min_targets = 1000
+
+[[repositories.checks]]
+kind = "generate_harness_gpr"
+source = "src/interface/yaml-dom-loading.ads"
+target = "from_string"
+harness_id = "H-REAL-ADAYAML-FROM-STRING"
+source_tree = "."
+project = "yaml.gpr"
+
+[[repositories]]
+id = "ada_util"
+url = "https://github.com/stcarrez/ada-util.git"
+rev = "3f4f187deeec2a4164c19a03a04c0a79962ff61f"
+language = "ada"
+license = "Apache-2.0"
+
+[[repositories.checks]]
+kind = "list_targets"
+path = "."
+top = 10
+min_targets = 10
+
+[[repositories.checks]]
+kind = "instrument"
+source = "src/base/dates/util-dates-iso8601.adb"
+
+[[repositories.checks]]
+kind = "generate_harness_gpr"
+source = "src/base/dates/util-dates-iso8601.adb"
+target = "value"
+harness_id = "H-REAL-ADA-UTIL"
+source_tree = "src"
+project = "utilada_base.gpr"
+expect_status = "toolchain_gap"
+expect_stderr_contains = "To_Duration_64"
+
+[[repositories.scenarios]]
+id = "ada_util_gnat13_calendar_conversions_gap"
+kind = "toolchain_gap"
+description = "ada-util's pinned Util.Dates body selects GCC 15 Ada.Calendar.Conversions APIs by default; the validation host uses GNAT 13."

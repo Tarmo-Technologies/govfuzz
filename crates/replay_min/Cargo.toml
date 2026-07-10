@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "replay_min"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+corpus = { path = "../corpus" }
+event_log = { path = "../event_log" }
+fuzz_engine_builtin = { path = "../fuzz_engine/builtin" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "replay_min"
+path = "src/main.rs"
+
+[[bin]]
+name = "fake_harness"
+path = "tests/fixtures/fake_harness.rs"

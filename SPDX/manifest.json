@@ -1,0 +1,3546 @@
+{
+  "SPDX-License-Identifier": "Apache-2.0",
+  "version": 1,
+  "files": [
+    {
+      "path": ".github/dependabot.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/docs-site.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/gnat-matrix.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/license-audit.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "license": "MIT or Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/sbom.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "SPDX/README.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "THIRD_PARTY.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-decode.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-decode.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-input.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-input.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-probe-gnat_actions.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-probe-memory_buffer.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-probe-semihosting.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-probe-stub.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-probe.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz-probe.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "ada_runtime/adafuzz_cov.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/harnesses/afl_persistent.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/harnesses/libfuzzer.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/ada/bench.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/ada/bench.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/ada/bench.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/c/libcwe.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/rust/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/rust/fuzz/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/rust/fuzz/fuzz_targets/primary.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/cwe/targets/rust/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harnesses/afl_persistent.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harnesses/libfuzzer.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/ada/fp_guards.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/c/alloc_size.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/c/defuse.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/c/fp_guards.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/c/safe.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/c/use_after_free.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/c/vuln.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/rust/alloc_size.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/rust/fp_guards.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/rust/safe.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/rust/taint.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/static/corpus/rust/vuln.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/ada/bench.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/ada/bench.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/ada/bench.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/c/cmplog.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/c/lenfield.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/c/magic.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/rust/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/rust/fuzz/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/rust/fuzz/fuzz_targets/target.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/targets/rust/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "c_runtime/govfuzz_decode_test.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "c_runtime/govfuzz_driver.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/counts.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/explain_source_sink.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/fix_locations.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/model.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/patch_hints.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/tiers.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/actionability/tests/verdicts.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/ast.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/aspect.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/constant.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/cursor.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/handler.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/pragma.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/raise_site.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/representation.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/scope.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/statements.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/subprogram.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/type_decl.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/type_decl/composite.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/type_decl/reference.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/type_decl/scalar.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/extract/use_clause.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/lexer.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/src/reconcile.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/dialect_smoke.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/comma_with_clause/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/comma_with_clause/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/complex_handler_chain/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/complex_handler_chain/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/fake_corba_servant/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/fake_corba_servant/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/interface_type/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/interface_type/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/limited_with_clause/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/limited_with_clause/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/missing_dependency/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/missing_dependency/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/not_null_access/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/not_null_access/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/package_with_subprograms/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/package_with_subprograms/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/raise_with_message/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/raise_with_message/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/simple_function/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/simple_function/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/simple_procedure/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/simple_procedure/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/swallowed_constraint_error/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/swallowed_constraint_error/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/synchronized_interface/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2005/synchronized_interface/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/abstract_tagged_type/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/abstract_tagged_type/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/aspect_specification/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/aspect_specification/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/case_expression_in_handler/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/case_expression_in_handler/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/expression_function/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/expression_function/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/function_with_multiple_handlers/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/function_with_multiple_handlers/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/local_pragma_not_unit_pragma/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/local_pragma_not_unit_pragma/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/package_with_subprograms/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/package_with_subprograms/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/private_type_completion/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/private_type_completion/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/quantified_expression/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/quantified_expression/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/record_with_aspect/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/record_with_aspect/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/simple_procedure/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/simple_procedure/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/swallowed_constraint_error/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/swallowed_constraint_error/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/use_all_type_clause/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2012/use_all_type_clause/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/aspect_2022_addition/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/aspect_2022_addition/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/child_package/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/child_package/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/declare_expression/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/declare_expression/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/derived_type_chain/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/derived_type_chain/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/image_for_non_scalar/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/image_for_non_scalar/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/package_body_initializer_raise/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/package_body_initializer_raise/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/parallel_block/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/parallel_block/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/protected_type/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/protected_type/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/record_representation_clause/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/record_representation_clause/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/representation_clause_size/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/representation_clause_size/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/subprogram_renames/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/subprogram_renames/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/target_name_at_sign/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/target_name_at_sign/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/task_type/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada2022/task_type/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/discriminated_record/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/discriminated_record/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/enumeration_type/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/enumeration_type/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/generic_package/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/generic_package/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/nested_subprogram/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/nested_subprogram/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/package_body_handler/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/package_body_handler/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/package_with_subprograms/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/package_with_subprograms/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/private_state/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/private_state/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/simple_function/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/simple_function/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/simple_procedure/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/simple_procedure/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/subunit_separate/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/subunit_separate/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/swallowed_constraint_error/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/swallowed_constraint_error/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/swallowed_when_others/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/swallowed_when_others/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/tagged_record/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_parser/tests/golden/ada95/tagged_record/src.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_state_machine/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/ada_state_machine/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/binary_analysis/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/binary_analysis/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/build_classifier/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/build_classifier/src/cargo.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/build_classifier/src/gcc_clang.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/build_classifier/src/gnat.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/build_classifier/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/c_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/c_parser/examples/dump.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/c_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/c_parser/tests/real_world_recovery.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/c_stub_gen/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/c_stub_gen/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/ada_bridge.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/audit.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/alire_config.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/attempt.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/attestation.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/bug_report.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/build_probe.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/candidate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/capability.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/config.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/confirm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/coverage_replay.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/cross_target.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/decl_index.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/dep_manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/discovery.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/discovery_cache.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/external_tools.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/go_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/gpr_scenario.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/install_deps.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/java_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/layout.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/memprofile.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/mod.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/msan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/pass.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/perl_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/preflight.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/progress.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/provenance.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/python_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/repair.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/report.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/report_only.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/runtrace.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/rust_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/shim_path.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/sink_oracle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/triage.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/tsan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/benchmark.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/bin/govfuzz.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/binary_adapter.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/binary_fuzz.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/binary_scan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/capsule.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/cartography.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/ci.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/clean.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/cmplog_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/corpus.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/dashboard.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/differential.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/env_capsule.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/explain.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/export_bundle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/extract_state_machines.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/fake_corba.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/finding_arg.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/fuzz.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/generate_harness.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/instrument.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/introspect.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/license_audit.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/list_fakes.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/list_oracles.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/list_targets.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/minimize.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/model.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/pack.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/policy.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/probe_backend.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/readiness.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/replay.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/report.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/rules.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/runner.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/runners.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/sbom.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/scan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/sloc.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/snippet.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/source_text.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/static_scan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/target_filter.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/actionability_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/ada_depth_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/asan_fiber_switch.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/asan_pool_bridge.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_access_lifecycle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_bounded_string.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_contract.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_coverage.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_deep_workdir.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_generic_ctor.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_multidim_array.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_multidir_gpr.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ada_object_collision.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_afl_engine.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_attempt.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_autotools_manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_build_command.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_build_context_recovery.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_c_callbacks.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_c_cdecl_macro.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_c_opaque_returning_ctor.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_c_restrict_macro.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cascade.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_command_taint_confirm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_comparison_progress.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_config_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cpp_amalgamation.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cpp_external_class.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cpp_harness_gaps.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cpp_pimpl_incomplete.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cxx_std_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_deep_source.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_exec_taint_confirm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_params.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_qualified.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_static.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_unbuildable.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_win32.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_frankenstein.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_full_tu_link.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_go_lane.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_grammar_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_hitcount_buckets.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_java_builder.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_java_cmplog.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_java_coverage_frames.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_java_discovery.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_java_fuzz.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_java_sink_oracle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_max_len_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_memprofile_replay.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_mfc_cstring.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_modules_ts_flag.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_perl_lane.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_python_lane.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_replay_mode.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_rtos_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_runtrace.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_rust_discovery.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_rust_output_buffer.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_rust_reader_incrate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_sink_oracles_confirm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_static_scan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_taint_confirm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_target_filter.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_tsan_replay.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_unsafe_search_build_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_win32_scalars.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_workdir_layout.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/binary_adapter_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/binary_fuzz_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/binary_scan_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/build_recovery.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/capability_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/capsule_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/cartography_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/corpus_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/differential_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/engine_parity.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/enterprise_ops_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/env_capsule_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/evidence_readiness_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/explain_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/fixtures/fake_harness.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/fork_server.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/forkserver_stdout_deadlock.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/fuzz_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/introspect_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/java_driver_noise.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/legacy_ada83.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/legacy_c89_runtime.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/legacy_knr_c.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/legacy_perl4.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/legacy_pre_cpp98.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/legacy_python2.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/list_fakes_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/list_targets_changed.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m10_fake_corba.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m17_aarch64_cross_fixture.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m19_docs_cli_examples.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m19_docs_site.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m19_full_ci_matrix.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m19_signed_releases.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m6_build_swallowed_ce.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m8_access_param.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/m9_private_state.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/model_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/offline_dist_scripts.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/output_sink.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/provenance_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/real_code_validation.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/redqueen_cmplog.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/replay_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/report_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/single_file_tool_main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/sloc_cmd.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/snippet_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/static_scan_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/support/mod.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/toolchain_support.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/windows_cross_fixture.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cmplog/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cmplog/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/compiler_adapter/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/compiler_adapter/src/adapter.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/compiler_adapter/src/capability.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/compiler_adapter/src/error.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/compiler_adapter/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/compiler_adapter/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/confidence_model/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/confidence_model/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/confidence_model/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/config/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/config/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/config/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/continuous_daemon/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/continuous_daemon/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/bridge.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/classify.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/cluster.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/finding.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/line_remap.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/manager.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/sanitizer.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/src/signature.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/tests/cluster_e2e.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/corpus/tests/end_to_end_swallowed_ce.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cpp_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cpp_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/daemon/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/daemon/src/bin/govfuzz-daemon.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/daemon/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/daemon/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/discovery/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/discovery/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/discovery/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/event_log/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/event_log/src/event.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/event_log/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/event_log/src/reader.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/event_log/src/testcase.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fake_corba/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fake_corba/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fake_corba/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/finding_rules/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/finding_rules/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/finding_rules/src/oracle_manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/finding_rules/src/oracle_registry.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/finding_rules/src/oracle_sdk.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fork_server/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fork_server/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/afl_adapter/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/afl_adapter/c/govfuzz_afl_persistent_shim.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/afl_adapter/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/afl_adapter/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/coverage.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/dictionary.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/engine_feedback.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/grammar.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/mutator.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/persistent.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/rng.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/scheduler.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/symbolic_seed.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/builtin/src/typed.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/libafl_adapter/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/libafl_adapter/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/libafl_adapter/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/libfuzzer_adapter/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/libfuzzer_adapter/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/libfuzzer_adapter/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/nyx_adapter/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/fuzz_engine/nyx_adapter/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/go_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/go_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/governance/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/governance/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/governance/src/vex.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/governance/tests/sbom_golden.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_cc_intercept/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_cc_intercept/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/dlsym.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/data.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/dl_handle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/envcap.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/fuzz_input.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/memfd.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/mod.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/mode.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/fakes/peer.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/assertion.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/cmplog.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/dl.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/dlsym.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/env.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/format.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/format_hooks.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/fs.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/identity.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/mem.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/mod.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/mqueue.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/net.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/proc.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/sql.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/jsonl.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/policy.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/reentrancy.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/registry.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/src/sdk.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/mmio_virtualization.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/mqueue_virtualization.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/no_recursion.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/portable_syscalls.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/shm_virtualization.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/build_safety.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/c_decoders.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/c_generate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/cpp_decoders.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/cpp_generate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/decoders.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/error.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/generate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/generic_instance.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/java_generate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/registry.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/rust_decoders.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/rust_generate.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/stream_init.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/direct_harness.adb.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/direct_harness.c.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/direct_harness.cpp.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/harness.gpr.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/harness.makefile.cpp.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/harness.makefile.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/sequence_harness.adb.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/sequence_harness.c.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/src/templates/servant_direct_harness.adb.tera",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshot.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/access_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/array_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/direct_param_modes.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/discriminated_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/enum_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/integer_param_target.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/multi_param_target.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/object_ref_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/private_state_sequence.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/record_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/servant_direct.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/servant_direct_param_modes.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/simple_string_target.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/harness_gen/tests/snapshots/tagged_param.main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/ada_emit.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/ast.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/error.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/lexer.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/parser.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/preprocessor.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/ros_interface.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/iiop/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/iiop/src/cdr.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/iiop/src/giop.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/iiop/src/idl_args.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/iiop/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/breadcrumbs.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/context_clauses.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/edge_cases.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/error.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/handlers.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/instrument.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/raises.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/src/rewriter.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/tests/golden_instrumentation.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/instrumenter/tests/snapshots/swallowed_constraint_error.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/java_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/java_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/lang_profile/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/lang_profile/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/license_policy/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/license_policy/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/license_policy/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/llm_harness_gen/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/llm_harness_gen/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/multicore_fuzz/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/multicore_fuzz/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/perl_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/perl_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/probe_gnat_actions/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/probe_gnat_actions/build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/probe_gnat_actions/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/probe_gnat_actions/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/project_synth/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/project_synth/src/error.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/project_synth/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/project_synth/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/project_synth/src/spec.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/project_synth/src/writer.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/python_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/python_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/src/differential.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/src/minimize.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/src/replay.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/tests/fixtures/fake_harness.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/tests/minimize.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/replay_min/tests/replay.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/report/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/report/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/report/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/runtrace_manifest/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/runtrace_manifest/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/rust_parser/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/rust_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/rust_runtime/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/rust_runtime/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/data/native_components.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/cataloger.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/ada_source.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/alire.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/c_source.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/cargo.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/cmake.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/conan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/go.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/gradle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/java_classpath.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/maven.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/meson.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/mod.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/native_manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/npm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/nuget.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/perl.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/php.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/python.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/ruby.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/catalogers/vcpkg.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/component.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/evidence.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/license.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/merge.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/purl.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/src/soname_map.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/tests/fixtures/ada_source/main.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/tests/fixtures/alire/alire.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/tests/fixtures/c_source/main.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/tests/fixtures/cargo/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/tests/fixtures/gradle/gradle/libs.versions.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/sbom_ingest/tests/fixtures/python/pyproject.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/semantic/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/semantic/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/semantic/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/spdx_check/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/spdx_check/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/spdx_check/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/static_analysis/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/static_analysis/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/static_analysis/src/taint_spec.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/static_analysis/tests/precision_benchmark.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/build_loop.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/diagnostics.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/error.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/needs.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/src/synth.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/stub_gen/tests/m7_missing_dependency.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/c_rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/go_rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/heuristics.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/java_rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/perl_rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/python_rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/rust_rank.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/src/score.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/target_rank/tests/golden_ranking.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/type_model/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/type_model/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/type_model/src/main.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "deny.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/cross-compilation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/daemon-json-rpc.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/differential-fuzzing.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/finding-report-fields.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/fuzzing-landscape-2026-05-20.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/gnatstudio-plugin.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/ide-parity.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/libfuzzer-adapter.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/release-packaging.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/architecture.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/auto.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/c-cpp.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/cli.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/comparison-2026-07.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/comparison.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/cross-compilation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/daemon.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/engine-parity-benchmark.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/fake-corba.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/fake-resource-sdk.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/index.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/install.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/instrumentation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/libfuzzer-parity.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/licensing.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/offline-deployment.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/release-packaging.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/run-modes.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/runtime-virtualisation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/sanitizers.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/sast-comparison.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/sink-oracles.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/static-cwe-coverage.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/vulnerability-coverage.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/whitepaper-coverage.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/whitepaper.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/windows.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/symbolic-seed-generation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-05-12-real-codebases.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-06-08-real-code-broken-builds.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-06-15-dod-domain-recovery.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-07-01-fuzzer-research-dogfood.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-07-07-gf512-framework-html-sweep.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-07-07-gf544-log-injection-sweep.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-07-08-gf545-graphql-injection-sweep.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-07-08-nextjs-static-scan-generated-pruning.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/vscode-thin-client.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/access_param/access_param.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/access_param/access_param.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/access_param/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/annotated_idl/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/fake_corba_servant/bar_impl.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/fake_corba_servant/bar_impl.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/fake_corba_servant/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/legacy_idl_acceptance/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/legacy_idl_acceptance/src/legacy_client.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/legacy_idl_acceptance/src/legacy_client.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/missing_dependency/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/missing_dependency/src.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/private_state/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/private_state/state.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/private_state/state.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/swallowed_constraint_error/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/swallowed_constraint_error/pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "examples/swallowed_constraint_error/pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_access_lifecycle/parser_ctx.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_access_lifecycle/parser_ctx.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_bounded_string/cmd_proc.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_bounded_string/cmd_proc.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_bounded_string/str_defs.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_c_object_collision/sxxx.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_c_object_collision/sxxx.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_c_object_collision/sxxx.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_contract/parse_len.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_contract/parse_len.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_generic_private_ctor/value_pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_generic_private_ctor/value_pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidim_array/matrix.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidim_array/matrix.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidir_gpr/multidir.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidir_gpr/src/core/core_checks.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidir_gpr/src/core/core_checks.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidir_gpr/src/parser/line_parser.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_multidir_gpr/src/parser/line_parser.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic/ada_basic.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic/aux_pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic/aux_pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic/harness.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic/pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic/pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic_gpr/ada_basic.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic_gpr/aux_pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic_gpr/aux_pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic_gpr/harness.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic_gpr/pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/ada_basic_gpr/pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/c_system_lib/parse.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/c_unknown_type/parse.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/miniz/harness.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/miniz/miniz.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/miniz_subdir/harness.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/miniz_subdir/miniz.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/miniz_subdir/vendor/vendor.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/mixed/harness.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/mixed/mixed.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/mixed/parse.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/mixed/pkg.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/fixtures/mixed/pkg.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/ada_basic_delete_aux_body.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/ada_basic_delete_aux_spec.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/ada_basic_gpr_import_missing.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/c_system_lib_missing.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/c_unknown_type_widget.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/miniz_delete_internal_header.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/miniz_delete_vendor_subdir.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/miniz_open_missing_config.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/miniz_runtime_dlopen_libvendor.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/miniz_runtime_endpoint_unreachable.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/miniz_unset_env_tempdir.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/build_recovery/scenarios/mixed_c_ada_no_removals.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/c_callbacks/callbacks.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/c_cdecl_macro/cdecl_macro.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/c_restrict_macro/restrict_macro.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/engine_parity/const_gate/const_gate.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/engine_parity/len_field/len_field.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/engine_parity/magic_byte/magic_byte.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/engine_parity/redqueen_int/redqueen_int.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/opaque_param/opaque_target.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/unbuildable/broken.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/government_legacy_patterns/ada95/generic_stack.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/government_legacy_patterns/c/parsers/tlv.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/government_legacy_patterns/embedded/runtime_config.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/government_legacy_patterns/gpr/scenario_app.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_discovery/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_discovery/fuzz/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_discovery/fuzz/fuzz_targets/existing.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_discovery/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_fuzz/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_fuzz/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_incrate/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_incrate/src/internal.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_incrate/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_output_buffer/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_output_buffer/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_reader_trait/Cargo.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/rust_reader_trait/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/static_scan/weak.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/integration/m7_missing_dependency.rs",
+      "license": "Apache-2.0"
+    }
+  ]
+}

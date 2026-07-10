@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "harness_gen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ada_parser = { path = "../ada_parser" }
+anyhow.workspace = true
+c_parser = { path = "../c_parser" }
+cpp_parser = { path = "../cpp_parser" }
+java_parser = { path = "../java_parser" }
+rust_parser = { path = "../rust_parser" }
+serde.workspace = true
+serde_json.workspace = true
+target_rank = { path = "../target_rank", optional = true }
+tera.workspace = true
+thiserror.workspace = true
+type_model = { path = "../type_model" }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "harness_gen"
+path = "src/main.rs"

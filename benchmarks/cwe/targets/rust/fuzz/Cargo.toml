@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "vulns_rust-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+[package.metadata]
+cargo-fuzz = true
+[dependencies]
+libfuzzer-sys = "0.4"
+vulns_rust = { path = ".." }
+[[bin]]
+name = "primary"
+path = "fuzz_targets/primary.rs"
+test = false
+doc = false
+bench = false

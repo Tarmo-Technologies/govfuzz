@@ -1,0 +1,379 @@
+{
+  "schema_version": "govfuzz.static.v1",
+  "root": "/path/to/govfuzz/benchmarks/campaign-2026-07-08/corpus/java_gson",
+  "counts": {
+    "findings": 5,
+    "suppressed": 0,
+    "new": 5,
+    "unchanged": 0,
+    "resolved": 0,
+    "analysis_gaps": 2,
+    "issues": 5,
+    "by_language": {
+      "config": 2,
+      "java": 3
+    },
+    "by_rule": {
+      "GF-421": 3,
+      "GF-472": 2
+    },
+    "by_severity": {
+      "high": 5
+    }
+  },
+  "findings": [
+    {
+      "id": "S-0001",
+      "rule_id": "GF-472",
+      "rule_slug": "govfuzz.static/github-actions-unpinned-third-party-action",
+      "language": "config",
+      "severity": "high",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions workflow uses an unpinned third-party action",
+      "location": {
+        "path": ".github/workflows/cifuzz.yml",
+        "line": 14,
+        "column": 13
+      },
+      "fingerprint": "GF-472:.github/workflows/cifuzz.yml:14:github-actions-unpinned-third-party-action",
+      "identity": "GF-472:5c7528cb5d5d7fcb",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions workflow references a third-party action without a full-length commit SHA.",
+          "snippet": "uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0002",
+      "rule_id": "GF-472",
+      "rule_slug": "govfuzz.static/github-actions-unpinned-third-party-action",
+      "language": "config",
+      "severity": "high",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions workflow uses an unpinned third-party action",
+      "location": {
+        "path": ".github/workflows/cifuzz.yml",
+        "line": 21,
+        "column": 13
+      },
+      "fingerprint": "GF-472:.github/workflows/cifuzz.yml:21:github-actions-unpinned-third-party-action",
+      "identity": "GF-472:85436d08829badac",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions workflow references a third-party action without a full-length commit SHA.",
+          "snippet": "uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0003",
+      "rule_id": "GF-421",
+      "rule_slug": "govfuzz.static/unsafe-deserialization",
+      "language": "java",
+      "severity": "high",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "Java deserialization (ObjectInputStream.readObject)",
+      "location": {
+        "path": "gson/src/test/java/com/google/gson/JavaSerializationTest.java",
+        "line": 76,
+        "column": 18
+      },
+      "fingerprint": "GF-421:gson/src/test/java/com/google/gson/JavaSerializationTest.java:76:unsafe-deserialization",
+      "identity": "GF-421:57202d7b41defd09",
+      "evidence": [
+        {
+          "kind": "deserialization",
+          "detail": "Deserializing untrusted bytes can execute arbitrary code.",
+          "snippet": "return (T) in.readObject();"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "isolated",
+        "enclosing_function": "serializedCopy"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0004",
+      "rule_id": "GF-421",
+      "rule_slug": "govfuzz.static/unsafe-deserialization",
+      "language": "java",
+      "severity": "high",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "Java deserialization (ObjectInputStream.readObject)",
+      "location": {
+        "path": "gson/src/test/java/com/google/gson/internal/LazilyParsedNumberTest.java",
+        "line": 51,
+        "column": 41
+      },
+      "fingerprint": "GF-421:gson/src/test/java/com/google/gson/internal/LazilyParsedNumberTest.java:51:unsafe-deserialization",
+      "identity": "GF-421:a57578dbb2bdb025",
+      "evidence": [
+        {
+          "kind": "deserialization",
+          "detail": "Deserializing untrusted bytes can execute arbitrary code.",
+          "snippet": "Number deserialized = (Number) objIn.readObject();"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "isolated",
+        "enclosing_function": "testJavaSerialization"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0005",
+      "rule_id": "GF-421",
+      "rule_slug": "govfuzz.static/unsafe-deserialization",
+      "language": "java",
+      "severity": "high",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "Java deserialization (ObjectInputStream.readObject)",
+      "location": {
+        "path": "gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java",
+        "line": 221,
+        "column": 69
+      },
+      "fingerprint": "GF-421:gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java:221:unsafe-deserialization",
+      "identity": "GF-421:9bb3fe115c55e4d1",
+      "evidence": [
+        {
+          "kind": "deserialization",
+          "detail": "Deserializing untrusted bytes can execute arbitrary code.",
+          "snippet": "Map<String, Integer> deserialized = (Map<String, Integer>) objIn.readObject();"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "isolated",
+        "enclosing_function": "testJavaSerialization"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    }
+  ],
+  "issues": [
+    {
+      "issue_key": "GF-472:.github/workflows/cifuzz.yml:14:github-actions-unpinned-third-party-action",
+      "cwe": "CWE-494",
+      "rule_id": "GF-472",
+      "severity": "high",
+      "representative_id": "S-0001",
+      "finding_ids": [
+        "S-0001"
+      ],
+      "count": 1,
+      "priority_score": 6.63,
+      "priority_factors": {
+        "exploitability": 7.8,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Pin third-party GitHub Actions and reusable workflows to verified full-length commit SHAs instead of tags, branches, or short SHAs."
+    },
+    {
+      "issue_key": "GF-472:.github/workflows/cifuzz.yml:21:github-actions-unpinned-third-party-action",
+      "cwe": "CWE-494",
+      "rule_id": "GF-472",
+      "severity": "high",
+      "representative_id": "S-0002",
+      "finding_ids": [
+        "S-0002"
+      ],
+      "count": 1,
+      "priority_score": 6.63,
+      "priority_factors": {
+        "exploitability": 7.8,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Pin third-party GitHub Actions and reusable workflows to verified full-length commit SHAs instead of tags, branches, or short SHAs."
+    },
+    {
+      "issue_key": "GF-421:gson/src/test/java/com/google/gson/JavaSerializationTest.java:76:unsafe-deserialization",
+      "cwe": "CWE-502",
+      "rule_id": "GF-421",
+      "severity": "high",
+      "representative_id": "S-0003",
+      "finding_ids": [
+        "S-0003"
+      ],
+      "count": 1,
+      "priority_score": 3.825,
+      "priority_factors": {
+        "exploitability": 8.5,
+        "confidence": 0.75,
+        "reachability": 0.6
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-421:gson/src/test/java/com/google/gson/internal/LazilyParsedNumberTest.java:51:unsafe-deserialization",
+      "cwe": "CWE-502",
+      "rule_id": "GF-421",
+      "severity": "high",
+      "representative_id": "S-0004",
+      "finding_ids": [
+        "S-0004"
+      ],
+      "count": 1,
+      "priority_score": 3.825,
+      "priority_factors": {
+        "exploitability": 8.5,
+        "confidence": 0.75,
+        "reachability": 0.6
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-421:gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java:221:unsafe-deserialization",
+      "cwe": "CWE-502",
+      "rule_id": "GF-421",
+      "severity": "high",
+      "representative_id": "S-0005",
+      "finding_ids": [
+        "S-0005"
+      ],
+      "count": 1,
+      "priority_score": 3.825,
+      "priority_factors": {
+        "exploitability": 8.5,
+        "confidence": 0.75,
+        "reachability": 0.6
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    }
+  ],
+  "suppressed": [],
+  "analysis_gaps": [
+    {
+      "path": "gson/src/main/java/com/google/gson/internal/JavaVersion.java",
+      "line": 48,
+      "caller": "parseDotted",
+      "callee": "javaVersion.split",
+      "reason": "unresolved_project_local_call",
+      "snippet": "String[] parts = javaVersion.split(\"[._]\", 3);"
+    },
+    {
+      "path": "gson/src/main/java/com/google/gson/internal/JavaVersion.java",
+      "line": 66,
+      "caller": "extractBeginningInt",
+      "callee": "num.append",
+      "reason": "unresolved_project_local_call",
+      "snippet": "num.append(c);"
+    }
+  ],
+  "baseline": {
+    "path": null,
+    "resolved": []
+  }
+}

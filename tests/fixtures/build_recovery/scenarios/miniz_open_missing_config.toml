@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "miniz"
+targets = ["miniz_inflate_fuzz"]
+description = """
+harness opens /etc/miniz_govfuzz_config.conf which doesn't exist.
+The runtrace_shim Layer-C hook on open() observes the
+ENOENT and bag the path into needed_for_build.missing_files.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "runtime_file"
+path = "/etc/miniz_govfuzz_config.conf"
+expect_surfaced = "missing_files"

@@ -1,0 +1,14 @@
+repo,primary_lang,cloc,scc,tokei,govfuzz
+rust_ripgrep,rust,35402,37798,,36784
+java_gson,java,37430,37636,,37430
+rust_semver,rust,2160,2160,,2160
+py_click,python,17506,20793,,17818
+go_cobra,go,12624,12897,,12624
+perl_mojo,perl,10608,25647,,10446
+cpp_json,cpp,49649,50498,,110027
+java_commonslang,java,106409,106614,,106409
+py_requests,python,7729,9708,,7575
+go_gin,go,17317,18475,,18264
+c_zlib,c,17247,17258,,29367
+c_jansson,c,13528,13667,,14298
+cpp_fmt,cpp,18689,20369,,45911

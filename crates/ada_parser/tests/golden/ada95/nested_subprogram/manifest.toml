@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 95 procedure with a nested local procedure"
+dialect_hint = "ada_95"
+
+[expected]
+ada_standard = "ada_95"
+unit_kind = "body"
+subprograms = 2
+handlers = 0
+raises = 0
+types = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_95"]
+
+[expected.names]
+subprograms = ["outer", "inner"]
+handler_choices = []
+type_kinds = []

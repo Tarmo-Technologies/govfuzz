@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//! `govfuzz auto` — point-and-shoot sweep over Ada/C/C++ source trees
+//! that auto-stubs missing dependencies and fuzzes everything it can.
+
+pub mod alire_config;
+pub mod attempt;
+pub mod attestation;
+pub mod bug_report;
+pub mod build_probe;
+pub mod candidate;
+pub mod capability;
+pub mod cli;
+pub mod config;
+pub mod confirm;
+pub mod coverage_replay;
+pub mod cross_target;
+pub mod decl_index;
+pub mod dep_manifest;
+pub mod discovery;
+pub mod discovery_cache;
+pub mod external_tools;
+pub mod go_build;
+pub mod gpr_scenario;
+pub mod install_deps;
+pub mod java_build;
+pub mod layout;
+pub mod memprofile;
+pub mod msan;
+pub mod pass;
+pub mod perl_build;
+pub mod preflight;
+pub mod progress;
+pub mod provenance;
+pub mod python_build;
+pub mod repair;
+pub mod report;
+pub mod report_only;
+pub mod runtrace;
+pub mod rust_build;
+pub mod shim_path;
+pub mod sink_oracle;
+pub mod triage;
+pub mod tsan;

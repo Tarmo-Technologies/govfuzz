@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+module Gov {
+  interface Telemetry {
+    void Submit(in string packet);
+    string Status();
+  };
+};

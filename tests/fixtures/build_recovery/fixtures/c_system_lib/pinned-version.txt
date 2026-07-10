@@ -1,0 +1,5 @@
+c_system_lib is a first-party synthetic fixture for the build-recovery
+suite. The scenario runner injects a missing `-lgovfuzz_missing_vendor`
+link flag through AUTO_EXTRA_LDFLAGS so auto can surface
+needed_for_build.missing_libraries without relying on host-specific
+libm / libc linker behavior.

@@ -1,0 +1,63 @@
+{
+  "schema_version": "govfuzz.legacy_patterns.v1",
+  "corpus_id": "government-legacy-patterns-2026-06-08",
+  "license": "Apache-2.0",
+  "patterns": [
+    {
+      "id": "ada95-generic-stack",
+      "track": "ada95_idioms",
+      "path": "ada95/generic_stack.ads",
+      "expected_behavior": "list-targets reports generic context and Ada 95 compatibility metadata.",
+      "breakage": false
+    },
+    {
+      "id": "gpr-scenario-variables",
+      "track": "gpr_variants",
+      "path": "gpr/scenario_app.gpr",
+      "expected_behavior": "generate-harness records GPR variables, scenario switches, source dirs, and dynamic-dir diagnostics.",
+      "breakage": true
+    },
+    {
+      "id": "corba-telemetry-idl",
+      "track": "corba_idl",
+      "path": "idl/telemetry.idl",
+      "expected_behavior": "fake-corba and IDL discovery preserve servant operation names for offline harnessing.",
+      "breakage": false
+    },
+    {
+      "id": "c-tlv-parser",
+      "track": "c_parser",
+      "path": "c/parsers/tlv.c",
+      "expected_behavior": "static-scan reports unchecked integer conversion and path-sensitive parser risks without requiring a full build.",
+      "breakage": false
+    },
+    {
+      "id": "cpp-telemetry-service",
+      "track": "cpp_service_class",
+      "path": "cpp/services/telemetry_service.cpp",
+      "expected_behavior": "list-targets reports C++ class lifecycle metadata and sequence harness eligibility.",
+      "breakage": false
+    },
+    {
+      "id": "protocol-tlv-corpus",
+      "track": "protocol_tlv",
+      "path": "protocol/tlv.seed",
+      "expected_behavior": "corpus import keeps protocol/TLV seeds available for deterministic offline fuzzing.",
+      "breakage": false
+    },
+    {
+      "id": "embedded-runtime-dependency",
+      "track": "embedded_runtime_dependency",
+      "path": "embedded/runtime_config.adb",
+      "expected_behavior": "static-scan reports runtime dependency and readiness records an enclave policy modeling requirement.",
+      "breakage": true
+    },
+    {
+      "id": "stripped-elf-stub",
+      "track": "stripped_binary",
+      "path": "binaries/stripped_elf.bin",
+      "expected_behavior": "binary-scan records format and symbol/debug-info limitations for stripped binary triage.",
+      "breakage": true
+    }
+  ]
+}

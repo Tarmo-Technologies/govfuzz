@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 95 package body with subprogram and package initializer handlers"
+dialect_hint = "ada_95"
+
+[expected]
+ada_standard = "ada_95"
+unit_kind = "body"
+subprograms = 1
+handlers = 2
+raises = 0
+types = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_95"]
+
+[expected.names]
+subprograms = ["work"]
+handler_choices = ["program_error", "constraint_error"]
+type_kinds = []

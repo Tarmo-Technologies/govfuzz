@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 95 tagged record type"
+dialect_hint = "ada_95"
+
+[expected]
+ada_standard = "ada_95"
+unit_kind = "spec"
+subprograms = 0
+handlers = 0
+raises = 0
+types = 1
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_95"]
+
+[expected.names]
+subprograms = []
+handler_choices = []
+type_kinds = ["tagged"]

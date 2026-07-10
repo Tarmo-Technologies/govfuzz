@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "ROADMAP 19.2 swallowed when others handler"
+dialect_hint = "ada_95"
+
+[expected]
+ada_standard = "ada_95"
+unit_kind = "body"
+subprograms = 1
+handlers = 1
+raises = 0
+types = 0
+statements = 1
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_95"]
+
+[expected.names]
+subprograms = ["driver"]
+handler_choices = ["others"]
+type_kinds = []

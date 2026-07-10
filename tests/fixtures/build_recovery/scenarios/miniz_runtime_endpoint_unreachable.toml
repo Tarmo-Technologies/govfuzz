@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "miniz"
+targets = ["miniz_inflate_fuzz"]
+description = """
+The harness connect()'s to a missing Unix-domain socket on every fuzz
+input. The runtrace shim's connect hook observes the immediate ENOENT
+and routes it to `needed_for_build.network_endpoints`.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "runtime_endpoint"
+address = "/tmp/govfuzz_missing.sock"
+expect_surfaced = "network_endpoints"

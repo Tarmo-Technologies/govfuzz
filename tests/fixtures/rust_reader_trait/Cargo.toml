@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# §27.1 fixture: a byteorder-shaped crate whose public API is `pub trait` reader
+# methods (`ReadNumExt: Read`) plus a marker byte-order trait. The Rust lane must
+# synthesise a `std::io::Cursor` receiver, import the trait, and bake the
+# `read_num::<BigEndian>()` marker turbofish, then build+fuzz the result. An empty
+# `[workspace]` table detaches it from the parent govfuzz workspace so the
+# generated staticlib harness crate can path-depend on it standalone.
+
+[package]
+name = "rust_reader_trait_fixture"
+version = "0.0.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "rust_reader_trait_fixture"
+path = "src/lib.rs"
+
+# Detach from any ancestor workspace.
+[workspace]

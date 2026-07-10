@@ -1,0 +1,49 @@
+{
+  "components": [
+    {
+      "component_ref": "cargo:demo:0.1.0",
+      "cpe": null,
+      "ecosystem": "cargo",
+      "evidence": "Cargo.toml",
+      "group": null,
+      "hashes": [],
+      "identity_confidence": "high",
+      "license": "Apache-2.0",
+      "matching_method": "cargo_manifest",
+      "name": "demo",
+      "purl": "pkg:cargo/demo@0.1.0",
+      "runtime_harnesses": [],
+      "sha256": null,
+      "supplier": null,
+      "type": "source",
+      "version": "0.1.0"
+    },
+    {
+      "component_ref": "npm:demo-ui:2.0.0",
+      "cpe": null,
+      "ecosystem": "npm",
+      "evidence": "app/package.json",
+      "group": null,
+      "hashes": [],
+      "identity_confidence": "high",
+      "license": "MIT",
+      "matching_method": "package_json",
+      "name": "demo-ui",
+      "purl": "pkg:npm/demo-ui@2.0.0",
+      "runtime_harnesses": [],
+      "sha256": null,
+      "supplier": null,
+      "type": "source",
+      "version": "2.0.0"
+    }
+  ],
+  "counts": {
+    "by_ecosystem": {
+      "cargo": 1,
+      "npm": 1
+    },
+    "components": 2
+  },
+  "root": "<ROOT>",
+  "schema_version": "govfuzz.sbom.v1"
+}

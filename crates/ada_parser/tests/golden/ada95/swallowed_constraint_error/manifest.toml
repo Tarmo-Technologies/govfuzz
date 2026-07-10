@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "ROADMAP 19.1 swallowed Constraint_Error in a function handler"
+dialect_hint = "ada_95"
+
+[expected]
+ada_standard = "ada_95"
+unit_kind = "body"
+subprograms = 1
+handlers = 1
+raises = 0
+types = 0
+statements = 2
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_95"]
+
+[expected.names]
+subprograms = ["parse"]
+handler_choices = ["constraint_error"]
+type_kinds = []

@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Campaign fixture (byteorder write_* shape): a crate whose public API is `pub
+# trait` STATIC methods taking an OUTPUT buffer `buf: &mut [u8]` plus a value. The
+# Rust lane must back the `&mut [u8]` with an adequately-sized buffer, not the raw
+# fuzz slice — otherwise the fixed-width `buf[..N].copy_from_slice(..)` panics on
+# every input ("range end index N out of range for slice of length 0"), an
+# empty-buffer false positive. An empty `[workspace]` table detaches the fixture
+# from the parent govfuzz workspace so the generated staticlib harness crate can
+# path-depend on it standalone.
+
+[package]
+name = "rust_output_buffer_fixture"
+version = "0.0.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "rust_output_buffer_fixture"
+path = "src/lib.rs"
+
+# Detach from any ancestor workspace.
+[workspace]

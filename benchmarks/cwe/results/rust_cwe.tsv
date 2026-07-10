@@ -1,0 +1,4 @@
+metric	govfuzz	cargo-fuzz
+buggy functions found (of 3)	3	1
+hand-written harnesses needed	0	1 per function (3 for parity)
+toolchain	stable	nightly

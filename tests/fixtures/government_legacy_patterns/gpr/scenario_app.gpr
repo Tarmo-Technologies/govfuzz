@@ -1,0 +1,15 @@
+-- SPDX-License-Identifier: Apache-2.0
+project Scenario_App is
+   type Build_Mode is ("debug", "release");
+   Build : Build_Mode := external ("BUILD_MODE", "debug");
+   for Source_Dirs use ("../ada95", "generated/" & Build);
+
+   package Compiler is
+      case Build is
+         when "debug" =>
+            for Default_Switches ("Ada") use ("-gnata");
+         when "release" =>
+            for Default_Switches ("Ada") use ("-O2");
+      end case;
+   end Compiler;
+end Scenario_App;

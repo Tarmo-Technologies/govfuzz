@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2022 Image attribute on a non-scalar object"
+dialect_hint = "ada_2022"
+
+[expected]
+ada_standard = "ada_2022"
+unit_kind = "spec"
+subprograms = 1
+handlers = 0
+raises = 0
+types = 1
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2022"]
+
+[expected.names]
+subprograms = ["show"]
+handler_choices = []
+type_kinds = ["record"]

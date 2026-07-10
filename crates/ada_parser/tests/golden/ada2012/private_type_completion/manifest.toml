@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2012 private type declaration and completion"
+dialect_hint = "ada_2012"
+
+[expected]
+ada_standard = "ada_2012"
+unit_kind = "spec"
+subprograms = 0
+handlers = 0
+raises = 0
+types = 2
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2012"]
+
+[expected.names]
+subprograms = []
+handler_choices = []
+type_kinds = ["private", "record"]

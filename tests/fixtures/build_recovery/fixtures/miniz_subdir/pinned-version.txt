@@ -1,0 +1,14 @@
+miniz 3.0.2 (github.com/richgel999/miniz, release tag 3.0.2)
+
+Vendored from the release zip's top-level miniz.h + miniz.c. License:
+MIT (see LICENSE.md). zip sha256:
+  ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5
+
+This fixture is the miniz/ fixture plus a project-local vendor/
+subdirectory (vendor.h + vendor.c). It exists to exercise the
+`directory` Missing kind in build_recovery scenarios: deleting the
+whole vendor/ tree forces auto to synthesise a placeholder header
+and stub the vendor_helper symbol.
+
+Updating this fixture also requires re-verifying every miniz_subdir_*
+scenario in tests/fixtures/build_recovery/scenarios/.

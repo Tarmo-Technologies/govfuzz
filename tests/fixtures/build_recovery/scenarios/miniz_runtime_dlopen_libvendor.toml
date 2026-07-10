@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "miniz"
+targets = ["miniz_inflate_fuzz"]
+description = """
+The harness dlopen()'s a non-existent vendor library on every fuzz
+input. The runtrace shim's dlopen hook observes NULL returns and the
+auto report aggregator routes them into
+`needed_for_build.dlopen_failures`.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "runtime_dlopen"
+path = "libgovfuzz_vendor_does_not_exist.so.42"
+expect_surfaced = "dlopen_failures"

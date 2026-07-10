@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+# generated_harnesses/{{ harness_id }}/Makefile
+
+ifeq ($(origin CXX), default)
+CXX = clang++
+endif
+# Every govfuzz C++ direct harness ships its own `main` — the same persistent
+# framed fork-server driver the C path uses (#399/#398) — so we do NOT link
+# libFuzzer's own `main` (the `fuzzer` sanitizer runtime); mixing the two
+# mis-drove the binary and fabricated empty-testcase findings (#408, same family
+# as the C-side #388). `trace-pc-guard` feeds the harness's edge-coverage runtime
+# (#385) so the engine sees non-zero coverage on C++ amalgamations; `trace-cmp`
+# feeds the value-profile dictionary (#398) and the RedQueen/cmplog operand
+# capture (#400), exactly as the C makefile does.
+# UBSan runs with abort_on_error=1:halt_on_error=1 under the engine, so a check
+# that fires on legitimate-but-technically-UB code aborts on EVERY input and the
+# target is reported as a runtime error with 0 executions instead of being
+# fuzzed. We drop the three checks that fire on pervasive, harmless patterns —
+# the set OSS-Fuzz also excludes: `function` (a typed callback called through a
+# generic fn-pointer signature — every C stream/iterator/vtable interface, e.g.
+# TinySoundFont), `vptr` (C++ vptr checks need RTTI, fire on legitimate
+# downcasts), and `alignment` (binary parsers read `*(uint32_t*)p` at unaligned
+# offsets). All high-signal checks (overflow, shift, OOB, null, return…) stay
+# on. -fno-sanitize= must follow -fsanitize=undefined to subtract from the group.
+# The C++ standard is a standalone overridable variable so `auto`'s dialect ladder
+# can retry an OLDER standard (`make CXX_STD=gnu++14`) for legacy C++ that a modern
+# default rejects — without regenerating the harness. `?=` lets a command-line/env
+# CXX_STD win over this default.
+CXX_STD ?= {{ cxx_standard }}
+CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+# AFL's compiler driver reserves the AFL_ env-var namespace, so the AFL
+# build knobs use the AFLPP_ prefix to avoid colliding with it.
+AFLPP_CXX ?= afl-clang-fast++
+AFLPP_CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -DGOVFUZZ_AFL
+INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
+BUILD_CONTEXT_PROVENANCE = {{ build_context_provenance }}
+BUILD_CONTEXT_CONFIDENCE = {{ build_context_confidence }}
+BUILD_CONTEXT_RECOVERY = {{ build_context_recovery }}
+COMPILE_DB_FLAGS = {% for flag in compile_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
+BUILD_CONTEXT_LDFLAGS = {% for flag in link_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
+
+.PHONY: all afl clean
+all: main
+
+# Target sources stay OUT of the prerequisites and live only in the recipe: an
+# absolute Windows source path carries a drive-letter colon (`C:\...`) that GNU
+# make parses as a target:prereq separator. In the recipe it is just a compiler
+# argument, so the colon is harmless. (The harness dir is regenerated per attempt.)
+main: main.cpp
+	$(CXX) $(CXXFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+
+afl: main_afl
+
+main_afl: main.cpp
+	$(AFLPP_CXX) $(AFLPP_CXXFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+
+clean:
+	rm -f main main_afl

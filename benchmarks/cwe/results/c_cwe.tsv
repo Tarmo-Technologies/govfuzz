@@ -1,0 +1,7 @@
+cwe	function	govfuzz	libFuzzer	AFL++
+CWE-121	parse_header	1	1	1
+CWE-617	set_level	1	1	1
+CWE-22	load_resource	1	0	0
+CWE-377	write_temp	1	0	0
+CWE-522	read_secret	1	0	0
+TIMING	govfuzz_run1_wall=63.600783067s	govfuzz_run2_wall=63.266744809s	-	-

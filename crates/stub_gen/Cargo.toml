@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "stub_gen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "stub_gen"
+path = "src/main.rs"
+
+[dependencies]
+compiler_adapter = { path = "../compiler_adapter" }
+project_synth = { path = "../project_synth" }
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ada_parser = { path = "../ada_parser" }
+tempfile.workspace = true
+which.workspace = true

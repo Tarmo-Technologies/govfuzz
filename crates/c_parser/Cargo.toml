@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "c_parser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+c_stub_gen = { path = "../c_stub_gen" }
+thiserror.workspace = true
+tree-sitter.workspace = true
+tree-sitter-c = "0.24.2"
+
+[lib]
+path = "src/lib.rs"

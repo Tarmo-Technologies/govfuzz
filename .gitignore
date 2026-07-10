@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
+/ada_runtime/lib/
+/ada_runtime/obj/
+/editors/vscode/node_modules/
+/editors/vscode/out/
+/target/
+/govfuzz_work/
+/dist/
+__pycache__/
+
+# Internal design plans/specs generated during development.
+/docs/superpowers/
+
+# libFuzzer crash / leak / timeout / OOM artifacts the harness drops
+# in CWD when an input triggers a finding. Test runs under
+# crates/cli/ otherwise pollute the workspace with thousands of these.
+crates/*/leak-*
+crates/*/crash-*
+crates/*/timeout-*
+crates/*/oom-*
+crates/*/govfuzz_work/

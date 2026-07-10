@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# pyproject.toml fixture for PythonCataloger tests.
+
+[project]
+name = "demo-py"
+version = "0.1.0"
+dependencies = ["httpx==0.27.0"]
+
+[tool.poetry.dev-dependencies]
+black = "==24.4.2"
+
+[dependency-groups]
+test = ["coverage==7.5.0"]

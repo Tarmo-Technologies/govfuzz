@@ -1,0 +1,3 @@
+bug	govfuzz_run1_cold_s	govfuzz_run2_warm_s	libFuzzer_s	note
+CWE-121 (memory, both find)	1.163589784	1.121062082	.686344478	fair head-to-head; libFuzzer pre-built harness
+CWE-22 (path-control, govfuzz only)	7.251895342	7.244942025	NF	libFuzzer cannot detect (no crash)

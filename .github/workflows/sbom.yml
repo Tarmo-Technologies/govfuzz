@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: SBOM
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+
+      - name: Build govfuzz
+        run: cargo build -p govfuzz --bin govfuzz
+
+      - name: Generate SBOM bundle from the in-repo cargo fixture
+        run: |
+          target/debug/govfuzz sbom \
+            crates/sbom_ingest/tests/fixtures/cargo \
+            --out sbom-out
+
+      - name: Assert the expected artifacts exist and are valid JSON
+        run: |
+          set -euo pipefail
+          for f in sbom.json cyclonedx.json vulnerabilities.json openvex.json; do
+            test -f "sbom-out/$f" || { echo "missing sbom-out/$f"; exit 1; }
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "sbom-out/$f"
+            echo "ok: sbom-out/$f is valid JSON"
+          done
+          # The OpenVEX document must carry the OpenVEX @context (offline-rendered).
+          python3 - <<'PY'
+          import json
+          doc = json.load(open("sbom-out/openvex.json"))
+          ctx = doc.get("@context", "")
+          assert ctx.startswith("https://openvex.dev/ns/"), f"unexpected openvex @context: {ctx!r}"
+          assert "statements" in doc, "openvex.json missing statements array"
+          print("ok: openvex.json parses and is an OpenVEX document")
+          PY
+
+      - name: Assert --emit selects a subset (offline determinism)
+        run: |
+          set -euo pipefail
+          target/debug/govfuzz sbom \
+            crates/sbom_ingest/tests/fixtures/cargo \
+            --out sbom-emit-only --emit sbom
+          test -f sbom-emit-only/sbom.json || { echo "expected sbom.json"; exit 1; }
+          for f in cyclonedx.json vulnerabilities.json openvex.json; do
+            test ! -e "sbom-emit-only/$f" || { echo "--emit sbom must not write $f"; exit 1; }
+          done
+          echo "ok: --emit sbom wrote only sbom.json"
+
+      - name: Assert SBOM crate tests pass
+        run: cargo test -p sbom_ingest -p governance

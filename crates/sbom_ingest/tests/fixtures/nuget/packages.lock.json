@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "Newtonsoft.Json": {
+        "type": "Direct",
+        "requested": "[13.0.3, )",
+        "resolved": "13.0.3",
+        "contentHash": "uJNPWE8jOLcxMAYPMqLO6R2Fo8fDqfp6nLEFTYv3RR7gO21pmJTTvt3DsTAfMhf/LgqFvInMOwduw+Gc2u7tYg=="
+      },
+      "Serilog": {
+        "type": "Direct",
+        "requested": "[3.1.0, )",
+        "resolved": "3.1.1",
+        "contentHash": "ZJYWvS1F91dM8TKO+9V5lfHKHqbsKvdSUew8VqSJMwFmteJ/WKZqX2vrnkgEdub+mFmjJq3ePiO85Vh7JD1jHQ=="
+      },
+      "Microsoft.Extensions.Logging": {
+        "type": "Direct",
+        "requested": "[8.0.0, 9.0.0)",
+        "resolved": "8.0.0",
+        "contentHash": "xT+LX7IfgLEqmrpmjECtNfL2RHu9H3a4/2H1CfDqF/hvpQ3RdEZMJYfEaEvI3HjALucRqWycs1aaP/gZA6AJgg=="
+      },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "xT+LX7IfgLEqmrpmjECtNfL2RHu9H3a4/2H1CfDqF/hvpQ3RdEZMJYfEaEvI3HjALucRqWycs1aaP/gZA6AJgg=="
+      },
+      "MyApp.Shared": {
+        "type": "Project",
+        "resolved": "1.0.0"
+      }
+    },
+    "net8.0-windows": {
+      "Newtonsoft.Json": {
+        "type": "Direct",
+        "requested": "[13.0.3, )",
+        "resolved": "13.0.3",
+        "contentHash": "uJNPWE8jOLcxMAYPMqLO6R2Fo8fDqfp6nLEFTYv3RR7gO21pmJTTvt3DsTAfMhf/LgqFvInMOwduw+Gc2u7tYg=="
+      }
+    }
+  }
+}

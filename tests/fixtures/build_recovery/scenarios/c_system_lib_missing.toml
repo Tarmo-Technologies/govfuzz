@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "c_system_lib"
+targets = ["system_lib_fuzz"]
+description = """
+The scenario runner injects -lgovfuzz_missing_vendor into the generated
+C harness link line. The linker reports `cannot find
+-lgovfuzz_missing_vendor`, build_classifier maps it to
+MissingSharedLib, and the report aggregator routes it into
+needed_for_build.missing_libraries.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "system_lib"
+name = "govfuzz_missing_vendor"
+expect_surfaced = "missing_libraries"

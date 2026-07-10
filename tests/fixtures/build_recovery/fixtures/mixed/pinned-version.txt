@@ -1,0 +1,10 @@
+synthetic — created for build_recovery test harness
+
+A mixed-language fixture: a single project root that contains both a
+tiny C fuzz target (parse.c) and an Ada package (pkg.ads/pkg.adb plus
+harness.adb wired up by mixed.gpr). The corresponding scenario
+asserts that govfuzz auto discovers BOTH a C candidate and an Ada
+candidate under the same source root.
+
+Adapted from tests/fixtures/build_recovery/fixtures/ada_basic/ plus a
+minimal C target. No upstream provenance.

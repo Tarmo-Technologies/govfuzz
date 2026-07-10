@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "static_analysis"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+finding_rules = { path = "../finding_rules" }
+rayon = "1"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

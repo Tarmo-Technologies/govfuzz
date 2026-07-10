@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "miniz"
+targets = ["miniz_inflate_fuzz"]
+description = """
+MINIZ_TEMP_DIR env var not in the process environment. The harness
+calls getenv("MINIZ_TEMP_DIR") on every fuzz input so the
+runtrace_shim Layer-C hook observes a missing env
+event and bag it into needed_for_build.environment_variables_faked.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "env_var"
+name = "MINIZ_TEMP_DIR"
+expect_surfaced = "environment_variables_faked"

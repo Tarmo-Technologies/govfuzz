@@ -1,0 +1,8 @@
+-- SPDX-License-Identifier: Apache-2.0
+foo.adb:12:34: file "external_lib.ads" not found
+foo.adb:12:34: warning: unit "External_Lib" needed for elaboration but not present
+foo.adb:15:7: "Bar" is undefined
+foo.adb:18:1: invalid expected type for "Y"
+foo.adb:20:5: "Foo" is not visible
+foo.adb:22:9: continuation line starts here
+    continuation line from GNAT 11

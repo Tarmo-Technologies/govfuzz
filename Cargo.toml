@@ -110,7 +110,7 @@ sha2 = "0.10"
 tera = "1"
 tempfile = "3"
 thiserror = "1.0"
-toml = "0.8"
+toml = "1.1"
 # Floor at 0.26.9: 0.26.8 had a subtree-machinery regression that corrupted a
 # Subtree during parse and segfaulted in ts_subtree_retain (intermittent, heap-
 # layout dependent) on large comment-heavy C inputs. Fixed upstream in 0.26.9.

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+
+#ifndef LEGACY_COMMON_IDL
+#define LEGACY_COMMON_IDL
+
+#define LEGACY_READING_LIMIT 8
+#pragma vendor legacy-orb keep
+
+module Legacy {
+  module Telemetry {
+    enum Status { Status_Ok, Status_Warn, Status_Fail };
+
+    struct Reading {
+      long Id;
+      double Value;
+      Status State;
+    };
+
+    exception Sensor_Fault {
+      long Code;
+      string<64> Reason;
+    };
+
+    typedef sequence<long, LEGACY_READING_LIMIT> Counter_List;
+    const long Max_Readings = LEGACY_READING_LIMIT;
+  };
+};
+
+#endif

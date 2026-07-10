@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "ada_basic_gpr"
+description = """
+ada_basic.gpr withs missing.gpr which is intentionally absent from
+the fixture. govfuzz's build pipeline now forwards user .gpr with
+clauses into the generated govfuzz_build.gpr, so gprbuild surfaces
+the unresolved import as
+`imported project file "<root>/missing.gpr" not found`, which
+build_classifier::gnat maps to MissingGprImport and the report
+aggregator routes into `needed_for_build.missing_gpr_imports`.
+
+As of #411 the forwarded clause is absolutized against the source
+gpr's own directory (so it stays depth-independent when written into
+govfuzz_build.gpr deeper in the tree); the reported name is therefore
+the absolute `<root>/missing.gpr`, which the test matcher locates by
+its `missing.gpr` suffix.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "gpr_import"
+path = "missing.gpr"
+expect_surfaced = "missing_gpr_imports"

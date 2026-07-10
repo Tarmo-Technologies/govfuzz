@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "cpp_parser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+c_parser = { path = "../c_parser" }
+c_stub_gen = { path = "../c_stub_gen" }
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+tree-sitter.workspace = true
+tree-sitter-cpp = "0.23.4"
+
+[lib]
+path = "src/lib.rs"

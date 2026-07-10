@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "govfuzz"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+default-run = "govfuzz"
+
+[package.metadata.dist]
+dist = true
+
+[package.metadata.dist.binaries]
+x86_64-unknown-linux-gnu = ["govfuzz"]
+aarch64-unknown-linux-gnu = ["govfuzz"]
+x86_64-apple-darwin = ["govfuzz"]
+aarch64-apple-darwin = ["govfuzz"]
+x86_64-pc-windows-msvc = ["govfuzz"]
+
+[dependencies]
+actionability = { path = "../actionability" }
+ada_parser = { path = "../ada_parser" }
+ada_state_machine = { path = "../ada_state_machine" }
+anyhow.workspace = true
+binary_analysis = { path = "../binary_analysis" }
+build_classifier = { path = "../build_classifier" }
+c_parser = { path = "../c_parser" }
+c_stub_gen = { path = "../c_stub_gen" }
+java_parser = { path = "../java_parser" }
+cmplog = { path = "../cmplog" }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+clap.workspace = true
+compiler_adapter = { path = "../compiler_adapter" }
+config = { path = "../config" }
+cpp_parser = { path = "../cpp_parser" }
+confidence_model = { path = "../confidence_model" }
+corpus = { path = "../corpus" }
+event_log = { path = "../event_log" }
+fake_corba = { path = "../fake_corba" }
+finding_rules = { path = "../finding_rules" }
+fuzz_engine_builtin = { path = "../fuzz_engine/builtin" }
+governance = { path = "../governance" }
+harness_gen = { path = "../harness_gen" }
+idl_parser = { path = "../idl_parser" }
+instrumenter = { path = "../instrumenter" }
+lang_profile = { path = "../lang_profile" }
+license_policy = { path = "../license_policy" }
+multicore_fuzz = { path = "../multicore_fuzz" }
+num_cpus = "1"
+go_parser = { path = "../go_parser" }
+perl_parser = { path = "../perl_parser" }
+project_synth = { path = "../project_synth" }
+python_parser = { path = "../python_parser" }
+regex.workspace = true
+replay_min = { path = "../replay_min" }
+govfuzz_report = { package = "report", path = "../report" }
+runtrace_manifest = { path = "../runtrace_manifest" }
+rust_parser = { path = "../rust_parser" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+static_analysis = { path = "../static_analysis" }
+stub_gen = { path = "../stub_gen" }
+target_rank = { path = "../target_rank" }
+toml.workspace = true
+type_model = { path = "../type_model" }
+which.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[lib]
+name = "cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "govfuzz"
+path = "src/bin/govfuzz.rs"
+
+[[bin]]
+name = "cli"
+path = "src/main.rs"
+
+[[bin]]
+name = "cli_fake_harness"
+path = "tests/fixtures/fake_harness.rs"
+
+[dev-dependencies]
+serde.workspace = true
+tempfile.workspace = true
+toml.workspace = true
+which.workspace = true

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "ROADMAP 19.5 fake CORBA servant body that catches a raised user exception"
+dialect_hint = "ada_2005"
+
+[expected]
+ada_standard = "ada_2005"
+unit_kind = "body"
+subprograms = 1
+handlers = 1
+raises = 1
+types = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2005"]
+
+[expected.names]
+subprograms = ["compute"]
+handler_choices = ["foo.badinput"]
+type_kinds = []

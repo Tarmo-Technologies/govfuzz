@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "runtrace_manifest"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]

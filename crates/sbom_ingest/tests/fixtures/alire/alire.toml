@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+# Fixture: alire.toml for Alire cataloger tests.
+
+name = "my_ada_project"
+version = "0.1.0"
+licenses = "Apache-2.0"
+authors = ["Test Author"]
+
+[[depends-on]]
+libhello = "^1.0"
+ada_toml = "~0.5"
+
+[[depends-on]]
+gnat = ">=12"
+gprbuild = ">=22"

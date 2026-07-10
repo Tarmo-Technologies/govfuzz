@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "mixed"
+description = """
+No removals — assert auto discovers BOTH the C target (mixed_parse in
+parse.c) and the Ada target (Pkg.Inflate via mixed.gpr) under the
+same source root. A regression anchor proving cross-language
+discovery still works.
+
+This scenario has no [[missing]] entries — it's a discovery-only
+assertion driven by the new [scenario] table's min_discovered field.
+"""
+must_build_after_repair = false
+
+[scenario]
+min_discovered = 2  # at least one C candidate and one Ada candidate

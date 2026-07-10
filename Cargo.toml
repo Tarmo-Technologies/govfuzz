@@ -1,0 +1,135 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/actionability",
+    "crates/ada_parser",
+    "crates/ada_state_machine",
+    "crates/binary_analysis",
+    "crates/build_classifier",
+    "crates/cmplog",
+    "crates/c_parser",
+    "crates/c_stub_gen",
+    "crates/cpp_parser",
+    "crates/cli",
+    "crates/compiler_adapter",
+    "crates/confidence_model",
+    "crates/config",
+    "crates/continuous_daemon",
+    "crates/corpus",
+    "crates/daemon",
+    "crates/discovery",
+    "crates/event_log",
+    "crates/fake_corba",
+    "crates/finding_rules",
+    "crates/fork_server",
+    "crates/fuzz_engine/afl_adapter",
+    "crates/fuzz_engine/builtin",
+    "crates/fuzz_engine/libafl_adapter",
+    "crates/fuzz_engine/libfuzzer_adapter",
+    "crates/fuzz_engine/nyx_adapter",
+    "crates/govfuzz_cc_intercept",
+    "crates/govfuzz_runtrace_shim",
+    "crates/governance",
+    "crates/harness_gen",
+    "crates/idl_parser",
+    "crates/iiop",
+    "crates/java_parser",
+    "crates/lang_profile",
+    "crates/instrumenter",
+    "crates/license_policy",
+    "crates/llm_harness_gen",
+    "crates/multicore_fuzz",
+    "crates/go_parser",
+    "crates/perl_parser",
+    "crates/probe_gnat_actions",
+    "crates/project_synth",
+    "crates/python_parser",
+    "crates/replay_min",
+    "crates/report",
+    "crates/runtrace_manifest",
+    "crates/rust_parser",
+    "crates/rust_runtime",
+    "crates/sbom_ingest",
+    "crates/semantic",
+    "crates/spdx_check",
+    "crates/static_analysis",
+    "crates/stub_gen",
+    "crates/target_rank",
+    "crates/type_model",
+]
+
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[workspace.package]
+version = "0.2.15"
+edition = "2021"
+rust-version = "1.83"
+license = "Apache-2.0"
+repository = "https://github.com/Tarmo-Technologies/govfuzz"
+
+# Config for 'dist'
+[workspace.metadata.dist]
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.31.0"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app
+installers = ["shell"]
+# Target platforms to build apps for (Rust target-triple syntax). The dist-able
+# runtime preload libraries are Linux-only, so the published release matrix is
+# limited to the smoke-tested Linux archive until those packages are split from
+# non-Linux CLI/daemon artifacts.
+targets = ["x86_64-unknown-linux-gnu"]
+# Checksums to generate for each App
+checksum = "sha256"
+# GitHub Artifact Attestations are disabled because GitHub currently rejects
+# attestation persistence for this private org/repo plan. Release integrity is
+# covered by SHA-256 sidecars and signed content packs until org/repo support is
+# available.
+github-attestations = false
+# Which actions to run on pull requests
+pr-run-mode = "plan"
+# Whether to consider the binaries in a package for distribution (defaults true)
+dist = false
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false
+
+[workspace.dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+regex = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+tera = "1"
+tempfile = "3"
+thiserror = "1.0"
+toml = "0.8"
+# Floor at 0.26.9: 0.26.8 had a subtree-machinery regression that corrupted a
+# Subtree during parse and segfaulted in ts_subtree_retain (intermittent, heap-
+# layout dependent) on large comment-heavy C inputs. Fixed upstream in 0.26.9.
+tree-sitter = "0.26.9"
+# Rust grammar for the native Rust discovery lane (M1.1). MIT/Apache-2.0 —
+# strict-permissive clean, same `tree-sitter-language` ABI as the vendored C/C++
+# grammars. See ROADMAP §1.2 for the license-matrix row.
+tree-sitter-rust = "0.24.2"
+# Java grammar for the native Java discovery lane (M2.1). MIT — strict-permissive
+# clean, same `tree-sitter-language` ABI. See ROADMAP §1.2 for the matrix row.
+tree-sitter-java = "0.23.5"
+# Python grammar for the native Python discovery lane (M3.1). MIT — strict-permissive
+# clean, same `tree-sitter-language` ABI as the other grammars. ROADMAP §1.2.
+tree-sitter-python = "0.25.0"
+# Perl grammar for the native Perl discovery lane (M3.2). MIT — strict-permissive
+# clean. ROADMAP §1.2.
+tree-sitter-perl = "1.1.2"
+# Go grammar for the native Go discovery lane (M3.3). MIT — strict-permissive
+# clean, same `tree-sitter-language` ABI. ROADMAP §1.2.
+tree-sitter-go = "0.25.0"
+cc = "1"
+which = "6"

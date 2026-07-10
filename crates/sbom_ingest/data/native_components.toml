@@ -1,0 +1,180 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Native-component knowledge base for the Tier-A C/C++ SourceObserved cataloger.
+#
+# This map supplies IDENTITY ONLY (name / cpe / soname / which header carries the
+# version macro). Versions are NEVER taken from here — they come from a vendored
+# header in the scanned tree (the `version` hint below points at the canonical
+# `#define MACRO "x.y.z"` to read). A library is matched when a scanned source
+# file `#include`s one of its `headers` (literal or `*` glob on the leaf).
+#
+# Each entry:
+#   name     — component name (also the pkg:generic name)
+#   headers  — include paths that map to this library (leaf `*` glob allowed)
+#   sonames  — shared-object names (used by the Linked lane, recorded for later)
+#   cpe      — optional CPE 2.3 vendor:product stem (no version)
+#   version  — optional { header = "<the header that defines it>",
+#                          macro  = "<#define NAME \"x.y.z\">" }
+
+[[library]]
+name = "zlib"
+headers = ["zlib.h", "zconf.h"]
+sonames = ["libz.so", "libz.so.1"]
+cpe = "cpe:2.3:a:zlib:zlib"
+version = { header = "zlib.h", macro = "ZLIB_VERSION" }
+
+[[library]]
+name = "openssl"
+headers = ["openssl/ssl.h", "openssl/crypto.h", "openssl/opensslv.h", "openssl/*.h"]
+sonames = ["libssl.so", "libssl.so.3", "libssl.so.1.1", "libcrypto.so", "libcrypto.so.3", "libcrypto.so.1.1"]
+cpe = "cpe:2.3:a:openssl:openssl"
+version = { header = "openssl/opensslv.h", macro = "OPENSSL_VERSION_TEXT" }
+
+[[library]]
+name = "libpng"
+headers = ["png.h", "pngconf.h", "libpng16/png.h"]
+sonames = ["libpng.so", "libpng16.so", "libpng16.so.16"]
+cpe = "cpe:2.3:a:libpng:libpng"
+version = { header = "png.h", macro = "PNG_LIBPNG_VER_STRING" }
+
+[[library]]
+name = "libjpeg-turbo"
+headers = ["jpeglib.h", "turbojpeg.h", "jconfig.h"]
+sonames = ["libjpeg.so", "libjpeg.so.8", "libjpeg.so.62", "libturbojpeg.so", "libturbojpeg.so.0"]
+cpe = "cpe:2.3:a:libjpeg-turbo:libjpeg-turbo"
+version = { header = "jconfig.h", macro = "LIBJPEG_TURBO_VERSION" }
+
+[[library]]
+name = "libxml2"
+headers = ["libxml/parser.h", "libxml/tree.h", "libxml/xmlversion.h", "libxml/*.h"]
+sonames = ["libxml2.so", "libxml2.so.2"]
+cpe = "cpe:2.3:a:xmlsoft:libxml2"
+version = { header = "libxml/xmlversion.h", macro = "LIBXML_DOTTED_VERSION" }
+
+[[library]]
+name = "sqlite3"
+headers = ["sqlite3.h", "sqlite3ext.h"]
+sonames = ["libsqlite3.so", "libsqlite3.so.0"]
+cpe = "cpe:2.3:a:sqlite:sqlite"
+version = { header = "sqlite3.h", macro = "SQLITE_VERSION" }
+
+[[library]]
+name = "curl"
+headers = ["curl/curl.h", "curl/curlver.h", "curl/easy.h", "curl/*.h"]
+sonames = ["libcurl.so", "libcurl.so.4"]
+cpe = "cpe:2.3:a:haxx:curl"
+version = { header = "curl/curlver.h", macro = "LIBCURL_VERSION" }
+
+[[library]]
+name = "expat"
+headers = ["expat.h", "expat_external.h"]
+sonames = ["libexpat.so", "libexpat.so.1"]
+cpe = "cpe:2.3:a:libexpat_project:libexpat"
+version = { header = "expat.h", macro = "XML_PACKAGE_VERSION" }
+
+[[library]]
+name = "pcre2"
+headers = ["pcre2.h", "pcre2posix.h"]
+sonames = ["libpcre2-8.so", "libpcre2-8.so.0"]
+cpe = "cpe:2.3:a:pcre:pcre2"
+version = { header = "pcre2.h", macro = "PCRE2_VERSION" }
+
+[[library]]
+name = "bzip2"
+headers = ["bzlib.h"]
+sonames = ["libbz2.so", "libbz2.so.1", "libbz2.so.1.0"]
+cpe = "cpe:2.3:a:bzip:bzip2"
+version = { header = "bzlib.h", macro = "BZ_VERSION" }
+
+[[library]]
+name = "xz"
+headers = ["lzma.h", "lzma/version.h"]
+sonames = ["liblzma.so", "liblzma.so.5"]
+cpe = "cpe:2.3:a:tukaani:xz"
+version = { header = "lzma/version.h", macro = "LZMA_VERSION_STRING" }
+
+[[library]]
+name = "zstd"
+headers = ["zstd.h", "zdict.h"]
+sonames = ["libzstd.so", "libzstd.so.1"]
+cpe = "cpe:2.3:a:facebook:zstandard"
+version = { header = "zstd.h", macro = "ZSTD_VERSION_STRING" }
+
+[[library]]
+name = "libssh2"
+headers = ["libssh2.h", "libssh2_sftp.h"]
+sonames = ["libssh2.so", "libssh2.so.1"]
+cpe = "cpe:2.3:a:libssh2:libssh2"
+version = { header = "libssh2.h", macro = "LIBSSH2_VERSION" }
+
+[[library]]
+name = "freetype"
+headers = ["ft2build.h", "freetype/freetype.h", "freetype/*.h"]
+sonames = ["libfreetype.so", "libfreetype.so.6"]
+cpe = "cpe:2.3:a:freetype:freetype"
+version = { header = "freetype/freetype.h", macro = "FREETYPE_VERSION" }
+
+[[library]]
+name = "c-ares"
+headers = ["ares.h", "ares_dns.h"]
+sonames = ["libcares.so", "libcares.so.2"]
+cpe = "cpe:2.3:a:c-ares_project:c-ares"
+version = { header = "ares_version.h", macro = "ARES_VERSION_STR" }
+
+[[library]]
+name = "libuv"
+headers = ["uv.h", "uv/version.h"]
+sonames = ["libuv.so", "libuv.so.1"]
+cpe = "cpe:2.3:a:libuv:libuv"
+version = { header = "uv/version.h", macro = "UV_VERSION_STRING" }
+
+# --- Commonly-vendored C++ header-only libraries -------------------------------
+# These expose their version as SPLIT integer macros (MAJOR/MINOR/PATCH) rather
+# than a single quoted-string #define, so they use the `major`/`minor`/`patch`
+# version-hint form. Header-only libs have no sonames.
+
+[[library]]
+name = "nlohmann-json"
+headers = ["nlohmann/json.hpp", "nlohmann/json_fwd.hpp"]
+sonames = []
+cpe = "cpe:2.3:a:nlohmann:json"
+version = { header = "nlohmann/json.hpp", major = "NLOHMANN_JSON_VERSION_MAJOR", minor = "NLOHMANN_JSON_VERSION_MINOR", patch = "NLOHMANN_JSON_VERSION_PATCH" }
+
+[[library]]
+name = "catch2"
+headers = ["catch2/catch_test_macros.hpp", "catch2/catch_all.hpp", "catch2/catch.hpp", "catch.hpp", "catch2/catch_version_macros.hpp"]
+sonames = ["libCatch2.so", "libCatch2Main.so"]
+version = { header = "catch2/catch_version_macros.hpp", major = "CATCH_VERSION_MAJOR", minor = "CATCH_VERSION_MINOR", patch = "CATCH_VERSION_PATCH" }
+
+[[library]]
+name = "rapidjson"
+headers = ["rapidjson/rapidjson.h", "rapidjson/document.h", "rapidjson/writer.h", "rapidjson/reader.h"]
+sonames = []
+cpe = "cpe:2.3:a:tencent:rapidjson"
+version = { header = "rapidjson/rapidjson.h", major = "RAPIDJSON_MAJOR_VERSION", minor = "RAPIDJSON_MINOR_VERSION", patch = "RAPIDJSON_PATCH_VERSION" }
+
+[[library]]
+name = "spdlog"
+headers = ["spdlog/spdlog.h", "spdlog/version.h", "spdlog/fmt/fmt.h"]
+sonames = ["libspdlog.so"]
+version = { header = "spdlog/version.h", major = "SPDLOG_VER_MAJOR", minor = "SPDLOG_VER_MINOR", patch = "SPDLOG_VER_PATCH" }
+
+[[library]]
+name = "doctest"
+headers = ["doctest/doctest.h", "doctest.h"]
+sonames = []
+version = { header = "doctest/doctest.h", major = "DOCTEST_VERSION_MAJOR", minor = "DOCTEST_VERSION_MINOR", patch = "DOCTEST_VERSION_PATCH" }
+
+# fmt exposes only an encoded-integer FMT_VERSION (e.g. 100201), which is neither
+# a quoted string nor split MAJOR/MINOR/PATCH macros — identity only, no version.
+[[library]]
+name = "fmt"
+headers = ["fmt/core.h", "fmt/format.h", "fmt/base.h", "fmt/ostream.h", "fmt/printf.h"]
+sonames = ["libfmt.so"]
+
+# googletest does not expose a stable version macro in its public headers —
+# identity only.
+[[library]]
+name = "googletest"
+headers = ["gtest/gtest.h", "gtest/gtest-spi.h", "gmock/gmock.h"]
+sonames = ["libgtest.so", "libgtest_main.so", "libgmock.so"]

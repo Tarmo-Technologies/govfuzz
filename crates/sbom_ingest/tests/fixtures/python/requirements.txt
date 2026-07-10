@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# requirements.txt fixture for PythonCataloger tests
+-r base.txt
+requests==2.32.3 \
+    --hash=sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760
+flask==3.0.3
+mypackage @ git+https://github.com/org/repo.git@v1.2.0
+typing_extensions==4.12.2 \
+    --hash=sha256:a1514509136dd0a342a90a7a5d0f5a6e0d9b8a69040a9d8d6cb0c1bb0b5f4a7

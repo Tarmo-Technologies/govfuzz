@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "probe_gnat_actions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+enabled = []
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "probe_gnat_actions"
+path = "src/main.rs"

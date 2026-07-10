@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "fuzz_engine_nyx_adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+# Real Nyx interop ships under this feature flag in a follow-up.
+# v0.1 leaves the symbol present so dependents can probe for it
+# at build time, but the implementation returns NotImplemented.
+nyx-engine = []
+
+[dependencies]
+corpus = { path = "../../corpus" }
+event_log = { path = "../../event_log" }
+fuzz_engine_builtin = { path = "../builtin" }
+thiserror.workspace = true

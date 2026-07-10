@@ -1,0 +1,1325 @@
+{
+  "schema_version": "govfuzz.static.v1",
+  "root": "/path/to/govfuzz/benchmarks/campaign-2026-07-08/corpus/perl_mojo",
+  "counts": {
+    "findings": 18,
+    "suppressed": 0,
+    "new": 18,
+    "unchanged": 0,
+    "resolved": 0,
+    "analysis_gaps": 11,
+    "issues": 18,
+    "by_language": {
+      "config": 6,
+      "perl": 12
+    },
+    "by_rule": {
+      "GF-404": 2,
+      "GF-420": 8,
+      "GF-422": 2,
+      "GF-497": 1,
+      "GF-500": 5
+    },
+    "by_severity": {
+      "critical": 10,
+      "medium": 8
+    }
+  },
+  "findings": [
+    {
+      "id": "S-0001",
+      "rule_id": "GF-500",
+      "rule_slug": "govfuzz.static/github-actions-missing-job-permissions",
+      "language": "config",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions job inherits default token permissions",
+      "location": {
+        "path": ".github/workflows/linux.yml",
+        "line": 10,
+        "column": 3
+      },
+      "fingerprint": "GF-500:.github/workflows/linux.yml:10:github-actions-missing-job-permissions",
+      "identity": "GF-500:aee22212377feb3e",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions job has local steps but no explicit permissions block.",
+          "snippet": "perl:"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0002",
+      "rule_id": "GF-500",
+      "rule_slug": "govfuzz.static/github-actions-missing-job-permissions",
+      "language": "config",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions job inherits default token permissions",
+      "location": {
+        "path": ".github/workflows/macos.yml",
+        "line": 10,
+        "column": 3
+      },
+      "fingerprint": "GF-500:.github/workflows/macos.yml:10:github-actions-missing-job-permissions",
+      "identity": "GF-500:9b1592f0b6813a23",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions job has local steps but no explicit permissions block.",
+          "snippet": "perl:"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0003",
+      "rule_id": "GF-500",
+      "rule_slug": "govfuzz.static/github-actions-missing-job-permissions",
+      "language": "config",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions job inherits default token permissions",
+      "location": {
+        "path": ".github/workflows/perltidy.yml",
+        "line": 10,
+        "column": 3
+      },
+      "fingerprint": "GF-500:.github/workflows/perltidy.yml:10:github-actions-missing-job-permissions",
+      "identity": "GF-500:156350354711a3df",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions job has local steps but no explicit permissions block.",
+          "snippet": "perltidy:"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0004",
+      "rule_id": "GF-497",
+      "rule_slug": "govfuzz.static/github-actions-mutable-container-image",
+      "language": "config",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions workflow uses a mutable container image reference",
+      "location": {
+        "path": ".github/workflows/perltidy.yml",
+        "line": 13,
+        "column": 14
+      },
+      "fingerprint": "GF-497:.github/workflows/perltidy.yml:13:github-actions-mutable-container-image",
+      "identity": "GF-497:608b1a2a2f154e75",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions workflow references a container image without a sha256 digest.",
+          "snippet": "image: perl:5.32"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0005",
+      "rule_id": "GF-500",
+      "rule_slug": "govfuzz.static/github-actions-missing-job-permissions",
+      "language": "config",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions job inherits default token permissions",
+      "location": {
+        "path": ".github/workflows/rebuild-website.yml",
+        "line": 7,
+        "column": 3
+      },
+      "fingerprint": "GF-500:.github/workflows/rebuild-website.yml:7:github-actions-missing-job-permissions",
+      "identity": "GF-500:26c03459ecedfda1",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions job has local steps but no explicit permissions block.",
+          "snippet": "rebuild_website:"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0006",
+      "rule_id": "GF-500",
+      "rule_slug": "govfuzz.static/github-actions-missing-job-permissions",
+      "language": "config",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "GitHub Actions job inherits default token permissions",
+      "location": {
+        "path": ".github/workflows/windows.yml",
+        "line": 10,
+        "column": 3
+      },
+      "fingerprint": "GF-500:.github/workflows/windows.yml:10:github-actions-missing-job-permissions",
+      "identity": "GF-500:de1781e04f517b63",
+      "evidence": [
+        {
+          "kind": "github-actions",
+          "detail": "A GitHub Actions job has local steps but no explicit permissions block.",
+          "snippet": "perl:"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0007",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojo/Base.pm",
+        "line": 112,
+        "column": 7
+      },
+      "fingerprint": "GF-420:lib/Mojo/Base.pm:112:code-injection-dynamic-eval",
+      "identity": "GF-420:1d2bd1551ad9441c",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "eval \"package $caller; use Role::Tiny; 1\" or die $@;"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "import"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0008",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojo/Exception.pm",
+        "line": 75,
+        "column": 53
+      },
+      "fingerprint": "GF-420:lib/Mojo/Exception.pm:75:code-injection-dynamic-eval",
+      "identity": "GF-420:8f799cc7e4df0aec",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "if    (!$class->can('new'))       { die $@ unless eval \"package $class; use Mojo::Base 'Mojo::Exception'; 1\" }"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": [
+            {
+              "kind": "guard",
+              "expression": "if    (!$class->can('new'))       { die $@ unless eval \"package $class; use Mojo::Base 'Mojo::Exception'; 1\" }",
+              "line": 75
+            }
+          ]
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "isolated",
+        "enclosing_function": "raise"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0009",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojo/Loader.pm",
+        "line": 50,
+        "column": 41
+      },
+      "fingerprint": "GF-420:lib/Mojo/Loader.pm:50:code-injection-dynamic-eval",
+      "identity": "GF-420:20e91ad97ce3c276",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "return undef if $class->can('new') || eval \"require $class; 1\";"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": [
+            {
+              "kind": "guard",
+              "expression": "return undef if $class->can('new') || eval \"require $class; 1\";",
+              "line": 50
+            }
+          ]
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "load_class"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0010",
+      "rule_id": "GF-422",
+      "rule_slug": "govfuzz.static/weak-cryptography",
+      "language": "perl",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "Weak cryptographic primitive in Perl (MD5/SHA1)",
+      "location": {
+        "path": "lib/Mojo/Message/Request.pm",
+        "line": 15,
+        "column": 20
+      },
+      "fingerprint": "GF-422:lib/Mojo/Message/Request.pm:15:weak-cryptography",
+      "identity": "GF-422:8c556990ffbaa286",
+      "evidence": [
+        {
+          "kind": "crypto",
+          "detail": "Broken/weak digest; use Digest::SHA (SHA-256+).",
+          "snippet": "my $b64 = substr(sha1_base64($seed . ($counter = ($counter + 1) % 0xffffff)), 0, 12);"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0011",
+      "rule_id": "GF-404",
+      "rule_slug": "govfuzz.static/command-injection-nonliteral-arg",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "Shell execution in Perl (backticks/system/exec/qx/piped open)",
+      "location": {
+        "path": "lib/Mojo/Server/Hypnotoad.pm",
+        "line": 47,
+        "column": 54
+      },
+      "fingerprint": "GF-404:lib/Mojo/Server/Hypnotoad.pm:47:command-injection-nonliteral-arg",
+      "identity": "GF-404:aa67f7b345cfead8",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "The construct runs a shell command; interpolated input enables command injection.",
+          "snippet": "die \"Can't exec: $!\" if !$ENV{HYPNOTOAD_REV}++ && !exec $^X, $ENV{HYPNOTOAD_EXE};"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": [
+            {
+              "kind": "guard",
+              "expression": "die \"Can't exec: $!\" if !$ENV{HYPNOTOAD_REV}++ && !exec $^X, $ENV{HYPNOTOAD_EXE};",
+              "line": 47
+            }
+          ]
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "run"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0012",
+      "rule_id": "GF-404",
+      "rule_slug": "govfuzz.static/command-injection-nonliteral-arg",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "Shell execution in Perl (backticks/system/exec/qx/piped open)",
+      "location": {
+        "path": "lib/Mojo/Server/Hypnotoad.pm",
+        "line": 130,
+        "column": 7
+      },
+      "fingerprint": "GF-404:lib/Mojo/Server/Hypnotoad.pm:130:command-injection-nonliteral-arg",
+      "identity": "GF-404:4e347c60b3798b22",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "The construct runs a shell command; interpolated input enables command injection.",
+          "snippet": "exec $^X, $ENV{HYPNOTOAD_EXE} or die \"Can't exec: $!\" unless $pid;"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "_manage"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0013",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojo/Template.pm",
+        "line": 149,
+        "column": 26
+      },
+      "fingerprint": "GF-420:lib/Mojo/Template.pm:149:code-injection-dynamic-eval",
+      "identity": "GF-420:0123f61575bc5cb2",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "unless $compiled = eval $self->_wrap($code, @_);"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "process"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0014",
+      "rule_id": "GF-422",
+      "rule_slug": "govfuzz.static/weak-cryptography",
+      "language": "perl",
+      "severity": "medium",
+      "confidence": "high",
+      "baseline_status": "new",
+      "message": "Weak cryptographic primitive in Perl (MD5/SHA1)",
+      "location": {
+        "path": "lib/Mojo/Util.pm",
+        "line": 6,
+        "column": 5
+      },
+      "fingerprint": "GF-422:lib/Mojo/Util.pm:6:weak-cryptography",
+      "identity": "GF-422:4a5f36cc2f3da04c",
+      "evidence": [
+        {
+          "kind": "crypto",
+          "detail": "Broken/weak digest; use Digest::SHA (SHA-256+).",
+          "snippet": "use Digest::MD5    qw(md5 md5_hex);"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "high"
+        },
+        "reachability": "unknown"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0015",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojo/Util.pm",
+        "line": 458,
+        "column": 28
+      },
+      "fingerprint": "GF-420:lib/Mojo/Util.pm:458:code-injection-dynamic-eval",
+      "identity": "GF-420:616259fba3728f43",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "$PATTERN{$pattern} = eval \"sub { \\$_[0] =~ s/([$quoted])/sprintf '%%%02X', ord \\$1/ge }\" or croak $@;"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "url_escape"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0016",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojolicious/Command/eval.pm",
+        "line": 18,
+        "column": 16
+      },
+      "fingerprint": "GF-420:lib/Mojolicious/Command/eval.pm:18:code-injection-dynamic-eval",
+      "identity": "GF-420:cc1dc14c16724972",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "my $result = eval \"package main; no warnings 'redefine'; sub app; local *app = sub { \\$app }; $code\";"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "run"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0017",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/Mojolicious/Plugin/Config.pm",
+        "line": 13,
+        "column": 16
+      },
+      "fingerprint": "GF-420:lib/Mojolicious/Plugin/Config.pm:13:code-injection-dynamic-eval",
+      "identity": "GF-420:243c73a48cefac3e",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "my $config = eval 'package Mojolicious::Plugin::Config::Sandbox; no warnings;'"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "parse"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    },
+    {
+      "id": "S-0018",
+      "rule_id": "GF-420",
+      "rule_slug": "govfuzz.static/code-injection-dynamic-eval",
+      "language": "perl",
+      "severity": "critical",
+      "confidence": "medium",
+      "baseline_status": "new",
+      "message": "String eval of Perl code",
+      "location": {
+        "path": "lib/ojo.pm",
+        "line": 20,
+        "column": 3
+      },
+      "fingerprint": "GF-420:lib/ojo.pm:20:code-injection-dynamic-eval",
+      "identity": "GF-420:ff1dd05e6c4f0f44",
+      "evidence": [
+        {
+          "kind": "call",
+          "detail": "eval on a string executes arbitrary code.",
+          "snippet": "eval \"package $caller; use Mojolicious::Lite; 1\" or die $@;"
+        }
+      ],
+      "analysis": {
+        "engine": "govfuzz.static.heuristic.v1",
+        "trace": [],
+        "gaps": [],
+        "path": {
+          "blocked": false,
+          "predicates": []
+        },
+        "precision": {
+          "interprocedural_depth": 0,
+          "tainted_parameters": [],
+          "complete_trace": true,
+          "confidence_reason": "rule_match"
+        },
+        "actionability": {
+          "verdict": "likely_reachable",
+          "confidence": "medium"
+        },
+        "reachability": "source_reachable",
+        "enclosing_function": "import"
+      },
+      "triage": {
+        "state": "unreviewed"
+      }
+    }
+  ],
+  "issues": [
+    {
+      "issue_key": "GF-404:lib/Mojo/Server/Hypnotoad.pm:130:command-injection-nonliteral-arg",
+      "cwe": "CWE-78",
+      "rule_id": "GF-404",
+      "severity": "critical",
+      "representative_id": "S-0012",
+      "finding_ids": [
+        "S-0012"
+      ],
+      "count": 1,
+      "priority_score": 7.125,
+      "priority_factors": {
+        "exploitability": 9.5,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Pass arguments as a list to a fixed program (execve-style), or validate against an allowlist — never build a shell string from input."
+    },
+    {
+      "issue_key": "GF-404:lib/Mojo/Server/Hypnotoad.pm:47:command-injection-nonliteral-arg",
+      "cwe": "CWE-78",
+      "rule_id": "GF-404",
+      "severity": "critical",
+      "representative_id": "S-0011",
+      "finding_ids": [
+        "S-0011"
+      ],
+      "count": 1,
+      "priority_score": 7.125,
+      "priority_factors": {
+        "exploitability": 9.5,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Pass arguments as a list to a fixed program (execve-style), or validate against an allowlist — never build a shell string from input."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojo/Base.pm:112:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0007",
+      "finding_ids": [
+        "S-0007"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojo/Loader.pm:50:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0009",
+      "finding_ids": [
+        "S-0009"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojo/Template.pm:149:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0013",
+      "finding_ids": [
+        "S-0013"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojo/Util.pm:458:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0015",
+      "finding_ids": [
+        "S-0015"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojolicious/Command/eval.pm:18:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0016",
+      "finding_ids": [
+        "S-0016"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojolicious/Plugin/Config.pm:13:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0017",
+      "finding_ids": [
+        "S-0017"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-420:lib/ojo.pm:20:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0018",
+      "finding_ids": [
+        "S-0018"
+      ],
+      "count": 1,
+      "priority_score": 6.75,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 1.0
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    },
+    {
+      "issue_key": "GF-497:.github/workflows/perltidy.yml:13:github-actions-mutable-container-image",
+      "cwe": "CWE-829",
+      "rule_id": "GF-497",
+      "severity": "medium",
+      "representative_id": "S-0004",
+      "finding_ids": [
+        "S-0004"
+      ],
+      "count": 1,
+      "priority_score": 5.78,
+      "priority_factors": {
+        "exploitability": 6.8,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Pin GitHub Actions container actions, job containers, and service containers with immutable @sha256 digests instead of mutable tags."
+    },
+    {
+      "issue_key": "GF-500:.github/workflows/linux.yml:10:github-actions-missing-job-permissions",
+      "cwe": "CWE-266",
+      "rule_id": "GF-500",
+      "severity": "medium",
+      "representative_id": "S-0001",
+      "finding_ids": [
+        "S-0001"
+      ],
+      "count": 1,
+      "priority_score": 5.1000004,
+      "priority_factors": {
+        "exploitability": 6.0,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Set explicit least-privilege GITHUB_TOKEN permissions at the workflow level or for each local job."
+    },
+    {
+      "issue_key": "GF-500:.github/workflows/macos.yml:10:github-actions-missing-job-permissions",
+      "cwe": "CWE-266",
+      "rule_id": "GF-500",
+      "severity": "medium",
+      "representative_id": "S-0002",
+      "finding_ids": [
+        "S-0002"
+      ],
+      "count": 1,
+      "priority_score": 5.1000004,
+      "priority_factors": {
+        "exploitability": 6.0,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Set explicit least-privilege GITHUB_TOKEN permissions at the workflow level or for each local job."
+    },
+    {
+      "issue_key": "GF-500:.github/workflows/perltidy.yml:10:github-actions-missing-job-permissions",
+      "cwe": "CWE-266",
+      "rule_id": "GF-500",
+      "severity": "medium",
+      "representative_id": "S-0003",
+      "finding_ids": [
+        "S-0003"
+      ],
+      "count": 1,
+      "priority_score": 5.1000004,
+      "priority_factors": {
+        "exploitability": 6.0,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Set explicit least-privilege GITHUB_TOKEN permissions at the workflow level or for each local job."
+    },
+    {
+      "issue_key": "GF-500:.github/workflows/rebuild-website.yml:7:github-actions-missing-job-permissions",
+      "cwe": "CWE-266",
+      "rule_id": "GF-500",
+      "severity": "medium",
+      "representative_id": "S-0005",
+      "finding_ids": [
+        "S-0005"
+      ],
+      "count": 1,
+      "priority_score": 5.1000004,
+      "priority_factors": {
+        "exploitability": 6.0,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Set explicit least-privilege GITHUB_TOKEN permissions at the workflow level or for each local job."
+    },
+    {
+      "issue_key": "GF-500:.github/workflows/windows.yml:10:github-actions-missing-job-permissions",
+      "cwe": "CWE-266",
+      "rule_id": "GF-500",
+      "severity": "medium",
+      "representative_id": "S-0006",
+      "finding_ids": [
+        "S-0006"
+      ],
+      "count": 1,
+      "priority_score": 5.1000004,
+      "priority_factors": {
+        "exploitability": 6.0,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Set explicit least-privilege GITHUB_TOKEN permissions at the workflow level or for each local job."
+    },
+    {
+      "issue_key": "GF-422:lib/Mojo/Message/Request.pm:15:weak-cryptography",
+      "cwe": "CWE-327",
+      "rule_id": "GF-422",
+      "severity": "medium",
+      "representative_id": "S-0010",
+      "finding_ids": [
+        "S-0010"
+      ],
+      "count": 1,
+      "priority_score": 5.0150003,
+      "priority_factors": {
+        "exploitability": 5.9,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Replace the broken primitive with SHA-256+, AES-GCM, or a modern password KDF (Argon2/bcrypt)."
+    },
+    {
+      "issue_key": "GF-422:lib/Mojo/Util.pm:6:weak-cryptography",
+      "cwe": "CWE-327",
+      "rule_id": "GF-422",
+      "severity": "medium",
+      "representative_id": "S-0014",
+      "finding_ids": [
+        "S-0014"
+      ],
+      "count": 1,
+      "priority_score": 5.0150003,
+      "priority_factors": {
+        "exploitability": 5.9,
+        "confidence": 1.0,
+        "reachability": 0.85
+      },
+      "remediation": "Replace the broken primitive with SHA-256+, AES-GCM, or a modern password KDF (Argon2/bcrypt)."
+    },
+    {
+      "issue_key": "GF-420:lib/Mojo/Exception.pm:75:code-injection-dynamic-eval",
+      "cwe": "CWE-94",
+      "rule_id": "GF-420",
+      "severity": "critical",
+      "representative_id": "S-0008",
+      "finding_ids": [
+        "S-0008"
+      ],
+      "count": 1,
+      "priority_score": 4.05,
+      "priority_factors": {
+        "exploitability": 9.0,
+        "confidence": 0.75,
+        "reachability": 0.6
+      },
+      "remediation": "Do not eval/deserialize untrusted data; use a safe loader (JSON, `yaml.safe_load`, an allowlisted schema)."
+    }
+  ],
+  "suppressed": [],
+  "analysis_gaps": [
+    {
+      "path": "lib/Mojo/DOM.pm",
+      "line": 288,
+      "caller": "_parse",
+      "callee": "my",
+      "reason": "unresolved_project_local_call",
+      "snippet": "my ($self, $input) = @_;"
+    },
+    {
+      "path": "lib/Mojo/DOM.pm",
+      "line": 289,
+      "caller": "_parse",
+      "callee": "isa",
+      "reason": "unresolved_project_local_call",
+      "snippet": "return Mojo::DOM::HTML->new(xml => $self->xml)->parse($input)->tree unless blessed $input && $input->isa('Mojo::DOM');"
+    },
+    {
+      "path": "lib/Mojo/Server/Daemon.pm",
+      "line": 174,
+      "caller": "_listen",
+      "callee": "qw",
+      "reason": "unresolved_project_local_call",
+      "snippet": "$options->{$_} = $query->param($_) for qw(fd single_accept reuse);"
+    },
+    {
+      "path": "lib/Mojo/Server/Daemon.pm",
+      "line": 182,
+      "caller": "_listen",
+      "callee": "_",
+      "reason": "unresolved_project_local_call",
+      "snippet": "/^(.*)_(cert|key)$/ and $options->{\"tls_$2\"}{$1} = $query->param($_) for @{$query->names};"
+    },
+    {
+      "path": "lib/Mojo/Server/Daemon.pm",
+      "line": 194,
+      "caller": "_listen",
+      "callee": "my",
+      "reason": "unresolved_project_local_call",
+      "snippet": "my ($loop, $stream, $id) = @_;"
+    },
+    {
+      "path": "lib/Mojo/Server/Hypnotoad.pm",
+      "line": 120,
+      "caller": "_manage",
+      "callee": "unless",
+      "reason": "unresolved_project_local_call",
+      "snippet": "$ENV{HYPNOTOAD_PID} = $$ unless ($ENV{HYPNOTOAD_PID} // '') eq $$;"
+    },
+    {
+      "path": "lib/Mojo/Util.pm",
+      "line": 481,
+      "caller": "xor_encode",
+      "callee": "my",
+      "reason": "unresolved_project_local_call",
+      "snippet": "my ($input, $key) = @_;"
+    },
+    {
+      "path": "lib/Mojo/Util.pm",
+      "line": 486,
+      "caller": "xor_encode",
+      "callee": "length",
+      "reason": "unresolved_project_local_call",
+      "snippet": "$output .= $buffer ^ $key while length($buffer = substr($input, 0, $len, '')) == $len;"
+    },
+    {
+      "path": "lib/Mojo/Util.pm",
+      "line": 486,
+      "caller": "xor_encode",
+      "callee": "substr",
+      "reason": "unresolved_project_local_call",
+      "snippet": "$output .= $buffer ^ $key while length($buffer = substr($input, 0, $len, '')) == $len;"
+    },
+    {
+      "path": "lib/Mojo/Util.pm",
+      "line": 487,
+      "caller": "xor_encode",
+      "callee": "substr",
+      "reason": "unresolved_project_local_call",
+      "snippet": "return $output .= $buffer ^ substr($key, 0, length $buffer, '');"
+    },
+    {
+      "path": "lib/Mojolicious/Plugin/TagHelpers.pm",
+      "line": 144,
+      "caller": "_option",
+      "callee": "my",
+      "reason": "unresolved_project_local_call",
+      "snippet": "my ($values, $pair) = @_;"
+    }
+  ],
+  "baseline": {
+    "path": null,
+    "resolved": []
+  }
+}

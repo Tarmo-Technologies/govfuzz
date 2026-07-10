@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2012 expression function declaration"
+dialect_hint = "ada_2012"
+
+[expected]
+ada_standard = "ada_2012"
+unit_kind = "spec"
+subprograms = 1
+handlers = 0
+raises = 0
+types = 0
+statements = 0
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2012"]
+
+[expected.names]
+subprograms = ["is_zero"]
+handler_choices = []
+type_kinds = []

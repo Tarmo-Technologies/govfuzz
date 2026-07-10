@@ -1,0 +1,4 @@
+-- SPDX-License-Identifier: Apache-2.0
+GNAT 14.1 diagnostic stream
+{"file":"foo.adb","line":12,"column":34,"severity":"error","message":"file \"external_lib.ads\" not found"}
+{"file":"foo.adb","line":15,"column":7,"severity":"error","message":"\"Process\" is undefined"}

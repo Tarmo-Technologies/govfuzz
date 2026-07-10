@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+
+      - name: Test VS Code extension
+        run: |
+          npm ci --prefix editors/vscode
+          npm test --prefix editors/vscode
+
+      - name: Test GNAT Studio plugin helpers
+        run: python3 -m unittest discover -s editors/gnatstudio/tests
+
+      - name: Build workspace
+        run: cargo build --workspace
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets
+
+      - name: Test workspace
+        run: cargo test --workspace
+
+      - name: Validate confidence model
+        run: cargo test -p confidence_model -- --nocapture
+
+      - name: Validate learned confidence CLI
+        run: cargo test -p govfuzz model -- --nocapture
+
+      - name: Validate daemon RPC trait
+        run: cargo test -p govfuzz-daemon -- --nocapture
+
+      - name: Validate SARIF emitter
+        run: cargo test -p report sarif -- --nocapture
+
+      - name: Validate JUnit emitter
+        run: cargo test -p report junit -- --nocapture

@@ -1,0 +1,6 @@
+synthetic — created for build_recovery test harness
+
+This fixture is not vendored from any upstream project. It exists to
+exercise the `synthesized_types` bucket of govfuzz auto's
+`needed_for_build` report: parse.c references `widget_t` without ever
+declaring it, so the repair planner emits a TypePlaceholder.

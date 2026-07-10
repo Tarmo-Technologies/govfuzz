@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "ada_basic"
+description = """
+aux_pkg.adb goes missing — pkg.adb still `with`s Aux_Pkg but the
+linker can't resolve Aux_Pkg.Score. gprbuild emits
+`cannot generate code for file aux_pkg.ads (package spec)` which
+build_classifier::gnat maps to MissingAdaPackageBody. Auto now
+synthesizes a body from the surviving aux_pkg.ads profile and routes
+the repair into `needed_for_build.stubbed_ada_units`.
+"""
+must_build_after_repair = true
+
+[[missing]]
+kind = "file"
+path = "aux_pkg.adb"
+expect_surfaced = "stubbed_ada_units"
+locator_override = "aux_pkg"

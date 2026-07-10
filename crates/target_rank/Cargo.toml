@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "target_rank"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "target_rank"
+path = "src/main.rs"
+
+[dependencies]
+ada_parser = { path = "../ada_parser" }
+c_parser = { path = "../c_parser" }
+cpp_parser = { path = "../cpp_parser" }
+go_parser = { path = "../go_parser" }
+java_parser = { path = "../java_parser" }
+perl_parser = { path = "../perl_parser" }
+python_parser = { path = "../python_parser" }
+rust_parser = { path = "../rust_parser" }
+serde = { workspace = true, features = ["derive"] }

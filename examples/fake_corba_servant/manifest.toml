@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Fake CORBA servant body catches a raised user exception"
+expected_outcome = "fake_corba_servant_finding"
+expected_exception = "Foo.BadInput"

@@ -1,0 +1,13 @@
+target	tool	harness_loc	crash	ttfc_s	execs	execs_per_s
+cmplog	libFuzzer	6	1	.640205894	22430	35036
+cmplog	AFL++	13	1	0	1575	7758.62
+cmplog	govfuzz(builtin)	0	1	1.209481443	409	28
+cmplog	govfuzz(afl++)	0	0	-	1392726	91578
+lenfield	libFuzzer	6	1	.660275019	2	3
+lenfield	AFL++	13	1	0	40	120.48
+lenfield	govfuzz(builtin)	0	1	1.209570883	70	4
+lenfield	govfuzz(afl++)	0	0	-	0	0
+magic	libFuzzer	6	1	.494081786	382	773
+magic	AFL++	13	1	0	2187	10935.00
+magic	govfuzz(builtin)	0	1	1.209648265	361	24
+magic	govfuzz(afl++)	0	1	-	877	2186

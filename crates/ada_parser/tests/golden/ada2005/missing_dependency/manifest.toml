@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "ROADMAP 19.4 body with a missing external dependency"
+dialect_hint = "ada_2005"
+
+[expected]
+ada_standard = "ada_2005"
+unit_kind = "body"
+subprograms = 1
+handlers = 0
+raises = 0
+types = 0
+use_clauses = 0
+with_clauses = ["External_Lib"]
+pragmas = ["ada_2005"]
+
+[expected.names]
+subprograms = ["parse"]
+handler_choices = []
+type_kinds = []

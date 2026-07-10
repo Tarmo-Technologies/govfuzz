@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# govfuzz-native Rust decode runtime. The Rust analog of `c_runtime`
+# (`govfuzz_decode.h`): a `Cursor` over `&[u8]` that yields typed values for the
+# generated harness, with NO `arbitrary` / `libfuzzer-sys` dependency — this is
+# ours, dependency-free, so a generated harness staticlib can path-depend on it
+# without dragging a third-party fuzzer into the licensable artifact.
+
+[package]
+name = "rust_runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "fuzz_engine_afl_adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "fuzz_engine_afl_adapter"
+path = "src/main.rs"
+
+[dependencies]
+fuzz_engine_builtin = { path = "../builtin" }

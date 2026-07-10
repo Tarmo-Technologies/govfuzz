@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Single-file Ada source referencing an undefined package External_Lib"
+expected_outcome = "clean_build"
+expected_stubbed_units = ["External_Lib"]

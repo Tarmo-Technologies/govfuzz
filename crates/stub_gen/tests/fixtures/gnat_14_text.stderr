@@ -1,0 +1,4 @@
+-- SPDX-License-Identifier: Apache-2.0
+demo.adb:7:4: error: file "external_lib.ads" not found
+demo.adb:9:12: "Process" is undefined
+demo.adb:11:8: note: "Hidden" is not visible

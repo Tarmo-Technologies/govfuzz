@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "c_unknown_type"
+description = """
+parse.c references widget_t without declaring it. Auto's repair
+planner emits a TypePlaceholder, which lands in
+needed_for_build.synthesized_types as `widget_t`.
+
+No operational [[missing]] entry — the gap is baked into the fixture
+itself. The "missing piece" is the type declaration the upstream
+maintainer didn't ship.
+"""
+must_build_after_repair = false
+
+[[missing]]
+kind = "unknown_type"
+name = "widget_t"
+expect_surfaced = "synthesized_types"

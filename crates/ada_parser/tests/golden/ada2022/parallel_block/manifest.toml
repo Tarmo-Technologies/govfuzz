@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description = "Ada 2022 parallel block in a procedure body"
+dialect_hint = "ada_2022"
+
+[expected]
+ada_standard = "ada_2022"
+unit_kind = "body"
+subprograms = 1
+handlers = 0
+raises = 0
+types = 0
+statements = 1
+use_clauses = 0
+with_clauses = []
+pragmas = ["ada_2022"]
+
+[expected.names]
+subprograms = ["parallel_run"]
+handler_choices = []
+type_kinds = []

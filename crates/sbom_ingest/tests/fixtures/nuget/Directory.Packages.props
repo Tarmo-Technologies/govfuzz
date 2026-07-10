@@ -1,0 +1,8 @@
+<Project>
+  <!-- SPDX-License-Identifier: Apache-2.0 -->
+  <!-- Central Package Management: version lookup for packages without Version= in .csproj -->
+  <ItemGroup>
+    <PackageVersion Include="Serilog" Version="3.1.1" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

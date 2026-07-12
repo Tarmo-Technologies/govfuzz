@@ -62,6 +62,14 @@ pub enum Lang {
     /// exception that is not input rejection is a finding (exit 86). See
     /// [`crate::auto::csharp`].
     CSharp,
+    /// JavaScript / Node.js lane (M3.7). An exported function taking ≥1 argument is
+    /// discovered, then fuzzed by the builtin engine driving a persistent Node
+    /// process that speaks the framed fork-server protocol and records real V8
+    /// precise block coverage (inspector Profiler) into the shared coverage map — no
+    /// Jazzer.js, no jsfuzz, no libFuzzer. Interpreted: the launcher execs `node` on
+    /// the generated driver. An uncaught non-rejection exception is a finding (exit
+    /// 86). See [`crate::auto::js`].
+    Js,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -90,6 +98,8 @@ pub enum LangSelector {
     Fortran,
     #[value(name = "csharp", aliases = ["cs", "c#", "dotnet", "net"])]
     CSharp,
+    #[value(name = "javascript", aliases = ["js", "node", "nodejs", "mjs", "cjs"])]
+    Js,
 }
 
 impl LangSelector {
@@ -107,6 +117,7 @@ impl LangSelector {
             LangSelector::Cobol => Lang::Cobol,
             LangSelector::Fortran => Lang::Fortran,
             LangSelector::CSharp => Lang::CSharp,
+            LangSelector::Js => Lang::Js,
         }
     }
 }
@@ -165,6 +176,7 @@ impl Candidate {
             Lang::Cobol => "H-B",
             Lang::Fortran => "H-F",
             Lang::CSharp => "H-S",
+            Lang::Js => "H-N",
         }
     }
 }

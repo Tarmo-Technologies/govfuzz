@@ -264,6 +264,32 @@ function installSinkGuards() {
   }
 }
 
+// --- prototype-pollution detector (GF-509, CWE-1321) ------------------------
+// A merge/clone/set that writes an attacker-chosen key (`__proto__`,
+// `constructor`, `prototype`) into an ordinary object pollutes Object.prototype
+// (or Array.prototype) for the whole realm — the top JS injection class and a
+// Jazzer.js bug detector. We snapshot the base prototypes' own-property names at
+// startup, then after each input report a NEW own-property that appeared, gated on
+// the input carrying a pollution vector token so it is taint-confirmed.
+const PROTO_TARGETS = [
+  ['Object.prototype', Object.prototype],
+  ['Array.prototype', Array.prototype],
+];
+const protoBaselines = PROTO_TARGETS.map(([, p]) => new Set(Object.getOwnPropertyNames(p)));
+const POLLUTION_VECTOR = /__proto__|constructor|prototype/;
+
+function checkPrototypePollution() {
+  if (!POLLUTION_VECTOR.test(currentInput)) return;
+  for (let i = 0; i < PROTO_TARGETS.length; i++) {
+    const [label, proto] = PROTO_TARGETS[i];
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      if (!protoBaselines[i].has(key)) {
+        reportSink('GF-509', 'PrototypePollution', label, `polluted key '${key}'`);
+      }
+    }
+  }
+}
+
 function runInput(buf) {
   currentInput = buf.toString('latin1');
   try {
@@ -282,6 +308,9 @@ function runInput(buf) {
     }
     // else: expected rejection — swallow.
   }
+  // Check for prototype pollution after every input (a merge that pollutes may
+  // still return/throw normally); reportSink hard-halts on detection.
+  checkPrototypePollution();
 }
 
 // --- harness resolution -----------------------------------------------------

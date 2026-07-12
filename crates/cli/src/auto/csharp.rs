@@ -56,8 +56,11 @@ pub enum CSharpParamKind {
     Str,
     /// `System.IO.Stream` / `MemoryStream` — a `MemoryStream` over the fuzz bytes.
     Stream,
-    /// `int`/`long`/`uint`/... — a length/count operand (driven from the byte count).
+    /// `int`/`long`/`uint`/... — a length/count/offset operand (driven from the byte
+    /// count, or 0 for an offset/index/position by name).
     Int,
+    /// `bool` — a synthesizable flag argument (driven to `false`).
+    Bool,
     /// Anything else — a defaulted (`default`/`null`) scratch argument.
     Other,
 }
@@ -95,6 +98,7 @@ impl CSharpMethod {
                     | CSharpParamKind::Str
                     | CSharpParamKind::Stream
                     | CSharpParamKind::Int
+                    | CSharpParamKind::Bool
             )
         })
     }
@@ -535,6 +539,9 @@ fn classify_type(ty: &str) -> CSharpParamKind {
             | "UInt64"
     ) {
         return CSharpParamKind::Int;
+    }
+    if leaf == "bool" || leaf == "Boolean" {
+        return CSharpParamKind::Bool;
     }
     CSharpParamKind::Other
 }

@@ -24,6 +24,8 @@ pub mod differential_post;
 pub mod discovery;
 pub mod discovery_cache;
 pub mod external_tools;
+pub mod fortran;
+pub mod fortran_build;
 pub mod go_build;
 pub mod gpr_scenario;
 pub mod install_deps;

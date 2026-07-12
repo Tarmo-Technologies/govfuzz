@@ -190,6 +190,7 @@ fn lang_tag(l: Lang) -> &'static str {
         Lang::Perl => "perl",
         Lang::Go => "go",
         Lang::Cobol => "cobol",
+        Lang::Fortran => "fortran",
     }
 }
 fn lang_from_tag(s: &str) -> Option<Lang> {
@@ -203,6 +204,7 @@ fn lang_from_tag(s: &str) -> Option<Lang> {
         "perl" => Lang::Perl,
         "go" => Lang::Go,
         "cobol" => Lang::Cobol,
+        "fortran" => Lang::Fortran,
         _ => return None,
     })
 }

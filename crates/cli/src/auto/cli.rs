@@ -2309,6 +2309,7 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
             Lang::Perl => "Perl",
             Lang::Go => "Go",
             Lang::Cobol => "COBOL",
+            Lang::Fortran => "Fortran",
         };
         let reach = match c.input_reachability {
             Some(InputReachability::AttackerReachable) => "attacker-reachable",

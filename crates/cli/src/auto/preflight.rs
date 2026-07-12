@@ -119,11 +119,12 @@ fn requirements(
         Lang::Perl => ("Perl", &[&["perl"]], "install perl"),
         Lang::Go => ("Go", &[&["go"]], "install go"),
         Lang::Cobol => ("COBOL", &[&["cobc"]], "apt-get install gnucobol"),
+        Lang::Fortran => ("Fortran", &[&["gfortran"]], "apt-get install gfortran"),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 9] = [
+const LANES: [Lang; 10] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -133,6 +134,7 @@ const LANES: [Lang; 9] = [
     Lang::Perl,
     Lang::Go,
     Lang::Cobol,
+    Lang::Fortran,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

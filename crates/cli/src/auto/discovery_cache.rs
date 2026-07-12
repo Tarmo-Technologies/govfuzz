@@ -82,6 +82,7 @@ fn lang_to_str(lang: Lang) -> &'static str {
         Lang::Go => "go",
         Lang::Cobol => "cobol",
         Lang::Fortran => "fortran",
+        Lang::CSharp => "csharp",
     }
 }
 
@@ -95,6 +96,9 @@ fn lang_from_str(s: &str) -> Option<Lang> {
         "python" => Some(Lang::Python),
         "perl" => Some(Lang::Perl),
         "go" => Some(Lang::Go),
+        "cobol" => Some(Lang::Cobol),
+        "fortran" => Some(Lang::Fortran),
+        "csharp" => Some(Lang::CSharp),
         _ => None,
     }
 }

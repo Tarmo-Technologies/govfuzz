@@ -53,6 +53,15 @@ pub enum Lang {
     /// path. ASan reports memory corruption with the exact `.f90:line`. See
     /// [`crate::auto::fortran`].
     Fortran,
+    /// C# / .NET lane (M3.6). A public method taking `byte[]`/`string`/`Stream`
+    /// is the fuzzable unit. The target assembly is built (`dotnet build`) and its
+    /// IL instrumented with SharpFuzz (`sharpfuzz <dll>`), which writes edge
+    /// coverage into a shared map; govfuzz maps that map onto its own
+    /// `GOVFUZZ_COV_SHM` AFL-style bitmap and drives a warm, persistent CLR over
+    /// the framed fork-server protocol — no AFL, no libFuzzer. An uncaught
+    /// exception that is not input rejection is a finding (exit 86). See
+    /// [`crate::auto::csharp`].
+    CSharp,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -79,6 +88,8 @@ pub enum LangSelector {
     Cobol,
     #[value(name = "fortran", aliases = ["f90", "f", "for"])]
     Fortran,
+    #[value(name = "csharp", aliases = ["cs", "c#", "dotnet", "net"])]
+    CSharp,
 }
 
 impl LangSelector {
@@ -95,6 +106,7 @@ impl LangSelector {
             LangSelector::Go => Lang::Go,
             LangSelector::Cobol => Lang::Cobol,
             LangSelector::Fortran => Lang::Fortran,
+            LangSelector::CSharp => Lang::CSharp,
         }
     }
 }
@@ -152,6 +164,7 @@ impl Candidate {
             Lang::Go => "H-G",
             Lang::Cobol => "H-B",
             Lang::Fortran => "H-F",
+            Lang::CSharp => "H-S",
         }
     }
 }

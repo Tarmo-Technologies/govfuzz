@@ -18,6 +18,8 @@ pub mod config;
 pub mod confirm;
 pub mod coverage_replay;
 pub mod cross_target;
+pub mod csharp;
+pub mod csharp_build;
 pub mod decl_index;
 pub mod dep_manifest;
 pub mod differential_post;

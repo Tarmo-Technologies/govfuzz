@@ -649,7 +649,26 @@ fn write_source_dictionary(
         // reason the other managed lanes mine one). Scan the source's string/number
         // literals (JS also allows backtick template literals).
         Lang::CSharp => Some(crate::auto::lit_scan::scan_literal_tokens(source, false)),
-        Lang::Js | Lang::Ts => Some(crate::auto::lit_scan::scan_literal_tokens(source, true)),
+        Lang::Js | Lang::Ts => {
+            let mut toks = crate::auto::lit_scan::scan_literal_tokens(source, true);
+            // Seed the prototype-pollution vectors + complete JSON payloads so the
+            // fuzzer can reach an unsafe merge/set path (the GF-509 detector then
+            // confirms the pollution). The full-payload tokens let a JSON.parse-based
+            // merge — the common vulnerable shape — be reached by splicing one token.
+            for v in [
+                "__proto__",
+                "constructor",
+                "prototype",
+                "{\"__proto__\":{\"gfpp\":1}}",
+                "{\"constructor\":{\"prototype\":{\"gfpp\":1}}}",
+                "__proto__.gfpp",
+            ] {
+                if !toks.iter().any(|t| t == v) {
+                    toks.push(v.to_owned());
+                }
+            }
+            Some(toks)
+        }
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
         Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
     };

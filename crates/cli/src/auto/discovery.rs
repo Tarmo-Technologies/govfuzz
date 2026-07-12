@@ -1337,7 +1337,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // the C harness path — see `crate::auto::cobol` / `cobol_build`. The LINKAGE
             // buffer is the attacker-controlled input channel, so it is attacker-reachable.
             for prog in crate::auto::cobol::parse_cobol(&source) {
-                if prog.linkage_buf.is_none() {
+                if !prog.is_fuzzable() {
                     continue;
                 }
                 out.push(Candidate {

@@ -51,6 +51,14 @@ pub fn run_cobol_attribution(work_dir: &Path) -> usize {
         let Some(diag) = replay_capture_libcob(&main_bin, &testcase) else {
             continue;
         };
+        // A failed dynamic CALL to a sibling program that isn't linked into this
+        // single-program harness ("module 'X' not found") is an environment
+        // artifact, not a target defect — drop the finding so it is never
+        // reported as a false positive.
+        if is_harness_artifact(&diag.what) {
+            let _ = std::fs::remove_dir_all(&dir);
+            continue;
+        }
         if enrich(&mut value, &diag) {
             if let Ok(bytes) = serde_json::to_vec_pretty(&value) {
                 if std::fs::write(&finding_json, bytes).is_ok() {
@@ -103,6 +111,17 @@ fn parse_libcob_line(line: &str) -> Option<LibcobDiag> {
         line: line_no,
         what,
     })
+}
+
+/// Whether a libcob diagnostic is a harness/environment artifact rather than a
+/// target defect: a failed dynamic CALL to a sibling program not linked into
+/// this single-program harness. Such a crash reproduces on any input (often the
+/// empty one) and must never be reported as a finding.
+fn is_harness_artifact(what: &str) -> bool {
+    let w = what.to_ascii_lowercase();
+    (w.contains("module") && w.contains("not found"))
+        || w.contains("cannot find module")
+        || w.contains("cobol runtime cannot resolve")
 }
 
 /// Map a libcob error description to (CWE, short kind) for the finding.
@@ -201,6 +220,16 @@ mod tests {
         assert_eq!(classify(&sub.what).0, "CWE-125");
         let zd = parse_libcob_line("libcob: p.cob:9: error: division by zero").unwrap();
         assert_eq!(classify(&zd.what).0, "CWE-369");
+    }
+
+    #[test]
+    fn suppresses_call_resolution_artifacts_only() {
+        assert!(is_harness_artifact(
+            "module 'JsonParse-ObjectStart' not found"
+        ));
+        assert!(is_harness_artifact("cannot find module FOO"));
+        assert!(!is_harness_artifact("offset of 'BUF' out of bounds: 200"));
+        assert!(!is_harness_artifact("division by zero"));
     }
 
     #[test]

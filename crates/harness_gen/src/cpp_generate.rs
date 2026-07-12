@@ -2337,9 +2337,12 @@ mod tests {
         assert!(main.contains("int LLVMFuzzerTestOneInput"));
         assert!(makefile.contains("ifeq ($(origin CXX), default)"));
         assert!(makefile.contains("CXX = clang++"));
-        assert!(makefile.contains(".PHONY: all afl clean"));
+        assert!(makefile.contains(".PHONY: all afl diff clean"));
         assert!(makefile.contains("AFLPP_CXX ?= afl-clang-fast++"));
         assert!(makefile.contains("afl: main_afl"));
+        // The two-compiler differential build target.
+        assert!(makefile.contains("diff: main_diff"));
+        assert!(makefile.contains("DIFF_CXX ?= clang++"));
         // The afl target is declared; target sources live in the recipe, not the
         // prerequisites (an absolute Windows source path carries a drive-letter
         // colon that GNU make would parse as a target:prereq separator).

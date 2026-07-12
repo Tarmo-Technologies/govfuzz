@@ -843,6 +843,12 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
         Lang::Cobol => Vec::new(),
         // Fortran is driven through the C harness (gfortran); no in-lane call graph.
         Lang::Fortran => Vec::new(),
+        // C# call-graph re-ranking is out of scope (the entrypoint-callgraph boost is
+        // C/C++-gated); returning the method lines is harmless and consistent.
+        Lang::CSharp => crate::auto::csharp::parse_csharp(source)
+            .into_iter()
+            .map(|m| (m.qualified(), m.line))
+            .collect(),
     }
 }
 
@@ -1379,6 +1385,30 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
+        Lang::CSharp => {
+            // M3.6: each public method taking a byte[]/string/Stream is a candidate,
+            // built + IL-instrumented (dotnet build + sharpfuzz) and driven over the
+            // framed protocol (see `crate::auto::csharp` / `csharp_build`). The input
+            // parameter is the attacker-controlled channel.
+            for method in crate::auto::csharp::parse_csharp(&source) {
+                if !method.is_fuzzable() {
+                    continue;
+                }
+                let name = method.qualified();
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-S", path, method.line, &name),
+                    lang: Lang::CSharp,
+                    source_path: path.to_path_buf(),
+                    line: method.line,
+                    name,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1492,6 +1522,7 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "f"
                     | "for"
                     | "f77"
+                    | "cs"
             )
         })
 }
@@ -1509,7 +1540,7 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         // M22: only an explicit `pragma Ada_83` is flagged (-> report-only); other
         // Ada standards are left to the Ada lane's own pragma/feature detection.
         Lang::Ada => lang_profile::detect_ada(source),
-        Lang::Rust | Lang::Java | Lang::Go | Lang::Cobol | Lang::Fortran => None,
+        Lang::Rust | Lang::Java | Lang::Go | Lang::Cobol | Lang::Fortran | Lang::CSharp => None,
     }
 }
 
@@ -1530,6 +1561,7 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         "go" => Some(Lang::Go),
         "cob" | "cbl" | "cobol" | "cble" => Some(Lang::Cobol),
         "f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" => Some(Lang::Fortran),
+        "cs" => Some(Lang::CSharp),
         _ => None,
     }
 }

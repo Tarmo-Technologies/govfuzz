@@ -267,6 +267,7 @@ fn snippet_extension(lang: LangSelector) -> &'static str {
         LangSelector::Go => "go",
         LangSelector::Cobol => "cob",
         LangSelector::Fortran => "f90",
+        LangSelector::CSharp => "cs",
     }
 }
 
@@ -283,6 +284,7 @@ fn lang_token(lang: LangSelector) -> &'static str {
         LangSelector::Go => "go",
         LangSelector::Cobol => "cobol",
         LangSelector::Fortran => "fortran",
+        LangSelector::CSharp => "csharp",
     }
 }
 
@@ -329,6 +331,17 @@ pub fn materialize(lang: LangSelector, source: &str, src_dir: &Path) -> anyhow::
             // a `Snippet` class.
             let (file_stem, body) = javaify(source);
             write(&src_dir.join(format!("{file_stem}.java")), &body)?;
+        }
+        LangSelector::CSharp => {
+            // The C# lane builds through a project reference, so the snippet needs a
+            // `.csproj` beside it (a class library the harness references).
+            write(&src_dir.join(format!("snippet.{ext}")), source)?;
+            write(
+                &src_dir.join("snippet.csproj"),
+                "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n\
+                 \x20   <TargetFramework>net8.0</TargetFramework>\n\
+                 \x20   <Nullable>disable</Nullable>\n  </PropertyGroup>\n</Project>\n",
+            )?;
         }
         _ => {
             // C / C++ / Python / Perl / Ada: a single source file is enough — the

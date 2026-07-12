@@ -246,6 +246,21 @@ pub fn dedupe_in_place(events: &mut Vec<RuntraceEvent>) {
 pub fn oracle_hits_from_events(
     events: &[RuntraceEvent],
 ) -> Vec<finding_rules::oracle_sdk::OracleHit> {
+    oracle_hits_from_events_for_lane(events, false)
+}
+
+/// As [`oracle_hits_from_events`], but `interpreted` marks a run under an
+/// interpreter (the Python/Perl lanes, where the shim traces the *interpreter's*
+/// own file activity, not just the target's). For those lanes the resource-leak
+/// oracle is taint-gated — it fires only on a leak of a FUZZ-INPUT-DERIVED path —
+/// because the interpreter legitimately opens many fixed environment/stdlib files
+/// (locale, imports, `~/.Xdefaults`, …) that are not the target's leaks and would
+/// otherwise be a false-positive storm. Native lanes are unchanged (a target's
+/// unclosed open of any path is still a GF-306 leak).
+pub fn oracle_hits_from_events_for_lane(
+    events: &[RuntraceEvent],
+    interpreted: bool,
+) -> Vec<finding_rules::oracle_sdk::OracleHit> {
     let mut hits = Vec::new();
     for event in events {
         let Some(runtime_event) = oracle_runtime_event(event) else {
@@ -257,7 +272,7 @@ pub fn oracle_hits_from_events(
             }
         }
     }
-    for runtime_event in resource_leak_runtime_events(events) {
+    for runtime_event in resource_leak_runtime_events(events, interpreted) {
         for oracle in finding_rules::oracle_registry::ORACLE_REGISTRY {
             if let Some(hit) = oracle.evaluate(&runtime_event) {
                 hits.push(hit);
@@ -701,17 +716,28 @@ pub fn is_govfuzz_owned_resource(path: &str) -> bool {
 
 fn resource_leak_runtime_events(
     events: &[RuntraceEvent],
+    interpreted: bool,
 ) -> Vec<finding_rules::oracle_sdk::OracleRuntimeEvent> {
     let mut opened = BTreeMap::<i32, OpenResource>::new();
     let mut leaks = Vec::new();
     for event in events {
         match event {
             RuntraceEvent::FileOpened {
-                syscall, fd, path, ..
+                syscall,
+                fd,
+                path,
+                taint_offset,
             } if *fd >= 0 => {
                 // Govfuzz's own input-plumbing / scaffolding opens must never
                 // count toward a target resource leak (the FP this guards).
                 if is_govfuzz_owned_resource(path) {
+                    continue;
+                }
+                // On the interpreted lanes the interpreter opens many fixed
+                // environment/stdlib files that are not the target's leaks; require
+                // the leaked path to be fuzz-input-derived so only a target that
+                // opens an ATTACKER-CONTROLLED path and leaks it trips GF-306.
+                if interpreted && taint_offset.is_none() {
                     continue;
                 }
                 if let Some(previous) = opened.insert(
@@ -2196,6 +2222,42 @@ mod tests {
             hits.iter()
                 .any(|h| h.rule_id == "GF-306" && h.evidence_value("path") == Some("/etc/hostname")),
             "an unclosed open of a genuine user-tree path must still trip GF-306"
+        );
+    }
+
+    #[test]
+    fn interpreted_lane_leak_is_taint_gated() {
+        // On an interpreted lane, the interpreter's own env/stdlib open (non-tainted
+        // path) must NOT trip GF-306 — it's not the target's leak.
+        let env_open = || RuntraceEvent::FileOpened {
+            syscall: "open".to_owned(),
+            fd: 5,
+            path: "/home/user/.Xdefaults".to_owned(),
+            taint_offset: None,
+        };
+        let native = oracle_hits_from_events_for_lane(&[env_open()], false);
+        assert!(
+            native.iter().any(|h| h.rule_id == "GF-306"),
+            "native lane still flags an unclosed open"
+        );
+        let interp = oracle_hits_from_events_for_lane(&[env_open()], true);
+        assert!(
+            !interp.iter().any(|h| h.rule_id == "GF-306"),
+            "interpreted lane must NOT flag the interpreter's non-tainted env open"
+        );
+        // A fuzz-input-derived leak IS still flagged on the interpreted lane.
+        let tainted = oracle_hits_from_events_for_lane(
+            &[RuntraceEvent::FileOpened {
+                syscall: "open".to_owned(),
+                fd: 6,
+                path: "/tmp/attacker/evil".to_owned(),
+                taint_offset: Some(0),
+            }],
+            true,
+        );
+        assert!(
+            tainted.iter().any(|h| h.rule_id == "GF-306"),
+            "an input-derived leak is still a finding on the interpreted lane"
         );
     }
 

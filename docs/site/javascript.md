@@ -40,6 +40,14 @@ driver hard-halts with exit 86). The error is classified into a GF rule + CWE:
 | `RangeError: Invalid array/string length`, out-of-memory | GF-209 | CWE-789 (resource exhaustion) |
 | `ReferenceError`, `AssertionError`, an explicit `throw`, any other `Error` | GF-210 | reachable crash |
 
+Beyond uncaught exceptions, the driver runs a **taint-confirmed command-injection
+detector** (the JS analog of govfuzz's native GF-431 oracle, and of Jazzer.js's
+bug detectors): it hooks `child_process.exec`/`execSync` and reports **GF-431 /
+CWE-78** when a shell-metacharacter-bearing substring of the fuzz input reaches the
+command — i.e. the input controls shell *syntax*, not just data. The command is
+**never executed** (a benign stub is returned), so the fuzzer can't run arbitrary
+shell, and an input whose metacharacters never reach a command is not flagged.
+
 `TypeError`, `SyntaxError`, `URIError`, and a validating `RangeError` are treated as
 intended input rejection and swallowed. This mirrors the Python lane, which
 suppresses the exact analogs (`TypeError`/`AttributeError`): in an untyped lane
@@ -65,7 +73,10 @@ auto-discovery model improves on:
   now largely unmaintained.
 
 On the static side, ESLint, SonarJS, and CodeQL flag candidate issues but don't
-confirm them with real input.
+confirm them with real input. Jazzer.js additionally ships *bug detectors*
+(command injection, path traversal, prototype pollution); govfuzz's JS driver
+carries the first of these — a taint-confirmed **command-injection** detector (see
+the oracle section) — in the same fuzz-confirming style as its native lanes.
 
 | | Jazzer.js / jsfuzz | **govfuzz `auto --languages javascript`** |
 |---|---|---|

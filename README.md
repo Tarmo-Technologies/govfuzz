@@ -9,7 +9,7 @@
 </div>
 
 <p align="center">
-An automated fuzzer and harness generator for Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, and JavaScript —
+An automated fuzzer and harness generator for Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, JavaScript, and TypeScript —
 including the legacy language versions and hard-to-build codebases common in government and
 military systems. Point it at a source tree; it finds the fuzzable functions, writes the
 harnesses, recovers the build, and fuzzes — no test harness and no working build required.
@@ -80,14 +80,15 @@ annotations, posts a sticky summary comment, and fails only on a fuzz-confirmed 
 - **Works on trees that don't build.** It recovers the build context and repairs missing
   headers, types, and undefined symbols; unbuildable code still gets static + taint coverage
   instead of a hard failure.
-- **Twelve languages, one engine.** Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran,
-  C#, and JavaScript are peer first-class lanes over a shared coverage-guided fork-server engine
-  — no cargo-fuzz, Jazzer, Atheris, SharpFuzz, jsfuzz, or `go test -fuzz` required (AFL++ is an
-  optional adapter for native C/C++). COBOL is fuzzed via GnuCOBOL (`cobc -C`, the first turnkey
-  COBOL fuzzer → [cobol.md](docs/site/cobol.md)); Fortran via gfortran with ASan
-  (→ [fortran.md](docs/site/fortran.md)); C# via `dotnet` + SharpFuzz IL instrumentation, warm-CLR
-  and zero-harness (→ [csharp.md](docs/site/csharp.md)); JavaScript via a warm Node process with
-  real V8 block coverage (→ [javascript.md](docs/site/javascript.md)).
+- **Thirteen languages, one engine.** Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran,
+  C#, JavaScript, and TypeScript are peer first-class lanes over a shared coverage-guided
+  fork-server engine — no cargo-fuzz, Jazzer, Atheris, SharpFuzz, jsfuzz, or `go test -fuzz`
+  required (AFL++ is an optional adapter for native C/C++). COBOL is fuzzed via GnuCOBOL
+  (`cobc -C`, the first turnkey COBOL fuzzer → [cobol.md](docs/site/cobol.md)); Fortran via
+  gfortran with ASan (→ [fortran.md](docs/site/fortran.md)); C# via `dotnet` + SharpFuzz IL
+  instrumentation, warm-CLR and zero-harness (→ [csharp.md](docs/site/csharp.md)); JavaScript and
+  TypeScript via a warm Node process with real V8 block coverage (TS transpiled with esbuild)
+  (→ [javascript.md](docs/site/javascript.md)).
 - **Legacy-first.** Legacy dialects (e.g. Ada 83, K&R C, pre-C++98) and non-UTF-8
   (Latin-1/Windows-1252) sources are transcoded and fuzzed, not skipped.
 - **Runs air-gapped.** No network access, no telemetry, no auto-update — built for

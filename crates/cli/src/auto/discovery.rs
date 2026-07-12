@@ -849,9 +849,9 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
             .into_iter()
             .map(|m| (m.qualified(), m.line))
             .collect(),
-        // JS call-graph re-ranking is out of scope; returning the exported-function
+        // JS/TS call-graph re-ranking is out of scope; returning the exported-function
         // lines is harmless and consistent with the other interpreted lanes.
-        Lang::Js => crate::auto::js::parse_js(source)
+        Lang::Js | Lang::Ts => crate::auto::js::parse_js(source)
             .into_iter()
             .map(|f| (f.name, f.line))
             .collect(),
@@ -1415,14 +1415,20 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
-        Lang::Js => {
-            // M3.7: each exported JS function taking ≥1 argument is a candidate,
-            // driven via the Node framed driver (see `crate::auto::js` / `js_build`).
-            // The first argument is the attacker-controlled input channel.
+        Lang::Js | Lang::Ts => {
+            // M3.7/M3.8: each exported JS/TS function taking ≥1 argument is a
+            // candidate, driven via the Node framed driver (TS is transpiled first;
+            // see `crate::auto::js` / `js_build`). The first argument is the
+            // attacker-controlled input channel.
+            let (prefix, cand_lang) = if lang == Lang::Ts {
+                ("H-T", Lang::Ts)
+            } else {
+                ("H-N", Lang::Js)
+            };
             for func in crate::auto::js::parse_js(&source) {
                 out.push(Candidate {
-                    harness_id: stable_harness_id("H-N", path, func.line, &func.name),
-                    lang: Lang::Js,
+                    harness_id: stable_harness_id(prefix, path, func.line, &func.name),
+                    lang: cand_lang,
                     source_path: path.to_path_buf(),
                     line: func.line,
                     name: func.name,
@@ -1548,6 +1554,10 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "for"
                     | "f77"
                     | "cs"
+                    | "ts"
+                    | "tsx"
+                    | "mts"
+                    | "cts"
                     | "js"
                     | "mjs"
                     | "cjs"
@@ -1574,7 +1584,8 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         | Lang::Cobol
         | Lang::Fortran
         | Lang::CSharp
-        | Lang::Js => None,
+        | Lang::Js
+        | Lang::Ts => None,
     }
 }
 
@@ -1597,6 +1608,10 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         "f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" => Some(Lang::Fortran),
         "cs" => Some(Lang::CSharp),
         "js" | "mjs" | "cjs" => Some(Lang::Js),
+        // .d.ts is a type-declaration file (no runtime code) — not fuzzable.
+        "ts" | "tsx" | "mts" | "cts" if !path.to_string_lossy().ends_with(".d.ts") => {
+            Some(Lang::Ts)
+        }
         _ => None,
     }
 }

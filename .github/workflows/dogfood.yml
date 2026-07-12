@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Dogfood: run govfuzz on govfuzz's own fuzzable native code to catch regressions
+# in the parts that parse untrusted input (the C runtime decoders that every
+# harness links, and the Ada coverage runtime). Scheduled nightly + manual only —
+# not on push/PR — so it never slows the PR path, and because the shared runners
+# are currently billing-gated (it will start producing results once that clears).
+#
+# Extend `--path`/`--languages` below to fold in more lanes (e.g. the Rust parser
+# crates via `rustup toolchain install nightly` + `--languages rust`).
+
+name: dogfood
+
+on:
+  schedule:
+    - cron: '17 4 * * *' # 04:17 UTC nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dogfood-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  self-fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+
+      - name: Install C toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang make
+
+      - name: Build govfuzz
+        run: cargo build --release -p govfuzz
+
+      - name: Self-fuzz the C runtime decoders
+        run: |
+          ./target/release/govfuzz auto c_runtime \
+            --languages c,cpp \
+            --work-dir "$RUNNER_TEMP/dogfood_work" \
+            --per-target-time 45 \
+            --sarif "$RUNNER_TEMP/dogfood.sarif" || true
+          # Surface a compact summary in the job log.
+          if [ -f "$RUNNER_TEMP/dogfood_work/auto/summary.txt" ]; then
+            echo '## govfuzz self-fuzz summary' >> "$GITHUB_STEP_SUMMARY"
+            sed 's/^/    /' "$RUNNER_TEMP/dogfood_work/auto/summary.txt" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload findings
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dogfood-findings
+          path: |
+            ${{ runner.temp }}/dogfood.sarif
+            ${{ runner.temp }}/dogfood_work/auto/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Fail on a fuzz-confirmed finding
+        run: |
+          RUN_JSON="$RUNNER_TEMP/dogfood_work/auto/run.json"
+          if [ -f "$RUN_JSON" ] && grep -q '"classification": *"crash"' "$RUN_JSON"; then
+            echo "::error::govfuzz found a fuzz-confirmed crash in its own C runtime — see the dogfood-findings artifact."
+            exit 1
+          fi
+          echo "No fuzz-confirmed crash in the self-fuzz."

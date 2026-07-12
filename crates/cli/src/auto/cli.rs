@@ -2312,6 +2312,7 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
             Lang::Fortran => "Fortran",
             Lang::CSharp => "C#",
             Lang::Js => "JS",
+            Lang::Ts => "TS",
         };
         let reach = match c.input_reachability {
             Some(InputReachability::AttackerReachable) => "attacker-reachable",
@@ -2962,6 +2963,15 @@ mod tests {
                 LangSelector::CSharp,
                 LangSelector::CSharp,
             ]
+        );
+
+        // The JS/TS lanes and their aliases parse onto the canonical lanes.
+        let web = TestCli::try_parse_from(["govfuzz", "tree", "--languages", "js,typescript,ts"])
+            .expect("parses")
+            .auto;
+        assert_eq!(
+            web.languages,
+            vec![LangSelector::Js, LangSelector::Ts, LangSelector::Ts]
         );
 
         // Unknown language is a hard parse error, not a silent skip.

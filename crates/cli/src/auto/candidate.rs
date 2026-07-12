@@ -38,6 +38,14 @@ pub enum Lang {
     /// and reported as a finding. Compiled + statically typed, so the harness
     /// decodes by the parameter's declared type, like the C/Rust lanes.
     Go,
+    /// COBOL lane (M3.4). A COBOL subprogram (`PROGRAM-ID` with a fuzzable
+    /// `LINKAGE SECTION` driven `PROCEDURE DIVISION USING`) is translated to C
+    /// with `cobc -C` (GnuCOBOL), wrapped in a generated `LLVMFuzzerTestOneInput`
+    /// glue that fills the `PIC X(N)` buffer from the fuzz bytes, and built +
+    /// fuzzed on the C fork-server path — reusing edge coverage, cmplog, and ASan.
+    /// Compiling with `-fec=all` adds libcob runtime bound-check aborts as a
+    /// second (COBOL-semantic) oracle. See [`crate::auto::cobol`].
+    Cobol,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -60,6 +68,8 @@ pub enum LangSelector {
     Perl,
     #[value(name = "go", alias = "golang")]
     Go,
+    #[value(name = "cobol", aliases = ["cob", "cbl"])]
+    Cobol,
 }
 
 impl LangSelector {
@@ -74,6 +84,7 @@ impl LangSelector {
             LangSelector::Python => Lang::Python,
             LangSelector::Perl => Lang::Perl,
             LangSelector::Go => Lang::Go,
+            LangSelector::Cobol => Lang::Cobol,
         }
     }
 }
@@ -129,6 +140,7 @@ impl Candidate {
             Lang::Python => "H-P",
             Lang::Perl => "H-L",
             Lang::Go => "H-G",
+            Lang::Cobol => "H-B",
         }
     }
 }

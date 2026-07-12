@@ -189,6 +189,7 @@ fn lang_tag(l: Lang) -> &'static str {
         Lang::Python => "python",
         Lang::Perl => "perl",
         Lang::Go => "go",
+        Lang::Cobol => "cobol",
     }
 }
 fn lang_from_tag(s: &str) -> Option<Lang> {
@@ -201,6 +202,7 @@ fn lang_from_tag(s: &str) -> Option<Lang> {
         "python" => Lang::Python,
         "perl" => Lang::Perl,
         "go" => Lang::Go,
+        "cobol" => Lang::Cobol,
         _ => return None,
     })
 }

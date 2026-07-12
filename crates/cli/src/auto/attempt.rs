@@ -644,7 +644,8 @@ fn write_source_dictionary(
         Lang::Java => java_parser::extract_java_dictionary_tokens(source).ok(),
         Lang::Python => python_parser::extract_python_dictionary_tokens(source).ok(),
         Lang::Perl => perl_parser::extract_perl_dictionary_tokens(source).ok(),
-        Lang::Ada | Lang::C | Lang::Cpp => None,
+        // COBOL is fuzzed through the generated C; its dictionary comes from that C.
+        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol => None,
     };
     let Some(tokens) = tokens else {
         return;
@@ -1240,6 +1241,41 @@ fn run_attempt(
         }
     }
 
+    // Step 0: COBOL lane (M3.4). Translate the subprogram to C (`cobc -C`), wrap it
+    // in a generated LLVMFuzzerTestOneInput glue that fills the PIC X(N) LINKAGE
+    // buffer from the fuzz bytes, and build on the passthrough C fork-server path —
+    // reusing edge coverage, cmplog, and ASan (plus libcob `-fec` runtime aborts).
+    // On success the build below is a pass-through. A missing `cobc` or a program
+    // with no fuzzable LINKAGE surface skips cleanly.
+    if matches!(candidate.lang, crate::auto::candidate::Lang::Cobol) {
+        progress.update(&ProgressUpdate::phase(Phase::Generate));
+        match crate::auto::cobol_build::build_cobol_harness(
+            candidate,
+            work_dir,
+            &candidate.harness_id,
+        ) {
+            crate::auto::cobol_build::CobolBuildResult::Built => {}
+            crate::auto::cobol_build::CobolBuildResult::Skip(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::UnsupportedParams { reason },
+                    harness_dir,
+                });
+            }
+            crate::auto::cobol_build::CobolBuildResult::Failed(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::FailedBuild {
+                        repairs: Vec::new(),
+                        retries: 0,
+                        last_errors: build_classifier::classify(&reason),
+                    },
+                    harness_dir,
+                });
+            }
+        }
+    }
+
     // Step 0a: the native Rust lane (M1.2). Generate the govfuzz harness, build
     // it as a sancov+ASan staticlib with rustc-nightly, and clang-link it with
     // the shared C fork-server driver to `<work>/harnesses/<id>/main`. On success the
@@ -1299,6 +1335,7 @@ fn run_attempt(
                 | crate::auto::candidate::Lang::Python
                 | crate::auto::candidate::Lang::Perl
                 | crate::auto::candidate::Lang::Go
+                | crate::auto::candidate::Lang::Cobol
         );
 
     // Step 0: pre-skip targets that can never link/run from an
@@ -2763,6 +2800,8 @@ fn auto_sequence_candidate(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Perl => false,
         // Go is prebuilt (Step 0); the compiled harness owns the framed loop (M3.3).
         crate::auto::candidate::Lang::Go => false,
+        // COBOL is prebuilt (Step 0) into a C harness; no C auto_sequence path (M3.4).
+        crate::auto::candidate::Lang::Cobol => false,
     }
 }
 
@@ -2786,6 +2825,8 @@ fn static_candidate_can_include_defining_source(c: &Candidate) -> bool {
         // Go imports the target package via a module replace; "paste the defining
         // source" never applies (M3.3).
         crate::auto::candidate::Lang::Go => false,
+        // COBOL builds a C harness in Step 0; "paste the defining source" never applies.
+        crate::auto::candidate::Lang::Cobol => false,
     }
 }
 
@@ -3166,6 +3207,20 @@ fn try_build(
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(
                         "Go harness binary missing (Step 0 build did not produce harnesses/<id>/main)",
+                    ),
+                }
+            }
+        }
+        // COBOL compiled its C harness binary (`harnesses/<id>/main`) in Step 0 via
+        // cobc -C + the passthrough driver; pass-through reports Success iff it exists.
+        Lang::Cobol => {
+            let main_bin = crate::auto::layout::harness_dir(work_dir, harness_id).join("main");
+            if main_bin.is_file() {
+                BuildOutcome::Success
+            } else {
+                BuildOutcome::Failed {
+                    errors: build_classifier::classify(
+                        "COBOL harness binary missing (Step 0 build did not produce harnesses/<id>/main)",
                     ),
                 }
             }

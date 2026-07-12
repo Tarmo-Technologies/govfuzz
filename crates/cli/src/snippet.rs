@@ -265,6 +265,7 @@ fn snippet_extension(lang: LangSelector) -> &'static str {
         LangSelector::Python => "py",
         LangSelector::Perl => "pl",
         LangSelector::Go => "go",
+        LangSelector::Cobol => "cob",
     }
 }
 
@@ -279,6 +280,7 @@ fn lang_token(lang: LangSelector) -> &'static str {
         LangSelector::Python => "python",
         LangSelector::Perl => "perl",
         LangSelector::Go => "go",
+        LangSelector::Cobol => "cobol",
     }
 }
 

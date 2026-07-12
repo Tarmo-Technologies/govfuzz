@@ -11,6 +11,8 @@ pub mod build_probe;
 pub mod candidate;
 pub mod capability;
 pub mod cli;
+pub mod cobol;
+pub mod cobol_build;
 pub mod config;
 pub mod confirm;
 pub mod coverage_replay;

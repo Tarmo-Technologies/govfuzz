@@ -259,7 +259,10 @@ fn proc_header(l: &str) -> Option<(String, Vec<String>)> {
         .chars()
         .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
         .collect();
-    if name.is_empty() {
+    // A Fortran identifier must start with a letter — this rejects preprocessor
+    // template stubs like `_TEMPLATE_ROUTINE_NAME_CHARSTRING` (include fragments
+    // that are not standalone-compilable) that would otherwise be false candidates.
+    if !name.starts_with(|c: char| c.is_ascii_alphabetic()) {
         return None;
     }
     let args = match rest.split_once('(') {
@@ -348,6 +351,14 @@ end subroutine scan
         let src = "subroutine g(x, y)\n integer :: x, y\nend subroutine\n";
         let p = &parse_fortran(src)[0];
         assert!(!p.is_fuzzable());
+    }
+
+    #[test]
+    fn rejects_template_stub_names() {
+        // Preprocessor include-fragment stubs (invalid Fortran identifier) are not
+        // standalone-compilable and must not be discovered as candidates.
+        let src = "function _TEMPLATE_ROUTINE_NAME ( s ) result ( v )\n character(len=*) :: s\nend function\n";
+        assert!(parse_fortran(src).is_empty());
     }
 
     #[test]

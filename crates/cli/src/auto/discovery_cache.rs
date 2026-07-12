@@ -83,6 +83,7 @@ fn lang_to_str(lang: Lang) -> &'static str {
         Lang::Cobol => "cobol",
         Lang::Fortran => "fortran",
         Lang::CSharp => "csharp",
+        Lang::Js => "javascript",
     }
 }
 
@@ -99,6 +100,7 @@ fn lang_from_str(s: &str) -> Option<Lang> {
         "cobol" => Some(Lang::Cobol),
         "fortran" => Some(Lang::Fortran),
         "csharp" => Some(Lang::CSharp),
+        "javascript" => Some(Lang::Js),
         _ => None,
     }
 }

@@ -2840,10 +2840,20 @@ mainstream.
   40,367 files, 0 panics, 13,406 fuzzable procedures, 6,500+ exec/s, 0 FP. See
   `docs/site/fortran.md`. **Remaining:** numeric-array / Fortran-`READ` surfaces,
   module `use`-dependency compilation, full fixed-form (.f77) column parsing.
-- **JavaScript / TypeScript** — Node interpreted lane (like Python/Perl): discover
-  exported functions; real coverage via V8 (`NODE_V8_COVERAGE` / inspector) folded
-  into the shared edge map; drive JSON / string / Buffer args. tree-sitter-javascript
-  (+ typescript).
+- **JavaScript / Node.js** — **Shipped 2026-07-12.** Node interpreted lane (like
+  Python/Perl): an exported function (CommonJS + ESM) taking a `Buffer`/`string` is
+  discovered and fuzzed by the builtin engine driving one warm Node process over the
+  framed protocol. Coverage is **real V8 precise block coverage** (inspector
+  Profiler, no source rewrite) folded per input — keyed on `(script, block span,
+  taken-bit)` — into the shared `GOVFUZZ_COV_SHM` map, so the engine gets genuine
+  branch feedback. An uncaught non-rejection exception hard-halts (exit 86); stack
+  overflow → GF-207, resource `RangeError`/OOM → GF-209, else GF-210. `TypeError`
+  (+ `SyntaxError`/`URIError`) is input rejection (the untyped-lane policy), and a
+  first-argument name filter drops internal array/options helpers. Validated on a
+  30-project / 2,018-file campaign: 0 panics, 531 fuzzable functions, 0 false
+  positives; finds an uncontrolled-recursion crash end-to-end. See
+  `docs/site/javascript.md`. **Remaining:** TypeScript source (needs a transpile
+  step), multi-argument synthesis, a dictionary miner.
 - **C#** — **Shipped 2026-07-12.** .NET lane over the shared fork-server engine: a
   `public` method taking a `byte[]`/`string`/`Stream` is discovered, the target is
   built via `dotnet` through a project reference (the reference pinned to the best

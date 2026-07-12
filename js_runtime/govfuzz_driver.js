@@ -207,11 +207,31 @@ function loadRunOne() {
   const exportPath = process.env.GOVFUZZ_JS_EXPORT || '';
   const argKind = process.env.GOVFUZZ_JS_ARG || 'buffer';
   const mod = require(modPath);
-  let fn = mod;
-  let recv = undefined;
-  for (const part of exportPath.split('.').filter(Boolean)) {
-    recv = fn;
-    fn = fn[part];
+  // A `ClassPath#method` export path means: resolve the class, `new` it (no-arg),
+  // then call the instance method. `#method` (empty class part) = the module itself
+  // is the class. Otherwise the export path is a plain dotted function path.
+  const hash = exportPath.indexOf('#');
+  let fn;
+  let recv;
+  if (hash >= 0) {
+    const classPath = exportPath.slice(0, hash);
+    const methodName = exportPath.slice(hash + 1);
+    let cls = mod;
+    for (const part of classPath.split('.').filter(Boolean)) {
+      cls = cls[part];
+    }
+    if (typeof cls !== 'function') {
+      throw new Error(`GOVFUZZ_JS_EXPORT class '${classPath}' not found in ${modPath}`);
+    }
+    recv = new cls();
+    fn = recv[methodName];
+  } else {
+    fn = mod;
+    recv = undefined;
+    for (const part of exportPath.split('.').filter(Boolean)) {
+      recv = fn;
+      fn = fn[part];
+    }
   }
   if (typeof fn !== 'function') {
     throw new Error(`GOVFUZZ_JS_EXPORT '${exportPath}' is not a function in ${modPath}`);

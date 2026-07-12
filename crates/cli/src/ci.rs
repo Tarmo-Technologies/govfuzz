@@ -81,6 +81,38 @@ pub struct CiArgs {
     )]
     pub languages: Vec<crate::auto::candidate::LangSelector>,
 
+    /// PR-native mode: scope the sweep to only the files changed since this git
+    /// ref (uses `git merge-base <ref> HEAD`, so a branch behind the base does
+    /// not re-fuzz the base's own changes). Discovery still walks the tree but
+    /// only changed files' targets are built and fuzzed; the discovery cache is
+    /// reused across runs. Combine with `--campaign-time` for a bounded PR run.
+    #[arg(long = "changed-since", value_name = "GIT_REF")]
+    pub changed_since: Option<String>,
+
+    /// Instead of asking git, read the newline-separated changed-file list from
+    /// this file (paths relative to the repo root or absolute). Useful when the
+    /// CI system already computed the PR diff. Overrides `--changed-since`.
+    #[arg(long = "changed-paths-from", value_name = "PATH")]
+    pub changed_paths_from: Option<PathBuf>,
+
+    /// Emit a SARIF 2.1.0 report to this path. The GitHub Action uploads it to
+    /// the code-scanning tab for inline PR annotations.
+    #[arg(long, value_name = "PATH")]
+    pub sarif: Option<PathBuf>,
+
+    /// Write a compact machine-readable CI result JSON to this path (finding
+    /// counts by severity + verdict, confirmed count, scoped file count, exit
+    /// code). Consumed by the GitHub Action to build the PR summary comment.
+    #[arg(long = "ci-json", value_name = "PATH")]
+    pub ci_json: Option<PathBuf>,
+
+    /// PR gate policy. `confirmed` exits non-zero only when a fuzz-confirmed
+    /// finding (verdict real/likely) is present; `all` fails on any finding;
+    /// `never` never fails (annotate-only); `off` (default) keeps the existing
+    /// `--fail-on` / `--fail-on-actionability` behavior.
+    #[arg(long = "pr-gate", value_enum, default_value_t = PrGate::Off)]
+    pub pr_gate: PrGate,
+
     /// Actionability threshold that triggers a non-zero exit. When unset, CI keeps the existing severity gate.
     #[arg(long, value_enum)]
     pub fail_on_actionability: Option<FailOnActionability>,
@@ -117,6 +149,14 @@ pub enum FailOnActionability {
     Likely,
     Lab,
     Any,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum PrGate {
+    Off,
+    Confirmed,
+    All,
+    Never,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -158,7 +198,7 @@ fn severity_rank(severity: Severity) -> u8 {
 /// forwarding (notably the budget knobs `--per-target-time` /
 /// `--per-target-finding-count` / `--campaign-time` / `--min-target-time`) is
 /// unit-testable without running the whole pipeline.
-fn auto_args_from_ci(args: &CiArgs) -> AutoArgs {
+fn auto_args_from_ci(args: &CiArgs, scoped_files: &[PathBuf]) -> AutoArgs {
     AutoArgs {
         path: args.path.clone(),
         work_dir: args.work_dir.clone(),
@@ -180,7 +220,9 @@ fn auto_args_from_ci(args: &CiArgs) -> AutoArgs {
         passes: None,
         single_pass: false,
         jobs: 1,
-        reuse_discovery: false,
+        // PR-native mode reuses the discovery cache so repeat runs skip the
+        // full-tree re-parse; the changed-file scope is applied as `target_files`.
+        reuse_discovery: !scoped_files.is_empty(),
         no_discovery_cache: false,
         fresh_discovery: false,
         resume: false,
@@ -190,7 +232,7 @@ fn auto_args_from_ci(args: &CiArgs) -> AutoArgs {
         list_fakes: false,
         targets: Vec::new(),
         harness_ids: Vec::new(),
-        target_files: Vec::new(),
+        target_files: scoped_files.to_vec(),
         exclude_paths: Vec::new(),
         exclude: Vec::new(),
         languages: args.languages.clone(),
@@ -225,7 +267,25 @@ fn auto_args_from_ci(args: &CiArgs) -> AutoArgs {
 
 pub fn run(args: CiArgs) -> i32 {
     let work_dir = args.work_dir.clone();
-    let auto_args = auto_args_from_ci(&args);
+
+    // PR-native scoping. Resolve the changed-file list (from a file, or via
+    // git merge-base) and keep only fuzzable sources under the sweep root. An
+    // explicitly-requested scope that matches nothing means "no relevant
+    // changes" — write a friendly summary and pass, rather than fuzzing the
+    // whole tree.
+    let scoped_files = match resolve_changed_scope(&args) {
+        Ok(scope) => scope,
+        Err(error) => {
+            eprintln!("error: could not compute changed-file scope: {error:#}");
+            return 1;
+        }
+    };
+    let scoping_requested = args.changed_since.is_some() || args.changed_paths_from.is_some();
+    if scoping_requested && scoped_files.is_empty() {
+        return report_nothing_to_do(&args);
+    }
+
+    let auto_args = auto_args_from_ci(&args, &scoped_files);
     // auto::cli::run returns 0 for success, 2 when no candidates,
     // 1 for hard errors. We treat 1 here as failure regardless of
     // findings; 0/2 mean the auto loop completed normally.
@@ -245,6 +305,23 @@ pub fn run(args: CiArgs) -> i32 {
     };
     let total: usize = findings.values().sum();
 
+    // Actionability feeds the PR gate, the summary, and the CI JSON, so compute
+    // it once. It is gate-critical when `--fail-on-actionability` or `--pr-gate
+    // confirmed` is set; in those cases a read failure must fail closed.
+    let gate_needs_actionability =
+        args.fail_on_actionability.is_some() || args.pr_gate == PrGate::Confirmed;
+    let actionability = match bucket_actionability(&work_dir) {
+        Ok(actionability) => actionability,
+        Err(error) => {
+            if gate_needs_actionability {
+                eprintln!("error: CI gate could not read findings: {error:#}");
+                return 1;
+            }
+            eprintln!("warning: CI could not read actionability: {error:#}");
+            ActionabilityBuckets::default()
+        }
+    };
+
     let summary_target = summary_path_resolution(args.summary_file.as_deref());
     if let Some(path) = summary_target {
         let markdown = render_summary(&work_dir, total, &findings);
@@ -256,21 +333,23 @@ pub fn run(args: CiArgs) -> i32 {
         }
     }
 
-    let mut exit_code = if let Some(fail_on_actionability) = args.fail_on_actionability {
-        let actionability = match bucket_actionability(&work_dir) {
-            Ok(actionability) => actionability,
-            Err(error) => {
-                eprintln!("error: CI gate could not read findings: {error:#}");
-                return 1;
+    let sarif_path = maybe_emit_sarif(&args, &work_dir);
+
+    let mut exit_code = match args.pr_gate {
+        PrGate::Off => {
+            if let Some(fail_on_actionability) = args.fail_on_actionability {
+                exit_code_from_actionability(
+                    &actionability,
+                    fail_on_actionability,
+                    args.min_actionability_confidence,
+                )
+            } else {
+                exit_code_from_buckets(&findings, args.fail_on)
             }
-        };
-        exit_code_from_actionability(
-            &actionability,
-            fail_on_actionability,
-            args.min_actionability_confidence,
-        )
-    } else {
-        exit_code_from_buckets(&findings, args.fail_on)
+        }
+        PrGate::Never => 0,
+        PrGate::All => i32::from(total > 0),
+        PrGate::Confirmed => i32::from(confirmed_count(&actionability) > 0),
     };
     if let Some(policy) = args.policy.as_ref() {
         match governance::ci_policy_gate_with_runner_plan(
@@ -295,6 +374,22 @@ pub fn run(args: CiArgs) -> i32 {
             }
         }
     }
+    if let Some(path) = args.ci_json.as_ref() {
+        let ci = build_ci_json(
+            total,
+            &findings,
+            &actionability,
+            scoped_files.len(),
+            sarif_path.as_deref(),
+            exit_code,
+        );
+        if let Err(error) = fs::write(path, serde_json::to_vec_pretty(&ci).unwrap_or_default()) {
+            eprintln!(
+                "warning: could not write --ci-json {}: {error}",
+                path.display()
+            );
+        }
+    }
     if let Some(path) = args.dashboard_out {
         let dashboard = governance::ci_dashboard_data(
             &work_dir,
@@ -311,6 +406,153 @@ pub fn run(args: CiArgs) -> i32 {
         }
     }
     exit_code
+}
+
+/// Friendly no-op result when PR scoping matched no fuzzable changed files:
+/// write a "nothing to do" summary + CI JSON and pass (exit 0).
+fn report_nothing_to_do(args: &CiArgs) -> i32 {
+    let summary =
+        "### GovFuzz CI\n\n- No fuzzable source files changed in this diff — nothing to do. ✅\n";
+    if let Some(path) = summary_path_resolution(args.summary_file.as_deref()) {
+        if let Err(error) = append_summary(&path, summary) {
+            eprintln!(
+                "warning: could not write CI summary to {}: {error}",
+                path.display()
+            );
+        }
+    }
+    if let Some(path) = args.ci_json.as_ref() {
+        let ci = serde_json::json!({
+            "total_findings": 0,
+            "by_severity": serde_json::Map::new(),
+            "by_verdict": serde_json::Map::new(),
+            "confirmed_findings": 0,
+            "scoped_files": 0,
+            "sarif_path": serde_json::Value::Null,
+            "exit_code": 0,
+            "nothing_to_do": true,
+        });
+        if let Err(error) = fs::write(path, serde_json::to_vec_pretty(&ci).unwrap_or_default()) {
+            eprintln!(
+                "warning: could not write --ci-json {}: {error}",
+                path.display()
+            );
+        }
+    }
+    println!("govfuzz ci: no changed fuzzable files in scope; passing.");
+    0
+}
+
+/// Resolve the changed-file scope for PR-native mode. Returns the changed files
+/// that live under `args.path` and look like fuzzable source. Empty when no
+/// scoping was requested (full-tree sweep) OR nothing relevant changed.
+fn resolve_changed_scope(args: &CiArgs) -> anyhow::Result<Vec<PathBuf>> {
+    let changed: std::collections::HashSet<PathBuf> =
+        if let Some(list_path) = args.changed_paths_from.as_ref() {
+            let root = crate::git_diff::repo_root().unwrap_or_else(|_| PathBuf::from("."));
+            let text = fs::read_to_string(list_path)
+                .with_context(|| format!("read changed-paths file {}", list_path.display()))?;
+            crate::git_diff::parse_changed_set(&text, &root)
+        } else if let Some(git_ref) = args.changed_since.as_ref() {
+            crate::git_diff::compute_changed_set_pr(git_ref)?
+        } else {
+            return Ok(Vec::new()); // no scoping requested → full-tree sweep
+        };
+
+    let root = args
+        .path
+        .canonicalize()
+        .unwrap_or_else(|_| args.path.clone());
+    let mut scoped: Vec<PathBuf> = changed
+        .into_iter()
+        .filter(|p| is_fuzzable_source(p))
+        .filter(|p| {
+            let cp = p.canonicalize().unwrap_or_else(|_| p.clone());
+            cp.starts_with(&root)
+        })
+        .collect();
+    scoped.sort();
+    Ok(scoped)
+}
+
+/// Extension gate matching the languages govfuzz discovers. A deleted file no
+/// longer exists so it drops out of the in-root check downstream; this is the
+/// cheap first cut that also filters docs/config churn out of PR runs.
+fn is_fuzzable_source(path: &Path) -> bool {
+    const EXTS: &[&str] = &[
+        "ada", "adb", "ads", "c", "h", "cc", "cpp", "cxx", "hpp", "hh", "rs", "java", "py", "pl",
+        "pm", "go",
+    ];
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| EXTS.contains(&e.to_ascii_lowercase().as_str()))
+        .unwrap_or(false)
+}
+
+/// Count of fuzz-confirmed findings — verdict `real_reachable` or
+/// `likely_reachable`. Used by the `--pr-gate confirmed` policy and CI JSON.
+fn confirmed_count(actionability: &ActionabilityBuckets) -> usize {
+    actionability
+        .by_verdict
+        .iter()
+        .filter(|(verdict, _)| matches!(verdict.as_str(), "real_reachable" | "likely_reachable"))
+        .map(|(_, count)| *count)
+        .sum()
+}
+
+/// Compact machine-readable CI result the GitHub Action consumes to render the
+/// PR summary comment.
+fn build_ci_json(
+    total: usize,
+    by_severity: &BTreeMap<String, usize>,
+    actionability: &ActionabilityBuckets,
+    scoped_files: usize,
+    sarif_path: Option<&str>,
+    exit_code: i32,
+) -> serde_json::Value {
+    serde_json::json!({
+        "total_findings": total,
+        "by_severity": by_severity,
+        "by_verdict": actionability.by_verdict,
+        "confirmed_findings": confirmed_count(actionability),
+        "scoped_files": scoped_files,
+        "sarif_path": sarif_path,
+        "exit_code": exit_code,
+    })
+}
+
+/// Emit a SARIF 2.1.0 report to `--sarif` when requested, reusing the report
+/// crate. Returns the final SARIF path string (for the CI JSON) or `None`.
+fn maybe_emit_sarif(args: &CiArgs, work_dir: &Path) -> Option<String> {
+    let requested = args.sarif.as_ref()?;
+    let findings_dir = work_dir.join("findings");
+    let out_dir = work_dir.join("reports");
+    let options = govfuzz_report::ReportOptions::new(&findings_dir, &out_dir)
+        .with_run_id("last")
+        .with_sarif(true);
+    match govfuzz_report::write_reports(options) {
+        Ok(summary) => {
+            let produced = summary.sarif_path?;
+            if produced == *requested {
+                return Some(produced.to_string_lossy().into_owned());
+            }
+            if let Some(parent) = requested.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if let Err(error) = fs::copy(&produced, requested) {
+                eprintln!(
+                    "warning: could not copy SARIF to {}: {error}",
+                    requested.display()
+                );
+                return Some(produced.to_string_lossy().into_owned());
+            }
+            Some(requested.to_string_lossy().into_owned())
+        }
+        Err(error) => {
+            eprintln!("warning: could not emit SARIF: {error}");
+            None
+        }
+    }
 }
 
 fn summary_path_resolution(flag: Option<&Path>) -> Option<PathBuf> {
@@ -647,7 +889,7 @@ mod tests {
         assert_eq!(def.ci.campaign_time, None);
         assert_eq!(def.ci.min_target_time, None);
         // ...and they forward to auto as unset.
-        let def_auto = auto_args_from_ci(&def.ci);
+        let def_auto = auto_args_from_ci(&def.ci, &[]);
         assert_eq!(def_auto.per_target_finding_count, None);
         assert_eq!(def_auto.campaign_time, None);
         assert_eq!(def_auto.min_target_time, None);
@@ -664,7 +906,7 @@ mod tests {
             "10",
         ])
         .expect("parses");
-        let auto = auto_args_from_ci(&set.ci);
+        let auto = auto_args_from_ci(&set.ci, &[]);
         assert_eq!(auto.per_target_finding_count, Some(2));
         assert_eq!(auto.campaign_time, Some(120));
         assert_eq!(auto.min_target_time, Some(10));
@@ -690,12 +932,12 @@ mod tests {
         // Default: no language filter forwarded (fuzz every language found).
         let def = TestCli::try_parse_from(["govfuzz", "src"]).expect("parses");
         assert!(def.ci.languages.is_empty());
-        assert!(auto_args_from_ci(&def.ci).languages.is_empty());
+        assert!(auto_args_from_ci(&def.ci, &[]).languages.is_empty());
 
         // Explicit (with aliases + the `--lang` flag alias) forwards verbatim.
         let set = TestCli::try_parse_from(["govfuzz", "src", "--lang", "py,go"]).expect("parses");
         assert_eq!(
-            auto_args_from_ci(&set.ci).languages,
+            auto_args_from_ci(&set.ci, &[]).languages,
             vec![LangSelector::Python, LangSelector::Go]
         );
     }
@@ -850,5 +1092,136 @@ mod tests {
     fn format_buckets_zero_findings_renders_none() {
         let buckets = BTreeMap::new();
         assert_eq!(format_buckets(&buckets), "none");
+    }
+
+    #[test]
+    fn new_pr_flags_parse_and_default_off() {
+        use clap::Parser as _;
+        #[derive(clap::Parser)]
+        struct T {
+            #[command(flatten)]
+            ci: CiArgs,
+        }
+        let t = T::try_parse_from([
+            "govfuzz",
+            "src",
+            "--changed-since",
+            "origin/main",
+            "--sarif",
+            "out.sarif",
+            "--ci-json",
+            "ci.json",
+            "--pr-gate",
+            "confirmed",
+        ])
+        .expect("parses");
+        assert_eq!(t.ci.changed_since.as_deref(), Some("origin/main"));
+        assert_eq!(t.ci.sarif, Some(PathBuf::from("out.sarif")));
+        assert_eq!(t.ci.ci_json, Some(PathBuf::from("ci.json")));
+        assert_eq!(t.ci.pr_gate, PrGate::Confirmed);
+
+        let d = T::try_parse_from(["govfuzz", "src"]).expect("parses");
+        assert_eq!(d.ci.changed_since, None);
+        assert_eq!(d.ci.pr_gate, PrGate::Off);
+        // The default full-tree run passes no scope to auto.
+        assert!(auto_args_from_ci(&d.ci, &[]).target_files.is_empty());
+    }
+
+    #[test]
+    fn scoped_files_forward_to_auto_target_files_and_reuse_discovery() {
+        use clap::Parser as _;
+        #[derive(clap::Parser)]
+        struct T {
+            #[command(flatten)]
+            ci: CiArgs,
+        }
+        let t = T::try_parse_from(["govfuzz", "src"]).expect("parses");
+        let scoped = vec![PathBuf::from("/x/a.c"), PathBuf::from("/x/b.c")];
+        let auto = auto_args_from_ci(&t.ci, &scoped);
+        assert_eq!(auto.target_files, scoped);
+        assert!(auto.reuse_discovery, "PR scope reuses the discovery cache");
+    }
+
+    #[test]
+    fn is_fuzzable_source_matches_known_extensions_only() {
+        assert!(is_fuzzable_source(Path::new("a/b/c.rs")));
+        assert!(is_fuzzable_source(Path::new("x.ADB")), "case-insensitive");
+        assert!(is_fuzzable_source(Path::new("pkg/mod.go")));
+        assert!(!is_fuzzable_source(Path::new("README.md")));
+        assert!(!is_fuzzable_source(Path::new("Cargo.toml")));
+        assert!(!is_fuzzable_source(Path::new("no_extension")));
+    }
+
+    #[test]
+    fn confirmed_count_counts_real_and_likely_only() {
+        let mut a = ActionabilityBuckets::default();
+        a.by_verdict.insert("real_reachable".to_owned(), 2);
+        a.by_verdict.insert("likely_reachable".to_owned(), 1);
+        a.by_verdict.insert("lab_only".to_owned(), 5);
+        a.by_verdict.insert("unknown".to_owned(), 3);
+        assert_eq!(confirmed_count(&a), 3);
+    }
+
+    #[test]
+    fn build_ci_json_reports_confirmed_and_scope() {
+        let mut sev = BTreeMap::new();
+        sev.insert("high".to_owned(), 1);
+        let mut a = ActionabilityBuckets::default();
+        a.by_verdict.insert("real_reachable".to_owned(), 1);
+        a.by_verdict.insert("lab_only".to_owned(), 4);
+        let json = build_ci_json(5, &sev, &a, 7, Some("/tmp/x.sarif"), 1);
+        assert_eq!(json["total_findings"], 5);
+        assert_eq!(json["confirmed_findings"], 1);
+        assert_eq!(json["scoped_files"], 7);
+        assert_eq!(json["sarif_path"], "/tmp/x.sarif");
+        assert_eq!(json["exit_code"], 1);
+        assert_eq!(json["by_severity"]["high"], 1);
+    }
+
+    #[test]
+    fn resolve_changed_scope_from_file_keeps_only_in_root_sources() {
+        use clap::Parser as _;
+        #[derive(clap::Parser)]
+        struct T {
+            #[command(flatten)]
+            ci: CiArgs,
+        }
+        let work = tempdir("scope");
+        let root = work.join("proj");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src/a.c"), b"int main(){}").unwrap();
+        fs::write(root.join("src/readme.md"), b"# doc").unwrap();
+        let list = work.join("changed.txt");
+        fs::write(
+            &list,
+            format!(
+                "{}\n{}\n/tmp/outside_{}.c\n",
+                root.join("src/a.c").display(),
+                root.join("src/readme.md").display(),
+                std::process::id(),
+            ),
+        )
+        .unwrap();
+        let t = T::try_parse_from([
+            "govfuzz",
+            root.to_str().unwrap(),
+            "--changed-paths-from",
+            list.to_str().unwrap(),
+        ])
+        .expect("parses");
+        let scoped = resolve_changed_scope(&t.ci).unwrap();
+        assert_eq!(scoped, vec![root.join("src/a.c")]);
+    }
+
+    #[test]
+    fn resolve_changed_scope_empty_when_no_scoping_requested() {
+        use clap::Parser as _;
+        #[derive(clap::Parser)]
+        struct T {
+            #[command(flatten)]
+            ci: CiArgs,
+        }
+        let t = T::try_parse_from(["govfuzz", "src"]).expect("parses");
+        assert!(resolve_changed_scope(&t.ci).unwrap().is_empty());
     }
 }

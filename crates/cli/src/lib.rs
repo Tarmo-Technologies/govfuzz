@@ -28,6 +28,7 @@ mod fake_corba;
 mod finding_arg;
 mod fuzz;
 mod generate_harness;
+mod git_diff;
 mod instrument;
 mod introspect;
 mod license_audit;

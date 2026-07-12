@@ -2948,11 +2948,10 @@ mod tests {
         );
 
         // The COBOL/Fortran/C# lanes and their aliases parse onto the canonical lanes.
-        let managed = TestCli::try_parse_from([
-            "govfuzz", "tree", "--languages", "cobol,f90,cs,c#,dotnet",
-        ])
-        .expect("parses")
-        .auto;
+        let managed =
+            TestCli::try_parse_from(["govfuzz", "tree", "--languages", "cobol,f90,cs,c#,dotnet"])
+                .expect("parses")
+                .auto;
         assert_eq!(
             managed.languages,
             vec![

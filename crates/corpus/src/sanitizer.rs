@@ -87,6 +87,107 @@ pub fn parse_sanitizer_report(stderr: &str) -> Option<SanitizerReport> {
         // <exception type>: <msg>` and hard-halts (exit 86). The exception type
         // selects the GF rule + CWE, mirroring the JVM lane.
         .or_else(|| parse_csharp_finding(stderr))
+        // A JS finding: the govfuzz Node driver prints `== govfuzz js finding:
+        // <GF-rule>: <error name>: <msg>` and hard-halts (exit 86). The GF rule is
+        // pre-resolved driver-side (the exception class → rule mapping is cleaner in
+        // the driver where the Error object is live), so the parser reads it directly.
+        .or_else(|| parse_js_finding(stderr))
+}
+
+/// Parse a govfuzz JavaScript finding out of stderr. The Node driver prints
+/// `== govfuzz js finding: <GF-NNN>: <Error name>: <message>` followed by the V8
+/// stack (`    at fn (file:line:col)`). The GF rule token is pre-resolved by the
+/// driver (stack-exhaustion RangeError → GF-207, resource RangeError → GF-209, a
+/// property-of-undefined TypeError → GF-206, else GF-210).
+fn parse_js_finding(stderr: &str) -> Option<SanitizerReport> {
+    const MARKER: &str = "== govfuzz js finding:";
+    let line = stderr.lines().find(|l| l.contains(MARKER))?;
+    let after = line.split(MARKER).nth(1).unwrap_or("").trim();
+    // `after` is `<GF-NNN>: <rest>`.
+    let (rule_tok, rest) = match after.split_once(':') {
+        Some((r, m)) => (r.trim(), m.trim()),
+        None => (after, ""),
+    };
+    let rule_id = match rule_tok {
+        "GF-201" => "GF-201",
+        "GF-205" => "GF-205",
+        "GF-206" => "GF-206",
+        "GF-207" => "GF-207",
+        "GF-209" => "GF-209",
+        _ => "GF-210",
+    };
+    let kind = match rule_id {
+        "GF-206" => "js-null-dereference",
+        "GF-207" => "js-stack-overflow",
+        "GF-209" => "js-out-of-memory",
+        "GF-205" => "js-arithmetic",
+        "GF-201" => "js-index-out-of-bounds",
+        _ => "js-uncaught-exception",
+    }
+    .to_owned();
+
+    let mut stack = parse_js_stack_frames(stderr);
+    stack.truncate(5);
+
+    Some(SanitizerReport {
+        sanitizer: Sanitizer::AddressSanitizer,
+        kind,
+        rule_id,
+        stack,
+        message: format!("JS finding: {rest}"),
+    })
+}
+
+/// Parse V8 stack frames: `    at fn (path:line:col)` or `    at path:line:col`.
+/// The govfuzz driver frames are skipped so the top frame is the target's code.
+fn parse_js_stack_frames(stderr: &str) -> Vec<StackFrame> {
+    let mut frames = Vec::new();
+    for raw in stderr.lines() {
+        let t = raw.trim_start();
+        let Some(rest) = t.strip_prefix("at ") else {
+            continue;
+        };
+        if rest.contains("govfuzz_driver") {
+            continue;
+        }
+        // Extract `name (loc)` or bare `loc`.
+        let (func, loc) = if let Some(open) = rest.rfind('(') {
+            let close = rest.rfind(')').unwrap_or(rest.len());
+            (
+                rest[..open].trim().to_owned(),
+                rest.get(open + 1..close).unwrap_or("").to_owned(),
+            )
+        } else {
+            ("<anonymous>".to_owned(), rest.trim().to_owned())
+        };
+        // loc = path:line:col — split the trailing :line:col.
+        let (file, line) = split_loc(&loc);
+        frames.push(StackFrame {
+            function: if func.is_empty() {
+                "<anonymous>".to_owned()
+            } else {
+                func
+            },
+            file,
+            line,
+        });
+    }
+    frames
+}
+
+/// Split a V8 `path:line:col` location into `(file, line)`.
+fn split_loc(loc: &str) -> (Option<String>, Option<u32>) {
+    let bytes: Vec<&str> = loc.rsplitn(3, ':').collect();
+    // rsplitn yields [col, line, path] reversed.
+    if bytes.len() == 3 {
+        let line = bytes[1].parse::<u32>().ok();
+        let file = bytes[2].to_owned();
+        (Some(file), line)
+    } else if loc.is_empty() {
+        (None, None)
+    } else {
+        (Some(loc.to_owned()), None)
+    }
 }
 
 /// Parse a govfuzz C# finding out of stderr. The .NET driver prints
@@ -1009,6 +1110,31 @@ java.lang.ArrayIndexOutOfBoundsException: Index 8 out of bounds for length 1
         assert_eq!(parse_sanitizer_report(oom).unwrap().rule_id, "GF-209");
         let custom = "== govfuzz csharp finding: Acme.ParseException: bad token\n";
         assert_eq!(parse_sanitizer_report(custom).unwrap().rule_id, "GF-210");
+    }
+
+    #[test]
+    fn js_finding_reads_rule_and_stack() {
+        let stderr = "== govfuzz js finding: GF-206: TypeError: Cannot read properties of undefined (reading 'x')\n\
+                      \x20   at parse (/proj/parser.js:42:13)\n\
+                      \x20   at Object.<anonymous> (/w/govfuzz_driver.js:99:5)\n\
+                      \x20   at walk (/proj/parser.js:51:7)\n";
+        let r = parse_sanitizer_report(stderr).expect("js finding");
+        assert_eq!(r.rule_id, "GF-206");
+        assert_eq!(r.kind, "js-null-dereference");
+        // The driver frame is skipped; the top frame is the target's code.
+        assert_eq!(r.stack[0].function, "parse");
+        assert_eq!(r.stack[0].file.as_deref(), Some("/proj/parser.js"));
+        assert_eq!(r.stack[0].line, Some(42));
+    }
+
+    #[test]
+    fn js_finding_rule_mapping() {
+        let so = "== govfuzz js finding: GF-207: RangeError: Maximum call stack size exceeded\n";
+        assert_eq!(parse_sanitizer_report(so).unwrap().rule_id, "GF-207");
+        let oom = "== govfuzz js finding: GF-209: RangeError: Invalid array length\n";
+        assert_eq!(parse_sanitizer_report(oom).unwrap().rule_id, "GF-209");
+        let gen = "== govfuzz js finding: GF-210: Error: boom\n";
+        assert_eq!(parse_sanitizer_report(gen).unwrap().rule_id, "GF-210");
     }
 
     #[test]

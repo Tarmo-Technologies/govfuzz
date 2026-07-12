@@ -4,6 +4,27 @@
 
 ## Unreleased
 
+- **JavaScript / Node.js fuzzing lane.** `govfuzz auto --languages javascript`
+  discovers exported functions (CommonJS + ESM) taking a `Buffer`/`string`, and
+  fuzzes them coverage-guided on govfuzz's own fork-server engine driving one warm
+  Node process — no Jazzer.js, no jsfuzz, no libFuzzer, no `fuzz(data)` to
+  hand-write. Coverage is **real V8 precise block coverage** (the inspector
+  Profiler, no Babel/Istanbul source rewrite) folded per input — keyed on `(script,
+  block span, taken/not-taken)` — into govfuzz's cumulative `GOVFUZZ_COV_SHM` edge
+  bitmap, so the engine gets genuine branch feedback. An uncaught exception that is
+  not input rejection hard-halts (exit 86) and maps to a GF rule + CWE (stack
+  overflow → GF-207/CWE-674, resource `RangeError`/OOM → GF-209, `ReferenceError` /
+  assertion / explicit `throw` → GF-210). `TypeError` (and `SyntaxError`/`URIError`/
+  validating `RangeError`) are treated as input rejection — the untyped-lane policy
+  the Python lane uses — since govfuzz synthesizes only the first argument; a
+  first-argument name filter also keeps internal array/options helpers out of the
+  fuzz set. Validated on a 30-project / 2,018-file campaign (express, lodash, axios,
+  moment, validator.js, node-semver, marked, joi, …): 0 panics, 531 fuzzable
+  functions discovered, 0 false positives; end-to-end it finds an
+  uncontrolled-recursion crash with the V8 stack. The driver uses only Node
+  built-ins (`inspector`, `fs`) — nothing linked into govfuzz. See
+  [docs/site/javascript.md](docs/site/javascript.md).
+
 - **C# / .NET fuzzing lane.** `govfuzz auto --languages csharp` discovers `public`
   methods taking a `byte[]`/`string`/`Stream`, builds the target with `dotnet`
   through a project reference, instruments its IL with

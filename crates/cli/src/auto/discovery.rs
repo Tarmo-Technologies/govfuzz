@@ -849,6 +849,12 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
             .into_iter()
             .map(|m| (m.qualified(), m.line))
             .collect(),
+        // JS call-graph re-ranking is out of scope; returning the exported-function
+        // lines is harmless and consistent with the other interpreted lanes.
+        Lang::Js => crate::auto::js::parse_js(source)
+            .into_iter()
+            .map(|f| (f.name, f.line))
+            .collect(),
     }
 }
 
@@ -1409,6 +1415,25 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
+        Lang::Js => {
+            // M3.7: each exported JS function taking ≥1 argument is a candidate,
+            // driven via the Node framed driver (see `crate::auto::js` / `js_build`).
+            // The first argument is the attacker-controlled input channel.
+            for func in crate::auto::js::parse_js(&source) {
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-N", path, func.line, &func.name),
+                    lang: Lang::Js,
+                    source_path: path.to_path_buf(),
+                    line: func.line,
+                    name: func.name,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1523,6 +1548,9 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "for"
                     | "f77"
                     | "cs"
+                    | "js"
+                    | "mjs"
+                    | "cjs"
             )
         })
 }
@@ -1540,7 +1568,13 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         // M22: only an explicit `pragma Ada_83` is flagged (-> report-only); other
         // Ada standards are left to the Ada lane's own pragma/feature detection.
         Lang::Ada => lang_profile::detect_ada(source),
-        Lang::Rust | Lang::Java | Lang::Go | Lang::Cobol | Lang::Fortran | Lang::CSharp => None,
+        Lang::Rust
+        | Lang::Java
+        | Lang::Go
+        | Lang::Cobol
+        | Lang::Fortran
+        | Lang::CSharp
+        | Lang::Js => None,
     }
 }
 
@@ -1562,6 +1596,7 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         "cob" | "cbl" | "cobol" | "cble" => Some(Lang::Cobol),
         "f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" => Some(Lang::Fortran),
         "cs" => Some(Lang::CSharp),
+        "js" | "mjs" | "cjs" => Some(Lang::Js),
         _ => None,
     }
 }

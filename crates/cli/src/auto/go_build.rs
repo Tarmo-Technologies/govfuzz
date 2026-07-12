@@ -381,6 +381,13 @@ fn decode_for_type(ty: &str, last: bool) -> Option<String> {
         "uintptr" => "uintptr(c.i64())".to_owned(),
         "float32" => "float32(c.f64())".to_owned(),
         "float64" => "c.f64()".to_owned(),
+        // An `interface{}`/`any` parameter is the canonical unmarshal out-target
+        // (`Unmarshal(data []byte, v interface{})`, `Decode(v interface{})`): pass a
+        // fresh `*interface{}` so the decoder populates it and the parser is fuzzed
+        // deeply. A value-input `interface{}` accepts it too (interface{} holds any
+        // value); an unchecked type assertion on our synthesized value panics with
+        // "interface conversion", which the finding classifier treats as our-fault.
+        "interface{}" | "any" => "new(interface{})".to_owned(),
         _ => return None,
     })
 }
@@ -681,6 +688,25 @@ mod tests {
     fn unsupported_param_type_is_skip() {
         let e = generate_call(&func("F", &[("m", "map[string]int")], false));
         assert!(e.is_err(), "map param -> clean skip");
+    }
+
+    #[test]
+    fn interface_param_synthesized_as_unmarshal_target() {
+        // `Unmarshal(in []byte, out interface{})` — the canonical Go parser API — is
+        // now fuzzable: the interface{} out-param becomes a fresh *interface{}.
+        let body = generate_call(&func(
+            "Unmarshal",
+            &[("in", "[]byte"), ("out", "interface{}")],
+            false,
+        ))
+        .unwrap();
+        assert!(body.contains("a0 := c.bytesField()"));
+        assert!(body.contains("a1 := new(interface{})"));
+        assert!(body.contains("tgt.Unmarshal(a0, a1)"));
+        // `any` (the Go 1.18 alias) works too.
+        let anybody =
+            generate_call(&func("Decode", &[("data", "[]byte"), ("v", "any")], false)).unwrap();
+        assert!(anybody.contains("a1 := new(interface{})"));
     }
 
     #[test]

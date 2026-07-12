@@ -15,10 +15,11 @@ An **exported** function taking at least one argument is the fuzzable unit. govf
 
 1. **Discovers** each exported function across both module systems — CommonJS
    (`module.exports = { parse }`, `exports.parse = …`, `module.exports = fn`) and
-   ESM (`export function parse`, `export const parse = …`, `export default`) —
-   inferring whether the first argument should be a `Buffer` or a UTF-8 `string`
-   from its name (`buf`/`data`/`bytes` → Buffer; `str`/`text`/`source`/`html` →
-   string).
+   ESM (`export function parse`, `export const parse = …`, `export default`) — plus
+   the **public instance methods of exported classes** (`class Parser { parse(x) }`;
+   the driver `new`s a no-argument-constructible class and calls the method). The
+   first argument is inferred as a `Buffer` or UTF-8 `string` from its name
+   (`buf`/`data`/`bytes` → Buffer; `str`/`text`/`source`/`html` → string).
 2. **"Builds"** it with a `node -c` syntax check (interpreted — there is no native
    binary) and emits a launcher.
 3. **Fuzzes** it on govfuzz's builtin fork-server engine driving **one warm Node

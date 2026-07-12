@@ -70,6 +70,11 @@ pub enum Lang {
     /// the generated driver. An uncaught non-rejection exception is a finding (exit
     /// 86). See [`crate::auto::js`].
     Js,
+    /// TypeScript lane (M3.8). Reuses the JS parser + Node framed driver: the `.ts`
+    /// source is discovered directly (type annotations are stripped by the
+    /// name-extracting parser), transpiled to CommonJS `.js` with esbuild, and
+    /// fuzzed by the same warm-Node driver. See [`crate::auto::js`] / `js_build`.
+    Ts,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -100,6 +105,8 @@ pub enum LangSelector {
     CSharp,
     #[value(name = "javascript", aliases = ["js", "node", "nodejs", "mjs", "cjs"])]
     Js,
+    #[value(name = "typescript", aliases = ["ts", "tsx"])]
+    Ts,
 }
 
 impl LangSelector {
@@ -118,6 +125,7 @@ impl LangSelector {
             LangSelector::Fortran => Lang::Fortran,
             LangSelector::CSharp => Lang::CSharp,
             LangSelector::Js => Lang::Js,
+            LangSelector::Ts => Lang::Ts,
         }
     }
 }
@@ -177,6 +185,7 @@ impl Candidate {
             Lang::Fortran => "H-F",
             Lang::CSharp => "H-S",
             Lang::Js => "H-N",
+            Lang::Ts => "H-T",
         }
     }
 }

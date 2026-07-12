@@ -90,6 +90,25 @@ govfuzz is the only tool that fuzzes JavaScript from source with **zero harness*
 using the V8 engine's own coverage (no Babel/Istanbul source transform) folded into
 a shared edge map.
 
+## TypeScript
+
+`govfuzz auto --languages typescript` fuzzes `.ts`/`.tsx` the same way. Discovery
+runs directly on the TypeScript source — the name-extracting parser reads a
+signature like `parse(input: string, opts?: Options): Result` and keeps just the
+parameter names, so type annotations, `interface`/`type` declarations, and
+`private`/`protected`/`abstract` members are ignored. The target is then
+transpiled to CommonJS with [esbuild](https://esbuild.github.io/) (bundling local
+imports, leaving `node_modules` external) and driven by the identical warm-Node
+framed driver — same V8 block coverage, dictionary, exception oracle, and
+command-injection detector as the JavaScript lane.
+
+```sh
+govfuzz auto path/to/ts-src --languages typescript   # needs node + esbuild
+```
+
+Requirements: Node.js and `esbuild` (`npm i -g esbuild`); absent either, the lane
+skips cleanly. `.d.ts` declaration files (no runtime code) are not fuzzed.
+
 ## Validation (campaign)
 
 A 30-project campaign over the most-depended-on npm libraries — express, lodash,

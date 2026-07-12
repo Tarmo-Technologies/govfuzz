@@ -4,6 +4,20 @@
 
 ## Unreleased
 
+- **TypeScript fuzzing lane.** `govfuzz auto --languages typescript` discovers
+  exported functions and public class methods in `.ts`/`.tsx` source (the
+  name-extracting parser strips type annotations; interfaces, type aliases, and
+  `private`/`protected`/`abstract` members are excluded), transpiles the target to
+  CommonJS with esbuild, and fuzzes it with the same warm-Node framed driver, V8
+  block coverage, dictionary, and command-injection detector as the JavaScript
+  lane. Node + esbuild required (`npm i -g esbuild`); absent either, the lane skips
+  cleanly. `.d.ts` declaration files are not fuzzed.
+
+- **Self-fuzz dogfood CI.** A nightly `dogfood` workflow runs `govfuzz auto` on
+  govfuzz's own C runtime decoders (the untrusted-input parsers every harness
+  links), uploads SARIF + findings, and fails on a fuzz-confirmed crash — govfuzz
+  fuzzing itself.
+
 - **JavaScript command-injection detector (GF-431 / CWE-78).** The JS lane runs
   without the LD_PRELOAD shim (managed runtime), so — like Jazzer.js's bug detectors
   — the driver hooks `child_process.exec`/`execSync` in JS and reports a

@@ -269,6 +269,7 @@ fn snippet_extension(lang: LangSelector) -> &'static str {
         LangSelector::Fortran => "f90",
         LangSelector::CSharp => "cs",
         LangSelector::Js => "js",
+        LangSelector::Ts => "ts",
     }
 }
 
@@ -287,6 +288,7 @@ fn lang_token(lang: LangSelector) -> &'static str {
         LangSelector::Fortran => "fortran",
         LangSelector::CSharp => "csharp",
         LangSelector::Js => "javascript",
+        LangSelector::Ts => "typescript",
     }
 }
 

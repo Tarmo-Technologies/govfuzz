@@ -478,6 +478,10 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
         let line_no = (idx + 1) as u32;
         // (class-key, export-path). The class-key selects the ClassInfo; the
         // export-path is what the driver resolves from module.exports.
+        // TS allows an `abstract` modifier before `class`; normalize it away so the
+        // prefix matches (`export abstract class` / `export default abstract class`).
+        let t_norm = t.replace("abstract class", "class");
+        let t = t_norm.as_str();
         let exported: Option<(Option<String>, String)> =
             if let Some(r) = t.strip_prefix("export class ") {
                 class_name(r).map(|n| (Some(n.clone()), n))
@@ -603,9 +607,12 @@ fn collect_classes(lines: &[String]) -> std::collections::HashMap<String, ClassI
         // `... = class Name ...`. Extract the name (may be anonymous).
         if let Some(name) = class_header_name(t) {
             pending_class = Some(name.clone());
+            // A TS `abstract class` can never be `new`d, so its instance methods are
+            // not fuzzable (static methods still are — gated in push_method).
+            let abstract_class = t.split_whitespace().any(|w| w == "abstract");
             classes.entry(name.clone()).or_insert(ClassInfo {
                 methods: Vec::new(),
-                constructible: true,
+                constructible: !abstract_class,
                 open_line: line_no,
             });
         } else if !stack.is_empty() && pending_class.is_none() {
@@ -675,18 +682,32 @@ fn class_header_name(t: &str) -> Option<String> {
 }
 
 /// A class member signature `name(params) {` (or `=> `-less). Returns None for
-/// getters/setters, private (`#`) members, and non-method lines.
+/// getters/setters, `private`/`protected` (incl. TS access modifiers and `#`)
+/// members, and non-method lines.
 fn class_member_signature(t: &str) -> Option<(String, Vec<String>)> {
     let open = t.find('(')?;
     let head = t[..open].trim();
     // Tokens before `(`: modifiers + name. The name is the last token.
     let toks: Vec<&str> = head.split_whitespace().collect();
     let name_tok = *toks.last()?;
-    // Exclude getters/setters, generators, private, and control keywords.
+    // Exclude getters/setters, generators, non-public (TS `private`/`protected`),
+    // and control keywords. `public`/`static`/`async`/`readonly`/`override`/`abstract`
+    // modifiers are allowed (TS member methods).
     if toks.iter().any(|m| {
         matches!(
             *m,
-            "get" | "set" | "if" | "for" | "while" | "switch" | "catch" | "return" | "function"
+            "get"
+                | "set"
+                | "private"
+                | "protected"
+                | "abstract"
+                | "if"
+                | "for"
+                | "while"
+                | "switch"
+                | "catch"
+                | "return"
+                | "function"
         )
     }) {
         return None;
@@ -695,14 +716,16 @@ fn class_member_signature(t: &str) -> Option<(String, Vec<String>)> {
     if name.starts_with('#') || !is_ident(name) {
         return None;
     }
-    // The line must actually open a body or be a method (`) {`), not a call.
+    // The line must open a method body: `) {`, or a TS `): ReturnType {`. A call
+    // (`foo()` used as a statement) can't reach here — statements live inside a
+    // method body (depth+1), not directly in the class body.
     let after = &t[open..];
     let close = after.find(')')?;
-    if !after[close..]
-        .trim_start_matches(')')
-        .trim_start()
-        .starts_with('{')
-    {
+    let post = after[close..].trim_start_matches(')').trim_start();
+    // Accept a `{` body directly, or a `:` return-type annotation (TS) that will be
+    // followed by the body. Reject a `;` (interface/abstract signature, no body) and
+    // a `.`/`(` continuation (a call/chain).
+    if !(post.starts_with('{') || post.starts_with(':')) {
         return None;
     }
     let params = parse_param_names(after);
@@ -876,6 +899,46 @@ module.exports = { Validator };
 ";
         // Not no-arg-constructible -> no methods discovered.
         assert!(parse_js(src).is_empty());
+    }
+
+    #[test]
+    fn typescript_signatures_discovered_types_stripped() {
+        let src = "\
+export interface Options { strict: boolean; }
+export type Result = number | null;
+export function parseValue(input: string, opts?: Options): Result {
+  return input.length;
+}
+export class Lexer {
+  private state = 0;
+  public tokenize(source: string): string[] { return source.split(''); }
+  private helper(x: string): void { }
+}
+";
+        let fns = parse_js(src);
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        // Exported function discovered (param name `input` extracted past `: string`).
+        assert!(fns.iter().any(|f| f.name == "parseValue"));
+        let pv = fns.iter().find(|f| f.name == "parseValue").unwrap();
+        assert_eq!(pv.arg_kind, JsArgKind::Str);
+        // Public class method discovered; interface/type/private-method excluded.
+        assert!(names.contains(&"Lexer#tokenize"));
+        assert!(!names.iter().any(|n| n.contains("helper"))); // private
+        assert!(!names.iter().any(|n| n.contains("Options"))); // interface
+    }
+
+    #[test]
+    fn ts_abstract_class_instance_method_skipped() {
+        let src = "\
+export abstract class Base {
+  parse(input: string): void { }
+  static create(spec: string): Base { return null; }
+}
+";
+        let fns = parse_js(src);
+        // Instance method skipped (abstract can't be `new`d); static method kept.
+        assert!(!fns.iter().any(|f| f.export_path.contains('#')));
+        assert!(fns.iter().any(|f| f.export_path == "Base.create"));
     }
 
     #[test]

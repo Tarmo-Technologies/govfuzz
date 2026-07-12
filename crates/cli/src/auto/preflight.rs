@@ -126,11 +126,16 @@ fn requirements(
             "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`",
         ),
         Lang::Js => ("JavaScript", &[&["node"]], "install Node.js"),
+        Lang::Ts => (
+            "TypeScript",
+            &[&["node"], &["esbuild"]],
+            "install Node.js + esbuild (`npm i -g esbuild`)",
+        ),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 12] = [
+const LANES: [Lang; 13] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -143,6 +148,7 @@ const LANES: [Lang; 12] = [
     Lang::Fortran,
     Lang::CSharp,
     Lang::Js,
+    Lang::Ts,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

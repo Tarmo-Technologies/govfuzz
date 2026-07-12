@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copy this to `.github/workflows/govfuzz-pr.yml` to fuzz every PR's changed
+# code and annotate it inline. That is the entire setup — no config file.
+name: govfuzz PR
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write # sticky summary comment
+  security-events: write # SARIF upload → code-scanning annotations
+jobs:
+  govfuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # required so merge-base against the PR base resolves
+      - uses: Tarmo-Technologies/govfuzz/.github/actions/govfuzz-pr@main
+        with:
+          path: .
+          campaign-time: "180"
+          # languages: "c,cpp,rust"   # optional: restrict lanes
+          # pr-gate: "confirmed"      # confirmed | all | never (default: confirmed)

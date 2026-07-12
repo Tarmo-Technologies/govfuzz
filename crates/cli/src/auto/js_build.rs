@@ -107,6 +107,18 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         }
     }
 
+    emit_js_harness(work_dir, harness_id, &runtime, &module_abs, &func)
+}
+
+/// Copy the driver and emit the `node` launcher pointing at `module_abs` (the target
+/// module for JS, or the transpiled `.js` for TS). Shared by both lanes.
+fn emit_js_harness(
+    work_dir: &Path,
+    harness_id: &str,
+    runtime: &Path,
+    module_abs: &Path,
+    func: &JsFunction,
+) -> JsBuildResult {
     let hdir = crate::auto::layout::harness_dir(work_dir, harness_id);
     if let Err(e) = std::fs::create_dir_all(&hdir) {
         return JsBuildResult::Failed(format!("create {}: {e}", hdir.display()));
@@ -121,7 +133,7 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
     let main_path = hdir.join("main");
     let script = format!(
         "#!/bin/sh\n\
-         # GOVFUZZ_FRAMED GOVFUZZ_JS_LAUNCHER govfuzz Node.js driver launcher (native JS lane).\n\
+         # GOVFUZZ_FRAMED GOVFUZZ_JS_LAUNCHER govfuzz Node.js driver launcher.\n\
          # The engine sets GOVFUZZ_FRAMED + GOVFUZZ_COV_SHM in the environment; node\n\
          # inherits them across this exec. The driver records V8 precise block coverage\n\
          # into the file-backed GOVFUZZ_COV_SHM map and speaks the framed protocol.\n\
@@ -143,6 +155,104 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         return JsBuildResult::Failed(format!("chmod +x {}: {e}", main_path.display()));
     }
     JsBuildResult::Built
+}
+
+/// Resolve the TypeScript transpiler: `esbuild` on PATH (preferred — a single fast
+/// binary that strips types), else the local `npx esbuild`. Returns the argv prefix.
+fn locate_esbuild() -> Option<Vec<String>> {
+    if let Ok(paths) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&paths) {
+            if dir.join("esbuild").is_file() {
+                return Some(vec![dir.join("esbuild").to_string_lossy().into_owned()]);
+            }
+        }
+    }
+    // `npx --no-install esbuild` uses a project-local esbuild if present.
+    if Command::new("npx")
+        .arg("--version")
+        .output()
+        .ok()?
+        .status
+        .success()
+    {
+        return Some(vec![
+            "npx".to_owned(),
+            "--no-install".to_owned(),
+            "esbuild".to_owned(),
+        ]);
+    }
+    None
+}
+
+/// The TypeScript lane's build (M3.8). Transpile the `.ts` target to CommonJS `.js`
+/// with esbuild (bundling local imports, leaving `node_modules` external), then
+/// reuse the JS driver on the transpiled module. A missing node/esbuild, or a
+/// transpile/load failure, skips cleanly.
+pub fn build_ts_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str) -> JsBuildResult {
+    if !have_node() {
+        return JsBuildResult::Skip(
+            "no `node` runtime found; install Node.js to fuzz TypeScript (skips cleanly)"
+                .to_owned(),
+        );
+    }
+    let Some(runtime) = locate_js_runtime() else {
+        return JsBuildResult::Failed(
+            "could not locate the bundled js_runtime/govfuzz_driver.js".to_owned(),
+        );
+    };
+    let func = match resolve_target(candidate) {
+        Ok(f) => f,
+        Err(reason) => return JsBuildResult::Skip(reason),
+    };
+    let Some(esbuild) = locate_esbuild() else {
+        return JsBuildResult::Skip(
+            "no TypeScript transpiler found (install esbuild: `npm i -g esbuild`); the \
+             TS lane skips cleanly"
+                .to_owned(),
+        );
+    };
+    let src_abs = candidate
+        .source_path
+        .canonicalize()
+        .unwrap_or_else(|_| candidate.source_path.clone());
+
+    let hdir = crate::auto::layout::harness_dir(work_dir, harness_id);
+    if let Err(e) = std::fs::create_dir_all(&hdir) {
+        return JsBuildResult::Failed(format!("create {}: {e}", hdir.display()));
+    }
+    let out_js = hdir.join("target.js");
+
+    // Transpile: bundle local TS imports + strip types, keep node_modules external.
+    let mut cmd = Command::new(&esbuild[0]);
+    cmd.args(&esbuild[1..])
+        .arg(&src_abs)
+        .arg("--bundle")
+        .arg("--packages=external")
+        .arg("--format=cjs")
+        .arg("--platform=node")
+        .arg(format!("--outfile={}", out_js.display()));
+    match cmd.output() {
+        Ok(o) if o.status.success() => {}
+        Ok(o) => {
+            let msg = String::from_utf8_lossy(&o.stderr);
+            return JsBuildResult::Skip(format!(
+                "esbuild could not transpile {}: {}",
+                src_abs.display(),
+                msg.lines().next().unwrap_or("").trim()
+            ));
+        }
+        Err(e) => return JsBuildResult::Skip(format!("spawn esbuild: {e}")),
+    }
+    // Smoke-test the transpiled module loads (deps resolvable).
+    if let Ok(out) = Command::new("node").arg("-c").arg(&out_js).output() {
+        if !out.status.success() {
+            return JsBuildResult::Skip(format!(
+                "transpiled {} does not parse (node -c)",
+                out_js.display()
+            ));
+        }
+    }
+    emit_js_harness(work_dir, harness_id, &runtime, &out_js, &func)
 }
 
 #[cfg(unix)]

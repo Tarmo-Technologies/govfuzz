@@ -1485,6 +1485,17 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         eprintln!("govfuzz auto: JVM sink oracle — {jsinks} input-reachable sink(s) recorded");
     }
 
+    // COBOL crash attribution: replay each COBOL crash to recover libcob's
+    // `<file>.cob:<line>: error: <what>` diagnostic and enrich the generic SIGSEGV
+    // finding with the COBOL source site + mapped CWE (out-of-bounds ref-mod →
+    // CWE-125, zero divide → CWE-369, size overflow → CWE-190, ...).
+    let cobol_attributed = crate::auto::cobol_oracle::run_cobol_attribution(&work);
+    if cobol_attributed > 0 {
+        eprintln!(
+            "govfuzz auto: COBOL attribution — {cobol_attributed} crash(es) mapped to a COBOL runtime error + CWE"
+        );
+    }
+
     // Build-recovery provenance (C): for a crash found on a stub-stitched build,
     // rebuild a poisoned variant (`make prov`) in which every value-returning stub
     // aborts on call, and replay the crash's min input. A stub on the crash path ->

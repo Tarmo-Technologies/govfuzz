@@ -644,8 +644,8 @@ fn write_source_dictionary(
         Lang::Java => java_parser::extract_java_dictionary_tokens(source).ok(),
         Lang::Python => python_parser::extract_python_dictionary_tokens(source).ok(),
         Lang::Perl => perl_parser::extract_perl_dictionary_tokens(source).ok(),
-        // COBOL is fuzzed through the generated C; its dictionary comes from that C.
-        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol => None,
+        // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
+        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
     };
     let Some(tokens) = tokens else {
         return;
@@ -1276,6 +1276,40 @@ fn run_attempt(
         }
     }
 
+    // Step 0: Fortran lane (M3.5). Compile the .f90 with gfortran (ASan + trace-pc
+    // coverage + `-fcheck`), wrap it in a glue that calls the routine via the
+    // gfortran C ABI, and build on the passthrough C fork-server path. ASan reports
+    // memory corruption as a genuine crash with the `.f90:line` — no exit()
+    // interposition needed (unlike COBOL).
+    if matches!(candidate.lang, crate::auto::candidate::Lang::Fortran) {
+        progress.update(&ProgressUpdate::phase(Phase::Generate));
+        match crate::auto::fortran_build::build_fortran_harness(
+            candidate,
+            work_dir,
+            &candidate.harness_id,
+        ) {
+            crate::auto::fortran_build::FortranBuildResult::Built => {}
+            crate::auto::fortran_build::FortranBuildResult::Skip(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::UnsupportedParams { reason },
+                    harness_dir,
+                });
+            }
+            crate::auto::fortran_build::FortranBuildResult::Failed(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::FailedBuild {
+                        repairs: Vec::new(),
+                        retries: 0,
+                        last_errors: build_classifier::classify(&reason),
+                    },
+                    harness_dir,
+                });
+            }
+        }
+    }
+
     // Step 0a: the native Rust lane (M1.2). Generate the govfuzz harness, build
     // it as a sancov+ASan staticlib with rustc-nightly, and clang-link it with
     // the shared C fork-server driver to `<work>/harnesses/<id>/main`. On success the
@@ -1336,6 +1370,7 @@ fn run_attempt(
                 | crate::auto::candidate::Lang::Perl
                 | crate::auto::candidate::Lang::Go
                 | crate::auto::candidate::Lang::Cobol
+                | crate::auto::candidate::Lang::Fortran
         );
 
     // Step 0: pre-skip targets that can never link/run from an
@@ -2802,6 +2837,8 @@ fn auto_sequence_candidate(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Go => false,
         // COBOL is prebuilt (Step 0) into a C harness; no C auto_sequence path (M3.4).
         crate::auto::candidate::Lang::Cobol => false,
+        // Fortran is prebuilt (Step 0) into a C harness; no C auto_sequence path (M3.5).
+        crate::auto::candidate::Lang::Fortran => false,
     }
 }
 
@@ -2827,6 +2864,8 @@ fn static_candidate_can_include_defining_source(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Go => false,
         // COBOL builds a C harness in Step 0; "paste the defining source" never applies.
         crate::auto::candidate::Lang::Cobol => false,
+        // Fortran builds a C harness in Step 0; "paste the defining source" never applies.
+        crate::auto::candidate::Lang::Fortran => false,
     }
 }
 
@@ -3221,6 +3260,19 @@ fn try_build(
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(
                         "COBOL harness binary missing (Step 0 build did not produce harnesses/<id>/main)",
+                    ),
+                }
+            }
+        }
+        // Fortran compiled its C harness binary in Step 0 (gfortran + passthrough driver).
+        Lang::Fortran => {
+            let main_bin = crate::auto::layout::harness_dir(work_dir, harness_id).join("main");
+            if main_bin.is_file() {
+                BuildOutcome::Success
+            } else {
+                BuildOutcome::Failed {
+                    errors: build_classifier::classify(
+                        "Fortran harness binary missing (Step 0 build did not produce harnesses/<id>/main)",
                     ),
                 }
             }

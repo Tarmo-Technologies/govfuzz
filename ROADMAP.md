@@ -2844,9 +2844,22 @@ mainstream.
   exported functions; real coverage via V8 (`NODE_V8_COVERAGE` / inspector) folded
   into the shared edge map; drive JSON / string / Buffer args. tree-sitter-javascript
   (+ typescript).
-- **C#** — .NET lane; discover public methods; build via `dotnet` / `csc` subprocess;
-  coverage via a lightweight IL-instrumentation agent; drive args.
-  tree-sitter-c-sharp.
+- **C#** — **Shipped 2026-07-12.** .NET lane over the shared fork-server engine: a
+  `public` method taking a `byte[]`/`string`/`Stream` is discovered, the target is
+  built via `dotnet` through a project reference (the reference pinned to the best
+  framework the installed SDK supports), its IL is instrumented with SharpFuzz
+  (`sharpfuzz <dll>`, Apache-2.0 — subprocess + user-harness-linked, never linked
+  into govfuzz), and the driver `mmap`s `GOVFUZZ_COV_SHM` into
+  `SharpFuzz.Common.Trace.SharedMem` (the AFL 64 KB map == `GOVFUZZ_COV_BITS`) to
+  bridge real edge coverage. A warm CLR is kept alive over the framed protocol; an
+  uncaught non-rejection exception hard-halts (exit 86) and maps to a GF rule + CWE.
+  Like the JVM lane it runs without the LD_PRELOAD shim (the .NET host's own
+  startup I/O would trip the TOCTOU/open oracles). Validated on a 25-project /
+  69,608-file campaign: 0 panics, 3,113 fuzzable methods discovered; end-to-end on
+  YamlDotNet at ~15k exec/s with 2,304 edges and 8 fuzz-confirmed
+  `IndexOutOfRangeException` findings (a real empty-string edge case). See
+  `docs/site/csharp.md`. **Remaining:** widen beyond a single input parameter
+  (constructed options/context objects, generic methods), and a dictionary miner.
 
 ### 30.4 Sequencing and honesty
 

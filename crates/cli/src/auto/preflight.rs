@@ -125,11 +125,12 @@ fn requirements(
             &[&["dotnet"], &["sharpfuzz"]],
             "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`",
         ),
+        Lang::Js => ("JavaScript", &[&["node"]], "install Node.js"),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 11] = [
+const LANES: [Lang; 12] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -141,6 +142,7 @@ const LANES: [Lang; 11] = [
     Lang::Cobol,
     Lang::Fortran,
     Lang::CSharp,
+    Lang::Js,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

@@ -645,8 +645,10 @@ fn write_source_dictionary(
         Lang::Python => python_parser::extract_python_dictionary_tokens(source).ok(),
         Lang::Perl => perl_parser::extract_perl_dictionary_tokens(source).ok(),
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
-        // C# mines its dictionary at instrument time is not wired; skip (no tokens).
-        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran | Lang::CSharp => None,
+        // C#/JS dictionary mining is not wired yet; skip (no tokens).
+        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran | Lang::CSharp | Lang::Js => {
+            None
+        }
     };
     let Some(tokens) = tokens else {
         return;
@@ -1346,6 +1348,36 @@ fn run_attempt(
         }
     }
 
+    // Step 0: JavaScript / Node.js lane (M3.7). Resolve the target module, `node -c`
+    // syntax-check it, copy the framed driver, and emit a launcher `main` that execs
+    // `node` on the driver. No native binary: the driver drives the framed protocol +
+    // V8 coverage (like Python/Perl). A missing node, or a target that no longer
+    // parses, skips cleanly.
+    if matches!(candidate.lang, crate::auto::candidate::Lang::Js) {
+        progress.update(&ProgressUpdate::phase(Phase::Generate));
+        match crate::auto::js_build::build_js_harness(candidate, work_dir, &candidate.harness_id) {
+            crate::auto::js_build::JsBuildResult::Built => {}
+            crate::auto::js_build::JsBuildResult::Skip(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::UnsupportedParams { reason },
+                    harness_dir,
+                });
+            }
+            crate::auto::js_build::JsBuildResult::Failed(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::FailedBuild {
+                        repairs: Vec::new(),
+                        retries: 0,
+                        last_errors: build_classifier::classify(&reason),
+                    },
+                    harness_dir,
+                });
+            }
+        }
+    }
+
     // Step 0a: the native Rust lane (M1.2). Generate the govfuzz harness, build
     // it as a sancov+ASan staticlib with rustc-nightly, and clang-link it with
     // the shared C fork-server driver to `<work>/harnesses/<id>/main`. On success the
@@ -1408,6 +1440,7 @@ fn run_attempt(
                 | crate::auto::candidate::Lang::Cobol
                 | crate::auto::candidate::Lang::Fortran
                 | crate::auto::candidate::Lang::CSharp
+                | crate::auto::candidate::Lang::Js
         );
 
     // Step 0: pre-skip targets that can never link/run from an
@@ -2882,6 +2915,8 @@ fn auto_sequence_candidate(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Fortran => false,
         // C# is prebuilt (Step 0); the CLR driver owns the framed loop (M3.6).
         crate::auto::candidate::Lang::CSharp => false,
+        // JS is prebuilt (Step 0); the Node driver owns the framed loop (M3.7).
+        crate::auto::candidate::Lang::Js => false,
     }
 }
 
@@ -2912,6 +2947,8 @@ fn static_candidate_can_include_defining_source(c: &Candidate) -> bool {
         // C# builds through a project reference in Step 0; "paste the defining
         // source" never applies (M3.6).
         crate::auto::candidate::Lang::CSharp => false,
+        // JS `require`s the target module; "paste the defining source" never applies (M3.7).
+        crate::auto::candidate::Lang::Js => false,
     }
 }
 
@@ -3333,6 +3370,20 @@ fn try_build(
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(
                         "C# harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
+                    ),
+                }
+            }
+        }
+        // JS emitted its `node` launcher `main` in Step 0 (node -c + driver copy);
+        // pass-through succeeds iff it exists.
+        Lang::Js => {
+            let main_bin = crate::auto::layout::harness_dir(work_dir, harness_id).join("main");
+            if main_bin.is_file() {
+                BuildOutcome::Success
+            } else {
+                BuildOutcome::Failed {
+                    errors: build_classifier::classify(
+                        "JS harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
                     ),
                 }
             }

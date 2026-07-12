@@ -4,6 +4,20 @@
 
 ## Unreleased
 
+- **Fortran fuzzing lane.** `govfuzz auto --languages fortran` discovers Fortran
+  `subroutine`/`function` procedures with a `character` (byte-buffer) argument,
+  compiles them with `gfortran -fsanitize=address
+  -fsanitize-coverage=trace-pc,trace-cmp`, and fuzzes them coverage-guided on the C
+  fork-server engine. AddressSanitizer is the memory oracle — a Fortran array/
+  substring out-of-bounds is reported directly as a crash with the exact
+  `.f90:line` and CWE (heap → CWE-122/787). The glue calls the routine via the
+  gfortran C ABI (args by reference, a hidden length per character argument) with
+  the primary buffer heap-allocated to the input size so a real OOB lands in ASan's
+  redzone. Validated on a 20-project / 40,367-file campaign: 0 panics, 13,406
+  fuzzable procedures discovered, 6,500+ exec/s, 0 false positives. See
+  [docs/site/fortran.md](docs/site/fortran.md). libgfortran (LGPLv3 + GCC RLE) links
+  into the user harness like the C runtime; gfortran is a subprocess only.
+
 - **COBOL fuzzing lane — the first turnkey COBOL fuzzer.** `govfuzz auto
   --languages cobol` discovers COBOL programs (`PROGRAM-ID` with a fuzzable
   `LINKAGE` `PIC X` operand), translates them to C with GnuCOBOL (`cobc -C

@@ -4,6 +4,19 @@
 
 ## Unreleased
 
+- **Coverage depth for the C# and JavaScript lanes.** Three improvements from a
+  post-merge dogfood sweep: (1) both lanes now **mine a magic-value dictionary**
+  from the target's string/integer literals — the managed/interpreted drivers carry
+  no CmpLog, so a single multi-byte comparison gate (`if (s == "OPENSESAME")`) was
+  previously uncrackable; with the dictionary it is found (the libFuzzer-autodict /
+  Jazzer-value-profile lever the other managed lanes already had). (2) The
+  **JavaScript lane discovers public methods of exported classes** (`Class#method`),
+  not just free functions — the driver `new`s a no-arg-constructible class and calls
+  the method, covering class-based libraries. (3) The **JavaScript lane no longer
+  runs under the LD_PRELOAD runtrace shim** (like the JVM/.NET lanes): Node's
+  `stat()`→`open()` on every `require` is the same TOCTOU pattern that false-positived
+  on the .NET host, so it is excluded.
+
 - **JavaScript / Node.js fuzzing lane.** `govfuzz auto --languages javascript`
   discovers exported functions (CommonJS + ESM) taking a `Buffer`/`string`, and
   fuzzes them coverage-guided on govfuzz's own fork-server engine driving one warm

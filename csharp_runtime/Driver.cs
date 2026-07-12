@@ -81,6 +81,11 @@ internal static unsafe class Driver
     //   - FormatException / DecoderFallbackException: bad input format/encoding.
     //   - NotSupportedException / NotImplementedException: this input drove the
     //     API down an unsupported/unimplemented path — not a memory-safety bug.
+    //   - InvalidOperationException: the object is in an invalid STATE for this call.
+    //     govfuzz `new`s a fresh receiver and calls one method on it, so a
+    //     stateful API frequently throws this from an unmet precondition (e.g.
+    //     SharpZipLib `Inflater.SetDictionary` on a fresh inflater: "Dictionary is
+    //     not needed") — our synthesized calling context, not a target defect.
     //   - IOException (+ EndOfStream/FileNotFound): environmental / stream end.
     //   - KeyNotFoundException: a synthesized container missing a key the target
     //     pre-seeds — our wrong shape (mirrors Python KeyError).
@@ -93,6 +98,7 @@ internal static unsafe class Driver
         || exc is FormatException
         || exc is NotSupportedException
         || exc is NotImplementedException
+        || exc is InvalidOperationException  // stateful API called in an invalid state
         || exc is IOException             // + EndOfStream, FileNotFound, DirectoryNotFound
         || exc is System.Collections.Generic.KeyNotFoundException
         || exc is TimeoutException

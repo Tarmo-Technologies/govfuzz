@@ -103,10 +103,13 @@ protobuf-net, SharpZipLib, ML.NET, and more:
   discovery is robust across enormous, idiomatic C# (roslyn alone: 17,094 files →
   973 targets). 24 of 25 repos completed cleanly; only dotnet/runtime (32,403
   files, the single largest .NET repo) needs a longer discovery budget.
-- **End-to-end**: a target that throws on a magic input is built, IL-instrumented,
-  and driven at **~6,900 executions/second** on one warm CLR; the coverage-guided
-  engine reaches the guarded branch and reports the exception (GF-210) with the
-  managed stack trace — **0 shim false positives**.
+- **End-to-end on YamlDotNet**: 14 of 21 methods were built, IL-instrumented, and
+  fuzzed at **~15,000 executions/second** on one warm CLR with **2,304 edges** of
+  real coverage — and govfuzz **fuzz-confirmed 8 real bugs**: a
+  `System.IndexOutOfRangeException` (CWE-125) reachable from every naming-convention
+  entry point, root-caused to an unguarded `text[0]` on an empty string in
+  `StringExtensions.ToCamelOrPascalCase`. Zero hand-written harness, **0 shim false
+  positives**.
 
 ## Requirements & licensing
 

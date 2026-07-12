@@ -94,20 +94,57 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         Err(_) => candidate.source_path.clone(),
     };
 
-    // Syntax smoke-test: `node -c <module>`. A parse error means the module can't be
-    // loaded — skip cleanly with the reason (mirrors the Python `-c` import check).
-    if let Ok(out) = Command::new("node").arg("-c").arg(&module_abs).output() {
+    // Syntax + load smoke-test: the module must parse AND `require` at runtime.
+    // `node -c` only checks syntax; a module whose `require('...')` cannot resolve
+    // (an npm dependency not installed — `side-channel`, etc.) parses fine but dies
+    // at startup, which would silently fuzz 0 inputs. Skip it cleanly with the
+    // reason (mirrors the Python lane's import check).
+    if let Some(reason) = js_module_load_error(&module_abs) {
+        return JsBuildResult::Skip(reason);
+    }
+
+    emit_js_harness(work_dir, harness_id, &runtime, &module_abs, &func)
+}
+
+/// `None` if the module parses and `require`s cleanly, else a skip reason. Catches
+/// both syntax errors and unresolved runtime `require`s (missing npm dependencies).
+fn js_module_load_error(module_abs: &Path) -> Option<String> {
+    // `node -c` first (cheap, no side effects) for a precise syntax message.
+    if let Ok(out) = Command::new("node").arg("-c").arg(module_abs).output() {
         if !out.status.success() {
             let msg = String::from_utf8_lossy(&out.stderr);
-            return JsBuildResult::Skip(format!(
+            return Some(format!(
                 "`node -c` rejected {}: {}",
                 module_abs.display(),
                 msg.lines().next().unwrap_or("").trim()
             ));
         }
     }
-
-    emit_js_harness(work_dir, harness_id, &runtime, &module_abs, &func)
+    // Then require it in a throwaway process to confirm the dependency graph resolves.
+    let out = Command::new("node")
+        .arg("-e")
+        .arg("require(process.argv[1])")
+        .arg(module_abs)
+        .output()
+        .ok()?;
+    if out.status.success() {
+        return None;
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let first = stderr
+        .lines()
+        .find(|l| l.contains("Error") || l.contains("Cannot find module"))
+        .unwrap_or_else(|| stderr.lines().next().unwrap_or(""))
+        .trim();
+    if stderr.contains("Cannot find module") {
+        Some(format!(
+            "{} requires an npm dependency that is not installed ({first}); run \
+             `npm install` in the project to fuzz it",
+            module_abs.display()
+        ))
+    } else {
+        Some(format!("{} failed to load: {first}", module_abs.display()))
+    }
 }
 
 /// Copy the driver and emit the `node` launcher pointing at `module_abs` (the target
@@ -243,14 +280,10 @@ pub fn build_ts_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         }
         Err(e) => return JsBuildResult::Skip(format!("spawn esbuild: {e}")),
     }
-    // Smoke-test the transpiled module loads (deps resolvable).
-    if let Ok(out) = Command::new("node").arg("-c").arg(&out_js).output() {
-        if !out.status.success() {
-            return JsBuildResult::Skip(format!(
-                "transpiled {} does not parse (node -c)",
-                out_js.display()
-            ));
-        }
+    // Smoke-test the transpiled module parses AND loads (external node_modules
+    // requires resolvable) — else it would fuzz 0 inputs. Skip cleanly otherwise.
+    if let Some(reason) = js_module_load_error(&out_js) {
+        return JsBuildResult::Skip(reason);
     }
     emit_js_harness(work_dir, harness_id, &runtime, &out_js, &func)
 }

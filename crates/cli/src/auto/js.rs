@@ -440,7 +440,271 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
             }
         }
     }
+
+    // Pass 2: exported classes → fuzz each public instance method as `Class#method`.
+    // The driver `new`s the class (no-arg) and calls the method, so only
+    // no-arg-constructible classes qualify (mirrors the C# instance-method guard).
+    let classes = collect_classes(&lines);
+    let mut push_method = |export_path: String, method: &ClassMethod| {
+        if method.params.is_empty() || non_input_first_param(&method.params[0]) {
+            return;
+        }
+        let full = format!("{export_path}#{}", method.name);
+        if !seen.insert(full.clone()) {
+            return;
+        }
+        out.push(JsFunction {
+            name: full.clone(),
+            export_path: full,
+            line: method.line,
+            arg_kind: infer_arg_kind(&method.params[0]),
+        });
+    };
+    for (idx, line) in lines.iter().enumerate() {
+        let t = line.trim();
+        let line_no = (idx + 1) as u32;
+        // (class-key, export-path). The class-key selects the ClassInfo; the
+        // export-path is what the driver resolves from module.exports.
+        let exported: Option<(Option<String>, String)> =
+            if let Some(r) = t.strip_prefix("export class ") {
+                class_name(r).map(|n| (Some(n.clone()), n))
+            } else if let Some(rest) = t.strip_prefix("export default class") {
+                // ESM default: interop-loaded as `mod.default`.
+                Some((
+                    class_name(rest).or_else(|| class_at_line(&classes, line_no)),
+                    "default".to_owned(),
+                ))
+            } else if let Some(r) = t
+                .strip_prefix("module.exports = class")
+                .or_else(|| t.strip_prefix("module.exports=class"))
+            {
+                // `module.exports = class [Name] {` — default export, path "".
+                Some((
+                    class_name(r).or_else(|| class_at_line(&classes, line_no)),
+                    String::new(),
+                ))
+            } else {
+                class_export_assignment(t).map(|(k, p)| (Some(k), p))
+            };
+        if let Some((Some(key), export_path)) = exported {
+            if let Some(info) = classes.get(&key) {
+                if info.constructible {
+                    for m in &info.methods {
+                        push_method(export_path.clone(), m);
+                    }
+                }
+            }
+        }
+    }
+    // Classes exported via `module.exports = { Foo }` / `export { Foo }`.
+    for (idx, line) in lines.iter().enumerate() {
+        let t = line.trim();
+        let names = if t.starts_with("module.exports =") && t.contains('{') {
+            brace_names(&lines, idx).unwrap_or_default()
+        } else if let Some(r) = t.strip_prefix("export {") {
+            parse_object_keys(r.trim_end_matches('}'))
+        } else {
+            continue;
+        };
+        for name in names {
+            if let Some(info) = classes.get(&name) {
+                if info.constructible {
+                    for m in &info.methods {
+                        push_method(name.clone(), m);
+                    }
+                }
+            }
+        }
+    }
     out
+}
+
+/// A public instance method of a class.
+#[derive(Clone)]
+struct ClassMethod {
+    name: String,
+    params: Vec<String>,
+    line: u32,
+}
+
+/// A discovered class: its methods and whether it is no-arg-constructible.
+struct ClassInfo {
+    methods: Vec<ClassMethod>,
+    constructible: bool,
+    open_line: u32,
+}
+
+/// The class name after a `class ` keyword (up to `extends`/`{`/whitespace).
+fn class_name(rest: &str) -> Option<String> {
+    let name: String = rest
+        .trim_start()
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '$')
+        .collect();
+    is_ident(&name).then_some(name)
+}
+
+/// `exports.Foo = class` / `module.exports.Foo = class` → (class-name-key, export-path).
+fn class_export_assignment(t: &str) -> Option<(String, String)> {
+    for prefix in ["exports.", "module.exports."] {
+        if let Some(rest) = t.strip_prefix(prefix) {
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '$')
+                .collect();
+            let after = rest[name.len()..].trim_start();
+            if is_ident(&name) {
+                if let Some(rhs) = after.strip_prefix('=') {
+                    if rhs.trim_start().starts_with("class") {
+                        return Some((name.clone(), name));
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn class_at_line(
+    classes: &std::collections::HashMap<String, ClassInfo>,
+    line: u32,
+) -> Option<String> {
+    classes
+        .iter()
+        .find(|(_, info)| info.open_line == line)
+        .map(|(k, _)| k.clone())
+}
+
+/// Scan for class declarations and their public instance methods, tracking brace
+/// depth so nested braces don't confuse method detection. A class is
+/// no-arg-constructible unless it declares a `constructor` with a required argument.
+fn collect_classes(lines: &[String]) -> std::collections::HashMap<String, ClassInfo> {
+    let mut classes = std::collections::HashMap::new();
+    let mut depth = 0i32;
+    // Stack of (class_name, body_depth). A method is directly in the class body when
+    // depth == body_depth.
+    let mut stack: Vec<(String, i32)> = Vec::new();
+    let mut pending_class: Option<String> = None;
+
+    for (idx, line) in lines.iter().enumerate() {
+        let t = line.trim();
+        let line_no = (idx + 1) as u32;
+        // A class header (any form): `[export] [default] class Name ...` or
+        // `... = class Name ...`. Extract the name (may be anonymous).
+        if let Some(name) = class_header_name(t) {
+            pending_class = Some(name.clone());
+            classes.entry(name.clone()).or_insert(ClassInfo {
+                methods: Vec::new(),
+                constructible: true,
+                open_line: line_no,
+            });
+        } else if !stack.is_empty() && pending_class.is_none() {
+            // Directly inside a class body → method / constructor?
+            let (cls, body_depth) = stack.last().unwrap().clone();
+            if depth == body_depth {
+                if let Some((mname, params)) = class_member_signature(t) {
+                    if mname == "constructor" {
+                        let required = params
+                            .iter()
+                            .zip(constructor_has_default(t))
+                            .filter(|(_, has_def)| !*has_def)
+                            .count();
+                        if !params.is_empty() && required > 0 {
+                            if let Some(info) = classes.get_mut(&cls) {
+                                info.constructible = false;
+                            }
+                        }
+                    } else if let Some(info) = classes.get_mut(&cls) {
+                        info.methods.push(ClassMethod {
+                            name: mname,
+                            params,
+                            line: line_no,
+                        });
+                    }
+                }
+            }
+        }
+        // Brace accounting for this line.
+        for ch in line.bytes() {
+            match ch {
+                b'{' => {
+                    depth += 1;
+                    if let Some(cls) = pending_class.take() {
+                        stack.push((cls, depth));
+                    }
+                }
+                b'}' => {
+                    if stack.last().map(|(_, d)| *d == depth).unwrap_or(false) {
+                        stack.pop();
+                    }
+                    depth -= 1;
+                }
+                _ => {}
+            }
+        }
+    }
+    classes
+}
+
+/// If `t` declares/opens a class, return its name (or a synthetic name for an
+/// anonymous class keyed by nothing — callers match anonymous by open line).
+fn class_header_name(t: &str) -> Option<String> {
+    let idx = t.find("class")?;
+    // Require `class` to be a standalone token (preceded by start/space/=, followed
+    // by space/{).
+    let before_ok = idx == 0 || matches!(t.as_bytes()[idx - 1], b' ' | b'=' | b'(');
+    let after = &t[idx + 5..];
+    let after_ok = after.starts_with(' ') || after.starts_with('{');
+    if !before_ok || !after_ok {
+        return None;
+    }
+    let name = class_name(after).unwrap_or_else(|| format!("__anon_class_{idx}"));
+    Some(name)
+}
+
+/// A class member signature `name(params) {` (or `=> `-less). Returns None for
+/// getters/setters, private (`#`) members, and non-method lines.
+fn class_member_signature(t: &str) -> Option<(String, Vec<String>)> {
+    let open = t.find('(')?;
+    let head = t[..open].trim();
+    // Tokens before `(`: modifiers + name. The name is the last token.
+    let toks: Vec<&str> = head.split_whitespace().collect();
+    let name_tok = *toks.last()?;
+    // Exclude getters/setters, generators, private, and control keywords.
+    if toks.iter().any(|m| {
+        matches!(
+            *m,
+            "get" | "set" | "if" | "for" | "while" | "switch" | "catch" | "return" | "function"
+        )
+    }) {
+        return None;
+    }
+    let name = name_tok.trim_start_matches('*');
+    if name.starts_with('#') || !is_ident(name) {
+        return None;
+    }
+    // The line must actually open a body or be a method (`) {`), not a call.
+    let after = &t[open..];
+    let close = after.find(')')?;
+    if !after[close..]
+        .trim_start_matches(')')
+        .trim_start()
+        .starts_with('{')
+    {
+        return None;
+    }
+    let params = parse_param_names(after);
+    Some((name.to_owned(), params))
+}
+
+/// Per-parameter "has a default value" flags for a `constructor(...)` line.
+fn constructor_has_default(t: &str) -> Vec<bool> {
+    let open = match t.find('(') {
+        Some(o) => o,
+        None => return Vec::new(),
+    };
+    let inner = balanced(&t[open..]).unwrap_or_default();
+    inner.split(',').map(|p| p.contains('=')).collect()
 }
 
 /// Collect the bare identifier keys of a `module.exports = { ... }` object literal
@@ -567,6 +831,51 @@ exports.tokenize = tokenize;
         assert_eq!(infer_arg_kind("source"), JsArgKind::Str);
         assert_eq!(infer_arg_kind("html"), JsArgKind::Str);
         assert_eq!(infer_arg_kind("x"), JsArgKind::Buffer); // unknown -> Buffer default
+    }
+
+    #[test]
+    fn discovers_exported_class_methods() {
+        let src = "\
+class Parser {
+  parse(input) { return input.length; }
+  reset() { }
+  #secret(x) { }
+  static make() { return new Parser(); }
+}
+module.exports = { Parser };
+";
+        let fns = parse_js(src);
+        // `Parser#parse` is discovered; `reset` (0 args), `#secret` (private), and
+        // `make` (static, 0 args) are not.
+        let paths: Vec<&str> = fns.iter().map(|f| f.export_path.as_str()).collect();
+        assert!(paths.contains(&"Parser#parse"), "got {paths:?}");
+        assert!(!paths.iter().any(|p| p.contains("reset")));
+        assert!(!paths.iter().any(|p| p.contains("secret")));
+    }
+
+    #[test]
+    fn skips_class_needing_ctor_args() {
+        let src = "\
+class Validator {
+  constructor(schema) { this.schema = schema; }
+  validate(input) { return this.schema.test(input); }
+}
+module.exports = { Validator };
+";
+        // Not no-arg-constructible -> no methods discovered.
+        assert!(parse_js(src).is_empty());
+    }
+
+    #[test]
+    fn exported_class_default_ctor_ok() {
+        let src = "\
+export class Lexer {
+  constructor() { this.pos = 0; }
+  tokenize(source) { return source.split(''); }
+}
+";
+        let fns = parse_js(src);
+        assert!(fns.iter().any(|f| f.export_path == "Lexer#tokenize"));
     }
 
     #[test]

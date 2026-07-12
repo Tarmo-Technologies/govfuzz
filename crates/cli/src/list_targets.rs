@@ -574,71 +574,7 @@ fn non_c_listed_target(
     }
 }
 
-fn compute_changed_set(git_ref: &str) -> Result<std::collections::HashSet<PathBuf>> {
-    use std::process::Command;
-    let toplevel = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .output()
-        .with_context(|| "spawn `git rev-parse --show-toplevel`; is git installed?")?;
-    if !toplevel.status.success() {
-        bail!(
-            "git rev-parse --show-toplevel failed: {}",
-            String::from_utf8_lossy(&toplevel.stderr).trim()
-        );
-    }
-    let repo_root = PathBuf::from(
-        std::str::from_utf8(&toplevel.stdout)
-            .with_context(|| "git toplevel output is not utf-8")?
-            .trim(),
-    );
-
-    let diff = Command::new("git")
-        .arg("-C")
-        .arg(&repo_root)
-        .args(["diff", "--name-only", &format!("{git_ref}..HEAD")])
-        .output()
-        .with_context(|| "spawn `git diff --name-only`")?;
-    if !diff.status.success() {
-        bail!(
-            "git diff --name-only {git_ref}..HEAD failed: {}",
-            String::from_utf8_lossy(&diff.stderr).trim()
-        );
-    }
-    let stdout =
-        std::str::from_utf8(&diff.stdout).with_context(|| "git diff output is not utf-8")?;
-    Ok(parse_changed_set(stdout, &repo_root))
-}
-
-fn parse_changed_set(stdout: &str, repo_root: &Path) -> std::collections::HashSet<PathBuf> {
-    let mut out = std::collections::HashSet::new();
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        out.insert(repo_root.join(trimmed));
-    }
-    out
-}
-
-fn path_in_changed_set(path: &Path, changed: &std::collections::HashSet<PathBuf>) -> bool {
-    if changed.contains(path) {
-        return true;
-    }
-    if let Ok(canonical) = path.canonicalize() {
-        if changed.contains(&canonical) {
-            return true;
-        }
-        for entry in changed {
-            if let Ok(entry_canonical) = entry.canonicalize() {
-                if entry_canonical == canonical {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
+use crate::git_diff::{compute_changed_set, path_in_changed_set};
 
 fn path_is_excluded(path: &Path, args: &ListTargetsArgs) -> bool {
     path_matches_exclusion(path, &args.path, &args.exclude_paths, &args.exclude)
@@ -1204,40 +1140,6 @@ mod tests {
         assert_eq!(first["target"]["language"], "ada");
     }
 
-    #[test]
-    fn parse_changed_set_handles_typical_diff_output() {
-        let root = PathBuf::from("/repo");
-        let set = super::parse_changed_set("crates/foo/src/a.rs\ncrates/bar/src/b.rs\n", &root);
-        assert_eq!(set.len(), 2);
-        assert!(set.contains(&root.join("crates/foo/src/a.rs")));
-        assert!(set.contains(&root.join("crates/bar/src/b.rs")));
-    }
-
-    #[test]
-    fn parse_changed_set_empty_input_returns_empty_set() {
-        let root = PathBuf::from("/repo");
-        let set = super::parse_changed_set("", &root);
-        assert!(set.is_empty());
-    }
-
-    #[test]
-    fn parse_changed_set_skips_blank_lines() {
-        let root = PathBuf::from("/repo");
-        let set = super::parse_changed_set("a.rs\n\n\nb.rs\n", &root);
-        assert_eq!(set.len(), 2);
-    }
-
-    #[test]
-    fn path_in_changed_set_matches_exact_path() {
-        let mut set = std::collections::HashSet::new();
-        set.insert(PathBuf::from("/repo/src/lib.rs"));
-        assert!(super::path_in_changed_set(
-            &PathBuf::from("/repo/src/lib.rs"),
-            &set
-        ));
-        assert!(!super::path_in_changed_set(
-            &PathBuf::from("/repo/src/other.rs"),
-            &set
-        ));
-    }
+    // The git-diff helpers moved to `crate::git_diff`; their unit tests live
+    // there now (see `git_diff::tests`).
 }

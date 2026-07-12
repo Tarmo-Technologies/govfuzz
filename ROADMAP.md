@@ -49,9 +49,13 @@ The user-facing current behavior is documented under `docs/site/`. In brief:
   un-importable target or missing CPAN dep skips cleanly). Go (`.go`, skipping
   `_test.go`) is the compiled, fastest lane: the generated `main` imports the
   target package via a module `replace`, is built with `go build` to a native
-  framed fork-server binary, and recovers panics into findings — but its
-  coverage is currently black-box (coverage-guided Go is a documented follow-up,
-  since Go's sancov needs the Go fuzzing runtime). All three map outcomes to CWE
+  framed fork-server binary, and recovers panics into findings. Go now has real
+  edge coverage (not black-box): it is built with `go build -cover
+  -covermode=atomic`, and per input the harness clears Go's atomic counters, runs
+  the target, then folds the SET of executed blocks (via
+  `runtime/coverage.WriteCounters`, ignoring the count value so a single
+  execution maps to one edge set) into the shared `GOVFUZZ_COV_SHM` edge map —
+  the same coverage-guided feedback the other lanes get. All three map outcomes to CWE
   and suppress input-rejection exceptions to avoid untyped-lane false positives.
   The behavioral/taint runtrace oracles ARE armed for these lanes (the
   LD_PRELOAD shim interposes the CPython and Perl interpreter processes and the
@@ -1971,17 +1975,25 @@ end Main;
      `()`/`[]`/`{}`/`<e>..</e>`), iterative (no mutator-side recursion) and
      capped at depth 512, exposed via `--structured-inputs recursive`. This is
      the recursion-limit / stack-exhaustion lever the flat structured mutators
-     lacked. **Remaining:** user-supplied context-free grammars (load an
-     arbitrary `.g`/EBNF and generate from it) and stateful/protocol mutators.
+     lacked. **Delivered further.** User-supplied grammars ship: `fuzz --grammar
+     <file>` loads a JSON grammar object (rule name → production alternatives) and
+     generates conformant inputs from it (`load_grammar_for_run` in
+     `crates/cli/src/fuzz.rs`). **Remaining:** arbitrary `.g`/EBNF grammar-file
+     ingestion (only the JSON grammar format is accepted today) and
+     stateful/protocol mutators.
 9. Additional executable-oracle classes (reclassified from §25 #343) and deeper
    C/C++ recursive object graphs + full C++ template/parity harnessing
    (reclassified from §25 #345).
    - **Advanced (2026-06-19).** Added GF-417 insecure-temporary-file oracle
      (CWE-377, CERT FIO21-C): `open`/`openat` creating a file in a
      world-writable dir without `O_EXCL` (18 registered oracles now).
-     **Remaining:** more oracle classes (TOCTOU, weak-randomness,
-     integer-overflow-via-instrumentation), deeper C/C++ recursive object
-     graphs, and full C++ template/parity harnessing.
+     **Advanced further.** The TOCTOU runtime oracle shipped (GF-418
+     `ToctouRuntime`, CWE-367): the runtrace shim logs the time-of-check path
+     probe and correlates it with a later tainted open (`log_path_check` in
+     `crates/govfuzz_runtrace_shim/src/hooks/fs.rs`). **Remaining:**
+     weak-randomness (CWE-338) and integer-overflow-via-instrumentation oracle
+     classes, deeper C/C++ recursive object graphs, and full C++ template/parity
+     harnessing.
 
 ---
 
@@ -2723,3 +2735,109 @@ rather than degrading.
 - Genuinely **cfront** pre-C++98 code that the permissive tree-sitter-cpp grammar
   cannot parse at all yields no candidate (documented limitation); modern-C++-
   with-pre-standard-headers is the common, handled case.
+
+---
+
+## 30. v1.1 development program (2026-07-11)
+
+Post public-launch direction. The tool is already broad (8 fuzzing lanes, all
+coverage-guided) and deep (25+ taint-confirmed oracles, cmplog/RedQueen, AFL++,
+SBOM/CVE, `--force`). The next leverage is **distribution** (get it into people's
+CI with zero friction), **one new confirmed-bug class** (differential fuzzing),
+and **targeted breadth** (COBOL/Fortran on the legacy-government thesis, plus
+JavaScript and C#). Ordered by leverage; each ships incrementally.
+
+### 30.1 PR-native incremental CI + GitHub Action — usability is the acceptance bar
+
+**Goal:** running govfuzz on every pull request must take one `uses:` line and zero
+configuration. The design bar is *extreme usability*, not just capability.
+
+- **`govfuzz ci` mode** — diff-scoped. Given a base ref (`--diff <ref>`, defaulting
+  to the PR base / `merge-base`), discover only the changed functions/files and
+  their reachable closure and fuzz/scan just those; the rest is skipped.
+- **Incremental cache** — persist `scan_index` + corpus across runs keyed by content
+  hash; unchanged targets are not re-fuzzed. A warm cache makes repeat PR runs fast.
+- **Action** — `Tarmo-Technologies/govfuzz-action` (composite/Docker): one `uses:`
+  line, sensible defaults, triggers on `pull_request`. Auto-detects languages and
+  build; no config file required.
+- **Output where reviewers already are** — inline PR review comments on the changed
+  lines for each finding; SARIF upload to the GitHub code-scanning tab; and one
+  concise PR summary comment (counts, confirmed-vs-static, CWE breakdown, wall-time).
+- **Sane exit semantics** — non-zero exit only on *new confirmed* findings by
+  default (configurable: `all` / `confirmed` / `never`); a PR that touches nothing
+  fuzzable reports "nothing to do" and passes.
+- **Usability guardrails** — bounded default wall-time budget; clear line-accurate
+  annotations; a `--dry-run`/preview; helpful failure messages when a toolchain is
+  missing (never a silent skip).
+
+**Acceptance:** adding ~3 lines of YAML to any supported-language repo produces
+line-level PR annotations on the next PR with no further setup, and repeat runs are
+fast on a warm cache.
+
+**Shipped 2026-07-12.** `govfuzz ci --changed-since <ref>` (+ `--changed-paths-from`,
+`--sarif`, `--ci-json`, `--pr-gate {off,confirmed,all,never}`), a shared `git_diff`
+module (merge-base aware) reused by `list-targets`, and the composite Action
+`.github/actions/govfuzz-pr/` (base-ref resolve, release-binary install with source
+fallback, SARIF upload, sticky comment) with a copy-paste example workflow and
+`docs/site/ci.md`. Scoping reuses the post-discovery `target_files` filter + the
+discovery cache. Remaining follow-up: true incremental baseline delta (fuzz base vs
+head, report only newly-introduced findings) — diff-scoping covers the common case.
+
+### 30.2 Differential fuzzing — a new confirmed-bug class
+
+**Goal:** feed identical inputs to two implementations (or two versions of one API)
+and flag behavioral divergence — a bug class neither crash-only fuzzers nor
+syntactic SAST catch.
+
+- **Foundation present:** the `DifferentialOutputRuntime` oracle already detects
+  output divergence; design doc at `docs/differential-fuzzing.md`.
+- **`govfuzz auto --differential <a>:<b>`** — two targets (two libraries, or old vs
+  new of the same API). A shared corpus and shared typed decoder guarantee both
+  sides see the identical input; divergence in return value, output bytes,
+  exception/panic, or exit is recorded as a finding (CWE-440 / CWE-697 family) with
+  both observed outputs captured for the report.
+- **Headline use case:** same source at two git refs — behavioral regression
+  detection. Native lanes first (C/C++/Rust).
+
+**Shipped 2026-07-12 (two-compiler variant).** The standalone `govfuzz differential`
+subcommand (arbitrary two-harness + metamorphic, stdout compare) already existed; the
+new piece is auto-integration: `govfuzz auto --differential clang:gcc` rebuilds each
+C/C++ harness under both compilers (a portable `make diff` target) and replays the
+fuzz corpus through both, flagging **exit/crash divergence** as a GF-301 finding in
+the normal report (govfuzz harnesses suppress target stdout, so exit status is the
+signal). Remaining: two-source-tree / two-git-ref differential (build the same API
+from two trees and compare) and richer semantic comparators.
+
+### 30.3 New language lanes — COBOL, Fortran, JavaScript, C#
+
+Each follows the established lane recipe: tree-sitter discovery + ranking → harness
+gen → build → framed fork-server + coverage → CWE mapping + static rules. Discovery
++ static rules (report-only) land first, then the native fuzzing lane, so partial
+coverage ships incrementally. Legacy-government languages first (on-thesis), then
+mainstream.
+
+- **COBOL** — GnuCOBOL (`cobc`) subprocess build (GPL → subprocess only, same posture
+  as GNAT); discover `PROGRAM-ID`s / paragraphs; drive the `LINKAGE SECTION` /
+  `ACCEPT` input surface. Vendor tree-sitter-cobol at a pinned commit (re-verify
+  license per §1.2).
+- **Fortran** — gfortran subprocess; discover subroutines / functions / modules;
+  drive array / `COMMON` / derived-type arguments; tree-sitter-fortran.
+- **JavaScript / TypeScript** — Node interpreted lane (like Python/Perl): discover
+  exported functions; real coverage via V8 (`NODE_V8_COVERAGE` / inspector) folded
+  into the shared edge map; drive JSON / string / Buffer args. tree-sitter-javascript
+  (+ typescript).
+- **C#** — .NET lane; discover public methods; build via `dotnet` / `csc` subprocess;
+  coverage via a lightweight IL-instrumentation agent; drive args.
+  tree-sitter-c-sharp.
+
+### 30.4 Sequencing and honesty
+
+- **Order:** (1) PR-native CI + Action, (2) differential fuzzing, (3) COBOL,
+  Fortran, JavaScript, C# lanes.
+- **Strict-permissive thesis holds:** any GPL compiler (GnuCOBOL, gfortran) is
+  subprocess-only, never linked; every new tree-sitter grammar is re-verified
+  MIT/permissive per §1.2 before vendoring.
+- **Coverage-guided where the runtime allows** from day one (JS via V8 coverage, C#
+  via an IL agent). COBOL/Fortran may start report-only + black-box fuzz and add
+  edge coverage as a follow-up if the compiler exposes it; that limitation will be
+  documented, not hidden.

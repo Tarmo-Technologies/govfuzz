@@ -115,6 +115,7 @@ interpreters.
 | `govfuzz auto <src> --static` | Fold a whole-tree SAST pass into the run |
 | `govfuzz auto <src> --engine afl++` | Fuzz recovered native C/C++ targets with AFL++ |
 | `govfuzz auto <src> --force` | Best-effort fuzz every C/C++/Ada function (stub-heavy; Low-confidence findings) |
+| `govfuzz auto <src> --differential clang:gcc` | Two-compiler differential (C/C++): flag inputs where the clang and gcc builds diverge (GF-301) |
 | `govfuzz ci <src> --changed-since <ref>` | PR-native: fuzz only the diff, emit SARIF, gate on confirmed findings |
 | `govfuzz static-scan <src> --sarif` | Offline SAST only (JSON/Markdown/SARIF) |
 | `govfuzz sbom <src> --vuln-db <db>` | SBOM + offline CVE/VEX correlation |

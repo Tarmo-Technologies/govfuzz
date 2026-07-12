@@ -15,6 +15,15 @@
   [docs/site/ci.md](docs/site/ci.md). The git-diff helpers are factored into a
   shared module reused by `list-targets --changed-since`; non-scoped `ci`
   behavior is unchanged.
+- **Two-compiler differential fuzzing in `auto`.** New `govfuzz auto
+  --differential clang:gcc` rebuilds each C/C++ harness under both compilers via
+  a portable `make diff` target and replays the fuzz corpus through both, flagging
+  any input on which their exit/crash behavior diverges — a codegen- or
+  UB-dependent bug one compiler exposes and the other hides — as a GF-301 finding
+  in the normal report. Comparison is on exit status (govfuzz harnesses suppress
+  target stdout); a failed second-compiler build logs and skips. The standalone
+  `govfuzz differential` subcommand (arbitrary two-harness / metamorphic) is
+  unchanged.
 
 ## v0.2.15 - 2026-07-10
 

@@ -47,6 +47,32 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 See the [installation guide](docs/site/install.md) for prebuilt binaries, per-language
 toolchains, offline/air-gapped install, and Windows.
 
+### Run govfuzz on every pull request
+
+Fuzz only the code each PR changes — inline annotations, one `uses:` line, no config file:
+
+```yaml
+# .github/workflows/govfuzz-pr.yml
+name: govfuzz PR
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+jobs:
+  govfuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: Tarmo-Technologies/govfuzz/.github/actions/govfuzz-pr@main
+        with: { path: ., campaign-time: "180" }
+```
+
+The action diff-scopes the run to changed files, uploads SARIF for inline code-scanning
+annotations, posts a sticky summary comment, and fails only on a fuzz-confirmed finding. See
+[docs/site/ci.md](docs/site/ci.md).
+
 ## Why govfuzz?
 
 - **No harness to write.** `govfuzz auto` discovers fuzzable subprograms, generates typed
@@ -89,6 +115,7 @@ interpreters.
 | `govfuzz auto <src> --static` | Fold a whole-tree SAST pass into the run |
 | `govfuzz auto <src> --engine afl++` | Fuzz recovered native C/C++ targets with AFL++ |
 | `govfuzz auto <src> --force` | Best-effort fuzz every C/C++/Ada function (stub-heavy; Low-confidence findings) |
+| `govfuzz ci <src> --changed-since <ref>` | PR-native: fuzz only the diff, emit SARIF, gate on confirmed findings |
 | `govfuzz static-scan <src> --sarif` | Offline SAST only (JSON/Markdown/SARIF) |
 | `govfuzz sbom <src> --vuln-db <db>` | SBOM + offline CVE/VEX correlation |
 | `govfuzz binary scan <bin>` | Inventory + hardening triage for ELF/PE/Mach-O/firmware |
@@ -103,6 +130,7 @@ them all.
 
 - [Installation](docs/site/install.md) — from source, prebuilt binaries, offline, Windows.
 - [`govfuzz auto`](docs/site/auto.md) — end-to-end, scaling to large trees, force-fuzz, static integration.
+- [PR-native CI](docs/site/ci.md) — the GitHub Action, diff-scoping, and the confirmed-findings gate.
 - [C/C++ guide](docs/site/c-cpp.md) — prerequisites, supported parameter shapes, limits.
 - [CLI reference](docs/site/cli.md) — every subcommand.
 - [Architecture](docs/site/architecture.md) — pipeline and crate boundaries.

@@ -2,6 +2,20 @@
 
 # Changelog
 
+## Unreleased
+
+- **PR-native CI + GitHub Action.** New `govfuzz ci --changed-since <ref>` mode
+  scopes a run to only the files a pull request changes (merge-base aware,
+  reusing the discovery cache), with `--sarif` output, a compact `--ci-json`
+  result, and a `--pr-gate {confirmed,all,never}` policy that by default fails
+  only on a fuzz-confirmed finding. A composite action
+  (`.github/actions/govfuzz-pr`) makes it one `uses:` line: it resolves the PR
+  base, installs govfuzz, runs the scoped fuzz, uploads SARIF for inline
+  code-scanning annotations, and posts a sticky PR summary comment. See
+  [docs/site/ci.md](docs/site/ci.md). The git-diff helpers are factored into a
+  shared module reused by `list-targets --changed-since`; non-scoped `ci`
+  behavior is unchanged.
+
 ## v0.2.15 - 2026-07-10
 
 - **First public release.** Hardened for public distribution: Dependabot version

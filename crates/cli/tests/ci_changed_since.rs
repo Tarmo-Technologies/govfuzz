@@ -23,7 +23,12 @@ fn git(dir: &Path, args: &[&str]) -> std::process::Output {
         .arg("-C")
         .arg(dir)
         // Deterministic identity + no signing/hooks so CI-less boxes work.
-        .args(["-c", "user.email=test@govfuzz.local", "-c", "user.name=govfuzz-test"])
+        .args([
+            "-c",
+            "user.email=test@govfuzz.local",
+            "-c",
+            "user.name=govfuzz-test",
+        ])
         .args(args)
         .output()
         .expect("spawn git");
@@ -89,7 +94,11 @@ fn ci_changed_since_nothing_to_do_when_only_docs_change() {
         .expect("spawn govfuzz");
 
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(out.status.success(), "expected exit 0, got {:?}\n{stdout}", out.status);
+    assert!(
+        out.status.success(),
+        "expected exit 0, got {:?}\n{stdout}",
+        out.status
+    );
     assert!(
         stdout.contains("no changed fuzzable files in scope"),
         "expected the nothing-to-do message, got:\n{stdout}"

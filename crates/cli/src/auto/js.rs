@@ -445,11 +445,24 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
     // The driver `new`s the class (no-arg) and calls the method, so only
     // no-arg-constructible classes qualify (mirrors the C# instance-method guard).
     let classes = collect_classes(&lines);
-    let mut push_method = |export_path: String, method: &ClassMethod| {
+    let mut push_method = |export_path: &str, method: &ClassMethod, class_constructible: bool| {
         if method.params.is_empty() || non_input_first_param(&method.params[0]) {
             return;
         }
-        let full = format!("{export_path}#{}", method.name);
+        // A static method is `Class.method` (no construction needed — resolved by the
+        // driver's dotted path). An instance method is `Class#method` (the driver
+        // `new`s the class), so it qualifies only when the class is no-arg-constructible.
+        let full = if method.is_static {
+            if export_path.is_empty() {
+                method.name.clone() // default class export: `mod.method`
+            } else {
+                format!("{export_path}.{}", method.name)
+            }
+        } else if class_constructible {
+            format!("{export_path}#{}", method.name)
+        } else {
+            return;
+        };
         if !seen.insert(full.clone()) {
             return;
         }
@@ -488,10 +501,8 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
             };
         if let Some((Some(key), export_path)) = exported {
             if let Some(info) = classes.get(&key) {
-                if info.constructible {
-                    for m in &info.methods {
-                        push_method(export_path.clone(), m);
-                    }
+                for m in &info.methods {
+                    push_method(&export_path, m, info.constructible);
                 }
             }
         }
@@ -508,10 +519,8 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
         };
         for name in names {
             if let Some(info) = classes.get(&name) {
-                if info.constructible {
-                    for m in &info.methods {
-                        push_method(name.clone(), m);
-                    }
+                for m in &info.methods {
+                    push_method(&name, m, info.constructible);
                 }
             }
         }
@@ -519,12 +528,13 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
     out
 }
 
-/// A public instance method of a class.
+/// A public method of a class (instance or static).
 #[derive(Clone)]
 struct ClassMethod {
     name: String,
     params: Vec<String>,
     line: u32,
+    is_static: bool,
 }
 
 /// A discovered class: its methods and whether it is no-arg-constructible.
@@ -615,10 +625,12 @@ fn collect_classes(lines: &[String]) -> std::collections::HashMap<String, ClassI
                             }
                         }
                     } else if let Some(info) = classes.get_mut(&cls) {
+                        let is_static = t.split_whitespace().any(|w| w == "static");
                         info.methods.push(ClassMethod {
                             name: mname,
                             params,
                             line: line_no,
+                            is_static,
                         });
                     }
                 }
@@ -864,6 +876,23 @@ module.exports = { Validator };
 ";
         // Not no-arg-constructible -> no methods discovered.
         assert!(parse_js(src).is_empty());
+    }
+
+    #[test]
+    fn static_class_method_needs_no_constructor() {
+        // A class with a required-arg constructor is not instance-fuzzable, but its
+        // STATIC method needs no instance and is still discovered (dotted path).
+        let src = "\
+class Url {
+  constructor(href) { this.href = href; }
+  static parse(input) { return new Url(input); }
+}
+module.exports = { Url };
+";
+        let fns = parse_js(src);
+        let paths: Vec<&str> = fns.iter().map(|f| f.export_path.as_str()).collect();
+        assert!(paths.contains(&"Url.parse"), "got {paths:?}"); // static -> dotted
+        assert!(!paths.iter().any(|p| p.contains('#'))); // no instance method
     }
 
     #[test]

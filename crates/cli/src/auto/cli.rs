@@ -497,6 +497,14 @@ pub struct AutoArgs {
     #[arg(long = "force", visible_alias = "force-fuzz")]
     pub force: bool,
 
+    /// Two-compiler differential fuzzing (C/C++). Format `A:B`, e.g. `clang:gcc`:
+    /// after the normal run, rebuild each C/C++ harness under both compilers via a
+    /// portable build and replay the fuzz corpus through both, flagging any input
+    /// on which their exit/crash behavior diverges (a codegen- or UB-dependent bug
+    /// one compiler exposes and the other hides) as a GF-301 finding.
+    #[arg(long, value_name = "A:B")]
+    pub differential: Option<String>,
+
     /// Write an accurate per-language SLOC breakdown (LANGUAGE, FILES, TOTAL,
     /// COMMENTS, BLANKS, SLOC) of the source tree, then continue the normal run. A
     /// relative path lands beside the other run outputs in `<work-dir>/auto/`; an
@@ -1565,6 +1573,25 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         eprintln!(
             "govfuzz auto: negative confirmation — {exercised} static finding(s) marked fuzz_exercised (line executed, no crash/oracle)"
         );
+    }
+
+    // Two-compiler differential (`--differential A:B`): rebuild each C/C++ harness
+    // under both compilers and replay the corpus through both, flagging inputs on
+    // which their exit/crash behavior diverges (GF-301). Runs last so it sees the
+    // finalized corpus and its findings land before the report is written.
+    if let Some(spec_str) = args.differential.as_deref() {
+        match crate::auto::differential_post::parse_spec(spec_str) {
+            Ok(spec) => {
+                let diffs = crate::auto::differential_post::run_differential(&work, &spec);
+                if diffs > 0 {
+                    eprintln!(
+                        "govfuzz auto: differential ({}:{}) — {diffs} cross-compiler divergence(s) found by corpus replay (GF-301)",
+                        spec.cc_a, spec.cc_b
+                    );
+                }
+            }
+            Err(error) => eprintln!("govfuzz auto: --differential ignored: {error}"),
+        }
     }
 
     let finished_at = Utc::now().to_rfc3339();

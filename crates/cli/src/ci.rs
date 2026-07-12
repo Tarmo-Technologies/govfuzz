@@ -220,6 +220,7 @@ fn auto_args_from_ci(args: &CiArgs) -> AutoArgs {
         static_dynamic: false,
         decoder_limits: Default::default(),
         force: false,
+        differential: None,
     }
 }
 

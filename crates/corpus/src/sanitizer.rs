@@ -323,6 +323,14 @@ fn parse_go_panic(stderr: &str) -> Option<SanitizerReport> {
                 .find_map(|l| l.trim().strip_prefix("fatal error:").map(str::trim))
         })?;
     let lower = msg.to_ascii_lowercase();
+    // An "interface conversion" panic is a failed type assertion. When the govfuzz
+    // Go harness synthesizes an `interface{}` parameter (an unmarshal out-target) as
+    // a generic `*interface{}`, a target that type-asserts it to a concrete type
+    // panics — our synthesized value's fault, not a target defect (mirrors the
+    // untyped lanes' suppression of wrong-type exceptions). Not a finding.
+    if lower.contains("interface conversion") {
+        return None;
+    }
     let (kind, rule_id) = if lower.contains("index out of range")
         || lower.contains("slice bounds out of range")
     {
@@ -1191,6 +1199,19 @@ java.lang.ArrayIndexOutOfBoundsException: Index 8 out of bounds for length 1
             Some("/proj/recordparser/parser.go")
         );
         assert_eq!(r.stack[0].line, Some(17));
+    }
+
+    #[test]
+    fn go_interface_conversion_panic_is_suppressed() {
+        // Our-fault: a synthesized *interface{} passed to a target that type-asserts
+        // it panics with "interface conversion" — not a finding.
+        let stderr = "== govfuzz go finding: interface conversion: interface {} is *interface {}, not string\n\
+                      goroutine 1 [running]:\n\
+                      main.target(...)\n";
+        assert!(parse_sanitizer_report(stderr).is_none());
+        // A real OOB is still a finding.
+        let oob = "panic: runtime error: index out of range [5] with length 1\n";
+        assert_eq!(parse_sanitizer_report(oob).unwrap().rule_id, "GF-201");
     }
 
     #[test]

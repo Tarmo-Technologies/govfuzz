@@ -2727,22 +2727,27 @@ fn run_fuzz_with_runtrace(
             harness_dir.join("cmp_progress.shm").display().to_string(),
         ));
     }
-    // The native Java and C# lanes run the target inside a managed runtime (JVM /
-    // .NET CLR) launched by a wrapper script. LD_PRELOAD-ing the runtrace shim into
-    // `java`/`dotnet` would intercept the runtime's OWN libc calls (class/assembly
-    // loading file opens, the .NET host's `access()`→`open()` on libhostfxr.so,
-    // sockets, …) and the runtrace resource/open/TOCTOU oracles would fire on normal
-    // runtime activity — false positives (e.g. GF-418 on the .NET host's own
-    // startup). Both lanes get coverage from their own instrumentation
-    // (bytecode agent / SharpFuzz IL → GOVFUZZ_COV_SHM, kept above) and crash
-    // detection from the driver's hard-halt (exit 86), so neither needs the shim.
+    // The native Java, C#, and JavaScript lanes run the target inside a managed
+    // runtime (JVM / .NET CLR / Node V8) launched by a wrapper script. LD_PRELOAD-ing
+    // the runtrace shim into `java`/`dotnet`/`node` would intercept the runtime's OWN
+    // libc calls (class/assembly/module loading file opens, the .NET host's
+    // `access()`→`open()` on libhostfxr.so, Node's `stat()`→`open()` on every
+    // `require`, sockets, …) and the runtrace resource/open/TOCTOU oracles would fire
+    // on normal runtime activity — false positives (e.g. GF-418 on the .NET host's
+    // own startup). Each lane gets coverage from its own instrumentation (bytecode
+    // agent / SharpFuzz IL / V8 block coverage → GOVFUZZ_COV_SHM, kept above) and
+    // crash detection from the driver's hard-halt (exit 86), so none needs the shim.
     // Under the shim the CLR's heavy startup I/O also blows past the fork-server
     // handshake window, collapsing the run to slow per-spawn execs.
     let is_managed_harness = std::fs::read_to_string(harness_dir.join("main"))
-        .map(|s| s.contains("GOVFUZZ_JVM_LAUNCHER") || s.contains("GOVFUZZ_CS_LAUNCHER"))
+        .map(|s| {
+            s.contains("GOVFUZZ_JVM_LAUNCHER")
+                || s.contains("GOVFUZZ_CS_LAUNCHER")
+                || s.contains("GOVFUZZ_JS_LAUNCHER")
+        })
         .unwrap_or(false);
     if cross_wrapper.is_some() || is_managed_harness {
-        // no shim for emulated targets or the managed (JVM / .NET) lanes
+        // no shim for emulated targets or the managed (JVM / .NET / Node) lanes
     } else if let Some(shim) = crate::auto::shim_path::locate() {
         let ld_preload = crate::auto::shim_path::ld_preload_value_with(
             &shim,

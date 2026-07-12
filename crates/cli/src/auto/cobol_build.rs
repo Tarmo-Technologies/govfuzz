@@ -93,13 +93,17 @@ fn glue_source(entry: &str, buf_len: usize) -> String {
          /* Interpose exit(): a libcob runtime check (EC-BOUND-*, EC-SIZE-*, zero\n\
          \x20* divide, ...) reports a COBOL-semantic defect on the fuzz input via a\n\
          \x20* nonzero exit. govfuzz classifies SIGABRT / a bare nonzero exit as an\n\
-         \x20* input REJECTION, not a crash, so we force a genuine crash signal\n\
-         \x20* (SIGSEGV — a CRASH_SIGNAL, and under ASan a SEGV report) with the\n\
-         \x20* libcob check + COBOL frames still on the stack for attribution. A\n\
-         \x20* clean exit(0) (framed fork-server loop end) passes through untouched.\n\
-         \x20* This is on top of ASan on the generated C for raw memory corruption. */\n\
+         \x20* input REJECTION, not a crash, so — ONLY while a target call is in\n\
+         \x20* flight — we force a genuine crash signal (SIGSEGV, a CRASH_SIGNAL)\n\
+         \x20* with the libcob + COBOL frames on the stack. A nonzero exit OUTSIDE a\n\
+         \x20* target call (ASan leak check on libcob's by-design retained memory,\n\
+         \x20* process teardown) is not input-triggered, so it passes through as a\n\
+         \x20* clean exit — otherwise the end-of-run leak check would manufacture a\n\
+         \x20* phantom crash with an empty testcase. Raw memory corruption is still\n\
+         \x20* caught by ASan on the generated C independently of this. */\n\
+         static volatile int govfuzz_cob_in_target = 0;\n\
          __attribute__((noreturn)) void exit(int code) {{\n\
-         \x20   if (code != 0) {{ *(volatile int *)0 = 0; }}\n\
+         \x20   if (code != 0 && govfuzz_cob_in_target) {{ *(volatile int *)0 = 0; }}\n\
          \x20   _exit(0);\n\
          }}\n\
          static int govfuzz_cob_ready = 0;\n\
@@ -109,7 +113,10 @@ fn glue_source(entry: &str, buf_len: usize) -> String {
          \x20   memset(buf, ' ', GOVFUZZ_COB_N);\n\
          \x20   size_t n = Size < GOVFUZZ_COB_N ? Size : (size_t)GOVFUZZ_COB_N;\n\
          \x20   if (n) memcpy(buf, Data, n);\n\
-         \x20   return {entry}((cob_u8_t *)buf);\n\
+         \x20   govfuzz_cob_in_target = 1;\n\
+         \x20   int rc = {entry}((cob_u8_t *)buf);\n\
+         \x20   govfuzz_cob_in_target = 0;\n\
+         \x20   return rc;\n\
          }}\n"
     )
 }
@@ -277,7 +284,9 @@ mod tests {
         let g = glue_source("PARSEIT", 32);
         assert!(g.contains("extern int PARSEIT(cob_u8_t *b);"));
         assert!(g.contains("#define GOVFUZZ_COB_N 32"));
-        assert!(g.contains("return PARSEIT((cob_u8_t *)buf);"));
+        assert!(g.contains("int rc = PARSEIT((cob_u8_t *)buf);"));
         assert!(g.contains("int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)"));
+        // The in-target guard so an end-of-run leak check is not a phantom crash.
+        assert!(g.contains("govfuzz_cob_in_target = 1;"));
     }
 }

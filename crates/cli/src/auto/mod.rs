@@ -13,6 +13,7 @@ pub mod capability;
 pub mod cli;
 pub mod cobol;
 pub mod cobol_build;
+pub mod cobol_oracle;
 pub mod config;
 pub mod confirm;
 pub mod coverage_replay;

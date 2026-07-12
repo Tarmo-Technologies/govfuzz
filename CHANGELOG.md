@@ -4,6 +4,31 @@
 
 ## Unreleased
 
+- **C# / .NET fuzzing lane.** `govfuzz auto --languages csharp` discovers `public`
+  methods taking a `byte[]`/`string`/`Stream`, builds the target with `dotnet`
+  through a project reference, instruments its IL with
+  [SharpFuzz](https://github.com/Metalnem/sharpfuzz) (`sharpfuzz <dll>`), and fuzzes
+  it coverage-guided on govfuzz's own fork-server engine — no AFL, no libFuzzer, no
+  `Fuzzer.Run` to hand-write. The driver `mmap`s govfuzz's `GOVFUZZ_COV_SHM` edge
+  bitmap (64 KB = the AFL map size SharpFuzz targets) into
+  `SharpFuzz.Common.Trace.SharedMem`, so the instrumented target writes coverage
+  straight into govfuzz's cumulative map, and speaks the framed fork-server protocol
+  to keep **one warm CLR** alive across all inputs. An uncaught exception that is not
+  input rejection is a finding (exit 86), mapped to a GF rule + CWE by type (index
+  OOB → GF-201/CWE-125, null-deref → GF-206/CWE-476, arithmetic → GF-205, OOM →
+  GF-209, stack overflow → GF-207, else GF-210). Input-rejection exceptions
+  (`ArgumentException`, `FormatException`, …) and the target namespace's own
+  exceptions are suppressed. Like the JVM lane, it runs without the LD_PRELOAD shim
+  (the .NET host's own startup I/O would otherwise trip the TOCTOU/open oracles).
+  The target project reference is pinned to the best framework the installed SDK
+  supports, so a library that multi-targets a newer preview TFM still builds.
+  Validated on a 25-project / 69,608-file campaign (dotnet/runtime, roslyn, EF Core,
+  Newtonsoft.Json, MessagePack, YamlDotNet, ImageSharp, …): 0 panics, 3,113 fuzzable
+  methods discovered; end-to-end at ~6,900 exec/s on a warm CLR with real edge
+  coverage and 0 shim false positives. SharpFuzz/SharpFuzz.Common are Apache-2.0 and
+  link into the user harness, never into govfuzz. See
+  [docs/site/csharp.md](docs/site/csharp.md).
+
 - **Fortran fuzzing lane.** `govfuzz auto --languages fortran` discovers Fortran
   `subroutine`/`function` procedures with a `character` (byte-buffer) argument,
   compiles them with `gfortran -fsanitize=address

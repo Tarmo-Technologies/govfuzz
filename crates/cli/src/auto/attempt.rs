@@ -644,11 +644,14 @@ fn write_source_dictionary(
         Lang::Java => java_parser::extract_java_dictionary_tokens(source).ok(),
         Lang::Python => python_parser::extract_python_dictionary_tokens(source).ok(),
         Lang::Perl => perl_parser::extract_perl_dictionary_tokens(source).ok(),
+        // C#/JS carry no CmpLog in the managed/interpreted driver, so a source-mined
+        // dictionary is the lever past a single multi-byte comparison gate (the same
+        // reason the other managed lanes mine one). Scan the source's string/number
+        // literals (JS also allows backtick template literals).
+        Lang::CSharp => Some(crate::auto::lit_scan::scan_literal_tokens(source, false)),
+        Lang::Js => Some(crate::auto::lit_scan::scan_literal_tokens(source, true)),
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
-        // C#/JS dictionary mining is not wired yet; skip (no tokens).
-        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran | Lang::CSharp | Lang::Js => {
-            None
-        }
+        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
     };
     let Some(tokens) = tokens else {
         return;

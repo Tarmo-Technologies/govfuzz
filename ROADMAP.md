@@ -2851,9 +2851,17 @@ mainstream.
   (+ `SyntaxError`/`URIError`) is input rejection (the untyped-lane policy), and a
   first-argument name filter drops internal array/options helpers. Validated on a
   30-project / 2,018-file campaign: 0 panics, 531 fuzzable functions, 0 false
-  positives; finds an uncontrolled-recursion crash end-to-end. See
-  `docs/site/javascript.md`. **Remaining:** TypeScript source (needs a transpile
-  step), multi-argument synthesis, a dictionary miner.
+  positives; finds an uncontrolled-recursion crash end-to-end. Post-launch: a mined
+  literal **dictionary** (past `==` gates), **class instance + static methods**, and
+  a taint-confirmed **command-injection detector** (GF-431/CWE-78). See
+  `docs/site/javascript.md`. **Remaining:** multi-argument synthesis; more sink
+  detectors (path traversal, prototype pollution).
+- **TypeScript** — **Shipped 2026-07-12.** Reuses the JS parser + Node framed
+  driver: the `.ts`/`.tsx` source is discovered directly (the name-extracting
+  parser strips type annotations; interfaces/type aliases/`private`/`abstract`
+  members excluded), transpiled to CommonJS with esbuild (local imports bundled,
+  `node_modules` external), and fuzzed by the same warm-Node driver. `.d.ts` skipped.
+  See `docs/site/javascript.md#typescript`.
 - **C#** — **Shipped 2026-07-12.** .NET lane over the shared fork-server engine: a
   `public` method taking a `byte[]`/`string`/`Stream` is discovered, the target is
   built via `dotnet` through a project reference (the reference pinned to the best

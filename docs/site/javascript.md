@@ -40,13 +40,22 @@ driver hard-halts with exit 86). The error is classified into a GF rule + CWE:
 | `RangeError: Invalid array/string length`, out-of-memory | GF-209 | CWE-789 (resource exhaustion) |
 | `ReferenceError`, `AssertionError`, an explicit `throw`, any other `Error` | GF-210 | reachable crash |
 
-Beyond uncaught exceptions, the driver runs a **taint-confirmed command-injection
-detector** (the JS analog of govfuzz's native GF-431 oracle, and of Jazzer.js's
-bug detectors): it hooks `child_process.exec`/`execSync` and reports **GF-431 /
-CWE-78** when a shell-metacharacter-bearing substring of the fuzz input reaches the
-command — i.e. the input controls shell *syntax*, not just data. The command is
-**never executed** (a benign stub is returned), so the fuzzer can't run arbitrary
-shell, and an input whose metacharacters never reach a command is not flagged.
+Beyond uncaught exceptions, the driver runs **taint-confirmed bug detectors** (the
+JS analog of govfuzz's native oracles, and of Jazzer.js's bug detectors):
+
+- **Command injection** (**GF-431 / CWE-78**) — it hooks
+  `child_process.exec`/`execSync` and reports when a shell-metacharacter-bearing
+  substring of the fuzz input reaches the command (the input controls shell
+  *syntax*, not just data). The command is **never executed** (a benign stub is
+  returned), so the fuzzer can't run arbitrary shell, and an input whose
+  metacharacters never reach a command is not flagged.
+- **Prototype pollution** (**GF-509 / CWE-1321**) — the top JS injection class. The
+  driver snapshots `Object.prototype` / `Array.prototype` at startup and, after any
+  input carrying a `__proto__`/`constructor`/`prototype` vector, reports a new
+  own-property that appeared on them. Complete `{"__proto__":{…}}` payloads are
+  seeded into the dictionary so an unsafe `JSON.parse`+merge is reachable, and the
+  vector-token gate keeps benign `JSON.parse` (which never pollutes) from being
+  flagged.
 
 `TypeError`, `SyntaxError`, `URIError`, and a validating `RangeError` are treated as
 intended input rejection and swallowed. This mirrors the Python lane, which
@@ -75,8 +84,8 @@ auto-discovery model improves on:
 On the static side, ESLint, SonarJS, and CodeQL flag candidate issues but don't
 confirm them with real input. Jazzer.js additionally ships *bug detectors*
 (command injection, path traversal, prototype pollution); govfuzz's JS driver
-carries the first of these — a taint-confirmed **command-injection** detector (see
-the oracle section) — in the same fuzz-confirming style as its native lanes.
+carries taint-confirmed **command-injection** and **prototype-pollution** detectors
+(see the oracle section) in the same fuzz-confirming style as its native lanes.
 
 | | Jazzer.js / jsfuzz | **govfuzz `auto --languages javascript`** |
 |---|---|---|

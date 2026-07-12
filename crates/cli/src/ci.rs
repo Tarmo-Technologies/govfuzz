@@ -262,6 +262,7 @@ fn auto_args_from_ci(args: &CiArgs, scoped_files: &[PathBuf]) -> AutoArgs {
         static_dynamic: false,
         decoder_limits: Default::default(),
         force: false,
+        differential: None,
     }
 }
 

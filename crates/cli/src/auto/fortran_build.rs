@@ -230,6 +230,13 @@ pub fn build_fortran_harness(
     let compiled = Command::new("gfortran")
         .args(["-O1", "-g", "-fsanitize=address"])
         .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+        // Write generated `.mod` module files into the harness dir (via -J) instead
+        // of polluting the current working directory, and let a self-referential
+        // module find its own .mod (-I) during the compile.
+        .arg("-J")
+        .arg(&hdir)
+        .arg("-I")
+        .arg(&hdir)
         .arg("-c")
         .arg(&candidate.source_path)
         .arg("-o")

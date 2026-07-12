@@ -51,10 +51,18 @@ TSAN_CFLAGS ?= -O0 -g -fsanitize=thread -fsanitize-coverage=trace-pc-guard,trace
 # finding is a likely false positive) on the C/C++ lanes.
 COV_CC ?= clang
 COV_CFLAGS ?= -O0 -g -fprofile-instr-generate -fcoverage-mapping
+# Differential build (two-compiler): a PORTABLE build (no clang-only coverage or
+# UBSan-check subtraction) so the SAME source compiles under clang AND gcc, and
+# `auto --differential A:B` can replay the corpus through both and flag inputs on
+# which the two builds diverge in exit/crash behavior (GF-301). ASan stays on —
+# it has identical semantics across clang/gcc — so a codegen-dependent memory bug
+# that only one compiler's output triggers still surfaces as an exit divergence.
+DIFF_CC ?= clang
+DIFF_CFLAGS ?= -O2 -g -fsanitize=address
 INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
 COMPILE_DB_FLAGS = {% for flag in compile_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
 
-.PHONY: all afl msan tsan cov prov clean
+.PHONY: all afl msan tsan cov prov diff clean
 all: main
 
 # Target sources stay OUT of the prerequisites and live only in the recipe: an
@@ -85,6 +93,11 @@ cov: main_cov
 main_cov: main.c
 	$(COV_CC) $(COV_CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
 
+diff: main_diff
+
+main_diff: main.c
+	$(DIFF_CC) $(DIFF_CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(AUTO_EXTRA_LDFLAGS)
+
 # Build-recovery provenance (stub-artifact vs real-defect): the SAME ASan build as
 # `main`, but the injected stubs come from $(AUTO_PROV_SOURCES) — a poisoned copy in
 # which every value-returning stub records its name and _Exit()s on call. Replaying a
@@ -97,4 +110,4 @@ main_prov: main.c
 	$(CC) $(CFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_PROV_SOURCES) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
-	rm -f main main_afl main_msan main_tsan main_cov main_prov
+	rm -f main main_afl main_msan main_tsan main_cov main_prov main_diff

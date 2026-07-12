@@ -17,6 +17,7 @@ pub mod coverage_replay;
 pub mod cross_target;
 pub mod decl_index;
 pub mod dep_manifest;
+pub mod differential_post;
 pub mod discovery;
 pub mod discovery_cache;
 pub mod external_tools;

@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+- **COBOL fuzzing lane — the first turnkey COBOL fuzzer.** `govfuzz auto
+  --languages cobol` discovers COBOL programs (`PROGRAM-ID` with a fuzzable
+  `LINKAGE` `PIC X` operand), translates them to C with GnuCOBOL (`cobc -C
+  -debug -fec=all`; free/fixed format detected, copybook `-I` dirs collected),
+  generates a driver that drives the full `USING` operand list (primary buffer +
+  length + zeroed rest), and fuzzes on the C fork-server path (edge coverage,
+  CmpLog, ASan). Two crash oracles — ASan for raw memory corruption and libcob
+  `-fec=all` for COBOL-semantic violations — with each crash attributed to its
+  `.cob:line` and CWE (out-of-bounds ref-mod → CWE-125, zero-divide → CWE-369,
+  size overflow → CWE-190). The taint-confirmed sink oracles (command/SQL/path
+  injection, CWE-78/89/22) apply too. Validated on a 23-project / 2925-file
+  campaign: 0 panics, 30/38 build+fuzz, 0 false positives, 2 real
+  command-injection findings. cobc is GPLv3 (subprocess-only); libcob is LGPLv3
+  and links into the user harness like the GNAT runtime. See
+  [docs/site/cobol.md](docs/site/cobol.md).
+
 - **PR-native CI + GitHub Action.** New `govfuzz ci --changed-since <ref>` mode
   scopes a run to only the files a pull request changes (merge-base aware,
   reusing the discovery cache), with `--sarif` output, a compact `--ci-json`

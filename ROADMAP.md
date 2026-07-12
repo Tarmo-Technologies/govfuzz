@@ -2816,10 +2816,19 @@ gen → build → framed fork-server + coverage → CWE mapping + static rules. 
 coverage ships incrementally. Legacy-government languages first (on-thesis), then
 mainstream.
 
-- **COBOL** — GnuCOBOL (`cobc`) subprocess build (GPL → subprocess only, same posture
-  as GNAT); discover `PROGRAM-ID`s / paragraphs; drive the `LINKAGE SECTION` /
-  `ACCEPT` input surface. Vendor tree-sitter-cobol at a pinned commit (re-verify
-  license per §1.2).
+- **COBOL** — **Shipped 2026-07-12** (the first turnkey COBOL fuzzer). Rather than a
+  separate lane, COBOL reuses the C engine: a `PROGRAM-ID` with a fuzzable `LINKAGE`
+  `PIC X` operand is translated to C with `cobc -C -debug -fec=all` (free/fixed format
+  detected, copybook `-I` dirs collected), wrapped in a generated driver that drives
+  the primary buffer + a length operand + zeroed rest, and fuzzed on the C fork-server
+  path (edge coverage, CmpLog, ASan). Two crash oracles (ASan + libcob `-fec` runtime
+  checks) with `.cob:line` + CWE attribution, plus the taint-confirmed sink oracles
+  (command/SQL/path injection) apply. From-scratch scanner (no tree-sitter-cobol
+  needed). cobc is GPLv3 (subprocess-only), libcob LGPLv3 (links into the user
+  harness, like the GNAT runtime). Validated on a 23-project / 2925-file campaign:
+  0 panics, 30/38 build+fuzz, 0 crash-FPs, 2 real command-injection findings. See
+  `docs/site/cobol.md`. **Remaining:** `ACCEPT`/file-`READ` input surfaces, linking
+  sibling `CALL`ed programs, embedded `EXEC SQL`/`CICS`.
 - **Fortran** — gfortran subprocess; discover subroutines / functions / modules;
   drive array / `COMMON` / derived-type arguments; tree-sitter-fortran.
 - **JavaScript / TypeScript** — Node interpreted lane (like Python/Perl): discover

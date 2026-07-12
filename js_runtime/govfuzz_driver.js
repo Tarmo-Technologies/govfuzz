@@ -178,8 +178,94 @@ function reportFinding(err, rule) {
 }
 
 let runOne = null;
+// The bytes of the input currently being processed (latin1), for the sink taint
+// check. Set per input before the target runs.
+let currentInput = '';
+
+// --- taint-confirmed sink detectors (the JS analog of govfuzz's native GF-431
+// command-injection oracle) --------------------------------------------------
+// Jazzer.js ships bug detectors; the govfuzz JS lane runs without the LD_PRELOAD
+// shim (managed runtime), so the driver hooks the dangerous sinks in JS instead.
+// A sink is a *finding* only when a shell-metacharacter-bearing substring of the
+// current fuzz input reaches the command — i.e. the input controls shell syntax,
+// not just data. The command is NEVER executed (that would let the fuzzer run
+// arbitrary shell); a benign stub is returned so a non-injecting input continues.
+const SHELL_META = /[;|`&><\n$()]/;
+
+function inputControlsSink(sinkStr) {
+  if (typeof sinkStr !== 'string' || currentInput.length < 2) return false;
+  for (let i = 0; i < currentInput.length; i++) {
+    if (!SHELL_META.test(currentInput[i])) continue;
+    // Grow a window around the metacharacter and require it to appear verbatim in
+    // the command — the fuzz bytes (incl. the metachar) flowed into the shell.
+    const max = Math.min(24, currentInput.length - i);
+    for (let len = 2; len <= max; len++) {
+      const w = currentInput.substr(i, len);
+      if (SHELL_META.test(w) && sinkStr.includes(w)) return true;
+    }
+  }
+  return false;
+}
+
+function reportSink(rule, kind, sink, detail) {
+  const d = String(detail).replace(/[\r\n]+/g, ' ').slice(0, 200);
+  process.stderr.write(`== govfuzz js finding: ${rule}: ${kind}: ${sink}: ${d}\n`);
+  try {
+    fs.fsyncSync(2);
+  } catch (_) {
+    /* ignore */
+  }
+  process.exit(FINDING_HALT_CODE);
+}
+
+// Patch `child_process` exec/execSync so a fuzz-controlled shell command is
+// detected (GF-431, CWE-78) and never run. Best-effort — absent child_process, or
+// a target that never execs, this is inert.
+function installSinkGuards() {
+  let cp;
+  try {
+    cp = require('child_process');
+  } catch (_) {
+    return;
+  }
+  const guard = (sink, cmd) => {
+    if (inputControlsSink(cmd)) {
+      reportSink('GF-431', 'CommandInjection', sink, cmd);
+    }
+  };
+  const emptyChild = () => {
+    const { EventEmitter } = require('events');
+    const child = new EventEmitter();
+    const out = new EventEmitter();
+    out.setEncoding = () => {};
+    out.pipe = () => {};
+    child.stdout = out;
+    child.stderr = new EventEmitter();
+    child.stdin = { write() {}, end() {} };
+    child.kill = () => {};
+    process.nextTick(() => child.emit('close', 0));
+    return child;
+  };
+  if (typeof cp.execSync === 'function') {
+    cp.execSync = (cmd) => {
+      guard('execSync', cmd);
+      return Buffer.from('');
+    };
+  }
+  if (typeof cp.exec === 'function') {
+    cp.exec = (cmd, ...rest) => {
+      guard('exec', cmd);
+      const cb = rest.find((a) => typeof a === 'function');
+      if (cb) {
+        process.nextTick(() => cb(null, '', ''));
+      }
+      return emptyChild();
+    };
+  }
+}
 
 function runInput(buf) {
+  currentInput = buf.toString('latin1');
   try {
     runOne(buf);
   } catch (err) {
@@ -305,6 +391,7 @@ function setupControlFd() {
 
 function main() {
   covInit();
+  installSinkGuards();
   runOne = loadRunOne();
   if (process.env.GOVFUZZ_FRAMED !== undefined) {
     framedLoop().then(() => process.exit(0));

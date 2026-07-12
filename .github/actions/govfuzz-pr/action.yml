@@ -1,0 +1,128 @@
+# SPDX-License-Identifier: Apache-2.0
+name: "govfuzz PR fuzz"
+description: "Fuzz only the code changed in this pull request and annotate it inline."
+branding:
+  icon: "target"
+  color: "purple"
+inputs:
+  path:
+    description: "Source root to scan."
+    required: false
+    default: "."
+  base-ref:
+    description: "Git ref to diff against. Default: the PR base (merge-base) / the repo default branch."
+    required: false
+    default: ""
+  languages:
+    description: "Comma list to restrict lanes (ada,c,cpp,rust,java,python,perl,go). Default: all found."
+    required: false
+    default: ""
+  campaign-time:
+    description: "Whole-run wall-clock budget in seconds."
+    required: false
+    default: "180"
+  per-target-time:
+    description: "Per-target fuzz budget in seconds."
+    required: false
+    default: "30"
+  pr-gate:
+    description: "confirmed | all | never — when to fail the check. Default: confirmed (fail only on a fuzz-confirmed finding)."
+    required: false
+    default: "confirmed"
+  comment:
+    description: "Post/update a sticky PR summary comment."
+    required: false
+    default: "true"
+  upload-sarif:
+    description: "Upload SARIF to the code-scanning tab (inline PR annotations)."
+    required: false
+    default: "true"
+  version:
+    description: "govfuzz release tag to install, or 'latest'."
+    required: false
+    default: "latest"
+  build-from-source:
+    description: "Install govfuzz from source (cargo install --git) instead of a release binary."
+    required: false
+    default: "false"
+outputs:
+  exit-code:
+    description: "The govfuzz ci exit code (0 = pass, 1 = gate failed)."
+    value: ${{ steps.run.outputs.exit }}
+  ci-json:
+    description: "Path to the machine-readable CI result JSON."
+    value: ${{ steps.run.outputs.ci_json }}
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve base ref
+      id: base
+      shell: bash
+      run: ${{ github.action_path }}/scripts/resolve-base.sh
+      env:
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        GH_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        GH_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+    - name: Install govfuzz
+      id: install
+      shell: bash
+      run: ${{ github.action_path }}/scripts/install-govfuzz.sh
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_BUILD_FROM_SOURCE: ${{ inputs.build-from-source }}
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Run govfuzz (diff-scoped)
+      id: run
+      shell: bash
+      run: |
+        set -uo pipefail
+        sarif="$RUNNER_TEMP/govfuzz.sarif"
+        ci_json="$RUNNER_TEMP/govfuzz-ci.json"
+        lang_arg=""
+        if [[ -n "${{ inputs.languages }}" ]]; then
+          lang_arg="--languages ${{ inputs.languages }}"
+        fi
+        # The work dir lives outside the checkout so discovery never scans it.
+        set +e
+        govfuzz ci "${{ inputs.path }}" \
+          --changed-since "${{ steps.base.outputs.ref }}" \
+          --campaign-time "${{ inputs.campaign-time }}" \
+          --per-target-time "${{ inputs.per-target-time }}" \
+          $lang_arg \
+          --pr-gate "${{ inputs.pr-gate }}" \
+          --sarif "$sarif" \
+          --ci-json "$ci_json" \
+          --work-dir "$RUNNER_TEMP/govfuzz_work"
+        code=$?
+        set -e
+        echo "exit=$code" >> "$GITHUB_OUTPUT"
+        echo "sarif=$sarif" >> "$GITHUB_OUTPUT"
+        echo "ci_json=$ci_json" >> "$GITHUB_OUTPUT"
+        if [[ -f "$sarif" ]]; then echo "has_sarif=true" >> "$GITHUB_OUTPUT"; fi
+        echo "govfuzz ci finished with exit code $code"
+
+    - name: Upload SARIF (code-scanning annotations)
+      if: ${{ inputs.upload-sarif == 'true' && steps.run.outputs.has_sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.run.outputs.sarif }}
+        category: govfuzz
+
+    - name: PR summary comment
+      if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const script = require(`${process.env.GITHUB_ACTION_PATH}/scripts/comment.js`);
+          await script({ github, context, core, ciJsonPath: process.env.CI_JSON_PATH });
+      env:
+        CI_JSON_PATH: ${{ steps.run.outputs.ci_json }}
+
+    - name: Enforce gate
+      if: ${{ steps.run.outputs.exit != '' && steps.run.outputs.exit != '0' }}
+      shell: bash
+      run: |
+        echo "::error title=govfuzz::gate failed (exit ${{ steps.run.outputs.exit }}) — a fuzz-confirmed finding was introduced in this PR's changed code."
+        exit 1

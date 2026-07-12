@@ -80,6 +80,8 @@ fn lang_to_str(lang: Lang) -> &'static str {
         Lang::Python => "python",
         Lang::Perl => "perl",
         Lang::Go => "go",
+        Lang::Cobol => "cobol",
+        Lang::Fortran => "fortran",
     }
 }
 

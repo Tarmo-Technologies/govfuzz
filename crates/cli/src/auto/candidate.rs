@@ -38,6 +38,21 @@ pub enum Lang {
     /// and reported as a finding. Compiled + statically typed, so the harness
     /// decodes by the parameter's declared type, like the C/Rust lanes.
     Go,
+    /// COBOL lane (M3.4). A COBOL subprogram (`PROGRAM-ID` with a fuzzable
+    /// `LINKAGE SECTION` driven `PROCEDURE DIVISION USING`) is translated to C
+    /// with `cobc -C` (GnuCOBOL), wrapped in a generated `LLVMFuzzerTestOneInput`
+    /// glue that fills the `PIC X(N)` buffer from the fuzz bytes, and built +
+    /// fuzzed on the C fork-server path — reusing edge coverage, cmplog, and ASan.
+    /// Compiling with `-fec=all` adds libcob runtime bound-check aborts as a
+    /// second (COBOL-semantic) oracle. See [`crate::auto::cobol`].
+    Cobol,
+    /// Fortran lane (M3.5). A `subroutine`/`function` with a `character`
+    /// (byte-buffer) argument is compiled with `gfortran -fsanitize=address
+    /// -fsanitize-coverage=trace-pc -fcheck=all`, wrapped in a generated glue
+    /// that calls it via the gfortran C ABI, and fuzzed on the C fork-server
+    /// path. ASan reports memory corruption with the exact `.f90:line`. See
+    /// [`crate::auto::fortran`].
+    Fortran,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -60,6 +75,10 @@ pub enum LangSelector {
     Perl,
     #[value(name = "go", alias = "golang")]
     Go,
+    #[value(name = "cobol", aliases = ["cob", "cbl"])]
+    Cobol,
+    #[value(name = "fortran", aliases = ["f90", "f", "for"])]
+    Fortran,
 }
 
 impl LangSelector {
@@ -74,6 +93,8 @@ impl LangSelector {
             LangSelector::Python => Lang::Python,
             LangSelector::Perl => Lang::Perl,
             LangSelector::Go => Lang::Go,
+            LangSelector::Cobol => Lang::Cobol,
+            LangSelector::Fortran => Lang::Fortran,
         }
     }
 }
@@ -129,6 +150,8 @@ impl Candidate {
             Lang::Python => "H-P",
             Lang::Perl => "H-L",
             Lang::Go => "H-G",
+            Lang::Cobol => "H-B",
+            Lang::Fortran => "H-F",
         }
     }
 }

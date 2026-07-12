@@ -18,6 +18,13 @@
   links), uploads SARIF + findings, and fails on a fuzz-confirmed crash — govfuzz
   fuzzing itself.
 
+- **JS/TS runtime-load check.** A module that passes `node -c` (syntax) but whose
+  `require('...')` cannot resolve at runtime — an npm dependency not installed
+  (e.g. `qs` → `side-channel`) — previously built a harness that died at startup and
+  fuzzed 0 inputs while being reported as "built". It now skips cleanly with an
+  actionable reason (`… requires an npm dependency that is not installed; run
+  npm install`). Applies to the transpiled TypeScript output too.
+
 - **JavaScript/TypeScript prototype-pollution detector (GF-509 / CWE-1321).** The
   top JS injection class. The driver snapshots `Object.prototype`/`Array.prototype`
   and, after an input carrying a `__proto__`/`constructor`/`prototype` vector,

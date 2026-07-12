@@ -2774,6 +2774,15 @@ configuration. The design bar is *extreme usability*, not just capability.
 line-level PR annotations on the next PR with no further setup, and repeat runs are
 fast on a warm cache.
 
+**Shipped 2026-07-12.** `govfuzz ci --changed-since <ref>` (+ `--changed-paths-from`,
+`--sarif`, `--ci-json`, `--pr-gate {off,confirmed,all,never}`), a shared `git_diff`
+module (merge-base aware) reused by `list-targets`, and the composite Action
+`.github/actions/govfuzz-pr/` (base-ref resolve, release-binary install with source
+fallback, SARIF upload, sticky comment) with a copy-paste example workflow and
+`docs/site/ci.md`. Scoping reuses the post-discovery `target_files` filter + the
+discovery cache. Remaining follow-up: true incremental baseline delta (fuzz base vs
+head, report only newly-introduced findings) — diff-scoping covers the common case.
+
 ### 30.2 Differential fuzzing — a new confirmed-bug class
 
 **Goal:** feed identical inputs to two implementations (or two versions of one API)
@@ -2789,6 +2798,15 @@ syntactic SAST catch.
   both observed outputs captured for the report.
 - **Headline use case:** same source at two git refs — behavioral regression
   detection. Native lanes first (C/C++/Rust).
+
+**Shipped 2026-07-12 (two-compiler variant).** The standalone `govfuzz differential`
+subcommand (arbitrary two-harness + metamorphic, stdout compare) already existed; the
+new piece is auto-integration: `govfuzz auto --differential clang:gcc` rebuilds each
+C/C++ harness under both compilers (a portable `make diff` target) and replays the
+fuzz corpus through both, flagging **exit/crash divergence** as a GF-301 finding in
+the normal report (govfuzz harnesses suppress target stdout, so exit status is the
+signal). Remaining: two-source-tree / two-git-ref differential (build the same API
+from two trees and compare) and richer semantic comparators.
 
 ### 30.3 New language lanes — COBOL, Fortran, JavaScript, C#
 

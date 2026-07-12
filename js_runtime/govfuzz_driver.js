@@ -145,22 +145,26 @@ function classify(err) {
   ) {
     return { finding: true, rule: 'GF-209' };
   }
-  // Input validation / format — rejection, swallow.
-  if (name === 'SyntaxError' || name === 'URIError' || name === 'RangeError') {
+  // Input validation / format / our-fault type — rejection, swallow. In an
+  // untyped lane govfuzz synthesizes only the FIRST argument, so a `TypeError`
+  // ("Cannot read properties of undefined", "x is not a function") is dominated by
+  // us calling a function with a missing/typed later argument or the wrong first
+  // shape — our fault, not a target defect. This mirrors the Python driver, which
+  // suppresses the exact analogs (`TypeError`/`AttributeError`); a campaign over 30
+  // npm libraries showed every `TypeError` was such an artifact. `SyntaxError`
+  // (a JSON.parse-style reject), `URIError`, and a validating `RangeError` are the
+  // API's intended input rejection.
+  if (
+    name === 'TypeError' ||
+    name === 'SyntaxError' ||
+    name === 'URIError' ||
+    name === 'RangeError'
+  ) {
     return { finding: false };
   }
-  // The JS null-dereference analog: reading a property of undefined/null, or
-  // calling a non-function (GF-206, CWE-476-class).
-  if (
-    name === 'TypeError' &&
-    /(Cannot read propert|Cannot set propert|is not a function|of undefined|of null|reading '|null is not)/i.test(msg)
-  ) {
-    return { finding: true, rule: 'GF-206' };
-  }
-  // A generic TypeError with the right primitive fed in is the target's own bug.
-  if (name === 'TypeError') return { finding: true, rule: 'GF-210' };
   // ReferenceError (undefined variable), AssertionError, an explicit throw, a
-  // custom Error — reachable crash (GF-210).
+  // custom Error — a reachable crash the target owns (GF-210). Real security /
+  // null-deref classes are covered by the behavioral oracles, not this policy.
   return { finding: true, rule: 'GF-210' };
 }
 

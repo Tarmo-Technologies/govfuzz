@@ -67,6 +67,56 @@ fn infer_arg_kind(first_param: &str) -> JsArgKind {
     JsArgKind::Buffer
 }
 
+/// Whether the first parameter's name marks the function as NOT a string/bytes
+/// input channel — an internal helper taking an array, options object, callback,
+/// or regexp. Fuzzing such a function with a `Buffer`/`string` only produces
+/// our-fault `TypeError`s (e.g. validator.js's `multilineRegexp(parts)`), so it is
+/// not discovered. Names that are plausibly a string/bytes input (or generic) pass.
+fn non_input_first_param(name: &str) -> bool {
+    let p = name.to_ascii_lowercase();
+    const NON_INPUT: &[&str] = &[
+        "parts",
+        "arr",
+        "array",
+        "list",
+        "items",
+        "item",
+        "nodes",
+        "node",
+        "tree",
+        "opts",
+        "options",
+        "option",
+        "config",
+        "cfg",
+        "settings",
+        "obj",
+        "object",
+        "fn",
+        "func",
+        "cb",
+        "callback",
+        "re",
+        "regex",
+        "regexp",
+        "pattern",
+        "matches",
+        "map",
+        "set",
+        "el",
+        "elem",
+        "element",
+        "ctx",
+        "context",
+        "props",
+        "params",
+        "args",
+        "collection",
+        "coll",
+    ];
+    NON_INPUT.contains(&p.as_str())
+}
+
 /// Strip JS comments (`//`, `/* */`) and collapse string/template/regex literals so
 /// braces/keywords inside them don't confuse the scanner. One line out per line in.
 fn normalize(source: &str) -> Vec<String> {
@@ -287,7 +337,10 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
     let mut out: Vec<JsFunction> = Vec::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut push = |name: String, export_path: String, params: &[String], line: u32| {
-        if params.is_empty() || !seen.insert(export_path.clone()) {
+        if params.is_empty()
+            || non_input_first_param(&params[0])
+            || !seen.insert(export_path.clone())
+        {
             return;
         }
         out.push(JsFunction {
@@ -514,5 +567,18 @@ exports.tokenize = tokenize;
         assert_eq!(infer_arg_kind("source"), JsArgKind::Str);
         assert_eq!(infer_arg_kind("html"), JsArgKind::Str);
         assert_eq!(infer_arg_kind("x"), JsArgKind::Buffer); // unknown -> Buffer default
+    }
+
+    #[test]
+    fn skips_non_input_first_param() {
+        // An internal helper taking an array/options is not a string/bytes channel.
+        let src = "\
+export function multilineRegexp(parts, flags) { return parts.join(''); }
+export function isEmail(str) { return str.includes('@'); }
+";
+        let fns = parse_js(src);
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"isEmail"));
+        assert!(!names.contains(&"multilineRegexp")); // first param `parts` -> skipped
     }
 }

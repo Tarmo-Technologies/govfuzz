@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+- **JavaScript command-injection detector (GF-431 / CWE-78).** The JS lane runs
+  without the LD_PRELOAD shim (managed runtime), so — like Jazzer.js's bug detectors
+  — the driver hooks `child_process.exec`/`execSync` in JS and reports a
+  taint-confirmed command injection when a shell-metacharacter-bearing substring of
+  the fuzz input reaches the command (the input controls shell *syntax*, not just
+  data). The command is never executed (a benign stub is returned). Verified:
+  `execSync('convert ' + input)` is caught while a fixed command with metachar-laden
+  input is not — 0 false positives.
+
 - **Wider fuzzable surface for the C# and JavaScript lanes.** The C# lane now
   fuzzes methods with a `bool` sibling (driven to `false`) and drives an
   `offset`/`index`/`start` integer to `0` (not the buffer length, which threw), so

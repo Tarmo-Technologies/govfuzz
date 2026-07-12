@@ -114,6 +114,10 @@ fn parse_js_finding(stderr: &str) -> Option<SanitizerReport> {
         "GF-206" => "GF-206",
         "GF-207" => "GF-207",
         "GF-209" => "GF-209",
+        // GF-431: taint-confirmed command injection (CWE-78) from the JS driver's
+        // sink guard — the fuzz input controlled shell syntax in a `child_process`
+        // command, which the driver detected and refused to run.
+        "GF-431" => "GF-431",
         _ => "GF-210",
     };
     let kind = match rule_id {
@@ -122,6 +126,7 @@ fn parse_js_finding(stderr: &str) -> Option<SanitizerReport> {
         "GF-209" => "js-out-of-memory",
         "GF-205" => "js-arithmetic",
         "GF-201" => "js-index-out-of-bounds",
+        "GF-431" => "js-command-injection",
         _ => "js-uncaught-exception",
     }
     .to_owned();
@@ -1135,6 +1140,15 @@ java.lang.ArrayIndexOutOfBoundsException: Index 8 out of bounds for length 1
         assert_eq!(parse_sanitizer_report(oom).unwrap().rule_id, "GF-209");
         let gen = "== govfuzz js finding: GF-210: Error: boom\n";
         assert_eq!(parse_sanitizer_report(gen).unwrap().rule_id, "GF-210");
+    }
+
+    #[test]
+    fn js_command_injection_sink_maps_to_gf431() {
+        let ci =
+            "== govfuzz js finding: GF-431: CommandInjection: execSync: convert x; rm -rf / out.png\n";
+        let r = parse_sanitizer_report(ci).expect("js sink finding");
+        assert_eq!(r.rule_id, "GF-431");
+        assert_eq!(r.kind, "js-command-injection");
     }
 
     #[test]

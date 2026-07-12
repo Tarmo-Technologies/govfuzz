@@ -118,6 +118,10 @@ fn parse_js_finding(stderr: &str) -> Option<SanitizerReport> {
         // sink guard — the fuzz input controlled shell syntax in a `child_process`
         // command, which the driver detected and refused to run.
         "GF-431" => "GF-431",
+        // GF-509: prototype pollution (CWE-1321) — a fuzz input carrying a
+        // `__proto__`/`constructor`/`prototype` vector added a new own-property to
+        // Object.prototype / Array.prototype (observed by the driver).
+        "GF-509" => "GF-509",
         _ => "GF-210",
     };
     let kind = match rule_id {
@@ -127,6 +131,7 @@ fn parse_js_finding(stderr: &str) -> Option<SanitizerReport> {
         "GF-205" => "js-arithmetic",
         "GF-201" => "js-index-out-of-bounds",
         "GF-431" => "js-command-injection",
+        "GF-509" => "js-prototype-pollution",
         _ => "js-uncaught-exception",
     }
     .to_owned();
@@ -1149,6 +1154,15 @@ java.lang.ArrayIndexOutOfBoundsException: Index 8 out of bounds for length 1
         let r = parse_sanitizer_report(ci).expect("js sink finding");
         assert_eq!(r.rule_id, "GF-431");
         assert_eq!(r.kind, "js-command-injection");
+    }
+
+    #[test]
+    fn js_prototype_pollution_maps_to_gf509() {
+        let pp =
+            "== govfuzz js finding: GF-509: PrototypePollution: Object.prototype: polluted key 'polluted'\n";
+        let r = parse_sanitizer_report(pp).expect("js pollution finding");
+        assert_eq!(r.rule_id, "GF-509");
+        assert_eq!(r.kind, "js-prototype-pollution");
     }
 
     #[test]

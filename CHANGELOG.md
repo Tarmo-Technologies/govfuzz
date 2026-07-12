@@ -18,6 +18,14 @@
   links), uploads SARIF + findings, and fails on a fuzz-confirmed crash — govfuzz
   fuzzing itself.
 
+- **JavaScript/TypeScript prototype-pollution detector (GF-509 / CWE-1321).** The
+  top JS injection class. The driver snapshots `Object.prototype`/`Array.prototype`
+  and, after an input carrying a `__proto__`/`constructor`/`prototype` vector,
+  reports a new own-property that appeared on them; complete `{"__proto__":{…}}`
+  payloads are seeded into the dictionary so an unsafe `JSON.parse`+merge is
+  reachable end-to-end. Verified: a recursive-merge vuln is found (GF-509) while a
+  benign `JSON.parse` (which never pollutes) is not — 0 false positives.
+
 - **JavaScript command-injection detector (GF-431 / CWE-78).** The JS lane runs
   without the LD_PRELOAD shim (managed runtime), so — like Jazzer.js's bug detectors
   — the driver hooks `child_process.exec`/`execSync` in JS and reports a

@@ -645,7 +645,8 @@ fn write_source_dictionary(
         Lang::Python => python_parser::extract_python_dictionary_tokens(source).ok(),
         Lang::Perl => perl_parser::extract_perl_dictionary_tokens(source).ok(),
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
-        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
+        // C# mines its dictionary at instrument time is not wired; skip (no tokens).
+        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran | Lang::CSharp => None,
     };
     let Some(tokens) = tokens else {
         return;
@@ -1310,6 +1311,41 @@ fn run_attempt(
         }
     }
 
+    // Step 0: C# / .NET lane (M3.6). Build the target assembly (`dotnet build`),
+    // instrument its IL with SharpFuzz (edge coverage into the shared map), and emit
+    // a launcher `main` that drives a warm CLR over the framed fork-server protocol.
+    // No native binary: the launcher execs `dotnet <harness>.dll` (like Java/Python).
+    // A missing dotnet SDK / SharpFuzz tool, or a target with no fuzzable input
+    // parameter, skips cleanly.
+    if matches!(candidate.lang, crate::auto::candidate::Lang::CSharp) {
+        progress.update(&ProgressUpdate::phase(Phase::Generate));
+        match crate::auto::csharp_build::build_csharp_harness(
+            candidate,
+            work_dir,
+            &candidate.harness_id,
+        ) {
+            crate::auto::csharp_build::CSharpBuildResult::Built => {}
+            crate::auto::csharp_build::CSharpBuildResult::Skip(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::UnsupportedParams { reason },
+                    harness_dir,
+                });
+            }
+            crate::auto::csharp_build::CSharpBuildResult::Failed(reason) => {
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::FailedBuild {
+                        repairs: Vec::new(),
+                        retries: 0,
+                        last_errors: build_classifier::classify(&reason),
+                    },
+                    harness_dir,
+                });
+            }
+        }
+    }
+
     // Step 0a: the native Rust lane (M1.2). Generate the govfuzz harness, build
     // it as a sancov+ASan staticlib with rustc-nightly, and clang-link it with
     // the shared C fork-server driver to `<work>/harnesses/<id>/main`. On success the
@@ -1371,6 +1407,7 @@ fn run_attempt(
                 | crate::auto::candidate::Lang::Go
                 | crate::auto::candidate::Lang::Cobol
                 | crate::auto::candidate::Lang::Fortran
+                | crate::auto::candidate::Lang::CSharp
         );
 
     // Step 0: pre-skip targets that can never link/run from an
@@ -2654,18 +2691,22 @@ fn run_fuzz_with_runtrace(
             harness_dir.join("cmp_progress.shm").display().to_string(),
         ));
     }
-    // The native Java lane runs the target inside a JVM launched by a wrapper
-    // script. LD_PRELOAD-ing the runtrace shim into `java` would intercept the
-    // JVM's OWN libc calls (class-loading file opens, sockets, …) and the runtrace
-    // resource/open oracles would fire on normal JVM activity — false positives.
-    // The JVM lane gets coverage from govfuzz's own bytecode agent (GOVFUZZ_COV_SHM,
-    // kept above) and crash detection from the driver's hard-halt, so it needs no
-    // shim and no runtrace oracle (with no shim, nothing writes the runtrace log).
-    let is_jvm_harness = std::fs::read_to_string(harness_dir.join("main"))
-        .map(|s| s.contains("GOVFUZZ_JVM_LAUNCHER"))
+    // The native Java and C# lanes run the target inside a managed runtime (JVM /
+    // .NET CLR) launched by a wrapper script. LD_PRELOAD-ing the runtrace shim into
+    // `java`/`dotnet` would intercept the runtime's OWN libc calls (class/assembly
+    // loading file opens, the .NET host's `access()`→`open()` on libhostfxr.so,
+    // sockets, …) and the runtrace resource/open/TOCTOU oracles would fire on normal
+    // runtime activity — false positives (e.g. GF-418 on the .NET host's own
+    // startup). Both lanes get coverage from their own instrumentation
+    // (bytecode agent / SharpFuzz IL → GOVFUZZ_COV_SHM, kept above) and crash
+    // detection from the driver's hard-halt (exit 86), so neither needs the shim.
+    // Under the shim the CLR's heavy startup I/O also blows past the fork-server
+    // handshake window, collapsing the run to slow per-spawn execs.
+    let is_managed_harness = std::fs::read_to_string(harness_dir.join("main"))
+        .map(|s| s.contains("GOVFUZZ_JVM_LAUNCHER") || s.contains("GOVFUZZ_CS_LAUNCHER"))
         .unwrap_or(false);
-    if cross_wrapper.is_some() || is_jvm_harness {
-        // no shim for emulated targets or the JVM lane
+    if cross_wrapper.is_some() || is_managed_harness {
+        // no shim for emulated targets or the managed (JVM / .NET) lanes
     } else if let Some(shim) = crate::auto::shim_path::locate() {
         let ld_preload = crate::auto::shim_path::ld_preload_value_with(
             &shim,
@@ -2839,6 +2880,8 @@ fn auto_sequence_candidate(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Cobol => false,
         // Fortran is prebuilt (Step 0) into a C harness; no C auto_sequence path (M3.5).
         crate::auto::candidate::Lang::Fortran => false,
+        // C# is prebuilt (Step 0); the CLR driver owns the framed loop (M3.6).
+        crate::auto::candidate::Lang::CSharp => false,
     }
 }
 
@@ -2866,6 +2909,9 @@ fn static_candidate_can_include_defining_source(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Cobol => false,
         // Fortran builds a C harness in Step 0; "paste the defining source" never applies.
         crate::auto::candidate::Lang::Fortran => false,
+        // C# builds through a project reference in Step 0; "paste the defining
+        // source" never applies (M3.6).
+        crate::auto::candidate::Lang::CSharp => false,
     }
 }
 
@@ -3273,6 +3319,20 @@ fn try_build(
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(
                         "Fortran harness binary missing (Step 0 build did not produce harnesses/<id>/main)",
+                    ),
+                }
+            }
+        }
+        // C# built + instrumented its assembly and emitted the launcher `main` in
+        // Step 0 (dotnet build + sharpfuzz); pass-through succeeds iff it exists.
+        Lang::CSharp => {
+            let main_bin = crate::auto::layout::harness_dir(work_dir, harness_id).join("main");
+            if main_bin.is_file() {
+                BuildOutcome::Success
+            } else {
+                BuildOutcome::Failed {
+                    errors: build_classifier::classify(
+                        "C# harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
                     ),
                 }
             }

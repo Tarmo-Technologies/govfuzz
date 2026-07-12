@@ -120,11 +120,16 @@ fn requirements(
         Lang::Go => ("Go", &[&["go"]], "install go"),
         Lang::Cobol => ("COBOL", &[&["cobc"]], "apt-get install gnucobol"),
         Lang::Fortran => ("Fortran", &[&["gfortran"]], "apt-get install gfortran"),
+        Lang::CSharp => (
+            "C#",
+            &[&["dotnet"], &["sharpfuzz"]],
+            "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`",
+        ),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 10] = [
+const LANES: [Lang; 11] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -135,6 +140,7 @@ const LANES: [Lang; 10] = [
     Lang::Go,
     Lang::Cobol,
     Lang::Fortran,
+    Lang::CSharp,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

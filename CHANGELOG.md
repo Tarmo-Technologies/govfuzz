@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+- **Wider fuzzable surface for the C# and JavaScript lanes.** The C# lane now
+  fuzzes methods with a `bool` sibling (driven to `false`) and drives an
+  `offset`/`index`/`start` integer to `0` (not the buffer length, which threw), so
+  `Parse(string, bool)` and `Read(byte[], int offset, int count)` shapes are covered.
+  The JavaScript lane now discovers **static** methods of exported classes
+  (`Class.parse`-style, no construction needed) in addition to instance methods.
+
 - **Coverage depth for the C# and JavaScript lanes.** Three improvements from a
   post-merge dogfood sweep: (1) both lanes now **mine a magic-value dictionary**
   from the target's string/integer literals — the managed/interpreted drivers carry

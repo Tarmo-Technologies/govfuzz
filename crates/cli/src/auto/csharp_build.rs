@@ -233,8 +233,10 @@ fn instance_receiver_ok(method: &CSharpMethod, source: &str) -> Result<(), Strin
     Ok(())
 }
 
-/// The C# expression that decodes the fuzz bytes (`data`) to `param`'s type.
-fn decode_expr(kind: CSharpParamKind, raw_type: &str) -> String {
+/// The C# expression that decodes the fuzz bytes (`data`) to `param`'s type. The
+/// parameter `name` disambiguates an integer role: an offset/index/position starts
+/// at 0, a count/length spans the input.
+fn decode_expr(kind: CSharpParamKind, raw_type: &str, name: &str) -> String {
     match kind {
         CSharpParamKind::Bytes => "data".to_owned(),
         CSharpParamKind::ByteSpan => {
@@ -251,7 +253,23 @@ fn decode_expr(kind: CSharpParamKind, raw_type: &str) -> String {
         }
         CSharpParamKind::Str => "System.Text.Encoding.UTF8.GetString(data)".to_owned(),
         CSharpParamKind::Stream => "new System.IO.MemoryStream(data, false)".to_owned(),
-        CSharpParamKind::Int => "data.Length".to_owned(),
+        CSharpParamKind::Int => {
+            // An offset/index/position into the buffer must start at 0 (passing the
+            // length throws ArgumentOutOfRange); a count/length/size spans the input.
+            let n = name.to_ascii_lowercase();
+            if n.contains("offset")
+                || n.contains("index")
+                || n == "pos"
+                || n.contains("position")
+                || n == "start"
+                || n == "from"
+            {
+                "0".to_owned()
+            } else {
+                "data.Length".to_owned()
+            }
+        }
+        CSharpParamKind::Bool => "false".to_owned(),
         // is_fuzzable() excludes Other, but keep the shim total: pass default.
         CSharpParamKind::Other => format!("default({raw_type})"),
     }
@@ -267,7 +285,7 @@ fn generate_entry(method: &CSharpMethod) -> String {
     let args: Vec<String> = method
         .params
         .iter()
-        .map(|p| decode_expr(p.kind, &p.raw_type))
+        .map(|p| decode_expr(p.kind, &p.raw_type, &p.name))
         .collect();
     format!(
         "// SPDX-License-Identifier: Apache-2.0\n\
@@ -554,14 +572,32 @@ mod tests {
 
     #[test]
     fn entry_span_and_stream_and_len() {
-        let ros = decode_expr(CSharpParamKind::ByteSpan, "ReadOnlySpan<byte>");
+        let ros = decode_expr(CSharpParamKind::ByteSpan, "ReadOnlySpan<byte>", "s");
         assert_eq!(ros, "new System.ReadOnlySpan<byte>(data)");
-        let rom = decode_expr(CSharpParamKind::ByteSpan, "ReadOnlyMemory<byte>");
+        let rom = decode_expr(CSharpParamKind::ByteSpan, "ReadOnlyMemory<byte>", "s");
         assert_eq!(rom, "new System.ReadOnlyMemory<byte>(data)");
-        let st = decode_expr(CSharpParamKind::Stream, "Stream");
+        let st = decode_expr(CSharpParamKind::Stream, "Stream", "s");
         assert_eq!(st, "new System.IO.MemoryStream(data, false)");
-        let len = decode_expr(CSharpParamKind::Int, "int");
+        let len = decode_expr(CSharpParamKind::Int, "int", "count");
         assert_eq!(len, "data.Length");
+    }
+
+    #[test]
+    fn int_offset_is_zero_count_is_length_and_bool_false() {
+        assert_eq!(decode_expr(CSharpParamKind::Int, "int", "offset"), "0");
+        assert_eq!(decode_expr(CSharpParamKind::Int, "int", "startIndex"), "0");
+        assert_eq!(
+            decode_expr(CSharpParamKind::Int, "int", "count"),
+            "data.Length"
+        );
+        assert_eq!(
+            decode_expr(CSharpParamKind::Int, "int", "length"),
+            "data.Length"
+        );
+        assert_eq!(
+            decode_expr(CSharpParamKind::Bool, "bool", "ignoreCase"),
+            "false"
+        );
     }
 
     #[test]

@@ -3854,7 +3854,7 @@ fn absolutize(p: &Path) -> std::io::Result<PathBuf> {
 /// `govfuzz_driver.c`). Installed distributions should prefer the runtime staged
 /// beside the executable; dev builds fall back to the source tree via
 /// `CARGO_MANIFEST_DIR`. Mirrors `rust_build::locate_c_runtime_dir`.
-fn locate_c_runtime() -> PathBuf {
+pub(crate) fn locate_c_runtime() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         for dir in exe.ancestors().skip(1) {
             let cand = dir.join("c_runtime");

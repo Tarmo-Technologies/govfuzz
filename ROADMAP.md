@@ -2816,12 +2816,30 @@ gen → build → framed fork-server + coverage → CWE mapping + static rules. 
 coverage ships incrementally. Legacy-government languages first (on-thesis), then
 mainstream.
 
-- **COBOL** — GnuCOBOL (`cobc`) subprocess build (GPL → subprocess only, same posture
-  as GNAT); discover `PROGRAM-ID`s / paragraphs; drive the `LINKAGE SECTION` /
-  `ACCEPT` input surface. Vendor tree-sitter-cobol at a pinned commit (re-verify
-  license per §1.2).
-- **Fortran** — gfortran subprocess; discover subroutines / functions / modules;
-  drive array / `COMMON` / derived-type arguments; tree-sitter-fortran.
+- **COBOL** — **Shipped 2026-07-12** (the first turnkey COBOL fuzzer). Rather than a
+  separate lane, COBOL reuses the C engine: a `PROGRAM-ID` with a fuzzable `LINKAGE`
+  `PIC X` operand is translated to C with `cobc -C -debug -fec=all` (free/fixed format
+  detected, copybook `-I` dirs collected), wrapped in a generated driver that drives
+  the primary buffer + a length operand + zeroed rest, and fuzzed on the C fork-server
+  path (edge coverage, CmpLog, ASan). Two crash oracles (ASan + libcob `-fec` runtime
+  checks) with `.cob:line` + CWE attribution, plus the taint-confirmed sink oracles
+  (command/SQL/path injection) apply. From-scratch scanner (no tree-sitter-cobol
+  needed). cobc is GPLv3 (subprocess-only), libcob LGPLv3 (links into the user
+  harness, like the GNAT runtime). Validated on a 23-project / 2925-file campaign:
+  0 panics, 30/38 build+fuzz, 0 crash-FPs, 2 real command-injection findings. See
+  `docs/site/cobol.md`. **Remaining:** `ACCEPT`/file-`READ` input surfaces, linking
+  sibling `CALL`ed programs, embedded `EXEC SQL`/`CICS`.
+- **Fortran** — **Shipped 2026-07-12.** Like COBOL, reuses the C engine: a
+  `subroutine`/`function` with a `character` byte-buffer argument is compiled with
+  `gfortran -fsanitize=address -fsanitize-coverage=trace-pc,trace-cmp` and driven by
+  a generated glue calling it via the gfortran C ABI (args by reference, a hidden
+  length per character arg; primary buffer heap-allocated to the input size so a
+  real OOB hits ASan's redzone). ASan is the memory oracle with native `.f90:line` +
+  CWE attribution — no exit-interposition needed. From-scratch scanner. libgfortran
+  (LGPLv3) links into the user harness like the C runtime. Campaign: 20 projects /
+  40,367 files, 0 panics, 13,406 fuzzable procedures, 6,500+ exec/s, 0 FP. See
+  `docs/site/fortran.md`. **Remaining:** numeric-array / Fortran-`READ` surfaces,
+  module `use`-dependency compilation, full fixed-form (.f77) column parsing.
 - **JavaScript / TypeScript** — Node interpreted lane (like Python/Perl): discover
   exported functions; real coverage via V8 (`NODE_V8_COVERAGE` / inspector) folded
   into the shared edge map; drive JSON / string / Buffer args. tree-sitter-javascript

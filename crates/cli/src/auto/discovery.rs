@@ -839,6 +839,10 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
         Lang::Go => go_parser::parse_go_functions(source)
             .map(|fns| fns.into_iter().map(|f| (f.name, f.line)).collect())
             .unwrap_or_default(),
+        // COBOL is driven through the C harness (cobc -C); no in-lane call graph.
+        Lang::Cobol => Vec::new(),
+        // Fortran is driven through the C harness (gfortran); no in-lane call graph.
+        Lang::Fortran => Vec::new(),
     }
 }
 
@@ -1328,6 +1332,53 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
+        Lang::Cobol => {
+            // M3.4: each COBOL PROGRAM-ID with a fuzzable LINKAGE `PIC X(N)` buffer
+            // (driven via `PROCEDURE DIVISION USING`) is a candidate. It is fuzzed by
+            // translating to C (`cobc -C`) and driving the entry from the fuzz bytes on
+            // the C harness path — see `crate::auto::cobol` / `cobol_build`. The LINKAGE
+            // buffer is the attacker-controlled input channel, so it is attacker-reachable.
+            for prog in crate::auto::cobol::parse_cobol(&source) {
+                if !prog.is_fuzzable() {
+                    continue;
+                }
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-B", path, prog.line, &prog.program_id),
+                    lang: Lang::Cobol,
+                    source_path: path.to_path_buf(),
+                    line: prog.line,
+                    name: prog.program_id,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
+        Lang::Fortran => {
+            // M3.5: each Fortran subroutine/function with a fuzzable `character`
+            // argument is a candidate, driven via a gfortran C-ABI harness (see
+            // `crate::auto::fortran` / `fortran_build`). The character buffer is the
+            // attacker-controlled input channel.
+            for proc in crate::auto::fortran::parse_fortran(&source) {
+                if !proc.is_fuzzable() {
+                    continue;
+                }
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-F", path, proc.line, &proc.name),
+                    lang: Lang::Fortran,
+                    source_path: path.to_path_buf(),
+                    line: proc.line,
+                    name: proc.name,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1430,6 +1481,17 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "pl"
                     | "pm"
                     | "go"
+                    | "cob"
+                    | "cbl"
+                    | "cobol"
+                    | "cble"
+                    | "f90"
+                    | "f95"
+                    | "f03"
+                    | "f08"
+                    | "f"
+                    | "for"
+                    | "f77"
             )
         })
 }
@@ -1447,7 +1509,7 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         // M22: only an explicit `pragma Ada_83` is flagged (-> report-only); other
         // Ada standards are left to the Ada lane's own pragma/feature detection.
         Lang::Ada => lang_profile::detect_ada(source),
-        Lang::Rust | Lang::Java | Lang::Go => None,
+        Lang::Rust | Lang::Java | Lang::Go | Lang::Cobol | Lang::Fortran => None,
     }
 }
 
@@ -1466,6 +1528,8 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         "py" => Some(Lang::Python),
         "pl" | "pm" => Some(Lang::Perl),
         "go" => Some(Lang::Go),
+        "cob" | "cbl" | "cobol" | "cble" => Some(Lang::Cobol),
+        "f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" => Some(Lang::Fortran),
         _ => None,
     }
 }

@@ -108,6 +108,52 @@ fn find_target_csproj(source: &Path) -> Option<PathBuf> {
     None
 }
 
+/// The value of a `<Tag>...</Tag>` element in a csproj (first occurrence), trimmed.
+fn xml_element<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    let start = text.find(&open)? + open.len();
+    let end = text[start..].find(&close)? + start;
+    Some(text[start..end].trim())
+}
+
+/// Rank a target framework moniker by preference for a net8.0 harness host: the
+/// highest framework the host can reference wins. Returns `None` for a TFM the
+/// net8.0 SDK/host cannot build or load (a newer preview like `net10.0`, or a
+/// .NET Framework TFM like `net48` on a non-Windows host).
+fn tfm_rank(tfm: &str) -> Option<u32> {
+    let t = tfm.trim().to_ascii_lowercase();
+    match t.as_str() {
+        "net8.0" => Some(100),
+        "net7.0" => Some(90),
+        "net6.0" => Some(80),
+        "net5.0" => Some(70),
+        "netcoreapp3.1" => Some(60),
+        "netcoreapp3.0" => Some(55),
+        "netstandard2.1" => Some(50),
+        "netstandard2.0" => Some(40),
+        "netstandard1.6" => Some(30),
+        _ => None,
+    }
+}
+
+/// Choose the best framework to pin the target `ProjectReference` to. A .NET
+/// library often multi-targets (`netstandard2.0;net8.0;net10.0`); without pinning,
+/// the reference builds *every* framework — including any the installed SDK can't
+/// build (a preview `net10.0`), failing the whole harness. Parse the declared
+/// `<TargetFramework(s)>` and return the highest one the net8.0 host supports.
+fn choose_target_framework(csproj: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(csproj).ok()?;
+    let raw =
+        xml_element(&text, "TargetFrameworks").or_else(|| xml_element(&text, "TargetFramework"))?;
+    raw.split(';')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .filter_map(|tfm| tfm_rank(tfm).map(|r| (r, tfm.to_owned())))
+        .max_by_key(|(r, _)| *r)
+        .map(|(_, tfm)| tfm)
+}
+
 /// The assembly name a project builds: its `<AssemblyName>` if set, else the
 /// `.csproj` file stem (dotnet's default).
 fn target_assembly_name(csproj: &Path) -> String {
@@ -140,9 +186,15 @@ fn resolve_target(candidate: &Candidate) -> Result<CSharpMethod, String> {
         .ok_or_else(|| format!("C# target `{}` no longer present in source", candidate.name))
 }
 
-/// An instance method needs a no-argument-constructible declaring type. If the
-/// source shows a `public <Leaf>(<non-empty>)` constructor and no parameterless
-/// overload, skip cleanly (mirrors the Python/Java no-arg-ctor first cut).
+/// An instance method needs a no-argument-*constructible* declaring type — the
+/// entry shim emits `new <Type>()`. That compiles iff the type has an accessible
+/// (public/internal) parameterless constructor, OR declares no constructor at all
+/// (the implicit public default). It does NOT compile when the only constructors
+/// are parameterized (needs args) or inaccessible (a `private` ctor + a static
+/// `Instance` singleton — YamlDotNet's naming conventions). In those cases skip
+/// cleanly (mirrors the Python/Java no-arg-ctor first cut). Scans the declaring
+/// file's constructors; a receiver whose ctor lives in another partial file may
+/// still slip through to a clean FailedBuild.
 fn instance_receiver_ok(method: &CSharpMethod, source: &str) -> Result<(), String> {
     if method.is_static {
         return Ok(());
@@ -152,26 +204,29 @@ fn instance_receiver_ok(method: &CSharpMethod, source: &str) -> Result<(), Strin
         .rsplit('.')
         .next()
         .unwrap_or(&method.type_name);
-    let mut has_param_ctor = false;
-    let mut has_noarg_ctor = false;
-    let needle = format!("public {leaf}(");
-    let mut from = 0usize;
-    while let Some(rel) = source[from..].find(&needle) {
-        let pos = from + rel;
-        let after = &source[pos + needle.len()..];
-        let args = after.split(')').next().unwrap_or("");
-        if args.trim().is_empty() {
-            has_noarg_ctor = true;
-        } else {
-            has_param_ctor = true;
+    let mut has_explicit_ctor = false;
+    let mut has_accessible_noarg = false;
+    for access in ["public", "private", "protected", "internal"] {
+        let needle = format!("{access} {leaf}(");
+        let mut from = 0usize;
+        while let Some(rel) = source[from..].find(&needle) {
+            let pos = from + rel;
+            has_explicit_ctor = true;
+            let after = &source[pos + needle.len()..];
+            let args = after.split(')').next().unwrap_or("");
+            let noarg = args.trim().is_empty();
+            let accessible = matches!(access, "public" | "internal");
+            if noarg && accessible {
+                has_accessible_noarg = true;
+            }
+            from = pos + needle.len();
         }
-        from = pos + needle.len();
     }
-    if has_param_ctor && !has_noarg_ctor {
+    if has_explicit_ctor && !has_accessible_noarg {
         return Err(format!(
-            "instance method `{}` needs a receiver, but `{leaf}` has only a \
-             parameterized constructor; only no-arg-constructible receivers are \
-             supported (skipped cleanly)",
+            "instance method `{}` needs a receiver, but `{leaf}` has no accessible \
+             parameterless constructor (only a parameterized or private one); only \
+             no-arg-constructible receivers are supported (skipped cleanly)",
             method.qualified()
         ));
     }
@@ -232,8 +287,21 @@ fn generate_entry(method: &CSharpMethod) -> String {
 }
 
 /// The harness `.csproj`: an exe referencing the target project + SharpFuzz +
-/// the fixed Driver.cs + the generated GovfuzzEntry.cs.
-fn generate_csproj(target_csproj: &Path) -> String {
+/// the fixed Driver.cs + the generated GovfuzzEntry.cs. When the target project
+/// multi-targets, the reference is pinned to `pinned_tfm` (via `SetTargetFramework`)
+/// so the SDK never tries to build a framework it doesn't support.
+fn generate_csproj(target_csproj: &Path, pinned_tfm: Option<&str>) -> String {
+    let reference = match pinned_tfm {
+        Some(tfm) => format!(
+            "<ProjectReference Include=\"{target}\" \
+             SetTargetFramework=\"TargetFramework={tfm}\" />",
+            target = target_csproj.display(),
+        ),
+        None => format!(
+            "<ProjectReference Include=\"{target}\" />",
+            target = target_csproj.display(),
+        ),
+    };
     format!(
         "<Project Sdk=\"Microsoft.NET.Sdk\">\n\
          \x20 <PropertyGroup>\n\
@@ -249,10 +317,10 @@ fn generate_csproj(target_csproj: &Path) -> String {
          \x20 </PropertyGroup>\n\
          \x20 <ItemGroup>\n\
          \x20   <PackageReference Include=\"SharpFuzz\" Version=\"2.3.0\" />\n\
-         \x20   <ProjectReference Include=\"{target}\" />\n\
+         \x20   {reference}\n\
          \x20 </ItemGroup>\n\
          </Project>\n",
-        target = target_csproj.display(),
+        reference = reference,
     )
 }
 
@@ -328,9 +396,10 @@ pub fn build_csharp_harness(
     if let Err(e) = std::fs::write(proj_dir.join("GovfuzzEntry.cs"), generate_entry(&method)) {
         return CSharpBuildResult::Failed(format!("write GovfuzzEntry.cs: {e}"));
     }
+    let pinned_tfm = choose_target_framework(&target_csproj);
     if let Err(e) = std::fs::write(
         proj_dir.join("govfuzz_harness.csproj"),
-        generate_csproj(&target_csproj),
+        generate_csproj(&target_csproj, pinned_tfm.as_deref()),
     ) {
         return CSharpBuildResult::Failed(format!("write harness csproj: {e}"));
     }
@@ -374,6 +443,10 @@ pub fn build_csharp_harness(
     let instr = Command::new(&sharpfuzz)
         .arg(&target_dll)
         .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+        // The `sharpfuzz` global tool targets an older runtime than the SDK may
+        // ship (e.g. a net8.0 tool on a host with only the .NET 10 runtime); roll
+        // it forward so instrumentation works whatever runtime is installed.
+        .env("DOTNET_ROLL_FORWARD", "Major")
         .output();
     match instr {
         Ok(o) if o.status.success() => {}
@@ -402,7 +475,7 @@ pub fn build_csharp_harness(
          # namespace, whose own exceptions are treated as declared input rejection.\n\
          GOVFUZZ_CS_NAMESPACE=\"{ns}\" \\\n\
          GOVFUZZ_EXPECTED_EXCEPTIONS=\"{expected}\" \\\n\
-         DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_TieredCompilation=0 \\\n\
+         DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_ROLL_FORWARD=Major \\\n\
          exec dotnet \"{dll}\" \"$@\"\n",
         ns = method.namespace,
         expected = "",
@@ -503,6 +576,70 @@ mod tests {
         let method = m(false, vec![p(CSharpParamKind::Bytes, "byte[]")]);
         let src = "public class Parser { public Parser(int cfg) { } public Parser() { } }";
         assert!(instance_receiver_ok(&method, src).is_ok());
+    }
+
+    #[test]
+    fn instance_ctor_guard_skips_private_singleton() {
+        // Singleton pattern: only a private parameterless ctor + a static Instance —
+        // `new Parser()` does not compile, so the target must be skipped, not built.
+        let method = m(false, vec![p(CSharpParamKind::Str, "string")]);
+        let src = "public sealed class Parser { private Parser() { } \
+                   public static readonly Parser Instance = new Parser(); \
+                   public string Apply(string v) { return v; } }";
+        assert!(instance_receiver_ok(&method, src).is_err());
+    }
+
+    #[test]
+    fn instance_ctor_guard_ok_with_no_explicit_ctor() {
+        // No declared ctor at all => the implicit public default => constructible.
+        let method = m(false, vec![p(CSharpParamKind::Bytes, "byte[]")]);
+        let src = "public class Parser { public void Feed(byte[] d) { } }";
+        assert!(instance_receiver_ok(&method, src).is_ok());
+    }
+
+    #[test]
+    fn choose_tfm_prefers_supported_over_preview() {
+        let dir = std::env::temp_dir().join("gf_cs_tfm_test");
+        let _ = std::fs::create_dir_all(&dir);
+        // Multi-target incl. a preview net10.0 the net8.0 SDK can't build.
+        let csproj = dir.join("Multi.csproj");
+        std::fs::write(
+            &csproj,
+            "<Project><PropertyGroup><TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
+        )
+        .unwrap();
+        assert_eq!(choose_target_framework(&csproj).as_deref(), Some("net8.0"));
+
+        // Only netstandard — pick it (net8.0 host can load it).
+        let ns = dir.join("Ns.csproj");
+        std::fs::write(
+            &ns,
+            "<Project><PropertyGroup><TargetFramework>netstandard2.0</TargetFramework></PropertyGroup></Project>",
+        )
+        .unwrap();
+        assert_eq!(
+            choose_target_framework(&ns).as_deref(),
+            Some("netstandard2.0")
+        );
+
+        // Only an unsupported preview — no compatible TFM.
+        let only_preview = dir.join("Preview.csproj");
+        std::fs::write(
+            &only_preview,
+            "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+        )
+        .unwrap();
+        assert_eq!(choose_target_framework(&only_preview), None);
+    }
+
+    #[test]
+    fn csproj_pins_tfm_when_supplied() {
+        let dir = std::env::temp_dir();
+        let csproj = dir.join("Target.csproj");
+        let out = generate_csproj(&csproj, Some("net8.0"));
+        assert!(out.contains("SetTargetFramework=\"TargetFramework=net8.0\""));
+        let out_none = generate_csproj(&csproj, None);
+        assert!(!out_none.contains("SetTargetFramework"));
     }
 
     #[test]

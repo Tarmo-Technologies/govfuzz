@@ -193,6 +193,7 @@ fn lang_tag(l: Lang) -> &'static str {
         Lang::Fortran => "fortran",
         Lang::CSharp => "csharp",
         Lang::Js => "javascript",
+        Lang::Ts => "typescript",
     }
 }
 fn lang_from_tag(s: &str) -> Option<Lang> {
@@ -209,6 +210,7 @@ fn lang_from_tag(s: &str) -> Option<Lang> {
         "fortran" => Lang::Fortran,
         "csharp" => Lang::CSharp,
         "javascript" => Lang::Js,
+        "typescript" => Lang::Ts,
         _ => return None,
     })
 }

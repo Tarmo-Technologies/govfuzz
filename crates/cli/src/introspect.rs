@@ -320,6 +320,7 @@ fn language_name(lang: &Lang) -> &'static str {
         Lang::Go => "go",
         Lang::Cobol => "cobol",
         Lang::Fortran => "fortran",
+        Lang::CSharp => "csharp",
     }
 }
 

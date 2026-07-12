@@ -2310,6 +2310,7 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
             Lang::Go => "Go",
             Lang::Cobol => "COBOL",
             Lang::Fortran => "Fortran",
+            Lang::CSharp => "C#",
         };
         let reach = match c.input_reachability {
             Some(InputReachability::AttackerReachable) => "attacker-reachable",
@@ -2946,9 +2947,26 @@ mod tests {
             ]
         );
 
+        // The COBOL/Fortran/C# lanes and their aliases parse onto the canonical lanes.
+        let managed = TestCli::try_parse_from([
+            "govfuzz", "tree", "--languages", "cobol,f90,cs,c#,dotnet",
+        ])
+        .expect("parses")
+        .auto;
+        assert_eq!(
+            managed.languages,
+            vec![
+                LangSelector::Cobol,
+                LangSelector::Fortran,
+                LangSelector::CSharp,
+                LangSelector::CSharp,
+                LangSelector::CSharp,
+            ]
+        );
+
         // Unknown language is a hard parse error, not a silent skip.
         assert!(
-            TestCli::try_parse_from(["govfuzz", "tree", "--languages", "cobol"]).is_err(),
+            TestCli::try_parse_from(["govfuzz", "tree", "--languages", "haskell"]).is_err(),
             "an unsupported language must error at parse time"
         );
     }

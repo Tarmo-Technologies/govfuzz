@@ -83,6 +83,107 @@ pub fn parse_sanitizer_report(stderr: &str) -> Option<SanitizerReport> {
         // `== govfuzz go finding: <msg>` (or the runtime prints `panic:`/`fatal
         // error:` for an unrecoverable crash). The message selects the GF rule.
         .or_else(|| parse_go_panic(stderr))
+        // A C# finding: the govfuzz .NET driver prints `== govfuzz csharp finding:
+        // <exception type>: <msg>` and hard-halts (exit 86). The exception type
+        // selects the GF rule + CWE, mirroring the JVM lane.
+        .or_else(|| parse_csharp_finding(stderr))
+}
+
+/// Parse a govfuzz C# finding out of stderr. The .NET driver prints
+/// `== govfuzz csharp finding: <System.ExceptionType>: <message>` followed by the
+/// managed stack trace (`   at Ns.Type.Method(...) in File.cs:line N`). The
+/// exception type drives the rule id: an index OOB is the CWE-125/787 class
+/// (GF-201); a divide-by-zero / overflow `DivideByZeroException` / `OverflowException`
+/// / `ArithmeticException` maps to GF-205; `OutOfMemoryException` to GF-209;
+/// `StackOverflowException` to the uncontrolled-recursion GF-207; a
+/// `NullReferenceException` to the null-deref GF-206; everything else — a custom
+/// exception, `InvalidOperationException`, an assertion — is a reachable-crash GF-210.
+fn parse_csharp_finding(stderr: &str) -> Option<SanitizerReport> {
+    const MARKER: &str = "== govfuzz csharp finding:";
+    let line = stderr.lines().find(|l| l.contains(MARKER))?;
+    let after = line.split(MARKER).nth(1).unwrap_or("").trim();
+    let (exc, msg) = match after.split_once(':') {
+        Some((c, m)) => (c.trim(), m.trim()),
+        None => (after, ""),
+    };
+    // Leaf type name (drop the `System.` / target namespace prefix).
+    let leaf = exc.rsplit('.').next().unwrap_or(exc);
+
+    let (kind, rule_id) = if leaf.contains("IndexOutOfRange") || leaf.contains("IndexOutOfBounds") {
+        ("csharp-index-out-of-bounds".to_owned(), "GF-201")
+    } else if leaf == "DivideByZeroException"
+        || leaf == "OverflowException"
+        || leaf == "ArithmeticException"
+        || leaf == "NotFiniteNumberException"
+    {
+        ("csharp-arithmetic".to_owned(), "GF-205")
+    } else if leaf == "OutOfMemoryException" {
+        ("csharp-out-of-memory".to_owned(), "GF-209")
+    } else if leaf == "StackOverflowException" || leaf == "InsufficientExecutionStackException" {
+        ("csharp-stack-overflow".to_owned(), "GF-207")
+    } else if leaf == "NullReferenceException" {
+        ("csharp-null-dereference".to_owned(), "GF-206")
+    } else {
+        // InvalidOperationException, custom exceptions, an explicit throw, ...
+        ("csharp-uncaught-exception".to_owned(), "GF-210")
+    };
+
+    let mut stack = parse_csharp_stack_frames(stderr);
+    stack.truncate(5);
+
+    let message = if msg.is_empty() {
+        format!("C# finding: {exc}")
+    } else {
+        format!("C# finding: {exc}: {msg}")
+    };
+    Some(SanitizerReport {
+        sanitizer: Sanitizer::AddressSanitizer,
+        kind,
+        rule_id,
+        stack,
+        message,
+    })
+}
+
+/// Parse managed stack frames from a .NET stack trace: `   at Ns.Type.Method(args)`
+/// or `   at Ns.Type.Method(args) in /path/File.cs:line 42`. The `govfuzz`
+/// driver/entry frames are skipped so the top frame is the target's own code.
+fn parse_csharp_stack_frames(stderr: &str) -> Vec<StackFrame> {
+    let mut frames = Vec::new();
+    for raw in stderr.lines() {
+        let t = raw.trim_start();
+        let Some(rest) = t.strip_prefix("at ") else {
+            continue;
+        };
+        // Skip our own driver / entry shim frames.
+        if rest.starts_with("Driver.") || rest.starts_with("Govfuzzgen.") {
+            continue;
+        }
+        // Function = everything up to the first `(`.
+        let func = rest.split('(').next().unwrap_or(rest).trim().to_owned();
+        // Optional `in <file>:line N`.
+        let (file, line) = if let Some(pos) = rest.find(" in ") {
+            let loc = &rest[pos + 4..];
+            if let Some(lpos) = loc.rfind(":line ") {
+                let file = loc[..lpos].trim().to_owned();
+                let line = loc[lpos + 6..].trim().parse::<u32>().ok();
+                (Some(file), line)
+            } else {
+                (Some(loc.trim().to_owned()), None)
+            }
+        } else {
+            (None, None)
+        };
+        if func.is_empty() {
+            continue;
+        }
+        frames.push(StackFrame {
+            function: func,
+            file,
+            line,
+        });
+    }
+    frames
 }
 
 /// Parse a Go panic / fatal runtime error out of stderr. The govfuzz Go harness
@@ -881,6 +982,33 @@ java.lang.ArrayIndexOutOfBoundsException: Index 8 out of bounds for length 1
         assert_eq!(parse_sanitizer_report(oom).unwrap().rule_id, "GF-209");
         let key = "== govfuzz python finding: KeyError: 'x'\n";
         assert_eq!(parse_sanitizer_report(key).unwrap().rule_id, "GF-210");
+    }
+
+    #[test]
+    fn csharp_finding_maps_types_and_parses_stack() {
+        let stderr = "== govfuzz csharp finding: System.IndexOutOfRangeException: Index was outside the bounds of the array.\n\
+                      \x20  at Govfuzzgen.GovfuzzEntry.Run(Byte[] data)\n\
+                      \x20  at Acme.Parsing.JsonReader.Parse(Byte[] data) in /proj/JsonReader.cs:line 42\n\
+                      \x20  at Acme.Parsing.JsonReader.Scan(Byte[] data) in /proj/JsonReader.cs:line 51\n";
+        let r = parse_sanitizer_report(stderr).expect("csharp finding");
+        assert_eq!(r.rule_id, "GF-201");
+        assert_eq!(r.kind, "csharp-index-out-of-bounds");
+        // The Govfuzzgen entry frame is skipped; the top frame is the target's code.
+        assert_eq!(r.stack[0].function, "Acme.Parsing.JsonReader.Parse");
+        assert_eq!(r.stack[0].file.as_deref(), Some("/proj/JsonReader.cs"));
+        assert_eq!(r.stack[0].line, Some(42));
+    }
+
+    #[test]
+    fn csharp_finding_type_rule_mapping() {
+        let nre = "== govfuzz csharp finding: System.NullReferenceException: \n";
+        assert_eq!(parse_sanitizer_report(nre).unwrap().rule_id, "GF-206");
+        let dz = "== govfuzz csharp finding: System.DivideByZeroException: div by zero\n";
+        assert_eq!(parse_sanitizer_report(dz).unwrap().rule_id, "GF-205");
+        let oom = "== govfuzz csharp finding: System.OutOfMemoryException: \n";
+        assert_eq!(parse_sanitizer_report(oom).unwrap().rule_id, "GF-209");
+        let custom = "== govfuzz csharp finding: Acme.ParseException: bad token\n";
+        assert_eq!(parse_sanitizer_report(custom).unwrap().rule_id, "GF-210");
     }
 
     #[test]

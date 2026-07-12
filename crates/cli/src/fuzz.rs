@@ -1854,6 +1854,13 @@ fn run_builtin_with_progress(
     let start = Instant::now();
     let mut last_tick = Instant::now();
     let mut corpus = CorpusManager::new(prepared.work_dir.clone());
+    // Interpreted lanes (Python/Perl) run the target under an interpreter whose OWN
+    // file activity the shim traces; there the resource-leak oracle is taint-gated
+    // to avoid flagging the interpreter's fixed env/stdlib opens as target leaks.
+    // Detected once from the launcher `main` marker.
+    let interpreted_lane = std::fs::read_to_string(&prepared.harness_path)
+        .map(|s| s.contains("GOVFUZZ_PY_LAUNCHER") || s.contains("GOVFUZZ_PL_LAUNCHER"))
+        .unwrap_or(false);
     let sandbox_metadata = prepared.runner.sandbox_metadata();
     let emitter = FindingEmitter::with_metadata_and_sandbox(
         prepared.work_dir.clone(),
@@ -2356,7 +2363,10 @@ fn run_builtin_with_progress(
             }
         }
 
-        for hit in crate::auto::runtrace::oracle_hits_from_events(&runtrace_events) {
+        for hit in crate::auto::runtrace::oracle_hits_from_events_for_lane(
+            &runtrace_events,
+            interpreted_lane,
+        ) {
             let key = oracle_hit_dedupe_key(&hit);
             if !seen_oracle_hits.insert(key) {
                 continue;

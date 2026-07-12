@@ -644,11 +644,14 @@ fn write_source_dictionary(
         Lang::Java => java_parser::extract_java_dictionary_tokens(source).ok(),
         Lang::Python => python_parser::extract_python_dictionary_tokens(source).ok(),
         Lang::Perl => perl_parser::extract_perl_dictionary_tokens(source).ok(),
+        // C#/JS carry no CmpLog in the managed/interpreted driver, so a source-mined
+        // dictionary is the lever past a single multi-byte comparison gate (the same
+        // reason the other managed lanes mine one). Scan the source's string/number
+        // literals (JS also allows backtick template literals).
+        Lang::CSharp => Some(crate::auto::lit_scan::scan_literal_tokens(source, false)),
+        Lang::Js => Some(crate::auto::lit_scan::scan_literal_tokens(source, true)),
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
-        // C#/JS dictionary mining is not wired yet; skip (no tokens).
-        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran | Lang::CSharp | Lang::Js => {
-            None
-        }
+        Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
     };
     let Some(tokens) = tokens else {
         return;
@@ -2724,22 +2727,27 @@ fn run_fuzz_with_runtrace(
             harness_dir.join("cmp_progress.shm").display().to_string(),
         ));
     }
-    // The native Java and C# lanes run the target inside a managed runtime (JVM /
-    // .NET CLR) launched by a wrapper script. LD_PRELOAD-ing the runtrace shim into
-    // `java`/`dotnet` would intercept the runtime's OWN libc calls (class/assembly
-    // loading file opens, the .NET host's `access()`→`open()` on libhostfxr.so,
-    // sockets, …) and the runtrace resource/open/TOCTOU oracles would fire on normal
-    // runtime activity — false positives (e.g. GF-418 on the .NET host's own
-    // startup). Both lanes get coverage from their own instrumentation
-    // (bytecode agent / SharpFuzz IL → GOVFUZZ_COV_SHM, kept above) and crash
-    // detection from the driver's hard-halt (exit 86), so neither needs the shim.
+    // The native Java, C#, and JavaScript lanes run the target inside a managed
+    // runtime (JVM / .NET CLR / Node V8) launched by a wrapper script. LD_PRELOAD-ing
+    // the runtrace shim into `java`/`dotnet`/`node` would intercept the runtime's OWN
+    // libc calls (class/assembly/module loading file opens, the .NET host's
+    // `access()`→`open()` on libhostfxr.so, Node's `stat()`→`open()` on every
+    // `require`, sockets, …) and the runtrace resource/open/TOCTOU oracles would fire
+    // on normal runtime activity — false positives (e.g. GF-418 on the .NET host's
+    // own startup). Each lane gets coverage from its own instrumentation (bytecode
+    // agent / SharpFuzz IL / V8 block coverage → GOVFUZZ_COV_SHM, kept above) and
+    // crash detection from the driver's hard-halt (exit 86), so none needs the shim.
     // Under the shim the CLR's heavy startup I/O also blows past the fork-server
     // handshake window, collapsing the run to slow per-spawn execs.
     let is_managed_harness = std::fs::read_to_string(harness_dir.join("main"))
-        .map(|s| s.contains("GOVFUZZ_JVM_LAUNCHER") || s.contains("GOVFUZZ_CS_LAUNCHER"))
+        .map(|s| {
+            s.contains("GOVFUZZ_JVM_LAUNCHER")
+                || s.contains("GOVFUZZ_CS_LAUNCHER")
+                || s.contains("GOVFUZZ_JS_LAUNCHER")
+        })
         .unwrap_or(false);
     if cross_wrapper.is_some() || is_managed_harness {
-        // no shim for emulated targets or the managed (JVM / .NET) lanes
+        // no shim for emulated targets or the managed (JVM / .NET / Node) lanes
     } else if let Some(shim) = crate::auto::shim_path::locate() {
         let ld_preload = crate::auto::shim_path::ld_preload_value_with(
             &shim,

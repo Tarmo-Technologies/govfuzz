@@ -377,6 +377,14 @@ fn build_cpp_param_decoders(
     // decoders reject gets a best-effort compiling driver instead of failing the
     // whole target. Default-path callers pass `false` (emission unchanged).
     force: bool,
+    // The target is a user-defined-literal operator (`operator"" _x`). By
+    // [lex.ext], its `(charT const *, size_t)` parameters are the literal and its
+    // EXACT length — intrinsically paired. The length must therefore be bound to
+    // the buffer's own char count (`Size`), never an independent fuzzed value: a
+    // decoupled `n` up to 65536 made `std::string(s, n)` read past a `Size`-byte
+    // buffer (nlohmann `operator"" _json_pointer` → ASan heap-overflow FALSE
+    // POSITIVE). Default-path callers pass `false`.
+    literal_operator: bool,
 ) -> Result<Vec<CParamEmission>, HarnessGenError> {
     // Strip leading declaration-specifier / attribute / decoration-macro noise
     // from every parameter type up front (`__restrict`, `HB_UNUSED`, etc.) so the
@@ -396,6 +404,40 @@ fn build_cpp_param_decoders(
     let mut i = 0;
     let mut pair_consumed = false;
     while i < params.len() {
+        // User-defined-literal string operator: `operator"" _x(charT const *s,
+        // size_t n)`. By [lex.ext] `n` is the literal's exact length, so it must
+        // track the buffer — bind `s` via the standalone char decoder (a
+        // NUL-terminated `Size`-byte copy, safe for both `string(s, n)` and a
+        // C-string `string(s)`) and `n = Size`. Without this, `n` was an
+        // independent fuzzed length that overran `s` (heap-overflow FALSE POSITIVE).
+        if literal_operator
+            && i == 0
+            && params.len() == 2
+            && is_cpp_char_pointer_param(&params[0].cpp_type)
+            && is_length_cpp_param(&params[1].cpp_type)
+        {
+            if let Ok(s_emission) = select_cpp_decoder_with_registry_limited(
+                &params[0].cpp_type,
+                &params[0].name,
+                registry,
+                limits,
+            ) {
+                out.push(s_emission);
+                let len_type = params[1]
+                    .cpp_type
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                out.push(CParamEmission {
+                    support: None,
+                    decl: format!("{len_type} {} = ({len_type})Size", params[1].name),
+                    arg: params[1].name.clone(),
+                    c_type: len_type,
+                    free: None,
+                });
+                break;
+            }
+        }
         if i + 1 < params.len()
             && is_output_buffer_cpp_param(&params[i].cpp_type)
             && is_length_pointer_cpp_param(&params[i + 1].cpp_type)
@@ -525,6 +567,44 @@ fn is_raw_buffer_cpp_param(cpp_type: &str) -> bool {
     let normalized = normalize_cpp_pointer(cpp_type);
     let without_const = normalized.trim_start_matches("const ").trim();
     cpp_pointer_base(without_const).is_some_and(is_cpp_byte_buffer_base)
+}
+
+/// Whether a target name is a user-defined-literal operator (`operator"" _x` /
+/// `operator""_x`). The spelling varies by dialect (a space after `""` before the
+/// suffix in C++11, none in C++17), so normalize whitespace before matching.
+fn is_cpp_literal_operator(name: &str) -> bool {
+    name.split_whitespace()
+        .collect::<String>()
+        .contains("operator\"\"")
+}
+
+/// A pointer to any character element — the first parameter of a user-defined
+/// string-literal operator. Broader than [`is_raw_buffer_cpp_param`]: it also
+/// accepts the wide/Unicode literal element types (`char8_t`/`char16_t`/
+/// `char32_t`/`wchar_t`) that a UDL literal can carry but that are not byte
+/// buffers for the generic (buffer, length) pairing.
+fn is_cpp_char_pointer_param(cpp_type: &str) -> bool {
+    let normalized = normalize_cpp_pointer(cpp_type);
+    let without_const = normalized.trim_start_matches("const ").trim();
+    cpp_pointer_base(without_const).is_some_and(|base| {
+        matches!(
+            base,
+            "char"
+                | "unsigned char"
+                | "signed char"
+                | "char8_t"
+                | "std::char8_t"
+                | "char16_t"
+                | "std::char16_t"
+                | "char32_t"
+                | "std::char32_t"
+                | "wchar_t"
+                | "uint8_t"
+                | "std::uint8_t"
+                | "int8_t"
+                | "std::byte"
+        )
+    })
 }
 
 fn is_output_buffer_cpp_param(cpp_type: &str) -> bool {
@@ -931,6 +1011,7 @@ fn build_cpp_context_common(
         && input.constructor_params.is_empty()
         && input.lifecycle_steps.is_empty()
         && is_cpp_byte_stream_decoder(&input.target.name, effective_params);
+    let literal_operator = is_cpp_literal_operator(&input.target.name);
     let params = if byte_stream {
         build_cpp_param_decoders(
             effective_params.get(1..).unwrap_or(&[]),
@@ -938,6 +1019,7 @@ fn build_cpp_context_common(
             input.handle_lifecycle,
             &input.decoder_limits,
             input.force,
+            literal_operator,
         )?
     } else {
         build_cpp_param_decoders(
@@ -946,6 +1028,7 @@ fn build_cpp_context_common(
             input.handle_lifecycle,
             &input.decoder_limits,
             input.force,
+            literal_operator,
         )?
     };
     let constructor_params = build_constructor_param_emissions(
@@ -1299,7 +1382,7 @@ fn build_constructor_param_emissions(
             cpp_type: param.cpp_type.clone(),
         })
         .collect::<Vec<_>>();
-    build_cpp_param_decoders(&renamed_params, registry, &[], limits, false)
+    build_cpp_param_decoders(&renamed_params, registry, &[], limits, false, false)
 }
 
 struct CppBuildContextRender {
@@ -1385,7 +1468,8 @@ fn build_lifecycle_step_emissions(
                     cpp_type: param.cpp_type.clone(),
                 })
                 .collect::<Vec<_>>();
-            let params = build_cpp_param_decoders(&renamed_params, registry, &[], &limits, false)?;
+            let params =
+                build_cpp_param_decoders(&renamed_params, registry, &[], &limits, false, false)?;
             let return_type = step.return_type.trim().to_owned();
             let return_type_present = !return_type.is_empty() && return_type != "void";
             Ok(CppLifecycleStepEmission {
@@ -1693,6 +1777,67 @@ mod tests {
         assert!(
             mk.contains("-fsanitize=address,undefined -fno-sanitize=function,vptr,alignment"),
             "C++ default recipe must subtract FP-prone UBSan checks:\n{mk}"
+        );
+    }
+
+    #[test]
+    fn user_defined_literal_operator_binds_length_to_buffer_size() {
+        // nlohmann `operator"" _json_pointer(const char8_t *s, std::size_t n)`: by
+        // [lex.ext] `n` is the literal's exact length, so it MUST bind to the
+        // buffer's own char count (`Size`), not an independent fuzzed length — a
+        // decoupled `n` up to 65536 made `std::string(s, n)` read past the
+        // `Size`-byte `s` (ASan heap-buffer-overflow FALSE POSITIVE).
+        let out = temp_dir("cpp-udl");
+        let target = cppfunction("operator\"\"_json_pointer");
+        let args = GenerateCppDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            harness_id: "H-CPP-UDL".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/json.cpp"),
+            target,
+            params: vec![
+                CppParameter {
+                    name: "s".to_owned(),
+                    cpp_type: "const char8_t *".to_owned(),
+                },
+                CppParameter {
+                    name: "n".to_owned(),
+                    cpp_type: "std::size_t".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            target_includes: Vec::new(),
+            target_includes_dirs: Vec::new(),
+            target_sources: vec![PathBuf::from("/tmp/json.cpp")],
+            compile_flags: Vec::new(),
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            using_namespaces: Vec::new(),
+            result_cleanup: None,
+            constructor_params: Vec::new(),
+            type_defs: Vec::new(),
+            default_constructible_classes: Vec::new(),
+            receiver_class_override: None,
+            factory_plan: None,
+        };
+
+        let result = generate_cpp_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_cpp).unwrap();
+        // The length param tracks the buffer, never an independent fuzzed length.
+        assert!(
+            main.contains("std::size_t n = (std::size_t)Size"),
+            "UDL length must bind to Size, not a decoupled fuzzed length:\n{main}"
+        );
+        assert!(
+            !main.contains("gf_bounded_length(&Cur, 0, 65536)"),
+            "UDL length must NOT be an independent bounded fuzz length:\n{main}"
+        );
+        // `s` is still a NUL-terminated copy of the input (safe for both
+        // `string(s, n)` and a C-string `string(s)`).
+        assert!(
+            main.contains("char8_t * s = (const char8_t *)malloc")
+                || main.contains("char8_t * s = (char8_t *)malloc"),
+            "UDL char buffer must be a NUL-terminated heap copy:\n{main}"
         );
     }
 
@@ -3024,7 +3169,7 @@ mod tests {
                     cpp_type: (*t).to_owned(),
                 })
                 .collect();
-            build_cpp_param_decoders(&p, &reg, &[], &CppDecoderLimits::default(), false)
+            build_cpp_param_decoders(&p, &reg, &[], &CppDecoderLimits::default(), false, false)
                 .unwrap()
                 .iter()
                 .map(|e| e.decl.clone())

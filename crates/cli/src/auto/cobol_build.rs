@@ -140,7 +140,24 @@ fn collect_cpy_dirs(dir: &Path, depth: usize, out: &mut BTreeSet<PathBuf>) {
 
 /// Recover the C entry symbol GnuCOBOL emitted: `int   PROGID (cob_u8_t *...)`
 /// (whitespace/tab-separated; the PROGRAM-ID may be mixed-case with `_` for `-`).
-fn recover_entry_symbol(generated_c: &str) -> Option<String> {
+/// Recover the C entry symbol for the TARGET program `program_id` from cobc's
+/// generated C. `cobc -C` emits a C function per `PROGRAM-ID` in the source, so a
+/// multi-program file yields several `int Name(cob_u8_t *…)` entries; picking the
+/// FIRST one drives the wrong program (e.g. targeting CobolCraft `Facing-FromString`
+/// but calling `Facing-GetRelative` — whose numeric-first operand fuzzed to garbage
+/// then indexed a stack array out of bounds: a false positive). Match the entry
+/// whose de-mangled name equals `program_id` (cobc mangles `-` to `__`; normalize by
+/// dropping every non-alphanumeric char and upper-casing both sides). Fall back to
+/// the first entry when nothing matches (single-program files / unusual mangling).
+fn recover_entry_symbol(generated_c: &str, program_id: &str) -> Option<String> {
+    let normalize = |s: &str| -> String {
+        s.chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .flat_map(char::to_uppercase)
+            .collect()
+    };
+    let want = normalize(program_id);
+    let mut first: Option<String> = None;
     for line in generated_c.lines() {
         let t = line.trim_start();
         let Some(rest) = t.strip_prefix("int") else {
@@ -158,11 +175,15 @@ fn recover_entry_symbol(generated_c: &str) -> Option<String> {
             continue;
         }
         let after = rest[name.len()..].trim_start();
-        if after.starts_with("(cob_u8_t") {
+        if !after.starts_with("(cob_u8_t") {
+            continue;
+        }
+        if normalize(&name) == want {
             return Some(name);
         }
+        first.get_or_insert(name);
     }
-    None
+    first
 }
 
 /// Pick the operand to set to the fuzz byte count: a numeric operand named
@@ -342,7 +363,7 @@ pub fn build_cobol_harness(
     }
 
     let generated = std::fs::read_to_string(&target_c).unwrap_or_default();
-    let Some(entry) = recover_entry_symbol(&generated) else {
+    let Some(entry) = recover_entry_symbol(&generated, &program.program_id) else {
         return CobolBuildResult::Failed(
             "could not recover the C entry symbol from cobc output".to_owned(),
         );
@@ -424,14 +445,43 @@ mod tests {
     #[test]
     fn recovers_mixed_case_tab_separated_entry() {
         let c = "int\t\tBlocks__Parse (cob_u8_t *, cob_u8_t *, cob_u8_t *);\n";
-        assert_eq!(recover_entry_symbol(c).as_deref(), Some("Blocks__Parse"));
+        assert_eq!(
+            recover_entry_symbol(c, "Blocks-Parse").as_deref(),
+            Some("Blocks__Parse")
+        );
     }
 
     #[test]
     fn ignores_non_cobol_int_decls() {
         assert_eq!(
-            recover_entry_symbol("int main(int argc, char **argv)"),
+            recover_entry_symbol("int main(int argc, char **argv)", "Anything"),
             None
+        );
+    }
+
+    #[test]
+    fn recovers_the_targeted_entry_in_a_multi_program_file() {
+        // cobc emits a C function per PROGRAM-ID; the harness must drive the TARGET,
+        // not whichever appears first. Regression for CobolCraft `Facing-FromString`
+        // being driven as `Facing-GetRelative` (first in the file) -> stack OOB FP.
+        let c = "\
+int\t\tFacing__GetRelative (cob_u8_t *, cob_u8_t *);
+int\t\tFacing__ToString (cob_u8_t *, cob_u8_t *);
+int\t\tFacing__FromString (cob_u8_t *, cob_u8_t *);
+";
+        assert_eq!(
+            recover_entry_symbol(c, "Facing-FromString").as_deref(),
+            Some("Facing__FromString"),
+            "must match the targeted program, not the first in the file"
+        );
+        assert_eq!(
+            recover_entry_symbol(c, "Facing-GetRelative").as_deref(),
+            Some("Facing__GetRelative")
+        );
+        // Unknown target falls back to the first entry (single-program / odd mangling).
+        assert_eq!(
+            recover_entry_symbol(c, "Nonexistent").as_deref(),
+            Some("Facing__GetRelative")
         );
     }
 

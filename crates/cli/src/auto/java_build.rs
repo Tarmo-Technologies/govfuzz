@@ -90,6 +90,15 @@ pub fn build_java_harness(
     // like org.json's JSONException) via GOVFUZZ_EXPECTED_EXCEPTIONS.
     let expected_exceptions = resolved.target.throws.join(",");
 
+    // A target with no attacker byte channel is driven purely from synthesized
+    // scalars; an out-of-range `int` fed to a JDK collection/array accessor or
+    // capacity ctor (gson `JsonArray.remove(int)`, `new JsonArray(int capacity)`)
+    // hits a DOCUMENTED range contract (IndexOutOfBounds / NegativeArraySize / OOM),
+    // not a defect. Forward this so the Driver suppresses those scalar-precondition
+    // exceptions for scalar-only targets (a byte-channel parser's internal OOB stays
+    // a finding).
+    let scalar_only_target = !target_rank::java_target_has_byte_channel(&resolved.target);
+
     // Resolve declaration models for the target's custom (class/enum) parameter
     // types from across the tree, so a config-object parameter (e.g. `CSVFormat`)
     // can be constructed with a default instead of skipping the target (F8).
@@ -189,11 +198,16 @@ pub fn build_java_harness(
          # rejections of bad input, suppressed as non-findings by the Driver).\n\
          # GOVFUZZ_SINK_OUT = where the agent records input-reachable dangerous sinks\n\
          # (deserialization / exec / eval / SQL / LDAP); govfuzz reads it after the run.\n\
+         # GOVFUZZ_SCALAR_ONLY_TARGET = the target has no byte/char channel, so an\n\
+         # out-of-range synthesized scalar hitting a documented range contract\n\
+         # (IndexOutOfBounds / NegativeArraySize / OOM) is expected, not a finding.\n\
          GOVFUZZ_EXPECTED_EXCEPTIONS=\"{expected}\" \\\n\
+         GOVFUZZ_SCALAR_ONLY_TARGET=\"{scalar_only}\" \\\n\
          GOVFUZZ_SINK_OUT=\"$(dirname \"$0\")/sink_report.txt\" \\\n\
          exec \"{java}\" -javaagent:\"{agent}\" -cp \"{cp}\" \\\n\
          \x20   com.govfuzz.Driver {harness_class} \"$@\"\n",
         expected = expected_exceptions,
+        scalar_only = if scalar_only_target { "1" } else { "0" },
         java = tc.java.display(),
         agent = agent_jar.display(),
         cp = classpath,

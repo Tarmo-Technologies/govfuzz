@@ -134,6 +134,16 @@ function classify(err) {
   const msg = err && err.message ? String(err.message) : String(err);
   if (EXPECTED.has(name)) return { finding: false };
 
+  // A missing npm dependency the environment doesn't have — e.g. debug's
+  // `common.js` LAZILY `require('ms')` only on a code path the fuzzer reaches, so
+  // the pre-run module-load check (which only catches load-time requires) can't
+  // see it. This is environmental (run `npm install`), not a target defect; mirrors
+  // the interpreted-lane missing-dependency skip. Node stamps `code`
+  // 'MODULE_NOT_FOUND'; match the message too for transpiled/bundled callers.
+  if ((err && err.code === 'MODULE_NOT_FOUND') || /Cannot find module/i.test(msg)) {
+    return { finding: false };
+  }
+
   // Stack exhaustion (uncontrolled recursion) — a real defect (GF-207).
   if (name === 'RangeError' && /call stack/i.test(msg)) {
     return { finding: true, rule: 'GF-207' };

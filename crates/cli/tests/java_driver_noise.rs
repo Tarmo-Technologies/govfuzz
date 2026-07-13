@@ -95,6 +95,43 @@ public final class NpeNoiseProbe {
 }
 "#;
 
+/// A probe for the scalar-only-target suppression (GOVFUZZ_SCALAR_ONLY_TARGET=1): a
+/// synthesized out-of-range `int` hitting a JDK container's documented range
+/// contract is expected noise, while a genuine logic defect still halts.
+const SCALAR_PROBE: &str = r#"
+package com.govfuzz;
+
+public final class ScalarOnlyProbe {
+    public static void main(String[] args) {
+        int failures = 0;
+        // Documented range/size preconditions on a scalar-only target -> noise.
+        if (Driver.isFinding(new IndexOutOfBoundsException("idx"))) {
+            System.err.println("FAIL ioobe"); failures++;
+        }
+        if (Driver.isFinding(new ArrayIndexOutOfBoundsException("idx"))) {
+            System.err.println("FAIL aioobe"); failures++;
+        }
+        if (Driver.isFinding(new NegativeArraySizeException("-1"))) {
+            System.err.println("FAIL nase"); failures++;
+        }
+        if (Driver.isFinding(new OutOfMemoryError("capacity"))) {
+            System.err.println("FAIL oom"); failures++;
+        }
+        // A genuine logic defect still halts even for a scalar-only target.
+        if (!Driver.isFinding(new ArithmeticException("/ by zero"))) {
+            System.err.println("FAIL arith"); failures++;
+        }
+        if (!Driver.isFinding(new ClassCastException("cce"))) {
+            System.err.println("FAIL cce"); failures++;
+        }
+        if (failures > 0) {
+            System.exit(1);
+        }
+        System.out.println("scalar-only ok");
+    }
+}
+"#;
+
 #[test]
 fn driver_noise_policy_promotes_deep_npe_and_suppresses_shallow() {
     if !has_jdk() {
@@ -109,6 +146,7 @@ fn driver_noise_policy_promotes_deep_npe_and_suppresses_shallow() {
     std::fs::copy(rt.join("Driver.java"), src.join("Driver.java")).unwrap();
     std::fs::copy(rt.join("Coverage.java"), src.join("Coverage.java")).unwrap();
     std::fs::write(src.join("NpeNoiseProbe.java"), PROBE).unwrap();
+    std::fs::write(src.join("ScalarOnlyProbe.java"), SCALAR_PROBE).unwrap();
 
     let classes = tmp.join("classes");
     std::fs::create_dir_all(&classes).unwrap();
@@ -117,6 +155,7 @@ fn driver_noise_policy_promotes_deep_npe_and_suppresses_shallow() {
         .arg(src.join("Driver.java"))
         .arg(src.join("Coverage.java"))
         .arg(src.join("NpeNoiseProbe.java"))
+        .arg(src.join("ScalarOnlyProbe.java"))
         .output()
         .expect("javac");
     assert!(
@@ -141,6 +180,28 @@ fn driver_noise_policy_promotes_deep_npe_and_suppresses_shallow() {
     assert!(
         run.status.success(),
         "JVM Driver noise policy mismatch:\n{combined}"
+    );
+
+    // Second run with GOVFUZZ_SCALAR_ONLY_TARGET=1: the container range/size
+    // preconditions become noise (the static is read once per JVM, so this needs a
+    // separate process from the default-policy run above).
+    let scalar_run = Command::new("java")
+        .env("GOVFUZZ_SCALAR_ONLY_TARGET", "1")
+        .args([
+            "-cp",
+            classes.to_str().unwrap(),
+            "com.govfuzz.ScalarOnlyProbe",
+        ])
+        .output()
+        .expect("java");
+    let scalar_combined = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&scalar_run.stdout),
+        String::from_utf8_lossy(&scalar_run.stderr)
+    );
+    assert!(
+        scalar_run.status.success(),
+        "JVM Driver scalar-only noise policy mismatch:\n{scalar_combined}"
     );
 
     let _ = std::fs::remove_dir_all(&tmp);

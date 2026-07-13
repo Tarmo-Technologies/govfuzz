@@ -32,14 +32,40 @@ pub struct FortranProc {
     /// is an internal helper, not the library's attacker-reachable public API. External
     /// (non-module) procedures are always accessible, so this is `true` for them.
     pub public: bool,
-    /// Whether this is a `function` returning a `character` value. gfortran's C ABI
-    /// for such a function prepends a *hidden* `(result_buffer, result_len)` pair
-    /// before the real arguments (verified: `void f(char* res, size_t res_len, char*
-    /// str, size_t str_len)`). The glue must allocate that result buffer — otherwise
-    /// the fuzz buffer lands in the result slot and the real argument is a garbage
-    /// pointer, so the function reads/writes out of bounds (a false positive). This is
-    /// ubiquitous in Fortran string libraries (lowercase/uppercase/escape helpers).
-    pub char_result: bool,
+    /// How this procedure returns, which drives the gfortran C-ABI glue. A `character`
+    /// result is passed via a *hidden* leading argument the glue must supply — omitting
+    /// it puts the fuzz buffer in the result slot and turns the real argument into a
+    /// garbage pointer (an out-of-bounds false positive on nearly every input). Two
+    /// distinct character-result ABIs (both verified empirically):
+    /// see [`FortranResult`]. Ubiquitous in Fortran string libraries.
+    pub result: FortranResult,
+}
+
+/// How a Fortran procedure returns — selects the gfortran C-ABI calling convention
+/// the glue must emit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FortranResult {
+    /// A subroutine, or a function returning a scalar numeric/logical value (returned
+    /// in a register — the `void`-returning glue ignores it, which is correct).
+    #[default]
+    NonChar,
+    /// A function whose result is a fixed/assumed-length `character(len=K)` /
+    /// `character(len=*)`. ABI: `void f(char* result, size_t result_len, <args…>)` —
+    /// the glue passes a caller-allocated result buffer + its length. `fixed_len` is
+    /// the declared constant length (`0` = assumed/unknown), used to size the buffer.
+    ValueChar { fixed_len: usize },
+    /// A function whose result is a deferred-length `character(len=:), allocatable`
+    /// (or `pointer`) — the *modern* Fortran string-return idiom. ABI:
+    /// `void f(char** data, size_t* len, <args…>)` — the callee `malloc`s the result
+    /// and stores the pointer+length; the glue frees it. No expansion-overflow risk
+    /// (the callee sizes its own buffer), unlike [`FortranResult::ValueChar`].
+    AllocChar,
+    /// A character result the glue can't synthesize: an ARRAY of characters
+    /// (`character(len=1), allocatable :: arr(:)`, `character :: a(len(s))`), which is
+    /// returned via a full gfortran array descriptor rather than either scalar hidden
+    /// form. Driving it with a scalar-result ABI corrupts memory (a false positive), so
+    /// the procedure is skipped — the Fortran analog of an unsynthesizable receiver.
+    Unsupported,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,6 +97,9 @@ impl FortranProc {
         // internal helper, not the public API — skip it (else a confusing failed_build
         // and a false attacker-reachability claim on a non-exported routine).
         self.public
+            // A character-ARRAY result uses a gfortran descriptor ABI the glue can't
+            // synthesize — skip (else a scalar-result ABI corrupts memory, a false positive).
+            && !matches!(self.result, FortranResult::Unsupported)
             // A derived-type / polymorphic argument is a caller-built object the harness
             // can only pass as NULL, so any procedure taking one faults on deref (a
             // false positive) — exclude it and keep the pure string/numeric parsers.
@@ -338,9 +367,14 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
                 args,
                 module: current_module.clone(),
                 public,
-                // A typed prefix (`character(len=*) function …`) is a character result
-                // immediately; the `result(x)` form is confirmed when `x` is declared.
-                char_result: hdr.is_function && hdr.char_result_prefix,
+                // A typed prefix (`character(len=*) function …`) is a value-char result
+                // immediately; the `result(x)` form is refined when `x` is declared
+                // (and may be upgraded to the allocatable-result ABI there).
+                result: if hdr.is_function && hdr.char_result_prefix {
+                    FortranResult::ValueChar { fixed_len: 0 }
+                } else {
+                    FortranResult::NonChar
+                },
             });
             cur = Some(procs.len() - 1);
             continue;
@@ -355,25 +389,93 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
         if let Some(idx) = cur {
             if let Some(spec_end) = type_spec_end(l) {
                 let kind = decl_kind(l);
+                let names = declared_names(l, spec_end);
                 if !matches!(kind, FortranArgKind::Other) {
-                    let names = declared_names(l, spec_end);
                     for n in &names {
                         if let Some(arg) = procs[idx].args.iter_mut().find(|a| &a.name == n) {
                             arg.kind = kind;
                         }
                     }
-                    if matches!(kind, FortranArgKind::CharBuffer { .. }) {
-                        if let Some(rname) = &cur_result_name {
-                            if names.iter().any(|n| n == rname) {
-                                procs[idx].char_result = true;
-                            }
-                        }
+                }
+                // The RESULT variable's declaration selects the return ABI. This must
+                // run even when `decl_kind` collapsed an allocatable char to `Derived`.
+                if let Some(rname) = &cur_result_name {
+                    if names.iter().any(|n| n == rname) {
+                        procs[idx].result = classify_result_decl(l, rname);
                     }
                 }
             }
         }
     }
     procs
+}
+
+/// Classify a FUNCTION result from its declaration line `l` (which declares the
+/// result variable `rname`) into the return ABI the glue must emit.
+///
+/// Only a result returned in a register (a scalar numeric/logical, [`NonChar`]) or a
+/// scalar character (a hidden result argument, [`ValueChar`]/[`AllocChar`]) can be
+/// driven. Anything returned via a gfortran descriptor — an ARRAY, an `allocatable`/
+/// `pointer` of any type, a derived type, or `complex` — is [`Unsupported`]: the
+/// `void` glue would leave that hidden descriptor slot pointing at a real argument and
+/// corrupt memory (a false positive). This is the Fortran analog of an unsynthesizable
+/// receiver, and covers e.g. M_strings `s2c` (allocatable char array) and `s2vs`
+/// (allocatable `doubleprecision` array).
+fn classify_result_decl(l: &str, rname: &str) -> FortranResult {
+    if l.starts_with("CHARACTER") {
+        if result_is_array(l, rname) {
+            FortranResult::Unsupported
+        } else if is_deferred_char(l) {
+            FortranResult::AllocChar
+        } else {
+            FortranResult::ValueChar {
+                fixed_len: char_len(l).unwrap_or(0),
+            }
+        }
+    } else if l.contains("ALLOCATABLE")
+        || l.contains("POINTER")
+        || l.contains("DIMENSION")
+        || l.starts_with("TYPE")
+        || l.starts_with("CLASS")
+        || l.starts_with("COMPLEX")
+        || result_is_array(l, rname)
+    {
+        // A non-character result returned via a descriptor — can't be driven.
+        FortranResult::Unsupported
+    } else {
+        // A scalar numeric/logical result is returned in a register; the `void` glue
+        // (which ignores the return) is correct.
+        FortranResult::NonChar
+    }
+}
+
+/// Whether a `character` declaration is deferred-length / allocatable / pointer
+/// (`character(len=:), allocatable`) — the callee-allocated result ABI.
+fn is_deferred_char(l: &str) -> bool {
+    l.contains("ALLOCATABLE") || l.contains("POINTER") || l.contains("LEN=:") || l.contains("(:)")
+}
+
+/// Whether the `rname` declared on line `l` is an ARRAY — it carries a `DIMENSION`
+/// attribute, or the result name is subscripted (`:: arr(:)`, `:: arr(len(s))`). An
+/// array-of-characters result uses a gfortran array descriptor, not a scalar hidden
+/// result argument.
+fn result_is_array(l: &str, rname: &str) -> bool {
+    if l.contains("DIMENSION") {
+        return true;
+    }
+    let Some(pos) = l.find("::") else {
+        return false;
+    };
+    for decl in l[pos + 2..].split(',') {
+        if let Some(rest) = decl.trim().strip_prefix(rname) {
+            // The result name is immediately (modulo spaces) followed by a `(` — a
+            // dimension spec — and not part of a longer identifier.
+            if rest.trim_start().starts_with('(') {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// A parsed procedure header.
@@ -527,6 +629,9 @@ fn type_spec_end(l: &str) -> Option<usize> {
         "LOGICAL",
         "COMPLEX",
         "DOUBLE PRECISION",
+        // The one-word spelling `doubleprecision` (gfortran accepts it) — so an
+        // allocatable/array result of this type is recognized and skipped.
+        "DOUBLEPRECISION",
         "TYPE",
         // Polymorphic derived-type declarations (`class(json_core) :: me`) — an OO
         // method's receiver; recognized so its arg is classified `Derived` (skip).
@@ -675,7 +780,7 @@ end module csv_utilities
 
     #[test]
     fn character_returning_function_is_detected() {
-        // `result(s)` + a `character` declaration of `s` -> char_result.
+        // `result(s)` + a fixed/assumed-length `character` declaration -> ValueChar.
         let via_result = "\
 pure function lowercase_string(str) result(s_lower)
   character(len=*), intent(in) :: str
@@ -684,19 +789,106 @@ pure function lowercase_string(str) result(s_lower)
 end function lowercase_string
 ";
         let p = &parse_fortran(via_result)[0];
-        assert!(p.char_result, "result(s) + character(s) is a char result");
+        assert!(matches!(p.result, FortranResult::ValueChar { .. }));
         assert!(p.is_fuzzable());
 
-        // A typed prefix `character(len=*) function …` is a char result immediately.
+        // A typed prefix `character(len=*) function …` is a value-char result at once.
         let via_prefix =
             "character(len=10) function tag(s)\n character(len=*) :: s\nend function\n";
-        assert!(parse_fortran(via_prefix)[0].char_result);
+        assert!(matches!(
+            parse_fortran(via_prefix)[0].result,
+            FortranResult::ValueChar { .. }
+        ));
 
-        // A subroutine and a non-character function are NOT char results.
+        // A deferred-length `character(len=:), allocatable` result -> AllocChar (the
+        // modern idiom; the callee mallocs the result, a different hidden ABI).
+        let via_alloc = "\
+function upper(str) result(output)
+  character(len=*), intent(in) :: str
+  character(len=:), allocatable :: output
+  output = str
+end function upper
+";
+        let a = &parse_fortran(via_alloc)[0];
+        assert_eq!(a.result, FortranResult::AllocChar);
+        assert!(a.is_fuzzable());
+
+        // A subroutine and a non-character function have no character result.
         let sub = "subroutine scan(buf)\n character(len=*) :: buf\nend subroutine\n";
-        assert!(!parse_fortran(sub)[0].char_result);
+        assert_eq!(parse_fortran(sub)[0].result, FortranResult::NonChar);
         let int_fn = "integer function count_it(s)\n character(len=*) :: s\nend function\n";
-        assert!(!parse_fortran(int_fn)[0].char_result);
+        assert_eq!(parse_fortran(int_fn)[0].result, FortranResult::NonChar);
+    }
+
+    #[test]
+    fn character_array_result_is_unsupported_and_skipped() {
+        // M_strings `s2c(string) result(array)` returns an ALLOCATABLE character ARRAY
+        // (`character(len=1), allocatable :: array(:)`) — a gfortran array-descriptor
+        // ABI the scalar-result glue can't synthesize. Must be skipped, not mis-driven.
+        let alloc_arr = "\
+pure function s2c(string) result(array)
+  character(len=*), intent(in) :: string
+  character(len=1), allocatable :: array(:)
+  array = transfer(string, array)
+end function s2c
+";
+        let p = &parse_fortran(alloc_arr)[0];
+        assert_eq!(p.result, FortranResult::Unsupported);
+        assert!(!p.is_fuzzable(), "an array-char result must be skipped");
+
+        // A fixed-length character ARRAY result (`character :: a(len(s))`) is likewise
+        // an array descriptor -> skipped.
+        let fixed_arr = "\
+pure function switch(string) result(array)
+  character(len=*), intent(in) :: string
+  character(len=1) :: array(len(string))
+  array = ' '
+end function switch
+";
+        assert!(!parse_fortran(fixed_arr)[0].is_fuzzable());
+
+        // A `dimension`-attribute char array result is also skipped.
+        let dim_attr = "\
+function chars(s) result(a)
+  character(len=*), intent(in) :: s
+  character(len=1), dimension(:), allocatable :: a
+  a = transfer(s, a)
+end function chars
+";
+        assert_eq!(
+            parse_fortran(dim_attr)[0].result,
+            FortranResult::Unsupported
+        );
+    }
+
+    #[test]
+    fn non_character_nonscalar_result_is_unsupported() {
+        // M_strings `s2vs(string) result(darray)` returns an allocatable
+        // `doubleprecision` ARRAY — a descriptor ABI, not a register return. Driving it
+        // as a `void` function would leave the hidden descriptor slot pointing at a real
+        // argument. Skip it.
+        let alloc_dbl = "\
+function s2vs(string) result(darray)
+  character(len=*), intent(in) :: string
+  doubleprecision, allocatable :: darray(:)
+  darray = 0
+end function s2vs
+";
+        let p = &parse_fortran(alloc_dbl)[0];
+        assert_eq!(p.result, FortranResult::Unsupported);
+        assert!(!p.is_fuzzable());
+
+        // A scalar numeric result is returned in a register -> fuzzable (NonChar).
+        let scalar = "\
+integer function atoi(str) result(n)
+  character(len=*), intent(in) :: str
+  integer :: n
+  read(str, *) n
+end function atoi
+";
+        let s = &parse_fortran(scalar)[0];
+        assert_eq!(s.result, FortranResult::NonChar);
+        assert!(s.is_fuzzable());
     }
 
     #[test]

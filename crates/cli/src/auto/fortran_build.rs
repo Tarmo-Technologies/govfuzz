@@ -12,13 +12,163 @@
 
 use crate::auto::candidate::Candidate;
 use crate::auto::fortran::{FortranArg, FortranArgKind};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub enum FortranBuildResult {
     Built,
     Skip(String),
     Failed(String),
+}
+
+/// A stable, per-project `.mod` directory under the work dir (keyed on the source
+/// root), shared across every harness of the project so the module graph is built
+/// once.
+fn fortran_module_dir(work_dir: &Path, source_root: &Path) -> PathBuf {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    source_root.hash(&mut hasher);
+    work_dir.join(format!("fortran_modules_{:016x}", hasher.finish()))
+}
+
+/// Whether `path` is a Fortran source file by extension (free or fixed form).
+fn is_fortran_source(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase())
+            .as_deref(),
+        Some("f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" | "ftn")
+    )
+}
+
+/// Cheap check that a file DEFINES at least one module (`MODULE name`, not
+/// `MODULE PROCEDURE` / `USE`), so the pre-compile only spends time on module
+/// providers.
+fn file_defines_module(path: &Path) -> bool {
+    let Ok(src) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    src.lines().any(|l| {
+        let t = l.trim_start().to_ascii_lowercase();
+        if let Some(rest) = t.strip_prefix("module ") {
+            let next = rest.trim_start();
+            !next.starts_with("procedure")
+        } else {
+            false
+        }
+    })
+}
+
+/// Collect up to `budget` module-defining Fortran files under `root`, skipping
+/// build/VCS/test directories.
+fn collect_module_files(root: &Path, budget: usize) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        if out.len() >= budget {
+            break;
+        }
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in rd.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+                if !matches!(
+                    name.as_str(),
+                    ".git"
+                        | "build"
+                        | "target"
+                        | "node_modules"
+                        | ".fpm"
+                        | "test"
+                        | "tests"
+                        | "example"
+                        | "examples"
+                        | "doc"
+                        | "docs"
+                        | "bench"
+                ) {
+                    stack.push(p);
+                }
+            } else if is_fortran_source(&p) && file_defines_module(&p) {
+                out.push(p);
+                if out.len() >= budget {
+                    break;
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Pre-compile the project's module-defining Fortran files into a shared directory
+/// so a target that `USE`s a sibling module both COMPILES (finds the `.mod`
+/// interface) and LINKS (the module's `.o` provides its procedures). Modern Fortran
+/// is module-heavy (fortran-lang/stdlib, fpm), so without this most real Fortran is
+/// un-fuzzable. Best-effort and cached: each file is compiled to `<stem>.o` with the
+/// SAME instrumentation as the target (ASan + trace-pc/cmp) so the objects link and
+/// their code is covered; a fixpoint loop retries files whose USEd modules weren't
+/// available yet (resolving the dependency DAG without parsing `USE` graphs),
+/// stopping when a round makes no progress. Files needing external deps stay
+/// unresolved — the target build then fails cleanly, as before.
+fn precompile_project_modules(source_root: &Path, moddir: &Path) {
+    let marker = moddir.join(".govfuzz_modules_done");
+    if marker.exists() {
+        return;
+    }
+    if std::fs::create_dir_all(moddir).is_err() {
+        return;
+    }
+    let mut remaining = collect_module_files(source_root, 2000);
+    for _ in 0..12 {
+        if remaining.is_empty() {
+            break;
+        }
+        let before = remaining.len();
+        remaining.retain(|f| {
+            let stem = f.file_stem().and_then(|s| s.to_str()).unwrap_or("mod");
+            let obj = moddir.join(format!("{stem}.o"));
+            let ok = Command::new("gfortran")
+                .args(["-O1", "-g", "-fsanitize=address"])
+                .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+                .arg("-cpp")
+                .arg("-ffree-line-length-none")
+                .arg("-J")
+                .arg(moddir)
+                .arg("-I")
+                .arg(moddir)
+                .arg("-c")
+                .arg(f)
+                .arg("-o")
+                .arg(&obj)
+                .output()
+                .map(|o| o.status.success() && obj.is_file())
+                .unwrap_or(false);
+            !ok // keep only the ones that still failed
+        });
+        if remaining.len() == before {
+            break; // no progress — the rest need external deps / flags
+        }
+    }
+    let _ = std::fs::write(&marker, "");
+}
+
+/// The pre-compiled project module objects to link into a harness, EXCLUDING the
+/// one built from the target's own file (which the harness compiles separately —
+/// linking both would duplicate its module's symbols).
+fn project_module_objects(moddir: &Path, target_src: &Path) -> Vec<PathBuf> {
+    let target_stem = target_src.file_stem().and_then(|s| s.to_str());
+    let Ok(rd) = std::fs::read_dir(moddir) else {
+        return Vec::new();
+    };
+    rd.flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("o"))
+        .filter(|p| p.file_stem().and_then(|s| s.to_str()) != target_stem)
+        .collect()
 }
 
 fn have_gfortran() -> bool {
@@ -43,8 +193,19 @@ fn gfortran_libdir() -> Option<String> {
 }
 
 /// gfortran default ABI: lowercase the name and append a trailing underscore.
-fn abi_symbol(name: &str) -> String {
-    format!("{}_", name.to_ascii_lowercase())
+/// The gfortran C-ABI symbol for a procedure. An external (top-level) procedure is
+/// `name_`; a MODULE-contained procedure is `__<module>_MOD_<name>` (gfortran's
+/// name mangling) — most modern Fortran procedures live in a `module … contains`
+/// block, so without this they are un-callable and the whole module lane is limited.
+fn abi_symbol(name: &str, module: Option<&str>) -> String {
+    match module {
+        Some(m) => format!(
+            "__{}_MOD_{}",
+            m.to_ascii_lowercase(),
+            name.to_ascii_lowercase()
+        ),
+        None => format!("{}_", name.to_ascii_lowercase()),
+    }
 }
 
 /// The glue: `LLVMFuzzerTestOneInput` drives every dummy argument, plus a
@@ -210,12 +371,18 @@ pub fn build_fortran_harness(
     candidate: &Candidate,
     work_dir: &Path,
     harness_id: &str,
+    source_root: &Path,
 ) -> FortranBuildResult {
     if !have_gfortran() {
         return FortranBuildResult::Skip(
             "no `gfortran` toolchain found; install gfortran to fuzz Fortran".to_owned(),
         );
     }
+    // Build the project's module graph once (cached) so a target that USEs a
+    // sibling module compiles — otherwise gfortran fails with "Cannot open module
+    // file 'x.mod'" and modern module-heavy Fortran is entirely un-fuzzable.
+    let moddir = fortran_module_dir(work_dir, source_root);
+    precompile_project_modules(source_root, &moddir);
     let hdir = crate::auto::layout::harness_dir(work_dir, harness_id);
     if let Err(e) = std::fs::create_dir_all(&hdir) {
         return FortranBuildResult::Failed(format!("create {}: {e}", hdir.display()));
@@ -246,13 +413,18 @@ pub fn build_fortran_harness(
     let compiled = Command::new("gfortran")
         .args(["-O1", "-g", "-fsanitize=address"])
         .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+        .arg("-cpp")
+        .arg("-ffree-line-length-none")
         // Write generated `.mod` module files into the harness dir (via -J) instead
-        // of polluting the current working directory, and let a self-referential
-        // module find its own .mod (-I) during the compile.
+        // of polluting the current working directory; find self-referential modules
+        // (-I hdir) plus the pre-compiled PROJECT module graph (-I moddir) so a
+        // target `USE`ing a sibling module builds.
         .arg("-J")
         .arg(&hdir)
         .arg("-I")
         .arg(&hdir)
+        .arg("-I")
+        .arg(&moddir)
         .arg("-c")
         .arg(&candidate.source_path)
         .arg("-o")
@@ -274,11 +446,17 @@ pub fn build_fortran_harness(
         Err(e) => return FortranBuildResult::Failed(format!("spawn gfortran: {e}")),
     }
 
-    let entry = abi_symbol(&proc.name);
+    let entry = abi_symbol(&proc.name, proc.module.as_deref());
     let glue_c = hdir.join("fortran_glue.c");
     if let Err(e) = std::fs::write(&glue_c, glue_source(&entry, &proc.args)) {
         return FortranBuildResult::Failed(format!("write glue: {e}"));
     }
+
+    // Link the pre-compiled project module objects so a target `USE`ing a sibling
+    // module resolves that module's procedures (its `.o` provides them). The target's
+    // own object is compiled above; exclude its module `.o` to avoid a duplicate.
+    let mut target_sources = vec![fortran_o.clone(), glue_c.clone()];
+    target_sources.extend(project_module_objects(&moddir, &candidate.source_path));
 
     let gen_result = harness_gen::c_generate::generate_c_direct_harness(
         harness_gen::c_generate::GenerateCDirectArgs {
@@ -298,7 +476,7 @@ pub fn build_fortran_harness(
             return_type: "int".to_owned(),
             target_includes: Vec::new(),
             target_includes_dirs: Vec::new(),
-            target_sources: vec![fortran_o.clone(), glue_c.clone()],
+            target_sources,
             compile_flags: Vec::new(),
             target_declared_in_header: false,
             c_runtime_include: crate::generate_harness::locate_c_runtime(),
@@ -352,8 +530,13 @@ mod tests {
 
     #[test]
     fn abi_symbol_lowercases_and_underscores() {
-        assert_eq!(abi_symbol("Scan"), "scan_");
-        assert_eq!(abi_symbol("COUNT_IT"), "count_it_");
+        assert_eq!(abi_symbol("Scan", None), "scan_");
+        assert_eq!(abi_symbol("COUNT_IT", None), "count_it_");
+        // A module-contained procedure uses gfortran's __module_MOD_name mangling.
+        assert_eq!(
+            abi_symbol("count_vowels", Some("utils_mod")),
+            "__utils_mod_MOD_count_vowels"
+        );
     }
 
     #[test]

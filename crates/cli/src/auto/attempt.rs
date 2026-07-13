@@ -1308,10 +1308,16 @@ fn run_attempt(
     // interposition needed (unlike COBOL).
     if matches!(candidate.lang, crate::auto::candidate::Lang::Fortran) {
         progress.update(&ProgressUpdate::phase(Phase::Generate));
+        let source_root = options
+            .source_root
+            .clone()
+            .or_else(|| candidate.source_path.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| work_dir.to_path_buf());
         match crate::auto::fortran_build::build_fortran_harness(
             candidate,
             work_dir,
             &candidate.harness_id,
+            &source_root,
         ) {
             crate::auto::fortran_build::FortranBuildResult::Built => {}
             crate::auto::fortran_build::FortranBuildResult::Skip(reason) => {

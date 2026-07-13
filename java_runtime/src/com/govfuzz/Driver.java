@@ -58,6 +58,20 @@ public final class Driver {
      */
     private static final int NPE_MIN_DEPTH = loadNpeMinDepth();
 
+    /**
+     * True when the target has no attacker byte/char channel (GOVFUZZ_SCALAR_ONLY_TARGET),
+     * so it is driven purely from synthesized scalars. An out-of-range synthesized
+     * {@code int} fed to a JDK collection/array accessor or a capacity constructor
+     * (gson {@code JsonArray.remove(int)}, {@code new JsonArray(int capacity)}) hits
+     * a DOCUMENTED range contract — {@link IndexOutOfBoundsException},
+     * {@link NegativeArraySizeException}, {@link OutOfMemoryError} — universally true
+     * of every JDK container, not a defect in the target. These are suppressed for
+     * scalar-only targets; a byte-channel parser's INTERNAL out-of-bounds while
+     * parsing real input still halts as a finding.
+     */
+    private static final boolean SCALAR_ONLY_TARGET =
+            "1".equals(System.getenv("GOVFUZZ_SCALAR_ONLY_TARGET"));
+
     private Driver() {}
 
     private static java.util.Set<String> loadExpectedExceptions() {
@@ -196,6 +210,18 @@ public final class Driver {
                     return false;
                 }
             }
+        }
+        // Scalar-only target: an out-of-range synthesized `int` hitting a JDK
+        // container's documented range contract is expected, not a defect. Suppress
+        // the range/size preconditions — including an OutOfMemoryError from a
+        // capacity constructor (`new ArrayList<>(hugeInt)`) — BEFORE the generic
+        // Error/RuntimeException rules promote them. A byte-channel parser is not
+        // scalar-only, so its internal OOB / decompression-bomb OOM still surfaces.
+        if (SCALAR_ONLY_TARGET
+                && (t instanceof IndexOutOfBoundsException
+                        || t instanceof NegativeArraySizeException
+                        || t instanceof OutOfMemoryError)) {
+            return false;
         }
         // Any Error is a genuine bug: OutOfMemoryError / StackOverflowError (DoS),
         // AssertionError (invariant violation), NoClassDefFoundError, …

@@ -90,6 +90,11 @@ internal static unsafe class Driver
     //   - KeyNotFoundException: a synthesized container missing a key the target
     //     pre-seeds — our wrong shape (mirrors Python KeyError).
     //   - TimeoutException: environmental.
+    //   - XmlException: the System.Xml layer's "the XML is malformed / an XML name
+    //     is invalid" rejection — the XML analog of FormatException. A JSON->XML
+    //     conversion (Newtonsoft `JsonConvert.DeserializeXmlNode`) whose input maps
+    //     to an invalid element name (`XmlDocument.CheckName`: "':' cannot be in a
+    //     name") throws it as documented input rejection, not a defect.
     // Genuine bugs still surface: IndexOutOfRangeException (real OOB on the bytes
     // we feed → GF-201), NullReferenceException (GF-206), DivideByZero/Overflow
     // (GF-205), OutOfMemory (GF-209), and any other/custom throwable (GF-210).
@@ -102,6 +107,7 @@ internal static unsafe class Driver
         || exc is IOException             // + EndOfStream, FileNotFound, DirectoryNotFound
         || exc is System.Collections.Generic.KeyNotFoundException
         || exc is TimeoutException
+        || exc is System.Xml.XmlException  // malformed/invalid XML — the XML FormatException
         || exc is OperationCanceledException;
 
     // Never a finding: control-flow / interpreter signals.

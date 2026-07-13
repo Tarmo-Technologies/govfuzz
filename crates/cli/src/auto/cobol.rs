@@ -227,6 +227,31 @@ fn linkage_kind(line: &str) -> CobolParamKind {
     CobolParamKind::Other
 }
 
+/// Collect `USING` operand names from a normalized clause fragment into `using`,
+/// skipping the `BY REFERENCE/CONTENT/VALUE` and `OPTIONAL`/`OMITTED` keywords.
+/// Commas are operand separators (mainframe `USING A, B`). Returns `true` once the
+/// terminating period is seen — the `USING` clause can wrap across continuation
+/// lines (`PROCEDURE DIVISION USING A B` / `C D.`), so the caller keeps feeding
+/// lines until this returns `true`.
+fn collect_using_operands(fragment: &str, using: &mut Vec<String>) -> bool {
+    for tok in fragment.replace(',', " ").split_whitespace() {
+        let ends_clause = tok.contains('.');
+        let name = tok.trim_end_matches('.');
+        if !name.is_empty()
+            && !matches!(
+                name,
+                "BY" | "REFERENCE" | "CONTENT" | "VALUE" | "OPTIONAL" | "OMITTED"
+            )
+        {
+            using.push(name.to_owned());
+        }
+        if ends_clause {
+            return true;
+        }
+    }
+    false
+}
+
 /// Scan COBOL source for fuzzable subprograms. Handles fixed- and free-format
 /// leniently. One [`CobolProgram`] per `PROGRAM-ID`; its `params` are the
 /// `USING` operands resolved to their LINKAGE `01`-level types.
@@ -236,6 +261,9 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
     // name -> kind for the current program's LINKAGE 01 items.
     let mut linkage: Vec<(String, CobolParamKind)> = Vec::new();
     let mut using: Vec<String> = Vec::new();
+    // The `PROCEDURE DIVISION USING` clause can wrap across continuation lines; while
+    // set, subsequent lines contribute more operands until the terminating period.
+    let mut collecting_using = false;
     let mut cur: Option<usize> = None;
     // Normalized PROCEDURE-body text of the current program, used to detect a
     // numeric operand used as a caller-managed position (subscript / ref-mod
@@ -279,6 +307,7 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
         if let Some(rest) = line.strip_prefix("PROGRAM-ID.") {
             finish(&mut programs, cur, &linkage, &using, &body);
             in_linkage = false;
+            collecting_using = false;
             linkage.clear();
             using.clear();
             body.clear();
@@ -317,19 +346,19 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
         }
         if line.starts_with("PROCEDURE DIVISION") {
             in_linkage = false;
+            collecting_using = false;
             if let Some((_, rest)) = line.split_once(" USING ") {
-                // Operands may be comma-separated (mainframe style
-                // `USING A, B, C`) or space-separated (`USING A B C`); normalize
-                // commas to spaces so the names match their LINKAGE `01` items
-                // (else every operand resolves to `Other` and the program looks
-                // un-fuzzable — carddemo `CSUTLDTC USING LS-DATE, ...`).
-                let rest = rest.replace(',', " ");
-                for tok in rest.split_whitespace() {
-                    let name = tok.trim_end_matches('.');
-                    if !matches!(name, "BY" | "REFERENCE" | "CONTENT" | "VALUE") {
-                        using.push(name.to_owned());
-                    }
-                }
+                // A `USING` list is comma- or space-separated and may WRAP across
+                // continuation lines (webbol `FILE-OPS USING A B` / `C D.`). Collect
+                // until the terminating period; if this line has none, keep going.
+                collecting_using = !collect_using_operands(rest, &mut using);
+            }
+            continue;
+        }
+        // Continuation lines of a wrapped `PROCEDURE DIVISION USING` clause.
+        if collecting_using {
+            if collect_using_operands(&line, &mut using) {
+                collecting_using = false;
             }
             continue;
         }
@@ -527,6 +556,43 @@ END PROGRAM Codegen-TemplateLoad.
             !p.is_fuzzable(),
             "a program taking a PROGRAM-POINTER callback must not be fuzzable"
         );
+    }
+
+    #[test]
+    fn multi_line_using_clause_captures_all_operands() {
+        // webbol `FILE-OPS`: a USING list that WRAPS across a continuation line. All
+        // four operands must be captured — dropping the continuation ones passed a
+        // 2-arg call to a 4-arg program (garbage stack args -> SIGSEGV FALSE POSITIVE).
+        let src = "\
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. FILE-OPS.
+       DATA DIVISION.
+       LINKAGE SECTION.
+       01 LS-FILE-PATH         PIC X(512).
+       01 LS-FILE-BUFFER       PIC X(65536).
+       01 LS-FILE-SIZE         PIC 9(8) COMP-5.
+       01 LS-RETURN-CODE       PIC 9.
+       PROCEDURE DIVISION USING LS-FILE-PATH LS-FILE-BUFFER
+                                LS-FILE-SIZE LS-RETURN-CODE.
+           GOBACK.
+";
+        let p = &parse_cobol(src)[0];
+        assert_eq!(
+            p.params.len(),
+            4,
+            "all four wrapped operands must be captured"
+        );
+        let names: Vec<&str> = p.params.iter().map(|x| x.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec![
+                "LS-FILE-PATH",
+                "LS-FILE-BUFFER",
+                "LS-FILE-SIZE",
+                "LS-RETURN-CODE"
+            ]
+        );
+        assert!(p.is_fuzzable());
     }
 
     #[test]

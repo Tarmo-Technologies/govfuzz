@@ -172,9 +172,29 @@ function classify(err) {
   ) {
     return { finding: false };
   }
-  // ReferenceError (undefined variable), AssertionError, an explicit throw, a
-  // custom Error — a reachable crash the target owns (GF-210). Real security /
-  // null-deref classes are covered by the behavioral oracles, not this policy.
+  // A library's OWN error class — a `name` that is NOT an ECMAScript built-in error
+  // type — is its deliberate way of rejecting bad input to its API (joi's
+  // `AssertError` on an invalid schema/reference/template; a validator's
+  // `ValidationError`). This is the JS analog of the Java/C# "exception defined in
+  // the target's namespace" suppression. Fuzzing a validation library's builder API
+  // otherwise flags every misuse rejection. Real security classes (command
+  // injection, prototype pollution, path control, resource exhaustion) are caught by
+  // the behavioral oracles, not by promoting every custom throw.
+  const BUILTIN_ERRORS = new Set([
+    'Error',
+    'EvalError',
+    'RangeError',
+    'ReferenceError',
+    'SyntaxError',
+    'TypeError',
+    'URIError',
+    'AggregateError',
+  ]);
+  if (name && !BUILTIN_ERRORS.has(name)) {
+    return { finding: false };
+  }
+  // A built-in ReferenceError (undefined variable), AssertionError, or an explicit
+  // `throw new Error(...)` — a reachable crash the target owns (GF-210).
   return { finding: true, rule: 'GF-210' };
 }
 

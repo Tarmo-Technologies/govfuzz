@@ -17,7 +17,9 @@ pub use c_rank::{
     InputReachability,
 };
 pub use go_rank::{rank_go_targets, GoScoreBreakdown, GoTarget};
-pub use java_rank::{rank_java_targets, JavaScoreBreakdown, JavaTarget};
+pub use java_rank::{
+    java_target_has_byte_channel, rank_java_targets, JavaScoreBreakdown, JavaTarget,
+};
 pub use perl_rank::{rank_perl_targets, PerlScoreBreakdown, PerlTarget};
 pub use python_rank::{rank_python_targets, PythonScoreBreakdown, PythonTarget};
 pub use rank::rank_targets;

@@ -204,6 +204,18 @@ fn classify_java_reachability(m: &JavaMethod, has_byte_channel: bool) -> InputRe
     InputReachability::ReachabilityUnproven
 }
 
+/// Whether the method exposes an attacker-controlled byte/char channel (a
+/// `byte[]`/`String`/`ByteBuffer`/stream/`Reader` parameter). A method WITHOUT one
+/// is driven purely from synthesized scalars — an out-of-range `int` index/size
+/// fed to `List.remove`/`ArrayList(capacity)` hits the JDK's DOCUMENTED range
+/// contract (IndexOutOfBounds / NegativeArraySize / OOM), which is not a defect in
+/// the target. The launcher forwards this to the Driver's noise policy so those
+/// scalar-precondition exceptions are suppressed for scalar-only targets while an
+/// internal OOB while parsing real bytes stays a finding.
+pub fn java_target_has_byte_channel(m: &JavaMethod) -> bool {
+    m.params.iter().any(|p| is_byte_channel_type(&p.ty))
+}
+
 /// A parameter type that hands the method attacker-controlled bytes: a byte array
 /// (`byte[]`), a `String`/`CharSequence`, an NIO `ByteBuffer`, a stream
 /// (`InputStream`), or a character `Reader`. `ty` is the collapsed type spelling

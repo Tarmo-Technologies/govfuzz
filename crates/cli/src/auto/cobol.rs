@@ -318,7 +318,13 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
         if line.starts_with("PROCEDURE DIVISION") {
             in_linkage = false;
             if let Some((_, rest)) = line.split_once(" USING ") {
-                for tok in rest.trim_end_matches('.').split_whitespace() {
+                // Operands may be comma-separated (mainframe style
+                // `USING A, B, C`) or space-separated (`USING A B C`); normalize
+                // commas to spaces so the names match their LINKAGE `01` items
+                // (else every operand resolves to `Other` and the program looks
+                // un-fuzzable — carddemo `CSUTLDTC USING LS-DATE, ...`).
+                let rest = rest.replace(',', " ");
+                for tok in rest.split_whitespace() {
                     let name = tok.trim_end_matches('.');
                     if !matches!(name, "BY" | "REFERENCE" | "CONTENT" | "VALUE") {
                         using.push(name.to_owned());
@@ -521,6 +527,31 @@ END PROGRAM Codegen-TemplateLoad.
             !p.is_fuzzable(),
             "a program taking a PROGRAM-POINTER callback must not be fuzzable"
         );
+    }
+
+    #[test]
+    fn comma_separated_using_operands_resolve_to_their_linkage_types() {
+        // Mainframe COBOL (carddemo `CSUTLDTC`) separates USING operands with
+        // commas. The names must still match their LINKAGE `01` items — else every
+        // operand resolves to `Other` and the program looks un-fuzzable.
+        let src = "\
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CSUTLDTC.
+       DATA DIVISION.
+       LINKAGE SECTION.
+          01 LS-DATE         PIC X(10).
+          01 LS-DATE-FORMAT  PIC X(10).
+          01 LS-RESULT       PIC X(80).
+       PROCEDURE DIVISION USING LS-DATE, LS-DATE-FORMAT, LS-RESULT.
+           GOBACK.
+";
+        let p = &parse_cobol(src)[0];
+        assert_eq!(p.params.len(), 3);
+        assert_eq!(p.params[0].name, "LS-DATE");
+        assert_eq!(p.params[0].kind, CobolParamKind::Bytes { len: Some(10) });
+        assert_eq!(p.params[2].name, "LS-RESULT");
+        assert_eq!(p.params[2].kind, CobolParamKind::Bytes { len: Some(80) });
+        assert!(p.is_fuzzable());
     }
 
     #[test]

@@ -31,6 +31,18 @@ pub struct CobolProgram {
     /// The `USING` operands, in order, each resolved to its LINKAGE type. Empty
     /// when the program takes no USING arguments (not directly fuzzable).
     pub params: Vec<CobolParam>,
+    /// A NUMERIC `USING` operand is used as a POSITION in the body — a table
+    /// subscript (`COMMAND-NODE-PARSER(LK-NODE-INDEX)`, `BLOCK-ENTRY-*(LK-BLOCK)`)
+    /// or a reference-modification OFFSET (`LK-JSON(LK-OFFSET:len)`). Such an
+    /// operand is a caller-built handle/cursor into a shared structure, not attacker
+    /// data: a synthesized garbage/zero position indexes out of bounds (COBOL is
+    /// 1-based; a standalone run has no caller-built table/cursor) — a CWE-787 FALSE
+    /// POSITIVE. This is the precise signal that a program is an internal parse step
+    /// / table method needing caller context, whether or not it is nested. A pure
+    /// parser whose numerics are only LENGTHS/STATUS (compared, or the length half
+    /// of a ref-mod — set correctly by the harness) is unaffected (`Blocks-Parse`,
+    /// `getquery`). Discovery skips a positional-operand program.
+    pub positional_operand: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,11 +64,16 @@ pub enum CobolParamKind {
 }
 
 impl CobolProgram {
-    /// A program is fuzzable when at least one `USING` operand is a byte buffer.
+    /// A program is fuzzable when it has at least one `USING` byte buffer AND no
+    /// numeric operand used as a caller-managed position (see
+    /// [`CobolProgram::positional_operand`]) — the latter can't be synthesized
+    /// without driving an out-of-bounds false positive.
     pub fn is_fuzzable(&self) -> bool {
-        self.params
-            .iter()
-            .any(|p| matches!(p.kind, CobolParamKind::Bytes { .. }))
+        !self.positional_operand
+            && self
+                .params
+                .iter()
+                .any(|p| matches!(p.kind, CobolParamKind::Bytes { .. }))
     }
 
     /// Index of the primary (first) byte-buffer operand.
@@ -67,14 +84,75 @@ impl CobolProgram {
     }
 }
 
+/// Whether a COBOL source is FREE format (code may begin in column 1) rather than
+/// FIXED format (cols 1-6 sequence area, col 7 indicator, Area A at col 8). A
+/// division / `PROGRAM-ID` / section header at column 0 can only occur in free
+/// format — in fixed format those live in Area A (col 8+). Detecting this per-file
+/// is essential: a free-format `    01 LK-JSON` (4-space indent) otherwise has its
+/// `01` LEVEL number mistaken for a fixed-format sequence area and stripped, so the
+/// LINKAGE buffer is silently lost and the program looks non-fuzzable (CobolCraft
+/// `Blocks-Parse`). The check is intentionally strict so a genuinely fixed-format
+/// file keeps its sequence-area handling.
+fn is_free_format(source: &str) -> bool {
+    source.lines().any(|l| {
+        l.starts_with(">>SOURCE FORMAT FREE")
+            || l.starts_with(">> SOURCE FORMAT FREE")
+            || l.starts_with("IDENTIFICATION DIVISION")
+            || l.starts_with("ID DIVISION")
+            || l.starts_with("ENVIRONMENT DIVISION")
+            || l.starts_with("DATA DIVISION")
+            || l.starts_with("PROCEDURE DIVISION")
+            || l.starts_with("PROGRAM-ID")
+    })
+}
+
+/// Whether a normalized procedure `body` uses `name` as a POSITION — a table
+/// subscript (`IDENT(NAME)` / `IDENT(I, NAME)`) or the OFFSET of a reference
+/// modification (`BUF(NAME:len)`). The body is whitespace-collapsed and uppercased.
+/// Matched on whole-token boundaries so `LK-BLOCK` does not match `LK-BLOCK-STATE`.
+/// The LENGTH half of a ref-mod (`BUF(1:NAME)`) is deliberately NOT matched — a
+/// length operand is set correctly by the harness and is safe.
+fn body_uses_as_position(body: &str, name: &str) -> bool {
+    [
+        format!("({name})"),  // sole subscript
+        format!("({name},"),  // first of several subscripts
+        format!("({name} "),  // first of several (space-separated)
+        format!(",{name})"),  // last subscript
+        format!(", {name})"), // last subscript (spaced)
+        format!(" {name})"),  // last subscript (spaced)
+        format!("({name}:"),  // reference-modification offset
+    ]
+    .iter()
+    .any(|pat| body.contains(pat.as_str()))
+}
+
+/// Whether any NUMERIC `USING` operand is used as a caller-managed position
+/// (subscript or ref-mod offset) in `body` (see
+/// [`CobolProgram::positional_operand`]).
+fn uses_numeric_operand_as_position(
+    body: &str,
+    linkage: &[(String, CobolParamKind)],
+    using: &[String],
+) -> bool {
+    using.iter().any(|u| {
+        linkage
+            .iter()
+            .any(|(n, k)| n == u && matches!(k, CobolParamKind::Numeric { .. }))
+            && body_uses_as_position(body, u)
+    })
+}
+
 /// Normalize a raw source line for scanning: drop the fixed-format sequence area
 /// (cols 1-6) and indicator column (col 7) when the line looks fixed-format, drop
 /// an inline `*>` free-format comment, uppercase, and collapse whitespace. A `*`
-/// or `/` in the indicator column (col 7) marks a full-line comment -> empty.
-fn norm_line(raw: &str) -> String {
+/// or `/` in the indicator column (col 7) marks a full-line comment -> empty. When
+/// `free_format`, the sequence-area handling is skipped entirely — the whole line
+/// is code (only an indicator-column full-line comment is NOT possible in free
+/// format; `*>` inline comments are still stripped below).
+fn norm_line(raw: &str, free_format: bool) -> String {
     let chars: Vec<char> = raw.chars().collect();
     let mut body = raw;
-    if chars.len() > 6 && !raw.starts_with('\t') {
+    if !free_format && chars.len() > 6 && !raw.starts_with('\t') {
         let indicator = chars[6];
         if indicator == '*' || indicator == '/' || indicator == '$' {
             return String::new();
@@ -145,11 +223,19 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
     let mut linkage: Vec<(String, CobolParamKind)> = Vec::new();
     let mut using: Vec<String> = Vec::new();
     let mut cur: Option<usize> = None;
+    // Normalized PROCEDURE-body text of the current program, used to detect a
+    // numeric operand used as a caller-managed position (subscript / ref-mod
+    // offset), which makes the program un-fuzzable standalone (a FALSE POSITIVE).
+    let mut body = String::new();
+    // Detect fixed vs free source format ONCE (see [`is_free_format`]); a
+    // free-format line must not have its indentation mistaken for a sequence area.
+    let free_format = is_free_format(source);
 
     let finish = |programs: &mut Vec<CobolProgram>,
                   cur: Option<usize>,
                   linkage: &[(String, CobolParamKind)],
-                  using: &[String]| {
+                  using: &[String],
+                  body: &str| {
         if let Some(idx) = cur {
             let params: Vec<CobolParam> = using
                 .iter()
@@ -166,19 +252,22 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
                 })
                 .collect();
             programs[idx].params = params;
+            programs[idx].positional_operand =
+                uses_numeric_operand_as_position(body, linkage, using);
         }
     };
 
     for (i, raw) in source.lines().enumerate() {
-        let line = norm_line(raw);
+        let line = norm_line(raw, free_format);
         if line.is_empty() {
             continue;
         }
         if let Some(rest) = line.strip_prefix("PROGRAM-ID.") {
-            finish(&mut programs, cur, &linkage, &using);
+            finish(&mut programs, cur, &linkage, &using, &body);
             in_linkage = false;
             linkage.clear();
             using.clear();
+            body.clear();
             let id = rest
                 .split_whitespace()
                 .next()
@@ -190,11 +279,15 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
                     program_id: id,
                     line: (i + 1) as u32,
                     params: Vec::new(),
+                    positional_operand: false,
                 });
                 cur = Some(programs.len() - 1);
             } else {
                 cur = None;
             }
+            continue;
+        }
+        if line.starts_with("END PROGRAM") {
             continue;
         }
         if line.starts_with("LINKAGE SECTION") {
@@ -226,9 +319,14 @@ pub fn parse_cobol(source: &str) -> Vec<CobolProgram> {
             if let Some(name) = toks.next() {
                 linkage.push((name.trim_end_matches('.').to_owned(), linkage_kind(&line)));
             }
+            continue;
         }
+        // Any remaining line is PROCEDURE-body text; accumulate it (normalized) so a
+        // numeric operand used as a table subscript can be detected at `finish`.
+        body.push(' ');
+        body.push_str(&line);
     }
-    finish(&mut programs, cur, &linkage, &using);
+    finish(&mut programs, cur, &linkage, &using, &body);
     programs
 }
 
@@ -281,6 +379,132 @@ mod tests {
         assert_eq!(p.params[1].kind, CobolParamKind::Numeric { width: 4 });
         assert_eq!(p.params[2].kind, CobolParamKind::Numeric { width: 1 });
         assert_eq!(p.primary_buffer_index(), Some(0));
+    }
+
+    #[test]
+    fn numeric_operand_used_as_position_is_not_fuzzable() {
+        // CobolCraft shapes. A numeric operand used as a table SUBSCRIPT
+        // (`TABLE(LK-BLOCK)`, `COMMAND-NODE-PARSER(LK-NODE-INDEX)`) or a ref-mod
+        // OFFSET (`LK-JSON(LK-OFFSET:len)`) is a caller-built handle/cursor — a
+        // synthesized garbage/zero position indexes out of bounds (CWE-787 FP),
+        // whether the program is nested or top-level. A pure parser whose numerics
+        // are only LENGTH/STATUS (compared, or the length half of a ref-mod) is kept
+        // — including a nested single-buffer helper, which is safely fuzzable.
+        let src = "\
+IDENTIFICATION DIVISION.
+PROGRAM-ID. BLOCKS-PARSE.
+LINKAGE SECTION.
+    01 LK-JSON PIC X ANY LENGTH.
+    01 LK-JSON-LEN BINARY-LONG UNSIGNED.
+    01 LK-FAILURE BINARY-CHAR UNSIGNED.
+PROCEDURE DIVISION USING LK-JSON LK-JSON-LEN LK-FAILURE.
+    IF LK-JSON-LEN > 0
+        MOVE 0 TO LK-FAILURE
+    END-IF
+    GOBACK.
+    PROGRAM-ID. BLOCKS-PARSE-BLOCK.
+    LINKAGE SECTION.
+        01 LK-JSON PIC X ANY LENGTH.
+        01 LK-OFFSET BINARY-LONG UNSIGNED.
+        01 LK-BLOCK BINARY-LONG UNSIGNED.
+    PROCEDURE DIVISION USING LK-JSON LK-OFFSET LK-BLOCK.
+        MOVE 0 TO BLOCK-ENTRY-PROPERTY-COUNT(LK-BLOCK)
+        MOVE LK-JSON(LK-OFFSET:1) TO WS-CHAR
+        GOBACK.
+    END PROGRAM BLOCKS-PARSE-BLOCK.
+    PROGRAM-ID. GETQUERY.
+    LINKAGE SECTION.
+        01 THE-QUERY PIC X(1600).
+    PROCEDURE DIVISION USING THE-QUERY.
+        GOBACK.
+    END PROGRAM GETQUERY.
+END PROGRAM BLOCKS-PARSE.
+PROGRAM-ID. ADDCOMMANDARGUMENT.
+LINKAGE SECTION.
+    01 LK-NODE-NAME PIC X ANY LENGTH.
+    01 LK-NODE-INDEX BINARY-LONG UNSIGNED.
+PROCEDURE DIVISION USING LK-NODE-NAME LK-NODE-INDEX.
+    MOVE 1 TO COMMAND-NODE-PARSER(LK-NODE-INDEX)
+    GOBACK.
+END PROGRAM ADDCOMMANDARGUMENT.
+";
+        let progs = parse_cobol(src);
+        let by = |name: &str| progs.iter().find(|p| p.program_id == name).unwrap();
+
+        // Pure top-level parser (numerics are length + status) -> fuzzable.
+        assert!(!by("BLOCKS-PARSE").positional_operand);
+        assert!(by("BLOCKS-PARSE").is_fuzzable());
+
+        // Nested parse step with a subscript AND a ref-mod cursor -> skipped.
+        assert!(by("BLOCKS-PARSE-BLOCK").positional_operand);
+        assert!(!by("BLOCKS-PARSE-BLOCK").is_fuzzable());
+
+        // A NESTED single-buffer helper (no positional numeric) is still fuzzable —
+        // nesting alone must NOT exclude it (the cow.cbl getquery coverage case).
+        assert!(!by("GETQUERY").positional_operand);
+        assert!(by("GETQUERY").is_fuzzable());
+
+        // Top-level table method with a subscripted numeric operand -> skipped.
+        assert!(by("ADDCOMMANDARGUMENT").positional_operand);
+        assert!(!by("ADDCOMMANDARGUMENT").is_fuzzable());
+    }
+
+    #[test]
+    fn free_format_four_space_indented_linkage_buffer_is_detected() {
+        // CobolCraft is FREE format (divisions at column 0) with 4-space-indented
+        // data items. `    01 LK-JSON` must NOT have its `01` level mistaken for a
+        // fixed-format sequence area and stripped — else the LINKAGE buffer is lost
+        // and the top-level parser looks non-fuzzable (regression that forced the
+        // nested-subprogram FP).
+        let src = "\
+IDENTIFICATION DIVISION.
+PROGRAM-ID. Blocks-Parse.
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+    01 SCRATCH BINARY-LONG.
+LINKAGE SECTION.
+    01 LK-JSON                  PIC X ANY LENGTH.
+    01 LK-JSON-LEN              BINARY-LONG UNSIGNED.
+    01 LK-FAILURE               BINARY-CHAR UNSIGNED.
+PROCEDURE DIVISION USING LK-JSON LK-JSON-LEN LK-FAILURE.
+    GOBACK.
+END PROGRAM Blocks-Parse.
+";
+        let progs = parse_cobol(src);
+        assert_eq!(progs.len(), 1);
+        let p = &progs[0];
+        assert_eq!(p.program_id, "BLOCKS-PARSE");
+        assert_eq!(
+            p.params[0].kind,
+            CobolParamKind::Bytes { len: None },
+            "free-format 4-space-indented PIC X ANY LENGTH buffer must be detected"
+        );
+        assert!(
+            p.is_fuzzable(),
+            "the top-level free-format parser must be a fuzz target"
+        );
+    }
+
+    #[test]
+    fn multiple_single_buffer_programs_are_all_fuzzable() {
+        // Several separate single-buffer parsers in one file — none use a numeric
+        // operand as a position, so all are fuzz targets.
+        let src = "\
+       PROGRAM-ID. FIRSTP.
+       LINKAGE SECTION.
+       01 BUF PIC X(8).
+       PROCEDURE DIVISION USING BUF.
+           GOBACK.
+       PROGRAM-ID. SECONDP.
+       LINKAGE SECTION.
+       01 BUF PIC X(8).
+       PROCEDURE DIVISION USING BUF.
+           GOBACK.
+";
+        let progs = parse_cobol(src);
+        assert_eq!(progs.len(), 2);
+        assert!(progs.iter().all(|p| !p.positional_operand));
+        assert!(progs.iter().all(|p| p.is_fuzzable()));
     }
 
     #[test]

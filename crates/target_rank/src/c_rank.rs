@@ -137,6 +137,7 @@ pub struct CScoreBreakdown {
 pub fn rank_c_targets(functions: &[c_parser::CFunction]) -> Vec<CTarget> {
     let mut targets: Vec<CTarget> = functions
         .iter()
+        .filter(|f| !is_allocator_free_primitive(&f.name))
         .map(|f| {
             let (breakdown, input_reachability) = score_c_function(f);
             CTarget {
@@ -239,6 +240,26 @@ fn is_opaque_void_pointer(ty: &str) -> bool {
     )
 }
 
+/// A memory-(re)allocation primitive whose pointer operand must be a *live*
+/// allocation owned by that same allocator — `Realloc`/`Free`/`Deallocate` and
+/// friends. Its pointer cannot be synthesized from fuzz bytes: binding it to a
+/// `(void *)Data` view (or a fresh mismatched allocation) makes the callee
+/// `std::realloc`/`std::free` an invalid pointer, which ASan reports as an
+/// invalid-free / double-free FALSE POSITIVE (rapidjson `CrtAllocator::Realloc`,
+/// `MemoryPoolAllocator::Free`). These are allocator plumbing reached THROUGH a
+/// parser, never an attacker-controlled entry point, so they are not fuzzable.
+/// Matched on the unqualified leaf name — a member (`Allocator::Free`), a free
+/// function (`Free`), and the generic `Realloc(A &, T *, ...)` (whose pointer the
+/// parser may drop) are all caught, while a project helper like `free_node` (a
+/// distinct name) is not. No non-allocator parser is named exactly `free`/`realloc`.
+fn is_allocator_free_primitive(name: &str) -> bool {
+    let leaf = name.rsplit("::").next().unwrap_or(name);
+    matches!(
+        leaf.to_ascii_lowercase().as_str(),
+        "free" | "realloc" | "reallocate" | "deallocate" | "dealloc"
+    )
+}
+
 fn score_cpp_function(f: &cpp_parser::CppFunction) -> (CScoreBreakdown, InputReachability) {
     let params: Vec<(&str, &str)> = f
         .params
@@ -256,6 +277,7 @@ fn score_cpp_function(f: &cpp_parser::CppFunction) -> (CScoreBreakdown, InputRea
 fn cpp_api_is_unsupported_target(f: &cpp_parser::CppFunction) -> bool {
     f.api.is_constructor
         || f.api.is_destructor
+        || is_allocator_free_primitive(&cpp_target_name(f))
         // A templated free function is harnessable ONCE a concrete specialization
         // is resolved (#455 / §27.5): a call-site instantiation (`parse<int>(..)`)
         // or the `--template-instantiate` flag fills `instantiation_args`, and
@@ -1080,6 +1102,57 @@ mod tests {
 
         assert_eq!(ranked.len(), 1);
         assert_eq!(ranked[0].name, "gov::Parser::parse");
+    }
+
+    #[test]
+    fn cpp_ranker_drops_allocator_realloc_free_primitives() {
+        // rapidjson `CrtAllocator::Realloc(void *originalPtr, size_t originalSize,
+        // size_t newSize)`: binding `originalPtr` to a `(void *)Data` view makes the
+        // callee `std::realloc` an invalid pointer -> ASan double-free FALSE POSITIVE.
+        // The allocator method must not be a candidate at all; a real parser in the
+        // same class still is.
+        let realloc = cpp_method(
+            "CrtAllocator",
+            "Realloc",
+            "void *",
+            &[
+                ("originalPtr", "void *"),
+                ("originalSize", "size_t"),
+                ("newSize", "size_t"),
+            ],
+        );
+        let free = cpp_method("MemoryPoolAllocator", "Free", "void", &[("ptr", "void *")]);
+        let parse = cpp_method("GenericReader", "Parse", "int", &[("json", "const char *")]);
+
+        let ranked = rank_cpp_targets(&[realloc, free, parse]);
+
+        assert_eq!(ranked.len(), 1, "both allocator primitives must be dropped");
+        assert_eq!(ranked[0].name, "gov::GenericReader::Parse");
+    }
+
+    #[test]
+    fn c_ranker_drops_allocator_realloc_but_keeps_lookalike_helper() {
+        // A bare `realloc`/`free` taking a `void *` is allocator plumbing (unfuzzable
+        // pointer contract); a project helper with a DISTINCT name (`free_node`) is not.
+        let fns = vec![
+            cf("realloc", "void *", &[("p", "void *"), ("n", "size_t")]),
+            cf("free", "void", &[("p", "void *")]),
+            cf("free_node", "void", &[("node", "struct node *")]),
+            cf(
+                "parse",
+                "int",
+                &[("data", "const char *"), ("len", "size_t")],
+            ),
+        ];
+        let ranked = rank_c_targets(&fns);
+        let names: Vec<&str> = ranked.iter().map(|t| t.name.as_str()).collect();
+        assert!(!names.contains(&"realloc"), "realloc must be dropped");
+        assert!(!names.contains(&"free"), "free must be dropped");
+        assert!(
+            names.contains(&"free_node"),
+            "free_node is not an allocator primitive"
+        );
+        assert!(names.contains(&"parse"));
     }
 
     #[test]

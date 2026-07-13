@@ -450,47 +450,60 @@ pub fn build_fortran_harness(
         ));
     };
 
-    // Compile the Fortran to an instrumented object (ASan + trace-pc + runtime checks).
-    let fortran_o = hdir.join("fortran_target.o");
-    // ASan (not `-fcheck`) is the memory oracle: `-fcheck=all` would exit(2) on a
-    // bounds error before the raw access, which govfuzz classifies as an input
-    // rejection; letting the raw out-of-bounds access happen surfaces it as a genuine
-    // ASan crash with the exact `.f90:line`. trace-pc/trace-cmp feed the engine.
-    let compiled = Command::new("gfortran")
-        .args(["-O1", "-g", "-fsanitize=address"])
-        .arg("-fsanitize-coverage=trace-pc,trace-cmp")
-        .arg("-cpp")
-        .arg("-ffree-line-length-none")
-        // Write generated `.mod` module files into the harness dir (via -J) instead
-        // of polluting the current working directory; find self-referential modules
-        // (-I hdir) plus the pre-compiled PROJECT module graph (-I moddir) so a
-        // target `USE`ing a sibling module builds.
-        .arg("-J")
-        .arg(&hdir)
-        .arg("-I")
-        .arg(&hdir)
-        .arg("-I")
-        .arg(&moddir)
-        .arg("-c")
-        .arg(&candidate.source_path)
-        .arg("-o")
-        .arg(&fortran_o)
-        .output();
-    match compiled {
-        Ok(o) if o.status.success() && fortran_o.is_file() => {}
-        Ok(o) => {
-            return FortranBuildResult::Failed(format!(
-                "gfortran compile failed: {}",
-                String::from_utf8_lossy(&o.stderr)
-                    .lines()
-                    .filter(|l| l.to_ascii_lowercase().contains("error"))
-                    .take(3)
-                    .collect::<Vec<_>>()
-                    .join("; ")
-            ));
+    // Compile the Fortran to an instrumented object (ASan + trace-pc + runtime checks),
+    // UNLESS the target's own file was already compiled as a project module object with
+    // the SAME instrumentation — then reuse it. A large single-file library (M_strings
+    // is a 12k-line file with dozens of targets) otherwise recompiles the whole file
+    // once per target, which dominates the campaign wall-clock. `project_module_objects`
+    // already EXCLUDES the target file's `.o`, so linking the reused object here adds no
+    // duplicate symbols.
+    let target_stem = candidate.source_path.file_stem().and_then(|s| s.to_str());
+    let precompiled_o = target_stem.map(|s| moddir.join(format!("{s}.o")));
+    let fortran_o = if let Some(reused) = precompiled_o.filter(|p| p.is_file()) {
+        reused
+    } else {
+        let fortran_o = hdir.join("fortran_target.o");
+        // ASan (not `-fcheck`) is the memory oracle: `-fcheck=all` would exit(2) on a
+        // bounds error before the raw access, which govfuzz classifies as an input
+        // rejection; letting the raw out-of-bounds access happen surfaces it as a genuine
+        // ASan crash with the exact `.f90:line`. trace-pc/trace-cmp feed the engine.
+        let compiled = Command::new("gfortran")
+            .args(["-O1", "-g", "-fsanitize=address"])
+            .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+            .arg("-cpp")
+            .arg("-ffree-line-length-none")
+            // Write generated `.mod` module files into the harness dir (via -J) instead
+            // of polluting the current working directory; find self-referential modules
+            // (-I hdir) plus the pre-compiled PROJECT module graph (-I moddir) so a
+            // target `USE`ing a sibling module builds.
+            .arg("-J")
+            .arg(&hdir)
+            .arg("-I")
+            .arg(&hdir)
+            .arg("-I")
+            .arg(&moddir)
+            .arg("-c")
+            .arg(&candidate.source_path)
+            .arg("-o")
+            .arg(&fortran_o)
+            .output();
+        match compiled {
+            Ok(o) if o.status.success() && fortran_o.is_file() => {}
+            Ok(o) => {
+                return FortranBuildResult::Failed(format!(
+                    "gfortran compile failed: {}",
+                    String::from_utf8_lossy(&o.stderr)
+                        .lines()
+                        .filter(|l| l.to_ascii_lowercase().contains("error"))
+                        .take(3)
+                        .collect::<Vec<_>>()
+                        .join("; ")
+                ));
+            }
+            Err(e) => return FortranBuildResult::Failed(format!("spawn gfortran: {e}")),
         }
-        Err(e) => return FortranBuildResult::Failed(format!("spawn gfortran: {e}")),
-    }
+        fortran_o
+    };
 
     let entry = abi_symbol(&proc.name, proc.module.as_deref());
     let glue_c = hdir.join("fortran_glue.c");

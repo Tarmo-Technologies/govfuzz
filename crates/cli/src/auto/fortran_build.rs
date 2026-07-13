@@ -83,10 +83,11 @@ fn glue_source(entry: &str, args: &[FortranArg]) -> String {
         let var = format!("gf_a{i}");
         match a.kind {
             FortranArgKind::CharBuffer { len } => {
-                if i == primary {
-                    // Heap-allocate to the EXACT input size so a real out-of-bounds
-                    // access (relative to the passed length) lands in ASan's redzone
-                    // — a static over-allocated buffer would hide it.
+                if i == primary && len == 0 {
+                    // Assumed-length `CHARACTER*(*)`: the hidden length IS the byte
+                    // count, so heap-allocate to the EXACT input size — a real
+                    // out-of-bounds access (relative to that length) lands in ASan's
+                    // redzone, which a static over-allocated buffer would hide.
                     decls.push_str(&format!(
                         "    char *{var} = (char *)malloc(Size ? Size : 1);\n"
                     ));
@@ -94,18 +95,33 @@ fn glue_source(entry: &str, args: &[FortranArg]) -> String {
                         "    if (!{var}) return 0;\n    if (Size) memcpy({var}, Data, Size);\n    gf_primary_len = Size;\n"
                     ));
                     frees.push_str(&format!("    free({var});\n"));
+                    hidden_lengths.push("(size_t)gf_primary_len".to_owned());
+                } else if i == primary {
+                    // Fixed `CHARACTER*K`: the callee addresses `buf(1:K)`, so the
+                    // buffer MUST be K bytes even when the fuzz input is shorter —
+                    // allocating only `Size` and passing hidden length K overran the
+                    // buffer (heap-overflow FALSE POSITIVE, NASTRAN `NASOPN` on a
+                    // `CHARACTER*80` arg with a 0-byte input). Allocate exactly K
+                    // (so a real `buf(K+1)` still hits the redzone), fill up to K
+                    // fuzz bytes, and space-pad the rest (Fortran blank-fill).
+                    decls.push_str(&format!("    char *{var} = (char *)malloc({len});\n"));
+                    fills.push_str(&format!(
+                        "    if (!{var}) return 0;\n    memset({var}, ' ', {len});\n    gf_primary_len = Size < {len} ? Size : {len};\n    if (gf_primary_len) memcpy({var}, Data, gf_primary_len);\n"
+                    ));
+                    frees.push_str(&format!("    free({var});\n"));
+                    hidden_lengths.push(format!("(size_t){len}"));
                 } else {
                     decls.push_str(&format!("    static char {var}[{BUFSZ}];\n"));
                     fills.push_str(&format!("    memset({var}, ' ', sizeof {var});\n"));
+                    // A non-primary fixed len=K fits the large static buffer; an
+                    // assumed-length one uses the primary byte count.
+                    if len == 0 {
+                        hidden_lengths.push("(size_t)gf_primary_len".to_owned());
+                    } else {
+                        hidden_lengths.push(format!("(size_t){len}"));
+                    }
                 }
                 call_args.push(var.clone());
-                // Hidden per-character-arg length: assumed-length (len==0) gets the
-                // byte count; a fixed len=K gets K.
-                if len == 0 {
-                    hidden_lengths.push("(size_t)gf_primary_len".to_owned());
-                } else {
-                    hidden_lengths.push(format!("(size_t){len}"));
-                }
             }
             FortranArgKind::Integer => {
                 decls.push_str(&format!("    int {var} = 0;\n"));
@@ -343,19 +359,35 @@ mod tests {
     #[test]
     fn glue_drives_buffer_len_and_hidden_length() {
         let args = vec![
-            arg("BUF", FortranArgKind::CharBuffer { len: 1 }),
+            arg("BUF", FortranArgKind::CharBuffer { len: 0 }),
             arg("N", FortranArgKind::Integer),
         ];
         let g = glue_source("scan_", &args);
         // extern has 2 explicit args + 1 hidden size_t for the character arg.
         assert!(g.contains("extern void scan_(char *, int *, size_t);"));
-        // call passes the buffer, &n, then the hidden length (=1).
-        assert!(g.contains("scan_(gf_a0, &gf_a1, (size_t)1);"));
+        // Assumed-length: hidden length is the byte count; N gets it too.
+        assert!(g.contains("scan_(gf_a0, &gf_a1, (size_t)gf_primary_len);"));
         assert!(g.contains("gf_a1 = (int)gf_primary_len;"));
         assert!(g.contains("gf_primary_len = Size;"));
-        assert!(g.contains("char *gf_a0 = (char *)malloc"));
+        assert!(g.contains("char *gf_a0 = (char *)malloc(Size ? Size : 1)"));
         // trace-pc coverage hook present.
         assert!(g.contains("void __sanitizer_cov_trace_pc(void)"));
+    }
+
+    #[test]
+    fn glue_fixed_length_char_buffer_is_sized_to_the_declared_length() {
+        // A fixed `CHARACTER*80` primary arg (NASTRAN `NASOPN`): the callee addresses
+        // `buf(1:80)`, so the buffer MUST be 80 bytes even for a short/empty input —
+        // allocating only `Size` and passing hidden length 80 overran it (ASan
+        // heap-overflow FALSE POSITIVE).
+        let args = vec![arg("DSN", FortranArgKind::CharBuffer { len: 80 })];
+        let g = glue_source("nasopn_", &args);
+        assert!(g.contains("char *gf_a0 = (char *)malloc(80);"));
+        assert!(g.contains("memset(gf_a0, ' ', 80);"));
+        assert!(g.contains("gf_primary_len = Size < 80 ? Size : 80;"));
+        // Hidden length still the declared 80, now matched by the buffer.
+        assert!(g.contains("nasopn_(gf_a0, (size_t)80);"));
+        assert!(!g.contains("malloc(Size ? Size : 1)"));
     }
 
     #[test]

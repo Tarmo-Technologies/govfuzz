@@ -291,7 +291,10 @@ fn glue_source(entry: &str, args: &[FortranArg]) -> String {
                 }
                 call_args.push(format!("&{var}"));
             }
-            FortranArgKind::Other => {
+            // A Derived arg only reaches here for a NON-primary operand of an
+            // otherwise-fuzzable procedure (a Derived on the target itself makes it
+            // un-fuzzable and it is never built); pass a zeroed scratch like Other.
+            FortranArgKind::Other | FortranArgKind::Derived => {
                 decls.push_str(&format!("    static unsigned char {var}[256];\n"));
                 fills.push_str(&format!("    memset({var}, 0, sizeof {var});\n"));
                 call_args.push(format!("(void *){var}"));
@@ -305,7 +308,7 @@ fn glue_source(entry: &str, args: &[FortranArg]) -> String {
         .map(|a| match a.kind {
             FortranArgKind::CharBuffer { .. } => "char *",
             FortranArgKind::Integer => "int *",
-            FortranArgKind::Other => "void *",
+            FortranArgKind::Other | FortranArgKind::Derived => "void *",
         })
         .collect();
     let hidden_count = args

@@ -26,6 +26,20 @@ pub struct FortranProc {
     /// `module … contains` block), else `None` for a top-level external procedure.
     /// Drives the gfortran C-ABI symbol (`__module_MOD_name` vs `name_`).
     pub module: Option<String>,
+    /// Whether the procedure is externally accessible per Fortran module visibility.
+    /// A `PRIVATE` module procedure is compiled to a *local* symbol (nm `t`, not `T`)
+    /// that the generated glue in a separate object file cannot link against — and it
+    /// is an internal helper, not the library's attacker-reachable public API. External
+    /// (non-module) procedures are always accessible, so this is `true` for them.
+    pub public: bool,
+    /// Whether this is a `function` returning a `character` value. gfortran's C ABI
+    /// for such a function prepends a *hidden* `(result_buffer, result_len)` pair
+    /// before the real arguments (verified: `void f(char* res, size_t res_len, char*
+    /// str, size_t str_len)`). The glue must allocate that result buffer — otherwise
+    /// the fuzz buffer lands in the result slot and the real argument is a garbage
+    /// pointer, so the function reads/writes out of bounds (a false positive). This is
+    /// ubiquitous in Fortran string libraries (lowercase/uppercase/escape helpers).
+    pub char_result: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,13 +67,17 @@ pub enum FortranArgKind {
 
 impl FortranProc {
     pub fn is_fuzzable(&self) -> bool {
-        // A derived-type / polymorphic argument is a caller-built object the harness
-        // can only pass as NULL, so any procedure taking one faults on deref (a
-        // false positive) — exclude it and keep the pure string/numeric parsers.
-        !self
-            .args
-            .iter()
-            .any(|a| matches!(a.kind, FortranArgKind::Derived))
+        // A `PRIVATE` module procedure is a local symbol the glue can't link and is an
+        // internal helper, not the public API — skip it (else a confusing failed_build
+        // and a false attacker-reachability claim on a non-exported routine).
+        self.public
+            // A derived-type / polymorphic argument is a caller-built object the harness
+            // can only pass as NULL, so any procedure taking one faults on deref (a
+            // false positive) — exclude it and keep the pure string/numeric parsers.
+            && !self
+                .args
+                .iter()
+                .any(|a| matches!(a.kind, FortranArgKind::Derived))
             && self
                 .args
                 .iter()
@@ -227,6 +245,18 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
     // Track the enclosing MODULE so a module-contained procedure gets the right ABI
     // symbol. `MODULE name` opens it; `END MODULE`/`END` at module level closes it.
     let mut current_module: Option<String> = None;
+    // Module visibility (Fortran access statements): a bare `PRIVATE` in the module
+    // specification section flips the default to private; `PUBLIC ::`/`PRIVATE ::`
+    // lists override per name. Reset at each `MODULE`. A bare `PRIVATE`/`PUBLIC`
+    // *inside a derived-type definition* sets COMPONENT visibility, not the module
+    // default — so ignore access statements while inside a `TYPE … END TYPE` block.
+    let mut mod_default_private = false;
+    let mut mod_public: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut mod_private: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut in_type_def = false;
+    // The result variable name of the FUNCTION currently being scanned (if any), used
+    // to detect a `character`-typed result declared on a later line.
+    let mut cur_result_name: Option<String> = None;
     for (line_no, line) in &logical {
         let l = line.trim_start();
         // `MODULE name` (a module definition, not `MODULE PROCEDURE`/`END MODULE`)
@@ -235,46 +265,108 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
             let name = rest.split_whitespace().next().unwrap_or("");
             if !name.is_empty() && name != "PROCEDURE" {
                 current_module = Some(name.to_owned());
+                mod_default_private = false;
+                mod_public.clear();
+                mod_private.clear();
+                in_type_def = false;
                 continue;
             }
         }
         if l.starts_with("END MODULE") || (l == "END" && cur.is_none() && current_module.is_some())
         {
             current_module = None;
+            mod_default_private = false;
+            mod_public.clear();
+            mod_private.clear();
             continue;
+        }
+        // Derived-type definition block: a bare `PRIVATE`/`PUBLIC` here is a component
+        // access spec, not the module default — track the block so we skip those.
+        if current_module.is_some() && cur.is_none() {
+            if is_type_def_open(l) {
+                in_type_def = true;
+            } else if l.starts_with("END TYPE") || l == "ENDTYPE" {
+                in_type_def = false;
+            }
+        }
+        // Module access statements (spec section only: inside a module, outside any
+        // procedure and outside a type definition).
+        if current_module.is_some() && cur.is_none() && !in_type_def {
+            if l == "PRIVATE" {
+                mod_default_private = true;
+                continue;
+            }
+            if let Some(rest) = access_stmt_names(l, "PRIVATE") {
+                mod_private.extend(rest);
+                continue;
+            }
+            if let Some(rest) = access_stmt_names(l, "PUBLIC") {
+                mod_public.extend(rest);
+                continue;
+            }
         }
         // Procedure header: [prefix] SUBROUTINE/FUNCTION name(args)
         if let Some(hdr) = proc_header(l) {
             let args: Vec<FortranArg> = hdr
-                .1
+                .args
                 .iter()
                 .map(|a| FortranArg {
                     name: a.clone(),
                     kind: FortranArgKind::Other,
                 })
                 .collect();
+            // External (non-module) procedures are always accessible; inside a module,
+            // an explicit `public ::` wins, then an explicit `private ::`, then the
+            // module default (`private` statement flips it).
+            let public = if current_module.is_none() || mod_public.contains(&hdr.name) {
+                true
+            } else if mod_private.contains(&hdr.name) {
+                false
+            } else {
+                !mod_default_private
+            };
+            // The result variable's name (`RESULT(x)`, else the function name itself),
+            // so a later `character :: x` declaration marks a character-result function.
+            cur_result_name = if hdr.is_function {
+                Some(hdr.result_name.clone().unwrap_or_else(|| hdr.name.clone()))
+            } else {
+                None
+            };
             procs.push(FortranProc {
-                name: hdr.0,
+                name: hdr.name,
                 line: *line_no as u32,
                 args,
                 module: current_module.clone(),
+                public,
+                // A typed prefix (`character(len=*) function …`) is a character result
+                // immediately; the `result(x)` form is confirmed when `x` is declared.
+                char_result: hdr.is_function && hdr.char_result_prefix,
             });
             cur = Some(procs.len() - 1);
             continue;
         }
         if l.starts_with("END SUBROUTINE") || l.starts_with("END FUNCTION") || l == "END" {
             cur = None;
+            cur_result_name = None;
             continue;
         }
-        // A type declaration inside the current procedure: refine arg kinds.
+        // A type declaration inside the current procedure: refine arg kinds, and detect
+        // a `character`-typed result variable (character-returning function).
         if let Some(idx) = cur {
             if let Some(spec_end) = type_spec_end(l) {
                 let kind = decl_kind(l);
                 if !matches!(kind, FortranArgKind::Other) {
                     let names = declared_names(l, spec_end);
-                    for n in names {
-                        if let Some(arg) = procs[idx].args.iter_mut().find(|a| a.name == n) {
+                    for n in &names {
+                        if let Some(arg) = procs[idx].args.iter_mut().find(|a| &a.name == n) {
                             arg.kind = kind;
+                        }
+                    }
+                    if matches!(kind, FortranArgKind::CharBuffer { .. }) {
+                        if let Some(rname) = &cur_result_name {
+                            if names.iter().any(|n| n == rname) {
+                                procs[idx].char_result = true;
+                            }
                         }
                     }
                 }
@@ -284,13 +376,25 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
     procs
 }
 
+/// A parsed procedure header.
+struct ProcHeader {
+    name: String,
+    args: Vec<String>,
+    is_function: bool,
+    /// The header has a `character` type prefix (`character(len=*) function …`) — a
+    /// character result declared inline.
+    char_result_prefix: bool,
+    /// The `RESULT(x)` name, if given.
+    result_name: Option<String>,
+}
+
 /// If `l` starts a `SUBROUTINE`/`FUNCTION` (optionally after a prefix like
-/// `PURE`/`RECURSIVE`/a `FUNCTION` result type), return (name, arg names).
-fn proc_header(l: &str) -> Option<(String, Vec<String>)> {
-    let kw_pos = l
+/// `PURE`/`RECURSIVE`/a `FUNCTION` result type), return its parsed header.
+fn proc_header(l: &str) -> Option<ProcHeader> {
+    let (kw_pos, is_function) = l
         .find("SUBROUTINE ")
-        .map(|p| (p, "SUBROUTINE "))
-        .or_else(|| l.find("FUNCTION ").map(|p| (p, "FUNCTION ")))?;
+        .map(|p| ((p, "SUBROUTINE "), false))
+        .or_else(|| l.find("FUNCTION ").map(|p| ((p, "FUNCTION "), true)))?;
     // Reject a reference inside a larger word (e.g. END SUBROUTINE handled elsewhere,
     // CALL ... FUNCTION-like). Require the keyword at start or after a prefix word.
     let before = l[..kw_pos.0].trim();
@@ -305,6 +409,7 @@ fn proc_header(l: &str) -> Option<(String, Vec<String>)> {
     {
         return None;
     }
+    let char_result_prefix = before.contains("CHARACTER");
     let rest = &l[kw_pos.0 + kw_pos.1.len()..];
     let name: String = rest
         .trim_start()
@@ -334,7 +439,82 @@ fn proc_header(l: &str) -> Option<(String, Vec<String>)> {
             .collect(),
         None => Vec::new(),
     };
-    Some((name, args))
+    // `… FUNCTION name(args) RESULT(rname)` — capture the result variable name.
+    let result_name = is_function.then(|| result_clause_name(rest)).flatten();
+    Some(ProcHeader {
+        name,
+        args,
+        is_function,
+        char_result_prefix,
+        result_name,
+    })
+}
+
+/// Extract `x` from a trailing `RESULT ( x )` clause on a function header, if present.
+fn result_clause_name(rest: &str) -> Option<String> {
+    let pos = rest.find("RESULT")?;
+    let after = rest[pos + "RESULT".len()..].trim_start();
+    let inner = after.strip_prefix('(')?;
+    let name: String = inner
+        .trim_start()
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+        .collect();
+    (!name.is_empty()).then_some(name)
+}
+
+/// Whether `l` (normalized/uppercased) opens a derived-type DEFINITION block
+/// (`TYPE :: name`, `TYPE, attrs :: name`, `TYPE name`) as opposed to a variable
+/// declaration/use (`TYPE(name)`) or a `SELECT TYPE`/`TYPE IS` construct.
+fn is_type_def_open(l: &str) -> bool {
+    let Some(rest) = l.strip_prefix("TYPE") else {
+        return false;
+    };
+    // `TYPE(...)` / `TYPE (...)` is a declaration or use, never a definition.
+    let r = rest.trim_start();
+    if r.starts_with('(') {
+        return false;
+    }
+    // `TYPE, attrs :: name` or `TYPE :: name` — an attribute list or `::` means a def.
+    if rest.starts_with(',') || r.starts_with("::") {
+        return true;
+    }
+    // `TYPE name` — a name follows; exclude `TYPE IS (...)` (a select-type guard).
+    if let Some(after) = rest.strip_prefix(' ') {
+        let first = after.trim_start();
+        return !first.starts_with("IS")
+            && first.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_');
+    }
+    false
+}
+
+/// Parse a Fortran access statement's name list: `PUBLIC :: a, b`, `PRIVATE :: a`,
+/// or the older `PUBLIC a, b`. Returns the uppercased names when `l` is that access
+/// statement (matching `kw`), else `None` (so a bare `PUBLIC`/`PRIVATE` or an
+/// attribute like `INTEGER, PUBLIC :: x` is not treated as a name list).
+fn access_stmt_names(l: &str, kw: &str) -> Option<Vec<String>> {
+    let rest = l.strip_prefix(kw)?;
+    // Must be the access STATEMENT: keyword then `::` or whitespace then names.
+    let rest = rest.trim_start();
+    let names_part = if let Some(after) = rest.strip_prefix("::") {
+        after
+    } else if l.len() > kw.len() && l.as_bytes()[kw.len()] == b' ' && !rest.is_empty() {
+        rest
+    } else {
+        return None;
+    };
+    let names: Vec<String> = names_part
+        .split(',')
+        .filter_map(|s| {
+            let n: String = s
+                .trim()
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            (!n.is_empty()).then_some(n)
+        })
+        .collect();
+    (!names.is_empty()).then_some(names)
 }
 
 /// If `l` begins with a type spec (`CHARACTER`, `INTEGER`, `REAL`, ...) return the
@@ -446,5 +626,93 @@ end subroutine scan
             parse_fortran(pure)[0].is_fuzzable(),
             "a pure string parser stays fuzzable"
         );
+    }
+
+    #[test]
+    fn private_module_procedure_is_not_fuzzable() {
+        // fortran-csv-module shape: an encapsulated module (`private` default) exports
+        // only a named list. A private helper (`to_real_sp`) compiles to a *local*
+        // symbol the glue can't link and is not the public API -> must be skipped; the
+        // explicitly `public` helper (`lowercase_string`) stays fuzzable. A bare
+        // `private` inside a derived-type definition sets COMPONENT visibility and must
+        // NOT be mistaken for the module default.
+        let src = "\
+module csv_utilities
+  private
+  type, public :: holder
+    private
+    integer :: n
+  end type holder
+  public :: lowercase_string
+contains
+  pure function lowercase_string(str) result(s)
+    character(len=*), intent(in) :: str
+    character(len=len(str)) :: s
+    s = str
+  end function lowercase_string
+  pure elemental subroutine to_real_sp(str, val, ok)
+    character(len=*), intent(in) :: str
+    real, intent(out) :: val
+    logical, intent(out) :: ok
+    read(str, *) val
+  end subroutine to_real_sp
+end module csv_utilities
+";
+        let procs = parse_fortran(src);
+        let lower = procs.iter().find(|p| p.name == "LOWERCASE_STRING").unwrap();
+        assert!(lower.public);
+        assert!(
+            lower.is_fuzzable(),
+            "an explicitly public helper is fuzzable"
+        );
+        let to_real = procs.iter().find(|p| p.name == "TO_REAL_SP").unwrap();
+        assert!(!to_real.public, "a private module procedure is not public");
+        assert!(
+            !to_real.is_fuzzable(),
+            "a private module procedure (local symbol, internal helper) must be skipped"
+        );
+    }
+
+    #[test]
+    fn character_returning_function_is_detected() {
+        // `result(s)` + a `character` declaration of `s` -> char_result.
+        let via_result = "\
+pure function lowercase_string(str) result(s_lower)
+  character(len=*), intent(in) :: str
+  character(len=len(str)) :: s_lower
+  s_lower = str
+end function lowercase_string
+";
+        let p = &parse_fortran(via_result)[0];
+        assert!(p.char_result, "result(s) + character(s) is a char result");
+        assert!(p.is_fuzzable());
+
+        // A typed prefix `character(len=*) function …` is a char result immediately.
+        let via_prefix =
+            "character(len=10) function tag(s)\n character(len=*) :: s\nend function\n";
+        assert!(parse_fortran(via_prefix)[0].char_result);
+
+        // A subroutine and a non-character function are NOT char results.
+        let sub = "subroutine scan(buf)\n character(len=*) :: buf\nend subroutine\n";
+        assert!(!parse_fortran(sub)[0].char_result);
+        let int_fn = "integer function count_it(s)\n character(len=*) :: s\nend function\n";
+        assert!(!parse_fortran(int_fn)[0].char_result);
+    }
+
+    #[test]
+    fn default_public_module_procedure_stays_fuzzable() {
+        // A module with no `private` default keeps its procedures public (the common
+        // simple-library case) -> no over-skip.
+        let src = "\
+module m
+contains
+  subroutine parse(s)
+    character(len=*), intent(in) :: s
+  end subroutine parse
+end module m
+";
+        let p = &parse_fortran(src)[0];
+        assert!(p.public);
+        assert!(p.is_fuzzable());
     }
 }

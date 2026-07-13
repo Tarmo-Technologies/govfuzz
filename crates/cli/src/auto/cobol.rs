@@ -59,17 +59,27 @@ pub enum CobolParamKind {
     /// A numeric item (`BINARY-*`, `PIC 9(n)`, `COMP`) — a length/count/status.
     /// `width` is the byte width used to encode a length operand.
     Numeric { width: usize },
+    /// A `PROGRAM-POINTER` / `PROCEDURE-POINTER` (a callback the caller supplies).
+    /// The harness can only pass a zeroed (NULL) pointer, so a program that CALLs
+    /// through it faults — an unsynthesizable operand, the COBOL analog of a C
+    /// function-pointer parameter. A program taking one is not fuzzable.
+    Pointer,
     /// A group or item we don't model — passed as a zeroed scratch buffer.
     Other,
 }
 
 impl CobolProgram {
-    /// A program is fuzzable when it has at least one `USING` byte buffer AND no
+    /// A program is fuzzable when it has at least one `USING` byte buffer, no
     /// numeric operand used as a caller-managed position (see
-    /// [`CobolProgram::positional_operand`]) — the latter can't be synthesized
-    /// without driving an out-of-bounds false positive.
+    /// [`CobolProgram::positional_operand`]), and no callback
+    /// (`PROGRAM-POINTER`) operand — the latter two can't be synthesized without
+    /// driving a false positive.
     pub fn is_fuzzable(&self) -> bool {
         !self.positional_operand
+            && !self
+                .params
+                .iter()
+                .any(|p| matches!(p.kind, CobolParamKind::Pointer))
             && self
                 .params
                 .iter()
@@ -187,6 +197,10 @@ fn pic_x_len(line: &str) -> Option<usize> {
 
 /// Classify a normalized LINKAGE `01`-level line into a parameter kind.
 fn linkage_kind(line: &str) -> CobolParamKind {
+    // A callback pointer (COBOL's function pointer) — unsynthesizable.
+    if line.contains("PROGRAM-POINTER") || line.contains("PROCEDURE-POINTER") {
+        return CobolParamKind::Pointer;
+    }
     // ANY LENGTH first: a bare `PIC X ANY LENGTH` would otherwise parse as X(1).
     if line.contains("ANY LENGTH") && (line.contains("PIC X") || line.contains("PICTURE X")) {
         return CobolParamKind::Bytes { len: None };
@@ -482,6 +496,30 @@ END PROGRAM Blocks-Parse.
         assert!(
             p.is_fuzzable(),
             "the top-level free-format parser must be a fuzz target"
+        );
+    }
+
+    #[test]
+    fn program_pointer_callback_operand_is_not_fuzzable() {
+        // CobolCraft `Codegen-TemplateLoad` takes a PROGRAM-POINTER callback the
+        // caller supplies. The harness can only pass a zeroed (NULL) pointer, so a
+        // CALL through it faults — the COBOL analog of a C function-pointer param.
+        let src = "\
+IDENTIFICATION DIVISION.
+PROGRAM-ID. Codegen-TemplateLoad.
+DATA DIVISION.
+LINKAGE SECTION.
+    01 LK-TPLNAME       PIC X ANY LENGTH.
+    01 LK-REPLACE-PTR   PROGRAM-POINTER.
+PROCEDURE DIVISION USING LK-TPLNAME LK-REPLACE-PTR.
+    GOBACK.
+END PROGRAM Codegen-TemplateLoad.
+";
+        let p = &parse_cobol(src)[0];
+        assert_eq!(p.params[1].kind, CobolParamKind::Pointer);
+        assert!(
+            !p.is_fuzzable(),
+            "a program taking a PROGRAM-POINTER callback must not be fuzzable"
         );
     }
 

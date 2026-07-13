@@ -2389,6 +2389,11 @@ fn render_selected_langs(selectors: &[crate::auto::candidate::LangSelector]) -> 
         (Lang::Python, "python"),
         (Lang::Perl, "perl"),
         (Lang::Go, "go"),
+        (Lang::Cobol, "cobol"),
+        (Lang::Fortran, "fortran"),
+        (Lang::CSharp, "csharp"),
+        (Lang::Js, "javascript"),
+        (Lang::Ts, "typescript"),
     ];
     ORDER
         .iter()
@@ -3060,6 +3065,25 @@ mod tests {
             LangSelector::Ada,
         ]);
         assert_eq!(rendered, "ada, c, go");
+    }
+
+    #[test]
+    fn every_lang_selector_renders_a_non_empty_name() {
+        // Guard against the ORDER table drifting behind the enum: a new lane whose
+        // Lang is missing from `render_selected_langs` would silently render as `[]`
+        // in the filter log (the cobol/fortran/csharp/js/ts regression), making a
+        // working `--languages csharp` filter look broken. Every selectable language
+        // must map to a printed name.
+        use crate::auto::candidate::LangSelector;
+        use clap::ValueEnum as _;
+        for selector in LangSelector::value_variants() {
+            let rendered = render_selected_langs(std::slice::from_ref(selector));
+            assert!(
+                !rendered.is_empty(),
+                "LangSelector {selector:?} renders empty — add its Lang to \
+                 render_selected_langs ORDER"
+            );
+        }
     }
 
     #[test]

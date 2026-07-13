@@ -41,15 +41,29 @@ pub enum FortranArgKind {
     CharBuffer { len: usize },
     /// `integer` scalar — a length/count operand.
     Integer,
-    /// Anything else (real, logical, arrays, derived types) — zeroed scratch.
+    /// A `type(...)` / `class(...)` derived-type argument — a caller-built object
+    /// (a json-fortran `json_value` pointer, an OO method's `class` receiver). The
+    /// harness can only pass a zeroed (NULL) object, so a procedure that
+    /// dereferences it faults — an unsynthesizable operand, the Fortran analog of a
+    /// C++ receiver / COBOL handle. A procedure taking one is not fuzzable.
+    Derived,
+    /// Anything else (real, logical, arrays) — zeroed scratch.
     Other,
 }
 
 impl FortranProc {
     pub fn is_fuzzable(&self) -> bool {
-        self.args
+        // A derived-type / polymorphic argument is a caller-built object the harness
+        // can only pass as NULL, so any procedure taking one faults on deref (a
+        // false positive) — exclude it and keep the pure string/numeric parsers.
+        !self
+            .args
             .iter()
-            .any(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
+            .any(|a| matches!(a.kind, FortranArgKind::Derived))
+            && self
+                .args
+                .iter()
+                .any(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
     }
 
     pub fn primary_buffer_index(&self) -> Option<usize> {
@@ -132,6 +146,13 @@ fn char_len(spec: &str) -> Option<usize> {
 /// Classify a declaration's type spec into an argument kind.
 fn decl_kind(spec: &str) -> FortranArgKind {
     let s = spec.trim();
+    // An ALLOCATABLE / POINTER dummy is passed as a gfortran descriptor, not a raw
+    // buffer — the harness can't synthesize one, so a `character(len=:),allocatable`
+    // output (json-fortran's string utilities) corrupts memory / SEGVs when handed a
+    // plain buffer. Treat as unsynthesizable (skip the procedure), like a derived type.
+    if s.contains("ALLOCATABLE") || s.contains(",POINTER") || s.contains(", POINTER") {
+        return FortranArgKind::Derived;
+    }
     if s.starts_with("CHARACTER") {
         return FortranArgKind::CharBuffer {
             len: char_len(s).unwrap_or(1),
@@ -139,6 +160,15 @@ fn decl_kind(spec: &str) -> FortranArgKind {
     }
     if s.starts_with("INTEGER") {
         return FortranArgKind::Integer;
+    }
+    // A derived-type / polymorphic argument (`TYPE(json_value)`, `CLASS(json_core)`)
+    // is a caller-built object the harness can't synthesize.
+    if s.starts_with("TYPE(")
+        || s.starts_with("TYPE (")
+        || s.starts_with("CLASS(")
+        || s.starts_with("CLASS (")
+    {
+        return FortranArgKind::Derived;
     }
     FortranArgKind::Other
 }
@@ -318,6 +348,9 @@ fn type_spec_end(l: &str) -> Option<usize> {
         "COMPLEX",
         "DOUBLE PRECISION",
         "TYPE",
+        // Polymorphic derived-type declarations (`class(json_core) :: me`) — an OO
+        // method's receiver; recognized so its arg is classified `Derived` (skip).
+        "CLASS",
     ] {
         if l.starts_with(kw) {
             return Some(kw.len());
@@ -390,5 +423,28 @@ end subroutine scan
         assert_eq!(p.name, "COUNT_IT");
         assert!(p.is_fuzzable());
         assert_eq!(p.args[0].kind, FortranArgKind::CharBuffer { len: 0 });
+    }
+
+    #[test]
+    fn derived_type_object_argument_is_not_fuzzable() {
+        // json-fortran shape: a procedure that mutates a caller-built json_value
+        // object (a `type(...)`/`class(...)` pointer) plus a character name. The
+        // harness can only pass a zeroed (NULL) object -> NULL-deref SEGV false
+        // positive; skip it. A pure string parser (no derived arg) stays fuzzable.
+        let mutator = "subroutine json_add_member(json, name)\n \
+             type(json_value), pointer :: json\n character(len=*) :: name\nend subroutine\n";
+        let p = &parse_fortran(mutator)[0];
+        assert_eq!(p.args[0].kind, FortranArgKind::Derived);
+        assert!(!p.is_fuzzable(), "a derived-object mutator must be skipped");
+
+        let class_method = "subroutine parse(me, s)\n \
+             class(json_core), intent(inout) :: me\n character(len=*) :: s\nend subroutine\n";
+        assert!(!parse_fortran(class_method)[0].is_fuzzable());
+
+        let pure = "subroutine escape(s)\n character(len=*) :: s\nend subroutine\n";
+        assert!(
+            parse_fortran(pure)[0].is_fuzzable(),
+            "a pure string parser stays fuzzable"
+        );
     }
 }

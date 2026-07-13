@@ -22,6 +22,10 @@ pub struct FortranProc {
     pub name: String,
     pub line: u32,
     pub args: Vec<FortranArg>,
+    /// The enclosing `MODULE` name when the procedure is module-contained (in a
+    /// `module … contains` block), else `None` for a top-level external procedure.
+    /// Drives the gfortran C-ABI symbol (`__module_MOD_name` vs `name_`).
+    pub module: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,8 +194,25 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
     }
 
     let mut cur: Option<usize> = None;
+    // Track the enclosing MODULE so a module-contained procedure gets the right ABI
+    // symbol. `MODULE name` opens it; `END MODULE`/`END` at module level closes it.
+    let mut current_module: Option<String> = None;
     for (line_no, line) in &logical {
         let l = line.trim_start();
+        // `MODULE name` (a module definition, not `MODULE PROCEDURE`/`END MODULE`)
+        // opens a module scope; procedures inside it are module-contained.
+        if let Some(rest) = l.strip_prefix("MODULE ") {
+            let name = rest.split_whitespace().next().unwrap_or("");
+            if !name.is_empty() && name != "PROCEDURE" {
+                current_module = Some(name.to_owned());
+                continue;
+            }
+        }
+        if l.starts_with("END MODULE") || (l == "END" && cur.is_none() && current_module.is_some())
+        {
+            current_module = None;
+            continue;
+        }
         // Procedure header: [prefix] SUBROUTINE/FUNCTION name(args)
         if let Some(hdr) = proc_header(l) {
             let args: Vec<FortranArg> = hdr
@@ -206,6 +227,7 @@ pub fn parse_fortran(source: &str) -> Vec<FortranProc> {
                 name: hdr.0,
                 line: *line_no as u32,
                 args,
+                module: current_module.clone(),
             });
             cur = Some(procs.len() - 1);
             continue;

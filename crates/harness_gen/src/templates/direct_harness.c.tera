@@ -445,6 +445,13 @@ GF_NOINSTR void __sanitizer_cov_trace_const_cmp4(uint32_t a, uint32_t b) { govfu
 GF_NOINSTR void __sanitizer_cov_trace_cmp4(uint32_t a, uint32_t b) { govfuzz_cmp_int(a, b, 4); govfuzz_cmpp_int(a, b, 4, __builtin_return_address(0)); }
 GF_NOINSTR void __sanitizer_cov_trace_const_cmp8(uint64_t a, uint64_t b) { govfuzz_vp_add((unsigned char *)&a, 8); govfuzz_vp_add((unsigned char *)&b, 8); govfuzz_cmp_int(a, b, 8); govfuzz_cmpp_int(a, b, 8, __builtin_return_address(0)); }
 GF_NOINSTR void __sanitizer_cov_trace_cmp8(uint64_t a, uint64_t b) { govfuzz_cmp_int(a, b, 8); govfuzz_cmpp_int(a, b, 8, __builtin_return_address(0)); }
+/* Floating-point comparison hooks. Fortran numeric code (and float-heavy C/C++)
+ * emits these under -fsanitize-coverage=trace-cmp; without them the target fails
+ * to link (`undefined reference to __sanitizer_cov_trace_cmpd`). Feed the operands'
+ * bit patterns into the same cmplog so a magic float/double constant is still
+ * learnable. */
+GF_NOINSTR void __sanitizer_cov_trace_cmpf(float a, float b) { uint32_t ua, ub; __builtin_memcpy(&ua, &a, 4); __builtin_memcpy(&ub, &b, 4); govfuzz_cmp_int(ua, ub, 4); govfuzz_cmpp_int(ua, ub, 4, __builtin_return_address(0)); }
+GF_NOINSTR void __sanitizer_cov_trace_cmpd(double a, double b) { uint64_t ua, ub; __builtin_memcpy(&ua, &a, 8); __builtin_memcpy(&ub, &b, 8); govfuzz_cmp_int(ua, ub, 8); govfuzz_cmpp_int(ua, ub, 8, __builtin_return_address(0)); }
 GF_NOINSTR void __sanitizer_cov_trace_switch(uint64_t val, uint64_t *cases) {
     uint64_t n = cases[0], bits = cases[1];
     unsigned len = (unsigned)(bits / 8);

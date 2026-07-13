@@ -105,6 +105,9 @@ internal static unsafe class Driver
         || exc is NotImplementedException
         || exc is InvalidOperationException  // stateful API called in an invalid state
         || exc is IOException             // + EndOfStream, FileNotFound, DirectoryNotFound
+        || exc is UnauthorizedAccessException  // file/dir access denied — environmental,
+                                               // a target opening a fuzzed path (MimeKit
+                                               // SafeFileHandle.Init), not a target defect
         || exc is System.Collections.Generic.KeyNotFoundException
         || exc is TimeoutException
         || exc is System.Xml.XmlException  // malformed/invalid XML — the XML FormatException
@@ -116,6 +119,17 @@ internal static unsafe class Driver
 
     private static string[] _expected = Array.Empty<string>();
     private static string _targetNamespace = "";
+
+    // Minimum target (non-infrastructure) stack frames a NullReferenceException must
+    // traverse before it is a genuine null-dereference defect rather than a shallow
+    // synthesized-receiver artifact. govfuzz `new`s a fresh receiver (or a default
+    // struct like protobuf-net's `ProtoReader.State`) and calls ONE method on it, so
+    // a surface NPE ("Object reference not set") is dominated by us handing an
+    // uninitialized receiver — our fault, not a target defect. A NPE that surfaces
+    // only after the input flowed through several of the target's OWN frames is a
+    // real CWE-476 defect. Mirrors the JVM driver's NPE_MIN_DEPTH. Tunable via
+    // GOVFUZZ_NPE_MIN_DEPTH (default 3).
+    private static int _npeMinDepth = 3;
 
     // An exception whose type lives IN the target's own root namespace is that
     // library's declared way of rejecting input (mirrors Ada "declared exception =
@@ -154,7 +168,46 @@ internal static unsafe class Driver
         {
             return false;
         }
+        // A shallow NullReferenceException is our synthesized-receiver artifact, not a
+        // target defect (protobuf-net `ProtoReader.State.ReadBytes` on a default State
+        // struct). Promote only a DEEP null-dereference (CWE-476). Mirrors the JVM
+        // driver's depth policy.
+        if (exc is NullReferenceException)
+        {
+            return TargetFrameDepth(exc) >= _npeMinDepth;
+        }
         return true;
+    }
+
+    /// Count stack frames in target/library code — excluding the CLR/BCL
+    /// (System.*, Microsoft.*, Internal.*), reflection glue, and the govfuzz driver
+    /// / generated harness — a proxy for how deep the input travelled before the throw.
+    private static int TargetFrameDepth(Exception exc)
+    {
+        var trace = new System.Diagnostics.StackTrace(exc, false);
+        var frames = trace.GetFrames();
+        if (frames == null)
+        {
+            return 0;
+        }
+        int depth = 0;
+        foreach (var frame in frames)
+        {
+            var declaring = frame?.GetMethod()?.DeclaringType;
+            var full = declaring?.FullName ?? "";
+            var ns = declaring?.Namespace ?? "";
+            if (full.Length == 0
+                || ns.StartsWith("System", StringComparison.Ordinal)
+                || ns.StartsWith("Microsoft", StringComparison.Ordinal)
+                || ns.StartsWith("Internal", StringComparison.Ordinal)
+                || full.StartsWith("Driver", StringComparison.Ordinal)
+                || full.StartsWith("Govfuzz", StringComparison.Ordinal))
+            {
+                continue;
+            }
+            depth++;
+        }
+        return depth;
     }
 
     private static void ReportFinding(Exception exc)
@@ -291,6 +344,12 @@ internal static unsafe class Driver
             _expected[i] = _expected[i].Trim();
         }
         _targetNamespace = (Environment.GetEnvironmentVariable("GOVFUZZ_CS_NAMESPACE") ?? "").Trim();
+        if (int.TryParse(
+                (Environment.GetEnvironmentVariable("GOVFUZZ_NPE_MIN_DEPTH") ?? "").Trim(),
+                out var npeMin) && npeMin >= 0)
+        {
+            _npeMinDepth = npeMin;
+        }
 
         SetupCoverage();
 

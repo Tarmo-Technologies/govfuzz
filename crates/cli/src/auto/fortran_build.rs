@@ -11,7 +11,7 @@
 //! build+link on the passthrough C fork-server path with `-lgfortran`.
 
 use crate::auto::candidate::Candidate;
-use crate::auto::fortran::{FortranArg, FortranArgKind};
+use crate::auto::fortran::{FortranArg, FortranArgKind, FortranResult};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -212,7 +212,7 @@ fn abi_symbol(name: &str, module: Option<&str>) -> String {
 /// self-contained `__sanitizer_cov_trace_pc` hook feeding the shared edge map
 /// (gfortran emits trace-pc, which the govfuzz Linux driver — trace-pc-guard —
 /// does not otherwise provide).
-fn glue_source(entry: &str, args: &[FortranArg], char_result: bool) -> String {
+fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> String {
     let primary = args
         .iter()
         .position(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
@@ -319,22 +319,48 @@ fn glue_source(entry: &str, args: &[FortranArg], char_result: bool) -> String {
     for _ in 0..hidden_count {
         extern_sig.push("size_t".to_owned());
     }
-    // A `character`-returning function's gfortran C ABI prepends a hidden
-    // `(char* result, size_t result_len)` pair (verified empirically). The glue
-    // allocates a generously-sized, blank-initialised result buffer (Fortran strings
-    // are space-padded) so the callee writes its result in bounds regardless of the
-    // result-length spec-expression, and passes its true size as the result length.
-    if char_result {
-        let res_alloc = "\x20   size_t gf_res_len = (Size < 65536 ? Size : 65536) + 256;\n\
-             \x20   char *gf_res = (char *)malloc(gf_res_len);\n\
-             \x20   if (!gf_res) return 0;\n\
-             \x20   memset(gf_res, ' ', gf_res_len);\n";
-        decls.push_str(res_alloc);
-        frees.push_str("    free(gf_res);\n");
-        all_args.insert(0, "gf_res_len".to_owned());
-        all_args.insert(0, "gf_res".to_owned());
-        extern_sig.insert(0, "size_t".to_owned());
-        extern_sig.insert(0, "char *".to_owned());
+    // A `character`-returning function's gfortran C ABI prepends a hidden result
+    // argument the caller must supply (verified empirically). Two forms:
+    match result {
+        // NonChar drives the plain `void` ABI; Unsupported never reaches here (an
+        // array-char result makes the procedure non-fuzzable), but is handled defensively.
+        FortranResult::NonChar | FortranResult::Unsupported => {}
+        FortranResult::ValueChar { fixed_len } => {
+            // `void f(char* result, size_t result_len, <args…>)`. The glue allocates a
+            // blank-initialised result buffer (Fortran strings are space-padded) sized
+            // generously — the declared constant length, at least 4× the input (headroom
+            // for a spec-expression that expands the input), floored and capped — so the
+            // callee writes its result in bounds, and passes its true size as the length.
+            let res_alloc = format!(
+                "\x20   size_t gf_res_len = (size_t)Size * 4;\n\
+                 \x20   if (gf_res_len < 4096) gf_res_len = 4096;\n\
+                 \x20   if (gf_res_len < {fixed_len}u) gf_res_len = {fixed_len}u;\n\
+                 \x20   gf_res_len += 256;\n\
+                 \x20   if (gf_res_len > (1u << 22)) gf_res_len = (1u << 22);\n\
+                 \x20   char *gf_res = (char *)malloc(gf_res_len);\n\
+                 \x20   if (!gf_res) return 0;\n\
+                 \x20   memset(gf_res, ' ', gf_res_len);\n"
+            );
+            decls.push_str(&res_alloc);
+            frees.push_str("    free(gf_res);\n");
+            all_args.insert(0, "gf_res_len".to_owned());
+            all_args.insert(0, "gf_res".to_owned());
+            extern_sig.insert(0, "size_t".to_owned());
+            extern_sig.insert(0, "char *".to_owned());
+        }
+        FortranResult::AllocChar => {
+            // `void f(char** data, size_t* len, <args…>)` — the callee `malloc`s the
+            // result (deferred-length `character(len=:), allocatable`), stores the
+            // pointer + length, and the glue frees it. No expansion-overflow risk.
+            let res_alloc = "\x20   char *gf_res_data = 0;\n\
+                 \x20   size_t gf_res_len = 0;\n";
+            decls.push_str(res_alloc);
+            frees.push_str("    free(gf_res_data);\n");
+            all_args.insert(0, "&gf_res_len".to_owned());
+            all_args.insert(0, "&gf_res_data".to_owned());
+            extern_sig.insert(0, "size_t *".to_owned());
+            extern_sig.insert(0, "char **".to_owned());
+        }
     }
     let extern_sig = if extern_sig.is_empty() {
         "void".to_owned()
@@ -468,7 +494,7 @@ pub fn build_fortran_harness(
 
     let entry = abi_symbol(&proc.name, proc.module.as_deref());
     let glue_c = hdir.join("fortran_glue.c");
-    if let Err(e) = std::fs::write(&glue_c, glue_source(&entry, &proc.args, proc.char_result)) {
+    if let Err(e) = std::fs::write(&glue_c, glue_source(&entry, &proc.args, proc.result)) {
         return FortranBuildResult::Failed(format!("write glue: {e}"));
     }
 
@@ -565,7 +591,7 @@ mod tests {
             arg("BUF", FortranArgKind::CharBuffer { len: 0 }),
             arg("N", FortranArgKind::Integer),
         ];
-        let g = glue_source("scan_", &args, false);
+        let g = glue_source("scan_", &args, FortranResult::NonChar);
         // extern has 2 explicit args + 1 hidden size_t for the character arg.
         assert!(g.contains("extern void scan_(char *, int *, size_t);"));
         // Assumed-length: hidden length is the byte count; N gets it too.
@@ -584,7 +610,7 @@ mod tests {
         // allocating only `Size` and passing hidden length 80 overran it (ASan
         // heap-overflow FALSE POSITIVE).
         let args = vec![arg("DSN", FortranArgKind::CharBuffer { len: 80 })];
-        let g = glue_source("nasopn_", &args, false);
+        let g = glue_source("nasopn_", &args, FortranResult::NonChar);
         assert!(g.contains("char *gf_a0 = (char *)malloc(80);"));
         assert!(g.contains("memset(gf_a0, ' ', 80);"));
         assert!(g.contains("gf_primary_len = Size < 80 ? Size : 80;"));
@@ -596,19 +622,24 @@ mod tests {
     #[test]
     fn glue_assumed_length_uses_byte_count_as_hidden_len() {
         let args = vec![arg("S", FortranArgKind::CharBuffer { len: 0 })];
-        let g = glue_source("f_", &args, false);
+        let g = glue_source("f_", &args, FortranResult::NonChar);
         assert!(g.contains("extern void f_(char *, size_t);"));
         assert!(g.contains("f_(gf_a0, (size_t)gf_primary_len);"));
     }
 
     #[test]
-    fn glue_character_returning_function_prepends_hidden_result_buffer() {
-        // fortran-csv-module `lowercase_string(str) result(s)` where `s` is CHARACTER:
-        // gfortran's ABI is `void f(char* result, size_t result_len, char* str,
-        // size_t str_len)`. Without the hidden result pair the fuzz buffer lands in the
-        // result slot and `str` is a garbage pointer -> OOB read/SEGV false positive.
+    fn glue_value_char_function_prepends_result_buffer_pair() {
+        // fortran-csv-module `lowercase_string(str) result(s)` where `s` is a
+        // fixed/assumed-length CHARACTER: gfortran's ABI is `void f(char* result,
+        // size_t result_len, char* str, size_t str_len)`. Without the hidden result
+        // pair the fuzz buffer lands in the result slot and `str` is a garbage pointer
+        // -> OOB read/SEGV false positive.
         let args = vec![arg("STR", FortranArgKind::CharBuffer { len: 0 })];
-        let g = glue_source("__csv_utilities_MOD_lowercase_string", &args, true);
+        let g = glue_source(
+            "__csv_utilities_MOD_lowercase_string",
+            &args,
+            FortranResult::ValueChar { fixed_len: 0 },
+        );
         // Hidden result pair (char*, size_t) is prepended to BOTH the extern and call.
         assert!(g.contains(
             "extern void __csv_utilities_MOD_lowercase_string(char *, size_t, char *, size_t);"
@@ -618,5 +649,23 @@ mod tests {
         assert!(g.contains("char *gf_res = (char *)malloc(gf_res_len);"));
         assert!(g.contains("memset(gf_res, ' ', gf_res_len);"));
         assert!(g.contains("free(gf_res);"));
+    }
+
+    #[test]
+    fn glue_alloc_char_function_passes_and_frees_callee_allocated_result() {
+        // M_strings `upper(str) result(output)` where `output` is
+        // `character(len=:), allocatable`: gfortran's ABI is `void f(char** data,
+        // size_t* len, char* str, size_t str_len)` — the callee mallocs the result. The
+        // glue passes address-of pointers and frees the callee-allocated buffer.
+        let args = vec![arg("STR", FortranArgKind::CharBuffer { len: 0 })];
+        let g = glue_source("__m_strings_MOD_upper", &args, FortranResult::AllocChar);
+        assert!(g.contains("extern void __m_strings_MOD_upper(char **, size_t *, char *, size_t);"));
+        assert!(g.contains(
+            "__m_strings_MOD_upper(&gf_res_data, &gf_res_len, gf_a0, (size_t)gf_primary_len);"
+        ));
+        assert!(g.contains("char *gf_res_data = 0;"));
+        assert!(g.contains("free(gf_res_data);"));
+        // The callee allocates; the glue must NOT pre-allocate a result buffer here.
+        assert!(!g.contains("malloc(gf_res_len)"));
     }
 }

@@ -112,6 +112,7 @@ fn lang_from_extension(ext: &str) -> Option<LangSelector> {
         "py" => LangSelector::Python,
         "pl" | "pm" => LangSelector::Perl,
         "go" => LangSelector::Go,
+        "rb" => LangSelector::Ruby,
         _ => return None,
     })
 }
@@ -228,6 +229,18 @@ pub fn detect_language(source: &str) -> Option<LangSelector> {
     }
     scores.push((LangSelector::Perl, perl));
 
+    let mut ruby = 0;
+    if has("def ") && (has("\nend\n") || has("\nend") || has(" end\n")) {
+        ruby += 2;
+    }
+    if has("require '") || has("require \"") || has("puts ") || has("attr_") {
+        ruby += 1;
+    }
+    if has("do |") || has(".each") || has("nil?") || has("@") && has("def ") {
+        ruby += 1;
+    }
+    scores.push((LangSelector::Ruby, ruby));
+
     let mut ada = 0;
     if has("procedure ") || has("function ") && has(" return ") {
         ada += 2;
@@ -270,6 +283,7 @@ fn snippet_extension(lang: LangSelector) -> &'static str {
         LangSelector::CSharp => "cs",
         LangSelector::Js => "js",
         LangSelector::Ts => "ts",
+        LangSelector::Ruby => "rb",
     }
 }
 
@@ -289,6 +303,7 @@ fn lang_token(lang: LangSelector) -> &'static str {
         LangSelector::CSharp => "csharp",
         LangSelector::Js => "javascript",
         LangSelector::Ts => "typescript",
+        LangSelector::Ruby => "ruby",
     }
 }
 

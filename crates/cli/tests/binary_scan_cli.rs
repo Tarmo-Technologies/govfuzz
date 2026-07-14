@@ -379,6 +379,60 @@ fn binary_scan_reports_pe_aslr_dep_and_cfg() {
 }
 
 #[test]
+fn binary_scan_reports_macho_pie_nx_and_code_signature() {
+    let root = temp_dir("macho-hardening");
+    // MH_PIE (0x200000), non-exec stack, and a LC_CODE_SIGNATURE load command.
+    write_macho64_x86_64_with_hardening(&root.join("signed.macho"), 0x0020_0000, true);
+    // No MH_PIE, MH_ALLOW_STACK_EXECUTION (0x20000) set, unsigned.
+    write_macho64_x86_64_with_hardening(&root.join("legacy.macho"), 0x0002_0000, false);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "exit={:?}\nstdout={}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+
+    let signed = binary(&report, "signed.macho");
+    assert_eq!(signed["hardening"]["pie"], "present");
+    assert_eq!(signed["hardening"]["nx"], "present");
+    assert_eq!(signed["hardening"]["code_signature"], "present");
+    // ELF/PE-only mitigations are not applicable to a Mach-O.
+    assert_eq!(signed["hardening"]["relro"], "not_applicable");
+    assert_eq!(signed["hardening"]["aslr"], "not_applicable");
+
+    let legacy = binary(&report, "legacy.macho");
+    assert_eq!(legacy["hardening"]["pie"], "not_detected");
+    assert_eq!(legacy["hardening"]["nx"], "disabled");
+    assert_eq!(legacy["hardening"]["code_signature"], "not_detected");
+    let factors = legacy["triage"]["risk_factors"].as_array().unwrap();
+    for expected in [
+        "hardening:pie_missing",
+        "hardening:nx_disabled",
+        "hardening:code_signature_missing",
+    ] {
+        assert!(
+            factors.iter().any(|factor| factor == expected),
+            "missing {expected} in {factors:?}"
+        );
+    }
+}
+
+#[test]
 fn binary_scan_classifies_risky_imports_and_triage_factors() {
     let root = temp_dir("risky-imports");
     write_elf64_x86_64_with_markers(
@@ -1911,6 +1965,28 @@ fn write_macho64_x86_64_with_markers(path: &std::path::Path, markers: &[&[u8]]) 
     for marker in markers {
         bytes.extend_from_slice(marker);
         bytes.push(0);
+    }
+    fs::write(path, bytes).unwrap();
+}
+
+fn write_macho64_x86_64_with_hardening(path: &std::path::Path, flags: u32, code_signature: bool) {
+    let command_offset = 32usize;
+    let command_size = 16usize; // LC_CODE_SIGNATURE: cmd, cmdsize, dataoff, datasize.
+    let total = if code_signature {
+        command_offset + command_size
+    } else {
+        command_offset
+    };
+    let mut bytes = vec![0u8; total];
+    bytes[0..4].copy_from_slice(&0xfeedfacfu32.to_le_bytes());
+    bytes[4..8].copy_from_slice(&0x01000007u32.to_le_bytes());
+    bytes[24..28].copy_from_slice(&flags.to_le_bytes());
+    if code_signature {
+        bytes[16..20].copy_from_slice(&(1u32).to_le_bytes());
+        bytes[20..24].copy_from_slice(&(command_size as u32).to_le_bytes());
+        bytes[command_offset..command_offset + 4].copy_from_slice(&(0x1du32).to_le_bytes());
+        bytes[command_offset + 4..command_offset + 8]
+            .copy_from_slice(&(command_size as u32).to_le_bytes());
     }
     fs::write(path, bytes).unwrap();
 }

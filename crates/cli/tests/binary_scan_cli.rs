@@ -330,6 +330,8 @@ fn binary_scan_reports_pe_aslr_dep_and_cfg() {
     write_pe_x86_64_with_dll_characteristics(&root.join("hardened.exe"), 0x0040 | 0x0100 | 0x4000);
     // No DllCharacteristics bits: ASLR / DEP / CFG all missing.
     write_pe_x86_64_with_dll_characteristics(&root.join("legacy.exe"), 0x0000);
+    // A PE with a non-empty Security data directory → Authenticode-signed.
+    write_pe_x86_64_signed(&root.join("signed.exe"));
 
     let out = root.join("binary");
     let output = Command::new(govfuzz_bin())
@@ -356,10 +358,18 @@ fn binary_scan_reports_pe_aslr_dep_and_cfg() {
     assert_eq!(hardened["hardening"]["aslr"], "present");
     assert_eq!(hardened["hardening"]["nx"], "present");
     assert_eq!(hardened["hardening"]["control_flow_guard"], "present");
+    // Unsigned (no Security directory in this fixture).
+    assert_eq!(hardened["hardening"]["code_signature"], "not_detected");
     // ELF-only mitigations are not applicable to a PE.
     assert_eq!(hardened["hardening"]["relro"], "not_applicable");
     assert_eq!(hardened["hardening"]["pie"], "not_applicable");
     assert_eq!(hardened["hardening"]["fortify_source"], "not_applicable");
+
+    // A PE carrying an Authenticode certificate table reports code_signature present.
+    assert_eq!(
+        binary(&report, "signed.exe")["hardening"]["code_signature"],
+        "present"
+    );
 
     let legacy = binary(&report, "legacy.exe");
     assert_eq!(legacy["hardening"]["aslr"], "not_detected");
@@ -2018,6 +2028,20 @@ fn write_pe_x86_64_with_dll_characteristics(path: &std::path::Path, dll_characte
     bytes[0x98..0x9a].copy_from_slice(&(0x20bu16).to_le_bytes());
     // DllCharacteristics at pe_offset + 24 + 0x46.
     bytes[0xDE..0xE0].copy_from_slice(&dll_characteristics.to_le_bytes());
+    fs::write(path, bytes).unwrap();
+}
+
+fn write_pe_x86_64_signed(path: &std::path::Path) {
+    let mut bytes = vec![0u8; 0x140];
+    bytes[0..2].copy_from_slice(b"MZ");
+    bytes[0x3c..0x40].copy_from_slice(&(0x80u32).to_le_bytes());
+    bytes[0x80..0x84].copy_from_slice(b"PE\0\0");
+    bytes[0x84..0x86].copy_from_slice(&(0x8664u16).to_le_bytes());
+    bytes[0x94..0x96].copy_from_slice(&(0xF0u16).to_le_bytes()); // SizeOfOptionalHeader
+    bytes[0x98..0x9a].copy_from_slice(&(0x20bu16).to_le_bytes()); // PE32+ magic
+                                                                  // Security data directory (index 4) size at data_dir (0x108) + 4*8 + 4 = 0x12C.
+                                                                  // A non-zero certificate-table size marks the PE as Authenticode-signed.
+    bytes[0x12C..0x130].copy_from_slice(&(0x200u32).to_le_bytes());
     fs::write(path, bytes).unwrap();
 }
 

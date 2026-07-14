@@ -28,6 +28,7 @@ pub struct BinaryScanSummary {
     /// Security highlights for the stdout summary.
     pub secret_count: usize,
     pub binaries_with_secrets: usize,
+    pub malware_indicator_count: usize,
     pub high_priority: usize,
 }
 
@@ -48,6 +49,7 @@ pub struct BinaryCounts {
     pub containers: usize,
     pub binaries_with_interesting_strings: usize,
     pub binaries_with_secrets: usize,
+    pub binaries_with_malware_indicators: usize,
     pub binaries_with_cve_matches: usize,
     pub cve_matches: usize,
     pub by_format: BTreeMap<String, usize>,
@@ -85,6 +87,7 @@ pub struct BinaryRecord {
     pub hardening: BinaryHardening,
     pub strings: BinaryStrings,
     pub secrets: Vec<BinarySecret>,
+    pub malware_indicators: Vec<BinaryMalwareIndicator>,
     pub entropy: BinaryEntropy,
     pub sbom: BinarySbom,
     pub cve_matches: Vec<BinaryCveMatch>,
@@ -180,6 +183,15 @@ pub struct BinaryHardening {
 pub struct BinaryStrings {
     pub total: usize,
     pub interesting: Vec<String>,
+}
+
+/// A malware indicator recovered from the binary's embedded strings — the same
+/// infostealer tells the source-side scanner flags (credential-store filenames,
+/// Discord/Telegram exfiltration endpoints), but for a compiled stealer/dropper.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BinaryMalwareIndicator {
+    pub kind: String,
+    pub value: String,
 }
 
 /// A hardcoded credential recovered from the binary's embedded strings. Compiled
@@ -339,6 +351,11 @@ pub fn write_inventory(options: &BinaryScanOptions) -> Result<BinaryScanSummary,
     fs::create_dir_all(&options.out_dir)?;
     let json_path = options.out_dir.join("binary-inventory.json");
     let secret_count = report.binaries.iter().map(|b| b.secrets.len()).sum();
+    let malware_indicator_count = report
+        .binaries
+        .iter()
+        .map(|b| b.malware_indicators.len())
+        .sum();
     let high_priority = report
         .binaries
         .iter()
@@ -352,6 +369,7 @@ pub fn write_inventory(options: &BinaryScanOptions) -> Result<BinaryScanSummary,
         containers: report.counts.containers,
         secret_count,
         binaries_with_secrets: report.counts.binaries_with_secrets,
+        malware_indicator_count,
         high_priority,
     })
 }
@@ -491,6 +509,7 @@ fn scan_bytes(
             let hardening = binary_hardening(kind, bytes);
             let strings = binary_strings(bytes);
             let secrets = binary_secrets(bytes);
+            let malware_indicators = binary_malware_indicators(bytes);
             let entropy = binary_entropy(bytes);
             let sbom = binary_sbom(&path_label, bytes, cve_db);
             let cve_matches = binary_cve_matches(&sbom, cve_db);
@@ -503,6 +522,7 @@ fn scan_bytes(
                 &layout,
                 &strings,
                 &secrets,
+                &malware_indicators,
                 &cve_matches,
                 &imports,
                 &dependencies,
@@ -537,6 +557,7 @@ fn scan_bytes(
                 hardening,
                 strings,
                 secrets,
+                malware_indicators,
                 entropy,
                 sbom,
                 cve_matches,
@@ -2517,6 +2538,37 @@ fn binary_secrets(bytes: &[u8]) -> Vec<BinarySecret> {
     secrets
 }
 
+/// Scan embedded strings for infostealer/dropper tells — the binary counterpart of the
+/// source-side supply-chain rules (GF-562 credential stores, GF-563 exfiltration
+/// channels). The markers are specific enough to stay near-zero false positive.
+fn binary_malware_indicators(bytes: &[u8]) -> Vec<BinaryMalwareIndicator> {
+    // Note: `/etc/shadow` is intentionally omitted here (unlike the source-side rule) —
+    // system provisioning/auth utilities (e.g. systemd-firstboot, passwd) legitimately
+    // embed it, so it is not near-zero-FP when scanning arbitrary binaries. The browser
+    // credential stores and exfil endpoints are, even across system binaries.
+    const MARKERS: &[(&str, &str)] = &[
+        ("credential_store", "logins.json"),
+        ("credential_store", "key4.db"),
+        ("credential_store", "key3.db"),
+        ("credential_store", "cookies.sqlite"),
+        ("credential_store", "Login Data"),
+        ("exfiltration_channel", "discord.com/api/webhooks/"),
+        ("exfiltration_channel", "discordapp.com/api/webhooks/"),
+        ("exfiltration_channel", "api.telegram.org/bot"),
+    ];
+    let mut indicators = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    for (kind, marker) in MARKERS {
+        if contains_bytes(bytes, marker.as_bytes()) && seen.insert(*marker) {
+            indicators.push(BinaryMalwareIndicator {
+                kind: (*kind).to_owned(),
+                value: (*marker).to_owned(),
+            });
+        }
+    }
+    indicators
+}
+
 /// A hard-coded cryptographic key is CWE-321; every other token type is CWE-798
 /// (use of hard-coded credentials).
 fn secret_cwe(kind: &str) -> &'static str {
@@ -3056,6 +3108,7 @@ fn binary_triage(
     layout: &BinaryLayout,
     strings: &BinaryStrings,
     secrets: &[BinarySecret],
+    malware_indicators: &[BinaryMalwareIndicator],
     cve_matches: &[BinaryCveMatch],
     imports: &BinaryImports,
     dependencies: &BinaryDependencies,
@@ -3094,6 +3147,7 @@ fn binary_triage(
     let section_layout_risk = !section_layout_risks.is_empty();
     let priority = if high_risky_import
         || !secrets.is_empty()
+        || !malware_indicators.is_empty()
         || cve_matches
             .iter()
             .any(|cve| matches!(cve.severity.as_str(), "critical" | "high"))
@@ -3118,6 +3172,9 @@ fn binary_triage(
         hardening,
         secrets,
     );
+    for indicator in malware_indicators {
+        risk_factors.push(format!("malware_indicator:{}", indicator.kind));
+    }
     let mut recommended_campaigns = vec!["binary-fuzz".to_owned()];
     if replay.file {
         recommended_campaigns.push("file-replay".to_owned());
@@ -3347,6 +3404,9 @@ fn counts(
         }
         if !binary.secrets.is_empty() {
             counts.binaries_with_secrets += 1;
+        }
+        if !binary.malware_indicators.is_empty() {
+            counts.binaries_with_malware_indicators += 1;
         }
         if !binary.cve_matches.is_empty() {
             counts.binaries_with_cve_matches += 1;

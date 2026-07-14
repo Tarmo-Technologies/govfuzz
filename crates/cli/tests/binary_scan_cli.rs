@@ -388,6 +388,7 @@ fn binary_scan_detects_and_redacts_embedded_secrets() {
             b"ghp_0123456789abcdefghijklmnopqrstuvwxyz",
             b"npm_0123456789abcdefghijklmnopqrstuvwxyz",
             b"SG.0123456789abcdefghijkl0123456789abcdefghij",
+            b"sk-ant-api03-0123456789abcdefghijklmnopqrstuvwxyz0123456789",
             b"-----BEGIN RSA PRIVATE KEY-----",
         ],
     );
@@ -428,6 +429,7 @@ fn binary_scan_detects_and_redacts_embedded_secrets() {
     assert!(kinds.contains(&"github_token"), "kinds={kinds:?}");
     assert!(kinds.contains(&"npm_token"), "kinds={kinds:?}");
     assert!(kinds.contains(&"sendgrid_key"), "kinds={kinds:?}");
+    assert!(kinds.contains(&"anthropic_api_key"), "kinds={kinds:?}");
     assert!(kinds.contains(&"private_key_pem"), "kinds={kinds:?}");
 
     // Every secret finding carries a CWE (321 for keys, 798 for credentials).

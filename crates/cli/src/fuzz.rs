@@ -1859,7 +1859,11 @@ fn run_builtin_with_progress(
     // to avoid flagging the interpreter's fixed env/stdlib opens as target leaks.
     // Detected once from the launcher `main` marker.
     let interpreted_lane = std::fs::read_to_string(&prepared.harness_path)
-        .map(|s| s.contains("GOVFUZZ_PY_LAUNCHER") || s.contains("GOVFUZZ_PL_LAUNCHER"))
+        .map(|s| {
+            s.contains("GOVFUZZ_PY_LAUNCHER")
+                || s.contains("GOVFUZZ_PL_LAUNCHER")
+                || s.contains("GOVFUZZ_RB_LAUNCHER")
+        })
         .unwrap_or(false);
     let sandbox_metadata = prepared.runner.sandbox_metadata();
     let emitter = FindingEmitter::with_metadata_and_sandbox(

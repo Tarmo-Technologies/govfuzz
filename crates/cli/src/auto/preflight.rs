@@ -131,11 +131,16 @@ fn requirements(
             &[&["node"], &["esbuild"]],
             "install Node.js + esbuild (`npm i -g esbuild`)",
         ),
+        Lang::Ruby => (
+            "Ruby",
+            &[&["ruby"]],
+            "install Ruby 2.0+ (apt-get install ruby)",
+        ),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 13] = [
+const LANES: [Lang; 14] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -149,6 +154,7 @@ const LANES: [Lang; 13] = [
     Lang::CSharp,
     Lang::Js,
     Lang::Ts,
+    Lang::Ruby,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

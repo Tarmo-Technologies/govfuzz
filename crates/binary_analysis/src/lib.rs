@@ -2502,6 +2502,18 @@ fn scan_secret_tokens(value: &str) -> Vec<(&'static str, String)> {
     if let Some(token) = extract_secret(value, "SG.", 22, is_key_char) {
         found.push(("sendgrid_key", redact_secret(&token)));
     }
+    if let Some(token) = extract_secret(value, "github_pat_", 40, is_key_char) {
+        found.push(("github_fine_grained_pat", redact_secret(&token)));
+    }
+    if let Some(token) = extract_secret(value, "sk-ant-", 40, is_key_char) {
+        found.push(("anthropic_api_key", redact_secret(&token)));
+    }
+    if let Some(token) = extract_secret(value, "sk-proj-", 40, is_key_char) {
+        found.push(("openai_api_key", redact_secret(&token)));
+    }
+    if let Some(token) = extract_secret(value, "hf_", 34, is_ascii_alnum) {
+        found.push(("huggingface_token", redact_secret(&token)));
+    }
     found
 }
 

@@ -26300,7 +26300,13 @@ fn assignment_rhs_clears_taint(rhs: &str) -> bool {
     ) {
         return true;
     }
-    if starts_with_string_literal(trimmed) || starts_with_char_literal(trimmed) {
+    // A pure string/char literal clears taint — but a literal CONCATENATED with more
+    // (`"/data/" + user_input`, the classic path-traversal / SSRF shape) can still carry
+    // it. Only clear when the literal stands alone; otherwise defer to the caller's
+    // tainted-variable check rather than dropping the taint here.
+    if (starts_with_string_literal(trimmed) || starts_with_char_literal(trimmed))
+        && !trimmed.contains('+')
+    {
         return true;
     }
     if folded
@@ -29534,6 +29540,19 @@ mod tests {
             !files.iter().any(|f| f.to_string_lossy().contains("dep.py")),
             "no dependency/build file may be walked: {files:?}"
         );
+    }
+
+    #[test]
+    fn taint_survives_concatenation_with_a_string_literal() {
+        // A standalone literal clears taint (a genuine constant assignment).
+        assert!(assignment_rhs_clears_taint("\"/data/\""));
+        assert!(assignment_rhs_clears_taint("'const'"));
+        // A literal concatenated with a variable does NOT clear taint — this is the
+        // classic `open(base + user_input)` / `requests.get(base + path)` shape.
+        assert!(!assignment_rhs_clears_taint("\"/data/\" + p"));
+        assert!(!assignment_rhs_clears_taint(
+            "base + request.args.get(\"u\")"
+        ));
     }
 
     #[test]

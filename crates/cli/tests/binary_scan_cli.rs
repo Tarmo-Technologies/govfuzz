@@ -498,6 +498,91 @@ fn binary_scan_reports_toolchain_provenance() {
 }
 
 #[test]
+fn binary_scan_extracts_go_buildinfo_modules() {
+    let root = temp_dir("go-buildinfo");
+    let blob = go_buildinfo_blob();
+    write_elf64_x86_64_with_markers(&root.join("goapp.elf"), &[&blob]);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+    let components = binary(&report, "goapp.elf")["sbom"]["components"]
+        .as_array()
+        .unwrap();
+    let go: Vec<&serde_json::Value> = components
+        .iter()
+        .filter(|c| {
+            c["evidence"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|e| e == "go_buildinfo")
+        })
+        .collect();
+    assert!(
+        go.iter()
+            .any(|c| c["name"] == "example.com/main" && c["version"] == "v1.0.0"),
+        "main module from buildinfo: {go:?}"
+    );
+    let dep = go
+        .iter()
+        .find(|c| c["name"] == "example.com/dep")
+        .expect("dependency from buildinfo");
+    assert_eq!(dep["version"], "v2.3.4");
+    assert_eq!(dep["purl"], "pkg:golang/example.com/dep@v2.3.4");
+}
+
+/// Build a minimal Go inline (1.18+) buildinfo blob: magic + ptrSize + inline flag,
+/// padded so the version/modinfo strings begin at magic+32, with a `mod` and a `dep`
+/// line framed by 16-byte sentinels (the inner content ends with `\n`, as the linker
+/// emits it).
+fn go_buildinfo_blob() -> Vec<u8> {
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"\xff Go buildinf:"); // 14-byte magic
+    blob.push(8); // ptrSize
+    blob.push(0x02); // flags: inline string format
+    while blob.len() < 32 {
+        blob.push(0);
+    }
+    push_go_string(&mut blob, b"go1.22");
+    let mut modinfo = Vec::new();
+    modinfo.extend_from_slice(&[0x3fu8; 16]); // start sentinel
+    modinfo.extend_from_slice(
+        b"mod\texample.com/main\tv1.0.0\th1:aaa=\ndep\texample.com/dep\tv2.3.4\th1:bbb=\n",
+    );
+    modinfo.extend_from_slice(&[0x2fu8; 16]); // end sentinel
+    push_go_string(&mut blob, &modinfo);
+    blob
+}
+
+fn push_go_string(out: &mut Vec<u8>, s: &[u8]) {
+    let mut len = s.len();
+    loop {
+        let mut byte = (len & 0x7f) as u8;
+        len >>= 7;
+        if len != 0 {
+            byte |= 0x80;
+        }
+        out.push(byte);
+        if len == 0 {
+            break;
+        }
+    }
+    out.extend_from_slice(s);
+}
+
+#[test]
 fn binary_scan_reports_macho_pie_nx_and_code_signature() {
     let root = temp_dir("macho-hardening");
     // MH_PIE (0x200000), non-exec stack, and a LC_CODE_SIGNATURE load command.

@@ -225,6 +225,7 @@ pub fn parse_csharp(source: &str) -> Vec<CSharpMethod> {
             pending = Some(Scope {
                 is_type: false,
                 instantiable: false,
+                accessible: true,
                 name: name.to_owned(),
             });
         } else if let Some(scope) = type_header(trimmed) {
@@ -250,6 +251,7 @@ pub fn parse_csharp(source: &str) -> Vec<CSharpMethod> {
                         // members inside aren't seen as methods.
                         is_type: false,
                         instantiable: false,
+                        accessible: true,
                         name: String::new(),
                     }));
                 }
@@ -271,6 +273,11 @@ struct Scope {
     /// methods have bodies); `false` for `interface`/`enum` (no fuzzable member) and
     /// for non-type scopes.
     instantiable: bool,
+    /// Whether this type is externally visible (declared `public`). A top-level type
+    /// defaults to `internal` and a nested type to `private` — neither is reachable
+    /// from the generated harness (a separate assembly), so a `public` method of a
+    /// non-`public` class fails to compile with CS0122. Non-type scopes are `true`.
+    accessible: bool,
     name: String,
 }
 
@@ -305,6 +312,9 @@ fn type_header(line: &str) -> Option<Scope> {
     Some(Scope {
         is_type: true,
         instantiable: matches!(kw, "class" | "struct" | "record"),
+        // Externally reachable only when declared `public` (top-level types default to
+        // `internal`, nested to `private` — both invisible to the harness assembly).
+        accessible: toks.contains(&"public"),
         name: bare,
     })
 }
@@ -326,6 +336,13 @@ fn parse_method_line(
     // Require `public` — the callable surface. (internal/private methods are not a
     // stable external fuzz surface; campaigns can widen this later.)
     if !toks.contains(&"public") {
+        return None;
+    }
+    // Every enclosing type must ALSO be externally visible: a `public` method of an
+    // `internal`/`private` class is unreachable from the harness assembly and fails to
+    // compile (CS0122), a confusing failed_build and a false attacker-reachability
+    // claim (Tomlyn's `internal static class TomlKeyValidation.IsValidKeyName`).
+    if scopes.iter().any(|s| s.is_type && !s.accessible) {
         return None;
     }
     // Exclude abstract/partial/extern declarations without a body and delegates.
@@ -605,6 +622,50 @@ namespace Acme.Parsing {
         assert_eq!(m.params[0].kind, CSharpParamKind::Bytes);
         assert_eq!(m.primary_buffer_index(), Some(0));
         assert_eq!(m.qualified(), "Acme.Parsing.JsonReader.Parse");
+    }
+
+    #[test]
+    fn public_method_of_internal_class_is_not_discovered() {
+        // Tomlyn shape: a `public` method on an `internal`/`private`/default class is
+        // unreachable from the harness assembly (CS0122) — must be skipped, not offered
+        // as attacker-reachable and then failed_build.
+        let src = "\
+namespace Lib;
+internal static class KeyValidation {
+  public static bool IsValidKeyName(string key) { return key.Length > 0; }
+}
+public static class PublicApi {
+  public static bool Check(string s) { return s.Length > 0; }
+}
+class DefaultInternal {
+  public static bool Also(string s) { return true; }
+}
+public class Outer {
+  private class Nested {
+    public static bool Hidden(string s) { return true; }
+  }
+  public static bool Reachable(string s) { return true; }
+}
+";
+        let methods = parse_csharp(src);
+        let names: Vec<&str> = methods.iter().map(|m| m.method.as_str()).collect();
+        assert!(names.contains(&"Check"), "public class method must remain");
+        assert!(
+            names.contains(&"Reachable"),
+            "public nested-in-public method must remain"
+        );
+        assert!(
+            !names.contains(&"IsValidKeyName"),
+            "internal-class method leaked"
+        );
+        assert!(
+            !names.contains(&"Also"),
+            "default-internal-class method leaked"
+        );
+        assert!(
+            !names.contains(&"Hidden"),
+            "private-nested-class method leaked"
+        );
     }
 
     #[test]

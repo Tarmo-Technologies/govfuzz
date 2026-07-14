@@ -136,11 +136,16 @@ fn requirements(
             &[&["ruby"]],
             "install Ruby 2.0+ (apt-get install ruby)",
         ),
+        Lang::Lua => (
+            "Lua",
+            &[&["lua", "lua5.4", "lua5.3"]],
+            "install Lua 5.3+ (apt-get install lua5.4)",
+        ),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 14] = [
+const LANES: [Lang; 15] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -155,6 +160,7 @@ const LANES: [Lang; 14] = [
     Lang::Js,
     Lang::Ts,
     Lang::Ruby,
+    Lang::Lua,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

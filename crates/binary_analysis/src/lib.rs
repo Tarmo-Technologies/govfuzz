@@ -25,6 +25,10 @@ pub struct BinaryScanSummary {
     pub files: usize,
     pub skipped: usize,
     pub containers: usize,
+    /// Security highlights for the stdout summary.
+    pub secret_count: usize,
+    pub binaries_with_secrets: usize,
+    pub high_priority: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -333,12 +337,21 @@ pub fn write_inventory(options: &BinaryScanOptions) -> Result<BinaryScanSummary,
     let report = scan(options)?;
     fs::create_dir_all(&options.out_dir)?;
     let json_path = options.out_dir.join("binary-inventory.json");
+    let secret_count = report.binaries.iter().map(|b| b.secrets.len()).sum();
+    let high_priority = report
+        .binaries
+        .iter()
+        .filter(|b| b.triage.priority == "high")
+        .count();
     fs::write(&json_path, serde_json::to_vec_pretty(&report)?)?;
     Ok(BinaryScanSummary {
         json_path,
         files: report.counts.files,
         skipped: report.counts.skipped,
         containers: report.counts.containers,
+        secret_count,
+        binaries_with_secrets: report.counts.binaries_with_secrets,
+        high_priority,
     })
 }
 

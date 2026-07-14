@@ -2221,15 +2221,25 @@ fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
     }
 }
 
-/// Position-independent code: ELF `ET_DYN`, or Mach-O `MH_PIE`. On PE this is
-/// `not_applicable` — a PE's ASLR posture is reported by the `aslr` field instead.
+/// Position-independent code: ELF `present` (a PIE executable), `dso` (a shared object —
+/// inherently position-independent, but not an executable, matching checksec's DSO), or
+/// `not_detected` (a non-PIE `ET_EXEC`); Mach-O `MH_PIE`. On PE this is `not_applicable`
+/// — a PE's ASLR posture is reported by the `aslr` field instead.
 fn pie_status(kind: BinaryKind, bytes: &[u8]) -> String {
     match kind.format {
         "elf" => {
-            if read_u16(bytes, 16, kind.endian) == Some(3) {
+            if read_u16(bytes, 16, kind.endian) != Some(3) {
+                // ET_EXEC (or unreadable): a non-PIE executable.
+                return "not_detected".to_owned();
+            }
+            // ET_DYN: a PIE executable has a PT_INTERP program header; a shared object
+            // (DSO) does not. Fall back to `present` when headers can't be parsed
+            // (e.g. 32-bit) rather than mislabel a 32-bit PIE as a DSO.
+            let headers = elf_program_headers(kind, bytes);
+            if headers.is_empty() || headers.iter().any(|h| h.segment_type == 3) {
                 "present".to_owned()
             } else {
-                "not_detected".to_owned()
+                "dso".to_owned()
             }
         }
         "mach_o" => {

@@ -2679,7 +2679,102 @@ fn binary_sbom(path_label: &str, bytes: &[u8], cve_db: &CveDatabase) -> BinarySb
             evidence,
         });
     }
+    // Go static binaries embed their full module dependency tree (the `go version -m`
+    // data). Extract it — otherwise these dependencies are invisible in a stripped binary.
+    for (path, version) in go_buildinfo_modules(bytes) {
+        if components.iter().any(|component| component.name == path) {
+            continue;
+        }
+        let purl = format!("pkg:golang/{path}@{version}");
+        components.push(BinaryComponent {
+            name: path,
+            version: Some(version),
+            purl: Some(purl),
+            evidence: vec!["go_buildinfo".to_owned()],
+        });
+    }
     BinarySbom { components }
+}
+
+/// Extract the Go module dependency list the linker embeds in a Go binary (the
+/// `go version -m` data), for the inline buildinfo format (Go 1.18+). Returns
+/// `(module_path, version)` for the main module (`mod`) and each dependency (`dep`).
+fn go_buildinfo_modules(bytes: &[u8]) -> Vec<(String, String)> {
+    const MAGIC: &[u8] = b"\xff Go buildinf:";
+    let Some(magic_off) = bytes
+        .windows(MAGIC.len())
+        .position(|window| window == MAGIC)
+    else {
+        return Vec::new();
+    };
+    // header: magic (14) + ptrSize (1) + flags (1). The inline string format is flag 0x2.
+    let Some(&flags) = bytes.get(magic_off + 15) else {
+        return Vec::new();
+    };
+    if flags & 0x2 == 0 {
+        // The older pointer-based format needs virtual-address resolution; skip it.
+        return Vec::new();
+    }
+    // The version and modinfo strings are stored inline starting at magic + 32.
+    let Some(after_header) = bytes.get(magic_off + 32..) else {
+        return Vec::new();
+    };
+    let Some((_version, rest)) = decode_go_string(after_header) else {
+        return Vec::new();
+    };
+    let Some((modinfo, _)) = decode_go_string(rest) else {
+        return Vec::new();
+    };
+    // The linker frames modinfo with 16-byte sentinels; strip them (matching the check
+    // `debug/buildinfo` uses: a newline just before the trailing sentinel).
+    if modinfo.len() < 33 || modinfo[modinfo.len() - 17] != b'\n' {
+        return Vec::new();
+    }
+    parse_go_modinfo(&modinfo[16..modinfo.len() - 16])
+}
+
+/// Decode a Go length-delimited string (uvarint length prefix + bytes); returns the
+/// string bytes and the remaining slice after it.
+fn decode_go_string(data: &[u8]) -> Option<(&[u8], &[u8])> {
+    let (len, read) = uvarint(data)?;
+    let len = usize::try_from(len).ok()?;
+    let end = read.checked_add(len)?;
+    let string = data.get(read..end)?;
+    Some((string, &data[end..]))
+}
+
+/// Minimal unsigned LEB128 decoder; returns `(value, bytes_read)`.
+fn uvarint(data: &[u8]) -> Option<(u64, usize)> {
+    let mut result: u64 = 0;
+    let mut shift = 0u32;
+    for (index, &byte) in data.iter().enumerate() {
+        if index >= 10 {
+            return None;
+        }
+        result |= u64::from(byte & 0x7f) << shift;
+        if byte & 0x80 == 0 {
+            return Some((result, index + 1));
+        }
+        shift += 7;
+    }
+    None
+}
+
+fn parse_go_modinfo(modinfo: &[u8]) -> Vec<(String, String)> {
+    let text = String::from_utf8_lossy(modinfo);
+    let mut modules = Vec::new();
+    for line in text.lines() {
+        let fields: Vec<&str> = line.split('\t').collect();
+        // "mod\t<path>\t<version>\t<hash>" (main) or "dep\t<path>\t<version>[\t<hash>]".
+        if (fields[0] == "mod" || fields[0] == "dep") && fields.len() >= 3 {
+            let path = fields[1].trim();
+            let version = fields[2].trim();
+            if !path.is_empty() && !version.is_empty() {
+                modules.push((path.to_owned(), version.to_owned()));
+            }
+        }
+    }
+    modules
 }
 
 fn binary_cve_matches(sbom: &BinarySbom, cve_db: &CveDatabase) -> Vec<BinaryCveMatch> {

@@ -185,6 +185,10 @@ fn binary_scan_reports_import_export_hardening_and_firmware_strings() {
     assert_eq!(elf["imports"]["status"], "dynamic_imports_present");
     assert_eq!(elf["hardening"]["relro"], "present");
     assert_eq!(elf["hardening"]["stack_canary"], "present");
+    // No PT_GNU_STACK program header and no fortified `*_chk` wrappers in this fixture:
+    // NX is undeterminable and FORTIFY is absent (the canary is not FORTIFY).
+    assert_eq!(elf["hardening"]["nx"], "not_detected");
+    assert_eq!(elf["hardening"]["fortify_source"], "not_detected");
     assert!(elf["strings"]["interesting"]
         .as_array()
         .unwrap()
@@ -209,6 +213,57 @@ fn binary_scan_reports_import_export_hardening_and_firmware_strings() {
             .unwrap(),
         3
     );
+}
+
+#[test]
+fn binary_scan_reports_nx_and_fortify_source() {
+    let root = temp_dir("nx-fortify");
+    // A: PT_GNU_STACK read-write (no exec bit) → NX enabled.
+    write_elf64_x86_64_with_gnu_stack(&root.join("nx-on.elf"), 0x6);
+    // B: PT_GNU_STACK read-write-EXECUTE → executable stack (NX disabled), a real gap.
+    write_elf64_x86_64_with_gnu_stack(&root.join("nx-off.elf"), 0x7);
+    // C: fortified `*_chk` wrapper linked in → FORTIFY_SOURCE present.
+    write_elf64_x86_64_with_markers(&root.join("fortified.elf"), &[b".dynsym", b"__memcpy_chk"]);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "exit={:?}\nstdout={}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+
+    let nx_on = binary(&report, "nx-on.elf");
+    assert_eq!(nx_on["hardening"]["nx"], "present");
+
+    let nx_off = binary(&report, "nx-off.elf");
+    assert_eq!(nx_off["hardening"]["nx"], "disabled");
+    assert!(nx_off["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|factor| factor == "hardening:nx_disabled"));
+
+    let fortified = binary(&report, "fortified.elf");
+    assert_eq!(fortified["hardening"]["fortify_source"], "present");
+    assert!(!fortified["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|factor| factor == "hardening:fortify_source_missing"));
 }
 
 #[test]
@@ -1139,6 +1194,22 @@ fn write_elf64_x86_64_with_sections(path: &std::path::Path, sections: &[(&str, u
     bytes[shstrtab_offset + 32..shstrtab_offset + 40]
         .copy_from_slice(&(names.len() as u64).to_le_bytes());
     bytes[string_table_offset..string_table_offset + names.len()].copy_from_slice(&names);
+    fs::write(path, bytes).unwrap();
+}
+
+fn write_elf64_x86_64_with_gnu_stack(path: &std::path::Path, flags: u32) {
+    let program_header_offset = 0x40usize;
+    let mut bytes = elf64_x86_64_with_markers(&[]);
+    bytes.resize(program_header_offset + 56, 0);
+    bytes[32..40].copy_from_slice(&(program_header_offset as u64).to_le_bytes());
+    bytes[54..56].copy_from_slice(&(56u16).to_le_bytes());
+    bytes[56..58].copy_from_slice(&(1u16).to_le_bytes());
+
+    // PT_GNU_STACK (0x6474e551); the segment flags carry the stack's permissions.
+    bytes[program_header_offset..program_header_offset + 4]
+        .copy_from_slice(&0x6474_e551u32.to_le_bytes());
+    bytes[program_header_offset + 4..program_header_offset + 8]
+        .copy_from_slice(&flags.to_le_bytes());
     fs::write(path, bytes).unwrap();
 }
 

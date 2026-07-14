@@ -196,6 +196,7 @@ fn lang_tag(l: Lang) -> &'static str {
         Lang::Ts => "typescript",
         Lang::Ruby => "ruby",
         Lang::Lua => "lua",
+        Lang::Php => "php",
     }
 }
 fn lang_from_tag(s: &str) -> Option<Lang> {
@@ -215,6 +216,7 @@ fn lang_from_tag(s: &str) -> Option<Lang> {
         "typescript" => Lang::Ts,
         "ruby" => Lang::Ruby,
         "lua" => Lang::Lua,
+        "php" => Lang::Php,
         _ => return None,
     })
 }

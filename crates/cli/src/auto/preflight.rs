@@ -141,11 +141,16 @@ fn requirements(
             &[&["lua", "lua5.4", "lua5.3"]],
             "install Lua 5.3+ (apt-get install lua5.4)",
         ),
+        Lang::Php => (
+            "PHP",
+            &[&["php"]],
+            "install PHP 8.0+ and the pcov extension (apt-get install php-cli php-pcov)",
+        ),
     }
 }
 
 /// Fixed lane display order.
-const LANES: [Lang; 15] = [
+const LANES: [Lang; 16] = [
     Lang::Ada,
     Lang::C,
     Lang::Cpp,
@@ -161,6 +166,7 @@ const LANES: [Lang; 15] = [
     Lang::Ts,
     Lang::Ruby,
     Lang::Lua,
+    Lang::Php,
 ];
 
 /// Build the preflight report from the discovered candidates (one lane per language

@@ -141,7 +141,9 @@ larger rule packs as follow-up hardening.
 metadata for ELF, PE, Mach-O, ar archives, and raw firmware-style blobs. The
 inventory records format, architecture, bitness, endianness, size, SHA-256,
 ELF note build IDs, producer/toolchain provenance (GCC/clang/Go/Rust version from
-embedded strings), parsed entry-point/header layout, symbol/debug-info state, exact ELF/Mach-O
+embedded strings), the Go module dependency tree extracted from a static Go
+binary's embedded buildinfo (`go version -m`, folded into the SBOM as
+`pkg:golang/...` components for CVE matching), parsed entry-point/header layout, symbol/debug-info state, exact ELF/Mach-O
 symbol-table import/export names, exact PE thunk import and export-directory
 names, risky import APIs, dynamic library/interpreter/RPATH evidence including
 ELF `PT_INTERP`, GNU build-id notes, `DT_NEEDED`, `DT_RPATH`, `DT_RUNPATH`, PE import descriptors,

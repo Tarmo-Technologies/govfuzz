@@ -186,6 +186,48 @@ fn recover_entry_symbol(generated_c: &str, program_id: &str) -> Option<String> {
     first
 }
 
+/// Whether `program_id` was compiled by cobc as a NESTED program — a `static int`
+/// C function whose name (de-mangled: cobc appends a `_0_`/`_0__` nesting suffix)
+/// begins with the target's normalized name. Such a function has internal linkage and
+/// cannot be reached from the generated harness, so the target is skipped rather than
+/// reported as a failed build.
+fn is_nested_static_program(generated_c: &str, program_id: &str) -> bool {
+    let normalize = |s: &str| -> String {
+        s.chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .flat_map(char::to_uppercase)
+            .collect()
+    };
+    let want = normalize(program_id);
+    if want.is_empty() {
+        return false;
+    }
+    for line in generated_c.lines() {
+        let t = line.trim_start();
+        let Some(rest) = t.strip_prefix("static int") else {
+            continue;
+        };
+        if !rest.starts_with(|c: char| c.is_whitespace()) {
+            continue;
+        }
+        let rest = rest.trim_start();
+        let name: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect();
+        let after = rest[name.len()..].trim_start();
+        if !after.starts_with("(cob_u8_t") {
+            continue;
+        }
+        // cobc mangles a nested program `getquery` to `getquery_0__`; normalized that is
+        // `GETQUERY0`, which starts with the wanted `GETQUERY`.
+        if normalize(&name).starts_with(&want) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Pick the operand to set to the fuzz byte count: a numeric operand named
 /// `*LEN*`/`*LENGTH*`/`*SIZE*`/`*COUNT*`, else the numeric operand immediately
 /// after the primary buffer.
@@ -364,6 +406,19 @@ pub fn build_cobol_harness(
 
     let generated = std::fs::read_to_string(&target_c).unwrap_or_default();
     let Some(entry) = recover_entry_symbol(&generated, &program.program_id) else {
+        // A NESTED (contained) COBOL program — one whose `END PROGRAM` precedes its
+        // enclosing program's — is compiled by cobc as a `static` C function (mangled
+        // `name_0_`, internal linkage), only callable from its parent via `CALL`. It has
+        // no external entry the harness can link, so skip it cleanly (the COBOL analog of
+        // a Fortran private module procedure / a C# internal-class method) rather than
+        // reporting a confusing failed_build.
+        if is_nested_static_program(&generated, &program.program_id) {
+            return CobolBuildResult::Skip(format!(
+                "{}: nested COBOL program (cobc compiles it as a static C function, not \
+                 externally callable)",
+                program.program_id
+            ));
+        }
         return CobolBuildResult::Failed(
             "could not recover the C entry symbol from cobc output".to_owned(),
         );
@@ -482,6 +537,36 @@ int\t\tFacing__FromString (cob_u8_t *, cob_u8_t *);
         assert_eq!(
             recover_entry_symbol(c, "Nonexistent").as_deref(),
             Some("Facing__GetRelative")
+        );
+    }
+
+    #[test]
+    fn nested_program_is_static_and_detected() {
+        // cobol-on-wheelchair: `getquery`/`checkquery` are NESTED programs inside `cow`,
+        // which cobc compiles as `static int getquery_0__(...)` (internal linkage) — no
+        // external entry the harness can link. recover_entry_symbol finds none (the only
+        // non-static entry is the parameterless main `cow`), and the target is detected
+        // as nested so the build skips instead of failing.
+        let c = "\
+int\t\tcow (void);
+static int\t\tcow_ (const int);
+static int\t\tgetquery_0__ (cob_u8_t *);
+static int\t\tgetquery_0_ (const int, cob_u8_t *);
+static int\t\tcheckquery_0__ (cob_u8_t *, cob_u8_t *, cob_u8_t *, cob_u8_t *);
+";
+        // No linkable entry for the nested program.
+        assert_eq!(recover_entry_symbol(c, "getquery"), None);
+        // It is recognized as a nested (static) program.
+        assert!(is_nested_static_program(c, "getquery"));
+        assert!(is_nested_static_program(c, "checkquery"));
+        // A genuinely-absent program is NOT flagged nested.
+        assert!(!is_nested_static_program(c, "nonexistent"));
+        // A top-level program with a real external entry is not "nested".
+        let top = "int\t\tParseit (cob_u8_t *);\n";
+        assert!(!is_nested_static_program(top, "Parseit"));
+        assert_eq!(
+            recover_entry_symbol(top, "Parseit").as_deref(),
+            Some("Parseit")
         );
     }
 

@@ -30,12 +30,22 @@ pub fn run(args: BinaryScanArgs) -> i32 {
     match binary_analysis::write_inventory(&options) {
         Ok(summary) => {
             println!(
-                "binary scan: {} files inventoried, {} skipped, {} containers\njson: {}",
-                summary.files,
-                summary.skipped,
-                summary.containers,
-                summary.json_path.display()
+                "binary scan: {} files inventoried, {} skipped, {} containers",
+                summary.files, summary.skipped, summary.containers,
             );
+            if summary.secret_count > 0 {
+                println!(
+                    "  ! {} hardcoded secret(s) across {} binaries",
+                    summary.secret_count, summary.binaries_with_secrets,
+                );
+            }
+            if summary.high_priority > 0 {
+                println!(
+                    "  ! {} high-priority binaries (secrets / risky imports / CVEs)",
+                    summary.high_priority,
+                );
+            }
+            println!("json: {}", summary.json_path.display());
             0
         }
         Err(error) => {

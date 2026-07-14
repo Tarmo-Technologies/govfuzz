@@ -151,7 +151,10 @@ RELRO — Full vs Partial via `PT_GNU_RELRO` + `BIND_NOW` — stack canary,
 PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`; for PE,
 ASLR/`DYNAMIC_BASE`, DEP/`NX_COMPAT`, and Control Flow Guard/`GUARD_CF` from the
 `DllCharacteristics` field; for Mach-O, `MH_PIE`, non-executable stack via
-`MH_ALLOW_STACK_EXECUTION`, and code signing via `LC_CODE_SIGNATURE`), triage
+`MH_ALLOW_STACK_EXECUTION`, and code signing via `LC_CODE_SIGNATURE`),
+hardcoded credentials baked into the binary's strings (AWS access keys, GitHub /
+Slack / Stripe / Google tokens, PEM private keys — redacted in the report and
+promoted to high-priority triage), triage
 risk factors, container/member provenance, skipped
 malformed inputs, and size-limit skips. Writable or relative RPATH/RUNPATH
 entries are promoted into loader-path review triage, while high entropy,

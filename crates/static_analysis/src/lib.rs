@@ -5341,6 +5341,45 @@ fn scan_obfuscated_dynamic_exec(
     }
 }
 
+/// GF-562: a reference to a browser or system credential store by its exact filename —
+/// the defining behavior of infostealer malware. The filenames are specific enough that
+/// ordinary application code never opens them, keeping this near-zero false positive.
+fn scan_credential_store_access(
+    root: &Path,
+    path: &Path,
+    source: &str,
+    language: &str,
+    findings: &mut Vec<StaticFinding>,
+) {
+    const STORES: &[&str] = &[
+        "logins.json",    // Firefox saved logins
+        "key4.db",        // Firefox NSS key database
+        "key3.db",        // Firefox NSS key database (legacy)
+        "cookies.sqlite", // Firefox cookie store
+        "Login Data",     // Chromium login database
+        "/etc/shadow",    // system password hashes
+    ];
+    for (index, line) in source.lines().enumerate() {
+        if let Some(store) = STORES.iter().find(|store| line.contains(**store)) {
+            let column = line.find(*store).map(|c| c + 1).unwrap_or(1);
+            push_pattern(
+                findings,
+                root,
+                path,
+                index,
+                column,
+                "GF-562",
+                language,
+                "credential-store-access",
+                "Access to a browser or system credential store",
+                "supply-chain",
+                "Source references a browser or system credential store by filename — the defining behavior of infostealer malware.",
+                line.trim(),
+            );
+        }
+    }
+}
+
 /// Dispatch supply-chain install-hook detectors by filename (raw source).
 fn scan_supply_chain_install_hooks(
     root: &Path,
@@ -9027,6 +9066,7 @@ fn push_broad_except(
 
 fn scan_python(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
     scan_obfuscated_dynamic_exec(root, path, source, "python", findings);
+    scan_credential_store_access(root, path, source, "python", findings);
     push_python_broad_except_findings(root, path, source, findings);
     push_python_cors_settings_finding(root, path, source, findings);
     push_python_weak_password_hasher_findings(root, path, source, findings);
@@ -12403,6 +12443,7 @@ enum JavascriptXpathModule {
 
 fn scan_javascript(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
     scan_obfuscated_dynamic_exec(root, path, source, "javascript", findings);
+    scan_credential_store_access(root, path, source, "javascript", findings);
     let child_process = javascript_child_process_imports(source);
     let vm = javascript_vm_imports(source);
     let template_engines = javascript_template_engine_imports(source);
@@ -33252,6 +33293,31 @@ mod tests {
             supply_chain_hook_rules("/t/other.json", fetch_exec),
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn gf562_flags_credential_store_access() {
+        let py = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_python(Path::new("/t"), Path::new("/t/a.py"), src, &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-562").count()
+        };
+        assert_eq!(
+            py("open(os.path.expanduser('~/.mozilla/firefox/x/logins.json'))"),
+            1
+        );
+        assert_eq!(py("db = sqlite3.connect('cookies.sqlite')"), 1);
+        assert_eq!(py("with open('/etc/shadow') as f: pass"), 1);
+        assert_eq!(py("config = load('settings.json')"), 0);
+
+        let js = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_javascript(Path::new("/t"), Path::new("/t/a.js"), src, &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-562").count()
+        };
+        assert_eq!(js("const p = path.join(chromeDir, 'Login Data');"), 1);
+        assert_eq!(js("fs.readFileSync(firefoxDir + '/key4.db')"), 1);
+        assert_eq!(js("const data = fs.readFileSync('data.json');"), 0);
     }
 
     #[test]

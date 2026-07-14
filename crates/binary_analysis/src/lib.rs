@@ -176,6 +176,9 @@ pub struct BinaryStrings {
 pub struct BinarySecret {
     pub kind: String,
     pub preview: String,
+    /// CWE for the finding: `CWE-321` (hard-coded cryptographic key) for private keys,
+    /// `CWE-798` (hard-coded credentials) for API tokens.
+    pub cwe: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -2426,6 +2429,7 @@ fn binary_secrets(bytes: &[u8]) -> Vec<BinarySecret> {
                 secrets.push(BinarySecret {
                     kind: kind.to_owned(),
                     preview,
+                    cwe: secret_cwe(kind).to_owned(),
                 });
             }
         }
@@ -2434,6 +2438,16 @@ fn binary_secrets(bytes: &[u8]) -> Vec<BinarySecret> {
         }
     }
     secrets
+}
+
+/// A hard-coded cryptographic key is CWE-321; every other token type is CWE-798
+/// (use of hard-coded credentials).
+fn secret_cwe(kind: &str) -> &'static str {
+    if kind == "private_key_pem" {
+        "CWE-321"
+    } else {
+        "CWE-798"
+    }
 }
 
 fn scan_secret_tokens(value: &str) -> Vec<(&'static str, String)> {
@@ -2454,8 +2468,14 @@ fn scan_secret_tokens(value: &str) -> Vec<(&'static str, String)> {
             found.push(("github_token", redact_secret(&token)));
         }
     }
+    if let Some(token) = extract_secret(value, "glpat-", 20, is_key_char) {
+        found.push(("gitlab_token", redact_secret(&token)));
+    }
     if let Some(token) = extract_secret(value, "AIza", 35, is_key_char) {
         found.push(("google_api_key", redact_secret(&token)));
+    }
+    if let Some(token) = extract_secret(value, "ya29.", 30, is_key_char) {
+        found.push(("google_oauth_token", redact_secret(&token)));
     }
     for prefix in ["xoxb-", "xoxp-", "xoxa-", "xoxr-", "xoxs-"] {
         if let Some(token) = extract_secret(value, prefix, 10, is_slack_char) {
@@ -2466,6 +2486,12 @@ fn scan_secret_tokens(value: &str) -> Vec<(&'static str, String)> {
         if let Some(token) = extract_secret(value, prefix, 24, is_ascii_alnum) {
             found.push(("stripe_secret_key", redact_secret(&token)));
         }
+    }
+    if let Some(token) = extract_secret(value, "npm_", 36, is_ascii_alnum) {
+        found.push(("npm_token", redact_secret(&token)));
+    }
+    if let Some(token) = extract_secret(value, "pypi-", 40, is_key_char) {
+        found.push(("pypi_token", redact_secret(&token)));
     }
     found
 }

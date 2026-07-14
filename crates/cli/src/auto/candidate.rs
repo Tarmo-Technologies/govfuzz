@@ -93,6 +93,15 @@ pub enum Lang {
     /// normal bad-argument/index-nil errors are suppressed. Interpreted: the launcher
     /// execs the interpreter on the generated driver. See [`crate::auto::lua`].
     Lua,
+    /// Native PHP lane (M3.11). A function or public static/instance method taking ≥1
+    /// argument is discovered + "built" (a `php -l` + require smoke-test) and fuzzed by
+    /// the builtin engine driving a persistent `php` process that speaks the framed
+    /// fork-server protocol and records per-line coverage via the `pcov` extension into
+    /// the shared coverage map — no third-party fuzzer. An uncaught bug-class Throwable
+    /// (DivisionByZeroError, AssertionError, out-of-memory) is a finding (exit 86); PHP's
+    /// normal TypeError/ValueError input-rejection errors are suppressed. Interpreted:
+    /// the launcher execs the interpreter on the generated driver. See [`crate::auto::php`].
+    Php,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -129,6 +138,8 @@ pub enum LangSelector {
     Ruby,
     #[value(name = "lua", aliases = ["luajit"])]
     Lua,
+    #[value(name = "php", aliases = ["php8", "phtml"])]
+    Php,
 }
 
 impl LangSelector {
@@ -150,6 +161,7 @@ impl LangSelector {
             LangSelector::Ts => Lang::Ts,
             LangSelector::Ruby => Lang::Ruby,
             LangSelector::Lua => Lang::Lua,
+            LangSelector::Php => Lang::Php,
         }
     }
 }
@@ -212,6 +224,7 @@ impl Candidate {
             Lang::Ts => "H-T",
             Lang::Ruby => "H-U",
             Lang::Lua => "H-V",
+            Lang::Php => "H-W",
         }
     }
 }

@@ -146,10 +146,13 @@ names, risky import APIs, dynamic library/interpreter/RPATH evidence including
 ELF `PT_INTERP`, GNU build-id notes, `DT_NEEDED`, `DT_RPATH`, `DT_RUNPATH`, PE import descriptors,
 and Mach-O dylib load commands, entropy/packed-binary evidence, named
 section/segment evidence,
-hardening gaps, triage risk factors, container/member provenance, skipped
+exploit-mitigation posture (a `checksec`-style read of RELRO, stack canary,
+PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`), triage
+risk factors, container/member provenance, skipped
 malformed inputs, and size-limit skips. Writable or relative RPATH/RUNPATH
 entries are promoted into loader-path review triage, while high entropy,
-UPX/packed section names, and executable+writable sections or segments are
+UPX/packed section names, executable+writable sections or segments, and an
+executable stack (`hardening:nx_disabled`) are
 promoted into packed-binary or binary-layout review triage. Use
 `--max-bytes <N>` to skip individual files or archive members above a byte
 limit.

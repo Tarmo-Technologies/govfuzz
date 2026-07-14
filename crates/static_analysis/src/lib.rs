@@ -2564,6 +2564,16 @@ fn scan_pattern_language(
     language: &str,
     findings: &mut Vec<StaticFinding>,
 ) {
+    // Language-agnostic supply-chain malware string indicators (browser credential
+    // stores, Discord/Telegram exfiltration endpoints) apply to every scanned code
+    // language — a malicious Go module or crate is as real as a malicious npm package.
+    if matches!(
+        language,
+        "python" | "perl" | "go" | "rust" | "javascript" | "java"
+    ) {
+        scan_credential_store_access(root, path, source, language, findings);
+        scan_exfiltration_channel(root, path, source, language, findings);
+    }
     match language {
         "python" => scan_python(root, path, source, findings),
         "perl" => scan_perl(root, path, source, findings),
@@ -9103,8 +9113,6 @@ fn push_broad_except(
 
 fn scan_python(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
     scan_obfuscated_dynamic_exec(root, path, source, "python", findings);
-    scan_credential_store_access(root, path, source, "python", findings);
-    scan_exfiltration_channel(root, path, source, "python", findings);
     push_python_broad_except_findings(root, path, source, findings);
     push_python_cors_settings_finding(root, path, source, findings);
     push_python_weak_password_hasher_findings(root, path, source, findings);
@@ -12481,8 +12489,6 @@ enum JavascriptXpathModule {
 
 fn scan_javascript(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
     scan_obfuscated_dynamic_exec(root, path, source, "javascript", findings);
-    scan_credential_store_access(root, path, source, "javascript", findings);
-    scan_exfiltration_channel(root, path, source, "javascript", findings);
     let child_process = javascript_child_process_imports(source);
     let vm = javascript_vm_imports(source);
     let template_engines = javascript_template_engine_imports(source);
@@ -33338,7 +33344,13 @@ mod tests {
     fn gf563_flags_exfiltration_channel() {
         let js = |src: &str| -> usize {
             let mut f = Vec::new();
-            scan_javascript(Path::new("/t"), Path::new("/t/a.js"), src, &mut f);
+            scan_pattern_language(
+                Path::new("/t"),
+                Path::new("/t/a.js"),
+                src,
+                "javascript",
+                &mut f,
+            );
             f.into_iter().filter(|x| x.rule_id == "GF-563").count()
         };
         assert_eq!(
@@ -33353,7 +33365,7 @@ mod tests {
 
         let py = |src: &str| -> usize {
             let mut f = Vec::new();
-            scan_python(Path::new("/t"), Path::new("/t/a.py"), src, &mut f);
+            scan_pattern_language(Path::new("/t"), Path::new("/t/a.py"), src, "python", &mut f);
             f.into_iter().filter(|x| x.rule_id == "GF-563").count()
         };
         assert_eq!(
@@ -33361,13 +33373,21 @@ mod tests {
             1
         );
         assert_eq!(py("r = requests.get('https://api.github.com/user')"), 0);
+
+        // The malware indicators are language-agnostic — a Go module fires too.
+        let go = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_pattern_language(Path::new("/t"), Path::new("/t/a.go"), src, "go", &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-563").count()
+        };
+        assert_eq!(go("url := \"https://discord.com/api/webhooks/1/abc\""), 1);
     }
 
     #[test]
     fn gf562_flags_credential_store_access() {
         let py = |src: &str| -> usize {
             let mut f = Vec::new();
-            scan_python(Path::new("/t"), Path::new("/t/a.py"), src, &mut f);
+            scan_pattern_language(Path::new("/t"), Path::new("/t/a.py"), src, "python", &mut f);
             f.into_iter().filter(|x| x.rule_id == "GF-562").count()
         };
         assert_eq!(
@@ -33380,7 +33400,13 @@ mod tests {
 
         let js = |src: &str| -> usize {
             let mut f = Vec::new();
-            scan_javascript(Path::new("/t"), Path::new("/t/a.js"), src, &mut f);
+            scan_pattern_language(
+                Path::new("/t"),
+                Path::new("/t/a.js"),
+                src,
+                "javascript",
+                &mut f,
+            );
             f.into_iter().filter(|x| x.rule_id == "GF-562").count()
         };
         assert_eq!(js("const p = path.join(chromeDir, 'Login Data');"), 1);

@@ -156,6 +156,9 @@ pub struct BinaryHardening {
     /// Control Flow Guard (PE `GUARD_CF`): `present`/`not_detected` for PE,
     /// `not_applicable` off PE.
     pub control_flow_guard: String,
+    /// Code signing (Mach-O `LC_CODE_SIGNATURE`): `present`/`not_detected` for Mach-O,
+    /// `not_applicable` off Mach-O. An unsigned macOS/iOS binary is a tampering signal.
+    pub code_signature: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -2123,26 +2126,84 @@ fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
     } else {
         "not_detected"
     };
-    let pie = if format == "elf"
-        && bytes
-            .get(16..18)
-            .is_some_and(|raw| raw == (3u16).to_le_bytes())
-    {
-        "present"
-    } else if format == "elf" {
-        "not_detected"
-    } else {
-        "not_applicable"
-    };
     BinaryHardening {
         relro: elf_relro_status(kind, bytes),
         stack_canary: stack_canary.to_owned(),
-        pie: pie.to_owned(),
+        pie: pie_status(kind, bytes),
         nx: nx_status(kind, bytes),
         fortify_source: elf_fortify_status(format, bytes),
         aslr: pe_aslr_status(kind, bytes),
         control_flow_guard: pe_control_flow_guard_status(kind, bytes),
+        code_signature: macho_code_signature_status(kind, bytes),
     }
+}
+
+/// Position-independent code: ELF `ET_DYN`, or Mach-O `MH_PIE`. On PE this is
+/// `not_applicable` — a PE's ASLR posture is reported by the `aslr` field instead.
+fn pie_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    match kind.format {
+        "elf" => {
+            if read_u16(bytes, 16, kind.endian) == Some(3) {
+                "present".to_owned()
+            } else {
+                "not_detected".to_owned()
+            }
+        }
+        "mach_o" => {
+            if macho_header_flags(kind, bytes).is_some_and(|flags| flags & 0x0020_0000 != 0) {
+                "present".to_owned()
+            } else {
+                "not_detected".to_owned()
+            }
+        }
+        _ => "not_applicable".to_owned(),
+    }
+}
+
+/// The Mach-O header `flags` word (offset 24 in both 32- and 64-bit headers).
+fn macho_header_flags(kind: BinaryKind, bytes: &[u8]) -> Option<u32> {
+    if kind.format != "mach_o" {
+        return None;
+    }
+    read_u32(bytes, 24, kind.endian)
+}
+
+/// Code signing via the Mach-O `LC_CODE_SIGNATURE` (0x1d) load command;
+/// `not_applicable` off Mach-O.
+fn macho_code_signature_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    if kind.format != "mach_o" {
+        return "not_applicable".to_owned();
+    }
+    if macho_has_load_command(kind, bytes, 0x1d) {
+        "present".to_owned()
+    } else {
+        "not_detected".to_owned()
+    }
+}
+
+/// Iterate the Mach-O load commands looking for `target_cmd`.
+fn macho_has_load_command(kind: BinaryKind, bytes: &[u8], target_cmd: u32) -> bool {
+    let Some(count) = read_u32(bytes, 16, kind.endian).and_then(|c| usize::try_from(c).ok()) else {
+        return false;
+    };
+    let mut offset = if kind.bits == 64 { 32 } else { 28 };
+    for _ in 0..count.min(128) {
+        let Some(command) = read_u32(bytes, offset, kind.endian) else {
+            break;
+        };
+        let Some(command_size) = read_u32(bytes, offset + 4, kind.endian).map(|s| s as usize)
+        else {
+            break;
+        };
+        if command_size < 8 || checked_slice(bytes, offset, command_size).is_none() {
+            break;
+        }
+        if command == target_cmd {
+            return true;
+        }
+        offset += command_size;
+    }
+    false
 }
 
 /// PE `DllCharacteristics` (the Windows exploit-mitigation bitfield). The field sits at
@@ -2167,6 +2228,12 @@ fn nx_status(kind: BinaryKind, bytes: &[u8]) -> String {
         "pe" => match pe_dll_characteristics(bytes) {
             Some(flags) if flags & 0x0100 != 0 => "present".to_owned(),
             Some(_) => "disabled".to_owned(),
+            None => "not_detected".to_owned(),
+        },
+        // MH_ALLOW_STACK_EXECUTION (0x20000) permits an executable stack.
+        "mach_o" => match macho_header_flags(kind, bytes) {
+            Some(flags) if flags & 0x0002_0000 != 0 => "disabled".to_owned(),
+            Some(_) => "present".to_owned(),
             None => "not_detected".to_owned(),
         },
         _ => "not_applicable".to_owned(),
@@ -2522,6 +2589,17 @@ fn binary_risk_factors(
         }
         if hardening.control_flow_guard == "not_detected" {
             factors.push("hardening:control_flow_guard_missing".to_owned());
+        }
+    }
+    if kind.format == "mach_o" {
+        if hardening.pie == "not_detected" {
+            factors.push("hardening:pie_missing".to_owned());
+        }
+        if hardening.nx == "disabled" {
+            factors.push("hardening:nx_disabled".to_owned());
+        }
+        if hardening.code_signature == "not_detected" {
+            factors.push("hardening:code_signature_missing".to_owned());
         }
     }
     factors

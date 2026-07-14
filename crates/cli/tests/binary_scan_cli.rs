@@ -324,6 +324,61 @@ fn binary_scan_reports_relro_full_partial_and_none() {
 }
 
 #[test]
+fn binary_scan_reports_pe_aslr_dep_and_cfg() {
+    let root = temp_dir("pe-hardening");
+    // DYNAMIC_BASE (0x40) | NX_COMPAT (0x100) | GUARD_CF (0x4000): every mitigation on.
+    write_pe_x86_64_with_dll_characteristics(&root.join("hardened.exe"), 0x0040 | 0x0100 | 0x4000);
+    // No DllCharacteristics bits: ASLR / DEP / CFG all missing.
+    write_pe_x86_64_with_dll_characteristics(&root.join("legacy.exe"), 0x0000);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "exit={:?}\nstdout={}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+
+    let hardened = binary(&report, "hardened.exe");
+    assert_eq!(hardened["hardening"]["aslr"], "present");
+    assert_eq!(hardened["hardening"]["nx"], "present");
+    assert_eq!(hardened["hardening"]["control_flow_guard"], "present");
+    // ELF-only mitigations are not applicable to a PE.
+    assert_eq!(hardened["hardening"]["relro"], "not_applicable");
+    assert_eq!(hardened["hardening"]["pie"], "not_applicable");
+    assert_eq!(hardened["hardening"]["fortify_source"], "not_applicable");
+
+    let legacy = binary(&report, "legacy.exe");
+    assert_eq!(legacy["hardening"]["aslr"], "not_detected");
+    assert_eq!(legacy["hardening"]["nx"], "disabled");
+    assert_eq!(legacy["hardening"]["control_flow_guard"], "not_detected");
+    let factors = legacy["triage"]["risk_factors"].as_array().unwrap();
+    for expected in [
+        "hardening:aslr_missing",
+        "hardening:nx_disabled",
+        "hardening:control_flow_guard_missing",
+    ] {
+        assert!(
+            factors.iter().any(|factor| factor == expected),
+            "missing {expected} in {factors:?}"
+        );
+    }
+}
+
+#[test]
 fn binary_scan_classifies_risky_imports_and_triage_factors() {
     let root = temp_dir("risky-imports");
     write_elf64_x86_64_with_markers(
@@ -1655,6 +1710,22 @@ fn write_pe_x86_64_with_markers(path: &std::path::Path, markers: &[&[u8]]) {
         bytes.extend_from_slice(marker);
         bytes.push(0);
     }
+    fs::write(path, bytes).unwrap();
+}
+
+fn write_pe_x86_64_with_dll_characteristics(path: &std::path::Path, dll_characteristics: u16) {
+    // e_lfanew = 0x80; PE signature + COFF header + optional header follow.
+    let mut bytes = vec![0u8; 0x100];
+    bytes[0..2].copy_from_slice(b"MZ");
+    bytes[0x3c..0x40].copy_from_slice(&(0x80u32).to_le_bytes());
+    bytes[0x80..0x84].copy_from_slice(b"PE\0\0");
+    bytes[0x84..0x86].copy_from_slice(&(0x8664u16).to_le_bytes());
+    // COFF SizeOfOptionalHeader (pe_offset + 20) — must span DllCharacteristics.
+    bytes[0x94..0x96].copy_from_slice(&(0xF0u16).to_le_bytes());
+    // Optional header magic PE32+ at pe_offset + 24.
+    bytes[0x98..0x9a].copy_from_slice(&(0x20bu16).to_le_bytes());
+    // DllCharacteristics at pe_offset + 24 + 0x46.
+    bytes[0xDE..0xE0].copy_from_slice(&dll_characteristics.to_le_bytes());
     fs::write(path, bytes).unwrap();
 }
 

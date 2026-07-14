@@ -138,6 +138,8 @@ pub struct BinarySection {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BinaryHardening {
+    /// RELRO fidelity: `full` (RELRO segment + `BIND_NOW`, GOT read-only), `partial`
+    /// (RELRO segment without `BIND_NOW`), `none`, or `not_applicable` (non-ELF).
     pub relro: String,
     pub stack_canary: String,
     pub pie: String,
@@ -2107,13 +2109,6 @@ fn split_rpath_entries(paths: &str) -> Vec<String> {
 
 fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
     let format = kind.format;
-    let relro = if format == "elf" && contains_bytes(bytes, b"GNU_RELRO") {
-        "present"
-    } else if format == "elf" {
-        "not_detected"
-    } else {
-        "not_applicable"
-    };
     let stack_canary = if contains_bytes(bytes, b"__stack_chk_fail") {
         "present"
     } else {
@@ -2131,12 +2126,76 @@ fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
         "not_applicable"
     };
     BinaryHardening {
-        relro: relro.to_owned(),
+        relro: elf_relro_status(kind, bytes),
         stack_canary: stack_canary.to_owned(),
         pie: pie.to_owned(),
         nx: elf_nx_status(kind, bytes),
         fortify_source: elf_fortify_status(format, bytes),
     }
+}
+
+/// RELRO fidelity, as `checksec` reports it: `full` (a `PT_GNU_RELRO` segment AND
+/// immediate binding, so the GOT is remapped read-only after relocation), `partial`
+/// (RELRO segment without `BIND_NOW` — the GOT stays writable), `none` (no RELRO),
+/// or `not_applicable` (non-ELF). Detection is segment-based (the numeric
+/// `PT_GNU_RELRO` program header) — the literal string "GNU_RELRO" does not appear in
+/// a real binary, so a byte-scan is a false negative on essentially every hardened ELF.
+fn elf_relro_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    if kind.format != "elf" {
+        return "not_applicable".to_owned();
+    }
+    let has_relro_segment = elf_program_headers(kind, bytes)
+        .iter()
+        .any(|header| header.segment_type == 0x6474_e552);
+    // Byte-scan fallback keeps zero-program-header synthetic inputs classifiable.
+    if !has_relro_segment && !contains_bytes(bytes, b"GNU_RELRO") {
+        return "none".to_owned();
+    }
+    if elf_has_bind_now(kind, bytes) {
+        "full".to_owned()
+    } else {
+        "partial".to_owned()
+    }
+}
+
+/// Immediate binding (`BIND_NOW`): resolves every relocation at load time so the GOT can
+/// be made read-only (the difference between Full and Partial RELRO). Signalled by
+/// `DT_BIND_NOW`, `DT_FLAGS & DF_BIND_NOW`, or `DT_FLAGS_1 & DF_1_NOW` in the dynamic table.
+fn elf_has_bind_now(kind: BinaryKind, bytes: &[u8]) -> bool {
+    const DT_BIND_NOW: u64 = 24;
+    const DT_FLAGS: u64 = 30;
+    const DT_FLAGS_1: u64 = 0x6fff_fffb;
+    const DF_BIND_NOW: u64 = 0x8;
+    const DF_1_NOW: u64 = 0x1;
+    for dynamic_header in elf_program_headers(kind, bytes)
+        .iter()
+        .filter(|header| header.segment_type == 2 && header.file_size >= 16)
+    {
+        let Some(offset) = usize_from_u64(dynamic_header.file_offset) else {
+            continue;
+        };
+        let Some(size) = usize_from_u64(dynamic_header.file_size) else {
+            continue;
+        };
+        let Some(table) = checked_slice(bytes, offset, size) else {
+            continue;
+        };
+        for index in 0..(table.len() / 16).min(4096) {
+            let entry_offset = index * 16;
+            let tag = read_u64(table, entry_offset, kind.endian).unwrap_or(0);
+            let value = read_u64(table, entry_offset + 8, kind.endian).unwrap_or(0);
+            if tag == 0 {
+                break;
+            }
+            if tag == DT_BIND_NOW
+                || (tag == DT_FLAGS && value & DF_BIND_NOW != 0)
+                || (tag == DT_FLAGS_1 && value & DF_1_NOW != 0)
+            {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Non-executable stack (NX/DEP). A modern ELF carries a `PT_GNU_STACK` program header
@@ -2372,8 +2431,10 @@ fn binary_risk_factors(
         factors.push("binary_entropy:high".to_owned());
     }
     if kind.format == "elf" {
-        if hardening.relro == "not_detected" {
+        if hardening.relro == "none" {
             factors.push("hardening:relro_missing".to_owned());
+        } else if hardening.relro == "partial" {
+            factors.push("hardening:relro_partial".to_owned());
         }
         if hardening.stack_canary == "not_detected" {
             factors.push("hardening:stack_canary_missing".to_owned());

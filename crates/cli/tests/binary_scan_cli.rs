@@ -379,6 +379,84 @@ fn binary_scan_reports_pe_aslr_dep_and_cfg() {
 }
 
 #[test]
+fn binary_scan_detects_and_redacts_embedded_secrets() {
+    let root = temp_dir("secrets");
+    write_elf64_x86_64_with_markers(
+        &root.join("creds.elf"),
+        &[
+            b"AKIAIOSFODNN7EXAMPLE",
+            b"ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+            b"-----BEGIN RSA PRIVATE KEY-----",
+        ],
+    );
+    // A benign binary must not trip the detectors.
+    write_elf64_x86_64_with_markers(
+        &root.join("benign.elf"),
+        &[b"/usr/lib/libc.so.6", b"normal_config_value"],
+    );
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "exit={:?}\nstdout={}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+
+    let creds = binary(&report, "creds.elf");
+    let secrets = creds["secrets"].as_array().unwrap();
+    let kinds: Vec<&str> = secrets
+        .iter()
+        .map(|s| s["kind"].as_str().unwrap())
+        .collect();
+    assert!(kinds.contains(&"aws_access_key_id"), "kinds={kinds:?}");
+    assert!(kinds.contains(&"github_token"), "kinds={kinds:?}");
+    assert!(kinds.contains(&"private_key_pem"), "kinds={kinds:?}");
+
+    // The full secret is never emitted — only a redacted preview.
+    let aws = secrets
+        .iter()
+        .find(|s| s["kind"] == "aws_access_key_id")
+        .unwrap();
+    assert_eq!(aws["preview"], "AKIA***[20 chars]");
+    assert!(
+        !secrets
+            .iter()
+            .any(|s| s["preview"].as_str().unwrap().contains("IOSFODNN7EXAMPLE")),
+        "raw secret leaked into preview"
+    );
+
+    // Embedded credentials promote the binary to high triage priority.
+    assert_eq!(creds["triage"]["priority"], "high");
+    assert!(creds["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|factor| factor == "embedded_secret:aws_access_key_id"));
+
+    let benign = binary(&report, "benign.elf");
+    assert!(
+        benign["secrets"].as_array().unwrap().is_empty(),
+        "benign binary tripped a secret detector: {:?}",
+        benign["secrets"]
+    );
+    assert_eq!(report["counts"]["binaries_with_secrets"], 1);
+}
+
+#[test]
 fn binary_scan_reports_macho_pie_nx_and_code_signature() {
     let root = temp_dir("macho-hardening");
     // MH_PIE (0x200000), non-exec stack, and a LC_CODE_SIGNATURE load command.

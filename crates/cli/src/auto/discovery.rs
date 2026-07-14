@@ -855,6 +855,12 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
             .into_iter()
             .map(|f| (f.name, f.line))
             .collect(),
+        // Ruby call-graph re-ranking is out of scope; returning the method lines is
+        // harmless and consistent with the other interpreted lanes.
+        Lang::Ruby => crate::auto::ruby::parse_ruby(source)
+            .into_iter()
+            .map(|m| (m.name, m.line))
+            .collect(),
     }
 }
 
@@ -1440,6 +1446,25 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
+        Lang::Ruby => {
+            // M3.9: each callable Ruby method taking ≥1 input-channel argument is a
+            // candidate, driven via the Ruby framed driver (see `crate::auto::ruby` /
+            // `ruby_build`). The first argument is the attacker-controlled input.
+            for m in crate::auto::ruby::parse_ruby(&source) {
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-U", path, m.line, &m.name),
+                    lang: Lang::Ruby,
+                    source_path: path.to_path_buf(),
+                    line: m.line,
+                    name: m.name,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1561,6 +1586,7 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "js"
                     | "mjs"
                     | "cjs"
+                    | "rb"
             )
         })
 }
@@ -1585,7 +1611,8 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         | Lang::Fortran
         | Lang::CSharp
         | Lang::Js
-        | Lang::Ts => None,
+        | Lang::Ts
+        | Lang::Ruby => None,
     }
 }
 
@@ -1612,6 +1639,7 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         "ts" | "tsx" | "mts" | "cts" if !path.to_string_lossy().ends_with(".d.ts") => {
             Some(Lang::Ts)
         }
+        "rb" => Some(Lang::Ruby),
         _ => None,
     }
 }

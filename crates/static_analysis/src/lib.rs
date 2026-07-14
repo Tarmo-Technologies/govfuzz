@@ -1502,6 +1502,9 @@ fn detect_secret(line: &str) -> Option<(usize, &'static str)> {
     const PATTERNS: &[SecretPattern] = &[
         ("AKIA", 16, is_upper_alnum, "AWS access-key id"),
         ("ASIA", 16, is_upper_alnum, "AWS temporary access-key id"),
+        ("AGPA", 16, is_upper_alnum, "AWS group access-key id"),
+        ("AIDA", 16, is_upper_alnum, "AWS user access-key id"),
+        ("AROA", 16, is_upper_alnum, "AWS role access-key id"),
         ("ghp_", 36, is_alnum, "GitHub personal access token"),
         ("gho_", 36, is_alnum, "GitHub OAuth token"),
         ("ghs_", 36, is_alnum, "GitHub app token"),
@@ -1509,9 +1512,11 @@ fn detect_secret(line: &str) -> Option<(usize, &'static str)> {
         ("ghr_", 36, is_alnum, "GitHub refresh token"),
         ("glpat-", 20, is_alnum_dash, "GitLab personal access token"),
         ("AIza", 35, is_alnum_dash, "Google API key"),
+        ("ya29.", 30, is_alnum_dash, "Google OAuth access token"),
         ("sk_live_", 20, is_alnum, "Stripe live secret key"),
         ("rk_live_", 20, is_alnum, "Stripe restricted live key"),
         ("npm_", 36, is_alnum, "npm access token"),
+        ("pypi-", 40, is_alnum_dash, "PyPI upload token"),
         ("xoxb-", 10, is_alnum_dash, "Slack bot token"),
         ("xoxp-", 10, is_alnum_dash, "Slack user token"),
         ("xoxa-", 10, is_alnum_dash, "Slack workspace token"),
@@ -37961,6 +37966,15 @@ mod tests {
         assert!(detect_secret("just some prose about ghp tokens").is_none());
         // Slack app-config + legacy token variants.
         assert!(detect_secret("s = \"xoxr-0123456789-0123456789-abcdefABCDEF\"").is_some());
+        // Google OAuth access token, PyPI upload token, and AWS role/user/group ids.
+        assert!(
+            detect_secret("t = \"ya29.a0AfH6SMB0123456789abcdefghijklmnopqrstuvwxyz\"").is_some()
+        );
+        assert!(detect_secret(
+            "p = \"pypi-AgEIcHlwaS5vcmcCJDA123456789abcdefghijklmnopqrstuvwxyz0123\""
+        )
+        .is_some());
+        assert!(detect_secret("r = \"AROA1234567890ABCDEF\"").is_some());
         // A PEM header needs actual base64 key MATERIAL to be a leaked key — a bare
         // header reference (a writer/parser) is not.
         assert!(pem_header_column("-----BEGIN RSA PRIVATE KEY-----").is_some());

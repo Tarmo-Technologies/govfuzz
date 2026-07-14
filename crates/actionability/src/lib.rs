@@ -1883,6 +1883,10 @@ fn classify_bug(raw: &Value) -> BugClass {
         || has("division by zero")
         || has("floating-point-exception")
         || has("floating point exception")
+        // Ruby's native ZeroDivisionError message reads "divided by 0", not
+        // "division by zero"; match the exception class name too.
+        || has("zerodivision")
+        || has("divided by 0")
     {
         return BugClass::DivideByZero;
     }

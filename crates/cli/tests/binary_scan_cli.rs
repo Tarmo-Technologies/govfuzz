@@ -467,6 +467,33 @@ fn binary_scan_detects_and_redacts_embedded_secrets() {
 }
 
 #[test]
+fn binary_scan_reports_toolchain_provenance() {
+    let root = temp_dir("toolchain");
+    write_elf64_x86_64_with_markers(&root.join("gcc.elf"), &[b"GCC: (Ubuntu 9.4.0-1) 9.4.0"]);
+    write_elf64_x86_64_with_markers(&root.join("go.elf"), &[b"go1.21.5"]);
+    write_elf64_x86_64_with_markers(&root.join("stripped.elf"), &[b"just some data"]);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+    assert_eq!(binary(&report, "gcc.elf")["toolchain"], "GCC 9.4.0");
+    assert_eq!(binary(&report, "go.elf")["toolchain"], "Go 1.21.5");
+    // A stripped binary omits the field entirely.
+    assert!(binary(&report, "stripped.elf").get("toolchain").is_none());
+}
+
+#[test]
 fn binary_scan_reports_macho_pie_nx_and_code_signature() {
     let root = temp_dir("macho-hardening");
     // MH_PIE (0x200000), non-exec stack, and a LC_CODE_SIGNATURE load command.

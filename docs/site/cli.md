@@ -161,7 +161,9 @@ hardcoded credentials baked into the binary's strings (AWS access keys, GitHub /
 GitLab / Slack / Stripe / Google API + OAuth / npm / PyPI / SendGrid tokens, PEM
 private keys — the same provider set as the source-tree GF-429 scan, each
 carrying a CWE (`CWE-798`, or `CWE-321` for private keys), redacted in the report
-and promoted to high-priority triage), triage
+and promoted to high-priority triage), infostealer malware indicators (embedded
+browser credential-store filenames and Discord/Telegram exfiltration endpoints — the
+compiled counterpart to the source-side supply-chain rules), triage
 risk factors, container/member provenance, skipped
 malformed inputs, and size-limit skips. Writable or relative RPATH/RUNPATH
 entries are promoted into loader-path review triage, while high entropy,

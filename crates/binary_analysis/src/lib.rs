@@ -43,6 +43,7 @@ pub struct BinaryCounts {
     pub skipped: usize,
     pub containers: usize,
     pub binaries_with_interesting_strings: usize,
+    pub binaries_with_secrets: usize,
     pub binaries_with_cve_matches: usize,
     pub cve_matches: usize,
     pub by_format: BTreeMap<String, usize>,
@@ -75,6 +76,7 @@ pub struct BinaryRecord {
     pub dependencies: BinaryDependencies,
     pub hardening: BinaryHardening,
     pub strings: BinaryStrings,
+    pub secrets: Vec<BinarySecret>,
     pub entropy: BinaryEntropy,
     pub sbom: BinarySbom,
     pub cve_matches: Vec<BinaryCveMatch>,
@@ -165,6 +167,15 @@ pub struct BinaryHardening {
 pub struct BinaryStrings {
     pub total: usize,
     pub interesting: Vec<String>,
+}
+
+/// A hardcoded credential recovered from the binary's embedded strings. Compiled
+/// artifacts and firmware routinely bake in API keys / private keys that source-level
+/// secret scanning never sees. The value is redacted (kind + a short masked preview).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BinarySecret {
+    pub kind: String,
+    pub preview: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -454,6 +465,7 @@ fn scan_bytes(
             let dependencies = binary_dependencies(kind, bytes);
             let hardening = binary_hardening(kind, bytes);
             let strings = binary_strings(bytes);
+            let secrets = binary_secrets(bytes);
             let entropy = binary_entropy(bytes);
             let sbom = binary_sbom(&path_label, bytes, cve_db);
             let cve_matches = binary_cve_matches(&sbom, cve_db);
@@ -464,6 +476,7 @@ fn scan_bytes(
                 &sha256,
                 &layout,
                 &strings,
+                &secrets,
                 &cve_matches,
                 &imports,
                 &dependencies,
@@ -496,6 +509,7 @@ fn scan_bytes(
                 dependencies,
                 hardening,
                 strings,
+                secrets,
                 entropy,
                 sbom,
                 cve_matches,
@@ -2400,6 +2414,98 @@ fn binary_strings(bytes: &[u8]) -> BinaryStrings {
     }
 }
 
+/// Scan the embedded ASCII strings for hardcoded credentials — high-signal,
+/// gitleaks-style prefix rules with charset/length validation (no regex dependency).
+/// Previews are redacted so the inventory JSON is safe to share.
+fn binary_secrets(bytes: &[u8]) -> Vec<BinarySecret> {
+    let mut secrets = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    for value in ascii_strings(bytes, 8) {
+        for (kind, preview) in scan_secret_tokens(&value) {
+            if seen.insert((kind, preview.clone())) {
+                secrets.push(BinarySecret {
+                    kind: kind.to_owned(),
+                    preview,
+                });
+            }
+        }
+        if secrets.len() >= 32 {
+            break;
+        }
+    }
+    secrets
+}
+
+fn scan_secret_tokens(value: &str) -> Vec<(&'static str, String)> {
+    let mut found = Vec::new();
+    if value.contains("-----BEGIN") && value.contains("PRIVATE KEY") {
+        found.push((
+            "private_key_pem",
+            "-----BEGIN … PRIVATE KEY-----".to_owned(),
+        ));
+    }
+    for prefix in ["AKIA", "ASIA", "AGPA", "AIDA", "AROA"] {
+        if let Some(token) = extract_secret(value, prefix, 16, is_upper_alnum) {
+            found.push(("aws_access_key_id", redact_secret(&token)));
+        }
+    }
+    for prefix in ["ghp_", "gho_", "ghu_", "ghs_", "ghr_"] {
+        if let Some(token) = extract_secret(value, prefix, 36, is_ascii_alnum) {
+            found.push(("github_token", redact_secret(&token)));
+        }
+    }
+    if let Some(token) = extract_secret(value, "AIza", 35, is_key_char) {
+        found.push(("google_api_key", redact_secret(&token)));
+    }
+    for prefix in ["xoxb-", "xoxp-", "xoxa-", "xoxr-", "xoxs-"] {
+        if let Some(token) = extract_secret(value, prefix, 10, is_slack_char) {
+            found.push(("slack_token", redact_secret(&token)));
+        }
+    }
+    for prefix in ["sk_live_", "rk_live_"] {
+        if let Some(token) = extract_secret(value, prefix, 24, is_ascii_alnum) {
+            found.push(("stripe_secret_key", redact_secret(&token)));
+        }
+    }
+    found
+}
+
+/// Find `prefix` in `value` and consume the following run of `char_ok` bytes; a token is
+/// returned only when that run is at least `min_len` long (the distinctive prefix plus a
+/// plausible body keeps this high-signal).
+fn extract_secret(
+    value: &str,
+    prefix: &str,
+    min_len: usize,
+    char_ok: fn(char) -> bool,
+) -> Option<String> {
+    let idx = value.find(prefix)?;
+    let rest = &value[idx + prefix.len()..];
+    let run: String = rest.chars().take_while(|c| char_ok(*c)).collect();
+    (run.chars().count() >= min_len).then(|| format!("{prefix}{run}"))
+}
+
+fn redact_secret(token: &str) -> String {
+    let head: String = token.chars().take(4).collect();
+    format!("{head}***[{} chars]", token.chars().count())
+}
+
+fn is_upper_alnum(c: char) -> bool {
+    c.is_ascii_uppercase() || c.is_ascii_digit()
+}
+
+fn is_ascii_alnum(c: char) -> bool {
+    c.is_ascii_alphanumeric()
+}
+
+fn is_key_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_' || c == '-'
+}
+
+fn is_slack_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '-'
+}
+
 fn binary_entropy(bytes: &[u8]) -> BinaryEntropy {
     if bytes.is_empty() {
         return BinaryEntropy {
@@ -2550,12 +2656,16 @@ fn binary_risk_factors(
     dependencies: &BinaryDependencies,
     entropy: &BinaryEntropy,
     hardening: &BinaryHardening,
+    secrets: &[BinarySecret],
 ) -> Vec<String> {
     let mut factors = imports
         .risky_apis
         .iter()
         .map(|api| format!("risky_import:{}", api.name))
         .collect::<Vec<_>>();
+    for secret in secrets {
+        factors.push(format!("embedded_secret:{}", secret.kind));
+    }
     factors.extend(loader_path_risk_factors(dependencies));
     factors.extend(section_layout_risk_factors(layout));
     if entropy.classification == "high" {
@@ -2672,6 +2782,7 @@ fn binary_triage(
     sha256: &str,
     layout: &BinaryLayout,
     strings: &BinaryStrings,
+    secrets: &[BinarySecret],
     cve_matches: &[BinaryCveMatch],
     imports: &BinaryImports,
     dependencies: &BinaryDependencies,
@@ -2709,6 +2820,7 @@ fn binary_triage(
         .any(|risk| risk == "section:upx" || risk == "section:packed");
     let section_layout_risk = !section_layout_risks.is_empty();
     let priority = if high_risky_import
+        || !secrets.is_empty()
         || cve_matches
             .iter()
             .any(|cve| matches!(cve.severity.as_str(), "critical" | "high"))
@@ -2724,8 +2836,15 @@ fn binary_triage(
     } else {
         "normal"
     };
-    let mut risk_factors =
-        binary_risk_factors(kind, layout, imports, dependencies, entropy, hardening);
+    let mut risk_factors = binary_risk_factors(
+        kind,
+        layout,
+        imports,
+        dependencies,
+        entropy,
+        hardening,
+        secrets,
+    );
     let mut recommended_campaigns = vec!["binary-fuzz".to_owned()];
     if replay.file {
         recommended_campaigns.push("file-replay".to_owned());
@@ -2952,6 +3071,9 @@ fn counts(
             .or_insert(0) += 1;
         if !binary.strings.interesting.is_empty() {
             counts.binaries_with_interesting_strings += 1;
+        }
+        if !binary.secrets.is_empty() {
+            counts.binaries_with_secrets += 1;
         }
         if !binary.cve_matches.is_empty() {
             counts.binaries_with_cve_matches += 1;

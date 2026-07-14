@@ -634,6 +634,14 @@ fn binary_scan_extracts_go_buildinfo_modules() {
         .expect("dependency from buildinfo");
     assert_eq!(dep["version"], "v2.3.4");
     assert_eq!(dep["purl"], "pkg:golang/example.com/dep@v2.3.4");
+    // The Go standard library is emitted as a component (syft parity) so version-gated
+    // Go-stdlib CVEs can be matched.
+    let stdlib = go
+        .iter()
+        .find(|c| c["name"] == "stdlib")
+        .expect("stdlib component from buildinfo");
+    assert_eq!(stdlib["version"], "go1.22");
+    assert_eq!(stdlib["purl"], "pkg:golang/stdlib@go1.22");
 }
 
 /// Build a minimal Go inline (1.18+) buildinfo blob: magic + ptrSize + inline flag,

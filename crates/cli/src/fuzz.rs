@@ -1864,6 +1864,7 @@ fn run_builtin_with_progress(
                 || s.contains("GOVFUZZ_PL_LAUNCHER")
                 || s.contains("GOVFUZZ_RB_LAUNCHER")
                 || s.contains("GOVFUZZ_LUA_LAUNCHER")
+                || s.contains("GOVFUZZ_PHP_LAUNCHER")
         })
         .unwrap_or(false);
     let sandbox_metadata = prepared.runner.sandbox_metadata();

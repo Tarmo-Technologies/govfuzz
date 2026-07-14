@@ -673,6 +673,7 @@ fn write_source_dictionary(
         // dictionary is the lever past a multi-byte comparison gate.
         Lang::Ruby => Some(crate::auto::ruby::extract_ruby_dictionary_tokens(source)),
         Lang::Lua => Some(crate::auto::lua::extract_lua_dictionary_tokens(source)),
+        Lang::Php => Some(crate::auto::php::extract_php_dictionary_tokens(source)),
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
         Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
     };
@@ -1308,6 +1309,46 @@ fn run_attempt(
         }
     }
 
+    // Step 0 (PHP, M3.11): the native PHP lane. Generate a harness that `require`s the
+    // target and calls the function, copy the php_runtime driver, emit the launcher
+    // (with pcov coverage), then drop into the shared builtin-engine cascade. A missing
+    // `php` interpreter, an un-loadable target, or an un-harnessable signature skips
+    // cleanly.
+    if matches!(candidate.lang, crate::auto::candidate::Lang::Php) {
+        progress.update(&ProgressUpdate::phase(Phase::Generate));
+        let source_root = options
+            .source_root
+            .clone()
+            .or_else(|| candidate.source_path.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| work_dir.to_path_buf());
+        match crate::auto::php_build::build_php_harness(
+            candidate,
+            work_dir,
+            &candidate.harness_id,
+            &source_root,
+        ) {
+            crate::auto::php_build::PhpBuildResult::Built => {}
+            crate::auto::php_build::PhpBuildResult::Failed { reason, skip } => {
+                if skip {
+                    return Ok(AttemptResult {
+                        candidate: candidate.clone(),
+                        outcome: Outcome::UnsupportedParams { reason },
+                        harness_dir,
+                    });
+                }
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::FailedBuild {
+                        repairs: Vec::new(),
+                        retries: 0,
+                        last_errors: build_classifier::classify(&reason),
+                    },
+                    harness_dir,
+                });
+            }
+        }
+    }
+
     // Step 0 (Go, M3.3): the native Go lane. Generate a harness `main` that imports
     // the target package via a module `replace`, `go build` it to `harnesses/<id>/main`
     // (a framed fork-server binary that recovers panics into findings), then drop
@@ -1581,6 +1622,7 @@ fn run_attempt(
                 | crate::auto::candidate::Lang::Ts
                 | crate::auto::candidate::Lang::Ruby
                 | crate::auto::candidate::Lang::Lua
+                | crate::auto::candidate::Lang::Php
         );
 
     // Step 0: pre-skip targets that can never link/run from an
@@ -3066,6 +3108,8 @@ fn auto_sequence_candidate(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Ruby => false,
         // Lua is prebuilt (Step 0); the interpreter driver owns its own input loop (M3.10).
         crate::auto::candidate::Lang::Lua => false,
+        // PHP is prebuilt (Step 0); the interpreter driver owns its own input loop (M3.11).
+        crate::auto::candidate::Lang::Php => false,
     }
 }
 
@@ -3102,6 +3146,8 @@ fn static_candidate_can_include_defining_source(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Ruby => false,
         // Lua `dofile`s the target; "paste the defining source" never applies (M3.10).
         crate::auto::candidate::Lang::Lua => false,
+        // PHP `require`s the target; "paste the defining source" never applies (M3.11).
+        crate::auto::candidate::Lang::Php => false,
     }
 }
 
@@ -3565,6 +3611,20 @@ fn try_build(
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(
                         "Lua harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
+                    ),
+                }
+            }
+        }
+        // PHP emitted its `php` launcher `main` in Step 0; pass-through succeeds iff
+        // it exists (M3.11).
+        Lang::Php => {
+            let main_bin = crate::auto::layout::harness_dir(work_dir, harness_id).join("main");
+            if main_bin.is_file() {
+                BuildOutcome::Success
+            } else {
+                BuildOutcome::Failed {
+                    errors: build_classifier::classify(
+                        "PHP harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
                     ),
                 }
             }

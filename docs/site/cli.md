@@ -153,7 +153,8 @@ and Mach-O dylib load commands, ELF link mode (static vs dynamic, from `PT_INTER
 section/segment evidence,
 exploit-mitigation posture (a `checksec`/`winchecksec`-style read: for ELF,
 RELRO — Full vs Partial via `PT_GNU_RELRO` + `BIND_NOW` — stack canary,
-PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`; for PE,
+PIE (distinguishing a PIE executable from a shared object/`DSO` by `PT_INTERP`,
+matching checksec), NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`; for PE,
 ASLR/`DYNAMIC_BASE`, DEP/`NX_COMPAT`, Control Flow Guard/`GUARD_CF` from the
 `DllCharacteristics` field, and Authenticode signing (the Security data directory);
 for Mach-O, `MH_PIE`, non-executable stack via

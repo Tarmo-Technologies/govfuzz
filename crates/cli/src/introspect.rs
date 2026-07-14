@@ -323,6 +323,7 @@ fn language_name(lang: &Lang) -> &'static str {
         Lang::CSharp => "csharp",
         Lang::Js => "javascript",
         Lang::Ts => "typescript",
+        Lang::Ruby => "ruby",
     }
 }
 

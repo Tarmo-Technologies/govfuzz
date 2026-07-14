@@ -75,6 +75,15 @@ pub enum Lang {
     /// name-extracting parser), transpiled to CommonJS `.js` with esbuild, and
     /// fuzzed by the same warm-Node driver. See [`crate::auto::js`] / `js_build`.
     Ts,
+    /// Native Ruby lane (M3.9). A method taking ≥1 argument is discovered + "built"
+    /// (a `ruby -c` + require smoke-test) and fuzzed by the builtin engine driving a
+    /// persistent `ruby` process that speaks the framed fork-server protocol and
+    /// records per-line edge coverage via a `TracePoint` into the shared coverage map
+    /// — no third-party fuzzer. An uncaught bug-class exception (ZeroDivisionError,
+    /// SystemStackError, NoMemoryError, an explicit assert/BUG) is a finding (exit 86);
+    /// Ruby's normal input-rejection errors are suppressed. Interpreted: the launcher
+    /// execs the interpreter on the generated driver. See [`crate::auto::ruby`].
+    Ruby,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -107,6 +116,8 @@ pub enum LangSelector {
     Js,
     #[value(name = "typescript", aliases = ["ts", "tsx"])]
     Ts,
+    #[value(name = "ruby", aliases = ["rb"])]
+    Ruby,
 }
 
 impl LangSelector {
@@ -126,6 +137,7 @@ impl LangSelector {
             LangSelector::CSharp => Lang::CSharp,
             LangSelector::Js => Lang::Js,
             LangSelector::Ts => Lang::Ts,
+            LangSelector::Ruby => Lang::Ruby,
         }
     }
 }
@@ -186,6 +198,7 @@ impl Candidate {
             Lang::CSharp => "H-S",
             Lang::Js => "H-N",
             Lang::Ts => "H-T",
+            Lang::Ruby => "H-U",
         }
     }
 }

@@ -5290,6 +5290,57 @@ fn is_supply_chain_manifest(path: &Path) -> bool {
     )
 }
 
+/// GF-561: dynamic execution of decoded/obfuscated data — `eval`/`Function` of a
+/// base64/hex/char-code decode (JS/TS) or `exec`/`eval` of a base64/hex/marshal/zlib
+/// decode (Python). A hallmark of packed malware; keying the eval on a *decode*
+/// primitive keeps ordinary `eval` usage from firing.
+fn scan_obfuscated_dynamic_exec(
+    root: &Path,
+    path: &Path,
+    source: &str,
+    language: &str,
+    findings: &mut Vec<StaticFinding>,
+) {
+    for (index, line) in source.lines().enumerate() {
+        let lower = line.to_ascii_lowercase();
+        let hit = match language {
+            "javascript" => {
+                lower.contains("eval(")
+                    && (lower.contains("atob(")
+                        || lower.contains("buffer.from(")
+                        || lower.contains("fromcharcode")
+                        || lower.contains("unescape("))
+            }
+            "python" => {
+                (lower.contains("exec(") || lower.contains("eval("))
+                    && (lower.contains("b64decode")
+                        || lower.contains("codecs.decode")
+                        || lower.contains(".fromhex(")
+                        || lower.contains("marshal.loads")
+                        || lower.contains("zlib.decompress"))
+            }
+            _ => false,
+        };
+        if hit {
+            let column = line.len() - line.trim_start().len() + 1;
+            push_pattern(
+                findings,
+                root,
+                path,
+                index,
+                column,
+                "GF-561",
+                language,
+                "obfuscated-dynamic-execution",
+                "Obfuscated dynamic code execution",
+                "supply-chain",
+                "Source decodes a base64/hex/compressed blob and immediately executes it — a hallmark of packed malware.",
+                line.trim(),
+            );
+        }
+    }
+}
+
 /// Dispatch supply-chain install-hook detectors by filename (raw source).
 fn scan_supply_chain_install_hooks(
     root: &Path,
@@ -8975,6 +9026,7 @@ fn push_broad_except(
 }
 
 fn scan_python(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
+    scan_obfuscated_dynamic_exec(root, path, source, "python", findings);
     push_python_broad_except_findings(root, path, source, findings);
     push_python_cors_settings_finding(root, path, source, findings);
     push_python_weak_password_hasher_findings(root, path, source, findings);
@@ -12350,6 +12402,7 @@ enum JavascriptXpathModule {
 }
 
 fn scan_javascript(root: &Path, path: &Path, source: &str, findings: &mut Vec<StaticFinding>) {
+    scan_obfuscated_dynamic_exec(root, path, source, "javascript", findings);
     let child_process = javascript_child_process_imports(source);
     let vm = javascript_vm_imports(source);
     let template_engines = javascript_template_engine_imports(source);
@@ -33199,6 +33252,36 @@ mod tests {
             supply_chain_hook_rules("/t/other.json", fetch_exec),
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn gf561_flags_obfuscated_dynamic_execution() {
+        let js = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_javascript(Path::new("/t"), Path::new("/t/a.js"), src, &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-561").count()
+        };
+        assert_eq!(js("eval(atob('cGF5bG9hZA=='))"), 1);
+        assert_eq!(
+            js("const x = eval(Buffer.from(b, 'base64').toString());"),
+            1
+        );
+        assert_eq!(js("eval(String.fromCharCode(104,105))"), 1);
+        // A plain decode, or an eval of a non-decoded expression, does not fire.
+        assert_eq!(js("const data = atob(encoded);"), 0);
+        assert_eq!(js("eval(userExpression);"), 0);
+
+        let py = |src: &str| -> usize {
+            let mut f = Vec::new();
+            scan_python(Path::new("/t"), Path::new("/t/a.py"), src, &mut f);
+            f.into_iter().filter(|x| x.rule_id == "GF-561").count()
+        };
+        assert_eq!(py("exec(base64.b64decode('cHJpbnQoMSk='))"), 1);
+        assert_eq!(py("eval(marshal.loads(data))"), 1);
+        assert_eq!(py("exec(zlib.decompress(blob))"), 1);
+        // A plain decode, or exec/eval of non-decoded data, does not fire.
+        assert_eq!(py("data = base64.b64decode(x)"), 0);
+        assert_eq!(py("exec(compile(src, '<s>', 'exec'))"), 0);
     }
 
     #[test]

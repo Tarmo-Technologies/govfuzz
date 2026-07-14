@@ -153,8 +153,9 @@ section/segment evidence,
 exploit-mitigation posture (a `checksec`/`winchecksec`-style read: for ELF,
 RELRO — Full vs Partial via `PT_GNU_RELRO` + `BIND_NOW` — stack canary,
 PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`; for PE,
-ASLR/`DYNAMIC_BASE`, DEP/`NX_COMPAT`, and Control Flow Guard/`GUARD_CF` from the
-`DllCharacteristics` field; for Mach-O, `MH_PIE`, non-executable stack via
+ASLR/`DYNAMIC_BASE`, DEP/`NX_COMPAT`, Control Flow Guard/`GUARD_CF` from the
+`DllCharacteristics` field, and Authenticode signing (the Security data directory);
+for Mach-O, `MH_PIE`, non-executable stack via
 `MH_ALLOW_STACK_EXECUTION`, and code signing via `LC_CODE_SIGNATURE`),
 hardcoded credentials baked into the binary's strings (AWS access keys, GitHub /
 GitLab / Slack / Stripe / Google API + OAuth / npm / PyPI / SendGrid tokens, PEM

@@ -146,9 +146,11 @@ names, risky import APIs, dynamic library/interpreter/RPATH evidence including
 ELF `PT_INTERP`, GNU build-id notes, `DT_NEEDED`, `DT_RPATH`, `DT_RUNPATH`, PE import descriptors,
 and Mach-O dylib load commands, entropy/packed-binary evidence, named
 section/segment evidence,
-exploit-mitigation posture (a `checksec`-style read of RELRO — Full vs Partial
-via `PT_GNU_RELRO` + `BIND_NOW` — stack canary,
-PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`), triage
+exploit-mitigation posture (a `checksec`/`winchecksec`-style read: for ELF,
+RELRO — Full vs Partial via `PT_GNU_RELRO` + `BIND_NOW` — stack canary,
+PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`; for PE,
+ASLR/`DYNAMIC_BASE`, DEP/`NX_COMPAT`, and Control Flow Guard/`GUARD_CF` from the
+`DllCharacteristics` field), triage
 risk factors, container/member provenance, skipped
 malformed inputs, and size-limit skips. Writable or relative RPATH/RUNPATH
 entries are promoted into loader-path review triage, while high entropy,

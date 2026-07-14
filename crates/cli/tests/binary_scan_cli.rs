@@ -389,6 +389,55 @@ fn binary_scan_reports_pe_aslr_dep_and_cfg() {
 }
 
 #[test]
+fn binary_scan_flags_infostealer_indicators() {
+    let root = temp_dir("malware-indicators");
+    write_elf64_x86_64_with_markers(
+        &root.join("stealer.elf"),
+        &[
+            b"Login Data",
+            b"key4.db",
+            b"https://discord.com/api/webhooks/1/abc",
+        ],
+    );
+    write_elf64_x86_64_with_markers(&root.join("clean.elf"), &[b"/usr/lib/libc.so.6"]);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+
+    let stealer = binary(&report, "stealer.elf");
+    let kinds: Vec<&str> = stealer["malware_indicators"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["kind"].as_str().unwrap())
+        .collect();
+    assert!(kinds.contains(&"credential_store"), "kinds={kinds:?}");
+    assert!(kinds.contains(&"exfiltration_channel"), "kinds={kinds:?}");
+    assert_eq!(stealer["triage"]["priority"], "high");
+    assert!(stealer["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f == "malware_indicator:exfiltration_channel"));
+
+    let clean = binary(&report, "clean.elf");
+    assert!(clean["malware_indicators"].as_array().unwrap().is_empty());
+    assert_eq!(report["counts"]["binaries_with_malware_indicators"], 1);
+}
+
+#[test]
 fn binary_scan_detects_and_redacts_embedded_secrets() {
     let root = temp_dir("secrets");
     write_elf64_x86_64_with_markers(

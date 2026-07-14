@@ -39,6 +39,12 @@ pub fn run(args: BinaryScanArgs) -> i32 {
                     summary.secret_count, summary.binaries_with_secrets,
                 );
             }
+            if summary.malware_indicator_count > 0 {
+                println!(
+                    "  !! {} malware indicator(s) (credential-store / exfiltration strings)",
+                    summary.malware_indicator_count,
+                );
+            }
             if summary.high_priority > 0 {
                 println!(
                     "  ! {} high-priority binaries (secrets / risky imports / CVEs)",

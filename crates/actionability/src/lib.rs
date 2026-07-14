@@ -1883,10 +1883,11 @@ fn classify_bug(raw: &Value) -> BugClass {
         || has("division by zero")
         || has("floating-point-exception")
         || has("floating point exception")
-        // Ruby's native ZeroDivisionError message reads "divided by 0", not
-        // "division by zero"; match the exception class name too.
+        // Ruby's native ZeroDivisionError message reads "divided by 0", Lua's reads
+        // "attempt to divide by zero" — neither matches "division by zero".
         || has("zerodivision")
         || has("divided by 0")
+        || has("divide by zero")
     {
         return BugClass::DivideByZero;
     }

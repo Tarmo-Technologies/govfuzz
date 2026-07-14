@@ -143,13 +143,19 @@ pub struct BinaryHardening {
     pub relro: String,
     pub stack_canary: String,
     pub pie: String,
-    /// Non-executable stack (NX/DEP): `present` (PT_GNU_STACK without the exec bit),
-    /// `disabled` (executable stack — an exploit-mitigation gap), `not_detected`
-    /// (ELF but no PT_GNU_STACK could be read), or `not_applicable` (non-ELF).
+    /// Non-executable stack / data (NX/DEP), cross-format: `present` (ELF PT_GNU_STACK
+    /// without the exec bit, or PE `NX_COMPAT`), `disabled` (executable stack, or PE
+    /// without `NX_COMPAT`), `not_detected` (undeterminable), or `not_applicable`.
     pub nx: String,
     /// `_FORTIFY_SOURCE`: `present` when fortified `*_chk` libc wrappers are linked in,
     /// `not_detected` for an ELF without them, `not_applicable` off ELF (glibc-only).
     pub fortify_source: String,
+    /// Address-space layout randomization (PE `DYNAMIC_BASE`): `present`/`not_detected`
+    /// for PE, `not_applicable` off PE (ELF ASLR is conveyed by the `pie` field).
+    pub aslr: String,
+    /// Control Flow Guard (PE `GUARD_CF`): `present`/`not_detected` for PE,
+    /// `not_applicable` off PE.
+    pub control_flow_guard: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -2109,7 +2115,10 @@ fn split_rpath_entries(paths: &str) -> Vec<String> {
 
 fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
     let format = kind.format;
-    let stack_canary = if contains_bytes(bytes, b"__stack_chk_fail") {
+    // Stack cookies: glibc `__stack_chk_fail` and MSVC `/GS` `__security_cookie`.
+    let stack_canary = if contains_bytes(bytes, b"__stack_chk_fail")
+        || contains_bytes(bytes, b"__security_cookie")
+    {
         "present"
     } else {
         "not_detected"
@@ -2129,8 +2138,63 @@ fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
         relro: elf_relro_status(kind, bytes),
         stack_canary: stack_canary.to_owned(),
         pie: pie.to_owned(),
-        nx: elf_nx_status(kind, bytes),
+        nx: nx_status(kind, bytes),
         fortify_source: elf_fortify_status(format, bytes),
+        aslr: pe_aslr_status(kind, bytes),
+        control_flow_guard: pe_control_flow_guard_status(kind, bytes),
+    }
+}
+
+/// PE `DllCharacteristics` (the Windows exploit-mitigation bitfield). The field sits at
+/// optional-header offset 0x46 for BOTH PE32 and PE32+ (their layouts converge before
+/// it), i.e. `e_lfanew + 4 (PE sig) + 20 (COFF) + 0x46`.
+fn pe_dll_characteristics(bytes: &[u8]) -> Option<u16> {
+    let pe_offset = read_u32_le(bytes, 0x3c).and_then(usize_from_u32)?;
+    if bytes.get(pe_offset..pe_offset + 4)? != b"PE\0\0" {
+        return None;
+    }
+    let optional_header_size = read_u16(bytes, pe_offset + 20, "little")?;
+    if usize::from(optional_header_size) < 0x48 {
+        return None;
+    }
+    read_u16(bytes, pe_offset + 24 + 0x46, "little")
+}
+
+/// Non-executable stack/data, dispatched by format: ELF `PT_GNU_STACK`, PE `NX_COMPAT`.
+fn nx_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    match kind.format {
+        "elf" => elf_nx_status(kind, bytes),
+        "pe" => match pe_dll_characteristics(bytes) {
+            Some(flags) if flags & 0x0100 != 0 => "present".to_owned(),
+            Some(_) => "disabled".to_owned(),
+            None => "not_detected".to_owned(),
+        },
+        _ => "not_applicable".to_owned(),
+    }
+}
+
+/// ASLR via the PE `DYNAMIC_BASE` bit. Off PE this is `not_applicable` — an ELF's ASLR
+/// posture is its PIE status, already reported in `pie`.
+fn pe_aslr_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    if kind.format != "pe" {
+        return "not_applicable".to_owned();
+    }
+    if pe_dll_characteristics(bytes).is_some_and(|flags| flags & 0x0040 != 0) {
+        "present".to_owned()
+    } else {
+        "not_detected".to_owned()
+    }
+}
+
+/// Control Flow Guard via the PE `GUARD_CF` bit; `not_applicable` off PE.
+fn pe_control_flow_guard_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    if kind.format != "pe" {
+        return "not_applicable".to_owned();
+    }
+    if pe_dll_characteristics(bytes).is_some_and(|flags| flags & 0x4000 != 0) {
+        "present".to_owned()
+    } else {
+        "not_detected".to_owned()
     }
 }
 
@@ -2447,6 +2511,17 @@ fn binary_risk_factors(
         }
         if hardening.fortify_source == "not_detected" {
             factors.push("hardening:fortify_source_missing".to_owned());
+        }
+    }
+    if kind.format == "pe" {
+        if hardening.nx == "disabled" {
+            factors.push("hardening:nx_disabled".to_owned());
+        }
+        if hardening.aslr == "not_detected" {
+            factors.push("hardening:aslr_missing".to_owned());
+        }
+        if hardening.control_flow_guard == "not_detected" {
+            factors.push("hardening:control_flow_guard_missing".to_owned());
         }
     }
     factors

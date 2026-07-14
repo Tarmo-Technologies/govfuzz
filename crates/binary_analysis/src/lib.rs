@@ -116,6 +116,10 @@ pub struct BinaryDependencies {
     pub libraries: Vec<String>,
     pub interpreters: Vec<String>,
     pub rpaths: Vec<String>,
+    /// ELF link mode: `static` (no `PT_INTERP` and no `DT_NEEDED` — self-contained,
+    /// harder to hook/LD_PRELOAD), `dynamic`, `unknown` (program headers unparsed, e.g.
+    /// 32-bit), or `not_applicable` (non-ELF).
+    pub linking: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1604,6 +1608,27 @@ fn binary_dependencies(kind: BinaryKind, bytes: &[u8]) -> BinaryDependencies {
         libraries,
         interpreters,
         rpaths,
+        linking: elf_linking(kind, bytes),
+    }
+}
+
+/// ELF link mode from the structured signals (not the string-scan): a `PT_INTERP`
+/// segment or any `DT_NEEDED` entry means dynamically linked; neither means a
+/// self-contained static binary. `unknown` when program headers can't be parsed.
+fn elf_linking(kind: BinaryKind, bytes: &[u8]) -> String {
+    if kind.format != "elf" {
+        return "not_applicable".to_owned();
+    }
+    let headers = elf_program_headers(kind, bytes);
+    if headers.is_empty() {
+        return "unknown".to_owned();
+    }
+    if headers.iter().any(|header| header.segment_type == 3)
+        || !elf_dynamic_dependencies(kind, bytes).libraries.is_empty()
+    {
+        "dynamic".to_owned()
+    } else {
+        "static".to_owned()
     }
 }
 

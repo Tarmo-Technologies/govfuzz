@@ -141,6 +141,13 @@ pub struct BinaryHardening {
     pub relro: String,
     pub stack_canary: String,
     pub pie: String,
+    /// Non-executable stack (NX/DEP): `present` (PT_GNU_STACK without the exec bit),
+    /// `disabled` (executable stack — an exploit-mitigation gap), `not_detected`
+    /// (ELF but no PT_GNU_STACK could be read), or `not_applicable` (non-ELF).
+    pub nx: String,
+    /// `_FORTIFY_SOURCE`: `present` when fortified `*_chk` libc wrappers are linked in,
+    /// `not_detected` for an ELF without them, `not_applicable` off ELF (glibc-only).
+    pub fortify_source: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -434,7 +441,7 @@ fn scan_bytes(
             let imports = binary_imports(kind, bytes, &symbol_info.markers);
             let exports = binary_exports(kind, bytes, &symbol_info.markers);
             let dependencies = binary_dependencies(kind, bytes);
-            let hardening = binary_hardening(kind.format, bytes);
+            let hardening = binary_hardening(kind, bytes);
             let strings = binary_strings(bytes);
             let entropy = binary_entropy(bytes);
             let sbom = binary_sbom(&path_label, bytes, cve_db);
@@ -2098,7 +2105,8 @@ fn split_rpath_entries(paths: &str) -> Vec<String> {
         .collect()
 }
 
-fn binary_hardening(format: &str, bytes: &[u8]) -> BinaryHardening {
+fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
+    let format = kind.format;
     let relro = if format == "elf" && contains_bytes(bytes, b"GNU_RELRO") {
         "present"
     } else if format == "elf" {
@@ -2126,6 +2134,63 @@ fn binary_hardening(format: &str, bytes: &[u8]) -> BinaryHardening {
         relro: relro.to_owned(),
         stack_canary: stack_canary.to_owned(),
         pie: pie.to_owned(),
+        nx: elf_nx_status(kind, bytes),
+        fortify_source: elf_fortify_status(format, bytes),
+    }
+}
+
+/// Non-executable stack (NX/DEP). A modern ELF carries a `PT_GNU_STACK` program header
+/// whose flags declare the stack's permissions: NX is enabled when that segment is
+/// present WITHOUT the executable bit (`PF_X`, 0x1); an executable stack is a real
+/// exploit-mitigation gap. Absent PT_GNU_STACK (or a form we do not parse, e.g. 32-bit)
+/// → `not_detected`; non-ELF → `not_applicable`.
+fn elf_nx_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    if kind.format != "elf" {
+        return "not_applicable".to_owned();
+    }
+    match elf_program_headers(kind, bytes)
+        .into_iter()
+        .find(|header| header.segment_type == 0x6474_e551)
+    {
+        Some(header) if header.flags & 0x1 != 0 => "disabled".to_owned(),
+        Some(_) => "present".to_owned(),
+        None => "not_detected".to_owned(),
+    }
+}
+
+/// `_FORTIFY_SOURCE`. glibc's fortified libc wrappers (`__printf_chk`, `__memcpy_chk`,
+/// …) replace unbounded calls with bounds-checked `*_chk` variants; their presence in
+/// the symbol table is the canonical `checksec` signal that FORTIFY was enabled. Note
+/// `__stack_chk_fail` (the canary) is deliberately excluded — it is a different
+/// mitigation. glibc-specific → `not_applicable` off ELF.
+fn elf_fortify_status(format: &str, bytes: &[u8]) -> String {
+    if format != "elf" {
+        return "not_applicable".to_owned();
+    }
+    const FORTIFIED_SYMBOLS: &[&[u8]] = &[
+        b"__printf_chk",
+        b"__fprintf_chk",
+        b"__sprintf_chk",
+        b"__snprintf_chk",
+        b"__vsnprintf_chk",
+        b"__memcpy_chk",
+        b"__memmove_chk",
+        b"__memset_chk",
+        b"__strcpy_chk",
+        b"__strncpy_chk",
+        b"__strcat_chk",
+        b"__strncat_chk",
+        b"__stpcpy_chk",
+        b"__gets_chk",
+        b"__fortify_fail",
+    ];
+    if FORTIFIED_SYMBOLS
+        .iter()
+        .any(|needle| contains_bytes(bytes, needle))
+    {
+        "present".to_owned()
+    } else {
+        "not_detected".to_owned()
     }
 }
 
@@ -2315,6 +2380,12 @@ fn binary_risk_factors(
         }
         if hardening.pie == "not_detected" {
             factors.push("hardening:pie_missing".to_owned());
+        }
+        if hardening.nx == "disabled" {
+            factors.push("hardening:nx_disabled".to_owned());
+        }
+        if hardening.fortify_source == "not_detected" {
+            factors.push("hardening:fortify_source_missing".to_owned());
         }
     }
     factors

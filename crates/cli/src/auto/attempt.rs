@@ -672,6 +672,7 @@ fn write_source_dictionary(
         // Ruby carries no CmpLog in the interpreted driver, so a source-mined
         // dictionary is the lever past a multi-byte comparison gate.
         Lang::Ruby => Some(crate::auto::ruby::extract_ruby_dictionary_tokens(source)),
+        Lang::Lua => Some(crate::auto::lua::extract_lua_dictionary_tokens(source)),
         // COBOL/Fortran are fuzzed through the generated C; the dictionary comes from that C.
         Lang::Ada | Lang::C | Lang::Cpp | Lang::Cobol | Lang::Fortran => None,
     };
@@ -1268,6 +1269,45 @@ fn run_attempt(
         }
     }
 
+    // Step 0 (Lua, M3.10): the native Lua lane. Generate a harness that `dofile`s the
+    // target and calls the function, copy the lua_runtime driver, emit the launcher,
+    // then drop into the shared builtin-engine cascade. A missing `lua` interpreter,
+    // an un-loadable target, or an un-harnessable signature skips cleanly.
+    if matches!(candidate.lang, crate::auto::candidate::Lang::Lua) {
+        progress.update(&ProgressUpdate::phase(Phase::Generate));
+        let source_root = options
+            .source_root
+            .clone()
+            .or_else(|| candidate.source_path.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| work_dir.to_path_buf());
+        match crate::auto::lua_build::build_lua_harness(
+            candidate,
+            work_dir,
+            &candidate.harness_id,
+            &source_root,
+        ) {
+            crate::auto::lua_build::LuaBuildResult::Built => {}
+            crate::auto::lua_build::LuaBuildResult::Failed { reason, skip } => {
+                if skip {
+                    return Ok(AttemptResult {
+                        candidate: candidate.clone(),
+                        outcome: Outcome::UnsupportedParams { reason },
+                        harness_dir,
+                    });
+                }
+                return Ok(AttemptResult {
+                    candidate: candidate.clone(),
+                    outcome: Outcome::FailedBuild {
+                        repairs: Vec::new(),
+                        retries: 0,
+                        last_errors: build_classifier::classify(&reason),
+                    },
+                    harness_dir,
+                });
+            }
+        }
+    }
+
     // Step 0 (Go, M3.3): the native Go lane. Generate a harness `main` that imports
     // the target package via a module `replace`, `go build` it to `harnesses/<id>/main`
     // (a framed fork-server binary that recovers panics into findings), then drop
@@ -1540,6 +1580,7 @@ fn run_attempt(
                 | crate::auto::candidate::Lang::Js
                 | crate::auto::candidate::Lang::Ts
                 | crate::auto::candidate::Lang::Ruby
+                | crate::auto::candidate::Lang::Lua
         );
 
     // Step 0: pre-skip targets that can never link/run from an
@@ -3023,6 +3064,8 @@ fn auto_sequence_candidate(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Js | crate::auto::candidate::Lang::Ts => false,
         // Ruby is prebuilt (Step 0); the interpreter driver owns its own input loop (M3.9).
         crate::auto::candidate::Lang::Ruby => false,
+        // Lua is prebuilt (Step 0); the interpreter driver owns its own input loop (M3.10).
+        crate::auto::candidate::Lang::Lua => false,
     }
 }
 
@@ -3057,6 +3100,8 @@ fn static_candidate_can_include_defining_source(c: &Candidate) -> bool {
         crate::auto::candidate::Lang::Js | crate::auto::candidate::Lang::Ts => false,
         // Ruby `require`s the target file; "paste the defining source" never applies (M3.9).
         crate::auto::candidate::Lang::Ruby => false,
+        // Lua `dofile`s the target; "paste the defining source" never applies (M3.10).
+        crate::auto::candidate::Lang::Lua => false,
     }
 }
 
@@ -3506,6 +3551,20 @@ fn try_build(
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(
                         "Ruby harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
+                    ),
+                }
+            }
+        }
+        // Lua emitted its `lua` launcher `main` in Step 0; pass-through succeeds iff
+        // it exists (M3.10).
+        Lang::Lua => {
+            let main_bin = crate::auto::layout::harness_dir(work_dir, harness_id).join("main");
+            if main_bin.is_file() {
+                BuildOutcome::Success
+            } else {
+                BuildOutcome::Failed {
+                    errors: build_classifier::classify(
+                        "Lua harness launcher missing (Step 0 build did not produce harnesses/<id>/main)",
                     ),
                 }
             }

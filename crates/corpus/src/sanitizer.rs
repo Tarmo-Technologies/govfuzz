@@ -83,6 +83,10 @@ pub fn parse_sanitizer_report(stderr: &str) -> Option<SanitizerReport> {
         // <CWE>: <class>: <message>` and hard-halts. The CWE token (computed
         // driver-side from the exception class) selects the GF rule.
         .or_else(|| parse_ruby_finding(stderr))
+        // A Lua finding: the govfuzz Lua driver prints `== govfuzz lua finding:
+        // <CWE>: <error>` and hard-halts. The CWE token (computed driver-side from the
+        // Lua error message) selects the GF rule.
+        .or_else(|| parse_lua_finding(stderr))
         // A Go finding: the govfuzz Go harness recovers a panic and prints
         // `== govfuzz go finding: <msg>` (or the runtime prints `panic:`/`fatal
         // error:` for an unrecoverable crash). The message selects the GF rule.
@@ -471,6 +475,37 @@ fn parse_ruby_finding(stderr: &str) -> Option<SanitizerReport> {
             "Ruby finding".to_owned()
         } else {
             format!("Ruby finding: {msg}")
+        },
+    })
+}
+
+/// Parse a govfuzz Lua finding out of stderr. The driver prints
+/// `== govfuzz lua finding: <CWE-NNN>: <error>` (the CWE pre-resolved from the Lua
+/// error message: stack overflow -> CWE-674/GF-207, out-of-memory -> CWE-789/GF-209,
+/// integer divide-by-zero -> CWE-369/GF-205, an explicit assert -> CWE-617/GF-210).
+fn parse_lua_finding(stderr: &str) -> Option<SanitizerReport> {
+    const MARKER: &str = "== govfuzz lua finding:";
+    let line = stderr.lines().find(|l| l.contains(MARKER))?;
+    let after = line.split(MARKER).nth(1).unwrap_or("").trim();
+    let (cwe, msg) = match after.split_once(':') {
+        Some((c, m)) => (c.trim(), m.trim()),
+        None => (after, ""),
+    };
+    let (kind, rule_id) = match cwe {
+        "CWE-674" => ("lua-uncontrolled-recursion".to_owned(), "GF-207"),
+        "CWE-789" => ("lua-out-of-memory".to_owned(), "GF-209"),
+        "CWE-369" => ("lua-arithmetic".to_owned(), "GF-205"),
+        _ => ("lua-reachable-assertion".to_owned(), "GF-210"),
+    };
+    Some(SanitizerReport {
+        sanitizer: Sanitizer::AddressSanitizer,
+        kind,
+        rule_id,
+        stack: Vec::new(),
+        message: if msg.is_empty() {
+            "Lua finding".to_owned()
+        } else {
+            format!("Lua finding: {msg}")
         },
     })
 }

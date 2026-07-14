@@ -86,6 +86,7 @@ fn lang_to_str(lang: Lang) -> &'static str {
         Lang::Js => "javascript",
         Lang::Ts => "typescript",
         Lang::Ruby => "ruby",
+        Lang::Lua => "lua",
     }
 }
 
@@ -105,6 +106,7 @@ fn lang_from_str(s: &str) -> Option<Lang> {
         "javascript" => Some(Lang::Js),
         "typescript" => Some(Lang::Ts),
         "ruby" => Some(Lang::Ruby),
+        "lua" => Some(Lang::Lua),
         _ => None,
     }
 }

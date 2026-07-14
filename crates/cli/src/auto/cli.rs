@@ -2315,6 +2315,7 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
             Lang::Ts => "TS",
             Lang::Ruby => "Ruby",
             Lang::Lua => "Lua",
+            Lang::Php => "PHP",
         };
         let reach = match c.input_reachability {
             Some(InputReachability::AttackerReachable) => "attacker-reachable",
@@ -2398,6 +2399,7 @@ fn render_selected_langs(selectors: &[crate::auto::candidate::LangSelector]) -> 
         (Lang::Ts, "typescript"),
         (Lang::Ruby, "ruby"),
         (Lang::Lua, "lua"),
+        (Lang::Php, "php"),
     ];
     ORDER
         .iter()

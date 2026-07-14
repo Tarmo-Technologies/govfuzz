@@ -325,6 +325,7 @@ fn language_name(lang: &Lang) -> &'static str {
         Lang::Ts => "typescript",
         Lang::Ruby => "ruby",
         Lang::Lua => "lua",
+        Lang::Php => "php",
     }
 }
 

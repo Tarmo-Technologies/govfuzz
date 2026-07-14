@@ -114,6 +114,7 @@ fn lang_from_extension(ext: &str) -> Option<LangSelector> {
         "go" => LangSelector::Go,
         "rb" => LangSelector::Ruby,
         "lua" => LangSelector::Lua,
+        "php" | "phtml" => LangSelector::Php,
         _ => return None,
     })
 }
@@ -286,6 +287,7 @@ fn snippet_extension(lang: LangSelector) -> &'static str {
         LangSelector::Ts => "ts",
         LangSelector::Ruby => "rb",
         LangSelector::Lua => "lua",
+        LangSelector::Php => "php",
     }
 }
 
@@ -307,6 +309,7 @@ fn lang_token(lang: LangSelector) -> &'static str {
         LangSelector::Ts => "typescript",
         LangSelector::Ruby => "ruby",
         LangSelector::Lua => "lua",
+        LangSelector::Php => "php",
     }
 }
 

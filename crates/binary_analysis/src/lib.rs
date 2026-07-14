@@ -67,6 +67,10 @@ pub struct BinaryRecord {
     pub sha256: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub build_id: Option<String>,
+    /// Producer/toolchain provenance recovered from embedded strings (e.g. `GCC 13.3.0`,
+    /// `clang 17.0.6`, `Go 1.23`, `rustc 1.79.0`); `None` when stripped/undeterminable.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub toolchain: Option<String>,
     pub symbols_present: bool,
     pub debug_info_present: bool,
     pub symbol_status: String,
@@ -474,6 +478,7 @@ fn scan_bytes(
             let cve_matches = binary_cve_matches(&sbom, cve_db);
             let sha256 = sha256_hex(bytes);
             let build_id = binary_build_id(kind, bytes);
+            let toolchain = binary_toolchain(bytes);
             let triage = binary_triage(
                 kind,
                 &sha256,
@@ -503,6 +508,7 @@ fn scan_bytes(
                 bytes: bytes.len() as u64,
                 sha256,
                 build_id,
+                toolchain,
                 symbols_present: symbol_info.symbols_present,
                 debug_info_present: symbol_info.debug_info_present,
                 symbol_status: symbol_info.symbol_status,
@@ -2530,6 +2536,66 @@ fn is_key_char(c: char) -> bool {
 
 fn is_slack_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '-'
+}
+
+/// Best-effort producer/toolchain provenance from embedded strings — the compiler/runtime
+/// that built the binary (GCC/clang `.comment`, Go/Rust version stamps). Useful for triage:
+/// an old compiler implies known miscompilations; an EOL Go/Rust runtime implies stdlib CVEs.
+fn binary_toolchain(bytes: &[u8]) -> Option<String> {
+    for value in ascii_strings(bytes, 4) {
+        if let Some(version) = extract_go_version(&value) {
+            return Some(format!("Go {version}"));
+        }
+        if let Some(rest) = value.strip_prefix("clang version ") {
+            if let Some(version) = leading_version(rest) {
+                return Some(format!("clang {version}"));
+            }
+        }
+        if let Some(rest) = value.strip_prefix("GCC: ") {
+            // e.g. "(Ubuntu 13.3.0-6ubuntu2) 13.3.0" — the trailing token is the version.
+            if let Some(version) = rest.split_whitespace().last().and_then(leading_version) {
+                return Some(format!("GCC {version}"));
+            }
+        }
+        if let Some(rest) = value.strip_prefix("rustc ") {
+            if let Some(version) = leading_version(rest) {
+                return Some(format!("rustc {version}"));
+            }
+        }
+    }
+    None
+}
+
+/// The whitespace-delimited token at the front of `s`, but only when it looks like a
+/// version (starts with a digit).
+fn leading_version(s: &str) -> Option<String> {
+    let token = s.split_whitespace().next()?;
+    token
+        .chars()
+        .next()
+        .filter(char::is_ascii_digit)
+        .map(|_| token.to_owned())
+}
+
+/// A boundary-anchored Go version stamp (`go1.23`, `go1.21.5`) → `1.23` / `1.21.5`.
+fn extract_go_version(value: &str) -> Option<String> {
+    let raw = value.as_bytes();
+    let mut from = 0;
+    while let Some(rel) = value[from..].find("go1.") {
+        let idx = from + rel;
+        let at_boundary = idx == 0 || !raw[idx - 1].is_ascii_alphanumeric();
+        if at_boundary {
+            let version: String = value[idx + 2..]
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.')
+                .collect();
+            if version.starts_with("1.") && version.len() >= 4 {
+                return Some(version);
+            }
+        }
+        from = idx + 4;
+    }
+    None
 }
 
 fn binary_entropy(bytes: &[u8]) -> BinaryEntropy {

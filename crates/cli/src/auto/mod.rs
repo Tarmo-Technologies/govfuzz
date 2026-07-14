@@ -36,6 +36,8 @@ pub mod js;
 pub mod js_build;
 pub mod layout;
 pub mod lit_scan;
+pub mod lua;
+pub mod lua_build;
 pub mod memprofile;
 pub mod msan;
 pub mod pass;

@@ -1523,6 +1523,10 @@ fn detect_secret(line: &str) -> Option<(usize, &'static str)> {
         ("xoxr-", 10, is_alnum_dash, "Slack refresh token"),
         ("xoxs-", 10, is_alnum_dash, "Slack app-config token"),
         ("SG.", 22, is_alnum_dash, "SendGrid API key"),
+        ("github_pat_", 40, is_alnum_dash, "GitHub fine-grained PAT"),
+        ("sk-ant-", 40, is_alnum_dash, "Anthropic API key"),
+        ("sk-proj-", 40, is_alnum_dash, "OpenAI project API key"),
+        ("hf_", 34, is_alnum, "Hugging Face token"),
     ];
     for (prefix, min, ok, label) in PATTERNS {
         if let Some(idx) = line.find(prefix) {
@@ -37975,6 +37979,18 @@ mod tests {
         )
         .is_some());
         assert!(detect_secret("r = \"AROA1234567890ABCDEF\"").is_some());
+        // Modern AI-provider + fine-grained tokens.
+        assert!(detect_secret(
+            "k = \"github_pat_0123456789abcdefghijkl_0123456789abcdefghijklmnopqrstuvwxyz0123\""
+        )
+        .is_some());
+        assert!(detect_secret(
+            "k = \"sk-ant-api03-0123456789abcdefghijklmnopqrstuvwxyz-0123456789\""
+        )
+        .is_some());
+        assert!(detect_secret("k = \"hf_0123456789abcdefghijklmnopqrstuvwx\"").is_some());
+        // A short `hf_`-prefixed identifier is not a token.
+        assert!(detect_secret("hf_model = load()").is_none());
         // A PEM header needs actual base64 key MATERIAL to be a leaked key — a bare
         // header reference (a writer/parser) is not.
         assert!(pem_header_column("-----BEGIN RSA PRIVATE KEY-----").is_some());

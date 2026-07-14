@@ -324,6 +324,37 @@ fn binary_scan_reports_relro_full_partial_and_none() {
 }
 
 #[test]
+fn binary_scan_distinguishes_pie_executable_from_shared_object() {
+    let root = temp_dir("pie-dso");
+    // ET_DYN + PT_INTERP → a PIE executable; ET_DYN without PT_INTERP → a shared object.
+    write_elf64_et_dyn(&root.join("pie.elf"), true);
+    write_elf64_et_dyn(&root.join("lib.so"), false);
+    // ET_EXEC → not PIE.
+    write_elf64_x86_64(&root.join("noexec.elf"));
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+    assert_eq!(binary(&report, "pie.elf")["hardening"]["pie"], "present");
+    assert_eq!(binary(&report, "lib.so")["hardening"]["pie"], "dso");
+    assert_eq!(
+        binary(&report, "noexec.elf")["hardening"]["pie"],
+        "not_detected"
+    );
+}
+
+#[test]
 fn binary_scan_reports_pe_aslr_dep_and_cfg() {
     let root = temp_dir("pe-hardening");
     // DYNAMIC_BASE (0x40) | NX_COMPAT (0x100) | GUARD_CF (0x4000): every mitigation on.
@@ -1681,6 +1712,21 @@ fn write_elf64_x86_64_with_gnu_stack(path: &std::path::Path, flags: u32) {
         .copy_from_slice(&0x6474_e551u32.to_le_bytes());
     bytes[program_header_offset + 4..program_header_offset + 8]
         .copy_from_slice(&flags.to_le_bytes());
+    fs::write(path, bytes).unwrap();
+}
+
+fn write_elf64_et_dyn(path: &std::path::Path, with_interp: bool) {
+    let program_header_offset = 0x40usize;
+    let mut bytes = elf64_x86_64_with_markers(&[]);
+    bytes.resize(program_header_offset + 56, 0);
+    bytes[16..18].copy_from_slice(&(3u16).to_le_bytes()); // ET_DYN
+    bytes[32..40].copy_from_slice(&(program_header_offset as u64).to_le_bytes());
+    bytes[54..56].copy_from_slice(&(56u16).to_le_bytes());
+    bytes[56..58].copy_from_slice(&(1u16).to_le_bytes());
+    // With PT_INTERP (type 3) it is a PIE executable; without, a shared object (DSO).
+    let segment_type: u32 = if with_interp { 3 } else { 0x6474_e551 };
+    bytes[program_header_offset..program_header_offset + 4]
+        .copy_from_slice(&segment_type.to_le_bytes());
     fs::write(path, bytes).unwrap();
 }
 

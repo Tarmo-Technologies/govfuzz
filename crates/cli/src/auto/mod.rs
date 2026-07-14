@@ -42,6 +42,8 @@ pub mod memprofile;
 pub mod msan;
 pub mod pass;
 pub mod perl_build;
+pub mod php;
+pub mod php_build;
 pub mod preflight;
 pub mod progress;
 pub mod provenance;

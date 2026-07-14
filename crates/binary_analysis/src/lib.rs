@@ -2804,56 +2804,67 @@ fn binary_sbom(path_label: &str, bytes: &[u8], cve_db: &CveDatabase) -> BinarySb
     }
     // Go static binaries embed their full module dependency tree (the `go version -m`
     // data). Extract it — otherwise these dependencies are invisible in a stripped binary.
-    for (path, version) in go_buildinfo_modules(bytes) {
-        if components.iter().any(|component| component.name == path) {
-            continue;
+    if let Some((go_version, modules)) = go_buildinfo_modules(bytes) {
+        // Emit the Go standard library as a component so Go-stdlib CVEs (crypto/tls,
+        // net/http, archive/zip, …) — which are version-gated — can be matched. Matches
+        // syft's `pkg:golang/stdlib@<goX.Y.Z>` so the two SBOMs align for CVE tooling.
+        if !go_version.is_empty()
+            && !components
+                .iter()
+                .any(|component| component.name == "stdlib")
+        {
+            components.push(BinaryComponent {
+                name: "stdlib".to_owned(),
+                version: Some(go_version.clone()),
+                purl: Some(format!("pkg:golang/stdlib@{go_version}")),
+                evidence: vec!["go_buildinfo".to_owned()],
+            });
         }
-        let purl = format!("pkg:golang/{path}@{version}");
-        components.push(BinaryComponent {
-            name: path,
-            version: Some(version),
-            purl: Some(purl),
-            evidence: vec!["go_buildinfo".to_owned()],
-        });
+        for (path, version) in modules {
+            if components.iter().any(|component| component.name == path) {
+                continue;
+            }
+            let purl = format!("pkg:golang/{path}@{version}");
+            components.push(BinaryComponent {
+                name: path,
+                version: Some(version),
+                purl: Some(purl),
+                evidence: vec!["go_buildinfo".to_owned()],
+            });
+        }
     }
     BinarySbom { components }
 }
 
-/// Extract the Go module dependency list the linker embeds in a Go binary (the
-/// `go version -m` data), for the inline buildinfo format (Go 1.18+). Returns
-/// `(module_path, version)` for the main module (`mod`) and each dependency (`dep`).
-fn go_buildinfo_modules(bytes: &[u8]) -> Vec<(String, String)> {
+/// Extract the Go toolchain version and module dependency list the linker embeds in a Go
+/// binary (the `go version -m` data), for the inline buildinfo format (Go 1.18+). Returns
+/// `(go_version, [(module_path, version)])` for the main module (`mod`) and each `dep`.
+fn go_buildinfo_modules(bytes: &[u8]) -> Option<(String, Vec<(String, String)>)> {
     const MAGIC: &[u8] = b"\xff Go buildinf:";
-    let Some(magic_off) = bytes
+    let magic_off = bytes
         .windows(MAGIC.len())
-        .position(|window| window == MAGIC)
-    else {
-        return Vec::new();
-    };
+        .position(|window| window == MAGIC)?;
     // header: magic (14) + ptrSize (1) + flags (1). The inline string format is flag 0x2.
-    let Some(&flags) = bytes.get(magic_off + 15) else {
-        return Vec::new();
-    };
+    let &flags = bytes.get(magic_off + 15)?;
     if flags & 0x2 == 0 {
         // The older pointer-based format needs virtual-address resolution; skip it.
-        return Vec::new();
+        return None;
     }
     // The version and modinfo strings are stored inline starting at magic + 32.
-    let Some(after_header) = bytes.get(magic_off + 32..) else {
-        return Vec::new();
-    };
-    let Some((_version, rest)) = decode_go_string(after_header) else {
-        return Vec::new();
-    };
-    let Some((modinfo, _)) = decode_go_string(rest) else {
-        return Vec::new();
-    };
+    let after_header = bytes.get(magic_off + 32..)?;
+    let (go_version, rest) = decode_go_string(after_header)?;
+    let go_version = String::from_utf8_lossy(go_version).trim().to_owned();
+    let (modinfo, _) = decode_go_string(rest)?;
     // The linker frames modinfo with 16-byte sentinels; strip them (matching the check
-    // `debug/buildinfo` uses: a newline just before the trailing sentinel).
+    // `debug/buildinfo` uses: a newline just before the trailing sentinel). A stripped or
+    // empty module graph still carries a usable toolchain version.
     if modinfo.len() < 33 || modinfo[modinfo.len() - 17] != b'\n' {
-        return Vec::new();
+        return Some((go_version, Vec::new()));
     }
-    parse_go_modinfo(&modinfo[16..modinfo.len() - 16])
+    Some((
+        go_version,
+        parse_go_modinfo(&modinfo[16..modinfo.len() - 16]),
+    ))
 }
 
 /// Decode a Go length-delimited string (uvarint length prefix + bytes); returns the

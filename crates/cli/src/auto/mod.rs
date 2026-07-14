@@ -47,6 +47,8 @@ pub mod python_build;
 pub mod repair;
 pub mod report;
 pub mod report_only;
+pub mod ruby;
+pub mod ruby_build;
 pub mod runtrace;
 pub mod rust_build;
 pub mod shim_path;

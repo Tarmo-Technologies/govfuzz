@@ -85,6 +85,7 @@ fn lang_to_str(lang: Lang) -> &'static str {
         Lang::CSharp => "csharp",
         Lang::Js => "javascript",
         Lang::Ts => "typescript",
+        Lang::Ruby => "ruby",
     }
 }
 
@@ -103,6 +104,7 @@ fn lang_from_str(s: &str) -> Option<Lang> {
         "csharp" => Some(Lang::CSharp),
         "javascript" => Some(Lang::Js),
         "typescript" => Some(Lang::Ts),
+        "ruby" => Some(Lang::Ruby),
         _ => None,
     }
 }

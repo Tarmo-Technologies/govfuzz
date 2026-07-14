@@ -183,7 +183,8 @@ fn binary_scan_reports_import_export_hardening_and_firmware_strings() {
         serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
     let elf = binary(&report, "service.elf");
     assert_eq!(elf["imports"]["status"], "dynamic_imports_present");
-    assert_eq!(elf["hardening"]["relro"], "present");
+    // This fixture carries a RELRO marker but no BIND_NOW dynamic entry → Partial RELRO.
+    assert_eq!(elf["hardening"]["relro"], "partial");
     assert_eq!(elf["hardening"]["stack_canary"], "present");
     // No PT_GNU_STACK program header and no fortified `*_chk` wrappers in this fixture:
     // NX is undeterminable and FORTIFY is absent (the canary is not FORTIFY).
@@ -264,6 +265,62 @@ fn binary_scan_reports_nx_and_fortify_source() {
         .unwrap()
         .iter()
         .any(|factor| factor == "hardening:fortify_source_missing"));
+}
+
+#[test]
+fn binary_scan_reports_relro_full_partial_and_none() {
+    let root = temp_dir("relro");
+    // Full: PT_GNU_RELRO segment + a DT_BIND_NOW dynamic entry → GOT read-only.
+    write_elf64_x86_64_with_relro(&root.join("full.elf"), true);
+    // Partial: PT_GNU_RELRO segment but no BIND_NOW → GOT stays writable.
+    write_elf64_x86_64_with_relro(&root.join("partial.elf"), false);
+    // None: no RELRO at all.
+    write_elf64_x86_64(&root.join("none.elf"));
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "exit={:?}\nstdout={}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+
+    let full = binary(&report, "full.elf");
+    assert_eq!(full["hardening"]["relro"], "full");
+    assert!(!full["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|factor| factor == "hardening:relro_missing" || factor == "hardening:relro_partial"));
+
+    let partial = binary(&report, "partial.elf");
+    assert_eq!(partial["hardening"]["relro"], "partial");
+    assert!(partial["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|factor| factor == "hardening:relro_partial"));
+
+    let none = binary(&report, "none.elf");
+    assert_eq!(none["hardening"]["relro"], "none");
+    assert!(none["triage"]["risk_factors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|factor| factor == "hardening:relro_missing"));
 }
 
 #[test]
@@ -1210,6 +1267,35 @@ fn write_elf64_x86_64_with_gnu_stack(path: &std::path::Path, flags: u32) {
         .copy_from_slice(&0x6474_e551u32.to_le_bytes());
     bytes[program_header_offset + 4..program_header_offset + 8]
         .copy_from_slice(&flags.to_le_bytes());
+    fs::write(path, bytes).unwrap();
+}
+
+fn write_elf64_x86_64_with_relro(path: &std::path::Path, bind_now: bool) {
+    let program_header_offset = 0x40usize;
+    let entry_size = 56usize;
+    let dynamic_offset = 0x100usize;
+    let count: u16 = if bind_now { 2 } else { 1 };
+    let mut bytes = elf64_x86_64_with_markers(&[]);
+    bytes.resize(dynamic_offset + 32, 0);
+    bytes[32..40].copy_from_slice(&(program_header_offset as u64).to_le_bytes());
+    bytes[54..56].copy_from_slice(&(entry_size as u16).to_le_bytes());
+    bytes[56..58].copy_from_slice(&count.to_le_bytes());
+
+    // PH0: PT_GNU_RELRO (0x6474e552), read-only.
+    bytes[program_header_offset..program_header_offset + 4]
+        .copy_from_slice(&0x6474_e552u32.to_le_bytes());
+    bytes[program_header_offset + 4..program_header_offset + 8]
+        .copy_from_slice(&4u32.to_le_bytes());
+
+    if bind_now {
+        // PH1: PT_DYNAMIC pointing at a table holding a DT_BIND_NOW (24) entry + DT_NULL.
+        let dyn_ph = program_header_offset + entry_size;
+        bytes[dyn_ph..dyn_ph + 4].copy_from_slice(&2u32.to_le_bytes());
+        bytes[dyn_ph + 4..dyn_ph + 8].copy_from_slice(&6u32.to_le_bytes());
+        bytes[dyn_ph + 8..dyn_ph + 16].copy_from_slice(&(dynamic_offset as u64).to_le_bytes());
+        bytes[dyn_ph + 32..dyn_ph + 40].copy_from_slice(&32u64.to_le_bytes());
+        bytes[dynamic_offset..dynamic_offset + 8].copy_from_slice(&24u64.to_le_bytes());
+    }
     fs::write(path, bytes).unwrap();
 }
 

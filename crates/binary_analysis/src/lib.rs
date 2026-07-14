@@ -2499,6 +2499,9 @@ fn scan_secret_tokens(value: &str) -> Vec<(&'static str, String)> {
     if let Some(token) = extract_secret(value, "pypi-", 40, is_key_char) {
         found.push(("pypi_token", redact_secret(&token)));
     }
+    if let Some(token) = extract_secret(value, "SG.", 22, is_key_char) {
+        found.push(("sendgrid_key", redact_secret(&token)));
+    }
     found
 }
 

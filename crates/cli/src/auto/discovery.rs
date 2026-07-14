@@ -865,6 +865,10 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
             .into_iter()
             .map(|f| (f.name, f.line))
             .collect(),
+        Lang::Php => crate::auto::php::parse_php(source)
+            .into_iter()
+            .map(|f| (f.name, f.line))
+            .collect(),
     }
 }
 
@@ -1488,6 +1492,25 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
+        Lang::Php => {
+            // M3.11: each PHP function / public static or instance method taking an
+            // input-channel argument is a candidate, driven via the PHP framed driver
+            // (see `crate::auto::php` / `php_build`).
+            for f in crate::auto::php::parse_php(&source) {
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-W", path, f.line, &f.name),
+                    lang: Lang::Php,
+                    source_path: path.to_path_buf(),
+                    line: f.line,
+                    name: f.name,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1611,6 +1634,7 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "cjs"
                     | "rb"
                     | "lua"
+                    | "php"
             )
         })
 }
@@ -1637,7 +1661,8 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         | Lang::Js
         | Lang::Ts
         | Lang::Ruby
-        | Lang::Lua => None,
+        | Lang::Lua
+        | Lang::Php => None,
     }
 }
 
@@ -1666,6 +1691,7 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         }
         "rb" => Some(Lang::Ruby),
         "lua" => Some(Lang::Lua),
+        "php" => Some(Lang::Php),
         _ => None,
     }
 }

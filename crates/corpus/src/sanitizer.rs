@@ -87,6 +87,9 @@ pub fn parse_sanitizer_report(stderr: &str) -> Option<SanitizerReport> {
         // <CWE>: <error>` and hard-halts. The CWE token (computed driver-side from the
         // Lua error message) selects the GF rule.
         .or_else(|| parse_lua_finding(stderr))
+        // A PHP finding: the govfuzz PHP driver prints `== govfuzz php finding:
+        // <CWE>: <error>` and hard-halts. The CWE token selects the GF rule.
+        .or_else(|| parse_php_finding(stderr))
         // A Go finding: the govfuzz Go harness recovers a panic and prints
         // `== govfuzz go finding: <msg>` (or the runtime prints `panic:`/`fatal
         // error:` for an unrecoverable crash). The message selects the GF rule.
@@ -506,6 +509,37 @@ fn parse_lua_finding(stderr: &str) -> Option<SanitizerReport> {
             "Lua finding".to_owned()
         } else {
             format!("Lua finding: {msg}")
+        },
+    })
+}
+
+/// Parse a govfuzz PHP finding out of stderr. The driver prints
+/// `== govfuzz php finding: <CWE-NNN>: <class>: <message>` (the CWE pre-resolved from
+/// the Throwable class/message: divide-by-zero -> CWE-369/GF-205, assertion ->
+/// CWE-617/GF-210, out-of-memory -> CWE-789/GF-209, deep recursion -> CWE-674/GF-207).
+fn parse_php_finding(stderr: &str) -> Option<SanitizerReport> {
+    const MARKER: &str = "== govfuzz php finding:";
+    let line = stderr.lines().find(|l| l.contains(MARKER))?;
+    let after = line.split(MARKER).nth(1).unwrap_or("").trim();
+    let (cwe, msg) = match after.split_once(':') {
+        Some((c, m)) => (c.trim(), m.trim()),
+        None => (after, ""),
+    };
+    let (kind, rule_id) = match cwe {
+        "CWE-674" => ("php-uncontrolled-recursion".to_owned(), "GF-207"),
+        "CWE-789" => ("php-out-of-memory".to_owned(), "GF-209"),
+        "CWE-369" => ("php-arithmetic".to_owned(), "GF-205"),
+        _ => ("php-reachable-assertion".to_owned(), "GF-210"),
+    };
+    Some(SanitizerReport {
+        sanitizer: Sanitizer::AddressSanitizer,
+        kind,
+        rule_id,
+        stack: Vec::new(),
+        message: if msg.is_empty() {
+            "PHP finding".to_owned()
+        } else {
+            format!("PHP finding: {msg}")
         },
     })
 }

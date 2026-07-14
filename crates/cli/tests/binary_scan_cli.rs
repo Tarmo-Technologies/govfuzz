@@ -498,6 +498,40 @@ fn binary_scan_reports_toolchain_provenance() {
 }
 
 #[test]
+fn binary_scan_reports_static_vs_dynamic_linking() {
+    let root = temp_dir("linking");
+    write_elf64_x86_64_with_interp_segment(
+        &root.join("dynamic.elf"),
+        "/lib64/ld-linux-x86-64.so.2",
+    );
+    // A program header but no PT_INTERP and no DT_NEEDED → self-contained static binary.
+    write_elf64_x86_64_with_gnu_stack(&root.join("static.elf"), 0x6);
+
+    let out = root.join("binary");
+    let output = Command::new(govfuzz_bin())
+        .args([
+            "binary-scan",
+            root.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out.join("binary-inventory.json")).unwrap()).unwrap();
+    assert_eq!(
+        binary(&report, "dynamic.elf")["dependencies"]["linking"],
+        "dynamic"
+    );
+    assert_eq!(
+        binary(&report, "static.elf")["dependencies"]["linking"],
+        "static"
+    );
+}
+
+#[test]
 fn binary_scan_extracts_go_buildinfo_modules() {
     let root = temp_dir("go-buildinfo");
     let blob = go_buildinfo_blob();

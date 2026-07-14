@@ -386,6 +386,7 @@ fn binary_scan_detects_and_redacts_embedded_secrets() {
         &[
             b"AKIAIOSFODNN7EXAMPLE",
             b"ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+            b"npm_0123456789abcdefghijklmnopqrstuvwxyz",
             b"-----BEGIN RSA PRIVATE KEY-----",
         ],
     );
@@ -424,13 +425,22 @@ fn binary_scan_detects_and_redacts_embedded_secrets() {
         .collect();
     assert!(kinds.contains(&"aws_access_key_id"), "kinds={kinds:?}");
     assert!(kinds.contains(&"github_token"), "kinds={kinds:?}");
+    assert!(kinds.contains(&"npm_token"), "kinds={kinds:?}");
     assert!(kinds.contains(&"private_key_pem"), "kinds={kinds:?}");
 
-    // The full secret is never emitted — only a redacted preview.
+    // Every secret finding carries a CWE (321 for keys, 798 for credentials).
     let aws = secrets
         .iter()
         .find(|s| s["kind"] == "aws_access_key_id")
         .unwrap();
+    assert_eq!(aws["cwe"], "CWE-798");
+    let pem = secrets
+        .iter()
+        .find(|s| s["kind"] == "private_key_pem")
+        .unwrap();
+    assert_eq!(pem["cwe"], "CWE-321");
+
+    // The full secret is never emitted — only a redacted preview.
     assert_eq!(aws["preview"], "AKIA***[20 chars]");
     assert!(
         !secrets

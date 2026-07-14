@@ -84,6 +84,15 @@ pub enum Lang {
     /// Ruby's normal input-rejection errors are suppressed. Interpreted: the launcher
     /// execs the interpreter on the generated driver. See [`crate::auto::ruby`].
     Ruby,
+    /// Native Lua lane (M3.10). A function taking ≥1 argument is discovered + "built"
+    /// (a `lua` load smoke-test) and fuzzed by the builtin engine driving a persistent
+    /// `lua` process that speaks the framed fork-server protocol and records per-line
+    /// edge coverage via a `debug.sethook` line hook into the shared coverage map — no
+    /// third-party fuzzer. An uncaught bug-class error (integer divide-by-zero,
+    /// stack overflow, out-of-memory, an explicit assert) is a finding (exit 86); Lua's
+    /// normal bad-argument/index-nil errors are suppressed. Interpreted: the launcher
+    /// execs the interpreter on the generated driver. See [`crate::auto::lua`].
+    Lua,
 }
 
 /// CLI-facing selector for `--languages`: the eight fuzzable source languages,
@@ -118,6 +127,8 @@ pub enum LangSelector {
     Ts,
     #[value(name = "ruby", aliases = ["rb"])]
     Ruby,
+    #[value(name = "lua", aliases = ["luajit"])]
+    Lua,
 }
 
 impl LangSelector {
@@ -138,6 +149,7 @@ impl LangSelector {
             LangSelector::Js => Lang::Js,
             LangSelector::Ts => Lang::Ts,
             LangSelector::Ruby => Lang::Ruby,
+            LangSelector::Lua => Lang::Lua,
         }
     }
 }
@@ -199,6 +211,7 @@ impl Candidate {
             Lang::Js => "H-N",
             Lang::Ts => "H-T",
             Lang::Ruby => "H-U",
+            Lang::Lua => "H-V",
         }
     }
 }

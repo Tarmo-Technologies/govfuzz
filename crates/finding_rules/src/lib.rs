@@ -1247,7 +1247,7 @@ pub const RULES: &[Rule] = &[
         id: "GF-429",
         slug: "govfuzz.static/verified-secret",
         name: "Committed secret in a recognized provider format",
-        description: "A string in the recognized format of a live credential — an AWS access-key id (AKIA…), a GitHub/GitLab token (ghp_/glpat-…), a Google API key (AIza…), a Slack/Stripe/SendGrid token, or a PEM PRIVATE KEY block — is present in source. Unlike a name-heuristic secret (GF-423), these formats are distinctive and near-zero false positive: a match is almost certainly a real, exploitable credential. Revoke it, purge it from history, and load secrets from a secret manager / environment at runtime.",
+        description: "A string in the recognized format of a live credential — an AWS access-key id (AKIA…), a GitHub/GitLab token (ghp_/github_pat_/glpat-…), a Google API/OAuth key (AIza…/ya29.…), a Slack/Stripe/SendGrid/npm/PyPI token, an AI-provider key (Anthropic sk-ant-…, OpenAI sk-proj-…, Hugging Face hf_…), or a PEM PRIVATE KEY block — is present in source. Unlike a name-heuristic secret (GF-423), these formats are distinctive and near-zero false positive: a match is almost certainly a real, exploitable credential. Revoke it, purge it from history, and load secrets from a secret manager / environment at runtime.",
         cwe: "CWE-798",
         cwe_top_25: None,
         default_severity: Severity::Critical,

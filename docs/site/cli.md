@@ -154,7 +154,8 @@ ASLR/`DYNAMIC_BASE`, DEP/`NX_COMPAT`, and Control Flow Guard/`GUARD_CF` from the
 `DllCharacteristics` field; for Mach-O, `MH_PIE`, non-executable stack via
 `MH_ALLOW_STACK_EXECUTION`, and code signing via `LC_CODE_SIGNATURE`),
 hardcoded credentials baked into the binary's strings (AWS access keys, GitHub /
-GitLab / Slack / Stripe / Google / npm / PyPI tokens, PEM private keys — each
+GitLab / Slack / Stripe / Google API + OAuth / npm / PyPI / SendGrid tokens, PEM
+private keys — the same provider set as the source-tree GF-429 scan, each
 carrying a CWE (`CWE-798`, or `CWE-321` for private keys), redacted in the report
 and promoted to high-priority triage), triage
 risk factors, container/member provenance, skipped

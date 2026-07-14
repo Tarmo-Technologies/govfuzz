@@ -170,8 +170,9 @@ pub struct BinaryHardening {
     /// Control Flow Guard (PE `GUARD_CF`): `present`/`not_detected` for PE,
     /// `not_applicable` off PE.
     pub control_flow_guard: String,
-    /// Code signing (Mach-O `LC_CODE_SIGNATURE`): `present`/`not_detected` for Mach-O,
-    /// `not_applicable` off Mach-O. An unsigned macOS/iOS binary is a tampering signal.
+    /// Code signing (Mach-O `LC_CODE_SIGNATURE`, or PE Authenticode via the Security
+    /// data directory): `present`/`not_detected` for Mach-O and PE, `not_applicable`
+    /// off them. An unsigned macOS/iOS/Windows binary is a tampering signal.
     pub code_signature: String,
 }
 
@@ -2195,7 +2196,7 @@ fn binary_hardening(kind: BinaryKind, bytes: &[u8]) -> BinaryHardening {
         fortify_source: elf_fortify_status(format, bytes),
         aslr: pe_aslr_status(kind, bytes),
         control_flow_guard: pe_control_flow_guard_status(kind, bytes),
-        code_signature: macho_code_signature_status(kind, bytes),
+        code_signature: code_signature_status(kind, bytes),
     }
 }
 
@@ -2231,15 +2232,47 @@ fn macho_header_flags(kind: BinaryKind, bytes: &[u8]) -> Option<u32> {
 
 /// Code signing via the Mach-O `LC_CODE_SIGNATURE` (0x1d) load command;
 /// `not_applicable` off Mach-O.
-fn macho_code_signature_status(kind: BinaryKind, bytes: &[u8]) -> String {
-    if kind.format != "mach_o" {
-        return "not_applicable".to_owned();
+fn code_signature_status(kind: BinaryKind, bytes: &[u8]) -> String {
+    match kind.format {
+        // Mach-O: the LC_CODE_SIGNATURE (0x1d) load command.
+        "mach_o" => {
+            if macho_has_load_command(kind, bytes, 0x1d) {
+                "present".to_owned()
+            } else {
+                "not_detected".to_owned()
+            }
+        }
+        // PE: a non-empty IMAGE_DIRECTORY_ENTRY_SECURITY (Authenticode certificate table).
+        "pe" => {
+            if pe_is_authenticode_signed(bytes) {
+                "present".to_owned()
+            } else {
+                "not_detected".to_owned()
+            }
+        }
+        _ => "not_applicable".to_owned(),
     }
-    if macho_has_load_command(kind, bytes, 0x1d) {
-        "present".to_owned()
-    } else {
-        "not_detected".to_owned()
+}
+
+/// A PE is Authenticode-signed when the Security data directory (index 4) is non-empty.
+/// The data-directory array begins at optional-header offset 96 (PE32) or 112 (PE32+);
+/// the Security entry's size field sits at `+ 4*8 + 4`.
+fn pe_is_authenticode_signed(bytes: &[u8]) -> bool {
+    let Some(pe_offset) = read_u32_le(bytes, 0x3c).and_then(usize_from_u32) else {
+        return false;
+    };
+    if bytes.get(pe_offset..pe_offset + 4) != Some(&b"PE\0\0"[..]) {
+        return false;
     }
+    let optional_header = pe_offset + 24;
+    let Some(magic) = read_u16(bytes, optional_header, "little") else {
+        return false;
+    };
+    let data_dir = match magic {
+        0x20b => optional_header + 112, // PE32+
+        _ => optional_header + 96,      // PE32
+    };
+    read_u32(bytes, data_dir + 4 * 8 + 4, "little").is_some_and(|size| size != 0)
 }
 
 /// Iterate the Mach-O load commands looking for `target_cmd`.

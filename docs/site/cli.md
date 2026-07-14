@@ -146,7 +146,8 @@ names, risky import APIs, dynamic library/interpreter/RPATH evidence including
 ELF `PT_INTERP`, GNU build-id notes, `DT_NEEDED`, `DT_RPATH`, `DT_RUNPATH`, PE import descriptors,
 and Mach-O dylib load commands, entropy/packed-binary evidence, named
 section/segment evidence,
-exploit-mitigation posture (a `checksec`-style read of RELRO, stack canary,
+exploit-mitigation posture (a `checksec`-style read of RELRO — Full vs Partial
+via `PT_GNU_RELRO` + `BIND_NOW` — stack canary,
 PIE, NX/executable-stack via `PT_GNU_STACK`, and `_FORTIFY_SOURCE`), triage
 risk factors, container/member provenance, skipped
 malformed inputs, and size-limit skips. Writable or relative RPATH/RUNPATH

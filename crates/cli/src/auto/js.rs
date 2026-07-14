@@ -269,6 +269,63 @@ fn parse_assignment(rest: &str) -> Option<(String, Vec<String>)> {
     function_params(rhs).map(|p| (name, p))
 }
 
+/// Parse an object-property function assignment `OBJ.PROP = <fn-expr>` or
+/// `OBJ.PROP = fnRef` (a reference to a top-level function decl). Returns
+/// `(obj, prop, decl)`. Skips the module-export sinks (`module.exports.x`,
+/// `exports.x`) and `this.x`, which are handled by the export scan directly.
+fn parse_obj_property_fn(
+    line: &str,
+    decls: &std::collections::HashMap<String, Decl>,
+    line_no: u32,
+) -> Option<(String, String, Decl)> {
+    let t = line.trim().trim_end_matches(';').trim();
+    let eq = t.find('=')?;
+    // Reject `==`/`=>`/`<=`/`>=`/`!=` — only a plain assignment.
+    if t.as_bytes().get(eq + 1) == Some(&b'=') || t[..eq].ends_with(['!', '<', '>', '=']) {
+        return None;
+    }
+    let lhs = t[..eq].trim();
+    let rhs = t[eq + 1..].trim();
+    let dot = lhs.find('.')?;
+    let obj = &lhs[..dot];
+    let prop = &lhs[dot + 1..];
+    if !is_ident(obj) || !is_ident(prop) || matches!(obj, "module" | "exports" | "this") {
+        return None;
+    }
+    if let Some(params) = function_params(rhs) {
+        Some((
+            obj.to_owned(),
+            prop.to_owned(),
+            Decl {
+                params,
+                line: line_no,
+            },
+        ))
+    } else {
+        decls
+            .get(rhs)
+            .map(|decl| (obj.to_owned(), prop.to_owned(), decl.clone()))
+    }
+}
+
+/// If `t` is an export assignment of a bare identifier — `module.exports = obj` or
+/// an aliased UMD `<mod>.exports = obj` (e.g. `freeModule.exports = he`) — return the
+/// exported object's identifier. Used to resolve an exports object built by property
+/// assignment to its members.
+fn exports_assignment_ident(t: &str) -> Option<&str> {
+    let t = t.trim().trim_end_matches(';').trim();
+    let eq = t.find('=')?;
+    if t.as_bytes().get(eq + 1) == Some(&b'=') {
+        return None; // `==`
+    }
+    let lhs = t[..eq].trim_end();
+    if !lhs.ends_with(".exports") {
+        return None;
+    }
+    let rhs = t[eq + 1..].trim();
+    is_ident(rhs).then_some(rhs)
+}
+
 /// If `rhs` is a function/arrow expression, return its parameter names.
 fn function_params(rhs: &str) -> Option<Vec<String>> {
     let rhs = rhs.trim();
@@ -331,6 +388,34 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
                 params,
                 line: (idx + 1) as u32,
             });
+        }
+    }
+    // Pass 1b: object-property function assignments (`OBJ.PROP = fn` / `= fnRef`), so an
+    // exports object built up by assignment — the common CommonJS/UMD idiom
+    // `var he = {}; he.decode = ...; module.exports = he;` — can be resolved to its
+    // members when that object is exported. Keyed by the object identifier.
+    let mut obj_props: std::collections::HashMap<String, Vec<(String, Decl)>> =
+        std::collections::HashMap::new();
+    // Raw source lines (indices align with `lines`) — needed to recover object-literal
+    // KEYS, which `normalize` strips because it discards quoted-string contents (a key
+    // like `'encode'` survives normalization only as the bare quote).
+    let raw: Vec<&str> = source.lines().collect();
+    for (idx, line) in lines.iter().enumerate() {
+        if let Some((obj, prop, decl)) = parse_obj_property_fn(line, &decls, (idx + 1) as u32) {
+            obj_props.entry(obj).or_default().push((prop, decl));
+        }
+        // `[var|let|const] IDENT = { key: fnRef, ... }` — an exports object built as an
+        // object literal (`he`'s `var he = { 'encode': encode, 'decode': decode };`).
+        // Map each function-valued property (export name = key) to its decl.
+        if let Some(obj) = object_literal_var(line) {
+            for (key, val) in brace_kv(&raw, idx) {
+                if let Some(decl) = decls.get(&val) {
+                    obj_props
+                        .entry(obj.clone())
+                        .or_default()
+                        .push((key, decl.clone()));
+                }
+            }
         }
     }
 
@@ -425,18 +510,31 @@ pub fn parse_js(source: &str) -> Vec<JsFunction> {
             if let Some(params) = function_params(rhs) {
                 push("default".to_owned(), String::new(), &params, line_no);
             } else if rhs.starts_with('{') {
-                // `module.exports = { a, b, c }` — resolve each name to a decl.
-                if let Some(names) = brace_names(&lines, idx) {
-                    for name in names {
-                        if let Some(decl) = decls.get(&name) {
-                            let (p, l) = (decl.params.clone(), decl.line);
-                            push(name.clone(), name, &p, l);
-                        }
+                // `module.exports = { key: fn, shorthand }` — the export name is the KEY
+                // (`require(mod).key`), resolved to the value's decl. Shorthand keys
+                // equal their value.
+                for (key, val) in brace_kv(&raw, idx) {
+                    if let Some(decl) = decls.get(&val) {
+                        let (p, l) = (decl.params.clone(), decl.line);
+                        push(key.clone(), key, &p, l);
                     }
                 }
             } else if let Some(decl) = decls.get(rhs.trim_end_matches(';').trim()) {
                 let (p, l) = (decl.params.clone(), decl.line);
                 push("default".to_owned(), String::new(), &p, l);
+            }
+        }
+
+        // CommonJS / UMD: `module.exports = OBJ` or an aliased `<mod>.exports = OBJ`
+        // (e.g. `freeModule.exports = he`) where OBJ is an exports object built by
+        // property assignment. Resolve each function member to a dotted export the
+        // driver reaches via `require(mod).PROP` at runtime.
+        if let Some(ident) = exports_assignment_ident(t) {
+            if let Some(props) = obj_props.get(ident) {
+                for (prop, decl) in props {
+                    let (p, l) = (decl.params.clone(), decl.line);
+                    push(prop.clone(), prop.clone(), &p, l);
+                }
             }
         }
     }
@@ -771,6 +869,117 @@ fn brace_names(lines: &[String], start: usize) -> Option<Vec<String>> {
     None
 }
 
+/// If `line` is `[var|let|const] IDENT = {` (an object literal assigned to a
+/// variable), return `IDENT`. Used to resolve an exports object defined as a literal.
+fn object_literal_var(line: &str) -> Option<String> {
+    let t = line.trim();
+    let rest = t
+        .strip_prefix("var ")
+        .or_else(|| t.strip_prefix("let "))
+        .or_else(|| t.strip_prefix("const "))?;
+    let eq = rest.find('=')?;
+    let name = rest[..eq].trim();
+    if !is_ident(name) {
+        return None;
+    }
+    rest[eq + 1..]
+        .trim_start()
+        .starts_with('{')
+        .then(|| name.to_owned())
+}
+
+/// Collect an object literal's `key: value` pairs from RAW source lines starting at
+/// `start` (the line with the opening `{`), scanning until the matching close brace.
+/// Operates on raw text (not normalized) so quoted keys survive; tracks strings and
+/// line comments so braces/`}` inside them don't mis-terminate. The key is the property
+/// name (quotes stripped); the value is the leading identifier of the RHS (a function
+/// reference). Shorthand `name` yields `(name, name)`.
+fn brace_kv(raw: &[&str], start: usize) -> Vec<(String, String)> {
+    let mut collected = String::new();
+    let mut depth = 0i32;
+    let mut started = false;
+    let mut in_str: Option<char> = None;
+    for line in raw.iter().skip(start) {
+        let bytes = line.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            let c = bytes[i] as char;
+            if let Some(q) = in_str {
+                if c == '\\' {
+                    i += 2;
+                    continue;
+                }
+                if c == q {
+                    in_str = None;
+                }
+                if started && depth == 1 {
+                    collected.push(c);
+                }
+                i += 1;
+                continue;
+            }
+            if c == '/' && bytes.get(i + 1) == Some(&b'/') {
+                break; // line comment
+            }
+            match c {
+                '\'' | '"' | '`' => {
+                    in_str = Some(c);
+                    if started && depth == 1 {
+                        collected.push(c);
+                    }
+                }
+                '{' => {
+                    depth += 1;
+                    started = true;
+                }
+                '}' => {
+                    depth -= 1;
+                    if started && depth == 0 {
+                        return parse_object_kv(&collected);
+                    }
+                }
+                // Only collect the OUTER object's entries (depth 1); a nested object
+                // value belongs to a property we don't resolve.
+                _ if started && depth == 1 => collected.push(c),
+                _ => {}
+            }
+            i += 1;
+        }
+        collected.push(' ');
+    }
+    Vec::new()
+}
+
+/// Parse `key: value` / shorthand pairs from an object-literal body. Key quotes are
+/// stripped; value is the leading identifier of the RHS.
+fn parse_object_kv(inner: &str) -> Vec<(String, String)> {
+    inner
+        .split(',')
+        .filter_map(|entry| {
+            let (key, val) = match entry.split_once(':') {
+                Some((k, v)) => {
+                    let key = k.trim().trim_matches(['\'', '"']).to_owned();
+                    let val: String = v
+                        .trim()
+                        .chars()
+                        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '$')
+                        .collect();
+                    (key, val)
+                }
+                None => {
+                    let id: String = entry
+                        .trim()
+                        .chars()
+                        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '$')
+                        .collect();
+                    (id.clone(), id)
+                }
+            };
+            (is_ident(&key) && is_ident(&val)).then_some((key, val))
+        })
+        .collect()
+}
+
 fn parse_object_keys(inner: &str) -> Vec<String> {
     inner
         .split(',')
@@ -816,6 +1025,76 @@ module.exports = { parse, helper };
         assert_eq!(fns.len(), 1);
         assert_eq!(fns[0].name, "decode");
         assert_eq!(fns[0].arg_kind, JsArgKind::Buffer); // "buf" is byte-like
+    }
+
+    #[test]
+    fn commonjs_exports_object_built_by_property_assignment() {
+        // `var he = {}; he.decode = decode; module.exports = he;` — an exports object
+        // built by property assignment (govfuzz discovered 0 of these before).
+        let src = "\
+var decode = function(html) { return html.toLowerCase(); };
+var encode = function(string) { return string.toUpperCase(); };
+var he = {};
+he.decode = decode;
+he.encode = encode;
+module.exports = he;
+";
+        let fns = parse_js(src);
+        let paths: Vec<&str> = fns.iter().map(|f| f.export_path.as_str()).collect();
+        assert!(paths.contains(&"decode"), "decode missing: {paths:?}");
+        assert!(paths.contains(&"encode"), "encode missing: {paths:?}");
+    }
+
+    #[test]
+    fn commonjs_exports_object_literal_with_quoted_keys_and_alias() {
+        // The `he` shape: functions defined as var-fn-expressions, collected into an
+        // object literal with QUOTED keys (whose contents `normalize` strips, so the
+        // key must be recovered from the raw source), exported via a UMD alias. The
+        // `'unescape': decode` alias resolves to the `decode` function.
+        let src = "\
+;(function(root) {
+\tvar encode = function(string, options) { return string; };
+\tvar decode = function(html, options) { return html; };
+\tvar he = {
+\t\t'version': '1.2.0',
+\t\t'encode': encode,
+\t\t'decode': decode,
+\t\t'unescape': decode
+\t};
+\tvar freeModule = module;
+\tfreeModule.exports = he;
+}(this));
+";
+        let fns = parse_js(src);
+        let paths: Vec<&str> = fns.iter().map(|f| f.export_path.as_str()).collect();
+        assert!(paths.contains(&"encode"), "encode missing: {paths:?}");
+        assert!(paths.contains(&"decode"), "decode missing: {paths:?}");
+        assert!(
+            paths.contains(&"unescape"),
+            "unescape alias missing: {paths:?}"
+        );
+        // `version` is a string, not a function — it must NOT be a target.
+        assert!(!paths.contains(&"version"), "non-function property leaked");
+    }
+
+    #[test]
+    fn non_exported_object_members_are_not_discovered() {
+        // An internal object that is NOT exported must not have its members discovered
+        // (no false attacker-reachable targets).
+        let src = "\
+var helper = function(x) { return x; };
+var internal = {};
+internal.helper = helper;
+module.exports = { real: helper };
+";
+        let fns = parse_js(src);
+        let paths: Vec<&str> = fns.iter().map(|f| f.export_path.as_str()).collect();
+        assert!(paths.contains(&"real"), "explicit export missing");
+        // `helper` reached only via the non-exported `internal` object → not a target.
+        assert!(
+            !paths.contains(&"helper"),
+            "internal (non-exported) object member leaked: {paths:?}"
+        );
     }
 
     #[test]

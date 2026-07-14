@@ -861,6 +861,10 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
             .into_iter()
             .map(|m| (m.name, m.line))
             .collect(),
+        Lang::Lua => crate::auto::lua::parse_lua(source)
+            .into_iter()
+            .map(|f| (f.name, f.line))
+            .collect(),
     }
 }
 
@@ -1465,6 +1469,25 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 });
             }
         }
+        Lang::Lua => {
+            // M3.10: each callable Lua function taking ≥1 input-channel argument is a
+            // candidate, driven via the Lua framed driver (see `crate::auto::lua` /
+            // `lua_build`). The first argument is the attacker-controlled input.
+            for f in crate::auto::lua::parse_lua(&source) {
+                out.push(Candidate {
+                    harness_id: stable_harness_id("H-V", path, f.line, &f.name),
+                    lang: Lang::Lua,
+                    source_path: path.to_path_buf(),
+                    line: f.line,
+                    name: f.name,
+                    score: 50,
+                    is_static: false,
+                    foreign_guard: None,
+                    input_reachability: Some(target_rank::InputReachability::AttackerReachable),
+                    dialect,
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -1587,6 +1610,7 @@ fn has_targetable_extension(path: &Path) -> bool {
                     | "mjs"
                     | "cjs"
                     | "rb"
+                    | "lua"
             )
         })
 }
@@ -1612,7 +1636,8 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
         | Lang::CSharp
         | Lang::Js
         | Lang::Ts
-        | Lang::Ruby => None,
+        | Lang::Ruby
+        | Lang::Lua => None,
     }
 }
 
@@ -1640,6 +1665,7 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
             Some(Lang::Ts)
         }
         "rb" => Some(Lang::Ruby),
+        "lua" => Some(Lang::Lua),
         _ => None,
     }
 }

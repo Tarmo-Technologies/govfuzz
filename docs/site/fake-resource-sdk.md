@@ -19,10 +19,11 @@ metadata only — actual interception is done by
 `#[no_mangle] extern "C" fn` declarations the dynamic linker
 resolves by symbol name.
 
-A plain-data `ManifestEntry` slice (`MANIFEST` in `manifest.rs`)
-mirrors the trait registry so the cli can list the inventory
-without linking interceptors. A unit test in `registry.rs` enforces
-the two stay in sync.
+A plain-data `ManifestEntry` slice (`MANIFEST`, defined in the
+cli-safe `runtrace_manifest` crate and re-exported as
+`manifest::MANIFEST`) mirrors the trait registry so the cli can list
+the inventory without linking interceptors. A unit test in
+`registry.rs` enforces the two stay in sync.
 
 ## Adding a plugin
 
@@ -37,8 +38,8 @@ For a hypothetical `clock` plugin that fakes `clock_gettime`:
      a deterministic timespec when enabled and forwards to the real
      symbol otherwise.
 2. Register the new module in `hooks/mod.rs`.
-3. Append a matching `ManifestEntry::gated(...)` to
-   `manifest::MANIFEST` and a `&Clock` entry to
+3. Append a matching `ManifestEntry::gated(...)` to `MANIFEST` in the
+   `runtrace_manifest` crate and a `&Clock` entry to
    `registry::REGISTRY`.
 4. The cross-check unit test in `registry.rs` verifies the two
    slices agree.
@@ -71,16 +72,17 @@ Do:
 NAME                STATE        ENV_VAR                     INTERCEPTS
 env                 always-on    (always-on)                 getenv secure_getenv
 net                 always-on    (always-on)                 connect getaddrinfo
-fs                  always-on    (always-on)                 open openat close stat fopen unlink unlinkat remove mkdir mkdirat
-dl                  always-on    (always-on)                 dlopen dlclose
+fs                  always-on    (always-on)                 open openat close stat fopen unlink unlinkat remove mkdir mkdirat rmdir rename renameat symlink symlinkat link linkat truncate
+dl                  always-on    (always-on)                 dlopen dlmopen dlclose
 dlsym               always-on    (always-on)                 dlsym
-proc                always-on    (always-on)                 system popen
+proc                always-on    (always-on)                 system popen execv execvp execvpe execve fexecve posix_spawn posix_spawnp
 format              always-on    (always-on)                 printf fprintf sprintf snprintf dprintf
 assertion           always-on    (always-on)                 __assert_fail __assert_perror_fail
 identity            env-gated    GOVFUZZ_FAKE_IDENTITY       getpid getuid getgid getppid
 cmplog              env-gated    GOVFUZZ_CMPLOG              strcmp strncmp memcmp
 mem                 always-on    (always-on)                 shm_open shm_unlink shmget shmat shmdt shmctl mmap mmap64
 mqueue              always-on    (always-on)                 mq_open mq_receive mq_timedreceive mq_send mq_getattr mq_close mq_unlink
+sql                 always-on    (always-on)                 sqlite3_exec sqlite3_prepare sqlite3_prepare_v2 sqlite3_prepare_v3 PQexec PQexecParams mysql_query mysql_real_query
 ```
 
 ## Reference plugin: Identity

@@ -4,7 +4,8 @@
 
 `docs.govfuzz.dev` is the public documentation site for GovFuzz operators,
 release engineers, and IDE integrators. GovFuzz is an offline fuzz lab
-generator for legacy Ada, C, C++, Rust, Java, Python, Perl, and Go software, with
+generator for sixteen languages — Ada, C, C++, Rust, Java, Python, Perl, Go,
+COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP — with
 source-generated harnesses and a permissively licensed core.
 
 ## Start Here
@@ -33,9 +34,9 @@ source-generated harnesses and a permissively licensed core.
 - [Architecture](./architecture/) — pipeline overview and the crates that
   make it up.
 - [CLI](./cli/) — the stable `govfuzz` operator surface.
-- [Auto](./auto/) — `govfuzz auto <PATH>` sweeps any Ada / C / C++ / Rust / Java /
-  Python / Perl / Go tree (including code that does not build) and produces a fuzz
-  lab plus a findings report without manual harnessing.
+- [Auto](./auto/) — `govfuzz auto <PATH>` sweeps a source tree in any of the
+  sixteen supported languages (including code that does not build) and produces a
+  fuzz lab plus a findings report without manual harnessing.
 - [C and C++ Fuzzing](./c-cpp/) — C/C++ prerequisites, manual commands,
   supported API shapes, engine modes, and current limits.
 - [Sanitizers](./sanitizers/) — the `--sanitizers` matrix, what the default

@@ -19,7 +19,7 @@ govfuzz auto path/to/src --work-dir govfuzz_work --per-target-time 60
 For manual control against one C++ function:
 
 ```sh
-govfuzz list-targets path/to/src --top 20
+govfuzz list targets path/to/src --top 20
 govfuzz generate-harness path/to/src/parser.cpp \
   --target parse \
   --output govfuzz_work/generated_harnesses

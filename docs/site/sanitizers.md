@@ -14,8 +14,10 @@ flags (not tunable through `--sanitizers`); Java runs in the JVM under govfuzz's
 own bytecode coverage agent, where LLVM sanitizers do not apply; the interpreted
 Python and Perl lanes get coverage from `sys.monitoring`/`DB::DB` edge counters
 and detect faults through interpreter exceptions/dies plus the LD_PRELOAD runtrace
-shim; and the compiled Go lane recovers panics from its native binary (coverage
-currently black-box) — none of these are LLVM-sanitizer paths.
+shim; and the compiled Go lane recovers panics from its native binary and gets
+real edge coverage from a `-cover -covermode=atomic` build (folded into the
+shared edge map; black-box only if the `-cover` build fails) — none of these are
+LLVM-sanitizer paths.
 
 ## `--sanitizers <set | none>`
 
@@ -35,7 +37,7 @@ cross-compiled (qemu-user / wine) paths: Ada uses source instrumentation, the JV
 lane is covered by the bytecode agent, the interpreted Python and Perl lanes trace
 coverage through `sys.monitoring`/`DB::DB` and catch faults via interpreter
 exceptions/dies plus the runtrace shim, the Go lane recovers panics from its native
-binary (coverage currently black-box), and cross/emulated builds drop host
+binary with real edge coverage from a `-cover` build, and cross/emulated builds drop host
 sanitizers (ASan's shadow memory does not survive qemu-user/wine) — while the Rust
 lane always applies ASan + sancov via hardcoded `RUSTFLAGS` that `--sanitizers`
 does not control.

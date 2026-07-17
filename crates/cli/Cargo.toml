@@ -37,6 +37,7 @@ config = { path = "../config" }
 cpp_parser = { path = "../cpp_parser" }
 confidence_model = { path = "../confidence_model" }
 corpus = { path = "../corpus" }
+crash_diag = { path = "../crash_diag" }
 event_log = { path = "../event_log" }
 fake_corba = { path = "../fake_corba" }
 finding_rules = { path = "../finding_rules" }

@@ -18,6 +18,7 @@ members = [
     "crates/config",
     "crates/continuous_daemon",
     "crates/corpus",
+    "crates/crash_diag",
     "crates/daemon",
     "crates/discovery",
     "crates/event_log",

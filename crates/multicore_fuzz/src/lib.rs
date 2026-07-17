@@ -117,6 +117,17 @@ pub struct WorkerReport {
     pub worker_id: u32,
     pub work_dir: PathBuf,
     pub exit_code: Option<i32>,
+    /// Terminating signal, when the worker was killed by one (e.g. 9 = SIGKILL,
+    /// commonly the OOM killer). `None` on a normal exit. Kept separate from
+    /// `exit_code`, which is `None` for *any* signal death and so cannot by
+    /// itself distinguish "OOM-killed" from "exited without a code".
+    #[serde(default)]
+    pub term_signal: Option<i32>,
+    /// Path to this worker's captured stderr. When a worker crashes, its own
+    /// diagnostics (sanitizer report, panic, "out of memory") land here instead
+    /// of being discarded into an undrained pipe.
+    #[serde(default)]
+    pub stderr_log: PathBuf,
     pub findings_count: usize,
     pub env_keys: Vec<String>,
 }
@@ -153,7 +164,7 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
     std::fs::create_dir_all(&campaign_dir)?;
     std::fs::create_dir_all(&shared_queue)?;
     let shared_seed_files = queue_seed_files(&shared_queue)?;
-    let mut children: Vec<(u32, PathBuf, Vec<String>, std::process::Child)> = Vec::new();
+    let mut children: Vec<(u32, PathBuf, PathBuf, Vec<String>, std::process::Child)> = Vec::new();
     let worker_namespace = sanitize_worker_namespace(&config.harness_id);
     for worker_id in 0..workers {
         // Namespace per harness so two campaigns sharing one work_dir (e.g.
@@ -169,6 +180,12 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
             .iter()
             .map(|(key, _)| key.clone())
             .collect::<Vec<_>>();
+        // Capture the worker's stderr to a durable file rather than an undrained
+        // pipe: a crashing worker's own diagnostics (sanitizer report, panic,
+        // "out of memory") must survive, and a piped-but-unread stderr can also
+        // wedge the worker once the pipe buffer fills.
+        let stderr_log = worker_dir.join("worker-stderr.log");
+        let stderr_file = std::fs::File::create(&stderr_log)?;
         let mut cmd = Command::new(&config.govfuzz_bin);
         cmd.arg("fuzz")
             .arg(&worker_dir)
@@ -181,7 +198,7 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
             .env("GOVFUZZ_CAMPAIGN_DIR", &campaign_dir)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::piped());
+            .stderr(Stdio::from(stderr_file));
         if let Some(iterations) = config.per_worker_iterations {
             cmd.arg("--iterations").arg(iterations.to_string());
         }
@@ -201,7 +218,7 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
         let child = cmd
             .spawn()
             .map_err(|source| MulticoreError::WorkerSpawn { worker_id, source })?;
-        children.push((worker_id, worker_dir, env_keys, child));
+        children.push((worker_id, worker_dir, stderr_log, env_keys, child));
     }
     let workers_started = children.len() as u32;
     let mut workers_completed = 0u32;
@@ -214,17 +231,21 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
         let should_kill =
             enforce_deadline && start.elapsed() > config.time_budget.saturating_add(kill_grace);
         let mut still_pending = Vec::with_capacity(pending.len());
-        for (worker_id, worker_dir, env_keys, mut child) in pending.drain(..) {
+        for (worker_id, worker_dir, stderr_log, env_keys, mut child) in pending.drain(..) {
             match child.try_wait() {
                 Ok(Some(status)) => {
                     if status.success() {
                         workers_completed += 1;
+                    } else {
+                        report_abnormal_worker(worker_id, &status, &stderr_log);
                     }
                     let findings_count = count_findings(&worker_dir);
                     per_worker.push(WorkerReport {
                         worker_id,
                         work_dir: worker_dir,
                         exit_code: status.code(),
+                        term_signal: crash_diag::describe_exit(&status).signal,
+                        stderr_log,
                         findings_count,
                         env_keys,
                     });
@@ -238,11 +259,14 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
                             worker_id,
                             work_dir: worker_dir,
                             exit_code: None,
+                            // Orchestrator-initiated deadline kill, not a crash.
+                            term_signal: None,
+                            stderr_log,
                             findings_count,
                             env_keys,
                         });
                     } else {
-                        still_pending.push((worker_id, worker_dir, env_keys, child));
+                        still_pending.push((worker_id, worker_dir, stderr_log, env_keys, child));
                     }
                 }
                 Err(error) => return Err(MulticoreError::Io(error)),
@@ -281,6 +305,44 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
     };
     write_campaign_artifacts(&config.work_dir, &summary)?;
     Ok(summary)
+}
+
+/// Emit a live diagnostic when a worker exits abnormally so a "Killed" worker
+/// is no longer silent. Decodes the terminating signal (SIGKILL is flagged as a
+/// likely OOM), points at the captured stderr, surfaces its last lines, and —
+/// for a SIGKILL — correlates against the kernel OOM log.
+fn report_abnormal_worker(worker_id: u32, status: &std::process::ExitStatus, stderr_log: &Path) {
+    let desc = crash_diag::describe_exit(status);
+    eprintln!(
+        "govfuzz: fuzz worker {worker_id} {} (stderr: {})",
+        desc.human(),
+        stderr_log.display()
+    );
+    if let Some(tail) = tail_of(stderr_log, 20) {
+        if !tail.trim().is_empty() {
+            eprintln!("govfuzz: worker {worker_id} stderr tail:\n{tail}");
+        }
+    }
+    if desc.likely_oom {
+        if let Some(line) = crash_diag::scan_kernel_oom("govfuzz") {
+            eprintln!("govfuzz: kernel OOM log for worker {worker_id}: {line}");
+        } else {
+            eprintln!(
+                "govfuzz: worker {worker_id} was SIGKILLed with no catchable cause — \
+                 this is almost always the OOM killer or a cgroup memory limit. \
+                 Check `dmesg`/`journalctl -k` for an out-of-memory line, or lower \
+                 the worker count / memory footprint."
+            );
+        }
+    }
+}
+
+/// Read the last `max_lines` lines of a (small) log file, best-effort.
+fn tail_of(path: &Path, max_lines: usize) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let lines: Vec<&str> = text.lines().collect();
+    let start = lines.len().saturating_sub(max_lines);
+    Some(lines[start..].join("\n"))
 }
 
 fn env_for_worker(envs: &[Vec<(String, String)>], worker_id: u32) -> Vec<(String, String)> {
@@ -792,6 +854,8 @@ mod tests {
                 worker_id: 0,
                 work_dir: dir.join("worker-0"),
                 exit_code: Some(0),
+                term_signal: None,
+                stderr_log: dir.join("worker-0/worker-stderr.log"),
                 findings_count: 1,
                 env_keys: Vec::new(),
             },
@@ -799,6 +863,8 @@ mod tests {
                 worker_id: 1,
                 work_dir: dir.join("worker-1"),
                 exit_code: Some(0),
+                term_signal: None,
+                stderr_log: dir.join("worker-1/worker-stderr.log"),
                 findings_count: 1,
                 env_keys: Vec::new(),
             },
@@ -905,6 +971,55 @@ mod tests {
         let summary = run_multicore(&config).expect("run ok");
         assert_eq!(summary.workers_started, 2);
         assert_eq!(summary.workers_completed, 2);
+        // Every worker report now carries a captured-stderr path (the file is
+        // created before spawn) and a decoded terminating signal (None for a
+        // clean /bin/true exit).
+        for report in &summary.per_worker {
+            assert!(
+                report.stderr_log.is_file(),
+                "worker {} stderr log should exist at {}",
+                report.worker_id,
+                report.stderr_log.display()
+            );
+            assert_eq!(report.term_signal, None);
+            assert_eq!(report.exit_code, Some(0));
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_multicore_records_terminating_signal_for_a_killed_worker() {
+        // A worker that SIGKILLs itself models the OOM-kill case: exit_code is
+        // None but term_signal must capture signal 9 so the death is identifiable.
+        let work = tempdir("killed-worker");
+        std::fs::create_dir_all(work.join("build").join("H-KILL")).unwrap();
+        let script = work.join("self-kill.sh");
+        std::fs::write(&script, "#!/bin/sh\nkill -9 $$\n").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let config = MulticoreConfig {
+            work_dir: work,
+            harness_id: "H-KILL".to_owned(),
+            workers: WorkerCount::Fixed(1),
+            per_worker_iterations: Some(0),
+            time_budget: Duration::from_secs(0),
+            govfuzz_bin: script,
+            per_worker_env: Vec::new(),
+            extra_worker_args: Vec::new(),
+            kill_grace: None,
+        };
+        let summary = run_multicore(&config).expect("run ok");
+        assert_eq!(summary.workers_completed, 0);
+        let report = &summary.per_worker[0];
+        assert_eq!(report.exit_code, None);
+        assert_eq!(
+            report.term_signal,
+            Some(9),
+            "SIGKILLed worker must record signal 9 (was: {:?})",
+            report.term_signal
+        );
     }
 
     #[cfg(unix)]

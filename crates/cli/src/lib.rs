@@ -19,6 +19,7 @@ mod clean;
 mod cmplog_cli;
 mod corpus;
 mod dashboard;
+mod diagnostics;
 mod differential;
 mod env_capsule;
 mod explain;
@@ -276,7 +277,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    let args = match Args::try_parse_from(args) {
+    // Materialize argv up front so the diagnostics session can record the exact
+    // invocation (clap consumes the iterator during parsing).
+    let argv: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    let args = match Args::try_parse_from(argv.clone()) {
         Ok(args) => args,
         Err(error) => {
             let _ = error.print();
@@ -297,7 +301,19 @@ where
         return 2;
     }
 
-    match args.command {
+    // Bracket the whole invocation with a diagnostics session so a run that is
+    // SIGKILLed (typically the OOM killer) leaves a durable trail: a
+    // `session_start` with no matching `session_end`, plus a memory-watermark
+    // heartbeat for the memory-heavy fuzzing commands.
+    let heavy = command_is_memory_heavy(&args.command);
+    let label = argv
+        .get(1)
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .filter(|token| !token.starts_with('-'))
+        .unwrap_or_else(|| "govfuzz".to_owned());
+    let session = diagnostics::Session::start(&argv, &label, heavy);
+
+    let exit_code = match args.command {
         Some(Command::Auto(auto_args)) => auto::cli::run(auto_args),
         // Nested parents. The flat BinaryScan/.../ListOracles arms below are
         // retained for the hidden back-compat aliases.
@@ -386,6 +402,22 @@ where
         Some(Command::Sloc(args)) => sloc::run(args),
         Some(Command::Stub(stub_args)) => stub::run(stub_args),
         None => 0,
+    };
+    session.finish(exit_code);
+    exit_code
+}
+
+/// Whether a command runs a long, memory-intensive workload where an OOM kill
+/// is plausible and the memory-watermark heartbeat earns its keep.
+fn command_is_memory_heavy(command: &Option<Command>) -> bool {
+    match command {
+        Some(Command::Auto(_))
+        | Some(Command::Fuzz(_))
+        | Some(Command::Ci(_))
+        | Some(Command::Differential(_))
+        | Some(Command::BinaryFuzz(_)) => true,
+        Some(Command::Binary(binary)) => matches!(binary.command, BinaryCommand::Fuzz(_)),
+        _ => false,
     }
 }
 

@@ -473,6 +473,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "crash_diag"
+version = "0.2.15"
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -782,6 +786,7 @@ dependencies = [
  "config",
  "corpus",
  "cpp_parser",
+ "crash_diag",
  "event_log",
  "fake_corba",
  "finding_rules",
@@ -1226,6 +1231,7 @@ name = "multicore_fuzz"
 version = "0.2.15"
 dependencies = [
  "corpus",
+ "crash_diag",
  "serde",
  "serde_json",
  "thiserror 1.0.69",

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "multicore_fuzz"
+name = "crash_diag"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,8 +12,3 @@ repository.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-corpus = { path = "../corpus" }
-crash_diag = { path = "../crash_diag" }
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true

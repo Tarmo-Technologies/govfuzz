@@ -2,15 +2,18 @@
 
 # Architecture
 
-GovFuzz is an offline fuzzing toolchain for government legacy Ada, C, C++,
-Java, Rust, Python, Perl, and Go software. The product core is permissive-licensed end-to-end (Apache-2.0 / MIT /
-BSD) and never links against GPL or LGPL libraries. External tools — FSF GNAT,
-GPRbuild, clang, clang++, AFL++, LibAFL — may be invoked as subprocesses.
+GovFuzz is an offline fuzzing toolchain for sixteen languages — Ada, C, C++,
+Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby,
+Lua, and PHP — with a focus on the legacy and mission-critical code common in
+government systems. The product core is permissive-licensed end-to-end
+(Apache-2.0 / MIT / BSD) and never links against GPL or LGPL libraries. External
+tools — FSF GNAT, GPRbuild, clang, clang++, AFL++, LibAFL — may be invoked as
+subprocesses.
 
 ## Pipeline
 
-1. **Parse** Ada, C, C++, Java, Rust, Python, Perl, and Go sources with
-   permissive parser front ends.
+1. **Parse** sources across all sixteen supported languages with permissive
+   parser front ends.
 2. **Rank** fuzz targets from subprograms, exception handlers, type
    information, and call relationships.
 3. **Generate** direct-call harnesses and partial-build projects around
@@ -30,13 +33,15 @@ GPRbuild, clang, clang++, AFL++, LibAFL — may be invoked as subprocesses.
 `govfuzz auto` runs steps 1–7 in one shot. Ada, C, and C++ targets are
 harnessed and built inside an iterative repair loop; Rust and Java targets are
 prebuilt before that loop and skip diagnostic-driven repair, then join the same
-fuzzing cascade. The interpreted Python and Perl lanes substitute a
-compile/import smoke-test (`py_compile` / `perl -c`) for the repair loop and run
-the harness under a persistent interpreter; Go targets compile with `go build`
-into a native fork-server binary. Every lane drives govfuzz's own builtin engine
+fuzzing cascade. The remaining lanes substitute a compile/import/interpreter
+smoke-test for the repair loop and run under a persistent interpreter or native
+binary: Python (`py_compile`), Perl (`perl -c`), Go (`go build`), COBOL
+(GnuCOBOL `cobc`), Fortran (`gfortran`), C# (`dotnet` + SharpFuzz),
+JavaScript/TypeScript (a warm Node process; TS via esbuild), and Ruby, Lua, and
+PHP under their own interpreters. Every lane drives govfuzz's own builtin engine
 over the framed fork-server protocol — no third-party fuzzer. The individual
 subcommands
-(`scan`, `list-targets`, `generate-harness`, `build`, `fuzz`, `replay`,
+(`scan`, `list targets`, `generate-harness`, `build`, `fuzz`, `replay`,
 `minimize`, `report`) expose the same pipeline for manual use.
 
 ## Crate Boundaries
@@ -46,17 +51,20 @@ Parsers and rankers:
 - `crates/ada_parser` — Ada syntax and source ranges.
 - `crates/c_parser` — C syntax, functions, declarations.
 - `crates/cpp_parser` — C++ syntax, functions, declarations.
+- `crates/{go,java,perl,python,rust}_parser` — dedicated front ends for the Go,
+  Java, Perl, Python, and Rust lanes (the remaining lanes discover via
+  tree-sitter or lane-specific parsing in the CLI lane builders).
 - `crates/idl_parser` — CORBA IDL subset.
-- `crates/target_rank` — score candidate fuzz entry points across Ada, C, C++,
-  Java, Rust, Python, Perl, and Go. The parity program is moving C/C++ from
-  signature heuristics toward build-context and lifecycle-aware ranking.
+- `crates/target_rank` — score candidate fuzz entry points across the supported
+  languages. The parity program is moving C/C++ from signature heuristics toward
+  build-context and lifecycle-aware ranking.
 
 Harness and project synthesis:
 
 - `crates/harness_gen` — emits Ada, C, C++, Java, and Rust harnesses plus
-  build-local support files. The Python, Perl, and Go harnesses are emitted by the
-  CLI lane builders (`crates/cli/src/auto/{python,perl,go}_build.rs`) against the
-  `python_runtime`/`perl_runtime` decode runtimes / inline Go decode.
+  build-local support files. The remaining lanes emit their harnesses from the
+  CLI lane builders (`crates/cli/src/auto/{python,perl,go,cobol,fortran,csharp,js,ruby,lua,php}_build.rs`)
+  against the matching `*_runtime/` decode runtimes (or inline decode for Go).
 - `crates/project_synth` — Ada partial-build `.gpr` generation.
 - `crates/stub_gen` — Ada package / identifier / visibility stubs.
 - `crates/c_stub_gen` — C placeholder headers, typedef placeholders,
@@ -83,10 +91,9 @@ Output and policy:
 
 - `crates/report` — JSON, Markdown, SARIF, JUnit, and CSV emitters.
 - `crates/confidence_model` — calibrated finding confidence.
-- `crates/finding_rules` — finding-class registry (GF-101…GF-541 across
-  logic, memory, injection, and static classes for Ada, C, C++, Rust, Java,
-  Python, Perl, and Go) plus the executable-oracle registry that emits
-  runtime-confirmed
+- `crates/finding_rules` — finding-class registry (GF-101…GF-563, plus GF-668,
+  across logic, memory, injection, and static classes for the supported
+  languages) plus the executable-oracle registry that emits runtime-confirmed
   (`confirmation: "runtime"`) hits during fuzzing.
 - `crates/license_policy` — profile-driven probe and dependency gates.
 - `crates/spdx_check` — SPDX metadata audit.

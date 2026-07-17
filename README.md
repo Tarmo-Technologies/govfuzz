@@ -9,7 +9,7 @@
 </div>
 
 <p align="center">
-An automated fuzzer and harness generator for Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, JavaScript, and TypeScript —
+An automated fuzzer and harness generator for Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP —
 including the legacy language versions and hard-to-build codebases common in government and
 military systems. Point it at a source tree; it finds the fuzzable functions, writes the
 harnesses, recovers the build, and fuzzes — no test harness and no working build required.
@@ -80,15 +80,16 @@ annotations, posts a sticky summary comment, and fails only on a fuzz-confirmed 
 - **Works on trees that don't build.** It recovers the build context and repairs missing
   headers, types, and undefined symbols; unbuildable code still gets static + taint coverage
   instead of a hard failure.
-- **Thirteen languages, one engine.** Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran,
-  C#, JavaScript, and TypeScript are peer first-class lanes over a shared coverage-guided
-  fork-server engine — no cargo-fuzz, Jazzer, Atheris, SharpFuzz, jsfuzz, or `go test -fuzz`
-  required (AFL++ is an optional adapter for native C/C++). COBOL is fuzzed via GnuCOBOL
-  (`cobc -C`, the first turnkey COBOL fuzzer → [cobol.md](docs/site/cobol.md)); Fortran via
-  gfortran with ASan (→ [fortran.md](docs/site/fortran.md)); C# via `dotnet` + SharpFuzz IL
+- **Sixteen languages, one engine.** Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran,
+  C#, JavaScript, TypeScript, Ruby, Lua, and PHP are peer first-class lanes over a shared
+  coverage-guided fork-server engine — no cargo-fuzz, Jazzer, Atheris, SharpFuzz, jsfuzz, or
+  `go test -fuzz` required (AFL++ is an optional adapter for native C/C++). COBOL is fuzzed via
+  GnuCOBOL (`cobc -C`, the first turnkey COBOL fuzzer → [cobol.md](docs/site/cobol.md)); Fortran
+  via gfortran with ASan (→ [fortran.md](docs/site/fortran.md)); C# via `dotnet` + SharpFuzz IL
   instrumentation, warm-CLR and zero-harness (→ [csharp.md](docs/site/csharp.md)); JavaScript and
   TypeScript via a warm Node process with real V8 block coverage (TS transpiled with esbuild)
-  (→ [javascript.md](docs/site/javascript.md)).
+  (→ [javascript.md](docs/site/javascript.md)); Ruby, Lua, and PHP run under their own
+  interpreters with in-process edge coverage.
 - **Legacy-first.** Legacy dialects (e.g. Ada 83, K&R C, pre-C++98) and non-UTF-8
   (Latin-1/Windows-1252) sources are transcoded and fuzzed, not skipped.
 - **Runs air-gapped.** No network access, no telemetry, no auto-update — built for
@@ -98,12 +99,13 @@ annotations, posts a sticky summary comment, and fails only on a fuzz-confirmed 
 
 ## What It Does
 
-- **Fuzzing** — `govfuzz auto` across all eight lanes, with build recovery, typed harness/stub
+- **Fuzzing** — `govfuzz auto` across all sixteen lanes, with build recovery, typed harness/stub
   generation, a coverage-guided engine (edge coverage + CmpLog/RedQueen), and an optional
   AFL++ adapter for native C/C++. → [auto.md](docs/site/auto.md)
 - **Static analysis (SAST)** — `govfuzz static-scan` (or `auto --static`) runs an offline rule
-  pack across all eight lanes plus JavaScript/TypeScript and config/IaC, with taint traces and
-  SARIF codeFlows; fuzzing then confirms static findings. → [static CWE coverage](docs/site/static-cwe-coverage.md)
+  pack across eight of those languages (Ada, C, C++, Rust, Java, Python, Perl, Go) plus
+  JavaScript/TypeScript, QML, and config/IaC, with taint traces and SARIF codeFlows; fuzzing
+  then confirms static findings. → [static CWE coverage](docs/site/static-cwe-coverage.md)
 - **SBOM / SCA** — multi-language SBOMs across 12 ecosystems (CycloneDX + OpenVEX) with
   offline CVE/VEX correlation.
 - **Binary triage** — `govfuzz binary scan` / `binary fuzz` over ELF, PE, Mach-O, and raw

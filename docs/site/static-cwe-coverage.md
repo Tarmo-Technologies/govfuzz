@@ -37,7 +37,7 @@ a maybe.
 | CWE-918 | SSRF (attacker-controlled URL) | | | | ✅ | ✅ | ✅ | ✅ | | ✅ | ✅⁵ |
 | CWE-295 | TLS verification disabled | | | | ✅ | ✅ | ✅ | ✅ | | ✅ | |
 | CWE-319 | Cleartext/downgrade transport controls | | | ✅³ | | | | ✅⁴ | | ✅⁶ | |
-| CWE-22 | Path traversal | ✅ | ✅ | ✅ | ✅ | | | ✅¹ | | ✅⁷ | |
+| CWE-22 | Path traversal | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅¹ | ✅ | ✅⁷ | |
 | CWE-327 | Weak cryptography | | ✅ | ✅ | ✅ | | ✅ | ✅ | ✅ | ✅ | |
 | CWE-338 | Insecure randomness (security context) | | ✅ | ✅ | ✅ | | ✅ | ✅ | ✅ | ✅ | |
 | CWE-347 | Improper JWT signature verification | | | | | | ✅ | ✅ | | ✅ | |

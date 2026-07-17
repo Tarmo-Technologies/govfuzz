@@ -38,7 +38,13 @@ driver hard-halts with exit 86). The error is classified into a GF rule + CWE:
 |---|---|---|
 | `RangeError: Maximum call stack size exceeded` | GF-207 | CWE-674 (uncontrolled recursion) |
 | `RangeError: Invalid array/string length`, out-of-memory | GF-209 | CWE-789 (resource exhaustion) |
-| `ReferenceError`, `AssertionError`, an explicit `throw`, any other `Error` | GF-210 | reachable crash |
+| `ReferenceError`, an explicit `throw new Error(...)`, and other ECMAScript built-in error types | GF-210 | reachable crash |
+
+Errors whose `.name` is not an ECMAScript built-in — Node's `AssertionError`, a
+library's `ValidationError`, and similar — are treated as ordinary input
+rejection and suppressed, as are the `TypeError`/`SyntaxError` artifacts of the
+untyped lane synthesizing only the first argument, so they do not become GF-210
+findings.
 
 Beyond uncaught exceptions, the driver runs **taint-confirmed bug detectors** (the
 JS analog of govfuzz's native oracles, and of Jazzer.js's bug detectors):

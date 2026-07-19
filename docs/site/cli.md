@@ -11,10 +11,10 @@ checks.
 ```sh
 govfuzz scan path/to/src --work-dir govfuzz_work
 govfuzz static-scan path/to/src --out govfuzz_work/static --sarif
-govfuzz binary-scan path/to/bin-or-firmware --out govfuzz_work/binary
-govfuzz --profile external-tools binary-adapter path/to/bin --adapter rizin --out govfuzz_work/binary-adapter
-govfuzz binary-fuzz path/to/bin --work-dir govfuzz_work --input-mode stdin --seed-input smoke
-govfuzz list-targets path/to/pkg.adb --top 20
+govfuzz binary scan path/to/bin-or-firmware --out govfuzz_work/binary
+govfuzz --profile external-tools binary adapter path/to/bin --adapter rizin --out govfuzz_work/binary-adapter
+govfuzz binary fuzz path/to/bin --work-dir govfuzz_work --input-mode stdin --seed-input smoke
+govfuzz list targets path/to/pkg.adb --top 20
 govfuzz instrument path/to/pkg.adb --output govfuzz_work/src_instrumented
 govfuzz generate-harness govfuzz_work/src_instrumented/pkg.adb --target Pkg.Parse --output govfuzz_work/generated_harnesses
 govfuzz build govfuzz_work --harness H-PKG-PARSE
@@ -137,7 +137,7 @@ The current engine is intentionally conservative and source-pattern driven. The
 M20 backlog still tracks deeper CFG precision, richer taint modeling, and
 larger rule packs as follow-up hardening.
 
-`govfuzz binary-scan <PATH>` writes `binary-inventory.json` with offline binary
+`govfuzz binary scan <PATH>` writes `binary-inventory.json` with offline binary
 metadata for ELF, PE, Mach-O, ar archives, and raw firmware-style blobs. The
 inventory records format, architecture, bitness, endianness, size, SHA-256,
 ELF note build IDs, producer/toolchain provenance (GCC/clang/Go/Rust version from
@@ -175,7 +175,7 @@ promoted into packed-binary or binary-layout review triage. Use
 `--max-bytes <N>` to skip individual files or archive members above a byte
 limit.
 
-`govfuzz binary-adapter <BINARY> --adapter mock|rizin|ghidra|angr --out <DIR>`
+`govfuzz binary adapter <BINARY> --adapter mock|rizin|ghidra|angr --out <DIR>`
 writes `binary-adapter-report.json` with adapter-derived functions, call-graph
 hints, strings, xrefs, signatures, and errors. The command never links external
 tools into GovFuzz. The mock adapter consumes `--mock-output` JSON for contract
@@ -183,7 +183,7 @@ tests. Real adapters are subprocess smoke paths, are blocked in
 `strict-permissive`, require `--profile external-tools` or `research-lab`, and
 write `status: skipped` when the requested tool is absent.
 
-`govfuzz binary-fuzz <BINARY>` executes source-unavailable binaries through
+`govfuzz binary fuzz <BINARY>` executes source-unavailable binaries through
 `--input-mode stdin|file`, `--seed-input` / `--seed-file`, `--timeout-ms`, and
 repeatable `--env KEY=VALUE` launch profiles. Crashes and timeouts are written
 under `<work-dir>/findings/BF-NNNN/` as `kind: binary_crash` findings with the
@@ -233,6 +233,30 @@ the JVM would intercept the JVM's own libc activity and report false positives)
 and is **not** armed under cross-compiled or emulated (qemu/wine) runs. These
 behavioral and taint findings are therefore unavailable in the Java lane and for
 emulated targets.
+
+## Crash → PoC, Explanation, and One-Shot Fuzzing
+
+Beyond the core pipeline, these commands turn a finding into a portable proof
+and explain it — all offline and deterministic (no LLM):
+
+- `govfuzz snippet [INPUT]` — fuzz ONE pasted function with no project, build, or
+  dependencies. It detects the language, synthesizes a one-file project, and runs
+  the full `auto` pipeline against it. The fastest way to try govfuzz on a single
+  routine.
+- `govfuzz capsule` — package a crash into a portable, self-verifying PoC capsule:
+  the minimized input, the generated harness, the recovered build context, and any
+  stubs, bundled so the crash can be reproduced elsewhere.
+- `govfuzz verify-poc <CAPSULE>` — rebuild a PoC capsule offline and assert the
+  crash reproduces. Only `clang` and a shell are needed, so a capsule verifies on a
+  clean machine without the full toolchain.
+- `govfuzz env-capsule` — record and replay the shim-served faked environment so an
+  environment-driven crash (missing files, unset env, unreachable sockets)
+  reproduces deterministically.
+- `govfuzz explain` — explain WHY a crash fired: the controlling input bytes, the
+  gate constants it had to satisfy, the faked environment, and the dataflow to the
+  sink.
+- `govfuzz cartography` — map which input bytes control which sink operand
+  (offset/size/index) by perturbation — the exploit-primitive view of a finding.
 
 ## Enterprise Operations
 
@@ -333,7 +357,7 @@ when scheduling evidence is missing or jobs remain unassigned. Pass
 `artifacts/<kind>/...` tree and write a bundle-local `export-manifest.json` for
 air-gapped handoff.
 
-`govfuzz list-targets` prints each candidate's stable `harness_id` in table and
+`govfuzz list targets` prints each candidate's stable `harness_id` in table and
 JSON output. Use that id with `govfuzz auto --harness-id <ID>` to rerun one
 specific target when names collide across files.
 
@@ -409,8 +433,9 @@ GovFuzz-owned subtrees under the work directory.
 
 ## Auto
 
-`govfuzz auto <PATH>` sweeps an Ada, C, C++, Rust, Java, Python, Perl, or Go
-source tree, including
+`govfuzz auto <PATH>` sweeps a source tree in any of the sixteen supported
+languages (Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran, C#,
+JavaScript, TypeScript, Ruby, Lua, and PHP), including
 definition-bearing C/C++ headers, generates one harness per fuzzable function,
 auto-stubs missing headers and undefined symbols so previously-unbuildable code
 builds, runs a three-pass fuzz cascade against each built harness with the
@@ -445,7 +470,7 @@ Flags:
 - `--resume` — resume a prior sweep over the same work-dir: reload targets that already completed (a per-target `auto/<id>/result.json` is written as each target finishes, so an interrupted run is resumable) and re-run only the rest. Reloaded targets are FULLY re-integrated into the new report (outcome buckets, repair manifest, findings, pass detail), with a `resumed` count of how many were carried over. Requires the discovery cache to hit (target source unchanged).
 - `--reuse-discovery` — deprecated no-op (caching is now the default); accepted for back-compat.
 - `--sanitizers <asan,ubsan,msan,tsan,lsan>` — arm the named sanitizer matrix on the auto build, the same arming `govfuzz fuzz --sanitizers` does, now for the auto pipeline.
-- `--languages <LIST>` (alias `--lang`) — restrict the sweep to a comma-separated subset of source languages (`ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`). Candidates in other languages are dropped after discovery and before `--list-targets`/`--max-targets`, so the ranked list and the top-N reflect the filter. Common spellings accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust, `py`→python, `pl`→perl, `golang`→go); case-insensitive. Unset = fuzz every language found. The SBOM/SCA pass is unaffected.
+- `--languages <LIST>` (alias `--lang`) — restrict the sweep to a comma-separated subset of the sixteen fuzzable source languages (`ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`, `cobol`, `fortran`, `csharp`, `javascript`, `typescript`, `ruby`, `lua`, `php`). Candidates in other languages are dropped after discovery and before `--list-targets`/`--max-targets`, so the ranked list and the top-N reflect the filter. Common spellings accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust, `py`→python, `pl`→perl, `golang`→go); case-insensitive. Unset = fuzz every language found. The SBOM/SCA pass is unaffected.
 - `--target <NAME>` — exact target-name filter. Repeat to run a small named subset.
 - `--target-file <PATH>` — exact source-file filter. Accepts absolute paths or paths relative to the sweep root.
 - `--harness-id <ID>` — exact stable harness-id filter from a prior auto report.
@@ -464,6 +489,10 @@ Flags:
 - `--run-untrusted` — consent gate for running the project's own untrusted build/codegen; the umbrella for `--probe-build` plus an Ada (`alr build` / `gprbuild`) build probe. Implies `--probe-build`. Off by default.
 - `--deps-only` — build each target as far as possible (stubbing what is missing) and emit the missing-dependency manifest (`<work>/auto/missing-deps.txt`), but SKIP fuzzing.
 - `--install-deps` — after the sweep, fetch the still-blocking dependencies (apt-get for known headers/libs, `alr get` for Ada units). Opt-in and ONLINE — the only part of `auto` that touches the network.
+- `--build-command <CMD>` — recover flags from any CUSTOM build (a `build.sh`, Waf, a vendor RTOS build) by running `<CMD>` under a compiler-interposing shim; the universal escape hatch when `--probe-build`'s auto-detected tiers (CMake/Meson/Make/Ninja/Visual Studio) don't cover the project. Executes the command (sandboxed when available).
+- `--static` — run the static analyzer over the WHOLE tree in addition to fuzzing (not only as a build/fuzz fallback). Findings (`static_scan`, ids `F-STATIC-*`) merge into the unified report next to the fuzz findings. Same engine as `govfuzz static-scan`.
+- `--force` / `--force-fuzz` — force-fuzz mode: attempt EVERY discovered C/C++/Ada function even when a parameter can't be driven or a symbol is undefined, stubbing until the harness builds. Findings from a forced/stub-heavy build are floored to **Low** confidence with a `forced` note and counted separately.
+- `--differential <A:B>` — two-compiler differential fuzzing for C/C++ (e.g. `clang:gcc`): after the run, rebuild each C/C++ harness under both compilers, replay the corpus through both, and flag any input whose exit/crash behavior diverges as a GF-301 finding.
 - `--list-fakes` — print the fake-resource plugin inventory and exit.
 - `--verbose` / `-v` — print an extra indented line per target: skip/fail reason, repairs applied, and per-pass execution/finding counts.
 
@@ -493,7 +522,7 @@ table/key, or YAML section/key structured inputs.
 
 ## Introspection
 
-`govfuzz introspect <PATH>` inventories discovered Ada, C, C++, Rust, Java, Python, Perl, and Go fuzz targets
+`govfuzz introspect <PATH>` inventories discovered fuzz targets across the supported languages
 and compares them with a prior `govfuzz auto` run when
 `<work-dir>/auto/run.json` exists. The report highlights targets that were
 already fuzzed, built but not fuzzed, build/link blocked, unsupported, or newly

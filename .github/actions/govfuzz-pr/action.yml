@@ -78,6 +78,10 @@ runs:
       shell: bash
       run: |
         set -uo pipefail
+        if ! govfuzz ci --help 2>/dev/null | grep -q -- '--changed-since'; then
+          echo "::error title=govfuzz::the installed govfuzz does not support 'ci --changed-since' — pin 'version:' to a release that ships it, or set 'build-from-source: true'"
+          exit 1
+        fi
         sarif="$RUNNER_TEMP/govfuzz.sarif"
         ci_json="$RUNNER_TEMP/govfuzz-ci.json"
         lang_arg=""
@@ -124,5 +128,9 @@ runs:
       if: ${{ steps.run.outputs.exit != '' && steps.run.outputs.exit != '0' }}
       shell: bash
       run: |
-        echo "::error title=govfuzz::gate failed (exit ${{ steps.run.outputs.exit }}) — a fuzz-confirmed finding was introduced in this PR's changed code."
+        if [[ -f "${{ steps.run.outputs.ci_json }}" ]]; then
+          echo "::error title=govfuzz::gate failed (exit ${{ steps.run.outputs.exit }}) — a fuzz-confirmed finding was introduced in this PR's changed code."
+        else
+          echo "::error title=govfuzz::govfuzz ci errored (exit ${{ steps.run.outputs.exit }}) before producing a result — see the 'Run govfuzz' step log; this is a tool/setup failure, not a finding."
+        fi
         exit 1

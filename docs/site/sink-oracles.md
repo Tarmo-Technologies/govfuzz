@@ -49,7 +49,7 @@ a most-specific CWE, and emits a source→sink taint path on the finding.
 
 | Sink class | APIs interposed | Rule | CWE |
 |---|---|---|---|
-| **File-open path traversal** | `open`, `openat`, `fopen` | GF-405 | CWE-22 |
+| **File-open path traversal** | `open`, `openat` | GF-405 | CWE-22 |
 | **Process execution** | `system`, `popen`, `execv`, `execvp`, `execvpe`, `execve`, `fexecve`, `posix_spawn`, `posix_spawnp` | GF-431 | CWE-78 |
 | **Network egress / SSRF** | `getaddrinfo` (hostname), `connect` (destination) | GF-433 | CWE-918 |
 | **Controlled library load** | `dlopen`, `dlmopen` | GF-435 | CWE-427 |

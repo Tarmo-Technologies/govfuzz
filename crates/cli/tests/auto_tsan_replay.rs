@@ -33,6 +33,17 @@ fn clang_has_tsan() -> bool {
         })
         .map(|status| status.success())
         .unwrap_or(false);
+    // Compiling is not enough: on hosts where the TSan runtime cannot start
+    // (e.g. GitHub runners with vm.mmap_rnd_bits too high for its shadow
+    // mapping), the probe builds fine but every TSan binary aborts at startup
+    // — so run it and require a clean exit before trusting TSan output.
+    let ok = ok
+        && Command::new(&probe)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false);
     let _ = std::fs::remove_file(&probe);
     ok
 }

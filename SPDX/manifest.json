@@ -3,6 +3,10 @@
   "version": 1,
   "files": [
     {
+      "path": ".github/actions/govfuzz-pr/action.yml",
+      "license": "Apache-2.0"
+    },
+    {
       "path": ".github/dependabot.yml",
       "license": "Apache-2.0"
     },
@@ -15,7 +19,15 @@
       "license": "Apache-2.0"
     },
     {
+      "path": ".github/workflows/dogfood.yml",
+      "license": "Apache-2.0"
+    },
+    {
       "path": ".github/workflows/gnat-matrix.yml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": ".github/workflows/govfuzz-pr.example.yml",
       "license": "Apache-2.0"
     },
     {
@@ -899,6 +911,18 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/cobol.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/cobol_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/cobol_oracle.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/config.rs",
       "license": "Apache-2.0"
     },
@@ -915,11 +939,23 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/csharp.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/csharp_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/decl_index.rs",
       "license": "Apache-2.0"
     },
     {
       "path": "crates/cli/src/auto/dep_manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/differential_post.rs",
       "license": "Apache-2.0"
     },
     {
@@ -932,6 +968,14 @@
     },
     {
       "path": "crates/cli/src/auto/external_tools.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/fortran.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/fortran_build.rs",
       "license": "Apache-2.0"
     },
     {
@@ -951,7 +995,27 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/js.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/js_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/layout.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/lit_scan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/lua.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/lua_build.rs",
       "license": "Apache-2.0"
     },
     {
@@ -972,6 +1036,14 @@
     },
     {
       "path": "crates/cli/src/auto/perl_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/php.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/php_build.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1000,6 +1072,14 @@
     },
     {
       "path": "crates/cli/src/auto/report_only.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/ruby.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/ruby_build.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1112,6 +1192,10 @@
     },
     {
       "path": "crates/cli/src/generate_harness.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/git_diff.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1315,6 +1399,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_cobol.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_command_taint_confirm.rs",
       "license": "Apache-2.0"
     },
@@ -1348,6 +1436,10 @@
     },
     {
       "path": "crates/cli/tests/auto_deep_source.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_differential.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1419,6 +1511,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_lua_lane.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_max_len_cli.rs",
       "license": "Apache-2.0"
     },
@@ -1439,6 +1535,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_php_lane.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_python_lane.rs",
       "license": "Apache-2.0"
     },
@@ -1448,6 +1548,10 @@
     },
     {
       "path": "crates/cli/tests/auto_rtos_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_ruby_lane.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1524,6 +1628,10 @@
     },
     {
       "path": "crates/cli/tests/cartography_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/ci_changed_since.rs",
       "license": "Apache-2.0"
     },
     {
@@ -2991,7 +3099,15 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/site/ci.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/site/cli.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/cobol.md",
       "license": "Apache-2.0"
     },
     {
@@ -3004,6 +3120,10 @@
     },
     {
       "path": "docs/site/cross-compilation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/csharp.md",
       "license": "Apache-2.0"
     },
     {
@@ -3023,6 +3143,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/site/fortran.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/site/index.md",
       "license": "Apache-2.0"
     },
@@ -3032,6 +3156,10 @@
     },
     {
       "path": "docs/site/instrumentation.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/javascript.md",
       "license": "Apache-2.0"
     },
     {

@@ -2,11 +2,12 @@
 
 # Auto
 
-`govfuzz auto <PATH>` is the point-and-shoot entry point. It takes an Ada,
-C, C++, Rust, Java, Python, Perl, or Go source tree — including code with broken `#include` chains,
-undefined externs, missing types, missing `with` clauses, or no runtime
-environment — and produces a fuzz lab plus a findings report without manual
-harnessing.
+`govfuzz auto <PATH>` is the point-and-shoot entry point. It takes a source tree
+in any of the sixteen supported languages (Ada, C, C++, Rust, Java, Python, Perl,
+Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP) — including
+code with broken `#include` chains, undefined externs, missing types, missing
+`with` clauses, or no runtime environment — and produces a fuzz lab plus a
+findings report without manual harnessing.
 
 ```sh
 govfuzz auto path/to/src --work-dir govfuzz_work --per-target-time 60
@@ -46,6 +47,12 @@ Python, Perl, and Go likewise bypass the C/Ada harness-gen + repair loop. Their
 (Perl), and `go build` to a native fork-server binary (Go) — and an
 un-importable/uncompilable target skips cleanly rather than entering repair.
 
+The remaining lanes follow the same "pre-build then fuzz" pattern with their own
+toolchains: COBOL via GnuCOBOL (`cobc`), Fortran via `gfortran` with ASan, C#
+via `dotnet` + SharpFuzz IL instrumentation, JavaScript/TypeScript under a warm
+Node process (TypeScript transpiled with esbuild), and Ruby, Lua, and PHP under
+their own interpreters with in-process edge coverage.
+
 ## Flags
 
 | Flag | Default | Purpose |
@@ -72,6 +79,8 @@ un-importable/uncompilable target skips cleanly rather than entering repair.
 | `--reuse-discovery` | — | Deprecated no-op (caching is now the default); accepted for back-compat |
 | `--sanitizers <asan,ubsan,msan,tsan,lsan \| none>` | none | Arm the named sanitizer matrix on the auto build (same arming `govfuzz fuzz --sanitizers` does). `none` builds coverage-only with no `-fsanitize=` (crash-only, zero ASan/UBSan false positives). Operator `<SAN>_OPTIONS` (suppressions / FP-killers) are merged, not clobbered. See [Sanitizers](../sanitizers/) |
 | `--comparison-progress` | off | Enable laf-intel comparison-progress coverage (#421); rewards an input that matches more leading bytes of a multi-byte magic/format gate. Alias `--cmp-progress` |
+| `--engine <LIST>` | `builtin` | Fuzz engine(s) for the per-target fuzz phase, comma-separated. `builtin` is the in-process coverage-guided engine; `afl++` drives AFL++ on the auto-recovered build (C/C++ only; needs `afl-fuzz` + `afl-clang-fast`, else falls back to builtin with a warning). `--engine builtin,afl++` runs both per target, splitting `--per-target-time` between them |
+| `--differential <A:B>` | unset | Two-compiler differential fuzzing (C/C++), e.g. `clang:gcc`: after the normal run, rebuild each C/C++ harness under both compilers and replay the corpus through both, flagging any input whose exit/crash behavior diverges (a codegen- or UB-dependent bug) as a GF-301 finding |
 | `--seed-file <PATH>` | none | Seed-input file whose bytes bootstrap every target's corpus; repeatable |
 | `--seed-dir <DIR>` | none | Directory of seed inputs (one per regular file); repeatable |
 | `--extra-include <DIR>` | none | Extra C/C++ include dirs for dependency headers outside the swept tree; seeded onto every harness `-I` ahead of synthesized placeholders. Read from local disk only; repeatable |
@@ -91,7 +100,7 @@ un-importable/uncompilable target skips cleanly rather than entering repair.
 | `--static-dynamic` | off | Run in static-dynamic mode: add a `scan_type` column to `findings.csv` labeling each row — `static-dynamic` for a static-scan result (govfuzz's static + fuzz-confirmation pipeline) and `dynamic` for a fuzzed result. Off by default so the CSV schema is unchanged unless requested |
 | `--install-deps` | off | After the sweep, fetch still-blocking deps from the manifest (apt-get / `alr get`). Opt-in and the only ONLINE part of `auto`; nothing is fatal |
 | `--list-fakes` | — | Print the fake-resource plugin inventory and exit |
-| `--languages <LIST>` (alias `--lang`) | all languages found | Restrict the sweep to a comma-separated subset of source languages: `ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`. Candidates in any other language are dropped **after** discovery (so one discovery cache serves every language subset) and **before** `--list-targets` and `--max-targets`, so the ranked list and the top-N both reflect the filter. Common spellings are accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust, `py`→python, `pl`→perl, `golang`→go); matching is case-insensitive. The SBOM/SCA pass is unaffected — it always scans the whole tree across all ecosystems regardless of this fuzzing-lane filter |
+| `--languages <LIST>` (alias `--lang`) | all languages found | Restrict the sweep to a comma-separated subset of source languages. Accepts any of the sixteen fuzzable languages: `ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`, `cobol`, `fortran`, `csharp`, `javascript`, `typescript`, `ruby`, `lua`, `php`. Candidates in any other language are dropped **after** discovery (so one discovery cache serves every language subset) and **before** `--list-targets` and `--max-targets`, so the ranked list and the top-N both reflect the filter. Common spellings are accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust, `py`→python, `pl`→perl, `golang`→go); matching is case-insensitive. The SBOM/SCA pass is unaffected — it always scans the whole tree across all ecosystems regardless of this fuzzing-lane filter |
 | `--target <NAME>` | all discovered targets | Exact target-name filter; repeat to run a small named subset |
 | `--target-file <PATH>` | all discovered source files | Exact source-file filter; accepts absolute paths or paths relative to the sweep root |
 | `--harness-id <ID>` | all discovered harness ids | Exact stable harness-id filter from a prior auto report |

@@ -10,7 +10,7 @@ source checksums before code reaches `main`.
 
 ```sh
 govfuzz license-audit --profile strict-permissive   # default; links only permissive code
-govfuzz license-audit --profile external-tools      # also allows GPL tools (GNAT, GPRbuild, AFL++) as subprocesses
+govfuzz license-audit --profile external-tools      # also allows external tools (GNAT, GPRbuild, AFL++, analyzers) as subprocesses
 govfuzz license-audit --profile research-lab        # unrestricted; allows all tool probes
 ```
 
@@ -20,9 +20,11 @@ Zlib, and CC0-1.0 (a `WITH LLVM-exception` suffix is accepted) — and rejects
 unknown, copyleft-only, or missing license metadata.
 
 The `--profile` flag does not change that dependency-license list; it gates which
-external tools/probes may run. `strict-permissive` (the default) forbids GPL tool
-probes; `external-tools` permits GPL subprocesses (GNAT, GPRbuild, AFL++, Rizin,
-Ghidra, angr); `research-lab` allows all probes.
+external tools may run as subprocesses (they are never linked). `strict-permissive`
+(the default) permits none. `external-tools` permits ten: the GPL Ada toolchain
+(FSF GNAT, GPRbuild) and GNATcheck, plus AFL++ (Apache-2.0), the binary-analysis
+tools Rizin, Ghidra, and angr, and the external static analyzers gosec, Bandit,
+and semgrep. `research-lab` allows all probes.
 
 ## Repository Policy
 

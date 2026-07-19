@@ -31,9 +31,9 @@ does not stage them beside the binary).
 
 ### Per-language toolchains
 
-govfuzz fuzzes eight languages; each lane needs its own toolchain, installed only
-if you fuzz that language (a target whose toolchain is absent skips cleanly). On
-Debian/Ubuntu:
+govfuzz fuzzes sixteen languages; each lane needs its own toolchain, installed
+only if you fuzz that language (a target whose toolchain is absent skips
+cleanly). On Debian/Ubuntu:
 
 ```sh
 sudo apt-get update
@@ -44,6 +44,13 @@ sudo apt-get install -y python3                         # Python (3.12+ for sys.
 sudo apt-get install -y perl                            # Perl
 sudo apt-get install -y golang-go                       # Go
 rustup toolchain install nightly                        # Rust (sancov + ASan staticlib)
+sudo apt-get install -y gfortran                        # Fortran
+sudo apt-get install -y gnucobol                        # COBOL (GnuCOBOL cobc)
+sudo apt-get install -y nodejs npm                      # JavaScript / TypeScript (TS via esbuild)
+sudo apt-get install -y ruby                            # Ruby
+sudo apt-get install -y lua5.4                          # Lua
+sudo apt-get install -y php-cli                         # PHP
+# C#: install the .NET SDK (dotnet) from Microsoft's package feed; SharpFuzz is pulled per-project
 sudo apt-get install -y afl++                           # optional: AFL++ engine (C/C++ only)
 ```
 

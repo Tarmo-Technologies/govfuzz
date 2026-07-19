@@ -11,12 +11,17 @@ jobs:
   govfuzz:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # required so merge-base against the PR base resolves
       - uses: Tarmo-Technologies/govfuzz/.github/actions/govfuzz-pr@main
         with:
           path: .
           campaign-time: "180"
+          # The govfuzz repo dogfoods its own tip: the action tracks @main, so the
+          # binary must too (the latest release predates `ci --changed-since`).
+          # When copying this workflow to your repo, drop this line — the default
+          # release install is faster and is what the pinned action expects.
+          build-from-source: "true"
           # languages: "c,cpp,rust"   # optional: restrict lanes
           # pr-gate: "confirmed"      # confirmed | all | never (default: confirmed)

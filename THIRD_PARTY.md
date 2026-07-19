@@ -2,7 +2,7 @@
 
 # Third-Party Licensing
 
-GovFuzz fuzzes five languages — **Ada, C, C++, Rust, and Java**. SBOM/SCA ingestion covers 11 ecosystems in total (the five fuzzable languages plus Python, Node.js, Go, Ruby, PHP, and .NET); those extra ecosystems are scanned for supply-chain findings only and are not fuzzable via govfuzz. This document covers the licensing of govfuzz's core dependencies.
+GovFuzz fuzzes sixteen languages — **Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP**. SBOM/SCA ingestion spans a broader set of ecosystems still (Cargo, npm, PyPI, Go modules, Maven/Gradle, NuGet, RubyGems, Packagist, CPAN, Conan/vcpkg/CMake/Meson, and Alire), scanned for supply-chain findings whether or not the language is a fuzzing lane. This document covers the licensing of govfuzz's core dependencies.
 
 ## Dependency matrix
 
@@ -43,17 +43,17 @@ GovFuzz fuzzes five languages — **Ada, C, C++, Rust, and Java**. SBOM/SCA inge
 | anyhow / thiserror | Error types | MIT/Apache-2.0 | **Core** | Low | Allow. |
 | tempfile (Rust) | RAII cleanup for compiler capability canary files | MIT/Apache-2.0 | **Core** | Low | Allow. |
 | tera (Rust) | Harness template engine | MIT | **Core** | Low | Allow. |
-| tokio | Async runtime (only if needed) | MIT | **Core** | Low | Allow if used. |
-| nom / chumsky | Parser combinators (IDL) | MIT/Apache-2.0 | **Core** | Low | Use for IDL subset parser. |
-| zstd / lz4 | Corpus compression | BSD-3 / BSD-2 | **Optional** | Low | Allow. |
-| sha2 / blake3 | Hashing | MIT/Apache-2.0 | **Core** | Low | Allow. |
+| tokio | Async runtime | MIT | **Candidate** (not in `Cargo.lock`) | Low | Pre-cleared to allow if a future async need arises; not currently linked. |
+| nom / chumsky | Parser combinators (IDL) | MIT/Apache-2.0 | **Not used** | Low | The IDL subset parser (`crates/idl_parser`) is hand-rolled; neither crate is linked. |
+| zstd / lz4 | Corpus compression | BSD-3 / BSD-2 | **Candidate** (not in `Cargo.lock`) | Low | Pre-cleared; corpus storage is currently uncompressed. |
+| sha2 | Hashing | MIT/Apache-2.0 | **Core** | Low | Allow. `blake3` is pre-cleared (BSD/CC0/Apache-2.0) but not currently linked. |
 | regex | Diagnostic parsing | MIT/Apache-2.0 | **Core** | Low | Allow. |
 | num_cpus (Rust) | Detect host CPU count for `govfuzz auto` worker pool | MIT/Apache-2.0 | **Core** | Low | Allow. |
 | rayon (Rust) | Data-parallel static-scan file pipeline (10M-SLOC scale) | MIT/Apache-2.0 | **Core** | Low | Allow. Work-stealing pool bounded to cores-1; deterministic order-preserving collect. |
 | chrono (Rust) | RFC3339 timestamps in `govfuzz auto` reports | MIT/Apache-2.0 | **Core** | Low | `default-features = false` + `clock` only; no serde / windows-bindings pull-in. |
 | which (Rust) | Compiler binary discovery on PATH | MIT | **Core** | Low | Allow. |
 | libc (Rust) | Unix `prctl` / `setrlimit` safety rails on spawned fuzz harnesses | MIT/Apache-2.0 | **Core** | Low | Allow. |
-| criterion | Bench (dev-only) | Apache-2.0/MIT | **Core dev** | Low | Allow. |
+| criterion | Bench (dev-only) | Apache-2.0/MIT | **Candidate** dev (not in `Cargo.lock`) | Low | Pre-cleared for benchmarking; not currently a dev-dependency. |
 | toml (Rust) | Golden-file manifest parsing in tests | MIT/Apache-2.0 | **Core dev** | Low | Dev-only dependency for hand-written corpus manifests. |
 
 CI enforces the SPDX allow-list with `cargo deny`, the per-file SPDX header check (`crates/spdx_check`), and `govfuzz license-audit` for the resolved core dependency graph plus this matrix. Reviewers are responsible for keeping this matrix in sync with `Cargo.lock` when adding dependencies.

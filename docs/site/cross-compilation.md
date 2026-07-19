@@ -37,8 +37,10 @@ instead of being dropped. The attempt loop then picks a build+fuzz strategy:
   faults are detected by a vectored exception handler the driver installs: a
   hardware fault (access violation, stack overflow, …) becomes an immediate,
   distinctive process exit the engine classifies as a crash.
-- **Arch/SIMD (aarch64, armhf, neon) → cross toolchain + qemu-user.** Built with
-  the matching `*-linux-gnu-gcc` and run under `qemu-aarch64` / `qemu-arm`. This
+- **Arch/SIMD (aarch64, armhf, neon) → cross toolchain + qemu-user.** A 64-bit
+  ARM / NEON guard builds with `aarch64-linux-gnu-gcc` under `qemu-aarch64`; a
+  32-bit ARM (armv7/armhf) guard builds with `arm-linux-gnueabihf-gcc` under
+  `qemu-arm`. This
   path is coverage-blind today (the cross GCCs reject `trace-pc-guard` and ASan
   does not survive qemu-user); hard crashes still surface via SIGSEGV/SIGABRT.
 - **Windows fallback → native stub-isolated build.** When mingw/wine is absent,
@@ -103,14 +105,17 @@ on a real Windows host, use clang/mingw for the harness build step.
 Current native-Windows scope:
 
 - ✅ Builds clean for `x86_64-pc-windows-gnu`; the CLI + reporting run natively.
-- ✅ Fuzzes a built harness and detects crashes (per-spawn execution).
-- ⏳ Coverage-guided feedback + the persistent fork-server are Linux-only today
-  (the shared-memory coverage/cmplog readers are no-op stubs off Linux); porting
-  them to Win32 file-mapping + a Windows handshake timeout is the next step.
+- ✅ Fuzzes a built harness and detects crashes.
+- ✅ Coverage-guided feedback + the persistent fork-server run on Windows the same
+  as on Linux: the shared-memory coverage/cmplog readers are implemented on Win32
+  file mapping (`CreateFileMappingW`/`MapViewOfFile`) on both the engine and
+  harness sides.
 
-For full coverage-guided Windows fuzzing **today**, run govfuzz on Linux and let
-it cross-compile + emulate the target under wine (the section above) — that path
-already has edge coverage, cmplog, and the fork-server.
+The one native-Windows gap is the LD_PRELOAD runtrace shim, which is Linux-only
+(an empty stub on Windows), so the behavioral/taint oracles are unavailable
+natively. To get those oracles on a Windows target, run govfuzz on Linux and let
+it cross-compile + emulate the target under wine (the section above). See
+[Windows](./windows.md) for the native-host guide.
 
 ## Probe Backends
 

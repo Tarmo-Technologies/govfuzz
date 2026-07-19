@@ -5,12 +5,19 @@
 GovFuzz uses `dist` 0.31.0, formerly `cargo-dist`, to plan and publish binary
 release artifacts from GitHub Actions.
 
+> This page focuses on the offline binary-distribution tarball
+> (`scripts/package-offline-dist.sh`). For the published-site reference — the
+> full artifact table and archive-install layout — see
+> [`docs/site/release-packaging.md`](./site/release-packaging.md).
+
 The releasable applications are:
 
 - `govfuzz`: the command-line interface from `crates/cli`
 - `govfuzz-daemon`: the JSON-RPC daemon from `crates/daemon`
 - `govfuzz_runtrace_shim`: the `cdylib` loaded by `govfuzz auto` for runtime
   virtualisation on Linux
+- `govfuzz_cc_intercept`: the build-time compiler-interception `cdylib` used by
+  C/C++ `--probe-build` / `--build-command` recovery
 
 The workspace defaults every package to `dist = false`; the two app packages
 and the runtrace shim opt back in. The app packages also override their

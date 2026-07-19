@@ -7,8 +7,9 @@ guide for **installing and updating GovFuzz on a disconnected (air-gapped)
 machine** — including the question of whether to build on a connected machine
 and transfer the binary, or transfer the source and build on the offline host.
 
-GovFuzz fuzzes Ada, C, C++, Rust, Java, Python, Perl, and Go source trees;
-toolchain requirements differ by language — see
+GovFuzz fuzzes sixteen languages (Ada, C, C++, Rust, Java, Python, Perl, Go,
+COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP); toolchain
+requirements differ by language — see
 [Toolchains on the offline host](#toolchains-on-the-offline-host).
 
 There is no GovFuzz auto-updater and the tool never phones home. Updating is a

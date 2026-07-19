@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description = "Reduced DDS/OpenDDS annotation fixture from real-codebase validation"
-expected_outcome = "idl_annotation_parse_gap"
-tracking_issue = 213
+expected_outcome = "idl_annotation_parse_ok"

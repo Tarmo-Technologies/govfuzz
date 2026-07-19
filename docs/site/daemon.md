@@ -25,7 +25,7 @@ Content-Length: <bytes>\r\n
 
 `rankAt` and `instrumentPreview` are Ada-only today. Use
 `staticScan` for daemon-served Ada/C/C++ static findings and the CLI
-`scan`, `list-targets`, `generate-harness`, `build`, `auto`, and `fuzz`
+`scan`, `list targets`, `generate-harness`, `build`, `auto`, and `fuzz`
 commands for full Ada/C/C++/Rust/Java/Python/Perl/Go workflows.
 
 ## IDE Clients

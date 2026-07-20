@@ -11,6 +11,12 @@ Content-Length: <bytes>\r\n
 <json body>
 ```
 
+The same binary also supports standards-based Model Context Protocol stdio with
+`govfuzz-daemon --mcp`. MCP messages are newline-delimited JSON-RPC rather than
+LSP-framed. This mode lets a Codex or Claude host session use deterministic
+GovFuzz tools without giving GovFuzz an API token; see
+[LLM Assistance](./llm/).
+
 ## Methods
 
 - `scan` summarizes Ada files under a path.

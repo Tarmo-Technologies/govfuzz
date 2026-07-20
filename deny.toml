@@ -18,6 +18,9 @@ allow = [
     "ISC",
     "Zlib",
     "CC0-1.0",
+    # Certificate trust-anchor data used by rustls/webpki (not executable
+    # code); permissive attribution-only data license.
+    "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
 unused-allowed-license = "allow"

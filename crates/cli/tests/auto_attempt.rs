@@ -1832,9 +1832,11 @@ fn attempt_builds_and_fuzzes_c_miniz_file_macro_pointer() {
         other => panic!("expected MZ_FILE pointer target to build+fuzz, got {other:?}"),
     }
     let main = fs::read_to_string(result.harness_dir.join("main.c")).unwrap();
-    assert!(main.contains("MZ_FILE * pFile = (MZ_FILE *)fmemopen"));
+    assert!(main.contains("MZ_FILE * pFile = (MZ_FILE *)(_gf_file_buf_pFile ?"));
+    assert!(main.contains("fmemopen(_gf_file_buf_pFile, Size, \"r+\")"));
     assert!(main.contains("parse_cfile(pFile)"));
     assert!(main.contains("if (pFile) fclose(pFile);"));
+    assert!(main.contains("free(_gf_file_buf_pFile);"));
 }
 
 #[test]
@@ -2675,9 +2677,11 @@ fn attempt_builds_and_fuzzes_cpp_file_pointer_target() {
     }
     let main = fs::read_to_string(result.harness_dir.join("main.cpp")).unwrap();
     assert!(main.contains("#include <stdio.h>"));
-    assert!(main.contains("FILE * stream = fmemopen((void *)Data, Size, \"rb\")"));
+    assert!(main.contains("FILE * stream = _gf_file_buf_stream ?"));
+    assert!(main.contains("fmemopen(_gf_file_buf_stream, Size, \"r+\")"));
     assert!(main.contains("int R = parse_stream(stream);"));
     assert!(main.contains("if (stream) fclose(stream);"));
+    assert!(main.contains("free(_gf_file_buf_stream);"));
 }
 
 #[test]

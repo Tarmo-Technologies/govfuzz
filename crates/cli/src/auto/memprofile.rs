@@ -20,6 +20,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 /// Cap the corpus inputs profiled per harness so a huge queue can't stall the run.
 const MAX_INPUTS: usize = 512;
@@ -30,6 +31,10 @@ const MIN_EXCESS_MB: u64 = 128;
 /// resident memory per input byte, so a legitimately large input (which holds a
 /// proportional working set) is not flagged.
 const MIN_KB_PER_INPUT_BYTE: u64 = 64;
+/// A resource-profile replay is diagnostic only. A target that does not terminate
+/// is not a useful RSS sample and must not hold the whole auto campaign open.
+const REPLAY_TIMEOUT: Duration = Duration::from_secs(10);
+const PROFILE_BUDGET: Duration = Duration::from_secs(30);
 
 struct Sample {
     input: std::path::PathBuf,
@@ -71,9 +76,10 @@ fn profile_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize
         return 0;
     };
 
+    let deadline = Instant::now() + PROFILE_BUDGET;
     let mut samples: Vec<Sample> = Vec::new();
     for entry in inputs.flatten() {
-        if samples.len() >= MAX_INPUTS {
+        if samples.len() >= MAX_INPUTS || Instant::now() >= deadline {
             break;
         }
         let input = entry.path();
@@ -83,13 +89,16 @@ fn profile_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize
         if !meta.is_file() {
             continue;
         }
-        if let Some(peak_kb) = run_and_peak_rss_kb(&bin, &input) {
-            samples.push(Sample {
-                input,
-                input_len: meta.len(),
-                peak_kb,
-            });
-        }
+        let Some(peak_kb) = run_and_peak_rss_kb(&bin, &input) else {
+            // A timeout or spawn/reap failure makes this best-effort profile
+            // incomplete. Do not multiply the delay across the remaining corpus.
+            break;
+        };
+        samples.push(Sample {
+            input,
+            input_len: meta.len(),
+            peak_kb,
+        });
     }
 
     // Need a baseline (the harness's fixed overhead) to attribute excess to an input.
@@ -132,26 +141,52 @@ fn is_disproportionate(sample: &Sample, baseline_kb: u64) -> bool {
 /// (`rusage.ru_maxrss`), or `None` if it could not be spawned/reaped. Linux only.
 #[cfg(target_os = "linux")]
 fn run_and_peak_rss_kb(bin: &Path, input: &Path) -> Option<u64> {
+    run_and_peak_rss_kb_with_timeout(bin, input, REPLAY_TIMEOUT)
+}
+
+#[cfg(target_os = "linux")]
+fn run_and_peak_rss_kb_with_timeout(bin: &Path, input: &Path, timeout: Duration) -> Option<u64> {
+    use std::os::unix::process::CommandExt;
     use std::process::Stdio;
-    let child = Command::new(bin)
+    use std::time::Instant;
+
+    let mut command = Command::new(bin);
+    command
         .arg(input)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
+        // A sanitizer symbolizer or another descendant must not outlive a timed-out
+        // replay, so isolate the entire invocation in its own process group.
+        .process_group(0);
+    let child = command.spawn().ok()?;
     let pid = child.id() as libc::pid_t;
     // Reap via wait4 to read rusage; std's Child does not reap on drop, so there is no
     // double-reap. Keep the Child alive until after wait4 so its pid can't be reused.
     let mut status: libc::c_int = 0;
     let mut usage: libc::rusage = unsafe { std::mem::zeroed() };
-    let reaped = unsafe { libc::wait4(pid, &mut status, 0, &mut usage) };
-    drop(child);
-    if reaped < 0 {
-        return None;
+    let deadline = Instant::now() + timeout;
+    loop {
+        let reaped = unsafe { libc::wait4(pid, &mut status, libc::WNOHANG, &mut usage) };
+        if reaped == pid {
+            drop(child);
+            return Some(usage.ru_maxrss.max(0) as u64);
+        }
+        if reaped < 0 {
+            drop(child);
+            return None;
+        }
+        if Instant::now() >= deadline {
+            // A negative pid addresses the process group created above.
+            unsafe {
+                libc::kill(-pid, libc::SIGKILL);
+                libc::wait4(pid, &mut status, 0, &mut usage);
+            }
+            drop(child);
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(10));
     }
-    // ru_maxrss is in KiB on Linux.
-    Some(usage.ru_maxrss.max(0) as u64)
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -257,5 +292,32 @@ mod tests {
             &sample(4, baseline + 16 * 1024),
             baseline
         ));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn hanging_replay_is_killed_at_profile_timeout() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::time::Instant;
+
+        let root = tempfile::tempdir().unwrap();
+        let harness = root.path().join("hang.sh");
+        std::fs::write(&harness, "#!/bin/sh\nsleep 60\n").unwrap();
+        let mut permissions = std::fs::metadata(&harness).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&harness, permissions).unwrap();
+        let input = root.path().join("input.bin");
+        std::fs::write(&input, b"input").unwrap();
+
+        let started = Instant::now();
+        assert_eq!(
+            run_and_peak_rss_kb_with_timeout(&harness, &input, Duration::from_millis(100)),
+            None
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "profile replay exceeded its wall-clock timeout: {:?}",
+            started.elapsed()
+        );
     }
 }

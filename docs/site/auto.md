@@ -71,7 +71,7 @@ their own interpreters with in-process edge coverage.
 | `--jobs <N>` / `-j <N>` | `1` (serial) | Build+fuzz up to N targets CONCURRENTLY via a bounded worker pool. Peak RAM ≈ `jobs × --rss-limit-mb`; size it to the host (too high OOM-kills, e.g. inside a cgroup `MemoryMax` slice). Results aggregate deterministically regardless of completion order |
 | `--passes <SET>` | all (`empty,rng,fuzz`) | Restrict the per-target cascade to a comma list of passes (`empty`, `rng`, `fuzz`). E.g. `--passes fuzz` runs only the fuzz-driven pass — ~3× the throughput of the full 3-pass cascade. Mutually exclusive with `--single-pass` |
 | `--single-pass` | off | Convenience for `--passes fuzz`: run ONLY the fuzz-driven pass per target |
-| `--max-repair-rounds <N>` | `48` | Ceiling on build-fail → repair → retry rounds per target. A low value (2–3) fails un-buildable targets fast for a quick triage sweep; the no-progress early-break still applies, so it is a cap, not a fixed cost |
+| `--max-repair-rounds <N>` | `16` | Ceiling on build-fail → repair → retry rounds per target. The default covers all 95 successful clean/damaged samples in the strengthened 53-repository matrix (p95 6, p99/max 14 rounds); the no-progress early-break still applies, so it is a cap, not a fixed cost |
 | _(discovery cache)_ | **on** | Discovery is cached by default to `<work>/discovery-cache.json` and reused on a re-run when a **build-stable** content fingerprint of the target source (file paths + sizes + content hashes + dir-filter) is unchanged, skipping the tree-sitter re-parse + re-rank — the dominant re-run cost on a big tree. The fingerprint depends only on the fuzzed code (not on which govfuzz build computed it), so rebuilding govfuzz does not invalidate it. A mismatch recomputes and rewrites the cache; a stale cache is never used silently |
 | `--fresh-discovery` | off | Force a fresh discovery this run (ignore any cache), then overwrite the cache with the new result |
 | `--no-discovery-cache` | off | Disable the discovery cache entirely (never read or write it) |
@@ -376,6 +376,21 @@ fix. One entry per resource, with a `referenced_by_targets` array and a
 | D — unrecoverable | Build-time repairs we tried and could not synthesise (e.g., struct-by-value return without a declaration) |
 
 ### `missing-deps`
+
+A dependency checkpoint is created before project build probing or target discovery,
+refreshed immediately after an opted-in build probe, then atomically replaced after
+every completed target (including parallel jobs). The JSON carries
+`complete` and `completed_targets`, so an operator can distinguish a final list
+from the last valid checkpoint left by an interrupt or parent-process OOM. The
+last terminal line always points at the human file with blocking/substituted
+counts.
+
+The text report puts compatible compilers, target runtimes/emulators, generated
+source/codegen tools, unfetched Git submodules, and absent declared Alire source
+first. Rows include a `declared`, `observed`, or `inferred` basis plus evidence.
+GovFuzz reports exact path/URL/version/output/tool data when project metadata or
+diagnostics provide it; it does not guess a proprietary vendor, version, ABI, or
+semantics from an otherwise unidentified missing type.
 
 A `failed_build` is never opaque. Every unresolved final diagnostic — missing
 header, type, symbol, build-config macro, malformed/codegen declarator, or any

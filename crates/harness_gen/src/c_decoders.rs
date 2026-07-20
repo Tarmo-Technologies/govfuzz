@@ -367,6 +367,10 @@ fn select_c_decoder_inner(
         return Ok(emission);
     }
 
+    if let Some(emission) = bzip2_read_handle(c_type, name) {
+        return Ok(emission);
+    }
+
     // A typedef'd interior/opaque handle (`sds` = `typedef char *sds`) that the
     // tree constructs with a self-returning constructor must be built via that
     // constructor, NOT decoded as a raw string/buffer: the pointer points INTO a
@@ -375,7 +379,7 @@ fn select_c_decoder_inner(
     // BEFORE the char*/void* short-circuits below. A bare `char *` carries `*`/
     // whitespace in its spelling and never matches a handle_type, so it is
     // unaffected and stays a string decode input.
-    if let Some(emission) = typedef_handle_via_returning_ctor(c_type, name, lifecycle) {
+    if let Some(emission) = handle_via_returning_ctor(c_type, name, registry, lifecycle) {
         return Ok(emission);
     }
 
@@ -418,6 +422,34 @@ fn select_c_decoder_inner(
     })
 }
 
+/// Construct bzip2's opaque high-level read handle over a real FILE populated
+/// from the current fuzz input. `BZ2_bzReadOpen` rejects a null stream, so the
+/// generic neutral-argument lifecycle path cannot make this API reachable.
+fn bzip2_read_handle(c_type: &str, name: &str) -> Option<CParamEmission> {
+    if c_type
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        != "BZFILE*"
+    {
+        return None;
+    }
+    let id = sanitize_ident(name);
+    let file = format!("_gf_bz_file_{id}");
+    let error = format!("_gf_bz_error_{id}");
+    Some(CParamEmission {
+        support: None,
+        decl: format!(
+            "FILE * {file} = tmpfile(); if ({file} && Size) {{ fwrite(Data, 1, Size, {file}); rewind({file}); }}; int {error} = 0; BZFILE * {name} = {file} ? BZ2_bzReadOpen(&{error}, {file}, 0, 0, NULL, 0) : NULL"
+        ),
+        arg: name.to_owned(),
+        c_type: c_type.to_owned(),
+        free: Some(format!(
+            "if ({name}) BZ2_bzReadClose(&{error}, {name}); if ({file}) fclose({file})"
+        )),
+    })
+}
+
 /// Build a single-identifier typedef interior/opaque handle (redis `sds`) via its
 /// self-returning constructor recorded in the lifecycle table, instead of letting
 /// it decay to the raw-string/buffer decoder (which underflows the handle's
@@ -425,9 +457,10 @@ fn select_c_decoder_inner(
 /// pointer/array/decoration (a bare `char *`, or a `T *` struct handle — the
 /// latter is handled by the shape path's lifecycle branch) or that has no
 /// returning-constructor lifecycle entry.
-fn typedef_handle_via_returning_ctor(
+fn handle_via_returning_ctor(
     c_type: &str,
     name: &str,
+    registry: &TypeRegistry,
     lifecycle: &[CHandleLifecycle],
 ) -> Option<CParamEmission> {
     let bare = c_type
@@ -435,10 +468,25 @@ fn typedef_handle_via_returning_ctor(
         .trim_start_matches("const ")
         .trim_start_matches("volatile ")
         .trim();
-    if bare.is_empty() || !bare.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return None;
-    }
-    let entry = lookup_lifecycle(lifecycle, bare)?;
+    let (entry, decl_type) =
+        if !bare.is_empty() && bare.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            (lookup_lifecycle(lifecycle, bare)?, bare.to_owned())
+        } else {
+            // A public handle typedef can resolve to a complete private struct after
+            // tree-wide type collection (BrotliDecoderState is the canonical case).
+            // Its returning constructor must still outrank field-by-field synthesis:
+            // the private representation has invariants that arbitrary bytes cannot
+            // satisfy. Try both the public alias and its canonical tag because the
+            // lifecycle table deliberately merges aliases under the canonical key.
+            let base = registry.pointer_base_spelling(c_type)?;
+            let canonical = registry.alias_target_spelling(&base);
+            let entry = lookup_lifecycle(lifecycle, &base).or_else(|| {
+                canonical
+                    .as_deref()
+                    .and_then(|resolved| lookup_lifecycle(lifecycle, resolved))
+            })?;
+            (entry, c_type.trim().to_owned())
+        };
     if !entry.init_returns_handle {
         return None;
     }
@@ -446,9 +494,9 @@ fn typedef_handle_via_returning_ctor(
     let args = entry.init_args.join(", ");
     Some(CParamEmission {
         support: None,
-        decl: format!("{bare} {name} = {init}({args})"),
+        decl: format!("{decl_type} {name} = {init}({args})"),
         arg: name.to_owned(),
-        c_type: bare.to_owned(),
+        c_type: decl_type,
         free: entry.delete.as_ref().map(|d| format!("{d}({name})")),
     })
 }
@@ -485,6 +533,7 @@ fn build_callback_trampoline(
     };
     let trampoline = format!("_gf_{}_trampoline", sanitize_ident(name));
     let mut decl_params = Vec::new();
+    let mut param_names = Vec::new();
     let mut body = String::new();
     for (index, param) in parsed.params.iter().enumerate() {
         // A variadic `...` (tinycbor's `CborStreamFunction(void *, const char *,
@@ -501,11 +550,13 @@ fn build_callback_trampoline(
             Some(param_name) => {
                 decl_params.push(param.clone());
                 body.push_str(&format!("    (void){param_name};\n"));
+                param_names.push(param_name);
             }
             None => {
                 let synthesized = format!("_gf_arg{index}");
                 decl_params.push(named_callback_param(param, &synthesized));
                 body.push_str(&format!("    (void){synthesized};\n"));
+                param_names.push(synthesized);
             }
         }
     }
@@ -514,7 +565,22 @@ fn build_callback_trampoline(
     } else {
         decl_params.join(", ")
     };
-    if parsed.return_type.trim() != "void" {
+    let callback_name = sanitize_ident(name).to_ascii_lowercase();
+    let pointer_return = parsed.return_type.contains('*');
+    let last_param = param_names.last().map(String::as_str);
+    if callback_name.ends_with("customcalloc") && pointer_return {
+        if let Some(size) = last_param {
+            body.push_str(&format!("    return calloc(1, (size_t){size});\n"));
+        }
+    } else if callback_name.ends_with("customalloc") && pointer_return {
+        if let Some(size) = last_param {
+            body.push_str(&format!("    return malloc((size_t){size});\n"));
+        }
+    } else if callback_name.ends_with("customfree") && parsed.return_type.trim() == "void" {
+        if let Some(address) = last_param {
+            body.push_str(&format!("    free((void *){address});\n"));
+        }
+    } else if parsed.return_type.trim() != "void" {
         body.push_str("    return 0;\n");
     }
     // The generated main.c forward-declares the target instead of including
@@ -914,6 +980,17 @@ fn legacy_select_c_decoder(c_type: &str, name: &str) -> Option<CParamEmission> {
             c_type: "wchar_t *".to_owned(),
             free: Some(format!("free({name})")),
         }),
+        "const wchar_t **" | "const wchar_t * *" | "wchar_t const **" => {
+            Some(wide_string_vector(name))
+        }
+        // A standalone mutable byte pointer is commonly caller-owned output or
+        // workspace storage (zlib's `unsigned char FAR *window`). A one-byte
+        // scalar scratch is not sufficient and lets the callee write out of
+        // bounds. Give it bounded, writable headroom and seed the prefix from
+        // the fuzz input so in/out buffers remain fuzz-driven.
+        "unsigned char *" | "uint8_t *" | "int8_t *" | "signed char *" => {
+            Some(mutable_byte_pointer(normalized.as_str(), name))
+        }
         "const void *" | "void const *" => Some(const_void_pointer(name)),
         "void *" => Some(mutable_void_pointer(name)),
         "FILE *" => Some(file_pointer("FILE *", name)),
@@ -929,6 +1006,10 @@ fn legacy_select_c_decoder(c_type: &str, name: &str) -> Option<CParamEmission> {
 struct DecodeContext<'a> {
     statements: Vec<String>,
     cleanups: Vec<String>,
+    /// Aggregate types currently being expanded. A self-referential pointer
+    /// field is left zeroed instead of duplicating the same object graph for
+    /// every branch until the generic depth cap.
+    active_aggregates: HashSet<String>,
     /// File-scope support code (callback trampolines) emitted before the harness
     /// body. Accumulated as fields/params decode; rolled back with the rest of the
     /// context when a field decode fails (so a half-built trampoline doesn't leak).
@@ -960,6 +1041,7 @@ impl<'a> DecodeContext<'a> {
             statements: Vec::new(),
             cleanups: Vec::new(),
             support: Vec::new(),
+            active_aggregates: HashSet::new(),
             registry,
             cpp,
             header_complete: None,
@@ -1021,10 +1103,13 @@ fn emit_top_level_value(
             emit_enum_decode(ctx, name, c_type, members, true);
             Ok(name.to_owned())
         }
-        TypeShape::Struct { fields, .. } => {
+        TypeShape::Struct {
+            name: struct_name,
+            fields,
+        } => {
             let storage_type = storage_c_type(c_type);
             ctx.push(format!("{storage_type} {name}{}", ctx.value_init_suffix()));
-            emit_struct_init(ctx, name, fields, 0);
+            emit_struct_init(ctx, name, struct_name, fields, 0);
             Ok(name.to_owned())
         }
         TypeShape::Union { fields, .. } => {
@@ -1106,7 +1191,7 @@ fn emit_top_level_pointer(
             ctx.push(format!("{c_type} {name} = &{storage}"));
             Ok(name.to_owned())
         }
-        TypeShape::Struct { fields, .. } => {
+        TypeShape::Struct { name: struct_name, fields } => {
             let base = pointer_base_owned(c_type)
                 .or_else(|| pointer_base_hint.map(storage_c_type));
             let Some(base) = base else {
@@ -1117,7 +1202,7 @@ fn emit_top_level_pointer(
             let storage_type = storage_c_type(&base);
             let storage = format!("_gf_value_{name}");
             ctx.push(format!("{storage_type} {storage}{}", ctx.value_init_suffix()));
-            emit_struct_init(ctx, &storage, fields, 0);
+            emit_struct_init(ctx, &storage, struct_name, fields, 0);
             ctx.push(format!("{c_type} {name} = &{storage}"));
             Ok(name.to_owned())
         }
@@ -1347,7 +1432,13 @@ fn is_const_byte_pointer(c_type: &str, kind: ScalarKind) -> bool {
     base.split_whitespace().any(|token| token == "const")
 }
 
-fn emit_struct_init(ctx: &mut DecodeContext<'_>, lvalue: &str, fields: &[Field], depth: usize) {
+fn emit_struct_init(
+    ctx: &mut DecodeContext<'_>,
+    lvalue: &str,
+    struct_name: &str,
+    fields: &[Field],
+    depth: usize,
+) {
     // In C the object is `memset`-zeroed before the decodable fields are filled;
     // in C++ it was value-initialized at its declaration (`T x{};`) so memset is
     // skipped (memset over a non-trivial member is undefined behaviour).
@@ -1357,6 +1448,12 @@ fn emit_struct_init(ctx: &mut DecodeContext<'_>, lvalue: &str, fields: &[Field],
     if depth >= ctx.limits.depth {
         ctx.push(format!(
             "/* govfuzz: {lvalue} left zeroed after decoder depth cap */"
+        ));
+        return;
+    }
+    if !ctx.active_aggregates.insert(struct_name.to_owned()) {
+        ctx.push(format!(
+            "/* govfuzz: {lvalue} left zeroed at recursive aggregate {struct_name} */"
         ));
         return;
     }
@@ -1383,6 +1480,7 @@ fn emit_struct_init(ctx: &mut DecodeContext<'_>, lvalue: &str, fields: &[Field],
             ));
         }
     }
+    ctx.active_aggregates.remove(struct_name);
 }
 
 fn emit_union_init(
@@ -1456,8 +1554,8 @@ fn emit_lvalue_decode(
             emit_enum_decode(ctx, lvalue, c_type, members, false);
             Ok(())
         }
-        TypeShape::Struct { fields, .. } => {
-            emit_struct_init(ctx, lvalue, fields, depth);
+        TypeShape::Struct { name, fields } => {
+            emit_struct_init(ctx, lvalue, name, fields, depth);
             Ok(())
         }
         TypeShape::Union { fields, .. } => emit_union_init(ctx, lvalue, fields, depth),
@@ -1531,6 +1629,13 @@ fn emit_pointer_field_storage(
     inner: &TypeShape,
     depth: usize,
 ) -> Result<(), CDecoderError> {
+    if let TypeShape::Struct { name, .. } = inner {
+        if ctx.active_aggregates.contains(name) {
+            return Err(CDecoderError::new(format!(
+                "recursive pointer field '{lvalue}' to '{name}' is left zeroed"
+            )));
+        }
+    }
     let Some(base) = pointer_base_owned(c_type) else {
         return Err(CDecoderError::new(format!(
             "pointer field '{lvalue}' of type '{c_type}' needs pointer declarator support"
@@ -1548,12 +1653,12 @@ fn emit_pointer_field_storage(
         TypeShape::Enum { members, .. } => {
             emit_enum_decode(ctx, &storage, &storage_type, members, true);
         }
-        TypeShape::Struct { fields, .. } => {
+        TypeShape::Struct { name, fields } => {
             ctx.push(format!(
                 "{storage_type} {storage}{}",
                 ctx.value_init_suffix()
             ));
-            emit_struct_init(ctx, &storage, fields, depth);
+            emit_struct_init(ctx, &storage, name, fields, depth);
         }
         TypeShape::Union { fields, .. } => {
             ctx.push(format!(
@@ -1990,8 +2095,43 @@ fn canonical_c_type_for_decoder(c_type: &str) -> String {
     c_type
         .replace('*', " * ")
         .split_whitespace()
+        .map(|token| if token == "z_const" { "const" } else { token })
+        .filter(|token| !matches!(*token, "FAR" | "ZEXPORT" | "ZEXTERN"))
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn mutable_byte_pointer(c_type: &str, name: &str) -> CParamEmission {
+    let cap = format!("_gf_cap_{name}");
+    let copy = format!("_gf_copy_{name}");
+    CParamEmission {
+        support: None,
+        decl: format!(
+            "size_t {cap} = Size <= (1024 * 1024) ? (size_t)Size + 65536 : (1024 * 1024 + 65536); \
+             {c_type} {name} = ({c_type})malloc({cap} ? {cap} : 1); \
+             size_t {copy} = (size_t)Size < {cap} ? (size_t)Size : {cap}; \
+             if ({name} && {copy}) memcpy({name}, Data, {copy})"
+        ),
+        arg: name.to_owned(),
+        c_type: c_type.to_owned(),
+        free: Some(format!("free({name})")),
+    }
+}
+
+fn wide_string_vector(name: &str) -> CParamEmission {
+    let value = format!("_gf_wvalue_{name}");
+    let items = format!("_gf_witems_{name}");
+    CParamEmission {
+        support: None,
+        decl: format!(
+            "wchar_t *{value} = gf_wc_string(&Cur, 2048); \
+             const wchar_t *{items}[2] = {{ {value}, NULL }}; \
+             const wchar_t **{name} = {items}"
+        ),
+        arg: name.to_owned(),
+        c_type: "const wchar_t **".to_owned(),
+        free: Some(format!("free({value})")),
+    }
 }
 
 /// Normalise a parameter name to a bare identifier. The parser occasionally
@@ -2322,17 +2462,26 @@ pub(crate) fn file_path_param(name: &str, is_const: bool) -> CParamEmission {
 }
 
 fn file_pointer(c_type: &str, name: &str) -> CParamEmission {
+    let buffer = format!("_gf_file_buf_{name}");
+    let setup = format!(
+        "unsigned char *{buffer} = (unsigned char *)calloc(Size ? Size : 1, 1); \
+         if ({buffer} && Size) memcpy({buffer}, Data, Size)"
+    );
     let decl = if c_type == "FILE *" {
-        format!(r#"FILE * {name} = fmemopen((void *)Data, Size, "rb")"#)
+        format!(
+            r#"{setup}; FILE * {name} = {buffer} ? (Size ? fmemopen({buffer}, Size, "r+") : tmpfile()) : NULL"#
+        )
     } else {
-        format!(r#"{c_type} {name} = ({c_type})fmemopen((void *)Data, Size, "rb")"#)
+        format!(
+            r#"{setup}; {c_type} {name} = ({c_type})({buffer} ? (Size ? fmemopen({buffer}, Size, "r+") : tmpfile()) : NULL)"#
+        )
     };
     CParamEmission {
         support: None,
         decl,
         arg: name.to_owned(),
         c_type: c_type.to_owned(),
-        free: Some(format!("if ({name}) fclose({name})")),
+        free: Some(format!("if ({name}) fclose({name}); free({buffer})")),
     }
 }
 
@@ -2962,6 +3111,34 @@ mod tests {
     }
 
     #[test]
+    fn select_c_decoder_strips_far_and_allocates_mutable_byte_workspace() {
+        // zlib declares inflateBackInit_'s caller-owned window with the legacy
+        // `FAR` decoration. The decoration must not make the byte pointee opaque,
+        // and the window needs real writable storage rather than one byte.
+        let e = select_c_decoder("unsigned char FAR *", "window")
+            .expect("decorated mutable byte pointer is supported");
+        assert!(e.decl.contains("unsigned char * window"), "{}", e.decl);
+        assert!(e.decl.contains("+ 65536"), "{}", e.decl);
+        assert!(e.decl.contains("memcpy(window, Data"), "{}", e.decl);
+        assert_eq!(e.free.as_deref(), Some("free(window)"));
+        assert_eq!(e.c_type, "unsigned char *");
+    }
+
+    #[test]
+    fn select_c_decoder_drives_null_terminated_wide_string_vector() {
+        let e = select_c_decoder("const wchar_t **", "wfilenames")
+            .expect("wide filename vector is supported");
+        assert!(e.decl.contains("gf_wc_string(&Cur, 2048)"), "{}", e.decl);
+        assert!(
+            e.decl.contains("const wchar_t *_gf_witems_wfilenames[2]") && e.decl.contains("NULL"),
+            "{}",
+            e.decl
+        );
+        assert_eq!(e.arg, "wfilenames");
+        assert_eq!(e.free.as_deref(), Some("free(_gf_wvalue_wfilenames)"));
+    }
+
+    #[test]
     fn select_c_decoder_drives_const_char_double_pointer_cursor() {
         // parson `parse_value(const char **string)` — an in-out cursor: point it at
         // a NUL-terminated heap string the parser advances.
@@ -3117,12 +3294,19 @@ mod tests {
     fn select_c_decoder_handles_file_pointer_with_fmemopen() {
         let e = select_c_decoder("FILE *", "stream").expect("FILE* is supported");
 
-        assert!(e.decl.contains("FILE * stream = fmemopen("));
-        assert!(e.decl.contains("(void *)Data"));
+        assert!(e.decl.contains("FILE * stream = _gf_file_buf_stream ?"));
+        assert!(e.decl.contains("memcpy(_gf_file_buf_stream, Data, Size)"));
         assert!(e.decl.contains("Size"));
+        assert!(e
+            .decl
+            .contains("fmemopen(_gf_file_buf_stream, Size, \"r+\")"));
+        assert!(e.decl.contains("tmpfile()"));
         assert_eq!(e.arg, "stream");
         assert_eq!(e.c_type, "FILE *");
-        assert_eq!(e.free.as_deref(), Some("if (stream) fclose(stream)"));
+        assert_eq!(
+            e.free.as_deref(),
+            Some("if (stream) fclose(stream); free(_gf_file_buf_stream)")
+        );
     }
 
     #[test]
@@ -3173,12 +3357,17 @@ mod tests {
     fn select_c_decoder_handles_miniz_file_macro_pointer_with_fmemopen() {
         let e = select_c_decoder("MZ_FILE *", "stream").expect("MZ_FILE* is supported");
 
-        assert!(e.decl.contains("MZ_FILE * stream = (MZ_FILE *)fmemopen("));
-        assert!(e.decl.contains("(void *)Data"));
+        assert!(e
+            .decl
+            .contains("MZ_FILE * stream = (MZ_FILE *)(_gf_file_buf_stream ? (Size ? fmemopen"));
+        assert!(e.decl.contains("memcpy(_gf_file_buf_stream, Data, Size)"));
         assert!(e.decl.contains("Size"));
         assert_eq!(e.arg, "stream");
         assert_eq!(e.c_type, "MZ_FILE *");
-        assert_eq!(e.free.as_deref(), Some("if (stream) fclose(stream)"));
+        assert_eq!(
+            e.free.as_deref(),
+            Some("if (stream) fclose(stream); free(_gf_file_buf_stream)")
+        );
     }
 
     #[test]
@@ -3413,6 +3602,53 @@ mod tests {
     }
 
     #[test]
+    fn custom_allocator_callback_fields_use_real_heap_operations() {
+        let reg = registry(
+            r#"
+            typedef void* (*alloc_fn)(void* opaque, size_t size);
+            typedef void* (*calloc_fn)(void* opaque, size_t size);
+            typedef void (*free_fn)(void* opaque, void* address);
+            struct custom_mem {
+                alloc_fn customAlloc;
+                calloc_fn customCalloc;
+                free_fn customFree;
+            };
+            "#,
+        );
+
+        let emission = select_c_decoder_with_registry("struct custom_mem", "cmem", &reg)
+            .expect("custom allocator callbacks are supported");
+        let support = emission.support.expect("callback support");
+
+        assert!(
+            support.contains("return malloc((size_t)size);"),
+            "{support}"
+        );
+        assert!(
+            support.contains("return calloc(1, (size_t)size);"),
+            "{support}"
+        );
+        assert!(support.contains("free((void *)address);"), "{support}");
+    }
+
+    #[test]
+    fn bzip2_file_handle_is_opened_over_fuzz_bytes_and_closed() {
+        let emission = select_c_decoder_with_registry("BZFILE *", "b", &registry(""))
+            .expect("BZFILE has a concrete read lifecycle");
+
+        assert!(emission.decl.contains("FILE * _gf_bz_file_b = tmpfile()"));
+        assert!(emission
+            .decl
+            .contains("fwrite(Data, 1, Size, _gf_bz_file_b)"));
+        assert!(emission
+            .decl
+            .contains("BZ2_bzReadOpen(&_gf_bz_error_b, _gf_bz_file_b, 0, 0, NULL, 0)"));
+        let cleanup = emission.free.expect("BZFILE cleanup");
+        assert!(cleanup.contains("BZ2_bzReadClose(&_gf_bz_error_b, b)"));
+        assert!(cleanup.contains("fclose(_gf_bz_file_b)"));
+    }
+
+    #[test]
     fn select_c_decoder_with_registry_decodes_pointer_to_scalar_field() {
         // #451: a `int *count` field (pointer to a decodable scalar) used to be left
         // NULL; now it points at decoded stack storage so dereferences run.
@@ -3461,6 +3697,31 @@ mod tests {
         );
         assert!(e.decl.contains("_gf_pf_s_origin.x ="), "{}", e.decl);
         assert!(e.decl.contains("s.origin = &_gf_pf_s_origin"), "{}", e.decl);
+    }
+
+    #[test]
+    fn recursive_struct_pointer_fields_are_zeroed_without_exponential_decoder_growth() {
+        let reg = registry(
+            r#"
+            struct node {
+                struct node *next;
+                struct node *prev;
+                int value;
+            };
+            "#,
+        );
+
+        let e = select_c_decoder_with_registry("struct node", "node", &reg)
+            .expect("self-linked struct remains decodable");
+        assert!(e.decl.contains("node.next left zeroed"), "{}", e.decl);
+        assert!(e.decl.contains("node.prev left zeroed"), "{}", e.decl);
+        assert!(e.decl.contains("node.value ="), "{}", e.decl);
+        assert!(!e.decl.contains("_gf_pf_node_next"), "{}", e.decl);
+        assert!(
+            e.decl.len() < 8 * 1024,
+            "decoder grew to {} bytes",
+            e.decl.len()
+        );
     }
 
     #[test]
@@ -4222,6 +4483,36 @@ mod tests {
 
         assert!(e.decl.contains("w = widget_create(NULL)"), "{}", e.decl);
         assert_eq!(e.free.as_deref(), Some("widget_free(w)"));
+    }
+
+    #[test]
+    fn lifecycle_returning_constructor_outranks_complete_private_struct_synthesis() {
+        let reg = registry(
+            "typedef struct BrotliDecoderStateStruct BrotliDecoderState;\n\
+             struct BrotliDecoderStateStruct { const unsigned char *chunks[16]; int state; };",
+        );
+        let lifecycle = [CHandleLifecycle {
+            // The lifecycle discovery table canonicalizes the public typedef to
+            // its private struct tag, while the target parameter keeps the alias.
+            handle_type: "BrotliDecoderStateStruct".to_owned(),
+            init: Some("BrotliDecoderCreateInstance".to_owned()),
+            delete: Some("BrotliDecoderDestroyInstance".to_owned()),
+            init_returns_handle: true,
+            init_args: vec!["NULL".to_owned(), "NULL".to_owned(), "NULL".to_owned()],
+        }];
+
+        let e = select_c_decoder_with_lifecycle("BrotliDecoderState *", "state", &reg, &lifecycle)
+            .expect("typed handle uses its public constructor");
+
+        assert_eq!(
+            e.decl,
+            "BrotliDecoderState * state = BrotliDecoderCreateInstance(NULL, NULL, NULL)"
+        );
+        assert_eq!(
+            e.free.as_deref(),
+            Some("BrotliDecoderDestroyInstance(state)")
+        );
+        assert!(!e.decl.contains("_gf_value"), "{}", e.decl);
     }
 
     #[test]

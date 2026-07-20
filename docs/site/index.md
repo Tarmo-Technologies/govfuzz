@@ -65,6 +65,9 @@ source-generated harnesses and a permissively licensed core.
 - [Offline / Air-Gapped Deployment](./offline-deployment/) — installing and
   updating GovFuzz on a disconnected host: build-vs-transfer, the artifact set,
   offline source builds, toolchain staging, and content packs.
+- [Offline Ada/C/C++ Auto Runbook](./offline-auto-runbook/) — the strongest
+  known-build and unknown-build commands, real dependency staging, IDL codegen,
+  and a separately reported forced fallback.
 
 ## Local Build
 

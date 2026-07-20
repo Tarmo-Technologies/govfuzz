@@ -27,18 +27,30 @@ endif
 # default rejects — without regenerating the harness. `?=` lets a command-line/env
 # CXX_STD win over this default.
 CXX_STD ?= {{ cxx_standard }}
-CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+# Clang 18 treats the pre-C++11 `"%" PRId64` macro-adjacency idiom as a hard
+# reserved-user-defined-literal error in every C++11+ mode. It is valid legacy
+# source, and the generated harness itself needs C++11 headers, so falling back
+# to gnu++03 cannot solve it. Suppress only that compatibility diagnostic.
+CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+# Keep unrelated methods/data in separate sections so a target does not inherit
+# undefined references from unused code co-located in the same translation unit.
+SECTION_FLAGS ?= -ffunction-sections -fdata-sections
+ifeq ($(shell uname -s),Darwin)
+SECTION_LDFLAGS ?= -Wl,-dead_strip
+else
+SECTION_LDFLAGS ?= -Wl,--gc-sections
+endif
 # AFL's compiler driver reserves the AFL_ env-var namespace, so the AFL
 # build knobs use the AFLPP_ prefix to avoid colliding with it.
 AFLPP_CXX ?= afl-clang-fast++
-AFLPP_CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -DGOVFUZZ_AFL
+AFLPP_CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -DGOVFUZZ_AFL
 # Differential build (two-compiler): a PORTABLE build (no clang-only coverage or
 # UBSan-check subtraction) so the SAME source compiles under clang++ AND g++, and
 # `auto --differential A:B` can replay the corpus through both and flag inputs on
 # which the two builds diverge in exit/crash behavior (GF-301). Keeps `-std` so
 # the recovered C++ dialect carries over; ASan stays on (identical across compilers).
 DIFF_CXX ?= clang++
-DIFF_CXXFLAGS ?= -O2 -g -std=$(CXX_STD) -fsanitize=address
+DIFF_CXXFLAGS ?= -O2 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address
 INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
 BUILD_CONTEXT_PROVENANCE = {{ build_context_provenance }}
 BUILD_CONTEXT_CONFIDENCE = {{ build_context_confidence }}
@@ -54,17 +66,17 @@ all: main
 # make parses as a target:prereq separator. In the recipe it is just a compiler
 # argument, so the colon is harmless. (The harness dir is regenerated per attempt.)
 main: main.cpp
-	$(CXX) $(CXXFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 afl: main_afl
 
 main_afl: main.cpp
-	$(AFLPP_CXX) $(AFLPP_CXXFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(AFLPP_CXX) $(AFLPP_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 diff: main_diff
 
 main_diff: main.cpp
-	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
 	rm -f main main_afl main_diff

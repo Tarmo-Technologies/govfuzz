@@ -43,6 +43,15 @@ pub enum BuildErrorKind {
     UndefinedSymbol {
         name: String,
     },
+    /// A C frontend rejected a call because no declaration was visible. This is
+    /// distinct from a linker undefined reference: adding a standalone weak
+    /// definition cannot make the calling translation unit compile. The source
+    /// location lets repair inspect missing function-like/declaration macros.
+    UndeclaredFunction {
+        name: String,
+        file: String,
+        line: u32,
+    },
     MissingSharedLib {
         name: String,
     },
@@ -307,6 +316,21 @@ mod tests {
     }
 
     #[test]
+    fn classifies_missing_parameter_wrapper_macro() {
+        let stderr = "api.c:97:57: error: type specifier missing, defaults to 'int'; ISO C99 and later do not support implicit int [-Wimplicit-int]\n\
+            \x20  97 |         yaml_char_t **b_start, yaml_char_t **b_pointer, SHIM(yaml_char_t **b_end))\n\
+            \x20     |                                                   ^\n";
+        let kinds = classify(stderr);
+        assert_eq!(
+            kinds,
+            vec![BuildErrorKind::MissingMacro {
+                name: "SHIM".to_owned(),
+                as_value: false,
+            }]
+        );
+    }
+
+    #[test]
     fn other_surfaces_error_line_not_compile_listing() {
         // A multi-unit gprbuild run: the real error is mid-stream, followed by
         // a long listing and the generic failure summary. The Other tail must
@@ -333,6 +357,32 @@ mod tests {
             kinds.iter().any(|k| matches!(
                 k,
                 BuildErrorKind::MissingHeader { path } if path == "internal/log.h"
+            )),
+            "got {kinds:?}"
+        );
+    }
+
+    #[test]
+    fn missing_parent_header_clang_suggestion_form() {
+        let stderr = "internal/stack.h:18:10: error: '../allocators.h' file not found, did you mean 'allocators.h'?\n";
+        let kinds = classify(stderr);
+        assert!(
+            kinds.iter().any(|kind| matches!(
+                kind,
+                BuildErrorKind::MissingHeader { path } if path == "../allocators.h"
+            )),
+            "got {kinds:?}"
+        );
+    }
+
+    #[test]
+    fn explicit_no_config_error_is_a_missing_generated_header() {
+        let stderr = "archive_platform.h:50:2: error: Oops: No config.h and no pre-built configuration in archive_platform.h.\n";
+        let kinds = classify(stderr);
+        assert!(
+            kinds.iter().any(|kind| matches!(
+                kind,
+                BuildErrorKind::MissingHeader { path } if path == "config.h"
             )),
             "got {kinds:?}"
         );
@@ -427,10 +477,96 @@ mod tests {
     }
 
     #[test]
+    fn mixed_case_project_constants_and_aliases_are_repairable() {
+        for name in ["True", "UChar", "cJSON_IsReference"] {
+            let kinds = classify(&format!(
+                "x.c:4:5: error: use of undeclared identifier '{name}'\n"
+            ));
+            assert!(
+                matches!(
+                    kinds.as_slice(),
+                    [BuildErrorKind::MissingMacro { name: found, as_value: true }]
+                        if found == name
+                ),
+                "{name}: {kinds:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn undeclared_identifier_in_cpp_call_context_is_repairable() {
+        let stderr = "coding.h:42:10: error: use of undeclared identifier 'DecodeFixed32'\n\
+                      return DecodeFixed32(data);\n\
+                             ^\n";
+        let kinds = classify(stderr);
+        assert!(
+            kinds.iter().any(|kind| matches!(
+                kind,
+                BuildErrorKind::MissingMacro { name, as_value: true }
+                    if name == "DecodeFixed32"
+            )),
+            "got {kinds:?}"
+        );
+
+        let variable = classify(
+            "coding.h:42:10: error: use of undeclared identifier 'decode_state'\n\
+             return decode_state;\n\
+                    ^\n",
+        );
+        assert!(matches!(
+            variable.as_slice(),
+            [BuildErrorKind::Other { .. }]
+        ));
+    }
+
+    #[test]
+    fn known_posix_cpp_undeclared_identifier_is_repairable_symbol() {
+        let kinds = classify("TProtocol.h:658:50: error: use of undeclared identifier 'htons'\n");
+        assert!(kinds.iter().any(|kind| matches!(
+            kind,
+            BuildErrorKind::UndefinedSymbol { name } if name == "htons"
+        )));
+
+        // A lowercase variable is deliberately not promoted to a function.
+        let kinds = classify("x.cpp:4:5: error: use of undeclared identifier 'state'\n");
+        assert!(matches!(kinds.as_slice(), [BuildErrorKind::Other { .. }]));
+    }
+
+    #[test]
+    fn undeclared_std_qualifier_preserves_the_qualified_standard_type() {
+        let stderr = "x.cpp:4:7: error: use of undeclared identifier 'std'\n\
+                      using std::string;\n\
+                            ^\n";
+        let kinds = classify(stderr);
+        assert!(kinds.iter().any(|kind| matches!(
+            kind,
+            BuildErrorKind::MissingType { name } if name == "std::string"
+        )));
+    }
+
+    #[test]
+    fn known_wide_string_function_is_not_classified_as_a_macro() {
+        let kinds = classify("archive.c:10:9: error: use of undeclared identifier 'wcslen'\n");
+        assert!(matches!(
+            kinds.as_slice(),
+            [BuildErrorKind::UndefinedSymbol { name }] if name == "wcslen"
+        ));
+    }
+
+    #[test]
+    fn undeclared_c_boolean_literal_is_repairable_via_stdbool() {
+        let kinds = classify("data.c:9:4: error: use of undeclared identifier 'false'\n");
+        assert!(matches!(
+            kinds.as_slice(),
+            [BuildErrorKind::UndefinedSymbol { name }] if name == "false"
+        ));
+    }
+
+    #[test]
     fn call_to_undeclared_clang_frontend_form() {
         // clang's compile-time error when a function is referenced
         // without a prior declaration. Prior to this regex the auto
-        // pipeline saw it as `Other` and never planned a stub.
+        // pipeline saw it as `Other` and never planned a call-site repair.
         let stderr = "harness.c:77:11: error: call to undeclared function 'vendor_helper'; \
                       ISO C99 and later do not support implicit function declarations \
                       [-Wimplicit-function-declaration]\n";
@@ -438,10 +574,23 @@ mod tests {
         assert!(
             kinds.iter().any(|k| matches!(
                 k,
-                BuildErrorKind::UndefinedSymbol { name } if name == "vendor_helper"
+                BuildErrorKind::UndeclaredFunction { name, file, line }
+                    if name == "vendor_helper" && file == "harness.c" && *line == 77
             )),
             "got {kinds:?}"
         );
+    }
+
+    #[test]
+    fn call_to_undeclared_library_function_is_repairable() {
+        let kinds = classify(
+            "mpc.c:105:20: error: call to undeclared library function 'malloc' with type 'void *(unsigned long)'\n",
+        );
+        assert!(matches!(
+            kinds.as_slice(),
+            [BuildErrorKind::UndeclaredFunction { name, file, line }]
+                if name == "malloc" && file == "mpc.c" && *line == 105
+        ));
     }
 
     #[test]

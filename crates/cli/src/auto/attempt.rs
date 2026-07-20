@@ -11,6 +11,7 @@ use build_classifier::BuildErrorKind;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::time::Duration;
 
 /// Re-export so external integration tests (`crates/cli/tests/`) constructing
@@ -30,19 +31,15 @@ pub use crate::fuzz::FuzzEngine;
 /// runs when the previous one added a repair). A very deep chain is left to
 /// the proper fix - transitive-closure source addition in a single round.
 ///
-/// Raised to 48 for deep flight-software type/config chains, which surface one
-/// new dependency per round: cFE pulls a long series of generated
-/// `*_extern_typedefs.h` placeholder headers (`CFE_MSG_Message_t`,
-/// `CFE_SB_MsgId_t`, ...), and F´ resolves ~21 `config/Fw*TypeAliasAc.h`
-/// autocoder headers one at a time (each a single ConfigTypeAlias round) before
-/// the real parser dependencies even surface — at 24 it ran out mid-config
-/// cascade. The no-progress break still stops early when a target genuinely
-/// cannot converge, so the higher cap only costs rounds that are making progress.
+/// Set to 16 from the strengthened 53-repository broken-project validation
+/// matrix. Across 95 successful clean and damaged samples, p95 was 6 rounds,
+/// p99/max was 14, and 16 covered every success. Eight rounds would have lost
+/// two valid builds; the no-progress break still stops exhausted plans early.
 ///
 /// This is the DEFAULT; the cap is configurable per run via `auto
 /// --max-repair-rounds` (threaded through `AttemptOptions::max_repair_rounds`),
 /// so a triage sweep can fail un-buildable targets fast with a low value (2-3).
-pub const DEFAULT_MAX_REPAIR_ROUNDS: usize = 48;
+pub const DEFAULT_MAX_REPAIR_ROUNDS: usize = 16;
 
 /// Placeholder "symbol" recorded in the repair ledger when the §26.1 whole-library
 /// link fallback adds a project's already-built static archive to the harness link.
@@ -65,6 +62,50 @@ const WHOLE_LIBRARY_TU_SET_SYMBOL: &str = "<whole-library TU set>";
 /// library-wide link failure (yaml-cpp's ~176 undefined `file(GLOB)` symbols),
 /// not a single `helper()`. Keeps the precise per-symbol repair as the default.
 const WHOLE_LIBRARY_TU_MIN_UNDEFINED: usize = 5;
+
+/// Maximum number of project translation units auto-repair may add to one
+/// isolated harness across the whole repair loop. The stricter whole-set sweep
+/// limit is 40, but precise source recovery needs more headroom: LevelDB's
+/// current closure crosses 40 before it reaches its final utility definitions.
+/// At 64, application-sized cascades such as Uncrustify remain bounded while
+/// legitimate library recovery can continue. Once exhausted, undefined symbols
+/// use the planner's typed/blind stub fallback.
+const MAX_AUTO_PROJECT_SOURCES: usize = 64;
+
+fn definition_source_for_undefined<'a>(
+    error: &BuildErrorKind,
+    decl_index: &'a DeclarationIndex,
+    target_source: &Path,
+) -> Option<&'a Path> {
+    let BuildErrorKind::UndefinedSymbol { name } = error else {
+        return None;
+    };
+    decl_index.lookup_definition_source_near(name, target_source)
+}
+
+/// A full translation-unit sweep is justified only when a broad link failure
+/// contains enough symbols that cannot be closed by precise source additions.
+/// Mapped symbols can all be added together in one round, while a small number of
+/// genuinely deleted/external helpers should be stubbed without pulling unrelated
+/// TUs; count only the imprecise subset against the library-wide threshold.
+fn should_link_full_tu_set(
+    errors: &[BuildErrorKind],
+    decl_index: &DeclarationIndex,
+    target_source: &Path,
+) -> bool {
+    let undefined: Vec<_> = errors
+        .iter()
+        .filter(|error| matches!(error, BuildErrorKind::UndefinedSymbol { .. }))
+        .collect();
+    undefined
+        .iter()
+        .filter(|error| {
+            definition_source_for_undefined(error, decl_index, target_source)
+                .is_none_or(|source| source == target_source)
+        })
+        .count()
+        >= WHOLE_LIBRARY_TU_MIN_UNDEFINED
+}
 
 /// Tunables for a single `attempt()` call. Wired from the
 /// `govfuzz auto` CLI flags `--per-target-time` and `--no-stubs`.
@@ -133,7 +174,7 @@ pub struct AttemptOptions {
     /// `-rss_limit_mb`; default 2048.
     pub rss_limit_mb: usize,
     /// Cap on build-fail -> repair -> retry rounds per target (`auto
-    /// --max-repair-rounds`; default [`DEFAULT_MAX_REPAIR_ROUNDS`] = 48). Each
+    /// --max-repair-rounds`; default [`DEFAULT_MAX_REPAIR_ROUNDS`] = 16). Each
     /// round only runs when the previous one applied a new repair, so this is a
     /// ceiling, not a fixed cost. A low value (2-3) fails un-buildable targets
     /// fast for a quick triage sweep over a huge tree.
@@ -860,7 +901,12 @@ pub fn attempt_with_progress(
                     _ => None,
                 })
                 .collect();
-            if let Some(missing) = undefined_external_types(last_errors, decl_index, &synthesized) {
+            if let Some(missing) = undefined_external_types_for_lang(
+                last_errors,
+                decl_index,
+                &synthesized,
+                result.candidate.lang,
+            ) {
                 let reason = format!(
                     "requires type(s) the generated harness cannot construct offline ({}) — an \
                      external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable \
@@ -923,10 +969,25 @@ pub fn attempt_with_progress(
 /// if the failure has ANY other cause (a link error, a missing header that maps to
 /// a real package, or a codegen recovery artifact) that the dependency manifest
 /// should keep surfacing as actionable.
+#[cfg(test)]
 fn undefined_external_types(
     last_errors: &[BuildErrorKind],
     decl_index: &DeclarationIndex,
     synthesized: &BTreeSet<String>,
+) -> Option<Vec<String>> {
+    undefined_external_types_for_lang(
+        last_errors,
+        decl_index,
+        synthesized,
+        crate::auto::candidate::Lang::Cpp,
+    )
+}
+
+fn undefined_external_types_for_lang(
+    last_errors: &[BuildErrorKind],
+    decl_index: &DeclarationIndex,
+    synthesized: &BTreeSet<String>,
+    lang: crate::auto::candidate::Lang,
 ) -> Option<Vec<String>> {
     if last_errors.is_empty() {
         return None;
@@ -955,6 +1016,13 @@ fn undefined_external_types(
             // actionable synthesized gap, not an unsynthesizable external type —
             // skip it so the attempt keeps its `synthesized_types` manifest.
             BuildErrorKind::MissingType { name } if synthesized.contains(name) => {}
+            BuildErrorKind::MissingType { name } if c_stub_gen::c_std_header(name).is_some() => {
+                // Standard/POSIX names are provided by the host SDK. A retained
+                // sequence attempt may not carry the direct fallback's header
+                // repair manifest, but that cannot turn `size_t` into an external
+                // project dependency.
+                return None;
+            }
             BuildErrorKind::MissingType { name }
                 if !build_classifier::is_codegen_error(err)
                     && !decl_index.type_defined_in_compiled_source(name) =>
@@ -969,11 +1037,27 @@ fn undefined_external_types(
             // way the harness can never complete it (an `IncompleteType` is
             // deliberately never repaired, so a persistent one at the final outcome
             // is unrecoverable). Degrade to a report-only static scan.
-            BuildErrorKind::IncompleteType { name } => {
+            BuildErrorKind::IncompleteType { name }
+                if matches!(lang, crate::auto::candidate::Lang::C)
+                    && decl_index.type_defined_in_compiled_source(name) =>
+            {
+                // In C, a complete in-tree struct surfacing as incomplete is an
+                // include/source-recovery problem, not an unavailable SDK type.
+                // Preserve the failed build so the repair loop/report names the
+                // actionable error (zlib's `struct inflate_state`). C++ pimpls
+                // remain report-only because their private definition can be
+                // intentionally invisible to an external harness.
+                return None;
+            }
+            BuildErrorKind::IncompleteType { name } if c_stub_gen::c_std_header(name).is_none() => {
                 if !names.contains(name) {
                     names.push(name.clone());
                 }
             }
+            // A standard/POSIX incomplete type is a missing include, not an
+            // unavailable external SDK. The repair planner injects its real host
+            // header; if it persists, retain the build failure for diagnosis.
+            BuildErrorKind::IncompleteType { .. } => return None,
             // A generic diagnostic left behind by placeholdering an out-of-tree type
             // that is actually a class. Tolerated ONLY when we DID placeholder such a
             // type and the tail is the tell-tale scalar-used-as-class shape; any
@@ -1054,6 +1138,9 @@ fn run_attempt(
     // cross-file symbols then resolve instead of being blind-stubbed (the repair
     // loop still AddSource-grows this for anything the user didn't pass).
     let mut extra_sources: Vec<PathBuf> = options.extra_sources.clone();
+    // User-supplied --extra-source files are explicit and do not consume this
+    // safety budget. Only project TUs selected automatically by repair count.
+    let mut auto_project_sources = 0usize;
     // Seed user-supplied `--extra-include` dirs first so dependency headers
     // outside the swept tree resolve on the very first build attempt — before
     // the repair planner would otherwise placeholder them away.
@@ -2100,7 +2187,11 @@ fn run_attempt(
                             consecutive_crashes = 0;
                             p
                         }
-                        Err(_) => {
+                        Err(error) => {
+                            eprintln!(
+                                "govfuzz auto: fuzz pass `{pass_label}` failed for {}: {error}",
+                                candidate.harness_id
+                            );
                             // Crash-rate kill-switch: a shim regression
                             // that always crashes (eg. void/void dlsym
                             // stub jumping to garbage memory) would
@@ -2457,14 +2548,15 @@ fn run_attempt(
                 // re-sweeping). Unlike the archive arm this also fires for symbols
                 // that DO have an in-tree definition — that is exactly the case the
                 // slow cascade churns on.
-                let undefined_count = errors
-                    .iter()
-                    .filter(|e| matches!(e, BuildErrorKind::UndefinedSymbol { .. }))
-                    .count();
                 if !full_tu_set_linked
                     && library_archives.is_empty()
                     && !library_tus.is_empty()
-                    && undefined_count >= WHOLE_LIBRARY_TU_MIN_UNDEFINED
+                    && library_tus
+                        .iter()
+                        .filter(|tu| !extra_sources.contains(tu))
+                        .count()
+                        <= MAX_AUTO_PROJECT_SOURCES.saturating_sub(auto_project_sources)
+                    && should_link_full_tu_set(&errors, decl_index, &candidate.source_path)
                 {
                     full_tu_set_linked = true;
                     let mut linked_any = false;
@@ -2473,6 +2565,7 @@ fn run_attempt(
                             continue;
                         }
                         extra_sources.push(tu.clone());
+                        auto_project_sources += 1;
                         manifest.repairs.push(Repair::AddSource {
                             symbol: WHOLE_LIBRARY_TU_SET_SYMBOL.to_owned(),
                             source_path: tu.clone(),
@@ -2512,6 +2605,7 @@ fn run_attempt(
                 let mut field_struct_cache: std::collections::HashMap<String, Option<String>> =
                     std::collections::HashMap::new();
                 let mut applied_any = false;
+                let mut sources_added_this_round = std::collections::HashSet::new();
                 // GAP #9: set when the ONLY repair the planner can offer for the
                 // candidate's OWN target symbol is to re-add its already-compiled
                 // source — proof the definition is conditionally compiled out (an
@@ -2520,14 +2614,56 @@ fn run_attempt(
                 // skip honestly instead of looping to an opaque `failed_build`.
                 let mut unavailable_target_blocker = false;
                 for err in &errors {
-                    if let Some(repair) = crate::auto::repair::plan_repair_forced(
-                        err,
-                        decl_index,
-                        &manifest,
-                        options.force,
-                    ) {
+                    // Several undefined symbols often live in one implementation
+                    // source (XZ check.c defines init/update/finish). Once that
+                    // source is added in this round, let the next build resolve all
+                    // of them; treating the later symbols as "already attempted"
+                    // and stubbing them creates duplicate or fake definitions.
+                    if definition_source_for_undefined(err, decl_index, &candidate.source_path)
+                        .is_some_and(|source| sources_added_this_round.contains(source))
+                    {
+                        continue;
+                    }
+                    if let Some(mut repair) =
+                        crate::auto::repair::plan_repair_forced_with_source_policy(
+                            err,
+                            decl_index,
+                            &manifest,
+                            options.force,
+                            auto_project_sources < MAX_AUTO_PROJECT_SOURCES,
+                        )
+                    {
+                        if let Repair::AddSource {
+                            symbol,
+                            source_path,
+                        } = &mut repair
+                        {
+                            if let Some(contextual) = decl_index
+                                .lookup_definition_source_near(symbol, &candidate.source_path)
+                            {
+                                *source_path = contextual.to_path_buf();
+                            }
+                        }
+                        if matches!(&repair, Repair::AddSource { source_path, .. }
+                            if manifest.already_attempted(&source_path.display().to_string()))
+                        {
+                            let Some(fallback) =
+                                crate::auto::repair::plan_repair_forced_with_source_policy(
+                                    err,
+                                    decl_index,
+                                    &manifest,
+                                    options.force,
+                                    false,
+                                )
+                            else {
+                                continue;
+                            };
+                            repair = fallback;
+                        }
                         if repair_replaces_candidate_target(&repair, candidate) {
-                            if repair_signals_unavailable_target(&repair, candidate) {
+                            let unavailable_target =
+                                repair_signals_unavailable_target(&repair, candidate);
+                            if unavailable_target {
                                 unavailable_target_blocker = true;
                             }
                             // Track refused repairs by stable key so an identical
@@ -2541,9 +2677,11 @@ fn run_attempt(
                             // tiebreak); each was planned as a self-target `AddSource`
                             // and refused, spamming the identical line dozens of times
                             // while the real `emitterstate.cpp` was added anyway. The
-                            // refused key never counts as progress, so a target whose
-                            // ONLY remaining proposals are already-refused/applied
-                            // stops cleanly below instead of spinning.
+                            // A dependency symbol mis-attributed to the target source
+                            // gets one source-disabled re-plan below, which can use a
+                            // declaration-backed stub. The candidate's own symbol is
+                            // never allowed through that fallback: stubbing it would
+                            // produce a false-clean harness that fuzzes no real target.
                             if record_refused_repair(&mut refused_repairs, &repair) {
                                 eprintln!(
                                     "govfuzz auto: refusing self-target repair {} for {}; \
@@ -2552,7 +2690,19 @@ fn run_attempt(
                                     candidate.harness_id
                                 );
                             }
-                            continue;
+                            if unavailable_target {
+                                continue;
+                            }
+                            let Some(fallback) = dependency_fallback_after_refused_source(
+                                err,
+                                decl_index,
+                                &manifest,
+                                candidate,
+                                options.force,
+                            ) else {
+                                continue;
+                            };
+                            repair = fallback;
                         }
                         let key = repair_key(&repair);
                         if manifest.already_attempted(&key) {
@@ -2566,9 +2716,15 @@ fn run_attempt(
                             &mut field_struct_cache,
                         ) {
                             Ok(outcome) => {
+                                if let Repair::AddSource { source_path, .. } = &repair {
+                                    sources_added_this_round.insert(source_path.clone());
+                                }
                                 for s in outcome.extra_sources {
                                     if !extra_sources.contains(&s) {
                                         extra_sources.push(s);
+                                        if matches!(&repair, Repair::AddSource { .. }) {
+                                            auto_project_sources += 1;
+                                        }
                                     }
                                 }
                                 for i in outcome.extra_includes {
@@ -2645,16 +2801,65 @@ enum BuildOutcome {
     Failed { errors: Vec<BuildErrorKind> },
 }
 
+#[cfg(test)]
+mod full_tu_gate_tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn precise_definition_sources_prevent_unrelated_full_library_sweep() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("govfuzz-full-tu-gate-{nonce}"));
+        fs::create_dir_all(&root).unwrap();
+        let target = root.join("target.c");
+        fs::write(&target, "int target(void) { return 0; }\n").unwrap();
+        let mut errors = Vec::new();
+        for index in 0..WHOLE_LIBRARY_TU_MIN_UNDEFINED {
+            let name = format!("helper_{index}");
+            fs::write(
+                root.join(format!("{name}.c")),
+                format!("int {name}(void) {{ return {index}; }}\n"),
+            )
+            .unwrap();
+            errors.push(BuildErrorKind::UndefinedSymbol { name });
+        }
+        let decls = DeclarationIndex::build(&root).unwrap();
+
+        assert!(
+            !should_link_full_tu_set(&errors, &decls, &target),
+            "a single precise repair round can add every defining source"
+        );
+        for (index, error) in errors.iter_mut().enumerate() {
+            *error = BuildErrorKind::UndefinedSymbol {
+                name: format!("external_without_source_{index}"),
+            };
+        }
+        assert!(
+            should_link_full_tu_set(&errors, &decls, &target),
+            "a broad link failure made up of unmapped symbols may need the TU sweep"
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
 fn repair_key(repair: &Repair) -> String {
     match repair {
         Repair::HeaderPlaceholder { virtual_path } => virtual_path.clone(),
+        Repair::HeaderForward { virtual_path, .. } => format!("forward-h:{virtual_path}"),
         Repair::ConfigHeaderSynth { virtual_path } => format!("config-h:{virtual_path}"),
         Repair::AddIncludeDir { dir } => dir.display().to_string(),
+        Repair::IncludeTypeHeader { type_name, .. } => format!("type-header:{type_name}"),
         Repair::TypePlaceholder { type_name } => type_name.clone(),
         Repair::TypeAlias { type_name, .. } => type_name.clone(),
         Repair::ConfigTypeAlias { type_name, .. } => format!("config-alias:{type_name}"),
         Repair::MacroDefine { name, .. } => format!("macro:{name}"),
         Repair::IncludeStdHeader { symbol, .. } => format!("stdhdr:{symbol}"),
+        Repair::DeclareFunction { symbol, .. } => format!("decl:{symbol}"),
         Repair::AddSource { source_path, .. } => source_path.display().to_string(),
         Repair::StubDeclared { symbol, .. } | Repair::StubBlind { symbol } => symbol.clone(),
         Repair::EnvVarInjection { name, .. } => name.clone(),
@@ -2784,13 +2989,16 @@ fn repair_replaces_candidate_target(repair: &Repair, candidate: &Candidate) -> b
             source.file_name() == candidate.source_path.file_name()
         }
         Repair::HeaderPlaceholder { .. }
+        | Repair::HeaderForward { .. }
         | Repair::ConfigHeaderSynth { .. }
         | Repair::AddIncludeDir { .. }
+        | Repair::IncludeTypeHeader { .. }
         | Repair::TypePlaceholder { .. }
         | Repair::TypeAlias { .. }
         | Repair::ConfigTypeAlias { .. }
         | Repair::MacroDefine { .. }
         | Repair::IncludeStdHeader { .. }
+        | Repair::DeclareFunction { .. }
         | Repair::EnvVarInjection { .. }
         | Repair::AdaPackageStub { .. }
         | Repair::AdaPackageBodyStub { .. }
@@ -2798,6 +3006,19 @@ fn repair_replaces_candidate_target(repair: &Repair, candidate: &Candidate) -> b
         | Repair::PlatformStub { .. }
         | Repair::Win32Pack => false,
     }
+}
+
+fn dependency_fallback_after_refused_source(
+    error: &BuildErrorKind,
+    decl_index: &crate::auto::decl_index::DeclarationIndex,
+    manifest: &RepairManifest,
+    candidate: &Candidate,
+    force: bool,
+) -> Option<Repair> {
+    let fallback = crate::auto::repair::plan_repair_forced_with_source_policy(
+        error, decl_index, manifest, force, false,
+    )?;
+    (!repair_replaces_candidate_target(&fallback, candidate)).then_some(fallback)
 }
 
 /// One-shot warning latch so we don't print "shim not found" once
@@ -3197,6 +3418,23 @@ fn c_auto_sequence_candidate(c: &Candidate) -> bool {
     if is_c_lifecycle_init(&target.name) || is_c_lifecycle_end(&target.name) {
         return false;
     }
+    // A real returning constructor is stronger evidence than an in-place helper
+    // that merely starts with `Initialize`. Prefer the direct harness in that
+    // case: it uses the constructor lifecycle table instead of zero-constructing
+    // internal state (BrotliDecoderCreateInstance vs the static
+    // InitializeCompoundDictionaryCopy helper).
+    let has_returning_constructor = functions.iter().any(|function| {
+        !function.is_static
+            && is_c_lifecycle_init(&function.name)
+            && canonical_c_lifecycle_type(&function.return_type) == target_handle
+            && crate::generate_harness::c_neutral_ctor_args(
+                function.params.iter().map(|param| param.c_type.as_str()),
+            )
+            .is_some()
+    });
+    if has_returning_constructor {
+        return false;
+    }
     functions.iter().any(|function| {
         function.name != target.name
             && function
@@ -3205,6 +3443,51 @@ fn c_auto_sequence_candidate(c: &Candidate) -> bool {
                 .is_some_and(|param| canonical_c_lifecycle_type(&param.c_type) == target_handle)
             && (is_c_lifecycle_init(&function.name) || is_c_lifecycle_end(&function.name))
     })
+}
+
+#[cfg(test)]
+mod c_auto_sequence_candidate_tests {
+    use super::c_auto_sequence_candidate;
+    use crate::auto::candidate::{Candidate, Lang};
+
+    #[test]
+    fn returning_constructor_outranks_static_initialize_helper() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("govfuzz-c-sequence-ctor-{nonce}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("decode.c");
+        std::fs::write(
+            &source,
+            "typedef struct DecoderState DecoderState;\n\
+             typedef void *(*alloc_func)(void *, unsigned long);\n\
+             typedef void (*free_func)(void *, void *);\n\
+             DecoderState *DecoderCreateInstance(alloc_func a, free_func f, void *o) { return 0; }\n\
+             void DecoderDestroyInstance(DecoderState *s) {}\n\
+             static int InitializeDictionaryCopy(DecoderState *s, unsigned a) { return 0; }\n\
+             int DecoderRun(DecoderState *s, const unsigned char *p, unsigned n) { return 0; }\n",
+        )
+        .unwrap();
+        let candidate = Candidate {
+            harness_id: "H-CCTOR".to_owned(),
+            lang: Lang::C,
+            source_path: source,
+            line: 7,
+            name: "DecoderRun".to_owned(),
+            score: 1,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        assert!(
+            !c_auto_sequence_candidate(&candidate),
+            "the direct harness must construct the handle through DecoderCreateInstance"
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
 }
 
 fn cpp_auto_sequence_candidate(c: &Candidate) -> bool {
@@ -3451,6 +3734,7 @@ fn try_build(
             work_dir,
             harness_id,
             candidate,
+            extra_sources,
             source_root,
             ada_dep_dirs,
             dir_filter,
@@ -3673,13 +3957,13 @@ fn try_build_c(
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty());
     let cache_path = work_dir.join("cxx_dialect.txt");
-    let cached_std = std::fs::read_to_string(&cache_path)
+    let mut cached_std = std::fs::read_to_string(&cache_path)
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty());
     let chosen_std = explicit_std.clone().or_else(|| cached_std.clone());
 
-    let output = crate::build::try_run_c_make_build_with_target(
+    let mut output = crate::build::try_run_c_make_build_with_target(
         work_dir,
         harness_id,
         extra_sources,
@@ -3691,7 +3975,76 @@ fn try_build_c(
     if output.status.success() {
         return BuildOutcome::Success;
     }
-    let errors = build_classifier::classify(&combined_build_output(&output));
+    let mut raw_output = combined_build_output(&output);
+    let mut errors = build_classifier::classify(&raw_output);
+
+    // GCC 10 and Clang 11 changed C's default from -fcommon to -fno-common.
+    // Older projects often put tentative definitions (`int global;`) in public
+    // headers, expecting the linker to merge them. Under the modern default,
+    // ASan makes the failure especially recognizable as duplicate
+    // `__odr_asan_gen_*` symbols. Retry only after a real C link exhibits a
+    // duplicate-symbol failure, and keep the compatibility fragment only when
+    // the retry removes that class of error. Every C Makefile lane includes the
+    // same fragment, so AFL/MSan/TSan/coverage/differential replay stay aligned.
+    let c_compat_path = work_dir.join("c_compat.mk");
+    if !is_cpp && !c_compat_path.is_file() && output_may_require_fcommon(&raw_output) {
+        if std::fs::write(&c_compat_path, "C_COMPAT_FLAGS := -fcommon\n").is_ok() {
+            let compat_output = crate::build::try_run_c_make_build_with_target(
+                work_dir,
+                harness_id,
+                extra_sources,
+                extra_includes,
+                compiler,
+                None,
+                None,
+            );
+            if compat_output.status.success() {
+                return BuildOutcome::Success;
+            }
+            let compat_raw = combined_build_output(&compat_output);
+            if !output_may_require_fcommon(&compat_raw) {
+                raw_output = compat_raw;
+                errors = build_classifier::classify(&raw_output);
+            } else {
+                // Function duplicates and accidentally repeated source files are
+                // not fixed by -fcommon; do not weaken later targets for them.
+                let _ = std::fs::remove_file(&c_compat_path);
+            }
+        }
+    }
+
+    // A project-level cached legacy standard can become invalid after a repair
+    // exposes more of the real include graph. For example, an early uncrustify
+    // build with missing generated headers made gnu++03 look cheaper than the
+    // modern rungs; once those headers were supplied, libstdc++ correctly said
+    // the TU requires C++11. Re-probe from the default instead of pinning every
+    // later retry/target to a standard that cannot compile its headers.
+    //
+    // Inspect the RAW output. The structured classifier deliberately omits an
+    // `Other` when the same invocation also contains a recognized missing type,
+    // so checking only `errors` loses this decisive diagnostic.
+    if is_cpp
+        && explicit_std.is_none()
+        && cached_std.is_some()
+        && output_requires_newer_cxx_standard(&raw_output)
+    {
+        let _ = std::fs::remove_file(&cache_path);
+        cached_std = None;
+        output = crate::build::try_run_c_make_build_with_target(
+            work_dir,
+            harness_id,
+            extra_sources,
+            extra_includes,
+            compiler,
+            None,
+            None,
+        );
+        if output.status.success() {
+            return BuildOutcome::Success;
+        }
+        raw_output = combined_build_output(&output);
+        errors = build_classifier::classify(&raw_output);
+    }
 
     // Legacy-dialect ladder: a modern default (gnu++20) rejects old C++ (`register`,
     // dynamic exception specs, removed stdlib). On a first C++ COMPILE failure with no
@@ -3729,11 +4082,13 @@ fn try_build_c(
                 let _ = std::fs::write(&cache_path, std);
                 return BuildOutcome::Success;
             }
-            let errs = build_classifier::classify(&combined_build_output(&out));
+            let raw = combined_build_output(&out);
+            let errs = build_classifier::classify(&raw);
             // Never down-select to a standard so old the stdlib headers reject it
             // outright ("requires ISO C++ 20xx"): that build can't compile the harness
             // at all, so its small error count is a regression, not an improvement.
-            if errs.iter().any(is_stdlib_too_old_error) {
+            // Check raw output because recognized errors otherwise suppress `Other`.
+            if output_requires_newer_cxx_standard(&raw) {
                 continue;
             }
             if best.as_ref().is_none_or(|(_, b)| errs.len() < b.len()) {
@@ -3750,17 +4105,47 @@ fn try_build_c(
     BuildOutcome::Failed { errors }
 }
 
-/// A libstdc++/libc++ "this file requires ISO C++ 20xx" diagnostic, emitted when the
-/// selected standard is OLDER than the standard-library headers the harness pulls in
-/// require. Adopting such a dialect is a strict regression — the harness itself no
-/// longer compiles — so the ladder must never down-select to it.
-fn is_stdlib_too_old_error(err: &BuildErrorKind) -> bool {
-    matches!(
-        err,
-        BuildErrorKind::Other { tail }
-            if tail.contains("requires compiler and library support for the ISO C++")
-                || tail.contains("c++0x_warning.h")
-    )
+fn output_requires_newer_cxx_standard(output: &str) -> bool {
+    output.contains("requires compiler and library support for the ISO C++")
+        || output.contains("c++0x_warning.h")
+}
+
+fn output_may_require_fcommon(output: &str) -> bool {
+    let lower = output.to_ascii_lowercase();
+    lower.contains("multiple definition of") || lower.contains("duplicate symbol")
+}
+
+#[cfg(test)]
+mod cxx_dialect_output_tests {
+    use super::{output_may_require_fcommon, output_requires_newer_cxx_standard};
+
+    #[test]
+    fn raw_output_keeps_stdlib_floor_signal_among_classified_errors() {
+        let output = "/usr/include/c++/13/bits/c++0x_warning.h:32:2: error: \
+                      This file requires compiler and library support for the ISO C++ 2011 standard\n\
+                      target.cpp:9:3: error: unknown type name 'generated_type'\n";
+        assert!(output_requires_newer_cxx_standard(output));
+    }
+
+    #[test]
+    fn ordinary_compile_failure_is_not_a_stdlib_floor_signal() {
+        assert!(!output_requires_newer_cxx_standard(
+            "target.cpp:9:3: error: unknown type name 'generated_type'"
+        ));
+    }
+
+    #[test]
+    fn legacy_common_linker_diagnostics_trigger_compatibility_probe() {
+        assert!(output_may_require_fcommon(
+            "/usr/bin/ld: b.o:(.bss+0x0): multiple definition of `__odr_asan_gen_context'; a.o:first defined here"
+        ));
+        assert!(output_may_require_fcommon(
+            "duplicate symbol '_legacy_global' in: a.o b.o"
+        ));
+        assert!(!output_may_require_fcommon(
+            "undefined reference to `legacy_global'"
+        ));
+    }
 }
 
 /// Successively older C++ standards the dialect ladder retries after the default
@@ -4020,7 +4405,15 @@ fn native_coverage_override(
 ) -> crate::build::CFamilyCompilerOverride {
     let coverage = "-fsanitize-coverage=trace-pc-guard,trace-cmp".to_owned();
     let mut cflags = vec!["-O1".to_owned(), "-g".to_owned()];
-    let mut cxxflags = vec!["-O1".to_owned(), "-g".to_owned(), "-std=gnu++17".to_owned()];
+    let mut cxxflags = vec![
+        "-O1".to_owned(),
+        "-g".to_owned(),
+        "-std=gnu++17".to_owned(),
+        // Keep the generated C++ Makefile's compatibility suppression when
+        // --sanitizers replaces CXXFLAGS. Clang 18 otherwise rejects the
+        // pre-C++11 `"%" PRId64`/`"text"MACRO` idiom as a hard error.
+        "-Wno-reserved-user-defined-literal".to_owned(),
+    ];
     if let Some(fsanitize) = fsanitize {
         cflags.push(fsanitize.clone());
         cxxflags.push(fsanitize);
@@ -4074,6 +4467,7 @@ fn try_build_ada(
     work_dir: &Path,
     harness_id: &str,
     candidate: &Candidate,
+    extra_sources: &[PathBuf],
     source_root: Option<&Path>,
     ada_dep_dirs: &[PathBuf],
     dir_filter: &crate::auto::discovery::DirFilter,
@@ -4099,11 +4493,6 @@ fn try_build_ada(
         .file_name()
         .and_then(|n| n.to_str())
         .and_then(ada_unit_key_from_filename);
-    let src_instrumented = work_dir.join("src_instrumented");
-    // The closure attempt + whole-tree fallback only run on the FIRST build
-    // (when src_instrumented is empty); repair retries reuse what's there.
-    let first_attempt = !has_ada_source_files(&src_instrumented);
-
     if let Err(reason) = ensure_ada_src_instrumented(
         work_dir,
         root,
@@ -4120,27 +4509,51 @@ fn try_build_ada(
             errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
         };
     }
-
-    let outcome = run_ada_build_once(work_dir, harness_id);
-    // Whole-tree fallback: a CLOSURE build that still reports a missing unit means
-    // the static closure under-counted (e.g. a `with` the parser missed) — drop
-    // the restriction and recompile the full tree so correctness never regresses
-    // for the speedup. (The static gate already falls back when a unit can't be
-    // resolved; this catches the rarer parse-level miss.)
-    if first_attempt && target_unit.is_some() && build_outcome_missing_ada_unit(&outcome) {
-        if std::fs::remove_dir_all(&src_instrumented).is_err() {
-            return outcome;
-        }
-        if let Err(reason) =
-            ensure_ada_src_instrumented(work_dir, root, ada_dep_dirs, dir_filter, None)
-        {
-            return BuildOutcome::Failed {
-                errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
-            };
-        }
-        return run_ada_build_once(work_dir, harness_id);
+    if let Err(reason) = stage_ada_c_repair_sources(work_dir, harness_id, extra_sources) {
+        return BuildOutcome::Failed {
+            errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
+        };
     }
-    outcome
+
+    run_ada_build_once(work_dir, harness_id)
+}
+
+/// The generic repair loop records selected real C definitions and generated C
+/// stubs in `extra_sources`. Native C/C++ builds pass those paths to Make; Ada's
+/// synthesized GPR instead compiles its Source_Dirs, so mirror C repair sources
+/// into the existing `repairs/ada_stubs` source directory before each retry.
+fn stage_ada_c_repair_sources(
+    work_dir: &Path,
+    harness_id: &str,
+    extra_sources: &[PathBuf],
+) -> Result<(), String> {
+    let destination =
+        crate::auto::layout::harness_dir(work_dir, harness_id).join("repairs/ada_stubs");
+    std::fs::create_dir_all(&destination)
+        .map_err(|error| format!("create {}: {error}", destination.display()))?;
+    for source in extra_sources {
+        if !source
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("c"))
+        {
+            continue;
+        }
+        let Some(name) = source.file_name() else {
+            continue;
+        };
+        let target = destination.join(name);
+        if source == &target {
+            continue;
+        }
+        std::fs::copy(source, &target).map_err(|error| {
+            format!(
+                "stage Ada C repair source {} -> {}: {error}",
+                source.display(),
+                target.display()
+            )
+        })?;
+    }
+    Ok(())
 }
 
 /// Run the Ada build pipeline once for `harness_id` and classify the result.
@@ -4173,20 +4586,6 @@ fn run_ada_build_once(work_dir: &Path, harness_id: &str) -> BuildOutcome {
     }
 }
 
-/// A build failed specifically because an Ada unit (with or package body) was
-/// missing — the trigger to fall back from a closure build to the whole tree.
-fn build_outcome_missing_ada_unit(outcome: &BuildOutcome) -> bool {
-    matches!(
-        outcome,
-        BuildOutcome::Failed { errors }
-            if errors.iter().any(|e| matches!(
-                e,
-                build_classifier::BuildErrorKind::MissingAdaWith { .. }
-                    | build_classifier::BuildErrorKind::MissingAdaPackageBody { .. }
-            ))
-    )
-}
-
 /// True if the Ada source declares its unit `Pure` or `Preelaborate` — either
 /// the `pragma Pure;` / `pragma Preelaborate;` form or the `with Pure => True` /
 /// `with Preelaborate => True` aspect form (SweetAda uses both heavily). Such a
@@ -4203,6 +4602,67 @@ fn ada_source_is_pure_or_preelaborate(text: &str) -> bool {
         || lower.contains("with preelaborate")
         || lower.contains("pure => true")
         || lower.contains("preelaborate => true")
+}
+
+/// Normalize Ada code written against the pre-GNAT-13 C-time surface in
+/// `GNAT.Calendar`. Newer runtimes moved `timeval` and `To_Timeval` to the
+/// internal `System.C_Time` unit while retaining the rest of `GNAT.Calendar`.
+///
+/// Keep this deliberately surgical: only the two removed qualified names are
+/// rewritten. The added context clause stays on an existing line so source-line
+/// mappings produced by the instrumenter remain aligned with the upstream file.
+fn rewrite_legacy_gnat_calendar_c_time(source: &mut String) -> bool {
+    static OLD_TIMEVAL: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::RegexBuilder::new(r"\bgnat\s*\.\s*calendar\s*\.\s*timeval\b")
+            .case_insensitive(true)
+            .build()
+            .expect("legacy GNAT.Calendar timeval regex")
+    });
+    static OLD_TO_TIMEVAL: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::RegexBuilder::new(r"\bgnat\s*\.\s*calendar\s*\.\s*to_timeval\b")
+            .case_insensitive(true)
+            .build()
+            .expect("legacy GNAT.Calendar To_Timeval regex")
+    });
+    static SYSTEM_C_TIME_WITH: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::RegexBuilder::new(r"\bwith\s+system\s*\.\s*c_time\s*;")
+            .case_insensitive(true)
+            .build()
+            .expect("System.C_Time with-clause regex")
+    });
+    static GNAT_CALENDAR_WITH: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::RegexBuilder::new(r"\bwith\s+gnat\s*\.\s*calendar\s*;")
+            .case_insensitive(true)
+            .build()
+            .expect("GNAT.Calendar with-clause regex")
+    });
+
+    if !OLD_TIMEVAL.is_match(source) && !OLD_TO_TIMEVAL.is_match(source) {
+        return false;
+    }
+
+    let mut rewritten = OLD_TIMEVAL
+        .replace_all(source, "System.C_Time.timeval")
+        .into_owned();
+    rewritten = OLD_TO_TIMEVAL
+        .replace_all(&rewritten, "System.C_Time.To_Timeval")
+        .into_owned();
+
+    if !SYSTEM_C_TIME_WITH.is_match(&rewritten) {
+        if GNAT_CALENDAR_WITH.is_match(&rewritten) {
+            rewritten = GNAT_CALENDAR_WITH
+                .replace(&rewritten, "$0 with System.C_Time;")
+                .into_owned();
+        } else {
+            // A separate unit can inherit visibility in unusual source layouts.
+            // Prefix the context clause on the existing first line rather than
+            // adding a line, preserving diagnostic and coverage line numbers.
+            rewritten.insert_str(0, "with System.C_Time; ");
+        }
+    }
+
+    *source = rewritten;
+    true
 }
 
 /// Populate `<work_dir>/src_instrumented/` with instrumented copies of
@@ -4264,10 +4724,27 @@ fn dir_tree_has_ada_sources(dir: &Path, depth: usize) -> bool {
 /// is not a module subdir of a recognizable source tree (so the walk never crosses
 /// into an unrelated parent such as a directory of separate projects).
 fn walk_to_common_src_root(source_root: &Path) -> Option<PathBuf> {
+    // A checkout/source-drop root may itself live under a directory named
+    // `ada` (for example `<campaign>/repos/ada/ocarina`). Crossing that boundary
+    // would merge every sibling repository into one build. Module directories
+    // such as `<project>/src/parser` do not carry project-root markers, so keep
+    // the sibling-source fallback inside the current project boundary.
+    if ada_project_root_marker(source_root) {
+        return None;
+    }
     let mut child = source_root.to_path_buf();
     for _ in 0..3 {
         let parent = child.parent()?.to_path_buf();
         if is_source_root_name(&parent) {
+            let contains_separate_projects = std::fs::read_dir(&parent)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|entry| entry.path())
+                .any(|path| path.is_dir() && ada_project_root_marker(&path));
+            if contains_separate_projects {
+                return None;
+            }
             let has_sibling_ada = std::fs::read_dir(&parent)
                 .into_iter()
                 .flatten()
@@ -4281,6 +4758,23 @@ fn walk_to_common_src_root(source_root: &Path) -> Option<PathBuf> {
         child = parent;
     }
     None
+}
+
+fn ada_project_root_marker(dir: &Path) -> bool {
+    if dir.join(".git").exists() || dir.join("alire.toml").is_file() {
+        return true;
+    }
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .any(|entry| {
+            entry.path().is_file()
+                && entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("gpr"))
+        })
 }
 
 fn ensure_ada_src_instrumented(
@@ -4378,7 +4872,7 @@ fn ensure_ada_src_instrumented(
             continue;
         }
         let source_path = source_path.clone();
-        let source = match crate::source_text::read_source_text(&source_path) {
+        let mut source = match crate::source_text::read_source_text(&source_path) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!(
@@ -4388,6 +4882,7 @@ fn ensure_ada_src_instrumented(
                 continue;
             }
         };
+        rewrite_legacy_gnat_calendar_c_time(&mut source);
         // A Pure/Preelaborate unit can't depend on the non-pure probe runtime;
         // copy it through uninstrumented so the build still sees it. The
         // categorization commonly lives in the spec, so for a body also consult
@@ -4516,6 +5011,15 @@ fn ensure_ada_src_instrumented(
                 continue;
             }
             if let Ok(bytes) = std::fs::read(dep_path) {
+                // Dependencies are normally copied byte-for-byte. Decode only
+                // the ASCII/UTF-8 sources that actually need the legacy GNAT
+                // runtime rewrite; every other encoding remains untouched.
+                if let Ok(mut text) = String::from_utf8(bytes.clone()) {
+                    if rewrite_legacy_gnat_calendar_c_time(&mut text) {
+                        let _ = std::fs::write(&dest, text.as_bytes());
+                        continue;
+                    }
+                }
                 let _ = std::fs::write(&dest, bytes);
             }
         }
@@ -4529,11 +5033,22 @@ fn ensure_ada_src_instrumented(
     // gprbuild compiles + links them. Walk the source root and every dep dir;
     // first writer wins (never overwrite a target/dep copy), never instrument
     // third-party C.
+    let closure_c_imports = closure_set.as_ref().map(ada_c_import_symbols);
     for c_root in std::iter::once(source_root).chain(dep_dirs.iter().map(PathBuf::as_path)) {
         for c_path in walk_c_glue_sources(c_root, work_dir, dir_filter) {
             let Some(basename) = c_path.file_name() else {
                 continue;
             };
+            let is_c_source = c_path
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("c"));
+            if is_c_source
+                && closure_c_imports
+                    .as_ref()
+                    .is_some_and(|imports| !c_source_matches_ada_import(&c_path, imports))
+            {
+                continue;
+            }
             let dest = dst.join(basename);
             if dest.exists() {
                 continue;
@@ -4574,6 +5089,56 @@ fn ensure_ada_src_instrumented(
         ));
     }
     Ok(())
+}
+
+/// External C names referenced by the Ada units in a target's static closure.
+/// Both classic `pragma Import (C, Entity, "external")` and aspect-style
+/// `External_Name => "external"` declarations occur in legacy projects.
+fn ada_c_import_symbols(
+    closure: &std::collections::BTreeSet<PathBuf>,
+) -> std::collections::BTreeSet<String> {
+    let external_name =
+        regex::Regex::new(r#"(?i)(?:external_name|link_name)\s*=>\s*"([A-Za-z_][A-Za-z0-9_@$]*)""#)
+            .expect("valid Ada external-name regex");
+    let pragma_import = regex::Regex::new(
+        r"(?i)pragma\s+import\s*\(\s*(?:c|cpp|c_plus_plus|stdcall)\s*,\s*([A-Za-z][A-Za-z0-9_]*)",
+    )
+    .expect("valid Ada import regex");
+    let pragma_external =
+        regex::Regex::new(r#"(?i)pragma\s+import\s*\([^;]*?"([A-Za-z_][A-Za-z0-9_@$]*)""#)
+            .expect("valid Ada pragma external-name regex");
+    let mut symbols = std::collections::BTreeSet::new();
+    for path in closure {
+        let Ok(source) = crate::source_text::read_source_text(path) else {
+            continue;
+        };
+        for captures in external_name.captures_iter(&source) {
+            symbols.insert(captures[1].to_owned());
+        }
+        for captures in pragma_external.captures_iter(&source) {
+            symbols.insert(captures[1].to_owned());
+        }
+        // Without an explicit External_Name, Convention C uses the Ada entity
+        // name. Keeping that identifier is conservative; a false-positive C TU
+        // costs compilation time but does not hide a dependency.
+        for captures in pragma_import.captures_iter(&source) {
+            symbols.insert(captures[1].to_owned());
+        }
+    }
+    symbols
+}
+
+fn c_source_matches_ada_import(
+    source_path: &Path,
+    imports: &std::collections::BTreeSet<String>,
+) -> bool {
+    if imports.is_empty() {
+        return false;
+    }
+    let Ok(source) = crate::source_text::read_source_text(source_path) else {
+        return false;
+    };
+    imports.iter().any(|symbol| source.contains(symbol))
 }
 
 /// Mirror `<work_dir>/harnesses/<harness_id>/` into
@@ -4774,7 +5339,7 @@ fn walk_c_glue_sources(
 ///   - `Some(name)` => the canonical basename to write under src_instrumented:
 ///     the `__<host>` suffix stripped (so default naming resolves the unit), or
 ///     the name unchanged when it carries no platform-variant suffix.
-fn ada_variant_dest_basename(basename: &str) -> Option<String> {
+pub(super) fn ada_variant_dest_basename(basename: &str) -> Option<String> {
     let (stem, ext) = match basename.rsplit_once('.') {
         Some((s, e)) if e.eq_ignore_ascii_case("ads") || e.eq_ignore_ascii_case("adb") => (s, e),
         _ => return Some(basename.to_owned()),
@@ -4853,13 +5418,6 @@ fn ada_unit_key_from_filename(basename: &str) -> Option<String> {
     Some(stem.replace('-', ".").to_ascii_lowercase())
 }
 
-/// A withed unit provided by the compiler runtime (no in-tree source needed):
-/// `Ada.*`, `System.*`, `Interfaces.*`, `GNAT.*`, plus `Standard`.
-fn is_ada_runtime_unit(unit_lower: &str) -> bool {
-    let root = unit_lower.split('.').next().unwrap_or(unit_lower);
-    matches!(root, "ada" | "system" | "interfaces" | "gnat" | "standard")
-}
-
 /// Ancestor unit names of `unit` (`a.b.c` -> [`a.b`, `a`]). A child unit's
 /// closure must include its parents.
 fn ada_unit_ancestors(unit_lower: &str) -> Vec<String> {
@@ -4871,8 +5429,8 @@ fn ada_unit_ancestors(unit_lower: &str) -> Vec<String> {
 }
 
 /// Lowercased names of units withed by an Ada source (via the structural AST).
-/// `None` on a parse failure so the caller conservatively falls back to a
-/// whole-tree build rather than trusting an under-counted closure.
+/// `None` on a parse failure. The caller keeps the units it can prove reachable;
+/// compiler diagnostics and the repair loop add any missed real unit later.
 fn ada_source_withs(source: &str, path: &Path) -> Option<Vec<String>> {
     let ast = ada_parser::reconcile::build_structural_ast(source, None, path).ok()?;
     Some(
@@ -4916,12 +5474,36 @@ fn build_ada_unit_file_map(files: &[PathBuf]) -> std::collections::BTreeMap<Stri
     let mut map: std::collections::BTreeMap<String, Vec<PathBuf>> =
         std::collections::BTreeMap::new();
     for f in files {
+        let mut keys = Vec::new();
         if let Some(key) = f
             .file_name()
             .and_then(|n| n.to_str())
             .and_then(ada_unit_key_from_filename)
         {
-            map.entry(key).or_default().push(f.clone());
+            keys.push(key);
+        }
+        // GNAT's predefined-unit filenames use compressed historical spellings
+        // (`s-valint.adb` declares `System.Val_Int`, `s-forlit.ads` declares
+        // `System.Formatting.Literals`). Index the declared name as an alias so
+        // with-closure traversal can connect those units without hardcoding the
+        // compiler's filename table. Keep the filename key for ordinary units and
+        // for parser fallbacks.
+        if let Ok(source) = crate::source_text::read_source_text(f) {
+            if let Ok(ast) = ada_parser::reconcile::build_structural_ast(&source, None, f) {
+                keys.extend(
+                    ast.packages
+                        .iter()
+                        .map(|package| package.name.to_ascii_lowercase()),
+                );
+            }
+        }
+        keys.sort();
+        keys.dedup();
+        for key in keys {
+            let paths = map.entry(key).or_default();
+            if !paths.contains(f) {
+                paths.push(f.clone());
+            }
         }
     }
     map
@@ -4929,11 +5511,11 @@ fn build_ada_unit_file_map(files: &[PathBuf]) -> std::collections::BTreeMap<Stri
 
 /// Transitive `with`-closure of `target_unit` over the Ada sources in
 /// `unit_files` (source tree + dependency dirs): the set of source files that
-/// must be compiled to build the target. Returns `None` (=> compile the whole
-/// tree) when the closure cannot be trusted — a withed unit resolves neither to
-/// an in-tree source nor a compiler-runtime unit, or a closure file fails to
-/// parse. This is the static completeness gate; `try_build_ada` additionally
-/// falls back to whole-tree if a closure build still reports a missing unit.
+/// must be compiled to build the target. An unresolved external unit is left out
+/// of the static closure so the compiler can report it and the repair loop can
+/// resolve or classify it. Expanding to the whole tree here compiles unrelated
+/// platform backends and optional SDK bindings, obscuring the target's actual
+/// dependency. `None` is reserved for a target unit absent from the source map.
 fn compute_ada_build_closure(
     target_unit: &str,
     unit_files: &std::collections::BTreeMap<String, Vec<PathBuf>>,
@@ -4943,22 +5525,35 @@ fn compute_ada_build_closure(
     let mut visited: BTreeSet<String> = BTreeSet::new();
     let mut queue: VecDeque<String> = VecDeque::new();
     let seed = target_unit.to_ascii_lowercase();
+    if !unit_files.contains_key(&seed) {
+        return None;
+    }
     queue.push_back(seed.clone());
     queue.extend(ada_unit_ancestors(&seed));
     while let Some(unit) = queue.pop_front() {
         if !visited.insert(unit.clone()) {
             continue;
         }
-        if is_ada_runtime_unit(&unit) {
+        let Some(files) = unit_files.get(&unit) else {
+            // External/generated/runtime unit. Keep the known closure; the
+            // compiler's missing-unit diagnostic is more precise than compiling
+            // every unrelated source in the repository. Runtime-named units that
+            // ARE present in the map must not be skipped: alternate runtime trees
+            // such as Drake intentionally provide their own System.* dependency
+            // closure and require those exact sources to build the selected target.
             continue;
-        }
-        let files = unit_files.get(&unit)?; // non-runtime + no in-tree source => untrusted
+        };
         for f in files {
             if !closure.insert(f.clone()) {
                 continue;
             }
-            let source = crate::source_text::read_source_text(f).ok()?;
-            for w in ada_source_withs(&source, f)? {
+            let Ok(source) = crate::source_text::read_source_text(f) else {
+                continue;
+            };
+            let Some(withs) = ada_source_withs(&source, f) else {
+                continue;
+            };
+            for w in withs {
                 queue.extend(ada_unit_ancestors(&w));
                 queue.push_back(w);
             }
@@ -5262,7 +5857,8 @@ mod env_injection_tests {
 
 #[cfg(test)]
 mod undefined_external_types_tests {
-    use super::undefined_external_types;
+    use super::{undefined_external_types, undefined_external_types_for_lang};
+    use crate::auto::candidate::Lang;
     use crate::auto::decl_index::DeclarationIndex;
     use build_classifier::BuildErrorKind;
     use std::collections::BTreeSet;
@@ -5298,6 +5894,27 @@ mod undefined_external_types_tests {
     }
 
     #[test]
+    fn incomplete_standard_type_is_not_an_external_sdk() {
+        let idx = DeclarationIndex::default();
+        for name in ["size_t", "pollfd", "struct pollfd"] {
+            for error in [
+                BuildErrorKind::MissingType {
+                    name: name.to_owned(),
+                },
+                BuildErrorKind::IncompleteType {
+                    name: name.to_owned(),
+                },
+            ] {
+                assert_eq!(
+                    undefined_external_types(&[error], &idx, &BTreeSet::new()),
+                    None,
+                    "{name} comes from a host system header"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn incomplete_type_defined_in_tree_but_harness_invisible_degrades() {
         // Group 7: the type IS defined somewhere in the scanned tree (a `struct` in
         // a header), so `type_defined_in_compiled_source` is true — but the harness
@@ -5314,6 +5931,20 @@ mod undefined_external_types_tests {
         assert_eq!(
             undefined_external_types(&errors, &idx, &BTreeSet::new()),
             Some(vec!["EncryptedFile".to_owned()])
+        );
+    }
+
+    #[test]
+    fn incomplete_c_type_complete_in_tree_stays_actionable() {
+        let mut idx = DeclarationIndex::default();
+        idx.insert_source_type_name_for_test("inflate_state");
+        let errors = vec![BuildErrorKind::IncompleteType {
+            name: "inflate_state".to_owned(),
+        }];
+        assert_eq!(
+            undefined_external_types_for_lang(&errors, &idx, &BTreeSet::new(), Lang::C),
+            None,
+            "an in-tree C type is a recoverable include/source problem, not an external SDK"
         );
     }
 
@@ -5572,6 +6203,13 @@ mod sanitizer_override_tests {
         }
         assert_eq!(ov.cc, "clang");
         assert_eq!(ov.cxx, "clang++");
+        assert!(
+            ov.cxxflags
+                .iter()
+                .any(|f| f == "-Wno-reserved-user-defined-literal"),
+            "native CXXFLAGS must retain legacy string/macro adjacency support: {:?}",
+            ov.cxxflags
+        );
     }
 
     #[test]
@@ -5579,6 +6217,13 @@ mod sanitizer_override_tests {
         // `--sanitizers asan,ubsan` still bakes the exact -fsanitize= set plus
         // coverage, and subtracts the noisy UBSan checks.
         let ov = sanitizer_compiler_override(&[Sanitizer::Asan, Sanitizer::Ubsan]);
+        assert!(
+            ov.cxxflags
+                .iter()
+                .any(|f| f == "-Wno-reserved-user-defined-literal"),
+            "native CXXFLAGS must retain legacy string/macro adjacency support: {:?}",
+            ov.cxxflags
+        );
         for flags in [&ov.cflags, &ov.cxxflags] {
             assert!(has_flag(flags, "-fsanitize=address,undefined"), "{flags:?}");
             assert!(
@@ -5896,7 +6541,8 @@ mod stamp_tests {
         ada_subunit_parent, ada_unit_key_from_filename, ada_variant_dest_basename,
         build_ada_unit_file_map, c_file_is_simd_backend, compute_ada_build_closure,
         ensure_ada_src_instrumented, env_injections_from_events, reset_repairs_dir,
-        stamp_runtime_mode, walk_to_common_src_root,
+        rewrite_legacy_gnat_calendar_c_time, stage_ada_c_repair_sources, stamp_runtime_mode,
+        walk_to_common_src_root,
     };
     use crate::auto::pass::Pass;
     use crate::auto::runtrace::RuntraceEvent;
@@ -6216,6 +6862,72 @@ mod stamp_tests {
     }
 
     #[test]
+    fn ada_closure_copies_only_c_glue_for_imported_symbols() {
+        let root = tmpdir("ada-c-glue-closure");
+        let project = root.join("project");
+        let work = root.join("work");
+        fs::create_dir_all(&project).unwrap();
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            project.join("widget.ads"),
+            "package Widget is\n   function Read return Integer;\nend Widget;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("widget.adb"),
+            "package body Widget is\n\
+             function Native return Integer;\n\
+             pragma Import (C, Native, \"needed_native\");\n\
+             function Read return Integer is (Native);\n\
+             end Widget;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("needed.c"),
+            "int needed_native(void) { return 7; }\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("unrelated.c"),
+            "#include <missing_vendor/sdk.h>\nint unrelated(void) { return 0; }\n",
+        )
+        .unwrap();
+        fs::write(project.join("widget.h"), "int needed_native(void);\n").unwrap();
+
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), Some("widget"))
+            .unwrap();
+
+        let staged = work.join("src_instrumented");
+        assert!(staged.join("needed.c").is_file());
+        assert!(!staged.join("unrelated.c").exists());
+        assert!(
+            staged.join("widget.h").is_file(),
+            "headers remain available"
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn ada_build_stages_selected_c_repair_sources_on_gpr_path() {
+        let root = tmpdir("ada-c-repair-source");
+        let work = root.join("work");
+        let source = root.join("native_helper.c");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(&source, "int native_helper(void) { return 1; }\n").unwrap();
+
+        stage_ada_c_repair_sources(&work, "H-A0001-TEST", &[source]).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(
+                work.join("harnesses/H-A0001-TEST/repairs/ada_stubs/native_helper.c")
+            )
+            .unwrap(),
+            "int native_helper(void) { return 1; }\n"
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
     fn ada_pure_unit_is_copied_uninstrumented() {
         // A Pure/Preelaborate unit must not get `with AdaFuzz.Probe` injected, or
         // gprbuild fails with "pure unit cannot depend on non-pure unit". It is
@@ -6246,6 +6958,67 @@ mod stamp_tests {
             !body.contains("AdaFuzz.Probe"),
             "a Pure unit's body must be copied uninstrumented (no probe with-clause): {body}"
         );
+    }
+
+    #[test]
+    fn legacy_gnat_calendar_c_time_is_rewritten_without_shifting_lines() {
+        let mut source = "-- old GNAT runtime client\nwith Ada.Calendar;\nWITH GNAT.Calendar;\nprocedure Wait is\n   T : GNAT.Calendar.TIMEVAL := GNAT.Calendar.timeval'Null_Parameter;\nbegin\n   T := Gnat . Calendar . To_Timeval (1.0);\nend Wait;\n".to_owned();
+        let original_lines = source.lines().count();
+
+        assert!(rewrite_legacy_gnat_calendar_c_time(&mut source));
+        assert_eq!(source.lines().count(), original_lines);
+        assert!(source.contains("WITH GNAT.Calendar; with System.C_Time;"));
+        assert!(source.contains("System.C_Time.timeval"));
+        assert!(source.contains("System.C_Time.To_Timeval"));
+        assert!(!source
+            .to_ascii_lowercase()
+            .contains("gnat.calendar.timeval"));
+        assert!(!source
+            .to_ascii_lowercase()
+            .contains("gnat . calendar . to_timeval"));
+    }
+
+    #[test]
+    fn modern_gnat_calendar_apis_are_not_rewritten() {
+        let mut source = "with GNAT.Calendar.Time_IO;\npackage body Clock is\n   D : constant GNAT.Calendar.Day_Name := GNAT.Calendar.Monday;\nend Clock;\n".to_owned();
+        let original = source.clone();
+
+        assert!(!rewrite_legacy_gnat_calendar_c_time(&mut source));
+        assert_eq!(source, original);
+    }
+
+    #[test]
+    fn legacy_gnat_calendar_rewrite_applies_to_dependency_copies() {
+        let root = tmpdir("ada-legacy-calendar-dep");
+        let project = root.join("project");
+        let dep = root.join("dep");
+        let work = root.join("work");
+        fs::create_dir_all(&project).unwrap();
+        fs::create_dir_all(&dep).unwrap();
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            project.join("target.adb"),
+            "procedure Target is begin null; end Target;\n",
+        )
+        .unwrap();
+        fs::write(
+            dep.join("legacy.ads"),
+            "with GNAT.Calendar;\npackage Legacy is\n   T : GNAT.Calendar.timeval;\nend Legacy;\n",
+        )
+        .unwrap();
+
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            std::slice::from_ref(&dep),
+            &Default::default(),
+            None,
+        )
+        .unwrap();
+
+        let copied = fs::read_to_string(work.join("src_instrumented/legacy.ads")).unwrap();
+        assert!(copied.contains("with System.C_Time;"));
+        assert!(copied.contains("System.C_Time.timeval"));
     }
 
     #[test]
@@ -6531,8 +7304,8 @@ mod stamp_tests {
             "un-withed unit excluded from the closure"
         );
 
-        // A `with` on a unit that is neither in-tree nor a runtime unit → the
-        // closure cannot be trusted, so None (caller compiles the whole tree).
+        // An unresolved external unit stays outside the known closure. The build
+        // then reports that exact dependency instead of compiling unrelated units.
         let needs_ext = root.join("needsext.adb");
         fs::write(
             &needs_ext,
@@ -6540,10 +7313,43 @@ mod stamp_tests {
         )
         .unwrap();
         let map2 = build_ada_unit_file_map(std::slice::from_ref(&needs_ext));
-        assert!(
-            compute_ada_build_closure("needsext", &map2).is_none(),
-            "an unresolved with must force the whole-tree fallback"
-        );
+        let partial = compute_ada_build_closure("needsext", &map2)
+            .expect("the known target closure remains usable");
+        assert_eq!(partial, std::collections::BTreeSet::from([needs_ext]));
+    }
+
+    #[test]
+    fn ada_build_closure_keeps_in_tree_runtime_units() {
+        let root = tmpdir("ada-runtime-closure");
+        fs::create_dir_all(&root).unwrap();
+        let target_ads = root.join("s-valint.ads");
+        let target_adb = root.join("s-valint.adb");
+        let dependency_ads = root.join("s-forlit.ads");
+        fs::write(
+            &target_ads,
+            "package System.Val_Int is\n   function Value_Integer (S : String) return Integer;\nend System.Val_Int;\n",
+        )
+        .unwrap();
+        fs::write(
+            &target_adb,
+            "with System.Formatting.Literals;\npackage body System.Val_Int is\n   function Value_Integer (S : String) return Integer is (S'Length);\nend System.Val_Int;\n",
+        )
+        .unwrap();
+        fs::write(
+            &dependency_ads,
+            "package System.Formatting.Literals is\nend System.Formatting.Literals;\n",
+        )
+        .unwrap();
+
+        let map = build_ada_unit_file_map(&[
+            target_ads.clone(),
+            target_adb.clone(),
+            dependency_ads.clone(),
+        ]);
+        let closure = compute_ada_build_closure("s.valint", &map).unwrap();
+        assert!(closure.contains(&target_ads));
+        assert!(closure.contains(&target_adb));
+        assert!(closure.contains(&dependency_ads));
     }
 
     #[test]
@@ -6643,6 +7449,25 @@ mod stamp_tests {
 
         // `base` is not named like a source root, so no common root is returned.
         assert_eq!(walk_to_common_src_root(&projb), None);
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn walk_to_common_src_root_does_not_merge_repositories_under_ada_dir() {
+        let base = tmpdir("ada-separate-checkouts");
+        let repos = base.join("repos/ada");
+        let first = repos.join("first");
+        let second = repos.join("second");
+        fs::create_dir_all(first.join(".git")).unwrap();
+        fs::create_dir_all(second.join(".git")).unwrap();
+        fs::write(first.join("first.ads"), "package First is end First;\n").unwrap();
+        fs::write(second.join("second.ads"), "package Second is end Second;\n").unwrap();
+
+        assert_eq!(
+            walk_to_common_src_root(&first),
+            None,
+            "an ada repository category is not a shared project source root"
+        );
         fs::remove_dir_all(&base).ok();
     }
 }
@@ -6992,7 +7817,9 @@ mod refused_repair_tracking_tests {
     use super::*;
     use crate::auto::candidate::{Candidate, Lang};
     use std::collections::HashSet;
+    use std::fs;
     use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn emitter_candidate() -> Candidate {
         Candidate {
@@ -7128,5 +7955,102 @@ mod refused_repair_tracking_tests {
             !repair_signals_unavailable_target(&sibling_symbol, &cand),
             "a sibling symbol mis-attributed to the candidate's file is resolvable elsewhere"
         );
+    }
+
+    #[test]
+    fn own_target_forward_declaration_is_not_a_replacement_or_unavailable_signal() {
+        let cand = emitter_candidate();
+        let declaration = Repair::DeclareFunction {
+            symbol: cand.name.clone(),
+            return_type: "void".to_owned(),
+            provenance: "real definition survives".to_owned(),
+        };
+        assert!(!repair_replaces_candidate_target(&declaration, &cand));
+        assert!(!repair_signals_unavailable_target(&declaration, &cand));
+    }
+
+    #[test]
+    fn refused_self_source_dependency_falls_back_to_declaration_stub() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("govfuzz-self-source-fallback-{nonce}"));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("value.h"),
+            "namespace Json {\n\
+             class ValueIteratorBase {\n\
+             public:\n\
+               ValueIteratorBase();\n\
+             };\n\
+             }\n",
+        )
+        .unwrap();
+        let target = root.join("target.cpp");
+        fs::write(
+            &target,
+            "#include \"value.h\"\n\
+             Json::ValueIteratorBase::ValueIteratorBase() {}\n\
+             int target() { return 0; }\n",
+        )
+        .unwrap();
+
+        let index = DeclarationIndex::build(&root).unwrap();
+        let candidate = Candidate {
+            harness_id: "H-JSONCPP".to_owned(),
+            lang: Lang::Cpp,
+            source_path: target.clone(),
+            line: 3,
+            name: "target".to_owned(),
+            score: 0,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        let error = BuildErrorKind::UndefinedSymbol {
+            name: "Json::ValueIteratorBase::ValueIteratorBase()".to_owned(),
+        };
+        let manifest = RepairManifest::default();
+
+        let initial = crate::auto::repair::plan_repair_forced_with_source_policy(
+            &error, &index, &manifest, false, true,
+        )
+        .expect("definition-backed source repair");
+        assert!(
+            matches!(initial, Repair::AddSource { ref symbol, ref source_path }
+                if symbol == "Json::ValueIteratorBase::ValueIteratorBase()"
+                    && source_path == &target),
+            "definition-backed repair should re-add the defining source: {initial:?}"
+        );
+        assert!(repair_replaces_candidate_target(&initial, &candidate));
+
+        let fallback =
+            dependency_fallback_after_refused_source(&error, &index, &manifest, &candidate, false)
+                .expect("declaration-backed fallback");
+        assert!(
+            matches!(fallback, Repair::StubDeclared { ref symbol, .. }
+                if symbol == "Json::ValueIteratorBase::ValueIteratorBase()"),
+            "source-disabled re-plan should preserve a real declaration: {fallback:?}"
+        );
+        assert!(!repair_replaces_candidate_target(&fallback, &candidate));
+
+        let target_error = BuildErrorKind::UndefinedSymbol {
+            name: candidate.name.clone(),
+        };
+        assert!(
+            dependency_fallback_after_refused_source(
+                &target_error,
+                &index,
+                &manifest,
+                &candidate,
+                false,
+            )
+            .is_none(),
+            "the selected fuzz target must never be replaced by a fallback stub"
+        );
+
+        fs::remove_dir_all(root).unwrap();
     }
 }

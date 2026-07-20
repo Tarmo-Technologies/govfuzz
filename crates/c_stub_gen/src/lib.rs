@@ -22,6 +22,114 @@ pub fn stub_body_for_return_type(return_type: &str) -> Option<&'static str> {
     None
 }
 
+fn stub_body_for_declaration<D: DeclarationView>(decl: &D, return_type: &str) -> Option<String> {
+    let canonical = |spelling: &str| {
+        unwrap_export_macro(spelling)
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .replace(" *", "*")
+    };
+    let result = canonical(return_type);
+    let params = decl.param_types();
+    // Platform allocator backends commonly report success through an out-pointer.
+    // A scalar `return 0` stub is actively unsafe for these APIs: the caller sees
+    // success but continues with an untouched NULL output. Preserve the documented
+    // contract for mimalloc's portable primitive boundary when its platform TU is
+    // unavailable, while keeping the fallback weak so a real backend wins.
+    match decl.name() {
+        "_mi_prim_mem_init" if params.len() == 1 => {
+            return Some(
+                "if (_gf_p0) { _gf_p0->page_size = 4096; _gf_p0->large_page_size = 0; \
+                 _gf_p0->alloc_granularity = 4096; _gf_p0->physical_memory_in_kib = 0; \
+                 _gf_p0->virtual_address_bits = 48; _gf_p0->has_overcommit = true; \
+                 _gf_p0->has_partial_free = false; _gf_p0->has_virtual_reserve = false; } return;"
+                    .to_owned(),
+            );
+        }
+        "_mi_prim_alloc" if result == "int" && params.len() == 8 => {
+            return Some(
+                "(void)_gf_p0; (void)_gf_p3; (void)_gf_p4; \
+                 size_t _gf_align = _gf_p2 < sizeof(void *) ? sizeof(void *) : _gf_p2; \
+                 size_t _gf_size = _gf_p1 ? _gf_p1 : 1; \
+                 size_t _gf_rem = _gf_size % _gf_align; \
+                 if (_gf_rem) _gf_size += _gf_align - _gf_rem; \
+                 void *_gf_mem = aligned_alloc(_gf_align, _gf_size); \
+                 if (!_gf_mem) { if (_gf_p7) *_gf_p7 = NULL; return 12; } \
+                 for (size_t _gf_i = 0; _gf_i < _gf_size; ++_gf_i) \
+                     ((unsigned char *)_gf_mem)[_gf_i] = 0; \
+                 if (_gf_p5) *_gf_p5 = false; if (_gf_p6) *_gf_p6 = true; \
+                 if (_gf_p7) *_gf_p7 = _gf_mem; else free(_gf_mem); return _gf_p7 ? 0 : 12;"
+                    .to_owned(),
+            );
+        }
+        "_mi_prim_free" if result == "int" && params.len() == 2 => {
+            return Some("(void)_gf_p1; free(_gf_p0); return 0;".to_owned());
+        }
+        "_mi_prim_commit" if result == "int" && params.len() == 3 => {
+            return Some(
+                "(void)_gf_p0; (void)_gf_p1; if (_gf_p2) *_gf_p2 = false; return 0;".to_owned(),
+            );
+        }
+        "_mi_prim_decommit" if result == "int" && params.len() == 3 => {
+            return Some(
+                "(void)_gf_p0; (void)_gf_p1; if (_gf_p2) *_gf_p2 = false; return 0;".to_owned(),
+            );
+        }
+        "_mi_prim_alloc_huge_os_pages" if result == "int" && params.len() == 5 => {
+            return Some(
+                "(void)_gf_p0; (void)_gf_p2; void *_gf_mem = calloc(1, _gf_p1 ? _gf_p1 : 1); \
+                 if (_gf_p3) *_gf_p3 = true; if (_gf_p4) *_gf_p4 = _gf_mem; \
+                 else free(_gf_mem); return (_gf_mem && _gf_p4) ? 0 : 12;"
+                    .to_owned(),
+            );
+        }
+        "_mi_prim_numa_node_count" if result == "size_t" && params.is_empty() => {
+            return Some("return 1;".to_owned());
+        }
+        "_mi_allocator_init" if result == "bool" && params.len() == 1 => {
+            return Some("(void)_gf_p0; return true;".to_owned());
+        }
+        _ => {}
+    }
+    let first_is_size = params
+        .first()
+        .is_some_and(|param| canonical(param) == "size_t");
+    let allocator_parameter = params
+        .get(1)
+        .is_some_and(|param| canonical(param).to_ascii_lowercase().contains("allocator"));
+    if result == "void*"
+        && first_is_size
+        && allocator_parameter
+        && decl.name().ends_with("_alloc_zero")
+    {
+        return Some("return calloc(1, _gf_p0 ? _gf_p0 : 1);".to_owned());
+    }
+    if result == "void*" && first_is_size && allocator_parameter && decl.name().ends_with("_alloc")
+    {
+        return Some("return malloc(_gf_p0 ? _gf_p0 : 1);".to_owned());
+    }
+    if result == "void"
+        && params
+            .first()
+            .is_some_and(|param| canonical(param).contains('*'))
+        && allocator_parameter
+        && decl.name().ends_with("_free")
+    {
+        return Some("free(_gf_p0); return;".to_owned());
+    }
+    if result.contains('*')
+        && result != "void*"
+        && decl
+            .param_types()
+            .first()
+            .is_some_and(|first| canonical(first) == result)
+    {
+        return Some("return _gf_p0;".to_owned());
+    }
+    stub_body_for_return_type(return_type).map(str::to_owned)
+}
+
 fn is_integral(t: &str) -> bool {
     let canonical = t.trim_start_matches("const ").trim();
     if matches!(
@@ -79,6 +187,7 @@ fn is_integral(t: &str) -> bool {
         || canonical.ends_with("_uint64")
         || canonical.ends_with("_int")
         || canonical.ends_with("_long")
+        || canonical.ends_with("_socket_t")
 }
 
 /// Whether `t` is a bare (by-value, non-pointer) `enum TAG` spelling, optionally
@@ -122,18 +231,33 @@ pub trait DeclarationView {
     /// is responsible for telling those apart from K&R-style empty
     /// parens.
     fn param_types(&self) -> &[String];
+    fn variadic(&self) -> bool {
+        false
+    }
+    fn function_suffix(&self) -> &str {
+        ""
+    }
 }
 
 /// Unwrap a function-like export-macro return type to its inner type:
-/// `CJSON_PUBLIC(void *)` -> `void *`, `ZEXTERN(int)` -> `int`. Symbol-export
-/// macros (`CJSON_PUBLIC`, `__declspec`-style API wrappers) are UPPER_CASE by
-/// convention; a lowercase leading token (a real type like `void`) or a
-/// non-wrapping shape (`const char *`, `void (*)(int)`) is left untouched. Copying
-/// the macro INVOCATION as a return type produced a malformed declarator clang
-/// rejects. Applied repeatedly in case a macro wraps another.
+/// `CJSON_PUBLIC(void *)` -> `void *`, `ZEXTERN(int)` -> `int`, and strip a
+/// standalone linkage/visibility macro (`INTERNAL void` -> `void`). A lowercase
+/// leading token (a real type like `void`) or a non-wrapping shape (`const char
+/// *`, `void (*)(int)`) is left untouched. Copying the macro invocation or
+/// decoration as a return type produced a malformed declarator clang rejects.
+/// Applied repeatedly in case one macro wraps or precedes another.
 pub fn unwrap_export_macro(return_type: &str) -> String {
     let mut t = return_type.trim().to_owned();
     loop {
+        let without_standalone_decorations = t
+            .split_whitespace()
+            .filter(|token| !is_linkage_decoration_macro(token))
+            .collect::<Vec<_>>()
+            .join(" ");
+        if without_standalone_decorations != t {
+            t = without_standalone_decorations;
+            continue;
+        }
         let chars: Vec<char> = t.chars().collect();
         let ident_end = chars
             .iter()
@@ -150,6 +274,10 @@ pub fn unwrap_export_macro(return_type: &str) -> String {
         }
         let rest: String = chars[ident_end..].iter().collect();
         let rest = rest.trim_start();
+        if !rest.is_empty() && is_linkage_decoration_macro(&ident) && !rest.starts_with('(') {
+            t = rest.to_owned();
+            continue;
+        }
         if !rest.starts_with('(') {
             return t;
         }
@@ -179,6 +307,94 @@ pub fn unwrap_export_macro(return_type: &str) -> String {
     }
 }
 
+/// Conservative recognition of standalone declaration-decoration macros. Do
+/// not treat every uppercase token as decoration: projects commonly use
+/// uppercase typedef names (`DWORD`, `HRESULT`) as genuine return types.
+fn is_linkage_decoration_macro(ident: &str) -> bool {
+    matches!(
+        ident,
+        "INTERNAL"
+            | "EXTERNAL"
+            | "PUBLIC"
+            | "PRIVATE"
+            | "LOCAL"
+            | "HIDDEN"
+            | "STATIC"
+            | "INLINE"
+            | "EXTERN"
+            | "ZEXPORT"
+            | "ZEXTERN"
+            | "ZLIB_INTERNAL"
+    ) || ident.starts_with("API_")
+        || ident.ends_with("_API")
+        || ident.starts_with("EXPORT_")
+        || ident.ends_with("_EXPORT")
+        || ident.starts_with("IMPORT_")
+        || ident.ends_with("_IMPORT")
+        || ident.starts_with("PUBLIC_")
+        || ident.ends_with("_PUBLIC")
+        || ident.ends_with("_DECL")
+        || ident.ends_with("_INTERNAL")
+}
+
+/// Add `name` to an abstract C parameter declarator. Appending a name works for
+/// scalar and ordinary pointer types, but not for callback types: `void
+/// (*)(int) p` is invalid and must become `void (*p)(int)`. The same placement
+/// handles pointer-to-array parameters (`int (*)[4]` -> `int (*p)[4]`).
+fn name_abstract_param(ty: &str, name: &str) -> String {
+    let chars: Vec<char> = ty.trim().chars().collect();
+
+    for open in 0..chars.len() {
+        if chars[open] != '(' {
+            continue;
+        }
+        let mut depth = 0usize;
+        let mut close = None;
+        for (offset, c) in chars[open..].iter().enumerate() {
+            match c {
+                '(' => depth += 1,
+                ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        close = Some(open + offset);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(close) = close else { continue };
+        let inner: String = chars[open + 1..close].iter().collect();
+        if !inner.contains('*') {
+            continue;
+        }
+        let suffix: String = chars[close + 1..].iter().collect();
+        let suffix = suffix.trim_start();
+        if !suffix.starts_with('(') && !suffix.starts_with('[') {
+            continue;
+        }
+
+        let before: String = chars[..close].iter().collect();
+        let after: String = chars[close..].iter().collect();
+        return format!("{before} {name}{after}");
+    }
+
+    // Abstract array parameters also need the identifier before the first
+    // bracket (`char [16]` -> `char name[16]`). Arrays in parameter position
+    // decay to pointers, but spelling the definition this way remains valid C.
+    if let Some(bracket) = chars.iter().position(|c| *c == '[') {
+        let before = chars[..bracket]
+            .iter()
+            .collect::<String>()
+            .trim_end()
+            .to_owned();
+        let after: String = chars[bracket..].iter().collect();
+        return format!("{before} {name}{after}");
+    }
+
+    format!("{} {name}", ty.trim())
+}
+
 /// Render an abstract parameter-type list as a NAMED list for a definition: a
 /// C function DEFINITION may not omit parameter names (`foo(size_t) {...}` is a
 /// malformed declarator), so each type gets a synthetic `_gf_pN`. Empty / a sole
@@ -191,6 +407,7 @@ fn named_param_list(param_types: &[String]) -> String {
         .iter()
         .enumerate()
         .map(|(i, ty)| {
+            let cleaned = clean_stub_param_type(ty);
             // A by-value `enum TAG` parameter is incomplete in the isolated stub
             // TU (no enumerator list), and a function DEFINITION may not declare a
             // parameter of incomplete type (clang: "variable has incomplete type
@@ -200,44 +417,383 @@ fn named_param_list(param_types: &[String]) -> String {
             // the weak symbol is overridden by the real definition at link, so the
             // rewrite is ABI-immaterial. A pointer (`enum TAG *`) points to an
             // incomplete type, which is legal, so it is left untouched.
-            let emitted = if is_bare_incomplete_enum(ty) {
+            let emitted = if is_bare_incomplete_enum(&cleaned) {
                 "int"
             } else {
-                ty.trim()
+                cleaned.trim()
             };
-            format!("{emitted} _gf_p{i}")
+            name_abstract_param(emitted, &format!("_gf_p{i}"))
         })
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn named_header_backed_param_list(param_types: &[String]) -> String {
+    if param_types.is_empty() || (param_types.len() == 1 && param_types[0].trim() == "void") {
+        return "void".to_owned();
+    }
+    param_types
+        .iter()
+        .enumerate()
+        .map(|(i, ty)| {
+            let cleaned = ty
+                .split_whitespace()
+                .map(|token| if token == "z_const" { "const" } else { token })
+                .filter(|token| {
+                    !matches!(*token, "FAR" | "NEAR" | "ZEXPORT" | "ZEXTERN" | "ZCALLBACK")
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            name_abstract_param(&cleaned, &format!("_gf_p{i}"))
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Remove project declaration/calling-convention macros that are defined only
+/// by the real header. The isolated weak-stub TU deliberately does not include
+/// project headers, so retaining zlib's `FAR` in `struct S FAR *` makes clang
+/// parse `FAR` as a variable of incomplete type instead of a decoration.
+fn clean_stub_param_type(ty: &str) -> String {
+    let cleaned = ty
+        .split_whitespace()
+        .map(|token| if token == "z_const" { "const" } else { token })
+        .filter(|token| !matches!(*token, "FAR" | "NEAR" | "ZEXPORT" | "ZEXTERN" | "ZCALLBACK"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    // Allocator context types are project typedefs that often vanish with the
+    // implementation being repaired. A pointer to that context is ABI-compatible
+    // with `void *`, and the weak wrapper never dereferences it; spelling it as
+    // `void *` avoids fabricating a typedef that later collides with the real
+    // public allocator struct (XZ's lzma_allocator).
+    if cleaned.contains('*') && cleaned.to_ascii_lowercase().contains("allocator") {
+        if cleaned.split_whitespace().any(|token| token == "const") {
+            return "const void *".to_owned();
+        }
+        return "void *".to_owned();
+    }
+    cleaned
 }
 
 /// Render a C source-level stub function definition matching the given
 /// declaration. Returns `None` when the return type isn't safely
 /// stubbable (struct/union by value).
 pub fn synth_c_stub<D: DeclarationView>(decl: &D) -> Option<String> {
+    synth_c_stub_impl(decl, None, false)
+}
+
+/// Render a weak C definition while preserving the exact declaration spelling.
+/// Use only when the owning project header is included in the stub translation
+/// unit. `resolved_return_type` is used solely to choose a neutral body when the
+/// declared return is a typedef-hidden scalar or enum.
+pub fn synth_header_backed_c_stub<D: DeclarationView>(
+    decl: &D,
+    resolved_return_type: &str,
+) -> Option<String> {
+    synth_c_stub_impl(decl, Some(resolved_return_type), true)
+}
+
+fn synth_c_stub_impl<D: DeclarationView>(
+    decl: &D,
+    body_return_type: Option<&str>,
+    exact_signature: bool,
+) -> Option<String> {
     // Unwrap an export-macro return type (`CJSON_PUBLIC(void *)` -> `void *`) so
     // both the body choice and the emitted return type are valid C.
     let rt_unwrapped = unwrap_export_macro(decl.return_type());
-    let body = stub_body_for_return_type(&rt_unwrapped)?;
+    let is_qualified_cpp = decl.name().contains("::");
+    let body_return = body_return_type
+        .map(unwrap_export_macro)
+        .unwrap_or_else(|| rt_unwrapped.clone());
+    let ordinary_body = stub_body_for_declaration(decl, &body_return);
+    let cpp_reference_body = (ordinary_body.is_none() && is_qualified_cpp)
+        .then(|| cpp_reference_return_body(&rt_unwrapped))
+        .flatten();
+    let default_cpp_value = ordinary_body.is_none()
+        && cpp_reference_body.is_none()
+        && is_qualified_cpp
+        && cpp_value_return_can_default_initialize(&rt_unwrapped);
+    let synthetic_cpp_return = cpp_reference_body.is_some() || default_cpp_value;
+    let body = ordinary_body
+        .or(cpp_reference_body)
+        .or_else(|| default_cpp_value.then(|| "return {};".to_owned()))?;
+    let mut params = if exact_signature {
+        named_header_backed_param_list(decl.param_types())
+    } else {
+        named_param_list(decl.param_types())
+    };
+    if decl.variadic() {
+        if params == "void" {
+            params.clear();
+        }
+        if !params.is_empty() {
+            params.push_str(", ");
+        }
+        params.push_str("...");
+    }
+    let suffix = if decl.function_suffix().is_empty() {
+        String::new()
+    } else {
+        format!(" {}", decl.function_suffix())
+    };
+    if rt_unwrapped.trim().is_empty() && is_qualified_cpp_constructor_or_destructor(decl.name()) {
+        return Some(format!(
+            "__attribute__((weak)) {name}({params}){suffix} {{}}\n",
+            name = decl.name(),
+            params = params,
+            suffix = suffix,
+        ));
+    }
+    if synthetic_cpp_return {
+        // A trailing return type is looked up in the qualified function's scope.
+        // This avoids guessing whether `Status` means `leveldb::Status`, or
+        // whether `StringFormat::value` means `YAML::StringFormat::value` for a
+        // function in `YAML::Utils`.
+        return Some(format!(
+            "__attribute__((weak)) auto {name}({params}){suffix} -> {rt} {{\n    {body}\n}}\n",
+            name = decl.name(),
+            params = params,
+            suffix = suffix,
+            rt = rt_unwrapped.trim(),
+            body = body,
+        ));
+    }
+    let rt = if rt_unwrapped.trim().is_empty() {
+        "void".to_owned()
+    } else if exact_signature {
+        rt_unwrapped.trim().to_owned()
+    } else {
+        stub_return_type(rt_unwrapped.trim())
+    };
+    Some(format!(
+        "__attribute__((weak)) {rt} {name}({params}){suffix} {{\n    {body}\n}}\n",
+        rt = rt,
+        name = decl.name(),
+        params = params,
+        suffix = suffix,
+        body = body,
+    ))
+}
+
+fn cpp_value_return_can_default_initialize(return_type: &str) -> bool {
+    let ty = return_type.trim();
+    !ty.is_empty()
+        && !ty.contains(['*', '&', '[', '(', ')'])
+        && !ty.starts_with("struct ")
+        && !ty.starts_with("union ")
+}
+
+fn cpp_reference_return_body(return_type: &str) -> Option<String> {
+    let ty = return_type.trim();
+    if !ty.ends_with('&') || ty.ends_with("&&") || ty.contains('*') {
+        return None;
+    }
+    let value_type = ty.trim_end_matches('&').trim();
+    if value_type.is_empty() || value_type.contains(['[', '(', ')']) {
+        return None;
+    }
+    Some(format!(
+        "static {value_type} _gf_value{{}}; return _gf_value;"
+    ))
+}
+
+fn is_qualified_cpp_constructor_or_destructor(name: &str) -> bool {
+    let mut parts = name.rsplit("::");
+    let Some(member) = parts.next() else {
+        return false;
+    };
+    let Some(owner) = parts.next() else {
+        return false;
+    };
+    member == owner || member.strip_prefix('~') == Some(owner)
+}
+
+/// Render the declaration matching [`synth_c_stub`]. Repair force-includes this
+/// prototype so a caller whose only declaration was hidden behind an inactive
+/// platform/configuration branch can compile while the weak definition lives in
+/// `auto_stubs.c`.
+pub fn synth_c_prototype<D: DeclarationView>(decl: &D) -> Option<String> {
+    let rt_unwrapped = unwrap_export_macro(decl.return_type());
+    stub_body_for_return_type(&rt_unwrapped)?;
     let rt = if rt_unwrapped.trim().is_empty() {
         "void".to_owned()
     } else {
         stub_return_type(rt_unwrapped.trim())
     };
-    let params = named_param_list(decl.param_types());
-    Some(format!(
-        "__attribute__((weak)) {rt} {name}({params}) {{\n    {body}\n}}\n",
-        rt = rt,
-        name = decl.name(),
-        params = params,
-        body = body,
-    ))
+    render_c_declaration(decl, &rt)
+}
+
+/// Render an exact C forward declaration without requiring that GovFuzz can
+/// synthesize a body for the return type. This is used when the real definition
+/// survives in the target source but a damaged header removed the declaration
+/// visible to an earlier call. Unlike [`synth_c_prototype`], an enum or project
+/// value return needs no neutral return expression because no stub is emitted.
+pub fn synth_c_forward_declaration<D: DeclarationView>(decl: &D) -> Option<String> {
+    let rt_unwrapped = unwrap_export_macro(decl.return_type());
+    let rt = if rt_unwrapped.trim().is_empty() {
+        "void".to_owned()
+    } else {
+        rt_unwrapped.trim().to_owned()
+    };
+    render_c_declaration(decl, &rt)
+}
+
+fn render_c_declaration<D: DeclarationView>(decl: &D, rt: &str) -> Option<String> {
+    let name = decl.name().trim();
+    if name.is_empty() {
+        return None;
+    }
+    let mut params = named_param_list(decl.param_types());
+    if decl.variadic() {
+        if params == "void" {
+            params.clear();
+        }
+        if !params.is_empty() {
+            params.push_str(", ");
+        }
+        params.push_str("...");
+    }
+    Some(format!("extern {rt} {name}({params});\n", name = name))
+}
+
+/// A prototype is safe at the very start of every translation unit only when it
+/// names fundamental C types. Project typedefs/classes are normally declared by
+/// headers that come *after* the compiler's `-include` file; injecting such a
+/// prototype early merely changes an undefined-symbol repair into an unknown-type
+/// error (libarchive's `archive_entry`, callback typedefs, and `__LA_DECL`).
+pub fn synth_force_include_c_prototype<D: DeclarationView>(decl: &D) -> Option<String> {
+    let return_type = unwrap_export_macro(decl.return_type());
+    if !fundamental_c_type_spelling(&return_type)
+        || !decl
+            .param_types()
+            .iter()
+            .all(|param| fundamental_c_type_spelling(param))
+    {
+        return None;
+    }
+    synth_c_prototype(decl)
+}
+
+fn fundamental_c_type_spelling(type_name: &str) -> bool {
+    let allowed = [
+        "const", "volatile", "restrict", "signed", "unsigned", "short", "long", "char", "int",
+        "float", "double", "void", "_Bool",
+    ];
+    let mut saw_type = false;
+    let bytes = type_name.as_bytes();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'_' {
+            let start = index;
+            index += 1;
+            while index < bytes.len()
+                && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+            {
+                index += 1;
+            }
+            let word = &type_name[start..index];
+            if !allowed.contains(&word) {
+                return false;
+            }
+            saw_type |= matches!(
+                word,
+                "signed"
+                    | "unsigned"
+                    | "short"
+                    | "long"
+                    | "char"
+                    | "int"
+                    | "float"
+                    | "double"
+                    | "void"
+                    | "_Bool"
+            );
+        } else {
+            index += 1;
+        }
+    }
+    saw_type
 }
 
 /// Synthesise an empty header file body. The header path is recorded
 /// in a leading comment so the repair manifest can show the user
 /// exactly what was replaced.
 pub fn synth_placeholder_header(virtual_path: &str) -> String {
+    let leaf = virtual_path
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(virtual_path);
+    if leaf.eq_ignore_ascii_case("SDL_endian.h") {
+        return format!(
+            "/* auto-synthesised SDL endian compatibility header for {virtual_path} */\n\
+             #pragma once\n\
+             #include <stdint.h>\n\
+             #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__\n\
+             #define SDL_SwapLE16(x) __builtin_bswap16((uint16_t)(x))\n\
+             #define SDL_SwapLE32(x) __builtin_bswap32((uint32_t)(x))\n\
+             #define SDL_SwapLE64(x) __builtin_bswap64((uint64_t)(x))\n\
+             #define SDL_SwapBE16(x) ((uint16_t)(x))\n\
+             #define SDL_SwapBE32(x) ((uint32_t)(x))\n\
+             #define SDL_SwapBE64(x) ((uint64_t)(x))\n\
+             #else\n\
+             #define SDL_SwapLE16(x) ((uint16_t)(x))\n\
+             #define SDL_SwapLE32(x) ((uint32_t)(x))\n\
+             #define SDL_SwapLE64(x) ((uint64_t)(x))\n\
+             #define SDL_SwapBE16(x) __builtin_bswap16((uint16_t)(x))\n\
+             #define SDL_SwapBE32(x) __builtin_bswap32((uint32_t)(x))\n\
+             #define SDL_SwapBE64(x) __builtin_bswap64((uint64_t)(x))\n\
+             #endif\n"
+        );
+    }
+    if leaf == "option_enum.h" {
+        return format!(
+            "/* auto-synthesised uncrustify option aliases for {virtual_path} */\n\
+             #pragma once\n\
+             #include \"option.h\"\n\
+             namespace uncrustify {{\n\
+             constexpr auto OT_BOOL = option_type_e::BOOL;\n\
+             constexpr auto OT_IARF = option_type_e::IARF;\n\
+             constexpr auto OT_LINEEND = option_type_e::LINEEND;\n\
+             constexpr auto OT_TOKENPOS = option_type_e::TOKENPOS;\n\
+             constexpr auto OT_NUM = option_type_e::NUM;\n\
+             constexpr auto OT_UNUM = option_type_e::UNUM;\n\
+             constexpr auto OT_STRING = option_type_e::STRING;\n\
+             constexpr auto IARF_IGNORE = iarf_e::IGNORE;\n\
+             constexpr auto IARF_ADD = iarf_e::ADD;\n\
+             constexpr auto IARF_REMOVE = iarf_e::REMOVE;\n\
+             constexpr auto IARF_FORCE = iarf_e::FORCE;\n\
+             constexpr auto LE_LF = line_end_e::LF;\n\
+             constexpr auto LE_CRLF = line_end_e::CRLF;\n\
+             constexpr auto LE_CR = line_end_e::CR;\n\
+             constexpr auto LE_AUTO = line_end_e::AUTO;\n\
+             constexpr auto TP_IGNORE = token_pos_e::IGNORE;\n\
+             constexpr auto TP_BREAK = token_pos_e::BREAK;\n\
+             constexpr auto TP_FORCE = token_pos_e::FORCE;\n\
+             constexpr auto TP_LEAD = token_pos_e::LEAD;\n\
+             constexpr auto TP_TRAIL = token_pos_e::TRAIL;\n\
+             constexpr auto TP_JOIN = token_pos_e::JOIN;\n\
+             constexpr auto TP_LEAD_BREAK = token_pos_e::LEAD_BREAK;\n\
+             constexpr auto TP_LEAD_FORCE = token_pos_e::LEAD_FORCE;\n\
+             constexpr auto TP_TRAIL_BREAK = token_pos_e::TRAIL_BREAK;\n\
+             constexpr auto TP_TRAIL_FORCE = token_pos_e::TRAIL_FORCE;\n\
+             }}\n"
+        );
+    }
+    if leaf == "token_names.h" {
+        return format!(
+            "/* auto-synthesised uncrustify token-name table for {virtual_path} */\n\
+             #pragma once\n\
+             #include \"token_enum.h\"\n\
+             static const char *token_names[static_cast<unsigned>(E_Token::CT_TOKEN_COUNT_)] = {{}};\n"
+        );
+    }
+    if leaf == "uncrustify_version.h" {
+        return format!(
+            "/* auto-synthesised uncrustify version header for {virtual_path} */\n\
+             #pragma once\n\
+             #define UNCRUSTIFY_VERSION \"unknown\"\n"
+        );
+    }
     format!(
         "/* auto-synthesised placeholder for {virtual_path}\n\
          * govfuzz auto could not find this header on the include path.\n\
@@ -354,6 +910,7 @@ pub fn c_std_header(type_name: &str) -> Option<&'static str> {
     let bare = type_name
         .trim_start_matches("const ")
         .trim_start_matches("unsigned ")
+        .trim_start_matches("struct ")
         .trim();
     match bare {
         "int8_t" | "int16_t" | "int32_t" | "int64_t" | "uint8_t" | "uint16_t" | "uint32_t"
@@ -363,6 +920,14 @@ pub fn c_std_header(type_name: &str) -> Option<&'static str> {
         | "uint_fast16_t" | "uint_fast32_t" | "uint_fast64_t" | "intmax_t" | "uintmax_t"
         | "intptr_t" | "uintptr_t" => Some("stdint.h"),
         "size_t" | "ptrdiff_t" | "wchar_t" => Some("stddef.h"),
+        // POSIX types that are part of the host SDK, not opaque project types.
+        // Pull their real declarations instead of synthesizing `void *` aliases.
+        "ssize_t" | "off_t" | "pid_t" | "mode_t" | "uid_t" | "gid_t" => Some("sys/types.h"),
+        "pollfd" => Some("poll.h"),
+        "fd_set" => Some("sys/select.h"),
+        "socklen_t" | "sockaddr" | "sockaddr_storage" => Some("sys/socket.h"),
+        "sockaddr_in" | "sockaddr_in6" | "in_addr" | "in6_addr" => Some("netinet/in.h"),
+        "sockaddr_un" => Some("sys/un.h"),
         // `va_list` and its glibc / compiler-builtin spellings come from
         // <stdarg.h> (which on glibc also defines `__gnuc_va_list`). Aliasing them
         // to `void *` collides with the real typedef <stdio.h> pulls in
@@ -435,6 +1000,12 @@ pub fn synth_minimal_config_h() -> String {
     ] {
         out.push_str(&format!("#define HAVE_{h} 1\n"));
     }
+    // These C-standard functions are supplied by the headers claimed above.
+    // Leaving their capability macros unset makes autoconf-era code define
+    // static fallbacks after libc has declared the same names.
+    for function in ["WCSCPY", "WCSLEN", "WMEMCMP"] {
+        out.push_str(&format!("#define HAVE_{function} 1\n"));
+    }
     out.push_str(
         "#ifndef PACKAGE\n#define PACKAGE \"\"\n#endif\n\
          #ifndef VERSION\n#define VERSION \"0\"\n#endif\n\
@@ -491,6 +1062,8 @@ pub fn is_standard_libc_symbol(name: &str) -> bool {
         | "sigaction" | "getpid" | "getppid" | "sleep" | "usleep" | "nanosleep"
         | "gettimeofday" | "clock_gettime" | "time" | "clock" | "localtime" | "gmtime"
         | "mktime" | "strftime"
+        // network byte order (glibc/libc; declarations in <arpa/inet.h>)
+        | "htons" | "htonl" | "ntohs" | "ntohl"
         // wide / misc
         | "wctomb" | "mbtowc" | "wcslen" | "setlocale"
         // math (libm, linked alongside)
@@ -499,15 +1072,46 @@ pub fn is_standard_libc_symbol(name: &str) -> bool {
     )
 }
 
-/// Map a standard symbol that is a *macro* (or needs a header to be declared,
-/// not merely linked) to the standard header that provides it (`assert` ->
-/// `<assert.h>`). When such a symbol is reported undefined the fix is to
-/// force-include the header, not to stub the symbol. Returns `None` for ordinary
-/// libc functions (handled by [`is_standard_libc_symbol`], which link from libc).
+/// Map a standard C/POSIX symbol to the header that declares it. This includes
+/// macros (`assert`, `true`) and ordinary libc functions: a deleted project
+/// header can erase the transitive standard include, leaving a valid libc call
+/// as a C99 compile error before the linker has a chance to resolve it.
 pub fn c_std_symbol_header(name: &str) -> Option<&'static str> {
     match name {
         "assert" | "static_assert" | "__assert_fail" => Some("assert.h"),
-        "errno" => Some("errno.h"),
+        "true" | "false" => Some("stdbool.h"),
+        "printf" | "fprintf" | "sprintf" | "snprintf" | "vprintf" | "vfprintf" | "vsnprintf"
+        | "scanf" | "sscanf" | "fscanf" | "puts" | "fputs" | "fputc" | "putc" | "putchar"
+        | "getchar" | "fgetc" | "getc" | "fgets" | "fopen" | "fdopen" | "freopen" | "fclose"
+        | "fread" | "fwrite" | "fseek" | "ftell" | "rewind" | "fflush" | "feof" | "ferror"
+        | "clearerr" | "setvbuf" | "setbuf" | "perror" | "remove" | "rename" | "tmpfile"
+        | "fileno" | "fmemopen" => Some("stdio.h"),
+        "malloc" | "calloc" | "realloc" | "free" | "aligned_alloc" | "posix_memalign" | "abort"
+        | "exit" | "_exit" | "atexit" | "getenv" | "setenv" | "unsetenv" | "putenv" | "system"
+        | "atoi" | "atol" | "atoll" | "atof" | "strtol" | "strtoul" | "strtoll" | "strtoull"
+        | "strtod" | "qsort" | "bsearch" | "rand" | "srand" | "abs" | "labs" => Some("stdlib.h"),
+        "memcpy" | "memmove" | "memset" | "memcmp" | "memchr" | "strcmp" | "strncmp" | "strcpy"
+        | "strncpy" | "strcat" | "strncat" | "strlen" | "strnlen" | "strchr" | "strrchr"
+        | "strstr" | "strdup" | "strndup" | "strtok" | "strtok_r" | "strerror" | "strerror_r" => {
+            Some("string.h")
+        }
+        "strcasecmp" | "strncasecmp" | "bcopy" | "bzero" | "ffs" => Some("strings.h"),
+        "wcslen" => Some("wchar.h"),
+        "isalpha" | "isdigit" | "isalnum" | "isspace" | "isupper" | "islower" | "isprint"
+        | "ispunct" | "iscntrl" | "isxdigit" | "tolower" | "toupper" => Some("ctype.h"),
+        "errno" | "E2BIG" | "EACCES" | "EADDRINUSE" | "EADDRNOTAVAIL" | "EAFNOSUPPORT"
+        | "EAGAIN" | "EALREADY" | "EBADF" | "EBADMSG" | "EBUSY" | "ECANCELED" | "ECHILD"
+        | "ECONNABORTED" | "ECONNREFUSED" | "ECONNRESET" | "EDEADLK" | "EDESTADDRREQ" | "EDOM"
+        | "EDQUOT" | "EEXIST" | "EFAULT" | "EFBIG" | "EHOSTUNREACH" | "EIDRM" | "EILSEQ"
+        | "EINPROGRESS" | "EINTR" | "EINVAL" | "EIO" | "EISCONN" | "EISDIR" | "ELOOP"
+        | "EMFILE" | "EMLINK" | "EMSGSIZE" | "EMULTIHOP" | "ENAMETOOLONG" | "ENETDOWN"
+        | "ENETRESET" | "ENETUNREACH" | "ENFILE" | "ENOBUFS" | "ENODATA" | "ENODEV" | "ENOENT"
+        | "ENOEXEC" | "ENOLCK" | "ENOLINK" | "ENOMEM" | "ENOMSG" | "ENOPROTOOPT" | "ENOSPC"
+        | "ENOSR" | "ENOSTR" | "ENOSYS" | "ENOTCONN" | "ENOTDIR" | "ENOTEMPTY"
+        | "ENOTRECOVERABLE" | "ENOTSOCK" | "ENOTSUP" | "ENOTTY" | "ENXIO" | "EOPNOTSUPP"
+        | "EOVERFLOW" | "EOWNERDEAD" | "EPERM" | "EPIPE" | "EPROTO" | "EPROTONOSUPPORT"
+        | "EPROTOTYPE" | "ERANGE" | "EROFS" | "ESPIPE" | "ESRCH" | "ESTALE" | "ETIME"
+        | "ETIMEDOUT" | "ETXTBSY" | "EWOULDBLOCK" | "EXDEV" => Some("errno.h"),
         "offsetof" => Some("stddef.h"),
         "va_start" | "va_end" | "va_arg" | "va_copy" => Some("stdarg.h"),
         // POSIX functions whose DECLARATION a project gates behind a feature `-D`
@@ -516,9 +1120,16 @@ pub fn c_std_symbol_header(name: &str) -> Option<&'static str> {
         // "call to undeclared function" — so the fix is to force-include the
         // declaring header, never to blind-stub the symbol (a `void *f(void)` stub
         // both mismatches the real signature and leaves the call site undeclared).
-        "ftruncate" | "truncate" | "fsync" | "fdatasync" | "getpagesize" | "gethostname"
-        | "getentropy" | "pread" | "pwrite" => Some("unistd.h"),
+        "open" => Some("fcntl.h"),
+        "close" | "read" | "write" | "lseek" | "dup" | "dup2" | "pipe" | "access" | "unlink"
+        | "link" | "symlink" | "readlink" | "getcwd" | "chdir" | "rmdir" | "ftruncate"
+        | "truncate" | "fsync" | "fdatasync" | "getpagesize" | "gethostname" | "getentropy"
+        | "pread" | "pwrite" => Some("unistd.h"),
         "ftello" | "fseeko" | "getline" | "getdelim" => Some("stdio.h"),
+        "htons" | "htonl" | "ntohs" | "ntohl" => Some("arpa/inet.h"),
+        // MSVC/BSD-era spellings still common in portable 1990s/2000s code.
+        // The repair applier also emits the alias to the POSIX spelling.
+        "stricmp" | "strcmpi" | "strnicmp" | "strncmpi" => Some("strings.h"),
         _ => None,
     }
 }
@@ -534,17 +1145,83 @@ pub fn c_std_symbol_header(name: &str) -> Option<&'static str> {
 /// this well-known family.
 pub fn c_integer_alias(type_name: &str) -> Option<&'static str> {
     let bare = type_name.trim_start_matches("const ").trim();
-    Some(match bare {
+    let exact = match bare {
         "int8" => "int8_t",
         "int16" => "int16_t",
         "int32" => "int32_t",
         "int64" => "int64_t",
+        "Int8" => "int8_t",
+        "Int16" => "int16_t",
+        "Int32" => "int32_t",
+        "Int64" => "int64_t",
         "uint8" => "uint8_t",
         "uint16" => "uint16_t",
         "uint32" => "uint32_t",
         "uint64" => "uint64_t",
-        _ => return None,
-    })
+        "UInt8" => "uint8_t",
+        "UInt16" => "uint16_t",
+        "UInt32" => "uint32_t",
+        "UInt64" => "uint64_t",
+        "U8" => "uint8_t",
+        "U16" => "uint16_t",
+        "U32" => "uint32_t",
+        "U64" => "uint64_t",
+        "S8" | "I8" => "int8_t",
+        "S16" | "I16" => "int16_t",
+        "S32" | "I32" => "int32_t",
+        "S64" | "I64" => "int64_t",
+        "XXH32_hash_t" => "uint32_t",
+        "XXH64_hash_t" => "uint64_t",
+        "XXH_errorcode" => "int",
+        _ => "",
+    };
+    if !exact.is_empty() {
+        return Some(exact);
+    }
+
+    // A deleted project header can erase a conventional prefixed scalar typedef
+    // before harness generation (`cJSON_bool`, `utf8proc_uint8_t`). Preserve the
+    // project spelling while recovering only exact, width-bearing suffixes. Do
+    // not generalize arbitrary `_t` names: those are commonly opaque handles.
+    for (suffix, canonical) in [
+        ("_u8", "uint8_t"),
+        ("_u16", "uint16_t"),
+        ("_u32", "uint32_t"),
+        ("_u64", "uint64_t"),
+        ("_bool", "int"),
+        ("_int8_t", "int8_t"),
+        ("_uint8_t", "uint8_t"),
+        ("_int16_t", "int16_t"),
+        ("_uint16_t", "uint16_t"),
+        ("_int32_t", "int32_t"),
+        ("_uint32_t", "uint32_t"),
+        ("_int64_t", "int64_t"),
+        ("_uint64_t", "uint64_t"),
+        ("_ssize_t", "int64_t"),
+        ("_size_t", "uint64_t"),
+        ("_option_t", "int"),
+        ("_flags_t", "uint32_t"),
+    ] {
+        if bare.len() > suffix.len() && bare.ends_with(suffix) {
+            return Some(canonical);
+        }
+    }
+    None
+}
+
+/// Exact layouts for small, stable public value types whose defining header may
+/// be the damaged artifact. This is intentionally curated rather than a shape
+/// guess: xxHash specifies its 128-bit result as low/high 64-bit halves across
+/// supported releases and architectures.
+pub fn synth_known_c_value_type(type_name: &str) -> Option<String> {
+    match type_name.trim() {
+        "XXH128_hash_t" => Some(
+            "#include <stdint.h>\n\
+             typedef struct { uint64_t low64; uint64_t high64; } XXH128_hash_t;\n"
+                .to_owned(),
+        ),
+        _ => None,
+    }
 }
 
 /// Synthesise a sound typedef for a recognised integer alias (see
@@ -693,7 +1370,11 @@ pub fn synth_typedef_placeholder(type_name: &str) -> String {
 #[derive(Debug, Clone)]
 pub struct FieldPath {
     pub components: Vec<String>,
+    pub self_pointer_components: Vec<usize>,
     pub leaf_indexed: bool,
+    pub leaf_pointer: bool,
+    pub leaf_index_element_pointer: bool,
+    pub leaf_callable: bool,
     pub max_index: usize,
 }
 
@@ -701,6 +1382,11 @@ pub struct FieldPath {
 struct FieldNode {
     children: std::collections::BTreeMap<String, FieldNode>,
     leaf_array: bool,
+    leaf_scalar: bool,
+    leaf_pointer: bool,
+    leaf_index_element_pointer: bool,
+    leaf_callable: bool,
+    self_pointer: bool,
     array_len: usize,
 }
 
@@ -716,11 +1402,11 @@ struct FieldNode {
 /// materialises when the type is otherwise missing from the build.
 pub fn synth_struct_from_field_paths(type_name: &str, paths: &[FieldPath]) -> Option<String> {
     let root = build_field_tree(paths)?;
-    let body = emit_struct_members(&root, 1);
+    let body = emit_struct_members(&root, 1, &format!("struct {type_name}"));
     Some(format!(
         "/* auto-synthesised: struct for field-accessed type `{type_name}` \
          (members inferred from usage) */\n\
-         typedef struct {{\n{body}}} {type_name};\n"
+         typedef struct {type_name} {{\n{body}}} {type_name};\n"
     ))
 }
 
@@ -737,8 +1423,8 @@ pub fn synth_struct_tag_from_field_paths(
     paths: &[FieldPath],
 ) -> Option<String> {
     let root = build_field_tree(paths)?;
-    let body = emit_struct_members(&root, 1);
     let keyword = if is_union { "union" } else { "struct" };
+    let body = emit_struct_members(&root, 1, &format!("{keyword} {tag}"));
     // Complete the tag, then re-declare the typedef. The typedef is byte-identical
     // to the real header's (we derived `tag` from that header's `typedef
     // <keyword> <tag> <type_name>;`), so it is a legal identical redefinition
@@ -761,9 +1447,19 @@ fn build_field_tree(paths: &[FieldPath]) -> Option<FieldNode> {
         let mut node = &mut root;
         for (i, comp) in path.components.iter().enumerate() {
             node = node.children.entry(comp.clone()).or_default();
-            if i == last && path.leaf_indexed {
-                node.leaf_array = true;
-                node.array_len = node.array_len.max(path.max_index.saturating_add(1));
+            if path.self_pointer_components.contains(&i) {
+                node.self_pointer = true;
+            }
+            if i == last {
+                if path.leaf_indexed {
+                    node.leaf_array = true;
+                    node.array_len = node.array_len.max(path.max_index.saturating_add(1));
+                } else {
+                    node.leaf_scalar = true;
+                }
+                node.leaf_pointer |= path.leaf_pointer;
+                node.leaf_index_element_pointer |= path.leaf_index_element_pointer;
+                node.leaf_callable |= path.leaf_callable;
             }
         }
     }
@@ -774,16 +1470,36 @@ fn build_field_tree(paths: &[FieldPath]) -> Option<FieldNode> {
     }
 }
 
-fn emit_struct_members(node: &FieldNode, depth: usize) -> String {
+fn emit_struct_members(node: &FieldNode, depth: usize, self_type: &str) -> String {
     let indent = "    ".repeat(depth);
     let mut out = String::new();
     for (name, child) in &node.children {
-        if !child.children.is_empty() {
+        if child.self_pointer {
+            if !child.children.is_empty() && !field_name_likely_self_reference(name) {
+                let inner = emit_struct_members(child, depth + 1, self_type);
+                out.push_str(&format!("{indent}struct {{\n{inner}{indent}}} *{name};\n"));
+            } else {
+                out.push_str(&format!("{indent}{self_type} *{name};\n"));
+            }
+        } else if !child.children.is_empty() {
             // A member with sub-members is a nested struct (this wins over any
             // scalar use of the same member at a shallower site).
-            let inner = emit_struct_members(child, depth + 1);
+            let inner = emit_struct_members(child, depth + 1, self_type);
             out.push_str(&format!("{indent}struct {{\n{inner}{indent}}} {name};\n"));
-        } else if child.leaf_array {
+        } else if field_name_likely_void_callback(name) {
+            out.push_str(&format!("{indent}void (*{name})();\n"));
+        } else if child.leaf_callable || field_name_likely_callback(name) {
+            out.push_str(&format!("{indent}void *(*{name})();\n"));
+        } else if child.leaf_index_element_pointer && child.leaf_array {
+            out.push_str(&format!("{indent}void **{name};\n"));
+        } else if child.leaf_pointer && child.leaf_array {
+            // A field both assigned a pointer and subscripted must have a
+            // complete pointee type. `void *` preserves pointer width but makes
+            // `field[i]` an incomplete `void` lvalue (bzip2's `EState::block`).
+            out.push_str(&format!("{indent}unsigned char *{name};\n"));
+        } else if child.leaf_pointer {
+            out.push_str(&format!("{indent}void *{name};\n"));
+        } else if child.leaf_array && !child.leaf_scalar {
             let len = child.array_len.clamp(1, 4096);
             out.push_str(&format!("{indent}unsigned char {name}[{len}];\n"));
         } else {
@@ -791,6 +1507,24 @@ fn emit_struct_members(node: &FieldNode, depth: usize) -> String {
         }
     }
     out
+}
+
+fn field_name_likely_callback(name: &str) -> bool {
+    name.ends_with("_fn") || name.ends_with("_func") || name.ends_with("_callback")
+}
+
+fn field_name_likely_void_callback(name: &str) -> bool {
+    name.ends_with("free_fn")
+        || name.ends_with("deallocate_fn")
+        || name.ends_with("release_fn")
+        || name.ends_with("destroy_fn")
+}
+
+fn field_name_likely_self_reference(name: &str) -> bool {
+    matches!(
+        name,
+        "next" | "prev" | "previous" | "parent" | "child" | "left" | "right"
+    )
 }
 
 /// Last-resort stub when no declaration of `name` can be found in
@@ -829,12 +1563,31 @@ pub fn synth_blind_stub(name: &str) -> String {
     )
 }
 
+/// Declare a blind C stub at call sites whose owning header is unavailable.
+/// The empty parameter list intentionally uses C's unspecified-arguments form,
+/// matching arbitrary calls while the weak definition ignores its arguments.
+/// Keep it out of C++: `f()` means no arguments there and C++ linkage would not
+/// match the C stub symbol.
+pub fn synth_blind_c_prototype(name: &str) -> Option<String> {
+    let ident = name.split('(').next().map(str::trim).unwrap_or(name);
+    if ident.is_empty()
+        || !ident.bytes().enumerate().all(|(index, byte)| {
+            byte == b'_' || byte.is_ascii_alphabetic() || (index > 0 && byte.is_ascii_digit())
+        })
+    {
+        return None;
+    }
+    Some(format!(
+        "#ifndef __cplusplus\nextern void *{ident}();\n#endif\n"
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         c_config_type_alias, c_std_symbol_header, config_type_alias_from_header, is_config_header,
-        is_standard_libc_symbol, stub_body_for_return_type, synth_blind_stub,
-        synth_c_config_type_alias_typedef, synth_minimal_config_h,
+        is_standard_libc_symbol, stub_body_for_return_type, synth_blind_c_prototype,
+        synth_blind_stub, synth_c_config_type_alias_typedef, synth_minimal_config_h,
     };
 
     #[test]
@@ -842,6 +1595,9 @@ mod tests {
         let cfg = synth_minimal_config_h();
         assert!(cfg.contains("#define HAVE_CONFIG_H 1"));
         assert!(cfg.contains("#define HAVE_STDINT_H 1"));
+        assert!(cfg.contains("#define HAVE_WCSCPY 1"));
+        assert!(cfg.contains("#define HAVE_WCSLEN 1"));
+        assert!(cfg.contains("#define HAVE_WMEMCMP 1"));
         assert!(is_config_header("config.h"));
         assert!(is_config_header("build/cmake/config.h"));
         assert!(!is_config_header("archive.h"));
@@ -860,6 +1616,15 @@ mod tests {
     }
 
     #[test]
+    fn blind_c_stub_has_a_c_only_unspecified_arguments_prototype() {
+        assert_eq!(
+            synth_blind_c_prototype("event_del").as_deref(),
+            Some("#ifndef __cplusplus\nextern void *event_del();\n#endif\n")
+        );
+        assert!(synth_blind_c_prototype("ns::event_del").is_none());
+    }
+
+    #[test]
     fn standard_macro_symbols_map_to_their_header() {
         assert_eq!(c_std_symbol_header("assert"), Some("assert.h"));
         assert_eq!(c_std_symbol_header("offsetof"), Some("stddef.h"));
@@ -868,9 +1633,17 @@ mod tests {
         // declaring header, not a blind stub.
         assert_eq!(c_std_symbol_header("ftruncate"), Some("unistd.h"));
         assert_eq!(c_std_symbol_header("truncate"), Some("unistd.h"));
+        assert_eq!(c_std_symbol_header("read"), Some("unistd.h"));
+        assert_eq!(c_std_symbol_header("close"), Some("unistd.h"));
+        assert_eq!(c_std_symbol_header("open"), Some("fcntl.h"));
         assert_eq!(c_std_symbol_header("getline"), Some("stdio.h"));
-        // An ordinary libc function is NOT a header-injection case (it links).
-        assert_eq!(c_std_symbol_header("open"), None);
+        assert_eq!(c_std_symbol_header("fprintf"), Some("stdio.h"));
+        assert_eq!(c_std_symbol_header("malloc"), Some("stdlib.h"));
+        assert_eq!(c_std_symbol_header("memcpy"), Some("string.h"));
+        assert_eq!(c_std_symbol_header("wcslen"), Some("wchar.h"));
+        assert_eq!(c_std_symbol_header("false"), Some("stdbool.h"));
+        assert_eq!(c_std_symbol_header("htons"), Some("arpa/inet.h"));
+        assert_eq!(c_std_symbol_header("stricmp"), Some("strings.h"));
         assert_eq!(c_std_symbol_header("my_func"), None);
     }
 
@@ -1046,6 +1819,7 @@ mod tests {
             "quux_uint64",
             "vendor_int",
             "thing_long",
+            "evutil_socket_t",
         ] {
             assert_eq!(stub_body_for_return_type(t), Some("return 0;"), "{t}");
         }
@@ -1098,6 +1872,82 @@ mod synth_tests {
     }
 
     #[test]
+    fn pointer_preserving_stub_returns_first_argument() {
+        let decl = FakeDecl {
+            name: "archive_string_ensure",
+            return_type: "struct archive_string *",
+            params: vec!["struct archive_string *".to_owned(), "size_t".to_owned()],
+        };
+        let stub = synth_c_stub(&decl).expect("pointer-preserving stub is supported");
+        assert!(stub.contains("return _gf_p0;"), "{stub}");
+        assert!(!stub.contains("return NULL;"), "{stub}");
+    }
+
+    #[test]
+    fn allocator_wrapper_stubs_preserve_heap_semantics() {
+        let alloc = FakeDecl {
+            name: "lzma_alloc",
+            return_type: "void *",
+            params: vec!["size_t".to_owned(), "const lzma_allocator *".to_owned()],
+        };
+        let free = FakeDecl {
+            name: "lzma_free",
+            return_type: "void",
+            params: vec!["void *".to_owned(), "const lzma_allocator *".to_owned()],
+        };
+
+        let alloc_stub = synth_c_stub(&alloc).unwrap();
+        let free_stub = synth_c_stub(&free).unwrap();
+        assert!(
+            alloc_stub.contains("return malloc(_gf_p0 ? _gf_p0 : 1);"),
+            "{alloc_stub}"
+        );
+        assert!(alloc_stub.contains("const void * _gf_p1"), "{alloc_stub}");
+        assert!(free_stub.contains("free(_gf_p0); return;"), "{free_stub}");
+        assert!(free_stub.contains("const void * _gf_p1"), "{free_stub}");
+    }
+
+    #[test]
+    fn mimalloc_primitive_stubs_assign_success_outputs() {
+        let alloc = FakeDecl {
+            name: "_mi_prim_alloc",
+            return_type: "int",
+            params: vec![
+                "void *".to_owned(),
+                "size_t".to_owned(),
+                "size_t".to_owned(),
+                "bool".to_owned(),
+                "bool".to_owned(),
+                "bool *".to_owned(),
+                "bool *".to_owned(),
+                "void **".to_owned(),
+            ],
+        };
+        let free = FakeDecl {
+            name: "_mi_prim_free",
+            return_type: "int",
+            params: vec!["void *".to_owned(), "size_t".to_owned()],
+        };
+        let numa_count = FakeDecl {
+            name: "_mi_prim_numa_node_count",
+            return_type: "size_t",
+            params: vec![],
+        };
+
+        let alloc_stub = synth_c_stub(&alloc).unwrap();
+        assert!(alloc_stub.contains("aligned_alloc"), "{alloc_stub}");
+        assert!(alloc_stub.contains("*_gf_p7 = _gf_mem"), "{alloc_stub}");
+        assert!(alloc_stub.contains("*_gf_p6 = true"), "{alloc_stub}");
+        assert!(!alloc_stub.contains("{\n    return 0;\n}"), "{alloc_stub}");
+
+        let free_stub = synth_c_stub(&free).unwrap();
+        assert!(free_stub.contains("free(_gf_p0); return 0;"), "{free_stub}");
+
+        let numa_stub = synth_c_stub(&numa_count).unwrap();
+        assert!(numa_stub.contains("return 1;"), "{numa_stub}");
+    }
+
+    #[test]
     fn synthesises_void_param_stub() {
         let decl = FakeDecl {
             name: "vendor_log_init",
@@ -1108,6 +1958,81 @@ mod synth_tests {
         assert_eq!(
             stub.trim(),
             "__attribute__((weak)) void vendor_log_init(void) {\n    return;\n}"
+        );
+    }
+
+    #[test]
+    fn synthesises_qualified_cpp_constructor_and_destructor_stubs() {
+        let constructor = FakeDecl {
+            name: "leveldb::Status::Status",
+            return_type: "",
+            params: vec!["const Status &".to_owned()],
+        };
+        let destructor = FakeDecl {
+            name: "leveldb::Status::~Status",
+            return_type: "",
+            params: vec![],
+        };
+
+        let constructor_stub = synth_c_stub(&constructor).unwrap();
+        let destructor_stub = synth_c_stub(&destructor).unwrap();
+        assert_eq!(
+            constructor_stub,
+            "__attribute__((weak)) leveldb::Status::Status(const Status & _gf_p0) {}\n"
+        );
+        assert_eq!(
+            destructor_stub,
+            "__attribute__((weak)) leveldb::Status::~Status(void) {}\n"
+        );
+        assert!(!constructor_stub.contains("void leveldb"));
+        assert!(!destructor_stub.contains("void leveldb"));
+    }
+
+    #[test]
+    fn synthesises_default_cpp_value_return_with_namespace_qualification() {
+        let declaration = FakeDecl {
+            name: "leveldb::BuildTable",
+            return_type: "Status",
+            params: vec!["const std::string &".to_owned()],
+        };
+
+        let stub = synth_c_stub(&declaration).expect("C++ value return is defaultable");
+        assert_eq!(
+            stub,
+            "__attribute__((weak)) auto leveldb::BuildTable(const std::string & _gf_p0) -> Status {\n    return {};\n}\n"
+        );
+    }
+
+    #[test]
+    fn keeps_partially_qualified_cpp_value_return_in_function_scope() {
+        let declaration = FakeDecl {
+            name: "YAML::Utils::ComputeBinaryFormat",
+            return_type: "StringFormat::value",
+            params: vec!["const Binary &".to_owned()],
+        };
+
+        let stub = synth_c_stub(&declaration).expect("nested C++ value return is defaultable");
+        assert!(
+            stub.contains(
+                "YAML::Utils::ComputeBinaryFormat(const Binary & _gf_p0) -> StringFormat::value"
+            ),
+            "{stub}"
+        );
+        assert!(!stub.starts_with("__attribute__((weak)) StringFormat::value"));
+    }
+
+    #[test]
+    fn synthesises_qualified_cpp_reference_return_from_static_value() {
+        let declaration = FakeDecl {
+            name: "Json::ValueIteratorBase::deref",
+            return_type: "const Value&",
+            params: vec![],
+        };
+
+        let stub = synth_c_stub(&declaration).expect("C++ reference return is defaultable");
+        assert_eq!(
+            stub,
+            "__attribute__((weak)) auto Json::ValueIteratorBase::deref(void) -> const Value& {\n    static const Value _gf_value{}; return _gf_value;\n}\n"
         );
     }
 
@@ -1157,8 +2082,88 @@ mod synth_tests {
         assert_eq!(unwrap_export_macro("void (*)(int)"), "void (*)(int)");
         assert_eq!(unwrap_export_macro("CJSON_PUBLIC(cJSON *)"), "cJSON *");
         assert_eq!(unwrap_export_macro("ZEXTERN(int)"), "int");
+        assert_eq!(unwrap_export_macro("INTERNAL void"), "void");
+        assert_eq!(unwrap_export_macro("EXTERNAL size_t"), "size_t");
+        assert_eq!(unwrap_export_macro("VENDOR_API int"), "int");
+        assert_eq!(unwrap_export_macro("voidpf ZLIB_INTERNAL"), "voidpf");
+        assert_eq!(
+            unwrap_export_macro("ZEXTERN unsigned long ZEXPORT"),
+            "unsigned long"
+        );
+        // Uppercase typedefs are real types, not automatically decorations.
+        assert_eq!(unwrap_export_macro("DWORD"), "DWORD");
+        assert_eq!(unwrap_export_macro("HRESULT *"), "HRESULT *");
         // A function-call-shaped lowercase name is NOT an export macro.
         assert_eq!(unwrap_export_macro("foo(int)"), "foo(int)");
+    }
+
+    #[test]
+    fn strips_zlib_trailing_decorations_from_pointer_stub_return() {
+        let decl = FakeDecl {
+            name: "zcalloc",
+            return_type: "void * ZLIB_INTERNAL",
+            params: vec![
+                "void *".to_owned(),
+                "unsigned".to_owned(),
+                "unsigned".to_owned(),
+            ],
+        };
+        let stub = synth_c_stub(&decl).expect("decorated pointer return is stubbable");
+        assert!(
+            stub.starts_with("__attribute__((weak)) void * zcalloc("),
+            "{stub}"
+        );
+        assert!(stub.contains("return NULL;"), "{stub}");
+        compile_stub_tu_or_skip(&stub);
+    }
+
+    #[test]
+    fn callback_parameter_name_is_inserted_inside_abstract_declarator() {
+        // lacc: appending `_gf_p3` produced the invalid
+        // `void * (*)(void *, String *) _gf_p3` in auto_stubs.c.
+        let decl = FakeDecl {
+            name: "hash_insert",
+            return_type: "INTERNAL void *",
+            params: vec![
+                "struct hash_table *".to_owned(),
+                "String".to_owned(),
+                "void *".to_owned(),
+                "void * (*)(void *, String *)".to_owned(),
+            ],
+        };
+        let stub = synth_c_stub(&decl).expect("pointer return is stubbable");
+        assert!(
+            stub.contains("void * (* _gf_p3)(void *, String *)"),
+            "callback parameter declarator: {stub}"
+        );
+        assert!(
+            stub.starts_with("__attribute__((weak)) void * hash_insert("),
+            "linkage macro must not leak into the definition: {stub}"
+        );
+        compile_stub_tu_or_skip(&stub);
+    }
+
+    #[test]
+    fn pointer_to_array_and_array_parameters_are_named_in_place() {
+        assert_eq!(name_abstract_param("int (*)[4]", "p"), "int (* p)[4]");
+        assert_eq!(name_abstract_param("char [16]", "p"), "char p[16]");
+        assert_eq!(name_abstract_param("const char *", "p"), "const char * p");
+    }
+
+    #[test]
+    fn strips_zlib_decorations_from_isolated_stub_parameters() {
+        let decl = FakeDecl {
+            name: "inflate_fixed",
+            return_type: "void",
+            params: vec!["struct inflate_state FAR *".to_owned()],
+        };
+        let stub = synth_c_stub(&decl).expect("void stub is supported");
+        assert!(
+            stub.contains("inflate_fixed(struct inflate_state * _gf_p0)"),
+            "{stub}"
+        );
+        assert!(!stub.contains(" FAR "), "{stub}");
+        compile_stub_tu_or_skip(&stub);
     }
 
     #[test]
@@ -1221,6 +2226,8 @@ mod synth_tests {
         let tu = format!(
             "#include <stddef.h>\n\
              typedef struct json_error_s json_error_t;\n\
+             typedef void *String;\n\
+             struct hash_table;\n\
              enum json_error_code;\n\
              {stub}"
         );
@@ -1363,6 +2370,35 @@ mod synth_tests {
             stub.starts_with("__attribute__((weak)) void init(void)"),
             "stub should treat empty return as void: {stub}"
         );
+        assert_eq!(
+            synth_c_prototype(&EmptyRt).as_deref(),
+            Some("extern void init(void);\n")
+        );
+    }
+
+    #[test]
+    fn force_include_prototype_requires_fundamental_types() {
+        let safe = FakeDecl {
+            name: "rand_s",
+            return_type: "int",
+            params: vec!["unsigned int *".to_owned()],
+        };
+        assert_eq!(
+            synth_force_include_c_prototype(&safe).as_deref(),
+            Some("extern int rand_s(unsigned int * _gf_p0);\n")
+        );
+
+        let project_type = FakeDecl {
+            name: "archive_entry_free",
+            return_type: "__LA_DECL void",
+            params: vec!["struct archive_entry *".to_owned()],
+        };
+        assert!(synth_force_include_c_prototype(&project_type).is_none());
+    }
+
+    #[test]
+    fn strips_header_scoped_decl_visibility_macro() {
+        assert_eq!(unwrap_export_macro("__LA_DECL la_int64_t"), "la_int64_t");
     }
 }
 
@@ -1376,6 +2412,41 @@ mod aux_tests {
         assert!(h.contains("#pragma once"));
         assert!(h.contains("internal/proprietary_alloc.h"));
         assert!(h.contains("auto-synthesised"));
+    }
+
+    #[test]
+    fn sdl_endian_placeholder_supplies_host_order_swaps() {
+        let h = synth_placeholder_header("compat/SDL_endian.h");
+        assert!(h.contains("#include <stdint.h>"), "{h}");
+        assert!(h.contains("#define SDL_SwapLE32"), "{h}");
+        assert!(h.contains("#define SDL_SwapBE64"), "{h}");
+    }
+
+    #[test]
+    fn uncrustify_option_enum_placeholder_preserves_enum_class_aliases() {
+        let h = synth_placeholder_header("option_enum.h");
+        assert!(
+            h.contains("constexpr auto OT_NUM = option_type_e::NUM;"),
+            "{h}"
+        );
+        assert!(
+            h.contains("constexpr auto LE_AUTO = line_end_e::AUTO;"),
+            "{h}"
+        );
+        assert!(!h.contains("#define OT_NUM 0"), "{h}");
+    }
+
+    #[test]
+    fn uncrustify_generated_placeholders_preserve_required_types() {
+        let tokens = synth_placeholder_header("token_names.h");
+        assert!(tokens.contains("E_Token::CT_TOKEN_COUNT_"), "{tokens}");
+        assert!(tokens.contains("token_names"), "{tokens}");
+
+        let version = synth_placeholder_header("uncrustify_version.h");
+        assert!(
+            version.contains("#define UNCRUSTIFY_VERSION \"unknown\""),
+            "{version}"
+        );
     }
 
     #[test]
@@ -1481,17 +2552,32 @@ mod aux_tests {
         assert_eq!(c_integer_alias("int16"), Some("int16_t"));
         assert_eq!(c_integer_alias("int32"), Some("int32_t"));
         assert_eq!(c_integer_alias("int64"), Some("int64_t"));
+        assert_eq!(c_integer_alias("Int32"), Some("int32_t"));
         assert_eq!(c_integer_alias("uint8"), Some("uint8_t"));
         assert_eq!(c_integer_alias("uint16"), Some("uint16_t"));
         assert_eq!(c_integer_alias("uint32"), Some("uint32_t"));
         assert_eq!(c_integer_alias("uint64"), Some("uint64_t"));
+        assert_eq!(c_integer_alias("UInt32"), Some("uint32_t"));
+        assert_eq!(c_integer_alias("U32"), Some("uint32_t"));
+        assert_eq!(c_integer_alias("U64"), Some("uint64_t"));
+        assert_eq!(c_integer_alias("S32"), Some("int32_t"));
         assert_eq!(c_integer_alias("const uint32"), Some("uint32_t"));
+        assert_eq!(c_integer_alias("cJSON_bool"), Some("int"));
+        assert_eq!(c_integer_alias("utf8proc_uint8_t"), Some("uint8_t"));
+        assert_eq!(c_integer_alias("vendor_int32_t"), Some("int32_t"));
+        assert_eq!(c_integer_alias("utf8proc_ssize_t"), Some("int64_t"));
+        assert_eq!(c_integer_alias("utf8proc_option_t"), Some("int"));
+        assert_eq!(c_integer_alias("xxh_u32"), Some("uint32_t"));
+        assert_eq!(c_integer_alias("xxh_u64"), Some("uint64_t"));
+        assert_eq!(c_integer_alias("XXH64_hash_t"), Some("uint64_t"));
+        assert_eq!(c_integer_alias("XXH_errorcode"), Some("int"));
         // Standard names already resolve via c_std_header, not here.
         assert_eq!(c_integer_alias("int32_t"), None);
         // Width-ambiguous / unknown aliases must NOT be guessed.
         assert_eq!(c_integer_alias("uint"), None);
         assert_eq!(c_integer_alias("boolean"), None);
         assert_eq!(c_integer_alias("widget_t"), None);
+        assert_eq!(c_integer_alias("widget_bool_t"), None);
     }
 
     #[test]
@@ -1508,27 +2594,203 @@ mod aux_tests {
     }
 
     #[test]
+    fn known_xxhash_128_value_type_has_canonical_layout() {
+        let value = synth_known_c_value_type("XXH128_hash_t").unwrap();
+        assert!(value.contains("uint64_t low64"), "{value}");
+        assert!(value.contains("uint64_t high64"), "{value}");
+        assert!(synth_known_c_value_type("Unknown128").is_none());
+    }
+
+    #[test]
+    fn forward_declaration_preserves_unstubbable_value_return() {
+        struct EnumDecl;
+        impl DeclarationView for EnumDecl {
+            fn name(&self) -> &str {
+                "next_state"
+            }
+            fn return_type(&self) -> &str {
+                "enum project_state"
+            }
+            fn param_types(&self) -> &[String] {
+                &[]
+            }
+        }
+        assert_eq!(
+            synth_c_forward_declaration(&EnumDecl).as_deref(),
+            Some("extern enum project_state next_state(void);\n")
+        );
+    }
+
+    #[test]
     fn synth_struct_from_field_paths_builds_nested_struct() {
         // cFE CCSDS shape: MsgPtr->CCSDS.Pri.StreamId[0..1] and ...Pri.Sequence.
         let paths = vec![
             FieldPath {
                 components: vec!["CCSDS".into(), "Pri".into(), "StreamId".into()],
+                self_pointer_components: vec![],
                 leaf_indexed: true,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
                 max_index: 1,
             },
             FieldPath {
                 components: vec!["CCSDS".into(), "Pri".into(), "Sequence".into()],
+                self_pointer_components: vec![],
                 leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
                 max_index: 0,
             },
         ];
         let s = synth_struct_from_field_paths("CFE_MSG_Message_t", &paths).expect("paths present");
-        assert!(s.contains("typedef struct {"), "{s}");
+        assert!(s.contains("typedef struct CFE_MSG_Message_t {"), "{s}");
         assert!(s.contains("} CFE_MSG_Message_t;"), "{s}");
         assert!(s.contains("struct {"), "{s}"); // nested CCSDS / Pri
         assert!(s.contains("unsigned char StreamId[2];"), "{s}"); // max_index 1 -> [2]
         assert!(s.contains("unsigned long Sequence;"), "{s}"); // scalar leaf
         assert!(!s.contains("void *"), "{s}");
+    }
+
+    #[test]
+    fn direct_scalar_field_use_overrides_call_argument_decay_guess() {
+        let paths = vec![
+            FieldPath {
+                components: vec!["value".into()],
+                self_pointer_components: vec![],
+                leaf_indexed: true,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 7,
+            },
+            FieldPath {
+                components: vec!["value".into()],
+                self_pointer_components: vec![],
+                leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 0,
+            },
+        ];
+        let synthesized = synth_struct_from_field_paths("Record", &paths).unwrap();
+        assert!(
+            synthesized.contains("unsigned long value;"),
+            "direct scalar evidence must beat weak call-argument decay: {synthesized}"
+        );
+        assert!(!synthesized.contains("value["), "{synthesized}");
+    }
+
+    #[test]
+    fn field_paths_emit_self_and_leaf_pointers() {
+        let paths = vec![
+            FieldPath {
+                components: vec!["next".into(), "value".into()],
+                self_pointer_components: vec![0],
+                leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 0,
+            },
+            FieldPath {
+                components: vec!["text".into()],
+                self_pointer_components: vec![],
+                leaf_indexed: true,
+                leaf_pointer: true,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 7,
+            },
+            FieldPath {
+                components: vec!["stream".into(), "avail_in".into()],
+                self_pointer_components: vec![0],
+                leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 0,
+            },
+        ];
+        let synthesized = synth_struct_from_field_paths("Node", &paths).unwrap();
+        assert!(synthesized.contains("struct Node *next;"), "{synthesized}");
+        assert!(
+            synthesized.contains("unsigned char *text;"),
+            "{synthesized}"
+        );
+        assert!(!synthesized.contains("text["), "{synthesized}");
+        assert!(
+            synthesized.contains("} *stream;"),
+            "a non-recursive arrow chain needs a pointed-to nested record: {synthesized}"
+        );
+        assert!(
+            synthesized.contains("unsigned long avail_in;"),
+            "{synthesized}"
+        );
+    }
+
+    #[test]
+    fn indexed_pointer_elements_emit_pointer_to_pointer_field() {
+        let paths = vec![FieldPath {
+            components: vec!["expected".into()],
+            self_pointer_components: vec![],
+            leaf_indexed: true,
+            leaf_pointer: false,
+            leaf_index_element_pointer: true,
+            leaf_callable: false,
+            max_index: 0,
+        }];
+        let synthesized = synth_struct_from_field_paths("ParseError", &paths).unwrap();
+        assert!(synthesized.contains("void **expected;"), "{synthesized}");
+        assert!(!synthesized.contains("expected["), "{synthesized}");
+    }
+
+    #[test]
+    fn field_paths_emit_callable_function_pointer() {
+        let paths = vec![
+            FieldPath {
+                components: vec!["allocate".into()],
+                self_pointer_components: vec![],
+                leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: true,
+                max_index: 0,
+            },
+            FieldPath {
+                components: vec!["malloc_fn".into()],
+                self_pointer_components: vec![],
+                leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 0,
+            },
+            FieldPath {
+                components: vec!["free_fn".into()],
+                self_pointer_components: vec![],
+                leaf_indexed: false,
+                leaf_pointer: false,
+                leaf_index_element_pointer: false,
+                leaf_callable: false,
+                max_index: 0,
+            },
+        ];
+        let synthesized = synth_struct_from_field_paths("Hooks", &paths).unwrap();
+        assert!(
+            synthesized.contains("void *(*allocate)();"),
+            "{synthesized}"
+        );
+        assert!(
+            synthesized.contains("void *(*malloc_fn)();"),
+            "callback naming evidence should preserve function-pointer shape: {synthesized}"
+        );
+        assert!(
+            synthesized.contains("void (*free_fn)();"),
+            "deallocator callbacks need a void return: {synthesized}"
+        );
     }
 
     #[test]
@@ -1542,7 +2804,11 @@ mod aux_tests {
         // CFE_MSG_Message_t;`, complete the *tag* to avoid a typedef clash.
         let paths = vec![FieldPath {
             components: vec!["CCSDS".into(), "Pri".into(), "StreamId".into()],
+            self_pointer_components: vec![],
             leaf_indexed: true,
+            leaf_pointer: false,
+            leaf_index_element_pointer: false,
+            leaf_callable: false,
             max_index: 1,
         }];
         let s = synth_struct_tag_from_field_paths(
@@ -1594,6 +2860,10 @@ mod aux_tests {
         assert_eq!(c_std_header("__gnuc_va_list"), Some("stdarg.h"));
         assert_eq!(c_std_header("__builtin_va_list"), Some("stdarg.h"));
         assert_eq!(c_std_header("FILE"), Some("stdio.h"));
+        assert_eq!(c_std_header("struct pollfd"), Some("poll.h"));
+        assert_eq!(c_std_header("socklen_t"), Some("sys/socket.h"));
+        assert_eq!(c_std_header("sockaddr_in6"), Some("netinet/in.h"));
+        assert_eq!(c_std_header("sockaddr_un"), Some("sys/un.h"));
         // synth_c_std_include (tried before the placeholder) emits the include.
         assert!(synth_c_std_include("va_list")
             .unwrap()

@@ -313,6 +313,9 @@ copy_tree "$REPO_ROOT/crates/rust_runtime" "$TOOL_DIR/crates/rust_runtime"
 
 run cp "$SCRIPT_DIR/install-dist.sh" "$STAGE_ROOT/install.sh"
 run chmod +x "$STAGE_ROOT/install.sh"
+run cp "$REPO_ROOT/docs/site/offline-auto-runbook.md" "$STAGE_ROOT/AUTO-OFFLINE-RUNBOOK.md"
+run mkdir -p "$TOOL_DIR/docs"
+run cp "$REPO_ROOT/docs/site/offline-auto-runbook.md" "$TOOL_DIR/docs/AUTO-OFFLINE-RUNBOOK.md"
 
 run mkdir -p "$STAGE_ROOT/smoke/c"
 if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -422,7 +425,10 @@ govfuzz auto --debug <source-tree> --work-dir govfuzz_work
 Send `bug-report.md` (or one entry from it) to the maintainer — it carries the
 govfuzz version/commit, the file/target, and the backtrace needed to fix it.
 
-For running GovFuzz after installation, see `RUN-GOVFUZZ.md`.
+For running GovFuzz after installation, see `RUN-GOVFUZZ.md`. For the strongest
+offline Ada/C/C++ recovery commands, including known-build, unknown-build, and
+forced fallback variants, see `AUTO-OFFLINE-RUNBOOK.md`. The installer also
+places that runbook at `<prefix>/docs/AUTO-OFFLINE-RUNBOOK.md`.
 EOF
 
   cat >"$STAGE_ROOT/RUN-GOVFUZZ.md" <<'EOF'
@@ -506,6 +512,13 @@ Useful options:
 Missing language toolchains are reported as skipped or failed build lanes; they
 do not require network access. Install only the toolchains for the languages you
 intend to fuzz.
+
+For broken or incomplete Ada/C/C++ source drops, see
+`AUTO-OFFLINE-RUNBOOK.md` in this distribution. It gives the strongest
+known-build and unknown-build commands, explains which recovery flags combine,
+and keeps the `--force` fallback in a separate evidence bucket. After install,
+the same file is available at `/opt/govfuzz/docs/AUTO-OFFLINE-RUNBOOK.md` when
+the default prefix is used.
 
 ## Read Results
 

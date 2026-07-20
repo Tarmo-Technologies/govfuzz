@@ -92,6 +92,30 @@ memory-scaled and have `GOVFUZZ_MAX_*_BYTES` overrides; see the
 On a constrained host, omit `--sarif` on the first pass because SARIF construction
 needs additional report-sized memory.
 
+## LLM Assistance (Optional)
+
+GovFuzz can use an authenticated Codex or Claude CLI, the OpenAI Responses API,
+the Anthropic Messages API, or a local OpenAI-compatible server. For interactive
+work, the recommended mode is `govfuzz-daemon --mcp`: the Codex/Claude session
+you are already in performs the reasoning and calls deterministic GovFuzz tools,
+so GovFuzz needs no API token. Direct CLI-provider calls start a separate,
+ephemeral child session using the CLI's cached login.
+
+```sh
+govfuzz llm status --json
+govfuzz llm test --provider codex
+govfuzz llm test --provider claude
+govfuzz llm prompt --task diagnose-error --input govfuzz_work/build/link.log
+```
+
+LLM output is advisory: normal build, target-reachability, coverage, replay, and
+minimization results remain authoritative. API keys are read only from
+environment variables, and all evidence/provider/MCP buffers have memory-aware,
+overrideable limits. See the [LLM assistance guide](docs/site/llm.md) for MCP
+registration, local models, API providers, privacy boundaries, and the audited
+workflow for run planning, harnesses, findings, code explanations, and root-
+cause analysis.
+
 ### Run govfuzz on every pull request
 
 Fuzz only the code each PR changes — inline annotations, one `uses:` line, no config file:

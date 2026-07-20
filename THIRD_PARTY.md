@@ -53,6 +53,7 @@ GovFuzz fuzzes sixteen languages — **Ada, C, C++, Rust, Java, Python, Perl, Go
 | chrono (Rust) | RFC3339 timestamps in `govfuzz auto` reports | MIT/Apache-2.0 | **Core** | Low | `default-features = false` + `clock` only; no serde / windows-bindings pull-in. |
 | which (Rust) | Compiler binary discovery on PATH | MIT | **Core** | Low | Allow. |
 | libc (Rust) | Unix `prctl` / `setrlimit` safety rails on spawned fuzz harnesses | MIT/Apache-2.0 | **Core** | Low | Allow. |
+| ureq + rustls/webpki roots (Rust) | Bounded synchronous HTTPS for optional OpenAI/Anthropic LLM providers | MIT/Apache-2.0; certificate trust-anchor data is CDLA-Permissive-2.0 | **Core (optional network path at runtime)** | Remote data disclosure if explicitly selected; certificate data has a permissive attribution license | No request occurs by default. API keys are environment-only, response sizes/timeouts are bounded, and local/MCP modes remain token-free. |
 | criterion | Bench (dev-only) | Apache-2.0/MIT | **Candidate** dev (not in `Cargo.lock`) | Low | Pre-cleared for benchmarking; not currently a dev-dependency. |
 | toml (Rust) | Golden-file manifest parsing in tests | MIT/Apache-2.0 | **Core dev** | Low | Dev-only dependency for hand-written corpus manifests. |
 

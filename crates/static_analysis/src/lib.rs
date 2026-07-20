@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 
 mod taint_spec;
@@ -320,13 +320,16 @@ pub fn write_static_scan(
     fs::create_dir_all(&options.out_dir)?;
 
     let json_path = options.out_dir.join("static-report.json");
-    fs::write(&json_path, serde_json::to_vec_pretty(&report)?)?;
+    write_json_file(&json_path, &report)?;
     let markdown_path = options.out_dir.join("static-report.md");
     fs::write(&markdown_path, render_markdown(&report))?;
 
     let sarif_path = if options.emit_sarif {
         let path = options.out_dir.join("static-report.sarif");
-        fs::write(&path, serde_json::to_vec_pretty(&render_sarif(&report))?)?;
+        // Serialize directly to disk. `render_sarif` still owns its structured
+        // value, but avoiding a second full encoded byte vector saves another
+        // report-sized allocation on finding-heavy scans.
+        write_json_file(&path, &render_sarif(&report))?;
         Some(path)
     } else {
         None
@@ -343,33 +346,36 @@ pub fn write_static_scan(
     })
 }
 
+fn write_json_file(path: &Path, value: &impl Serialize) -> Result<(), StaticScanError> {
+    let file = fs::File::create(path)?;
+    let mut writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(&mut writer, value)?;
+    writer.write_all(b"\n")?;
+    writer.flush()?;
+    Ok(())
+}
+
 pub fn scan(options: &StaticScanOptions) -> Result<StaticScanReport, StaticScanError> {
     let suppressions = load_suppressions(options.suppressions_path.as_deref())?;
     let baseline = load_baseline(options.baseline_path.as_deref())?;
     let rule_policy = load_rule_policy(options)?;
-    let baseline_fingerprints: BTreeSet<String> = baseline
+    // Index the baseline by reference. A large baseline used to be cloned into
+    // two maps plus two sets here, briefly retaining several report-sized copies.
+    let baseline_by_fingerprint: BTreeMap<&str, &BaselineFinding> = baseline
         .iter()
-        .map(|finding| finding.fingerprint.clone())
-        .collect();
-    let baseline_by_fingerprint: BTreeMap<String, BaselineFinding> = baseline
-        .iter()
-        .map(|finding| (finding.fingerprint.clone(), finding.clone()))
+        .map(|finding| (finding.fingerprint.as_str(), finding))
         .collect();
     // #09 durable identity: a finding that only MOVED (its line-based fingerprint no
     // longer matches) is still recognized as pre-existing when its line-independent
     // identity matches a baseline entry — so an unrelated edit above it does not
     // resurface it as "new". Fingerprint stays primary; identity is the fallback.
-    let baseline_identities: BTreeSet<String> = baseline
-        .iter()
-        .filter_map(|finding| finding.identity.clone())
-        .collect();
-    let baseline_by_identity: BTreeMap<String, BaselineFinding> = baseline
+    let baseline_by_identity: BTreeMap<&str, &BaselineFinding> = baseline
         .iter()
         .filter_map(|finding| {
             finding
                 .identity
-                .clone()
-                .map(|identity| (identity, finding.clone()))
+                .as_deref()
+                .map(|identity| (identity, finding))
         })
         .collect();
 
@@ -381,19 +387,21 @@ pub fn scan(options: &StaticScanOptions) -> Result<StaticScanReport, StaticScanE
             continue;
         }
         let matched_by_identity = !finding.identity.is_empty()
-            && !baseline_fingerprints.contains(&finding.fingerprint)
-            && baseline_identities.contains(&finding.identity);
-        finding.baseline_status =
-            if baseline_fingerprints.contains(&finding.fingerprint) || matched_by_identity {
-                BaselineStatus::Unchanged
-            } else {
-                BaselineStatus::New
-            };
+            && !baseline_by_fingerprint.contains_key(finding.fingerprint.as_str())
+            && baseline_by_identity.contains_key(finding.identity.as_str());
+        finding.baseline_status = if baseline_by_fingerprint
+            .contains_key(finding.fingerprint.as_str())
+            || matched_by_identity
+        {
+            BaselineStatus::Unchanged
+        } else {
+            BaselineStatus::New
+        };
         // Carry triage state forward on either key (fingerprint first, then the
         // line-independent identity for a finding that merely moved).
         if let Some(baseline) = baseline_by_fingerprint
-            .get(&finding.fingerprint)
-            .or_else(|| baseline_by_identity.get(&finding.identity))
+            .get(finding.fingerprint.as_str())
+            .or_else(|| baseline_by_identity.get(finding.identity.as_str()))
         {
             if let Some(state) = &baseline.triage_state {
                 finding.triage.state = state.clone();
@@ -434,6 +442,9 @@ pub fn scan(options: &StaticScanOptions) -> Result<StaticScanReport, StaticScanE
         .map(|finding| finding.identity.as_str())
         .filter(|id| !id.is_empty())
         .collect();
+    // Release the borrowed indexes before consuming `baseline` below.
+    drop(baseline_by_fingerprint);
+    drop(baseline_by_identity);
     let resolved = baseline
         .into_iter()
         .filter(|finding| {
@@ -749,9 +760,7 @@ pub fn analyze_call_graph(root: &Path) -> Result<CallGraphReport, StaticScanErro
         let index = FunctionIndex::new(
             functions
                 .iter()
-                .filter(|function| function.language == language)
-                .cloned()
-                .collect(),
+                .filter(|function| function.language == language),
         );
         if index.is_empty() {
             continue;
@@ -924,15 +933,67 @@ fn file_uri(path: &str) -> String {
 /// workers then skip further files (recording a gap) instead of pushing the box
 /// into an OOM kill. Process-global, reset at the start of each scan.
 static MEMORY_PRESSURE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static MEMORY_SKIPPED_FILES: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
 
 /// A single source file larger than this is skipped before it is read (recorded
-/// as a gap). Guards against a pathological generated/minified/vendored blob
-/// blowing the memory ceiling on its own. Override with `GOVFUZZ_MAX_FILE_BYTES`.
+/// as a gap). The default is 1/64 of the scan's dynamic memory ceiling, clamped
+/// to 16..256 MiB; this admits large generated translation units on a capable
+/// host without letting one parser allocation consume a constrained machine.
+/// `GOVFUZZ_MAX_FILE_BYTES` is an exact override.
 fn max_file_bytes() -> u64 {
-    std::env::var("GOVFUZZ_MAX_FILE_BYTES")
+    if let Some(configured) = std::env::var("GOVFUZZ_MAX_FILE_BYTES")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(16 * 1024 * 1024)
+        .filter(|value| *value > 0)
+    {
+        return configured;
+    }
+    #[cfg(target_os = "linux")]
+    if let Some(ceiling_kb) = memory_ceiling_kb() {
+        return ceiling_kb
+            .saturating_mul(1024)
+            .saturating_div(64)
+            .clamp(16 * 1024 * 1024, 256 * 1024 * 1024);
+    }
+    64 * 1024 * 1024
+}
+
+/// SLOC counting does not build AST/function models, so it can safely admit
+/// larger generated headers than the full rule/taint engine. Linux v6.12 ships
+/// a real 23 MiB register-mask header, so SLOC keeps a 64 MiB floor while still
+/// following the dynamic full-scan limit above it. An explicit operator override
+/// still governs both paths.
+fn max_sloc_file_bytes() -> u64 {
+    if let Some(configured) = std::env::var("GOVFUZZ_MAX_FILE_BYTES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|value| *value > 0)
+    {
+        return configured;
+    }
+    max_file_bytes().max(64 * 1024 * 1024)
+}
+
+fn read_utf8_source_capped(path: &Path, max_bytes: u64) -> std::io::Result<String> {
+    let file = fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    if len > max_bytes {
+        return Err(std::io::Error::new(
+            ErrorKind::InvalidData,
+            format!("source is {len} bytes, above the {max_bytes}-byte per-file cap"),
+        ));
+    }
+    let mut bytes = Vec::with_capacity(len.min(max_bytes).min(64 * 1024) as usize);
+    file.take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(std::io::Error::new(
+            ErrorKind::InvalidData,
+            format!("source grew above the {max_bytes}-byte per-file cap while being read"),
+        ));
+    }
+    String::from_utf8(bytes).map_err(|error| std::io::Error::new(ErrorKind::InvalidData, error))
 }
 
 /// Read a `key` value (in kB) from a `/proc` status file.
@@ -955,38 +1016,80 @@ fn proc_kb(file: &str, key: &str) -> Option<u64> {
 #[cfg(target_os = "linux")]
 fn memory_ceiling_kb() -> Option<u64> {
     if let Ok(v) = std::env::var("GOVFUZZ_MAX_MEMORY_KB") {
-        if let Ok(kb) = v.parse::<u64>() {
+        if let Some(kb) = v.parse::<u64>().ok().filter(|kb| *kb > 0) {
             return Some(kb);
         }
     }
-    proc_kb("/proc/meminfo", "MemAvailable:").map(|avail| avail / 5 * 4)
+    let host_ceiling = proc_kb("/proc/meminfo", "MemAvailable:").map(|avail| avail / 5 * 4);
+    // `/proc/meminfo` describes the host on many containerized CI systems, not
+    // this process's cgroup. Respect both cgroup v2 and legacy v1 limits and keep
+    // 30% headroom for rustc/clang, the fuzz child, and the rest of the machine.
+    let cgroup_ceiling = cgroup_memory_limit_kb().map(|limit| limit / 10 * 7);
+    match (host_ceiling, cgroup_ceiling) {
+        (Some(host), Some(cgroup)) => Some(host.min(cgroup)),
+        (host, cgroup) => host.or(cgroup),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn cgroup_memory_limit_kb() -> Option<u64> {
+    fn read_limit(path: &str) -> Option<u64> {
+        let value = fs::read_to_string(path).ok()?;
+        let value = value.trim();
+        if value == "max" {
+            return None;
+        }
+        let bytes = value.parse::<u64>().ok()?;
+        // cgroup v1 represents "unlimited" with a value close to u64::MAX.
+        (bytes < (1_u64 << 60)).then_some(bytes / 1024)
+    }
+    read_limit("/sys/fs/cgroup/memory.max")
+        .or_else(|| read_limit("/sys/fs/cgroup/memory/memory.limit_in_bytes"))
 }
 
 /// Spawn a background watchdog that samples this process's RSS ~2/s and raises
 /// [`MEMORY_PRESSURE`] when it crosses the ceiling. Returns a stop-flag to end the
 /// thread. No-op on non-Linux (no procfs) — the file-size cap still applies there.
-fn spawn_memory_watchdog() -> std::sync::Arc<std::sync::atomic::AtomicBool> {
+struct MemoryWatchdog {
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    handle: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for MemoryWatchdog {
+    fn drop(&mut self) {
+        use std::sync::atomic::Ordering;
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            handle.thread().unpark();
+            let _ = handle.join();
+        }
+    }
+}
+
+fn spawn_memory_watchdog() -> MemoryWatchdog {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
     MEMORY_PRESSURE.store(false, Ordering::Relaxed);
+    MEMORY_SKIPPED_FILES.store(0, Ordering::Relaxed);
     let stop = Arc::new(AtomicBool::new(false));
+    let mut handle = None;
     #[cfg(target_os = "linux")]
     {
         let stop_thread = Arc::clone(&stop);
         if let Some(ceiling) = memory_ceiling_kb() {
-            std::thread::spawn(move || {
+            handle = Some(std::thread::spawn(move || {
                 while !stop_thread.load(Ordering::Relaxed) {
                     if let Some(rss) = proc_kb("/proc/self/status", "VmRSS:") {
                         if rss >= ceiling {
                             MEMORY_PRESSURE.store(true, Ordering::Relaxed);
                         }
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    std::thread::park_timeout(std::time::Duration::from_millis(500));
                 }
-            });
+            }));
         }
     }
-    stop
+    MemoryWatchdog { stop, handle }
 }
 
 /// The set of absolute paths changed since the `GOVFUZZ_SINCE_REV` git revision
@@ -1000,21 +1103,23 @@ fn changed_files_since(root: &Path) -> Option<BTreeSet<PathBuf>> {
         return None;
     }
     let run_git = |args: &[&str]| -> Option<Vec<String>> {
-        let output = std::process::Command::new("git")
+        let mut child = std::process::Command::new("git")
             .arg("-C")
             .arg(root)
             .args(args)
-            .output()
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
             .ok()?;
-        if !output.status.success() {
+        let stdout = child.stdout.take()?;
+        let lines = BufReader::new(stdout)
+            .lines()
+            .collect::<Result<Vec<_>, _>>()
+            .ok()?;
+        if !child.wait().ok()?.success() {
             return None;
         }
-        Some(
-            String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .map(str::to_owned)
-                .collect(),
-        )
+        Some(lines)
     };
     // git reports paths relative to the repository top-level, not the scan root.
     let toplevel = run_git(&["rev-parse", "--show-toplevel"])?
@@ -1077,10 +1182,7 @@ fn scan_one_file(
     // Under memory pressure, stop pulling new files into memory — graceful
     // degradation with an honest gap, never an OOM kill.
     if MEMORY_PRESSURE.load(Ordering::Relaxed) {
-        gaps.push(skip_gap(
-            "file_skipped_memory_pressure",
-            "skipped: RSS ceiling reached (see --max-memory / GOVFUZZ_MAX_MEMORY_KB)",
-        ));
+        MEMORY_SKIPPED_FILES.fetch_add(1, Ordering::Relaxed);
         return (findings, functions, gaps);
     }
     // A single oversized (generated/minified/vendored) blob is skipped before read.
@@ -1095,7 +1197,7 @@ fn scan_one_file(
     }
     // Unreadable / non-UTF-8 files are skipped rather than aborting a whole-tree
     // scan — robustness over an untrusted 10M-SLOC tree with the odd bad file.
-    let Ok(source) = fs::read_to_string(path) else {
+    let Ok(source) = read_utf8_source_capped(path, max_bytes) else {
         return (findings, functions, gaps);
     };
     let detected = language_for_path_and_source(path, &source);
@@ -1154,7 +1256,7 @@ fn discover_findings(
     let mut analysis_gaps = Vec::new();
     // A memory-ceiling watchdog runs for the scan's duration; workers skip files
     // under pressure so the scan degrades gracefully instead of OOM-killing.
-    let watchdog_stop = spawn_memory_watchdog();
+    let _watchdog = spawn_memory_watchdog();
     let max_bytes = max_file_bytes();
     // Phase A (embarrassingly parallel): scan each file independently on a bounded
     // worker pool. `collect()` on an indexed parallel iterator preserves file
@@ -1171,7 +1273,6 @@ fn discover_findings(
                 .map(|path| scan_one_file(root, path, max_bytes))
                 .collect()
         });
-    watchdog_stop.store(true, std::sync::atomic::Ordering::Relaxed);
     let total_findings: usize = per_file.iter().map(|(f, _, _)| f.len()).sum();
     let total_functions: usize = per_file.iter().map(|(_, fns, _)| fns.len()).sum();
     let mut findings = Vec::with_capacity(total_findings);
@@ -1180,6 +1281,20 @@ fn discover_findings(
         findings.extend(file_findings);
         taint_functions.extend(file_functions);
         analysis_gaps.extend(file_gaps);
+    }
+    let skipped_for_memory = MEMORY_SKIPPED_FILES.load(std::sync::atomic::Ordering::Relaxed);
+    if skipped_for_memory > 0 {
+        analysis_gaps.push(AnalysisGap {
+            path: path_string(root),
+            line: 0,
+            caller: String::new(),
+            callee: String::new(),
+            reason: "files_skipped_memory_pressure".to_owned(),
+            snippet: format!(
+                "skipped {skipped_for_memory} file(s): RSS ceiling reached \
+                 (set --max-memory-mb or GOVFUZZ_MAX_MEMORY_KB)"
+            ),
+        });
     }
     // Phase B (interprocedural): run the parallel taint passes on the same bounded
     // pool so the whole scan honors the cores-1 cap (no global-pool 100% pinning).
@@ -1232,14 +1347,14 @@ struct LangReach {
 /// downgraded; the tier only ever raises confidence, never fabricates it.
 fn annotate_reachability(root: &Path, functions: &[FunctionModel], findings: &mut [StaticFinding]) {
     const TAINT_ENGINE: &str = "govfuzz.static.taint.v1";
-    let mut by_lang: BTreeMap<String, Vec<FunctionModel>> = BTreeMap::new();
+    let mut by_lang: BTreeMap<&str, Vec<&FunctionModel>> = BTreeMap::new();
     for function in functions {
         by_lang
-            .entry(function.language.clone())
+            .entry(function.language.as_str())
             .or_default()
-            .push(function.clone());
+            .push(function);
     }
-    let mut reach: BTreeMap<String, LangReach> = BTreeMap::new();
+    let mut reach: BTreeMap<&str, LangReach> = BTreeMap::new();
     for (lang, fns) in by_lang {
         let index = FunctionIndex::new(fns);
         let mut sources: Vec<FunctionKey> = Vec::new();
@@ -1257,7 +1372,7 @@ fn annotate_reachability(root: &Path, functions: &[FunctionModel], findings: &mu
                 || function
                     .body
                     .iter()
-                    .any(|l| taint_spec::line_has_source_api(&l.text, &lang));
+                    .any(|l| taint_spec::line_has_source_api(&l.text, lang));
             if is_source {
                 sources.push(key.clone());
             }
@@ -1294,7 +1409,7 @@ fn annotate_reachability(root: &Path, functions: &[FunctionModel], findings: &mu
         // Innermost enclosing function (tightest span) owns the finding — resolved
         // for EVERY finding (including taint-engine ones) so its name reaches the
         // report's sink `function` column, independent of the reachability verdict.
-        let enclosing = reach.get(&finding.language).and_then(|lr| {
+        let enclosing = reach.get(finding.language.as_str()).and_then(|lr| {
             let ranges = lr.ranges.get(&finding.location.path)?;
             let line = finding.location.line;
             let key = ranges
@@ -1324,8 +1439,27 @@ fn annotate_reachability(root: &Path, functions: &[FunctionModel], findings: &mu
 fn parse_project_functions(root: &Path) -> Result<Vec<FunctionModel>, StaticScanError> {
     let files = walk_files(root)?;
     let mut functions = Vec::new();
+    let _watchdog = spawn_memory_watchdog();
+    let max_bytes = max_file_bytes();
     for path in files {
-        let source = match fs::read_to_string(&path) {
+        if MEMORY_PRESSURE.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(StaticScanError::Io(std::io::Error::other(
+                "static call-graph analysis stopped at its memory ceiling; raise \
+                 GOVFUZZ_MAX_MEMORY_KB only if the machine has sufficient RAM",
+            )));
+        }
+        if let Ok(metadata) = fs::metadata(&path) {
+            if metadata.len() > max_bytes {
+                return Err(StaticScanError::Io(std::io::Error::other(format!(
+                    "static call-graph analysis skipped '{}': {} bytes exceeds the {}-byte \
+                     per-file cap (raise GOVFUZZ_MAX_FILE_BYTES only if intended)",
+                    path.display(),
+                    metadata.len(),
+                    max_bytes
+                ))));
+            }
+        }
+        let source = match read_utf8_source_capped(&path, max_bytes) {
             Ok(source) => source,
             Err(error) if error.kind() == ErrorKind::InvalidData => continue,
             Err(error) => return Err(error.into()),
@@ -1743,34 +1877,46 @@ fn apply_inline_suppressions(root: &Path, findings: &mut Vec<StaticFinding>) {
     if findings.is_empty() {
         return;
     }
-    let mut sources: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for finding in findings.iter() {
-        sources
+    // Group only finding indexes by path, then load and DROP one source at a
+    // time. The previous cache retained Vec<String> copies of every
+    // finding-bearing source through the whole pass, effectively rebuilding a
+    // large fraction of a finding-heavy checkout in memory.
+    let mut by_path: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    for (index, finding) in findings.iter().enumerate() {
+        by_path
             .entry(finding.location.path.clone())
-            .or_insert_with(|| {
-                fs::read_to_string(root.join(&finding.location.path))
-                    .map(|s| s.lines().map(str::to_owned).collect())
-                    .unwrap_or_default()
-            });
+            .or_default()
+            .push(index);
     }
-    findings.retain(|finding| {
-        let Some(lines) = sources.get(&finding.location.path) else {
-            return true;
+    let mut suppressed = vec![false; findings.len()];
+    for (path, indexes) in by_path {
+        let Ok(source) = read_utf8_source_capped(&root.join(&path), max_file_bytes()) else {
+            continue;
         };
-        let cwe = finding_rules::by_id(&finding.rule_id).map(|r| r.cwe);
-        let line_no = finding.location.line as usize;
-        // A marker on the finding's OWN line suppresses it (inline `# nosec`).
-        let own = line_no >= 1
-            && line_no <= lines.len()
-            && line_suppresses(&lines[line_no - 1], &finding.rule_id, cwe);
-        // A marker on the line ABOVE suppresses it only when that line is a
-        // STANDALONE comment (a dedicated suppression line), so a different
-        // statement's own trailing `// nosemgrep` does not leak onto the next line.
-        let above = line_no >= 2
-            && line_no - 1 <= lines.len()
-            && is_comment_only_line(&lines[line_no - 2])
-            && line_suppresses(&lines[line_no - 2], &finding.rule_id, cwe);
-        !(own || above)
+        let lines: Vec<&str> = source.lines().collect();
+        for index in indexes {
+            let finding = &findings[index];
+            let cwe = finding_rules::by_id(&finding.rule_id).map(|rule| rule.cwe);
+            let line_no = finding.location.line as usize;
+            // A marker on the finding's OWN line suppresses it (inline `# nosec`).
+            let own = line_no >= 1
+                && line_no <= lines.len()
+                && line_suppresses(lines[line_no - 1], &finding.rule_id, cwe);
+            // A marker on the line ABOVE suppresses it only when that line is a
+            // STANDALONE comment, so a previous statement's trailing marker does
+            // not leak onto the next line.
+            let above = line_no >= 2
+                && line_no - 1 <= lines.len()
+                && is_comment_only_line(lines[line_no - 2])
+                && line_suppresses(lines[line_no - 2], &finding.rule_id, cwe);
+            suppressed[index] = own || above;
+        }
+    }
+    let mut index = 0usize;
+    findings.retain(|_| {
+        let keep = !suppressed[index];
+        index += 1;
+        keep
     });
 }
 
@@ -22950,18 +23096,21 @@ impl FunctionKey {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct FunctionIndex {
-    models: BTreeMap<FunctionKey, FunctionModel>,
+struct FunctionIndex<'a> {
+    // Borrow the already-retained project model. Function bodies contain copies
+    // of essentially every modeled source line; cloning them into a per-language
+    // index doubled peak RSS on large scans.
+    models: BTreeMap<FunctionKey, &'a FunctionModel>,
     by_name: BTreeMap<String, Vec<FunctionKey>>,
 }
 
-impl FunctionIndex {
-    fn new(functions: Vec<FunctionModel>) -> Self {
+impl<'a> FunctionIndex<'a> {
+    fn new(functions: impl IntoIterator<Item = &'a FunctionModel>) -> Self {
         let mut models = BTreeMap::new();
         let mut by_name: BTreeMap<String, Vec<FunctionKey>> = BTreeMap::new();
         for function in functions {
-            let key = FunctionKey::from_model(&function);
-            for lookup_name in function_lookup_names(&function) {
+            let key = FunctionKey::from_model(function);
+            for lookup_name in function_lookup_names(function) {
                 by_name.entry(lookup_name).or_default().push(key.clone());
             }
             models.insert(key, function);
@@ -22973,8 +23122,8 @@ impl FunctionIndex {
         self.models.is_empty()
     }
 
-    fn get(&self, key: &FunctionKey) -> Option<&FunctionModel> {
-        self.models.get(key)
+    fn get(&self, key: &FunctionKey) -> Option<&'a FunctionModel> {
+        self.models.get(key).copied()
     }
 
     fn call_targets(&self, name: &str, caller: &FunctionModel) -> Vec<FunctionKey> {
@@ -23108,9 +23257,12 @@ impl FunctionIndex {
     }
 
     fn model_for_trace_step(&self, root: &Path, step: &TraceStep) -> Option<&FunctionModel> {
-        self.models.values().find(|function| {
-            function.name == step.caller && relative_path(root, &function.path) == step.path
-        })
+        self.models
+            .values()
+            .find(|function| {
+                function.name == step.caller && relative_path(root, &function.path) == step.path
+            })
+            .copied()
     }
 }
 
@@ -23215,9 +23367,7 @@ fn scan_taint_project(
             let index = FunctionIndex::new(
                 functions
                     .iter()
-                    .filter(|function| function.language == *language)
-                    .cloned()
-                    .collect(),
+                    .filter(|function| function.language == *language),
             );
             let mut lang_findings = Vec::new();
             let mut lang_gaps = Vec::new();
@@ -23350,6 +23500,19 @@ fn scan_taint_language(
     let mut fn_states: BTreeMap<FunctionKey, u32> = BTreeMap::new();
     let mut truncated: BTreeSet<FunctionKey> = BTreeSet::new();
     while let Some((key, trace, tainted)) = queue.pop_front() {
+        if MEMORY_PRESSURE.load(std::sync::atomic::Ordering::Relaxed) {
+            analysis_gaps.push(AnalysisGap {
+                path: path_string(root),
+                line: 0,
+                caller: String::new(),
+                callee: String::new(),
+                reason: "taint_analysis_stopped_memory_pressure".to_owned(),
+                snippet: format!(
+                    "{language} interprocedural analysis stopped at the configured RSS ceiling"
+                ),
+            });
+            break;
+        }
         // Per-function fan-out cap: bound the number of distinct taint-states any one
         // function is analyzed under. Beyond the cap, record a one-time truncation
         // gap and skip — the analysis stays sound-by-under-approximation (may miss a
@@ -28807,7 +28970,7 @@ fn load_suppressions(path: Option<&Path>) -> Result<Vec<Suppression>, StaticScan
     let Some(path) = path else {
         return Ok(Vec::new());
     };
-    let file: SuppressionFile = serde_json::from_slice(&fs::read(path)?)?;
+    let file: SuppressionFile = serde_json::from_reader(BufReader::new(fs::File::open(path)?))?;
     Ok(file.suppressions)
 }
 
@@ -28821,45 +28984,49 @@ struct BaselineFinding {
     triage_note: Option<String>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct BaselineFile {
+    #[serde(default)]
+    findings: Vec<BaselineFindingDto>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct BaselineFindingDto {
+    fingerprint: Option<String>,
+    identity: Option<String>,
+    rule_id: Option<String>,
+    path: Option<String>,
+    triage_state: Option<String>,
+    triage_note: Option<String>,
+    #[serde(default)]
+    triage: BaselineTriageDto,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct BaselineTriageDto {
+    state: Option<String>,
+    note: Option<String>,
+}
+
 fn load_baseline(path: Option<&Path>) -> Result<Vec<BaselineFinding>, StaticScanError> {
     let Some(path) = path else {
         return Ok(Vec::new());
     };
-    let value: Value = serde_json::from_slice(&fs::read(path)?)?;
-    Ok(value
-        .get("findings")
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| {
-                    let fingerprint = item.get("fingerprint").and_then(Value::as_str)?;
-                    Some(BaselineFinding {
-                        fingerprint: fingerprint.to_owned(),
-                        identity: item
-                            .get("identity")
-                            .and_then(Value::as_str)
-                            .map(str::to_owned),
-                        rule_id: item
-                            .get("rule_id")
-                            .and_then(Value::as_str)
-                            .map(str::to_owned),
-                        path: item.get("path").and_then(Value::as_str).map(str::to_owned),
-                        triage_state: item
-                            .get("triage_state")
-                            .or_else(|| item.pointer("/triage/state"))
-                            .and_then(Value::as_str)
-                            .map(str::to_owned),
-                        triage_note: item
-                            .get("triage_note")
-                            .or_else(|| item.pointer("/triage/note"))
-                            .and_then(Value::as_str)
-                            .map(str::to_owned),
-                    })
-                })
-                .collect()
+    let file: BaselineFile = serde_json::from_reader(BufReader::new(fs::File::open(path)?))?;
+    Ok(file
+        .findings
+        .into_iter()
+        .filter_map(|finding| {
+            Some(BaselineFinding {
+                fingerprint: finding.fingerprint?,
+                identity: finding.identity,
+                rule_id: finding.rule_id,
+                path: finding.path,
+                triage_state: finding.triage_state.or(finding.triage.state),
+                triage_note: finding.triage_note.or(finding.triage.note),
+            })
         })
-        .unwrap_or_default())
+        .collect())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -28881,7 +29048,7 @@ fn load_rule_policy(options: &StaticScanOptions) -> Result<RulePolicy, StaticSca
         disabled: options.disabled_rules.clone(),
     };
     if let Some(path) = options.policy_path.as_deref() {
-        let value: Value = serde_json::from_slice(&fs::read(path)?)?;
+        let value: Value = serde_json::from_reader(BufReader::new(fs::File::open(path)?))?;
         for id in string_array_at(&value, &["rules", "enabled"]) {
             policy.enabled.insert(id);
         }
@@ -29198,18 +29365,46 @@ fn count_source_lines(source: &str, language: &str) -> (usize, usize, usize, usi
 pub fn sloc_report(root: &Path) -> Result<SlocReport, StaticScanError> {
     use rayon::prelude::*;
     let files = walk_files(root)?;
+    let _watchdog = spawn_memory_watchdog();
+    let max_bytes = max_sloc_file_bytes();
+    let oversized_files = std::sync::atomic::AtomicUsize::new(0);
     // Each file's read + language detection + line count is independent, so count
     // them across a rayon pool (the dominant cost is reading + comment-stripping),
     // then fold the small per-file tuples into per-language totals sequentially.
-    let per_file: Vec<(&'static str, usize, usize, usize, usize)> = files
-        .par_iter()
-        .filter_map(|path| {
-            let source = fs::read_to_string(path).ok()?;
-            let language = language_for_path_and_source(path, &source)?;
-            let (total, comments, blanks, code) = count_source_lines(&source, language);
-            Some((language, total, comments, blanks, code))
-        })
-        .collect();
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(scan_thread_count())
+        .build()
+        .map_err(|error| StaticScanError::Io(std::io::Error::other(error.to_string())))?;
+    let per_file: Vec<(&'static str, usize, usize, usize, usize)> = pool.install(|| {
+        files
+            .par_iter()
+            .filter_map(|path| {
+                if MEMORY_PRESSURE.load(std::sync::atomic::Ordering::Relaxed) {
+                    return None;
+                }
+                if fs::metadata(path).is_ok_and(|metadata| metadata.len() > max_bytes) {
+                    oversized_files.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    return None;
+                }
+                let source = read_utf8_source_capped(path, max_bytes).ok()?;
+                let language = language_for_path_and_source(path, &source)?;
+                let (total, comments, blanks, code) = count_source_lines(&source, language);
+                Some((language, total, comments, blanks, code))
+            })
+            .collect()
+    });
+    if MEMORY_PRESSURE.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err(StaticScanError::Io(std::io::Error::other(
+            "SLOC counting stopped at its memory ceiling; retry with fewer static jobs",
+        )));
+    }
+    let oversized = oversized_files.load(std::sync::atomic::Ordering::Relaxed);
+    if oversized > 0 {
+        return Err(StaticScanError::Io(std::io::Error::other(format!(
+            "SLOC counting skipped {oversized} source file(s) above the {max_bytes}-byte \
+             per-file cap; raise GOVFUZZ_MAX_FILE_BYTES only if intended"
+        ))));
+    }
     let mut by_lang: BTreeMap<&'static str, SlocLanguage> = BTreeMap::new();
     for (language, total, comments, blanks, code) in per_file {
         let entry = by_lang.entry(language).or_insert_with(|| SlocLanguage {

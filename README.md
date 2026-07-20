@@ -17,6 +17,7 @@ harnesses, recovers the build, and fuzzes — no test harness and no working bui
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> ·
+  <a href="#resource-requirements">Resources</a> ·
   <a href="#why-govfuzz">Why govfuzz?</a> ·
   <a href="#what-it-does">What It Does</a> ·
   <a href="#commands">Commands</a> ·
@@ -46,6 +47,50 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 
 See the [installation guide](docs/site/install.md) for prebuilt binaries, per-language
 toolchains, offline/air-gapped install, and Windows.
+
+## Resource Requirements
+
+There is no single RAM minimum because the target program, sanitizers, input-size
+limit, and concurrency all contribute. These are practical starting points:
+
+| Workload | RAM | Suggested settings |
+|---|---:|---|
+| Small repository or PR/diff-scoped run | 4 GiB minimum | `--jobs 1`; keep the default harness RSS cap |
+| Whole-tree run on a large repository | 8 GiB practical minimum | `--jobs 1 --rss-limit-mb 1536`; static `--jobs 2 --max-memory-mb 4096` |
+| 10M+ SLOC with static analysis/build recovery | 16 GiB recommended | Start with `--jobs 2`; increase only after measuring peak RSS |
+| Parallel sanitizer campaigns | 32 GiB+ recommended | Size from measured target RSS and leave parent/OS headroom |
+
+`--rss-limit-mb` caps each fuzz child, not the whole run. Budget at least
+`jobs × rss-limit-mb` for children **plus** GovFuzz's discovery/index/report data,
+compiler processes, and the OS. On an 8 GiB machine, use a serial bounded sweep:
+
+```sh
+GOVFUZZ_STATIC_JOBS=2 GOVFUZZ_MAX_MEMORY_KB=4194304 \
+  govfuzz auto path/to/10m-sloc-tree \
+  --jobs 1 --rss-limit-mb 1536 --max-targets 500 \
+  --single-pass --campaign-time 3600
+```
+
+For `govfuzz static-scan`, the equivalent controls are `--jobs 2
+--max-memory-mb 4096`. Linux static scans also respect cgroup memory limits and
+record an analysis gap when the RSS ceiling is reached. These are protective
+thresholds, not hardcoded analysis limits: without an explicit flag, the static
+ceiling is the smaller of 80% of host-available RAM and 70% of the cgroup limit;
+`auto` derives its per-harness RSS allowance from available memory as well.
+
+Retention and parsing budgets scale with available host/cgroup memory. The
+per-target mutation corpus defaults to 1/64 of available RAM (64 MiB..2 GiB),
+and its entry allowance is derived from that byte budget and `--max-len`.
+Static-analysis source size defaults to 1/64 of its scan ceiling (16..256 MiB;
+standalone SLOC has a 64 MiB floor), while auto-discovery uses 1/32 of available
+RAM (64 MiB..1 GiB). Exact overrides are available through
+`GOVFUZZ_MAX_CORPUS_BYTES`, `GOVFUZZ_MAX_CORPUS_ENTRIES`,
+`GOVFUZZ_MAX_FILE_BYTES`, and `GOVFUZZ_MAX_SOURCE_FILE_BYTES`. Captured
+subprocess, harness, runtrace, and external-analyzer output budgets are also
+memory-scaled and have `GOVFUZZ_MAX_*_BYTES` overrides; see the
+[auto scaling guide](docs/site/auto.md#scaling-to-large-trees) for the named controls.
+On a constrained host, omit `--sarif` on the first pass because SARIF construction
+needs additional report-sized memory.
 
 ### Run govfuzz on every pull request
 

@@ -23,7 +23,6 @@ pub const CONFIG_FILE_NAME: &str = ".govfuzz.toml";
 // Mirror the clap defaults so "still at default" can be detected for the merge.
 const DEFAULT_PER_TARGET_TIME: u64 = 60;
 const DEFAULT_JOBS: usize = 1;
-const DEFAULT_RSS_LIMIT_MB: usize = 2048;
 const DEFAULT_MAX_LEN: &str = "auto";
 
 #[derive(Debug, Default, Deserialize)]
@@ -108,7 +107,7 @@ pub fn apply(args: &mut AutoArgs, tree_root: &Path) -> Result<Vec<String>, Strin
         }
     }
     if let Some(v) = config.rss_limit_mb {
-        if args.rss_limit_mb == DEFAULT_RSS_LIMIT_MB {
+        if args.rss_limit_mb == super::cli::default_auto_rss_limit_mb() {
             args.rss_limit_mb = v;
         }
     }

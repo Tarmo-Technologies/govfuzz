@@ -22,6 +22,17 @@ use config::Profile;
 use serde_json::{json, Value};
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
+
+fn max_external_tool_output_bytes() -> usize {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_EXTERNAL_TOOL_OUTPUT_BYTES",
+        256,
+        32 * crate::resource_limits::MIB,
+        32 * crate::resource_limits::MIB,
+        512 * crate::resource_limits::MIB,
+    )
+}
 
 /// One external analyzer govfuzz can drive.
 struct Adapter {
@@ -158,9 +169,37 @@ fn run_tool(adapter: &Adapter, root: &Path) -> Option<String> {
         .iter()
         .map(|arg| arg.replace("{root}", &root_str))
         .collect();
-    let output = Command::new(adapter.binary).args(&args).output().ok()?;
+    let output_limit = max_external_tool_output_bytes();
+    let captured = crate::command_output::capture_with_timeout(
+        Command::new(adapter.binary).args(&args),
+        Duration::from_secs(30 * 60),
+        output_limit,
+    )
+    .ok()?;
+    if captured.timed_out {
+        eprintln!(
+            "govfuzz: external analyzer '{}' exceeded its 30-minute timeout; skipping its output",
+            adapter.binary
+        );
+        return None;
+    }
+    if captured.stdout_truncated {
+        eprintln!(
+            "govfuzz: external analyzer '{}' exceeded the {} MiB output cap; skipping its \
+             incomplete report (raise GOVFUZZ_MAX_EXTERNAL_TOOL_OUTPUT_BYTES if needed)",
+            adapter.binary,
+            output_limit / (1024 * 1024)
+        );
+        return None;
+    }
+    if captured.stderr_truncated {
+        eprintln!(
+            "govfuzz: external analyzer '{}' stderr exceeded the bounded capture; diagnostics were truncated",
+            adapter.binary
+        );
+    }
     // Tools exit non-zero when they find issues; take stdout regardless.
-    Some(String::from_utf8_lossy(&output.stdout).into_owned())
+    Some(String::from_utf8_lossy(&captured.output.stdout).into_owned())
 }
 
 /// One normalized finding parsed from a tool's output.

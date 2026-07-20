@@ -21,6 +21,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
 /// Cap the number of corpus inputs replayed per harness so a huge queue can't stall
 /// the run; the coverage-diverse queue front is what matters for race detection.
@@ -62,12 +63,12 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
     }
     // Build the TSan variant. C++ harnesses have no `tsan` target -> make fails ->
     // skip. A genuine TSan build error also skips.
-    let built = Command::new("make")
-        .arg("tsan")
-        .current_dir(hdir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let built = crate::command_output::output_with_timeout(
+        Command::new("make").arg("tsan").current_dir(hdir),
+        Duration::from_secs(600),
+    )
+    .map(|o| o.status.success())
+    .unwrap_or(false);
     let bin = hdir.join("main_tsan");
     if !built || !bin.is_file() {
         return 0;
@@ -93,11 +94,12 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
         // under concurrent-sanitizer load; a clean no-race run (exit 0) is a real
         // result and is not retried. See TSAN_RUN_RETRIES.
         for _ in 0..=TSAN_RUN_RETRIES {
-            let Ok(out) = Command::new(&bin)
-                .arg(&path)
-                .env("TSAN_OPTIONS", "halt_on_error=1:exitcode=86")
-                .output()
-            else {
+            let Ok(out) = crate::command_output::output_with_timeout(
+                Command::new(&bin)
+                    .arg(&path)
+                    .env("TSAN_OPTIONS", "halt_on_error=1:exitcode=86"),
+                Duration::from_secs(30),
+            ) else {
                 break;
             };
             let stderr = String::from_utf8_lossy(&out.stderr);

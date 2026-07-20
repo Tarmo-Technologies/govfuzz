@@ -37,8 +37,14 @@
 
 use actionability::{ActionabilityConfidence, RunMode, Verdict};
 use serde_json::{json, Value};
+use std::io::Read;
 use std::path::Path;
 use std::process::Command;
+
+fn max_provenance_sidecar_bytes() -> u64 {
+    crate::resource_limits::env_usize("GOVFUZZ_MAX_PROVENANCE_SIDECAR_BYTES")
+        .unwrap_or(2 * crate::resource_limits::MIB) as u64
+}
 
 /// Outcome of the provenance pass, folded into the run summary.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -169,16 +175,17 @@ fn classify(prov_bin: &Path, input: &Path, poisoned_names: &[String]) -> Provena
         input.file_name().and_then(|n| n.to_str()).unwrap_or("x")
     ));
     let _ = std::fs::remove_file(&trace);
-    let Ok(out) = replay_command(prov_bin)
-        .arg(input)
-        .env("GOVFUZZ_STUB_TRACE", &trace)
-        // A poisoned stub records + exits cleanly; keep the sanitizer aborting so a
-        // genuine crash is still an unambiguous sanitizer report on stderr.
-        // `symbolize=0` avoids the coverage-instrumented binary hanging in the ASan
-        // crash symbolizer during this post-hoc replay.
-        .env("ASAN_OPTIONS", "abort_on_error=1:symbolize=0")
-        .output()
-    else {
+    let Ok(out) = crate::command_output::output_with_timeout(
+        replay_command(prov_bin)
+            .arg(input)
+            .env("GOVFUZZ_STUB_TRACE", &trace)
+            // A poisoned stub records + exits cleanly; keep the sanitizer aborting so a
+            // genuine crash is still an unambiguous sanitizer report on stderr.
+            // `symbolize=0` avoids the coverage-instrumented binary hanging in the ASan
+            // crash symbolizer during this post-hoc replay.
+            .env("ASAN_OPTIONS", "abort_on_error=1:symbolize=0"),
+        std::time::Duration::from_secs(15),
+    ) else {
         return Provenance::Inconclusive;
     };
     let fired = read_fired_stubs(&trace, poisoned_names);
@@ -196,9 +203,18 @@ fn classify(prov_bin: &Path, input: &Path, poisoned_names: &[String]) -> Provena
 /// Read the poisoned stubs that fired, from the trace sidecar (one name per line),
 /// keeping only names we actually poisoned (defensive against a stray file).
 fn read_fired_stubs(trace: &Path, poisoned_names: &[String]) -> Vec<String> {
-    let Ok(text) = std::fs::read_to_string(trace) else {
+    let Ok(file) = std::fs::File::open(trace) else {
         return Vec::new();
     };
+    let mut bytes = Vec::new();
+    if file
+        .take(max_provenance_sidecar_bytes())
+        .read_to_end(&mut bytes)
+        .is_err()
+    {
+        return Vec::new();
+    }
+    let text = String::from_utf8_lossy(&bytes);
     let mut seen = std::collections::BTreeSet::new();
     for line in text.lines() {
         let name = line.trim();
@@ -223,11 +239,12 @@ fn is_sanitizer_crash(stderr: &str, status: &std::process::ExitStatus) -> bool {
 
 /// Does the real ASan build crash on this input in a fresh process?
 fn reproduces_crash(bin: &Path, input: &Path) -> bool {
-    let Ok(out) = replay_command(bin)
-        .arg(input)
-        .env("ASAN_OPTIONS", "abort_on_error=1:symbolize=0")
-        .output()
-    else {
+    let Ok(out) = crate::command_output::output_with_timeout(
+        replay_command(bin)
+            .arg(input)
+            .env("ASAN_OPTIONS", "abort_on_error=1:symbolize=0"),
+        std::time::Duration::from_secs(15),
+    ) else {
         return false;
     };
     let stderr = String::from_utf8_lossy(&out.stderr);
@@ -259,7 +276,9 @@ fn build_prov(hdir: &Path, prov_src: &Path) -> bool {
     if std::env::var_os("CC").is_none() {
         cmd.env("CC", "clang");
     }
-    cmd.output().map(|o| o.status.success()).unwrap_or(false)
+    crate::command_output::output_with_timeout(&mut cmd, std::time::Duration::from_secs(30 * 60))
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 /// The `(finding.json, min-input)` pairs for a harness's reproducible crash
@@ -423,7 +442,10 @@ fn is_void_return(rt: &str) -> bool {
 }
 
 fn read_json(path: &Path) -> Option<Value> {
-    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+    if std::fs::metadata(path).ok()?.len() > max_provenance_sidecar_bytes() {
+        return None;
+    }
+    serde_json::from_reader(std::fs::File::open(path).ok()?).ok()
 }
 
 fn write_json(path: &Path, value: &Value) -> bool {

@@ -586,7 +586,8 @@ pub(crate) fn try_run_c_make_build_with_target(
         &force_includes,
         compiler,
     );
-    cmd.output().expect("spawn make")
+    crate::command_output::output_with_timeout(&mut cmd, std::time::Duration::from_secs(30 * 60))
+        .expect("spawn make")
 }
 
 /// The (make target, staged artifact) for an AFL build — the Makefile's `afl`

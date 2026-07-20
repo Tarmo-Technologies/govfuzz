@@ -46,10 +46,11 @@ as on what it finds. govfuzz's static scanner is built for it:
   machine at 100%), reading and **dropping each file's source right after parse**
   so steady-state memory is O(workers · file-size), not O(total SLOC). Output is
   deterministic — byte-identical regardless of thread count.
-- A **memory watchdog** samples RSS against a ceiling (default 80% of available)
-  and degrades gracefully — workers stop pulling new files and the report records
-  a truncation gap — so a scan **never OOM-kills**. A per-file size cap skips a
-  pathological generated/minified blob before reading it, and dependency/build
+- A **memory watchdog** samples RSS against a ceiling (the smaller of 80% of host
+  available memory and 70% of a cgroup limit) and degrades gracefully — workers
+  stop pulling new files and the report records a truncation gap, substantially
+  reducing OOM-kill risk. A per-file size cap skips a pathological
+  generated/minified blob before reading it, and dependency/build
   trees such as virtualenvs, `node_modules`, `dist`, vendored deps, and generated
   JS `compiled/` bundles are pruned before analysis.
 

@@ -12,7 +12,7 @@ use fuzz_engine_builtin::{
     MutatorSuite, SymbolicSeedSource,
 };
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -323,13 +323,129 @@ const DEFAULT_ITERATIONS: usize = 256;
 /// historical fixed cap (and libFuzzer's default).
 pub(crate) const DEFAULT_MAX_LEN: usize = 4096;
 
-/// Hard cap on persisted corpus files (#412). Retention is normally coverage-or-
-/// signature gated, but if coverage feedback is broken or reads zero (e.g. an
-/// uninstrumented Ada/legacy target), this bounds the on-disk pool so a run can
-/// never blow up into hundreds-of-thousands of files / GB of disk (the ada-toml
-/// regression: 402k files / 1.6 GB). Seeds are pre-loaded into the pool and never
-/// removed, so this only caps newly retained inputs.
-pub(crate) const MAX_CORPUS_ENTRIES: usize = 4096;
+/// Memory/disk retention bounds for one active target's coverage corpus. The byte
+/// budget is derived from available host/cgroup memory; the entry count follows
+/// from that byte budget and the configured maximum input length. Both have exact
+/// operator overrides, so the OOM safeguard never imposes an unchangeable fuzzing
+/// ceiling on a larger analysis host.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct CorpusLimits {
+    pub(crate) entries: usize,
+    pub(crate) bytes: usize,
+}
+
+pub(crate) fn corpus_limits(max_len: usize) -> CorpusLimits {
+    let bytes = crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_CORPUS_BYTES",
+        64,
+        64 * crate::resource_limits::MIB,
+        128 * crate::resource_limits::MIB,
+        2 * 1024 * crate::resource_limits::MIB,
+    );
+    let estimated_entry_bytes = max_len.clamp(1024, 64 * 1024);
+    let derived_entries = (bytes / estimated_entry_bytes).clamp(4096, 262_144);
+    let entries =
+        crate::resource_limits::env_usize("GOVFUZZ_MAX_CORPUS_ENTRIES").unwrap_or(derived_entries);
+    CorpusLimits { entries, bytes }
+}
+
+fn max_finding_record_bytes() -> u64 {
+    crate::resource_limits::env_usize("GOVFUZZ_MAX_FINDING_RECORD_BYTES")
+        .unwrap_or(2 * crate::resource_limits::MIB) as u64
+}
+
+fn max_finding_dedup_keys() -> usize {
+    if let Some(configured) = crate::resource_limits::env_usize("GOVFUZZ_MAX_FINDING_DEDUP_KEYS") {
+        return configured;
+    }
+    let bytes = crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_FINDING_DEDUP_BYTES",
+        1024,
+        32 * crate::resource_limits::MIB,
+        32 * crate::resource_limits::MIB,
+        512 * crate::resource_limits::MIB,
+    );
+    // Keys include owned signatures/paths and hash-table overhead. 512 bytes is
+    // deliberately conservative; this controls retention, not finding emission.
+    (bytes / 512).clamp(65_536, 1_048_576)
+}
+fn max_symbolic_source_bytes() -> usize {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_SYMBOLIC_SOURCE_BYTES",
+        256,
+        16 * crate::resource_limits::MIB,
+        16 * crate::resource_limits::MIB,
+        256 * crate::resource_limits::MIB,
+    )
+}
+
+fn max_symbolic_sources_total_bytes() -> usize {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_SYMBOLIC_SOURCES_TOTAL_BYTES",
+        64,
+        64 * crate::resource_limits::MIB,
+        64 * crate::resource_limits::MIB,
+        2 * 1024 * crate::resource_limits::MIB,
+    )
+}
+
+fn max_grammar_bytes() -> usize {
+    crate::resource_limits::env_usize("GOVFUZZ_MAX_GRAMMAR_BYTES")
+        .unwrap_or(16 * crate::resource_limits::MIB)
+}
+
+fn max_dictionary_bytes() -> usize {
+    crate::resource_limits::env_usize("GOVFUZZ_MAX_DICTIONARY_BYTES")
+        .unwrap_or(16 * crate::resource_limits::MIB)
+}
+const GOVFUZZ_VP_BYTES: usize = 1 << 16;
+
+/// Read at most `cap` bytes from a seed without first allocating the whole file.
+/// Returns `(prefix, original_len)` so callers can report truncation honestly.
+pub(crate) fn read_seed_file_prefix(path: &Path, cap: usize) -> std::io::Result<(Vec<u8>, u64)> {
+    let file = fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    let mut bytes = Vec::with_capacity((len.min(cap as u64)) as usize);
+    file.take(cap as u64).read_to_end(&mut bytes)?;
+    Ok((bytes, len))
+}
+
+/// Bound both the count and aggregate bytes of initial seeds. This is applied at
+/// the engine boundary as well as during CLI loading, so programmatic `auto` and
+/// symbolic-seed callers cannot bypass it.
+fn bound_seed_corpus(seeds: &mut Vec<Vec<u8>>, max_len: usize) {
+    let limits = corpus_limits(max_len);
+    let before = seeds.len();
+    let mut kept = Vec::with_capacity(before.min(limits.entries));
+    let mut bytes = 0usize;
+    for mut seed in seeds.drain(..) {
+        seed.truncate(max_len);
+        if kept.len() >= limits.entries {
+            continue;
+        }
+        // Always retain the first seed, even when an explicit --max-len larger
+        // than our normal byte budget opted into one unusually large sample.
+        if !kept.is_empty() && bytes.saturating_add(seed.len()) > limits.bytes {
+            continue;
+        }
+        bytes = bytes.saturating_add(seed.len());
+        kept.push(seed);
+    }
+    let dropped = before.saturating_sub(kept.len());
+    if dropped > 0 {
+        eprintln!(
+            "govfuzz: seed corpus bounded to {} input(s) / {} MiB; dropped {dropped} \
+             seed(s) beyond the in-memory corpus budget (override with \
+             GOVFUZZ_MAX_CORPUS_ENTRIES / GOVFUZZ_MAX_CORPUS_BYTES)",
+            kept.len(),
+            bytes / (1024 * 1024),
+        );
+    }
+    if kept.is_empty() {
+        kept.push(Vec::new());
+    }
+    *seeds = kept;
+}
 
 /// Default `--len-control`: executions-without-new-coverage before the effective
 /// mutation length doubles. Mirrors libFuzzer's default of 100.
@@ -534,7 +650,7 @@ pub(crate) struct CoverageRunSummary {
 /// (`[u32 cursor][ {u8 len}{len bytes} ... ]`, native-endian cursor), returning
 /// the mined comparison-operand tokens for the mutator dictionary (#398).
 fn read_vp_tokens(path: &Path) -> Vec<Vec<u8>> {
-    let Ok(bytes) = std::fs::read(path) else {
+    let Ok((bytes, _)) = read_seed_file_prefix(path, GOVFUZZ_VP_BYTES) else {
         return Vec::new();
     };
     if bytes.len() < 4 {
@@ -563,7 +679,8 @@ fn coverage_from_env(extra_env: &[(String, String)]) -> CoverageRunSummary {
             source: "none".to_owned(),
         };
     };
-    let edges = std::fs::read(path)
+    let edges = read_seed_file_prefix(Path::new(path), GOVFUZZ_COV_BITS)
+        .map(|(bytes, _)| bytes)
         .map(|bytes| bytes.iter().filter(|&&b| b != 0).count())
         .unwrap_or(0);
     CoverageRunSummary {
@@ -1152,21 +1269,47 @@ fn prepare(args: FuzzArgs) -> Result<PreparedFuzzRun, String> {
         .map(String::into_bytes)
         .collect::<Vec<_>>();
     for seed_file in args.seed_files {
-        seeds.push(
-            fs::read(&seed_file)
-                .map_err(|error| format!("read seed file '{}': {error}", seed_file.display()))?,
-        );
+        let (bytes, original_len) = read_seed_file_prefix(&seed_file, args.max_len.max(1))
+            .map_err(|error| format!("read seed file '{}': {error}", seed_file.display()))?;
+        if original_len > bytes.len() as u64 {
+            eprintln!(
+                "govfuzz: seed '{}' is {original_len} bytes; using its first {} bytes \
+                 to honor --max-len",
+                seed_file.display(),
+                bytes.len()
+            );
+        }
+        seeds.push(bytes);
     }
-    let symbolic_sources = args
-        .symbolic_seed_sources
-        .iter()
-        .map(|path| {
-            let contents = fs::read_to_string(path).map_err(|error| {
-                format!("read symbolic seed source '{}': {error}", path.display())
-            })?;
-            Ok((path.display().to_string(), contents))
-        })
-        .collect::<Result<Vec<_>, String>>()?;
+    let mut symbolic_sources = Vec::new();
+    let mut symbolic_source_bytes = 0usize;
+    let symbolic_source_limit = max_symbolic_source_bytes();
+    let symbolic_sources_total_limit = max_symbolic_sources_total_bytes();
+    for path in &args.symbolic_seed_sources {
+        let (bytes, original_len) = read_seed_file_prefix(path, symbolic_source_limit)
+            .map_err(|error| format!("read symbolic seed source '{}': {error}", path.display()))?;
+        if original_len > bytes.len() as u64 {
+            return Err(format!(
+                "symbolic seed source '{}' is {original_len} bytes, above the {} MiB safety limit",
+                path.display(),
+                symbolic_source_limit / (1024 * 1024)
+            ));
+        }
+        if symbolic_source_bytes.saturating_add(bytes.len()) > symbolic_sources_total_limit {
+            return Err(format!(
+                "symbolic seed sources exceed the {} MiB aggregate safety limit",
+                symbolic_sources_total_limit / (1024 * 1024)
+            ));
+        }
+        let contents = String::from_utf8(bytes).map_err(|error| {
+            format!(
+                "symbolic seed source '{}' is not UTF-8: {error}",
+                path.display()
+            )
+        })?;
+        symbolic_source_bytes = symbolic_source_bytes.saturating_add(contents.len());
+        symbolic_sources.push((path.display().to_string(), contents));
+    }
     let symbolic_sources = symbolic_sources
         .iter()
         .map(|(path, contents)| SymbolicSeedSource::new(path, contents))
@@ -1176,9 +1319,7 @@ fn prepare(args: FuzzArgs) -> Result<PreparedFuzzRun, String> {
             .into_iter()
             .map(|seed| seed.bytes),
     );
-    if seeds.is_empty() {
-        seeds.push(Vec::new());
-    }
+    bound_seed_corpus(&mut seeds, args.max_len.max(1));
     let mut extra_env = args.extra_env;
     extra_env.extend(sanitizer_env.clone());
     apply_fuzz_child_env_overrides(&mut extra_env);
@@ -1212,7 +1353,6 @@ fn prepare(args: FuzzArgs) -> Result<PreparedFuzzRun, String> {
 
 /// Resident set size (MB) of a running process, from `/proc/<pid>/statm`.
 /// Returns `None` when unavailable (non-Linux, or the process already exited).
-#[cfg(any(target_os = "linux", windows))]
 /// Size (bytes) of the driver's shared edge-coverage bitmap. MUST match
 /// `GOVFUZZ_COV_BITS` in the passthrough harness template
 /// (`crates/harness_gen/src/templates/direct_harness.c.tera`) — the driver and
@@ -1848,9 +1988,12 @@ fn run_builtin(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String> {
 }
 
 fn run_builtin_with_progress(
-    prepared: PreparedFuzzRun,
+    mut prepared: PreparedFuzzRun,
     progress: Option<FuzzProgressFn<'_>>,
 ) -> Result<FuzzRunSummary, String> {
+    bound_seed_corpus(&mut prepared.seeds, prepared.max_len);
+    let corpus_limits = corpus_limits(prepared.max_len);
+    let finding_dedup_limit = max_finding_dedup_keys();
     let start = Instant::now();
     let mut last_tick = Instant::now();
     let mut corpus = CorpusManager::new(prepared.work_dir.clone());
@@ -1882,14 +2025,16 @@ fn run_builtin_with_progress(
     // The mutation pool. Each entry carries its #382 entropic energy + selection
     // count (selection favors high-novelty, under-explored seeds) and its #400
     // per-input RedQueen cmplog (captured lazily on first selection).
-    let mut pool: Vec<PoolEntry> = prepared
-        .seeds
-        .iter()
-        .cloned()
-        .map(PoolEntry::seed)
-        .collect();
     let (cmplog_log, cmplog_summary) =
         load_cmplog_for_run(prepared.cmplog_log.as_deref(), &prepared.seeds);
+    // Move (rather than clone) seeds into the pool. Large structured seeds used
+    // to remain duplicated in `prepared.seeds` for the full campaign.
+    let initial_seed_count = prepared.seeds.len();
+    let mut pool: Vec<PoolEntry> = std::mem::take(&mut prepared.seeds)
+        .into_iter()
+        .map(PoolEntry::seed)
+        .collect();
+    let mut pool_bytes: usize = pool.iter().map(|entry| entry.bytes.len()).sum();
     // `fuzz --grammar` sets prepared.grammar_file directly; `auto --grammar` publishes
     // the path via GOVFUZZ_GRAMMAR (inherited by multicore workers), so fall back to it.
     let grammar_path = prepared.grammar_file.clone().or_else(|| {
@@ -1931,7 +2076,8 @@ fn run_builtin_with_progress(
     // #35: pre-seed the within-pass dedup sets from findings already on disk so the
     // NEXT cascade pass (Empty/Rng/FuzzDriven) over the SAME harness does not
     // re-emit a byte-identical finding it already wrote (~2-3x inflation otherwise).
-    let (seed_clusters, seed_oracles) = existing_finding_dedup_keys(&prepared.work_dir);
+    let (seed_clusters, seed_oracles) =
+        existing_finding_dedup_keys(&prepared.work_dir, &prepared.harness_id);
     let mut seen_oracle_hits = HashSet::<String>::from_iter(seed_oracles);
     // Sanitizer-crash cluster key -> hit count, for dedup (#389): one finding
     // per root cause, not one per crashing input.
@@ -1949,8 +2095,8 @@ fn run_builtin_with_progress(
     // correctness; the C/C++ sanitizer path is the one that can mask a crash on
     // the warm fork-server, so scope the read there (Ada faults surface via the
     // event log and are validated separately).
-    let mut crashing_inputs: HashSet<Vec<u8>> = if c_libfuzzer_harness {
-        existing_crash_testcases(&prepared.work_dir)
+    let mut crashing_inputs: HashSet<u64> = if c_libfuzzer_harness {
+        existing_crash_testcases(&prepared.work_dir, &prepared.harness_id, prepared.max_len)
     } else {
         HashSet::new()
     };
@@ -2044,8 +2190,8 @@ fn run_builtin_with_progress(
             break;
         }
 
-        let input = if iteration < prepared.seeds.len() {
-            prepared.seeds[iteration].clone()
+        let input = if iteration < initial_seed_count {
+            pool[iteration].bytes.clone()
         } else {
             // #382: pick a base weighted by coverage energy / under-exploration.
             let base_index = choose_entropic_index_pool(&pool, &mut rng);
@@ -2386,7 +2532,7 @@ fn run_builtin_with_progress(
         // Corpus retention (#398, #412). Keep only inputs that made progress —
         // a fresh corpus signature or new edge coverage (`made_progress`, the same
         // signal that incremented `corpus_new` above) — and hard-cap the pool at
-        // MAX_CORPUS_ENTRIES. The cap is the backstop for any path where coverage
+        // the derived corpus entry budget. It is the backstop for any path where coverage
         // feedback is absent or reads zero (uninstrumented Ada/legacy targets):
         // without it the gate degenerated to "keep every non-empty input" and the
         // end-of-run flush wrote ~every executed input to disk (#412: 402k files /
@@ -2401,11 +2547,15 @@ fn run_builtin_with_progress(
         // (seeds bypass this `keep` gate). This is the retention half of "a
         // crashing input is never enqueued-without-a-finding": it is emitted as a
         // finding above and excluded from the corpus here.
-        if run.sanitizer.is_some() {
-            crashing_inputs.insert(input.clone());
+        if run.sanitizer.is_some() && crashing_inputs.len() < finding_dedup_limit {
+            crashing_inputs.insert(crash_input_key(&input));
         }
-        let keep = made_progress && run.sanitizer.is_none() && pool.len() < MAX_CORPUS_ENTRIES;
+        let keep = made_progress
+            && run.sanitizer.is_none()
+            && pool.len() < corpus_limits.entries
+            && pool_bytes.saturating_add(input.len()) <= corpus_limits.bytes;
         if !input.is_empty() && keep {
+            pool_bytes = pool_bytes.saturating_add(input.len());
             pool.push(PoolEntry {
                 bytes: input,
                 energy: input_energy,
@@ -2436,10 +2586,23 @@ fn run_builtin_with_progress(
     // untainted on other inputs — is suppressed. Distinct subjects dedupe to
     // one finding per (rule | oracle | api); the cap is a backstop against a
     // target that reaches a fresh input-derived sink every execution.
-    const MAX_SINK_TAINT_FINDINGS: usize = 50;
-    let confirmed_sinks = sink_taint.confirmed();
+    let max_sink_taint_findings =
+        crate::resource_limits::env_usize("GOVFUZZ_MAX_SINK_TAINT_FINDINGS").unwrap_or_else(|| {
+            crate::resource_limits::dynamic_bytes(
+                "GOVFUZZ_MAX_SINK_TAINT_FINDING_BYTES",
+                2048,
+                2 * crate::resource_limits::MIB,
+                2 * crate::resource_limits::MIB,
+                64 * crate::resource_limits::MIB,
+            )
+            .saturating_div(32 * 1024)
+            .clamp(50, 2048)
+        });
+    let dropped_sink_entries = sink_taint.dropped_entries();
+    let sink_taint_limit = sink_taint.entry_limit();
+    let confirmed_sinks = sink_taint.into_confirmed();
     let confirmed_sinks_total = confirmed_sinks.len();
-    for confirmed in confirmed_sinks.into_iter().take(MAX_SINK_TAINT_FINDINGS) {
+    for confirmed in confirmed_sinks.into_iter().take(max_sink_taint_findings) {
         let Some(hit) = crate::auto::runtrace::confirmed_sink_hit(&confirmed) else {
             continue;
         };
@@ -2451,10 +2614,19 @@ fn run_builtin_with_progress(
             .map_err(|error| format!("emit oracle finding: {error}"))?;
         finding_ids.push(id.0);
     }
-    if confirmed_sinks_total > MAX_SINK_TAINT_FINDINGS {
+    if confirmed_sinks_total > max_sink_taint_findings {
         eprintln!(
             "govfuzz fuzz: {confirmed_sinks_total} fuzz-controlled sink(s) confirmed (#422); \
-             emitted the first {MAX_SINK_TAINT_FINDINGS}"
+             emitted the first {max_sink_taint_findings} (raise \
+             GOVFUZZ_MAX_SINK_TAINT_FINDINGS if intended)"
+        );
+    }
+    if dropped_sink_entries > 0 {
+        eprintln!(
+            "govfuzz fuzz: sink-taint tracking reached its {}-subject memory cap; \
+             ignored {} later distinct sink observation(s) (raise \
+             GOVFUZZ_MAX_SINK_SUBJECTS or GOVFUZZ_MAX_SINK_TRACKING_BYTES if intended)",
+            sink_taint_limit, dropped_sink_entries
         );
     }
 
@@ -2481,7 +2653,7 @@ fn run_builtin_with_progress(
     // every retained input) to `corpus/<hid>/queue/`, content-hash named, so the
     // explored corpus is replayable for neutral coverage measurement /
     // `corpus minimize` instead of lost on exit. The pool is retention-gated
-    // (coverage-or-signature progress) and hard-capped at MAX_CORPUS_ENTRIES, so
+    // (coverage-or-signature progress) and bounded by the derived corpus budget, so
     // `corpus_persisted` tracks `corpus_new` and stays bounded even when coverage
     // reads zero. Best-effort: a persistence I/O error must not fail an otherwise-
     // successful run.
@@ -2489,7 +2661,7 @@ fn run_builtin_with_progress(
         &prepared.harness_id,
         pool.iter()
             .map(|entry| &entry.bytes)
-            .filter(|bytes| !crashing_inputs.contains(*bytes)),
+            .filter(|bytes| !crashing_inputs.contains(&crash_input_key(bytes))),
     ) {
         Ok(count) => count,
         Err(error) => {
@@ -2590,6 +2762,10 @@ impl RuntraceLogCursor {
         if len == self.offset {
             return Vec::new();
         }
+        if len.saturating_sub(self.offset) > max_event_delta_bytes() {
+            self.offset = len;
+            return Vec::new();
+        }
         if file.seek(SeekFrom::Start(self.offset)).is_err() {
             self.offset = len;
             return Vec::new();
@@ -2613,15 +2789,30 @@ fn first_of_sanitizer_cluster(
     seen: &mut HashMap<String, usize>,
     report: &corpus::SanitizerReport,
 ) -> bool {
+    let limit = max_finding_dedup_keys();
     let cluster = corpus::cluster::cluster_for_sanitizer(report);
     let key = if cluster.fallback {
         format!("rule:{}", report.rule_id)
     } else {
         cluster.full
     };
-    let count = seen.entry(key).or_insert(0);
-    *count += 1;
-    *count == 1
+    if let Some(count) = seen.get_mut(&key) {
+        *count = count.saturating_add(1);
+        return false;
+    }
+    if seen.len() >= limit {
+        if seen.len() == limit {
+            eprintln!(
+                "govfuzz: sanitizer-cluster tracking reached its {limit}-key \
+                 memory cap; suppressing later distinct clusters (raise \
+                 GOVFUZZ_MAX_FINDING_DEDUP_KEYS if intended)"
+            );
+            seen.insert("__govfuzz_dedup_memory_cap__".to_owned(), 1);
+        }
+        return false;
+    }
+    seen.insert(key, 1);
+    true
 }
 
 fn oracle_hit_dedupe_key(hit: &finding_rules::oracle_sdk::OracleHit) -> String {
@@ -2884,7 +3075,9 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
     if !status.success() && !exited_by_signal {
         // afl-fuzz's console output was redirected to a file (not an undrained
         // pipe), so read it back for the diagnostic hints.
-        let buf = fs::read_to_string(&afl_log).unwrap_or_default();
+        let afl_log_bytes =
+            read_bounded_file_head_tail(&afl_log, max_captured_stderr_bytes()).unwrap_or_default();
+        let buf = String::from_utf8_lossy(&afl_log_bytes);
         // Strip ANSI sequences so the error is readable on dumb stderr.
         let cleaned: String = buf
             .chars()
@@ -2989,16 +3182,18 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
                     path.display()
                 )
             })?;
+            let stderr_reader = drain_child_stderr(child.stderr.take());
             if let Some(mut stdin) = child.stdin.take() {
                 let _ = stdin.write_all(&input);
             }
-            let replay = child.wait_with_output().map_err(|error| {
+            let status = child.wait().map_err(|error| {
                 format!(
                     "wait for replay of '{}' against '{}': {error}",
                     path.display(),
                     prepared.harness_path.display()
                 )
             })?;
+            let replay = collected_child_output(status, stderr_reader);
             let stderr = String::from_utf8_lossy(&replay.stderr);
             let Some(report) = corpus::parse_sanitizer_report(&stderr) else {
                 continue;
@@ -3139,6 +3334,114 @@ fn is_instrumented_ada_harness(runner: &replay_min::HarnessRunner) -> bool {
 /// iteration so the overall fuzz budget caps total wall time anyway.
 const PER_INPUT_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// A target controls its own diagnostics. Keep enough from both ends for a
+/// sanitizer header and final stack/summary, but never let a chatty execution
+/// grow the parent process without bound.
+fn max_captured_stderr_bytes() -> usize {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_HARNESS_OUTPUT_BYTES",
+        1024,
+        4 * crate::resource_limits::MIB,
+        4 * crate::resource_limits::MIB,
+        64 * crate::resource_limits::MIB,
+    )
+}
+
+/// Maximum event-log data admitted from one execution. The event runtime is
+/// normally tiny, but the scanned program is untrusted and can inherit or write
+/// the advertised path itself.
+fn max_event_delta_bytes() -> u64 {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_EVENT_DELTA_BYTES",
+        512,
+        16 * crate::resource_limits::MIB,
+        16 * crate::resource_limits::MIB,
+        256 * crate::resource_limits::MIB,
+    ) as u64
+}
+
+fn read_bounded_head_tail(mut reader: impl Read, cap: usize) -> Vec<u8> {
+    let head_cap = cap / 2;
+    let tail_cap = cap.saturating_sub(head_cap);
+    let mut head = Vec::with_capacity(head_cap);
+    let mut tail: VecDeque<u8> = VecDeque::with_capacity(tail_cap);
+    let mut truncated = false;
+    let mut chunk = [0_u8; 64 * 1024];
+    loop {
+        let Ok(read) = reader.read(&mut chunk) else {
+            break;
+        };
+        if read == 0 {
+            break;
+        }
+        let mut bytes = &chunk[..read];
+        if head.len() < head_cap {
+            let take = bytes.len().min(head_cap - head.len());
+            head.extend_from_slice(&bytes[..take]);
+            bytes = &bytes[take..];
+        }
+        if !bytes.is_empty() {
+            if tail.len().saturating_add(bytes.len()) > tail_cap {
+                let excess = tail
+                    .len()
+                    .saturating_add(bytes.len())
+                    .saturating_sub(tail_cap);
+                let remove = excess.min(tail.len());
+                tail.drain(..remove);
+                truncated = true;
+                if bytes.len() > tail_cap {
+                    bytes = &bytes[bytes.len() - tail_cap..];
+                }
+            }
+            tail.extend(bytes);
+        }
+    }
+    if truncated {
+        head.extend_from_slice(b"\n[govfuzz: diagnostic output truncated]\n");
+    }
+    head.extend(tail);
+    head
+}
+
+fn read_bounded_file_head_tail(path: &Path, cap: usize) -> std::io::Result<Vec<u8>> {
+    let mut file = fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    if len <= cap as u64 {
+        let mut bytes = Vec::with_capacity(len as usize);
+        (&mut file).take(cap as u64).read_to_end(&mut bytes)?;
+        return Ok(bytes);
+    }
+
+    let head_cap = cap / 2;
+    let tail_cap = cap.saturating_sub(head_cap);
+    let mut bytes = Vec::with_capacity(cap.saturating_add(48));
+    (&mut file).take(head_cap as u64).read_to_end(&mut bytes)?;
+    bytes.extend_from_slice(b"\n[govfuzz: AFL output truncated]\n");
+    file.seek(SeekFrom::Start(len.saturating_sub(tail_cap as u64)))?;
+    (&mut file).take(tail_cap as u64).read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
+fn drain_child_stderr(
+    stderr: Option<std::process::ChildStderr>,
+) -> Option<std::thread::JoinHandle<Vec<u8>>> {
+    let limit = max_captured_stderr_bytes();
+    stderr.map(|pipe| std::thread::spawn(move || read_bounded_head_tail(pipe, limit)))
+}
+
+fn collected_child_output(
+    status: std::process::ExitStatus,
+    stderr: Option<std::thread::JoinHandle<Vec<u8>>>,
+) -> std::process::Output {
+    std::process::Output {
+        status,
+        stdout: Vec::new(),
+        stderr: stderr
+            .and_then(|reader| reader.join().ok())
+            .unwrap_or_default(),
+    }
+}
+
 /// Run `harness_path <input_path>` with a wall-clock timeout. On
 /// timeout, kill the process and return a synthetic exit status plus
 /// a marker on stderr so the caller can distinguish hang-vs-crash.
@@ -3177,27 +3480,22 @@ fn run_with_timeout(
             harness_path.display()
         )
     })?;
+    let stderr_reader = drain_child_stderr(child.stderr.take());
 
     let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait() {
-            Ok(Some(_)) => {
-                return child.wait_with_output().map_err(|error| {
-                    format!(
-                        "failed to drain harness output for '{}': {error}",
-                        harness_path.display()
-                    )
-                })
-            }
+            Ok(Some(status)) => return Ok(collected_child_output(status, stderr_reader)),
             Ok(None) => {
                 if Instant::now() >= deadline {
                     let _ = child.kill();
-                    let mut output = child.wait_with_output().map_err(|error| {
+                    let status = child.wait().map_err(|error| {
                         format!(
                             "failed to reap timed-out harness '{}': {error}",
                             harness_path.display()
                         )
                     })?;
+                    let mut output = collected_child_output(status, stderr_reader);
                     let marker = format!(
                         "\ngovfuzz: harness exceeded per-input timeout of {:?} - killed\n",
                         timeout
@@ -3209,12 +3507,13 @@ fn run_with_timeout(
                     if let Some(rss) = process_rss_mb(child.id()) {
                         if rss > rss_limit_mb {
                             let _ = child.kill();
-                            let mut output = child.wait_with_output().map_err(|error| {
+                            let status = child.wait().map_err(|error| {
                                 format!(
                                     "failed to reap OOM harness '{}': {error}",
                                     harness_path.display()
                                 )
                             })?;
+                            let mut output = collected_child_output(status, stderr_reader);
                             let marker = format!(
                                 "\ngovfuzz: harness exceeded RSS limit of {rss_limit_mb} MB \
                                  (used {rss} MB) - killed\n"
@@ -3227,6 +3526,9 @@ fn run_with_timeout(
                 std::thread::sleep(Duration::from_millis(20));
             }
             Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = stderr_reader.and_then(|reader| reader.join().ok());
                 return Err(format!(
                     "failed to poll harness '{}': {error}",
                     harness_path.display()
@@ -3646,7 +3948,16 @@ pub(crate) fn load_grammar_for_run(path: Option<&Path>) -> Result<Option<Grammar
     let Some(path) = path else {
         return Ok(None);
     };
-    let bytes = std::fs::read(path).map_err(|e| format!("read grammar {}: {e}", path.display()))?;
+    let grammar_limit = max_grammar_bytes();
+    let (bytes, original_len) = read_seed_file_prefix(path, grammar_limit)
+        .map_err(|e| format!("read grammar {}: {e}", path.display()))?;
+    if original_len > bytes.len() as u64 {
+        return Err(format!(
+            "grammar {} is {original_len} bytes, above the {} MiB safety limit",
+            path.display(),
+            grammar_limit / (1024 * 1024)
+        ));
+    }
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|e| format!("grammar {} is not valid JSON: {e}", path.display()))?;
     let obj = value.as_object().ok_or_else(|| {
@@ -3802,8 +4113,18 @@ fn load_generated_dictionary_tokens(
 }
 
 fn load_afl_dictionary_tokens(path: &Path) -> Result<Vec<Vec<u8>>, String> {
-    let contents = fs::read_to_string(path)
+    let dictionary_limit = max_dictionary_bytes();
+    let (bytes, original_len) = read_seed_file_prefix(path, dictionary_limit)
         .map_err(|error| format!("read dictionary '{}': {error}", path.display()))?;
+    if original_len > dictionary_limit as u64 {
+        return Err(format!(
+            "dictionary '{}' is {original_len} bytes, above the {} MiB safety limit",
+            path.display(),
+            dictionary_limit / (1024 * 1024)
+        ));
+    }
+    let contents = String::from_utf8(bytes)
+        .map_err(|error| format!("dictionary '{}' is not UTF-8: {error}", path.display()))?;
     let mut tokens = Vec::new();
     for (index, line) in contents.lines().enumerate() {
         // The dictionary is a best-effort optimization. A single malformed line
@@ -3902,19 +4223,68 @@ fn runtrace_log_dir(extra_env: &[(String, String)]) -> Option<PathBuf> {
 /// pass-shared coverage map means it grows no new edges to re-trigger in-pass
 /// detection. Reading the durable findings dir makes the exclusion cross-pass
 /// correct without re-running every seed.
-fn existing_crash_testcases(work_dir: &Path) -> HashSet<Vec<u8>> {
+fn existing_crash_testcases(work_dir: &Path, harness_id: &str, max_len: usize) -> HashSet<u64> {
+    let finding_record_limit = max_finding_record_bytes();
+    let dedup_limit = max_finding_dedup_keys();
     let mut set = HashSet::new();
     let Ok(entries) = fs::read_dir(work_dir.join("findings")) else {
         return set;
     };
     for entry in entries.flatten() {
-        if let Ok(bytes) = fs::read(entry.path().join("testcase.bin")) {
-            if !bytes.is_empty() {
-                set.insert(bytes);
-            }
+        let finding_path = entry.path().join("finding.json");
+        if fs::metadata(&finding_path).is_ok_and(|metadata| metadata.len() > finding_record_limit) {
+            continue;
+        }
+        let Ok(bytes) = fs::read(&finding_path) else {
+            continue;
+        };
+        let Ok(record) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+            continue;
+        };
+        if record.get("harness_id").and_then(|value| value.as_str()) != Some(harness_id) {
+            continue;
+        }
+        if set.len() >= dedup_limit {
+            break;
+        }
+        if let Some(key) = crash_testcase_key(&entry.path().join("testcase.bin"), max_len) {
+            set.insert(key);
         }
     }
     set
+}
+
+/// Compact, allocation-free identity for crash inputs retained only to keep them
+/// out of the clean corpus. A collision merely drops one clean corpus entry; it
+/// cannot fabricate or suppress the already-emitted crash finding.
+fn crash_input_key(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325_u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
+fn crash_testcase_key(path: &Path, max_len: usize) -> Option<u64> {
+    let metadata = fs::metadata(path).ok()?;
+    if metadata.len() == 0 || metadata.len() > max_len as u64 {
+        return None;
+    }
+    let mut file = fs::File::open(path).ok()?;
+    let mut hash = 0xcbf29ce484222325_u64;
+    let mut buf = [0_u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buf).ok()?;
+        if read == 0 {
+            break;
+        }
+        for byte in &buf[..read] {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+    }
+    Some(hash)
 }
 
 /// Pre-seed the within-pass dedup sets from findings already written to disk so a
@@ -3924,19 +4294,31 @@ fn existing_crash_testcases(work_dir: &Path) -> HashSet<Vec<u8>> {
 /// summary counts ~2-3x). Returns `(sanitizer-cluster keys, oracle-hit keys)`
 /// reconstructed to match the runtime keys `first_of_sanitizer_cluster` /
 /// `oracle_hit_dedupe_key` compute. Mirrors `existing_crash_testcases`.
-fn existing_finding_dedup_keys(work_dir: &Path) -> (Vec<String>, Vec<String>) {
+fn existing_finding_dedup_keys(work_dir: &Path, harness_id: &str) -> (Vec<String>, Vec<String>) {
+    let finding_record_limit = max_finding_record_bytes();
+    let dedup_limit = max_finding_dedup_keys();
     let mut clusters = Vec::new();
     let mut oracles = Vec::new();
     let Ok(entries) = fs::read_dir(work_dir.join("findings")) else {
         return (clusters, oracles);
     };
     for entry in entries.flatten() {
-        let Ok(bytes) = fs::read(entry.path().join("finding.json")) else {
+        if clusters.len().saturating_add(oracles.len()) >= dedup_limit {
+            break;
+        }
+        let finding_path = entry.path().join("finding.json");
+        if fs::metadata(&finding_path).is_ok_and(|metadata| metadata.len() > finding_record_limit) {
+            continue;
+        }
+        let Ok(bytes) = fs::read(finding_path) else {
             continue;
         };
         let Ok(record) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
             continue;
         };
+        if record.get("harness_id").and_then(|value| value.as_str()) != Some(harness_id) {
+            continue;
+        }
         let rule_id = record.get("rule_id").and_then(|v| v.as_str());
         // Oracle-hit finding: key = rule_id|oracle_name|api (oracle_hit_dedupe_key).
         if let (Some(rule_id), Some(oracle)) = (rule_id, record.get("oracle")) {
@@ -4032,6 +4414,8 @@ fn run_harness(
         // on the first bytes). Swallow BrokenPipe; only a genuine I/O error aborts.
         if let Err(error) = stdin.write_all(input) {
             if error.kind() != std::io::ErrorKind::BrokenPipe {
+                let _ = child.kill();
+                let _ = child.wait();
                 return Err(format!("write harness stdin: {error}"));
             }
         }
@@ -4041,14 +4425,9 @@ fn run_harness(
     // timeout), so close it explicitly here or the harness blocks awaiting EOF.
     drop(child.stdin.take());
     // Drain stderr on a thread so a chatty harness cannot fill the pipe buffer
-    // and stall on write (which would masquerade as a hang while we poll).
-    let stderr_reader = child.stderr.take().map(|mut pipe| {
-        std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = std::io::Read::read_to_end(&mut pipe, &mut buf);
-            buf
-        })
-    });
+    // and stall on write. The collector itself is bounded because target output
+    // is untrusted and this path executes once per fuzz input.
+    let stderr_reader = drain_child_stderr(child.stderr.take());
     // Enforce `per_input_timeout` as a WALL-CLOCK bound. A hung harness sits at
     // 0% CPU blocked on I/O, so `apply_runaway_rlimits`' RLIMIT_CPU (CPU-time)
     // never fires for it — `wait_with_output` here would block the engine
@@ -4130,6 +4509,15 @@ fn run_harness(
         });
     }
 
+    let event_delta_limit = max_event_delta_bytes();
+    if fs::metadata(&events_path).is_ok_and(|metadata| metadata.len() > event_delta_limit) {
+        let _ = fs::remove_file(&events_path);
+        return Err(format!(
+            "event log exceeded the {} MiB per-execution memory cap (raise \
+             GOVFUZZ_MAX_EVENT_DELTA_BYTES if intended)",
+            event_delta_limit / (1024 * 1024)
+        ));
+    }
     let event_bytes = match fs::read(&events_path) {
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -4474,6 +4862,15 @@ impl ForkServer {
                 rejected: false,
             });
         }
+        let event_delta_limit = max_event_delta_bytes();
+        if size.saturating_sub(self.events_offset) > event_delta_limit {
+            self.events_offset = size;
+            return Err(format!(
+                "fork-server event delta exceeded the {} MiB memory cap (raise \
+                 GOVFUZZ_MAX_EVENT_DELTA_BYTES if intended)",
+                event_delta_limit / (1024 * 1024)
+            ));
+        }
         file.seek(SeekFrom::Start(self.events_offset))
             .map_err(|error| format!("seek fork-server event log: {error}"))?;
         let mut bytes = Vec::with_capacity((size - self.events_offset) as usize);
@@ -4753,7 +5150,29 @@ mod signal_classification_tests {
 
 #[cfg(test)]
 mod engine_list_tests {
-    use super::{parse_engine_list, FuzzEngine};
+    use super::{parse_engine_list, read_bounded_head_tail, read_seed_file_prefix, FuzzEngine};
+
+    #[test]
+    fn diagnostic_capture_keeps_both_ends_under_a_fixed_bound() {
+        let input: Vec<u8> = (0_u8..100).collect();
+        let output = read_bounded_head_tail(input.as_slice(), 16);
+        assert!(output.starts_with(&input[..8]));
+        assert!(output.ends_with(&input[92..]));
+        assert!(output
+            .windows("diagnostic output truncated".len())
+            .any(|window| window == b"diagnostic output truncated"));
+        assert!(output.len() <= 16 + 64);
+    }
+
+    #[test]
+    fn seed_file_reader_never_allocates_past_requested_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("large-seed.bin");
+        std::fs::write(&path, vec![7_u8; 4096]).unwrap();
+        let (bytes, original_len) = read_seed_file_prefix(&path, 32).unwrap();
+        assert_eq!(original_len, 4096);
+        assert_eq!(bytes, vec![7_u8; 32]);
+    }
 
     #[test]
     fn parse_engine_list_dedupes_and_orders() {
@@ -4841,6 +5260,7 @@ mod dedup_seed_tests {
             c.join("finding.json"),
             serde_json::to_vec(&serde_json::json!({
                 "id": "F-0001-aaaa",
+                "harness_id": "H-TEST",
                 "rule_id": "GF-201",
                 "cluster_key_full": "deadbeef",
                 "cluster_fallback": false,
@@ -4855,6 +5275,7 @@ mod dedup_seed_tests {
             f.join("finding.json"),
             serde_json::to_vec(&serde_json::json!({
                 "id": "F-0002-bbbb",
+                "harness_id": "H-TEST",
                 "rule_id": "GF-210",
                 "cluster_fallback": true,
             }))
@@ -4868,6 +5289,7 @@ mod dedup_seed_tests {
             o.join("finding.json"),
             serde_json::to_vec(&serde_json::json!({
                 "id": "F-0003-cccc",
+                "harness_id": "H-TEST",
                 "rule_id": "GF-405",
                 "oracle": { "name": "path-traversal", "api": "open" },
             }))
@@ -4875,7 +5297,7 @@ mod dedup_seed_tests {
         )
         .unwrap();
 
-        let (clusters, oracles) = existing_finding_dedup_keys(work.path());
+        let (clusters, oracles) = existing_finding_dedup_keys(work.path(), "H-TEST");
         assert!(clusters.contains(&"deadbeef".to_owned()));
         assert!(clusters.contains(&"rule:GF-210".to_owned()));
         assert!(oracles.contains(&"GF-405|path-traversal|open".to_owned()));
@@ -4884,7 +5306,7 @@ mod dedup_seed_tests {
     #[test]
     fn missing_findings_dir_yields_empty_seeds() {
         let work = tempfile::tempdir().unwrap();
-        let (clusters, oracles) = existing_finding_dedup_keys(work.path());
+        let (clusters, oracles) = existing_finding_dedup_keys(work.path(), "H-TEST");
         assert!(clusters.is_empty() && oracles.is_empty());
     }
 }
@@ -6511,7 +6933,7 @@ mod auto_path_tests {
         // "keep every non-empty input" and the end-of-run flush wrote ~every
         // executed input to disk (corpus_persisted ~= iterations, e.g. ~5000 here),
         // a disk/inode-exhaustion hazard. Post-fix retention is progress-gated and
-        // hard-capped at MAX_CORPUS_ENTRIES, so a clean zero-coverage run persists
+        // bounded by the memory-aware corpus limit, so a clean zero-coverage run persists
         // only the seed(s).
         let root = tmpdir();
         let work_dir = root.join("govfuzz_work");
@@ -6539,11 +6961,12 @@ mod auto_path_tests {
             "a clean zero-coverage harness grows no corpus signatures"
         );
         // The pool is hard-bounded regardless of the gate.
+        let entry_limit = corpus_limits(DEFAULT_MAX_LEN).entries;
         assert!(
-            summary.corpus_persisted <= MAX_CORPUS_ENTRIES,
-            "corpus_persisted {} must be capped at MAX_CORPUS_ENTRIES {}",
+            summary.corpus_persisted <= entry_limit,
+            "corpus_persisted {} must be capped at the derived entry limit {}",
             summary.corpus_persisted,
-            MAX_CORPUS_ENTRIES
+            entry_limit
         );
         assert!(
             summary.corpus_persisted < 10_000,

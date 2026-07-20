@@ -185,7 +185,12 @@ fn build_side(hdir: &Path, is_cpp: bool, cc: &str, cxx: &str, tag: &str) -> Opti
     } else {
         cmd.arg(format!("DIFF_CC={cc}"));
     }
-    let ok = cmd.output().map(|o| o.status.success()).unwrap_or(false);
+    let ok = crate::command_output::output_with_timeout(
+        &mut cmd,
+        std::time::Duration::from_secs(30 * 60),
+    )
+    .map(|o| o.status.success())
+    .unwrap_or(false);
     let produced = hdir.join("main_diff");
     if !ok || !produced.is_file() {
         return None;

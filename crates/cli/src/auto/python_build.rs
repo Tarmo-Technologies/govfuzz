@@ -17,6 +17,7 @@ use crate::auto::candidate::Candidate;
 use python_parser::{parse_python_functions, PyFunction};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 /// Outcome of the native Python build lane (parallels `JavaBuildResult`).
 pub enum PythonBuildResult {
@@ -198,14 +199,16 @@ pub fn build_python_harness(
     // module's import-time code, the same exposure as the fuzz step (which runs the
     // target); bounded by a timeout. Run without the shim so import-time mkdir of
     // caches can't trip a behavioral oracle.
-    let smoke = Command::new(&python)
-        .arg("-B")
-        .arg("-c")
-        .arg("import govfuzzgen.harness")
-        .env("PYTHONPATH", &pythonpath)
-        .env("PYTHONDONTWRITEBYTECODE", "1")
-        .current_dir(&auto_dir)
-        .output();
+    let smoke = crate::command_output::output_with_timeout(
+        Command::new(&python)
+            .arg("-B")
+            .arg("-c")
+            .arg("import govfuzzgen.harness")
+            .env("PYTHONPATH", &pythonpath)
+            .env("PYTHONDONTWRITEBYTECODE", "1")
+            .current_dir(&auto_dir),
+        Duration::from_secs(30),
+    );
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
@@ -285,7 +288,7 @@ struct ResolvedTarget {
 /// class's `__init__` needs arguments we skip cleanly, mirroring the Rust/Java
 /// no-arg-ctor first cut).
 fn resolve_target(candidate: &Candidate) -> Result<ResolvedTarget, String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let functions =
         parse_python_functions(&source).map_err(|_| "failed to parse Python source".to_owned())?;

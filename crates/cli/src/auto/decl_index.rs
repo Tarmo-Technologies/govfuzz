@@ -10,7 +10,7 @@ fn include_candidate_is_host_usable(path: &Path) -> bool {
         return false;
     }
 
-    let Ok(source) = std::fs::read_to_string(path) else {
+    let Ok(source) = crate::source_text::read_source_text(path) else {
         return true;
     };
     !source.lines().any(|line| {
@@ -466,8 +466,12 @@ impl DeclarationIndex {
     fn build_parsed(root: &Path) -> std::io::Result<Self> {
         let mut idx = Self::default();
         let entries = walkdir_lite(root)?;
-        let mut cpp_headers = Vec::new();
-        let mut cpp_sources = Vec::new();
+        // Keep only the compact facts needed by the final include-to-definition
+        // join. The old implementation retained the FULL text of every C++
+        // source and header until the entire tree had been parsed, making peak
+        // RSS proportional to checkout bytes on large C++ systems.
+        let mut cpp_headers: Vec<(PathBuf, Vec<cpp_parser::CppFunction>)> = Vec::new();
+        let mut cpp_sources: Vec<(PathBuf, Vec<String>)> = Vec::new();
         let mut c_type_defs = c_parser::CTypeDefs::default();
         let mut cpp_type_defs = c_parser::CTypeDefs::default();
         let mut c_source_scalar_type_defs = c_parser::CTypeDefs::default();
@@ -501,6 +505,29 @@ impl DeclarationIndex {
                         .or_default()
                         .push(entry.clone());
                 }
+            }
+            // `walkdir_lite` intentionally returns paths, not contents. Reject
+            // unrelated artifacts before reading them: a source tree can contain
+            // multi-gigabyte firmware/images beside its code, and object-macro
+            // extraction never needs to inspect those files.
+            if !matches!(
+                ext,
+                "c" | "h"
+                    | "cpp"
+                    | "cc"
+                    | "cxx"
+                    | "C"
+                    | "hpp"
+                    | "hh"
+                    | "hxx"
+                    | "hp"
+                    | "inc"
+                    | "ads"
+                    | "adb"
+                    | "prebuilt"
+                    | "dist"
+            ) {
+                continue;
             }
             let Ok(source) = crate::source_text::read_source_text(&entry) else {
                 continue;
@@ -549,7 +576,6 @@ impl DeclarationIndex {
                         }
                     }
                     if ext == "h" {
-                        cpp_headers.push((entry.clone(), source.clone()));
                         // Tree-wide type-def fallback is collected from headers
                         // (where typedefs/structs/enums live); a `.c`-local def
                         // is not a sound cross-target fallback. A `.h` is a C
@@ -606,6 +632,9 @@ impl DeclarationIndex {
                             for d in decls {
                                 idx.index_cpp_declaration(d, &entry, true);
                             }
+                        }
+                        if let Ok(functions) = cpp_parser::parse_cpp_functions(&source) {
+                            cpp_headers.push((entry.clone(), functions));
                         }
                     }
                     if let Ok(decls) = c_parser::parse_c_declarations(&source) {
@@ -678,9 +707,8 @@ impl DeclarationIndex {
                         if cpp_source_uses_module_unit(&source) {
                             continue;
                         }
-                        cpp_sources.push((entry.clone(), source.clone()));
+                        cpp_sources.push((entry.clone(), quoted_includes(&source)));
                     } else {
-                        cpp_headers.push((entry.clone(), source.clone()));
                         if let Ok(defs) = cpp_parser::parse_cpp_type_defs(&source) {
                             cpp_type_defs.merge(defs);
                         }
@@ -708,6 +736,8 @@ impl DeclarationIndex {
                                     .or_default()
                                     .push(entry.clone());
                             }
+                        } else {
+                            cpp_headers.push((entry.clone(), functions));
                         }
                     }
                 }
@@ -1436,20 +1466,17 @@ impl DeclarationIndex {
 
     fn index_cpp_definition_headers(
         &mut self,
-        cpp_sources: &[(PathBuf, String)],
-        cpp_headers: &[(PathBuf, String)],
+        cpp_sources: &[(PathBuf, Vec<String>)],
+        cpp_headers: &[(PathBuf, Vec<cpp_parser::CppFunction>)],
     ) {
-        for (source_path, source_text) in cpp_sources {
-            for include in quoted_includes(source_text) {
-                for (header_path, header_text) in cpp_headers {
-                    if !header_matches_include(source_path, &include, header_path) {
+        for (source_path, includes) in cpp_sources {
+            for include in includes {
+                for (header_path, functions) in cpp_headers {
+                    if !header_matches_include(source_path, include, header_path) {
                         continue;
                     }
-                    let Ok(functions) = cpp_parser::parse_cpp_functions(header_text) else {
-                        continue;
-                    };
                     for function in functions {
-                        self.index_cpp_definition(&function, source_path);
+                        self.index_cpp_definition(function, source_path);
                     }
                 }
             }

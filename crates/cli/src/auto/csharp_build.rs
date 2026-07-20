@@ -175,7 +175,7 @@ fn target_assembly_name(csproj: &Path) -> String {
 
 /// Re-parse the source and find the discovered method by (qualified name, line).
 fn resolve_target(candidate: &Candidate) -> Result<CSharpMethod, String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let methods = parse_csharp(&source);
     methods
@@ -369,7 +369,7 @@ pub fn build_csharp_harness(
         );
     };
 
-    let source = match std::fs::read_to_string(&candidate.source_path) {
+    let source = match crate::source_text::read_source_text(&candidate.source_path) {
         Ok(s) => s,
         Err(e) => {
             return CSharpBuildResult::Failed(format!(
@@ -423,19 +423,21 @@ pub fn build_csharp_harness(
     }
 
     // Build. `--nologo`, restore from the local NuGet cache; keep the CLI quiet.
-    let build = Command::new("dotnet")
-        .arg("build")
-        .arg(proj_dir.join("govfuzz_harness.csproj"))
-        .arg("-c")
-        .arg("Release")
-        .arg("-o")
-        .arg(&out_dir)
-        .arg("--nologo")
-        .arg("-v")
-        .arg("quiet")
-        .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
-        .env("DOTNET_NOLOGO", "1")
-        .output();
+    let build = crate::command_output::output_with_timeout(
+        Command::new("dotnet")
+            .arg("build")
+            .arg(proj_dir.join("govfuzz_harness.csproj"))
+            .arg("-c")
+            .arg("Release")
+            .arg("-o")
+            .arg(&out_dir)
+            .arg("--nologo")
+            .arg("-v")
+            .arg("quiet")
+            .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+            .env("DOTNET_NOLOGO", "1"),
+        std::time::Duration::from_secs(30 * 60),
+    );
     match build {
         Ok(o) if o.status.success() => {}
         Ok(o) => {
@@ -458,14 +460,16 @@ pub fn build_csharp_harness(
             target_dll.display()
         ));
     }
-    let instr = Command::new(&sharpfuzz)
-        .arg(&target_dll)
-        .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
-        // The `sharpfuzz` global tool targets an older runtime than the SDK may
-        // ship (e.g. a net8.0 tool on a host with only the .NET 10 runtime); roll
-        // it forward so instrumentation works whatever runtime is installed.
-        .env("DOTNET_ROLL_FORWARD", "Major")
-        .output();
+    let instr = crate::command_output::output_with_timeout(
+        Command::new(&sharpfuzz)
+            .arg(&target_dll)
+            .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+            // The `sharpfuzz` global tool targets an older runtime than the SDK may
+            // ship (e.g. a net8.0 tool on a host with only the .NET 10 runtime); roll
+            // it forward so instrumentation works whatever runtime is installed.
+            .env("DOTNET_ROLL_FORWARD", "Major"),
+        std::time::Duration::from_secs(10 * 60),
+    );
     match instr {
         Ok(o) if o.status.success() => {}
         Ok(o) => {

@@ -191,10 +191,10 @@ pub fn run_installs(manifest: &DependencyManifest) -> InstallReport {
             plan.dep_name,
             plan.command.join(" ")
         );
-        match Command::new(&plan.command[0])
-            .args(&plan.command[1..])
-            .output()
-        {
+        match crate::command_output::output_with_timeout(
+            Command::new(&plan.command[0]).args(&plan.command[1..]),
+            std::time::Duration::from_secs(30 * 60),
+        ) {
             Ok(out) if out.status.success() => report.installed.push(plan.dep_name),
             Ok(out) => {
                 let tail = String::from_utf8_lossy(&out.stderr);

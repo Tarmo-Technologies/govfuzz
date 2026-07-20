@@ -64,11 +64,11 @@ their own interpreters with in-process edge coverage.
 | `--per-target-finding-count <N>` | unset (collect all) | Stop a target as soon as it has produced N **distinct** findings (crash signatures), or when its `--per-target-time` is spent — whichever first. Checked mid-pass (stops the instant the Nth lands; remaining passes skipped). `1` ≈ libFuzzer stop-on-first-crash |
 | `--total-time <SECS>` | unset | **Deprecated** alias of `--per-target-time` (overrides it when set); retained for existing benchmark/parity invocations. Hidden from `--help` |
 | `--iterations <N>` | unset (wall-clock governs) | Per-pass execution cap (libFuzzer `-runs`); `0`/unset lets `--per-target-time` govern depth. Retired the old hardcoded 1024 cap |
-| `--rss-limit-mb <MB>` | `2048` | Per-harness resident-set cap; an over-budget input is killed and reported as a GF-209 OOM finding instead of OOM-killing the host |
-| `--max-targets <N>` | unset (all) | Keep only the top-N highest-scored targets after ranking, before the build/fuzz sweep. `--list-targets` still prints the FULL ranked list; the kept-vs-total count is logged, never a silent truncation. Bounds *which* targets a huge tree attempts |
+| `--rss-limit-mb <MB>` | dynamic | Per-harness resident-set cap; defaults to one quarter of available host/cgroup memory, clamped to 512..8192 MiB. An over-budget input is killed and reported as a GF-209 OOM finding instead of OOM-killing the host; pass an exact value or `0` to disable |
+| `--max-targets <N>` | unset (all) | Keep only the top-N highest-scored targets after ranking, before the build/fuzz sweep. `--dry-run` prints this bounded plan; `--list-targets` still prints the FULL ranked list. The kept-vs-total count is logged, never a silent truncation. Bounds *which* targets a huge tree attempts |
 | `--campaign-time <SECS>` | unset (run all) | Whole-**run** budget across all targets. Default: an OUTER wall-clock cap — once exceeded, `auto` stops STARTING new (ranked) targets (the in-flight one finishes) and reports how many of the N discovered were reached. With `--min-target-time`, switches to SPLIT mode (see below). Bounds *how long* a huge-tree sweep runs |
 | `--min-target-time <SECS>` | unset | SPLIT-mode floor, used **only** with `--campaign-time` (errors otherwise): divide the campaign budget across the N attempted targets — each gets `max(min, campaign / N)` of fuzz time, and only the top `floor(campaign / per_target)` ranked targets are attempted (the rest logged unfuzzed), never less than this floor. Overrides `--per-target-time` |
-| `--jobs <N>` / `-j <N>` | `1` (serial) | Build+fuzz up to N targets CONCURRENTLY via a bounded worker pool. Peak RAM ≈ `jobs × --rss-limit-mb`; size it to the host (too high OOM-kills, e.g. inside a cgroup `MemoryMax` slice). Results aggregate deterministically regardless of completion order |
+| `--jobs <N>` / `-j <N>` | `1` (serial) | Build+fuzz up to N targets CONCURRENTLY via a bounded worker pool. Child allowance is `jobs × --rss-limit-mb`, but total peak also includes the parent declaration index/results, compilers, and the OS. Results aggregate deterministically regardless of completion order |
 | `--passes <SET>` | all (`empty,rng,fuzz`) | Restrict the per-target cascade to a comma list of passes (`empty`, `rng`, `fuzz`). E.g. `--passes fuzz` runs only the fuzz-driven pass — ~3× the throughput of the full 3-pass cascade. Mutually exclusive with `--single-pass` |
 | `--single-pass` | off | Convenience for `--passes fuzz`: run ONLY the fuzz-driven pass per target |
 | `--max-repair-rounds <N>` | `16` | Ceiling on build-fail → repair → retry rounds per target. The default covers all 95 successful clean/damaged samples in the strengthened 53-repository matrix (p95 6, p99/max 14 rounds); the no-progress early-break still applies, so it is a cap, not a fixed cost |
@@ -121,21 +121,53 @@ govfuzz auto path/to/huge-tree \
   --max-targets 500 \
   --single-pass \
   --max-repair-rounds 3 \
-  --jobs 8 \
+  --jobs 2 \
   --campaign-time 3600
 ```
 
 That run reuses a prior discovery (skipping the tree-sitter re-parse + re-rank),
 keeps only the top-500 ranked targets, fuzzes each with the fuzz-driven pass
 only (~3× throughput), gives up on un-buildable targets after 3 repair rounds,
-builds+fuzzes 8 targets concurrently, and stops starting new targets after one
+builds+fuzzes 2 targets concurrently, and stops starting new targets after one
 hour of wall-clock. The three bounds are orthogonal: `--max-targets` bounds
 *which* targets are attempted, `--campaign-time` bounds *how long* the whole
 sweep runs, and `--jobs` bounds throughput against host RAM (peak ≈
-`jobs × --rss-limit-mb` — too high OOM-kills inside a cgroup `MemoryMax` slice).
+the child allowance plus parent/index/compiler/report overhead).
 Every bound is logged — the kept-vs-total target count and the campaign-time
 cutoff both print — so a bounded run is never silently mistaken for full
 coverage.
+
+For a 10M+ SLOC tree, 8 GiB is a practical minimum only for a deliberately
+serial run (`--jobs 1`, normally `--rss-limit-mb 1536`); 16 GiB is recommended
+for whole-tree static analysis and build recovery. The in-memory mutation corpus
+defaults to 1/64 of currently available host/cgroup memory (64 MiB..2 GiB per
+active target), and the entry allowance is derived from that byte budget and
+`--max-len`. Set `GOVFUZZ_MAX_CORPUS_BYTES` and
+`GOVFUZZ_MAX_CORPUS_ENTRIES` for exact operator-defined limits. Captured target
+diagnostics/event deltas use memory-aware defaults with explicit environment
+overrides. Discovery still retains a compact
+declaration/candidate index and final reports retain attempted-target metadata,
+so use `--max-targets`, `--campaign-time`, and `--per-target-finding-count` to
+bound high-cardinality sweeps. See the README's Resource Requirements for the
+static-analysis ceiling and per-file safeguards.
+
+The memory-aware defaults can all be replaced when a target needs more depth:
+
+| Environment override | Controls |
+|---|---|
+| `GOVFUZZ_MAX_CORPUS_BYTES`, `GOVFUZZ_MAX_CORPUS_ENTRIES` | Per-active-target mutation corpus retention |
+| `GOVFUZZ_MAX_SOURCE_FILE_BYTES`, `GOVFUZZ_MAX_FILE_BYTES` | Auto/discovery and static-analysis source-file admission |
+| `GOVFUZZ_MAX_SUBPROCESS_OUTPUT_BYTES`, `GOVFUZZ_MAX_HARNESS_OUTPUT_BYTES` | Build-command and target-diagnostic capture per stream |
+| `GOVFUZZ_MAX_EVENT_DELTA_BYTES`, `GOVFUZZ_MAX_RUNTRACE_PARSE_BYTES` | Dynamic runtrace data admitted per execution/log |
+| `GOVFUZZ_MAX_SINK_TRACKING_BYTES`, `GOVFUZZ_MAX_SINK_SUBJECTS` | Cross-execution tainted-sink evidence retention |
+| `GOVFUZZ_MAX_EXTERNAL_TOOL_OUTPUT_BYTES` | External analyzer JSON/SARIF capture |
+
+Values are bytes except `GOVFUZZ_MAX_CORPUS_ENTRIES` and
+`GOVFUZZ_MAX_SINK_SUBJECTS`. Additional specialist overrides are named in the
+warning emitted when their safeguard is reached. These are in-process retention
+budgets, so a run can briefly exceed one budget because parsers, compiler
+processes, reports, other workers, and allocator overhead remain live too. Use an
+OS/cgroup limit when a strict hard boundary is required.
 
 **Stop a target once it has enough findings.** `--per-target-finding-count N`
 ends a target's cascade the instant it has produced N distinct findings, instead

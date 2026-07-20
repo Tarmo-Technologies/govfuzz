@@ -145,7 +145,10 @@ pub fn build_go_harness(
             .current_dir(&auto_dir)
             .env("GOFLAGS", "-mod=mod")
             .env("GOTOOLCHAIN", "local");
-        cmd.output()
+        crate::command_output::output_with_timeout(
+            &mut cmd,
+            std::time::Duration::from_secs(30 * 60),
+        )
     };
     let mut use_cover = true;
     let mut build = run_build(None, use_cover);
@@ -203,7 +206,7 @@ pub fn build_go_harness(
 }
 
 fn resolve_target(candidate: &Candidate) -> Result<GoFunc, String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     parse_go_functions(&source)
         .map_err(|_| "failed to parse Go source".to_owned())?

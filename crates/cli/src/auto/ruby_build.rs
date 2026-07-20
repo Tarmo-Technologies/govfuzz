@@ -16,6 +16,7 @@ use crate::auto::candidate::Candidate;
 use crate::auto::ruby::{parse_ruby, RubyMethod};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 pub enum RubyBuildResult {
     Built,
@@ -175,11 +176,13 @@ pub fn build_ruby_harness(
     // Build gate 2: require smoke-test — actually load the harness (which requires
     // the target) so an un-loadable target (missing gem, load-time error) is a CLEAN
     // SKIP, not a silent zero-exec run.
-    let smoke = Command::new(&ruby)
-        .arg("-e")
-        .arg(format!("require '{}'", harness_path.display()))
-        .env("RUBYLIB", &load_paths)
-        .output();
+    let smoke = crate::command_output::output_with_timeout(
+        Command::new(&ruby)
+            .arg("-e")
+            .arg(format!("require '{}'", harness_path.display()))
+            .env("RUBYLIB", &load_paths),
+        Duration::from_secs(30),
+    );
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
@@ -257,7 +260,7 @@ pub fn build_ruby_harness(
 /// (`self.`) method is called directly; an instance method constructs a no-arg
 /// receiver (`Klass.new.method`).
 fn resolve_target(candidate: &Candidate) -> Result<(RubyMethod, String), String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let methods = parse_ruby(&source);
     let m = methods

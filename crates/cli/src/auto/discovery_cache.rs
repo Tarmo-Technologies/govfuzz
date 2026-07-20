@@ -223,8 +223,10 @@ pub fn write(cache_file: &Path, cache: &DiscoveryCache) -> std::io::Result<()> {
     if let Some(parent) = cache_file.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let json = serde_json::to_string(cache).map_err(std::io::Error::other)?;
-    std::fs::write(cache_file, json)
+    let file = std::fs::File::create(cache_file)?;
+    let mut writer = std::io::BufWriter::new(file);
+    serde_json::to_writer(&mut writer, cache).map_err(std::io::Error::other)?;
+    std::io::Write::flush(&mut writer)
 }
 
 /// Load a cache from disk and return its candidate list ONLY when the header is
@@ -236,8 +238,8 @@ pub fn load_if_valid(
     root: &Path,
     expected_fingerprint: &str,
 ) -> Option<Vec<Candidate>> {
-    let text = std::fs::read_to_string(cache_file).ok()?;
-    let cache: DiscoveryCache = serde_json::from_str(&text).ok()?;
+    let file = std::fs::File::open(cache_file).ok()?;
+    let cache: DiscoveryCache = serde_json::from_reader(std::io::BufReader::new(file)).ok()?;
     if cache.version != CACHE_VERSION {
         return None;
     }
@@ -256,10 +258,11 @@ pub fn load_if_valid(
 /// fingerprint change (the target source or dir-filter actually changed), or a
 /// root-path mismatch (the cache was built for a different tree).
 pub fn miss_reason(cache_file: &Path, root: &Path, expected_fingerprint: &str) -> String {
-    let Ok(text) = std::fs::read_to_string(cache_file) else {
+    let Ok(file) = std::fs::File::open(cache_file) else {
         return "no cache file yet".to_owned();
     };
-    let Ok(cache) = serde_json::from_str::<DiscoveryCache>(&text) else {
+    let Ok(cache) = serde_json::from_reader::<_, DiscoveryCache>(std::io::BufReader::new(file))
+    else {
         return "cache file unreadable/corrupt".to_owned();
     };
     if cache.version != CACHE_VERSION {

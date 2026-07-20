@@ -247,7 +247,7 @@ struct ResolvedJavaTarget {
 /// Re-parse the candidate's source and resolve everything the harness generator
 /// needs (see [`ResolvedJavaTarget`]).
 fn resolve_target(candidate: &Candidate) -> Result<ResolvedJavaTarget, String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read Java source {}: {e}", candidate.source_path.display()))?;
     let methods = java_parser::parse_java_methods(&source)
         .map_err(|_| "failed to parse Java source".to_owned())?;
@@ -554,7 +554,11 @@ fn run_javac(
     for s in sources {
         cmd.arg(s);
     }
-    let out = cmd.output().map_err(|e| format!("spawn javac: {e}"))?;
+    let out = crate::command_output::output_with_timeout(
+        &mut cmd,
+        std::time::Duration::from_secs(30 * 60),
+    )
+    .map_err(|e| format!("spawn javac: {e}"))?;
     if out.status.success() {
         return Ok(());
     }
@@ -702,18 +706,20 @@ fn maven_classpath(module: &Path, work_dir: &Path) -> Result<String, String> {
     // plugin goal that produces `target/classes`.
     let cp_file_arg = format!("-Dmdep.outputFile={}", cp_file.display());
     let run_mvn = |goal: &str| -> Result<(), String> {
-        let out = Command::new("mvn")
-            .arg("-q")
-            .arg("-B")
-            .arg("-Dmaven.test.skip=true")
-            .arg("-Denforcer.skip=true")
-            .arg("-Denforcer.fail=false")
-            .arg(goal)
-            .arg("dependency:build-classpath")
-            .arg(&cp_file_arg)
-            .current_dir(module)
-            .output()
-            .map_err(|e| format!("spawn mvn: {e}"))?;
+        let out = crate::command_output::output_with_timeout(
+            Command::new("mvn")
+                .arg("-q")
+                .arg("-B")
+                .arg("-Dmaven.test.skip=true")
+                .arg("-Denforcer.skip=true")
+                .arg("-Denforcer.fail=false")
+                .arg(goal)
+                .arg("dependency:build-classpath")
+                .arg(&cp_file_arg)
+                .current_dir(module),
+            std::time::Duration::from_secs(30 * 60),
+        )
+        .map_err(|e| format!("spawn mvn: {e}"))?;
         if out.status.success() {
             return Ok(());
         }
@@ -768,12 +774,14 @@ fn gradle_classpath(module: &Path) -> Result<String, String> {
     } else {
         PathBuf::from("gradle")
     };
-    let out = Command::new(&gradle)
-        .arg("-q")
-        .arg("compileJava")
-        .current_dir(module)
-        .output()
-        .map_err(|e| format!("spawn gradle: {e}"))?;
+    let out = crate::command_output::output_with_timeout(
+        Command::new(&gradle)
+            .arg("-q")
+            .arg("compileJava")
+            .current_dir(module),
+        std::time::Duration::from_secs(30 * 60),
+    )
+    .map_err(|e| format!("spawn gradle: {e}"))?;
     if !out.status.success() {
         let combined = format!(
             "{}{}",
@@ -807,14 +815,16 @@ fn gradle_runtime_classpath(module: &Path, gradle: &Path) -> Option<String> {
     let script = "allprojects { tasks.register('govfuzzCp') { doLast { try { \
                   println configurations.runtimeClasspath.asPath } catch (e) {} } } }\n";
     std::fs::write(&init, script).ok()?;
-    let out = Command::new(gradle)
-        .arg("-q")
-        .arg("-I")
-        .arg(&init)
-        .arg("govfuzzCp")
-        .current_dir(module)
-        .output()
-        .ok();
+    let out = crate::command_output::output_with_timeout(
+        Command::new(gradle)
+            .arg("-q")
+            .arg("-I")
+            .arg(&init)
+            .arg("govfuzzCp")
+            .current_dir(module),
+        std::time::Duration::from_secs(30 * 60),
+    )
+    .ok();
     let _ = std::fs::remove_file(&init);
     let out = out?;
     if !out.status.success() {
@@ -904,11 +914,11 @@ fn ensure_agent_jar() -> Result<PathBuf, String> {
     if cache.is_file() && !agent_jar_is_stale(&cache, &script) {
         return Ok(cache);
     }
-    let out = Command::new("sh")
-        .arg(&script)
-        .arg(&cache)
-        .output()
-        .map_err(|e| format!("spawn build-agent.sh: {e}"))?;
+    let out = crate::command_output::output_with_timeout(
+        Command::new("sh").arg(&script).arg(&cache),
+        std::time::Duration::from_secs(10 * 60),
+    )
+    .map_err(|e| format!("spawn build-agent.sh: {e}"))?;
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr)
             .lines()

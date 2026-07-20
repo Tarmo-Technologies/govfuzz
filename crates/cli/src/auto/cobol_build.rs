@@ -361,7 +361,7 @@ pub fn build_cobol_harness(
         return CobolBuildResult::Failed(format!("create {}: {e}", hdir.display()));
     }
 
-    let source = match std::fs::read_to_string(&candidate.source_path) {
+    let source = match crate::source_text::read_source_text(&candidate.source_path) {
         Ok(s) => s,
         Err(e) => return CobolBuildResult::Failed(format!("read COBOL source: {e}")),
     };
@@ -389,7 +389,10 @@ pub fn build_cobol_harness(
         cmd.arg("-I").arg(inc);
     }
     cmd.arg("-o").arg(&target_c).arg(&candidate.source_path);
-    match cmd.output() {
+    match crate::command_output::output_with_timeout(
+        &mut cmd,
+        std::time::Duration::from_secs(30 * 60),
+    ) {
         Ok(o) if o.status.success() && target_c.is_file() => {}
         Ok(o) => {
             return CobolBuildResult::Failed(format!(
@@ -466,10 +469,12 @@ pub fn build_cobol_harness(
     }
 
     let libs = cob_config("--libs").join(" ");
-    let built = Command::new("make")
-        .current_dir(&hdir)
-        .env("AUTO_EXTRA_LDFLAGS", libs)
-        .output();
+    let built = crate::command_output::output_with_timeout(
+        Command::new("make")
+            .current_dir(&hdir)
+            .env("AUTO_EXTRA_LDFLAGS", libs),
+        std::time::Duration::from_secs(30 * 60),
+    );
     let main_bin = hdir.join("main");
     match built {
         Ok(o) if o.status.success() && main_bin.is_file() => CobolBuildResult::Built,

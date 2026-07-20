@@ -18,11 +18,61 @@
 
 use std::path::Path;
 
+/// Default ceiling for one source file parsed by the auto/discovery/build-recovery
+/// pipeline. Tree-sitter and the structural parsers can require several times the
+/// input size while a parse is live, so accepting an arbitrarily large generated
+/// translation unit lets one file OOM an otherwise bounded whole-tree run.
+///
+/// The fallback is 64 MiB on platforms where available memory cannot be queried.
+/// On Linux the normal default is 1/32 of currently available host/cgroup memory,
+/// clamped to 64 MiB..1 GiB. Build recovery routinely encounters amalgamated
+/// C/C++ sources, so a larger machine should not inherit a workstation-sized
+/// limit. `GOVFUZZ_MAX_SOURCE_FILE_BYTES` always overrides the derived value.
+const FALLBACK_MAX_SOURCE_FILE_BYTES: usize = 64 * 1024 * 1024;
+
+pub(crate) fn max_source_file_bytes() -> u64 {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_SOURCE_FILE_BYTES",
+        32,
+        64 * crate::resource_limits::MIB,
+        FALLBACK_MAX_SOURCE_FILE_BYTES,
+        1024 * crate::resource_limits::MIB,
+    ) as u64
+}
+
 /// Read a source file as text, transcoding non-UTF-8 bytes from Latin-1 rather
 /// than failing. Only genuine I/O errors (missing file, permission denied)
 /// propagate; an encoding mismatch never does.
 pub(crate) fn read_source_text(path: &Path) -> std::io::Result<String> {
-    Ok(decode_source_bytes(std::fs::read(path)?))
+    read_source_text_capped(path, max_source_file_bytes())
+}
+
+fn read_source_text_capped(path: &Path, limit: u64) -> std::io::Result<String> {
+    use std::io::Read;
+
+    let file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    if len > limit {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!(
+                "source file is {len} bytes, above the {limit}-byte safety limit; \
+                 raise GOVFUZZ_MAX_SOURCE_FILE_BYTES to parse it"
+            ),
+        ));
+    }
+    let mut bytes = Vec::with_capacity(len.min(limit).min(64 * 1024) as usize);
+    file.take(limit.saturating_add(1)).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > limit {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!(
+                "source file grew above the {limit}-byte safety limit while being read; \
+                 raise GOVFUZZ_MAX_SOURCE_FILE_BYTES to parse it"
+            ),
+        ));
+    }
+    Ok(decode_source_bytes(bytes))
 }
 
 /// Decode raw source bytes to a `String`: UTF-8 when valid, otherwise Latin-1.
@@ -81,5 +131,15 @@ mod tests {
     fn read_source_text_propagates_missing_file() {
         let path = std::env::temp_dir().join("govfuzz-does-not-exist-zzz.ads");
         assert!(read_source_text(&path).is_err());
+    }
+
+    #[test]
+    fn oversized_source_is_rejected_before_reading() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("generated.c");
+        std::fs::write(&path, b"12345").unwrap();
+        let error = read_source_text_capped(&path, 4).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+        assert!(error.to_string().contains("5 bytes"));
     }
 }

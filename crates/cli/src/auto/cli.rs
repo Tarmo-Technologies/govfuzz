@@ -118,10 +118,10 @@ pub struct AutoArgs {
 
     /// Keep only the top-N highest-scored targets after discovery + ranking, before
     /// the build/fuzz sweep. On a huge tree (140k+ discovered targets) this caps the
-    /// sweep to the best candidates instead of grinding all of them. `--list-targets`
-    /// still prints the FULL ranked list; the truncation only bounds what is built /
-    /// fuzzed, and the kept count vs. total is logged (never a silent truncation).
-    /// Unset (default) = attempt every discovered target.
+    /// sweep to the best candidates instead of grinding all of them. `--dry-run`
+    /// prints only this bounded plan; `--list-targets` still prints the FULL ranked
+    /// list. The kept count vs. total is logged (never a silent truncation). Unset
+    /// (default) = attempt every discovered target.
     #[arg(long = "max-targets", value_name = "N")]
     pub max_targets: Option<usize>,
 
@@ -201,8 +201,11 @@ pub struct AutoArgs {
 
     /// Per-harness resident-set memory cap in MB. A test case that allocates
     /// past this is killed and reported as an OOM finding (GF-209) instead of
-    /// OOM-killing the host. Mirrors libFuzzer's `-rss_limit_mb`; default 2048.
-    #[arg(long = "rss-limit-mb", default_value_t = 2048)]
+    /// OOM-killing the host. Mirrors libFuzzer's `-rss_limit_mb`; the default is
+    /// one quarter of available host/cgroup memory, clamped to 512..8192 MiB.
+    /// Pass an exact value (or 0 to disable) when the derived allowance is not
+    /// appropriate for the target.
+    #[arg(long = "rss-limit-mb", default_value_t = default_auto_rss_limit_mb())]
     pub rss_limit_mb: usize,
 
     /// Skip auto-stubbing entirely (diagnostics-only).
@@ -541,28 +544,33 @@ pub struct AutoArgs {
 /// headers, where parser bugs live) while restoring normal throughput.
 fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8>> {
     let cap = crate::fuzz::DEFAULT_MAX_LEN;
+    let corpus_entry_limit = crate::fuzz::corpus_limits(cap).entries;
     let mut seeds = Vec::new();
-    let mut push_capped = |path: &std::path::Path, mut bytes: Vec<u8>| {
-        if bytes.len() > cap {
-            eprintln!(
-                "govfuzz auto: seed '{}' is {} bytes; truncating to {cap} (the fuzz \
-                 mutator's max input length — bytes past it are never generated and \
-                 only slow fuzzing)",
-                path.display(),
-                bytes.len()
-            );
-            bytes.truncate(cap);
+    let mut dropped = 0usize;
+    let mut push_path = |path: &std::path::Path| {
+        if seeds.len() >= corpus_entry_limit {
+            dropped += 1;
+            return;
         }
-        seeds.push(bytes);
-    };
-    for file in seed_files {
-        match std::fs::read(file) {
-            Ok(bytes) => push_capped(file, bytes),
+        match crate::fuzz::read_seed_file_prefix(path, cap) {
+            Ok((bytes, original_len)) => {
+                if original_len > bytes.len() as u64 {
+                    eprintln!(
+                        "govfuzz auto: seed '{}' is {original_len} bytes; using its first \
+                         {cap} bytes (bytes past the mutator seed cap only consume RAM)",
+                        path.display()
+                    );
+                }
+                seeds.push(bytes);
+            }
             Err(error) => eprintln!(
                 "govfuzz auto: skipping seed file '{}': {error}",
-                file.display()
+                path.display()
             ),
         }
+    };
+    for file in seed_files {
+        push_path(file);
     }
     for dir in seed_dirs {
         match std::fs::read_dir(dir) {
@@ -570,9 +578,7 @@ fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8
                 for entry in entries.flatten() {
                     let path = entry.path();
                     if path.is_file() {
-                        if let Ok(bytes) = std::fs::read(&path) {
-                            push_capped(&path, bytes);
-                        }
+                        push_path(&path);
                     }
                 }
             }
@@ -581,6 +587,12 @@ fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8
                 dir.display()
             ),
         }
+    }
+    if dropped > 0 {
+        eprintln!(
+            "govfuzz auto: seed corpus capped at {} entries; skipped {dropped} additional seed(s)",
+            corpus_entry_limit
+        );
     }
     seeds
 }
@@ -979,7 +991,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     }
     if args.mode == actionability::RunMode::Attacking {
         sort_attacking_candidates(&mut candidates, |path| {
-            std::fs::read_to_string(path).unwrap_or_default()
+            crate::source_text::read_source_text(path).unwrap_or_default()
         });
     }
     eprintln!("  discovered {} candidate(s)", candidates.len());
@@ -1004,10 +1016,21 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         crate::auto::report::write_dependency_checkpoint(&path, &work, &dependency_seed, &[])?;
 
     // --dry-run: show the plan (toolchains + ranked targets + build-recovery note) and
-    // exit without building or fuzzing, so a long run can be validated first.
+    // exit without building or fuzzing, so a long run can be validated first. Honor
+    // --max-targets here just as the real sweep does: emitting hundreds of thousands
+    // of unselected candidates can itself consume substantial terminal/log storage
+    // on a large tree. --list-targets below intentionally remains the full-list mode.
     if args.dry_run {
+        let planned_count = capped_target_count(candidates.len(), args.max_targets);
+        if planned_count < candidates.len() {
+            eprintln!(
+                "govfuzz auto: --max-targets {planned_count}: showing the top {planned_count} of {} ranked target(s) in the dry-run plan",
+                candidates.len()
+            );
+        }
+        let planned_candidates = &candidates[..planned_count];
         eprintln!("\ngovfuzz auto: --dry-run — plan only, nothing is built or fuzzed:");
-        print_ranked_targets(&candidates, &path);
+        print_ranked_targets(planned_candidates, &path);
         if let Some((marker, cmd)) = detect_custom_build(&path) {
             eprintln!(
                 "  build recovery: this tree has its own build ({marker}); \
@@ -1016,7 +1039,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         }
         eprintln!(
             "  would fuzz {} target(s){}",
-            candidates.len(),
+            planned_candidates.len(),
             if preflight.any_missing() {
                 " — but some toolchains are MISSING (see above); those lanes won't build"
             } else {
@@ -1188,7 +1211,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if jobs > 1 {
         eprintln!(
             "govfuzz auto: running up to {jobs} candidate(s) concurrently (--jobs {jobs}); \
-             effective peak memory ≈ jobs x rss-limit-mb = {} MB — size it to the host",
+             child RSS allowance = jobs x rss-limit-mb = {} MB, plus parent/index/build/report \
+             overhead — size the total to the host",
             jobs.saturating_mul(args.rss_limit_mb)
         );
         if candidates
@@ -1275,12 +1299,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // bounds what gets built/fuzzed, and the kept count is logged — never a silent
     // truncation.
     if let Some(cap) = args.max_targets {
-        if candidates.len() > cap {
+        let keep = capped_target_count(candidates.len(), Some(cap));
+        if candidates.len() > keep {
             eprintln!(
-                "govfuzz auto: --max-targets {cap}: keeping the top {cap} of {} ranked target(s) for the sweep",
+                "govfuzz auto: --max-targets {cap}: keeping the top {keep} of {} ranked target(s) for the sweep",
                 candidates.len()
             );
-            candidates.truncate(cap);
+            candidates.truncate(keep);
         } else {
             eprintln!(
                 "govfuzz auto: --max-targets {cap}: only {} target(s) discovered; keeping all",
@@ -2523,6 +2548,22 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
     }
 }
 
+/// Number of ranked candidates selected by `--max-targets`. Kept in one helper so
+/// the dry-run plan and the real sweep cannot disagree about the cap.
+fn capped_target_count(total: usize, max_targets: Option<usize>) -> usize {
+    max_targets.map_or(total, |cap| total.min(cap))
+}
+
+pub(crate) fn default_auto_rss_limit_mb() -> usize {
+    crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_DEFAULT_HARNESS_RSS_BYTES",
+        4,
+        512 * crate::resource_limits::MIB,
+        2048 * crate::resource_limits::MIB,
+        8192usize.saturating_mul(crate::resource_limits::MIB),
+    ) / crate::resource_limits::MIB
+}
+
 fn normalize_target_file_filter(root: &Path, target_file: &Path) -> PathBuf {
     let path = if target_file.is_absolute() {
         target_file.to_path_buf()
@@ -2608,17 +2649,35 @@ fn sort_attacking_candidates(
     candidates: &mut [crate::auto::candidate::Candidate],
     mut read_source: impl FnMut(&Path) -> String,
 ) {
-    let mut source_cache: BTreeMap<PathBuf, String> = BTreeMap::new();
-    candidates.sort_by_cached_key(|candidate| {
-        let source = source_cache
+    // Compute compact scores one source file at a time. Caching every source
+    // String until sort completion made attacking mode retain essentially the
+    // whole checkout on large trees.
+    let mut indexes_by_path: BTreeMap<PathBuf, Vec<usize>> = BTreeMap::new();
+    for (index, candidate) in candidates.iter().enumerate() {
+        indexes_by_path
             .entry(candidate.source_path.clone())
-            .or_insert_with(|| read_source(&candidate.source_path));
+            .or_default()
+            .push(index);
+    }
+    let mut scores = BTreeMap::new();
+    for (path, indexes) in indexes_by_path {
+        let source = read_source(&path);
+        for index in indexes {
+            let candidate = &candidates[index];
+            scores.insert(
+                candidate.harness_id.clone(),
+                actionability::attacking_target_score(candidate.score, &source, &candidate.name),
+            );
+        }
+    }
+    candidates.sort_by_cached_key(|candidate| {
         (
-            Reverse(actionability::attacking_target_score(
-                candidate.score,
-                source,
-                &candidate.name,
-            )),
+            Reverse(
+                scores
+                    .get(&candidate.harness_id)
+                    .copied()
+                    .unwrap_or_default(),
+            ),
             candidate.name.clone(),
             candidate.source_path.clone(),
             candidate.line,
@@ -3376,6 +3435,14 @@ mod tests {
             TestCli::try_parse_from(["govfuzz", "tree", "--passes", "rng", "--single-pass",])
                 .is_err()
         );
+    }
+
+    #[test]
+    fn max_targets_caps_dry_run_and_sweep_consistently() {
+        assert_eq!(capped_target_count(12, None), 12);
+        assert_eq!(capped_target_count(12, Some(20)), 12);
+        assert_eq!(capped_target_count(12, Some(5)), 5);
+        assert_eq!(capped_target_count(12, Some(0)), 0);
     }
 
     #[test]

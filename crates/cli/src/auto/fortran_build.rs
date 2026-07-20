@@ -131,22 +131,24 @@ fn precompile_project_modules(source_root: &Path, moddir: &Path) {
         remaining.retain(|f| {
             let stem = f.file_stem().and_then(|s| s.to_str()).unwrap_or("mod");
             let obj = moddir.join(format!("{stem}.o"));
-            let ok = Command::new("gfortran")
-                .args(["-O1", "-g", "-fsanitize=address"])
-                .arg("-fsanitize-coverage=trace-pc,trace-cmp")
-                .arg("-cpp")
-                .arg("-ffree-line-length-none")
-                .arg("-J")
-                .arg(moddir)
-                .arg("-I")
-                .arg(moddir)
-                .arg("-c")
-                .arg(f)
-                .arg("-o")
-                .arg(&obj)
-                .output()
-                .map(|o| o.status.success() && obj.is_file())
-                .unwrap_or(false);
+            let ok = crate::command_output::output_with_timeout(
+                Command::new("gfortran")
+                    .args(["-O1", "-g", "-fsanitize=address"])
+                    .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+                    .arg("-cpp")
+                    .arg("-ffree-line-length-none")
+                    .arg("-J")
+                    .arg(moddir)
+                    .arg("-I")
+                    .arg(moddir)
+                    .arg("-c")
+                    .arg(f)
+                    .arg("-o")
+                    .arg(&obj),
+                std::time::Duration::from_secs(30 * 60),
+            )
+            .map(|o| o.status.success() && obj.is_file())
+            .unwrap_or(false);
             !ok // keep only the ones that still failed
         });
         if remaining.len() == before {
@@ -434,7 +436,7 @@ pub fn build_fortran_harness(
         return FortranBuildResult::Failed(format!("create {}: {e}", hdir.display()));
     }
 
-    let source = match std::fs::read_to_string(&candidate.source_path) {
+    let source = match crate::source_text::read_source_text(&candidate.source_path) {
         Ok(s) => s,
         Err(e) => return FortranBuildResult::Failed(format!("read Fortran source: {e}")),
     };
@@ -467,26 +469,28 @@ pub fn build_fortran_harness(
         // bounds error before the raw access, which govfuzz classifies as an input
         // rejection; letting the raw out-of-bounds access happen surfaces it as a genuine
         // ASan crash with the exact `.f90:line`. trace-pc/trace-cmp feed the engine.
-        let compiled = Command::new("gfortran")
-            .args(["-O1", "-g", "-fsanitize=address"])
-            .arg("-fsanitize-coverage=trace-pc,trace-cmp")
-            .arg("-cpp")
-            .arg("-ffree-line-length-none")
-            // Write generated `.mod` module files into the harness dir (via -J) instead
-            // of polluting the current working directory; find self-referential modules
-            // (-I hdir) plus the pre-compiled PROJECT module graph (-I moddir) so a
-            // target `USE`ing a sibling module builds.
-            .arg("-J")
-            .arg(&hdir)
-            .arg("-I")
-            .arg(&hdir)
-            .arg("-I")
-            .arg(&moddir)
-            .arg("-c")
-            .arg(&candidate.source_path)
-            .arg("-o")
-            .arg(&fortran_o)
-            .output();
+        let compiled = crate::command_output::output_with_timeout(
+            Command::new("gfortran")
+                .args(["-O1", "-g", "-fsanitize=address"])
+                .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+                .arg("-cpp")
+                .arg("-ffree-line-length-none")
+                // Write generated `.mod` module files into the harness dir (via -J) instead
+                // of polluting the current working directory; find self-referential modules
+                // (-I hdir) plus the pre-compiled PROJECT module graph (-I moddir) so a
+                // target `USE`ing a sibling module builds.
+                .arg("-J")
+                .arg(&hdir)
+                .arg("-I")
+                .arg(&hdir)
+                .arg("-I")
+                .arg(&moddir)
+                .arg("-c")
+                .arg(&candidate.source_path)
+                .arg("-o")
+                .arg(&fortran_o),
+            std::time::Duration::from_secs(30 * 60),
+        );
         match compiled {
             Ok(o) if o.status.success() && fortran_o.is_file() => {}
             Ok(o) => {
@@ -556,10 +560,12 @@ pub fn build_fortran_harness(
         ldflags.push_str(&format!("-L{dir} "));
     }
     ldflags.push_str("-lgfortran -lquadmath -lm");
-    let built = Command::new("make")
-        .current_dir(&hdir)
-        .env("AUTO_EXTRA_LDFLAGS", ldflags)
-        .output();
+    let built = crate::command_output::output_with_timeout(
+        Command::new("make")
+            .current_dir(&hdir)
+            .env("AUTO_EXTRA_LDFLAGS", ldflags),
+        std::time::Duration::from_secs(30 * 60),
+    );
     let main_bin = hdir.join("main");
     match built {
         Ok(o) if o.status.success() && main_bin.is_file() => FortranBuildResult::Built,

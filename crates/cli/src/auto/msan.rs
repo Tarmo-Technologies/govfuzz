@@ -20,6 +20,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
 /// Cap the number of corpus inputs replayed per harness so a huge queue can't
 /// stall the run; the coverage-diverse queue front is what matters for MSan.
@@ -53,12 +54,12 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
     }
     // Build the MSan variant. C++ harnesses have no `msan` target -> make fails ->
     // skip. A genuine MSan build error (missing instrumented dep) also skips.
-    let built = Command::new("make")
-        .arg("msan")
-        .current_dir(hdir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let built = crate::command_output::output_with_timeout(
+        Command::new("make").arg("msan").current_dir(hdir),
+        Duration::from_secs(600),
+    )
+    .map(|o| o.status.success())
+    .unwrap_or(false);
     let bin = hdir.join("main_msan");
     if !built || !bin.is_file() {
         return 0;
@@ -80,11 +81,12 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
         }
         replayed += 1;
         // The govfuzz C driver replays a single input passed as argv[1].
-        let Ok(out) = Command::new(&bin)
-            .arg(&path)
-            .env("MSAN_OPTIONS", "halt_on_error=1:exitcode=86:print_stats=0")
-            .output()
-        else {
+        let Ok(out) = crate::command_output::output_with_timeout(
+            Command::new(&bin)
+                .arg(&path)
+                .env("MSAN_OPTIONS", "halt_on_error=1:exitcode=86:print_stats=0"),
+            Duration::from_secs(30),
+        ) else {
             continue;
         };
         let stderr = String::from_utf8_lossy(&out.stderr);

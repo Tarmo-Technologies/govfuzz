@@ -15,6 +15,7 @@ use crate::auto::candidate::Candidate;
 use perl_parser::{parse_perl_subs, PerlSub};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 pub enum PerlBuildResult {
     Built,
@@ -166,11 +167,13 @@ pub fn build_perl_harness(
             .map(|d| d.to_string())
             .unwrap_or_default()
     );
-    let compile = Command::new(&perl)
-        .arg("-c")
-        .arg(&harness_path)
-        .env("PERL5LIB", &perl5lib)
-        .output();
+    let compile = crate::command_output::output_with_timeout(
+        Command::new(&perl)
+            .arg("-c")
+            .arg(&harness_path)
+            .env("PERL5LIB", &perl5lib),
+        Duration::from_secs(30),
+    );
     match compile {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
@@ -196,11 +199,13 @@ pub fn build_perl_harness(
     // Build gate 2: require smoke-test — actually load the harness (which requires
     // the target) so an un-loadable target (missing CPAN dep, compile error in the
     // module) is a CLEAN SKIP, not a silent zero-exec run.
-    let smoke = Command::new(&perl)
-        .arg("-e")
-        .arg(format!("require q{{{}}}; 1", harness_path.display()))
-        .env("PERL5LIB", &perl5lib)
-        .output();
+    let smoke = crate::command_output::output_with_timeout(
+        Command::new(&perl)
+            .arg("-e")
+            .arg(format!("require q{{{}}}; 1", harness_path.display()))
+            .env("PERL5LIB", &perl5lib),
+        Duration::from_secs(30),
+    );
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
@@ -266,7 +271,7 @@ pub fn build_perl_harness(
 /// the receiver via `Package->new` IFF the package defines a `new` sub; otherwise
 /// skip cleanly (no-arg-ctor first cut, like the other lanes).
 fn resolve_target(candidate: &Candidate) -> Result<(PerlSub, String), String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let subs = parse_perl_subs(&source).map_err(|_| "failed to parse Perl source".to_owned())?;
     let sub = subs

@@ -14,6 +14,7 @@ use crate::auto::candidate::Candidate;
 use crate::auto::js::{parse_js, JsFunction};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 pub enum JsBuildResult {
     Built,
@@ -60,7 +61,7 @@ fn locate_js_runtime() -> Option<PathBuf> {
 
 /// Re-parse the source and find the discovered function by (name, line).
 fn resolve_target(candidate: &Candidate) -> Result<JsFunction, String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let fns = parse_js(&source);
     fns.iter()
@@ -121,12 +122,14 @@ fn js_module_load_error(module_abs: &Path) -> Option<String> {
         }
     }
     // Then require it in a throwaway process to confirm the dependency graph resolves.
-    let out = Command::new("node")
-        .arg("-e")
-        .arg("require(process.argv[1])")
-        .arg(module_abs)
-        .output()
-        .ok()?;
+    let out = crate::command_output::output_with_timeout(
+        Command::new("node")
+            .arg("-e")
+            .arg("require(process.argv[1])")
+            .arg(module_abs),
+        Duration::from_secs(30),
+    )
+    .ok()?;
     if out.status.success() {
         return None;
     }
@@ -268,7 +271,10 @@ pub fn build_ts_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         .arg("--format=cjs")
         .arg("--platform=node")
         .arg(format!("--outfile={}", out_js.display()));
-    match cmd.output() {
+    match crate::command_output::output_with_timeout(
+        &mut cmd,
+        std::time::Duration::from_secs(30 * 60),
+    ) {
         Ok(o) if o.status.success() => {}
         Ok(o) => {
             let msg = String::from_utf8_lossy(&o.stderr);

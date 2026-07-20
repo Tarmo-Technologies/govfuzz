@@ -53,6 +53,18 @@ pub struct StaticScanArgs {
     #[arg(long)]
     pub since: Option<String>,
 
+    /// Maximum RSS for govfuzz's static-analysis process, in MiB. When reached,
+    /// the scanner stops admitting new files/interprocedural work and records an
+    /// analysis gap instead of risking a host OOM. By default it uses the smaller
+    /// of 80% of host-available memory and 70% of the cgroup memory limit.
+    #[arg(long = "max-memory-mb", value_name = "MB")]
+    pub max_memory_mb: Option<u64>,
+
+    /// Parallel static-analysis workers. Lower this on memory-constrained hosts;
+    /// each worker may temporarily hold a source file and its parsed copy.
+    #[arg(long, value_name = "N")]
+    pub jobs: Option<usize>,
+
     /// Also run installed, profile-allowed external analyzers (gosec/Bandit/semgrep/
     /// GNATcheck) as subprocesses and fold their findings — the rule breadth govfuzz
     /// deliberately doesn't reimplement (XSS/CSRF and framework rules) — into
@@ -70,6 +82,12 @@ pub fn run(args: StaticScanArgs) -> i32 {
     // every StaticScanOptions construction site.
     if let Some(rev) = &args.since {
         std::env::set_var("GOVFUZZ_SINCE_REV", rev);
+    }
+    if let Some(mb) = args.max_memory_mb {
+        std::env::set_var("GOVFUZZ_MAX_MEMORY_KB", mb.saturating_mul(1024).to_string());
+    }
+    if let Some(jobs) = args.jobs {
+        std::env::set_var("GOVFUZZ_STATIC_JOBS", jobs.max(1).to_string());
     }
     if let Some(sloc_path) = &args.sloc {
         // A relative path lands in the report output dir (`--out`), beside

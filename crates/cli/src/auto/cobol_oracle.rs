@@ -14,6 +14,7 @@
 
 use serde_json::Value;
 use std::path::Path;
+use std::time::Duration;
 
 /// Replay every COBOL (`H-B*`) crash finding to recover libcob's diagnostic and
 /// enrich the finding record. Returns the number of findings enriched.
@@ -73,7 +74,11 @@ pub fn run_cobol_attribution(work_dir: &Path) -> usize {
 /// Run the harness on `input` and return the first `libcob: ...: error: ...`
 /// diagnostic line from its stderr, if any.
 fn replay_capture_libcob(bin: &Path, input: &Path) -> Option<LibcobDiag> {
-    let out = std::process::Command::new(bin).arg(input).output().ok()?;
+    let out = crate::command_output::output_with_timeout(
+        std::process::Command::new(bin).arg(input),
+        Duration::from_secs(15),
+    )
+    .ok()?;
     let stderr = String::from_utf8_lossy(&out.stderr);
     for line in stderr.lines() {
         if let Some(diag) = parse_libcob_line(line) {

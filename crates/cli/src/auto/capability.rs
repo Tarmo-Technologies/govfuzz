@@ -193,7 +193,8 @@ fn replay_into(
 ) -> bool {
     let log = hdir.join("cap_runtrace.jsonl");
     let _ = std::fs::write(&log, "");
-    let completed = replay_command(bin)
+    let mut command = replay_command(bin);
+    command
         .arg(input)
         .env("LD_PRELOAD", ld_preload)
         .env("GOVFUZZ_RUNTRACE_LOG", &log)
@@ -203,10 +204,13 @@ fn replay_into(
         // coverage-instrumented `main` otherwise HANGS in the ASan crash symbolizer
         // (run without the shim's symbolizer scoping in this post-hoc replay), which
         // would wedge the whole capability pass on the first crashing input.
-        .env("ASAN_OPTIONS", "abort_on_error=0:exitcode=0:symbolize=0")
-        .output()
-        .map(|output| !matches!(output.status.code(), Some(124 | 137)))
-        .unwrap_or(false);
+        .env("ASAN_OPTIONS", "abort_on_error=0:exitcode=0:symbolize=0");
+    let completed = crate::command_output::output_with_timeout(
+        &mut command,
+        std::time::Duration::from_secs(15),
+    )
+    .map(|output| !matches!(output.status.code(), Some(124 | 137)))
+    .unwrap_or(false);
     let mut events = runtrace::parse_log(&log).unwrap_or_default();
     runtrace::dedupe_in_place(&mut events);
     let _ = std::fs::remove_file(&log);

@@ -227,7 +227,7 @@ fn auto_args_from_ci(args: &CiArgs, scoped_files: &[PathBuf]) -> AutoArgs {
         fresh_discovery: false,
         resume: false,
         iterations: None,
-        rss_limit_mb: 2048,
+        rss_limit_mb: crate::auto::cli::default_auto_rss_limit_mb(),
         no_stubs: args.no_stubs,
         list_fakes: false,
         targets: Vec::new(),

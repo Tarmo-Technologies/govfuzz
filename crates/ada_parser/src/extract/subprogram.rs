@@ -208,10 +208,26 @@ fn parse_parameters(
         }
 
         index = after_names.saturating_add(1);
-        let (mode, is_aliased) = parse_param_mode(tokens, &mut index);
+        let (mode, is_aliased, is_not_null_access) = parse_param_mode(tokens, &mut index);
         let type_start = index;
         let type_end = find_param_type_end(tokens, index, close_index);
         let type_name = type_name_from_tokens(tokens, type_start, type_end);
+        // For an anonymous access-to-subprogram formal, the words inside the
+        // callback profile are not a dotted type name. Preserve the full profile
+        // structurally so harness generation can synthesize a conforming callback
+        // or pass null. Without this, `access function (Recipient : Address)
+        // return Boolean` becomes the bogus type `Recipient.Address.Boolean`.
+        let anonymous_subprogram_profile = (matches!(mode, ParamMode::AccessMode)
+            && matches!(
+                tokens.get(type_start).map(|token| &token.effective_kind),
+                Some(TokenKind::KwFunction | TokenKind::KwProcedure)
+            ))
+        .then(|| {
+            source_text(source, tokens, type_start, type_end)
+                .unwrap_or_default()
+                .trim()
+                .to_owned()
+        });
         index = type_end;
 
         let default = if kind_at(tokens, index, &TokenKind::Assign) {
@@ -224,12 +240,27 @@ fn parse_parameters(
         };
 
         for name in names {
-            let mut type_ref = unknown_type_ref(*type_id, type_name.clone());
+            let mut type_ref = if let Some(profile) = &anonymous_subprogram_profile {
+                TypeRef {
+                    id: TypeId(*type_id),
+                    name_path: Vec::new(),
+                    visibility: Visibility::LibraryLevel,
+                    owner: TypeOwner::LibraryLevel,
+                    kind: TypeKind::Access { target: TypeId(0) },
+                    constraints: Constraints(profile.clone()),
+                    aspects: Aspects(Vec::new()),
+                }
+            } else {
+                unknown_type_ref(*type_id, type_name.clone())
+            };
             if is_aliased {
                 // An `aliased` formal requires the harness local to be `aliased`
                 // too. Carry it as a marker on the formal's type_ref aspects (read
                 // back before type resolution, which replaces the type_ref).
                 type_ref.aspects.0.push("aliased".to_owned());
+            }
+            if is_not_null_access {
+                type_ref.aspects.0.push("not_null_access".to_owned());
             }
             params.push(Parameter {
                 name,
@@ -300,13 +331,13 @@ fn skip_param_separators(tokens: &[Token], index: &mut usize) {
 
 /// Parse the optional mode prefix of a formal parameter, returning the mode and
 /// whether the formal is `aliased` (`procedure P (X : aliased T)`).
-fn parse_param_mode(tokens: &[Token], index: &mut usize) -> (ParamMode, bool) {
+fn parse_param_mode(tokens: &[Token], index: &mut usize) -> (ParamMode, bool, bool) {
     let is_aliased = consume_kind(tokens, index, &TokenKind::KwAliased);
 
     if consume_kind(tokens, index, &TokenKind::KwNot) {
         consume_kind(tokens, index, &TokenKind::KwNull);
         if consume_kind(tokens, index, &TokenKind::KwAccess) {
-            return (ParamMode::AccessMode, is_aliased);
+            return (ParamMode::AccessMode, is_aliased, true);
         }
     }
 
@@ -323,7 +354,7 @@ fn parse_param_mode(tokens: &[Token], index: &mut usize) -> (ParamMode, bool) {
     } else {
         ParamMode::In
     };
-    (mode, is_aliased)
+    (mode, is_aliased, false)
 }
 
 fn find_param_type_end(tokens: &[Token], mut index: usize, close_index: usize) -> usize {
@@ -441,15 +472,20 @@ fn type_name_from_tokens(tokens: &[Token], start: usize, end: usize) -> Vec<Stri
     while index < end {
         match tokens.get(index).map(|token| &token.effective_kind) {
             Some(TokenKind::Identifier(name)) => {
-                if !current.is_empty() {
+                if !current.is_empty() && !current.ends_with('.') && !current.ends_with('\'') {
                     path.push(current);
                     current = String::new();
                 }
                 current.push_str(name);
             }
-            Some(TokenKind::Dot | TokenKind::Tick) => {
+            Some(TokenKind::Dot) => {
                 if !current.is_empty() {
                     current.push('.');
+                }
+            }
+            Some(TokenKind::Tick) => {
+                if !current.is_empty() {
+                    current.push('\'');
                 }
             }
             Some(TokenKind::KwAccess | TokenKind::KwNot | TokenKind::KwAliased) => {}
@@ -642,6 +678,22 @@ mod tests {
         assert_eq!(packages.len(), 2);
         assert_eq!(packages[1].name, "parent.child");
         assert_eq!(packages[1].parent, Some(PackageId(0)));
+    }
+
+    #[test]
+    fn separate_package_body_owns_operations_under_full_parent_path() {
+        let source = "separate (Crypto.Types.Big_Numbers) \
+                      package body Utils is \
+                         function To_Big_Unsigned (S : String) return Integer is (0); \
+                      end Utils;";
+        let (tree, tokens) = tree_and_tokens(source);
+        let packages = extract_packages(&tree, source, &tokens);
+        let subprograms = extract_subprograms(&tree, source, &tokens, AdaStandard::Ada2012);
+
+        assert_eq!(packages.len(), 1);
+        assert_eq!(packages[0].name, "crypto.types.big_numbers.utils");
+        assert_eq!(subprograms.len(), 1);
+        assert_eq!(subprograms[0].owner, SubprogramOwner::Package(PackageId(0)));
     }
 
     #[test]
@@ -909,5 +961,43 @@ mod tests {
 
         assert_eq!(subprograms[0].params[0].mode, ParamMode::AccessMode);
         assert_eq!(subprograms[0].params[0].type_ref.name_path, vec!["integer"]);
+        assert!(subprograms[0].params[0]
+            .type_ref
+            .aspects
+            .0
+            .contains(&"not_null_access".to_owned()));
+    }
+
+    #[test]
+    fn anonymous_access_function_preserves_callback_profile() {
+        let source =
+            "procedure Run (Filter : access function (Item : Address) return Boolean := null);";
+        let (tree, tokens) = tree_and_tokens(source);
+
+        let subprograms = extract_subprograms(&tree, source, &tokens, AdaStandard::Ada2012);
+        let param = &subprograms[0].params[0];
+
+        assert_eq!(param.mode, ParamMode::AccessMode);
+        assert!(param.type_ref.name_path.is_empty());
+        assert!(matches!(param.type_ref.kind, TypeKind::Access { .. }));
+        assert_eq!(
+            param.type_ref.constraints.0,
+            "function (Item : Address) return Boolean"
+        );
+        assert_eq!(
+            param.default.as_ref().map(|expr| expr.0.as_str()),
+            Some("null")
+        );
+    }
+
+    #[test]
+    fn qualified_and_classwide_type_marks_remain_single_paths() {
+        let source = "procedure Run (Moment : Ada.Calendar.Time; Parser : Argument_Parser'Class);";
+        let (tree, tokens) = tree_and_tokens(source);
+
+        let subprograms = extract_subprograms(&tree, source, &tokens, AdaStandard::Ada2012);
+        let params = &subprograms[0].params;
+        assert_eq!(params[0].type_ref.name_path, vec!["ada.calendar.time"]);
+        assert_eq!(params[1].type_ref.name_path, vec!["argument_parser'class"]);
     }
 }

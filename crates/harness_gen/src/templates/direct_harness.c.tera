@@ -33,6 +33,13 @@
 {%- endfor %}
 #include "govfuzz_decode.h"
 
+/* Project headers sometimes redirect libc calls with object-like macros
+ * (c-ares maps getenv to ares_getenv). The generated driver must read its own
+ * GOVFUZZ_* control variables through libc, independently of target policy. */
+#ifdef getenv
+#undef getenv
+#endif
+
 /* Sanitizer-runtime callbacks (edge coverage + cmplog operand capture, #400)
  * must never be instrumented themselves: with `-fsanitize-coverage=trace-cmp`
  * on, an un-attributed compare inside one of these would recurse into the

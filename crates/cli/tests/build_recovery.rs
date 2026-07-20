@@ -115,6 +115,14 @@ enum Missing {
         #[serde(default)]
         locator_override: Option<String>,
     },
+    /// Declarative kind: source calls a symbol whose declaration disappeared
+    /// with another removed artifact. No linker flag or tempdir action is needed.
+    UnknownSymbol {
+        name: String,
+        expect_surfaced: Option<String>,
+        #[serde(default)]
+        locator_override: Option<String>,
+    },
 }
 
 fn discover_scenarios() -> Vec<PathBuf> {
@@ -239,6 +247,9 @@ fn expect_surfaced_of(entry: &Missing) -> Option<&String> {
         }
         | Missing::UnknownType {
             expect_surfaced, ..
+        }
+        | Missing::UnknownSymbol {
+            expect_surfaced, ..
         } => expect_surfaced.as_ref(),
     }
 }
@@ -255,7 +266,8 @@ fn locator_of(entry: &Missing) -> &str {
         | Missing::RuntimeDlopen { path, .. } => path,
         Missing::EnvVar { name, .. }
         | Missing::SystemLib { name, .. }
-        | Missing::UnknownType { name, .. } => name,
+        | Missing::UnknownType { name, .. }
+        | Missing::UnknownSymbol { name, .. } => name,
         Missing::RuntimeEndpoint { address, .. } => address,
     }
 }
@@ -287,6 +299,9 @@ fn locator_override_of(entry: &Missing) -> Option<&str> {
             locator_override, ..
         }
         | Missing::UnknownType {
+            locator_override, ..
+        }
+        | Missing::UnknownSymbol {
             locator_override, ..
         } => locator_override,
     };
@@ -413,7 +428,8 @@ fn run_one(scenario_path: &Path) -> Result<(), String> {
             | Missing::RuntimeFile { .. }
             | Missing::RuntimeEndpoint { .. }
             | Missing::RuntimeDlopen { .. }
-            | Missing::UnknownType { .. } => {
+            | Missing::UnknownType { .. }
+            | Missing::UnknownSymbol { .. } => {
                 // declarative kinds — no tempdir action
             }
         }

@@ -349,9 +349,42 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
     } else {
         &args.target_subprogram.params
     };
-    for param in target_params {
+    for (param_index, param) in target_params.iter().enumerate() {
         let resolved_param = resolve_param_type(args.ast, param);
-        let resolved_param = qualify_generic_local_param_type(args, resolved_param);
+        let mut resolved_param = qualify_generic_local_param_type(args, resolved_param);
+        qualify_local_container_instance_type(
+            args.ast,
+            args.target_subprogram,
+            &mut resolved_param.type_ref,
+        );
+        // An unsupported anonymous callback may still be optional. When it and
+        // every remaining formal have defaults, stop the positional actual list
+        // here and let Ada apply those declared defaults. This avoids inventing a
+        // callback whose nested parameter types are not visible in the harness
+        // (`Reply_Filter : access function (Recipient : Email_Address) ...`).
+        // Supported byte-source/sink profiles continue through the active
+        // Gf_Callbacks path below.
+        let anonymous_callback = resolved_param.type_ref.name_path.is_empty()
+            && matches!(resolved_param.type_ref.kind, TypeKind::Access { .. })
+            && matches!(
+                resolved_param
+                    .type_ref
+                    .constraints
+                    .0
+                    .trim_start()
+                    .split_whitespace()
+                    .next(),
+                Some(word) if word.eq_ignore_ascii_case("function")
+                    || word.eq_ignore_ascii_case("procedure")
+            );
+        if anonymous_callback
+            && access_to_subprogram_callback(args.ast, &resolved_param.type_ref).is_none()
+            && target_params[param_index..]
+                .iter()
+                .all(|remaining| remaining.default.is_some())
+        {
+            break;
+        }
         // `with` the package that declares this parameter's type. A parameter of
         // a type from another package (e.g. `create_archive`'s `Zip_Streams.
         // Zipstream_Class_Access`) is named qualified in the harness, so that
@@ -415,6 +448,55 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                 }
                 continue;
             }
+            // A nonabstract class-wide root can itself be the concrete actual.
+            // This is the ordinary state-holder case, such as
+            // `Argument_Parser'Class`: declare a fresh `Argument_Parser` and pass
+            // it to the class-wide formal. Prefer the byte initializer above
+            // when one exists because that drives richer stream state.
+            if matches!(
+                param.mode,
+                ParamMode::In | ParamMode::InOut | ParamMode::AccessMode
+            ) {
+                if let Some(concrete_type) = default_constructible_class_wide_root(args.ast, &root)
+                {
+                    if let Some(with) = param_type_unit_with(
+                        args.ast,
+                        &concrete_type
+                            .split('.')
+                            .map(str::to_owned)
+                            .collect::<Vec<_>>(),
+                    ) {
+                        if !is_template_provided_with(&with) && !stream_withs.contains(&with) {
+                            stream_withs.push(with);
+                        }
+                    }
+                    let name = ada_name(&param.name);
+                    let (ada_type_name, once_decl) = if matches!(param.mode, ParamMode::AccessMode)
+                    {
+                        let backing = format!("{name}_Backing");
+                        (
+                            format!("access {concrete_type}"),
+                            Some(format!(
+                                "{backing} : aliased {concrete_type};\n   \
+                                 {name} : constant access {concrete_type} := {backing}'Access;"
+                            )),
+                        )
+                    } else {
+                        (concrete_type, None)
+                    };
+                    params.push(ParamContext {
+                        name,
+                        ada_type_name,
+                        decoder_expr: String::new(),
+                        setup_lines: Vec::new(),
+                        needs_initializer: false,
+                        pre_call_lines: Vec::new(),
+                        post_call_lines: Vec::new(),
+                        once_decl,
+                    });
+                    continue;
+                }
+            }
             // The STANDARD Ada stream root with no project-provided concrete
             // derivation: a by-reference `in`/`in out Ada.Streams.
             // Root_Stream_Type'Class` source parameter is the fuzz input channel
@@ -424,6 +506,35 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
             // the call — instead of skipping the target. Access-to-stream
             // parameters are handled later by `stream_sink` (write sinks), so
             // exclude them here.
+            if root.eq_ignore_ascii_case("root_stream_type")
+                && matches!(param.mode, ParamMode::AccessMode)
+            {
+                // Anonymous `access Root_Stream_Type'Class` parameters are input
+                // streams too (AGPL's filter `Create (Back : access ...)`). Keep
+                // one aliased concrete stream for the persistent harness and an
+                // anonymous access view whose designated type is the concrete
+                // derivation; Ada permits it as the class-wide access actual.
+                let name = ada_name(&param.name);
+                let backing = format!("{name}_Backing");
+                params.push(ParamContext {
+                    pre_call_lines: vec![format!(
+                        "Gf_Source_Streams.Set ({backing}, Buf'Unchecked_Access, Last);"
+                    )],
+                    name: name.clone(),
+                    ada_type_name: "access Gf_Source_Streams.Fuzz_Stream".to_owned(),
+                    decoder_expr: String::new(),
+                    setup_lines: Vec::new(),
+                    needs_initializer: false,
+                    post_call_lines: Vec::new(),
+                    once_decl: Some(format!(
+                        "{backing} : aliased Gf_Source_Streams.Fuzz_Stream;\n   \
+                         {name} : constant access Gf_Source_Streams.Fuzz_Stream := \
+                         {backing}'Access;"
+                    )),
+                });
+                needs_source_stream = true;
+                continue;
+            }
             if root.eq_ignore_ascii_case("root_stream_type")
                 && matches!(param.mode, ParamMode::In | ParamMode::InOut)
                 && !matches!(resolved_param.type_ref.kind, TypeKind::Access { .. })
@@ -575,6 +686,39 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
             continue;
         }
 
+        // An anonymous access formal designating a definite tagged object needs
+        // an access value, not the object value itself. Back it with one aliased,
+        // default-initialized concrete object (`not null access
+        // Validating_Reader`) so legacy APIs that use anonymous access as a
+        // non-owning receiver can be called without a factory.
+        if matches!(param.mode, ParamMode::AccessMode)
+            && matches!(
+                resolved_param.type_ref.kind,
+                TypeKind::Tagged {
+                    is_abstract: false,
+                    ..
+                }
+            )
+        {
+            let name = ada_name(&param.name);
+            let backing = format!("{name}_Backing");
+            let concrete = ada_type_name(&resolved_param.type_ref);
+            params.push(ParamContext {
+                name: name.clone(),
+                ada_type_name: format!("access {concrete}"),
+                decoder_expr: String::new(),
+                setup_lines: Vec::new(),
+                needs_initializer: false,
+                pre_call_lines: Vec::new(),
+                post_call_lines: Vec::new(),
+                once_decl: Some(format!(
+                    "{backing} : aliased {concrete};\n   \
+                     {name} : constant access {concrete} := {backing}'Access;"
+                )),
+            });
+            continue;
+        }
+
         // #457: an access-type opaque-handle parameter whose type has a discovered
         // Init/Delete lifecycle. Build the handle through its constructor and tear it
         // down after the call (`H := Create; target (H, ..); Destroy (H);`) instead
@@ -614,6 +758,18 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
         let decoder = match select_initializer_for_param(args.ast, &resolved_param, &registry) {
             Ok(decoder) => decoder,
             Err(error) => {
+                // Ada permits a trailing suffix of defaulted formals to be
+                // omitted. If the first unsupported value starts such a suffix,
+                // stop emitting positional actuals and let the declaration's
+                // defaults supply it. This is exact language behavior, not a
+                // guessed neutral, and is especially common in old APIs with a
+                // long tail of configuration handles and callbacks.
+                if target_params[param_index..]
+                    .iter()
+                    .all(|remaining| remaining.default.is_some())
+                {
+                    break;
+                }
                 // The direct decoder cannot build this parameter from scratch
                 // (a private/limited stateful type with no constructor
                 // function). Before giving up, look for an out-parameter
@@ -671,12 +827,15 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                 // (e.g. `LZMA.Decoding.Decode (info : out LZMA_Decoder_Info)`)
                 // this is always sound — an `out` formal does not read the
                 // initial value, and GNAT default-initializes any definite type.
-                // For `in out` the callee may read the initial value, so only an
-                // access type qualifies: its default (`null`) is always a
-                // defined, passable value the callee can replace (the idiom
-                // behind `Unzip.Streams.Open (File : in out Zipped_File_Type)`,
-                // whose handle is a private access type). Abstract tagged types
-                // are excluded — a bare object of an abstract type is illegal.
+                // For `in`/`in out`, a nonabstract tagged type is also useful
+                // without a factory: Ada default-initializes a definite tagged
+                // object, including the common `Limited_Controlled with private`
+                // state-holder idiom (parse_args' `Argument_Parser`). This gives
+                // mutators a valid fresh receiver instead of rejecting every
+                // operation in the package. Keep an opaque non-tagged private
+                // type conservative because it may have unknown discriminants.
+                // Abstract tagged types are excluded because declaring an object
+                // of one is illegal.
                 let receiver_kind_ok = matches!(
                     resolved_param.type_ref.kind,
                     TypeKind::Private
@@ -686,20 +845,29 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                         }
                         | TypeKind::Access { .. }
                 );
+                let generic_instance = {
+                    let parts = split_name_path(&resolved_param.type_ref.name_path);
+                    parts.len() >= 2
+                        && parts
+                            .last()
+                            .is_some_and(|leaf| leaf.eq_ignore_ascii_case("instance"))
+                };
                 let bare_declarable = match param.mode {
-                    ParamMode::Out => receiver_kind_ok,
-                    // `in out` may read the initial value, so admit it only when
-                    // it is safe to do so: an access type (its `null` default is
-                    // always passable), or — for a private/tagged handle whose
-                    // full view we cannot see — when the target itself reads like
-                    // a constructor (`Unzip.Streams.Open (File : in out
-                    // Zipped_File_Type)`), which sets the receiver up rather than
-                    // requiring existing state. A mutator (`Add_File`) is not
-                    // constructor-named, so its receiver still skips.
-                    ParamMode::InOut => {
+                    ParamMode::Out => receiver_kind_ok || generic_instance,
+                    // A tagged declaration performs its language-defined default
+                    // initialization; an access type has the defined null default.
+                    ParamMode::In | ParamMode::InOut => {
                         matches!(resolved_param.type_ref.kind, TypeKind::Access { .. })
-                            || (receiver_kind_ok
+                            || matches!(
+                                resolved_param.type_ref.kind,
+                                TypeKind::Tagged {
+                                    is_abstract: false,
+                                    ..
+                                }
+                            ) && find_declared_type(args.ast, &resolved_param.type_ref).is_some()
+                            || (matches!(resolved_param.type_ref.kind, TypeKind::Private)
                                 && is_constructor_like_name(&args.target_subprogram.name))
+                            || generic_instance
                     }
                     _ => false,
                 };
@@ -728,13 +896,25 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                 ));
             }
         };
+        let uses_callbacks = decoder.call_expr.contains("Gf_Callbacks.")
+            || decoder
+                .setup_lines
+                .iter()
+                .any(|line| line.contains("Gf_Callbacks."));
+        let pre_call_lines = if uses_callbacks && !callback_set_emitted {
+            callback_set_emitted = true;
+            vec!["Gf_Callbacks.Set (Buf'Unchecked_Access, Last);".to_owned()]
+        } else {
+            Vec::new()
+        };
+        needs_callbacks = needs_callbacks || uses_callbacks;
         params.push(ParamContext {
             name: ada_name(&param.name),
             ada_type_name: aliased_local_type(param, ada_type_name(&resolved_param.type_ref)),
             decoder_expr: decoder.call_expr,
             setup_lines: decoder.setup_lines,
             needs_initializer: true,
-            pre_call_lines: Vec::new(),
+            pre_call_lines,
             post_call_lines: Vec::new(),
             once_decl: None,
         });
@@ -827,6 +1007,26 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
         needs_source_stream,
         needs_callbacks,
     })
+}
+
+/// Return the qualified declaration name for a public, nonabstract tagged root
+/// that can be used as the concrete actual for `<Root>'Class`.
+fn default_constructible_class_wide_root(ast: &StructuralAst, root: &str) -> Option<String> {
+    let ty = ast.types.iter().find(|ty| {
+        ty.visibility == Visibility::Public
+            && ty
+                .name_path
+                .last()
+                .is_some_and(|name| name.trim_matches('.').eq_ignore_ascii_case(root))
+            && matches!(
+                ty.kind,
+                TypeKind::Tagged {
+                    is_abstract: false,
+                    ..
+                }
+            )
+    })?;
+    Some(ada_path(&qualified_type_name_path(ast, ty)))
 }
 
 fn build_sequence_context(
@@ -1165,7 +1365,7 @@ fn discover_out_param_constructor(
         return None;
     }
 
-    let target_simple = target_type.name_path.last()?.to_ascii_lowercase();
+    let target_type_name = resolved_type_name(ast, target_type);
     for sp in &ast.subprograms {
         if sp.id == target_id {
             // The target under test is never its own constructor.
@@ -1176,11 +1376,7 @@ fn discover_out_param_constructor(
         }
         let Some(receiver_index) = sp.params.iter().position(|param| {
             matches!(param.mode, ParamMode::Out | ParamMode::InOut)
-                && param
-                    .type_ref
-                    .name_path
-                    .last()
-                    .is_some_and(|name| name.eq_ignore_ascii_case(&target_simple))
+                && out_param_receiver_matches(ast, sp, param, &target_type_name)
         }) else {
             continue;
         };
@@ -1317,6 +1513,39 @@ fn discover_out_param_constructor(
         });
     }
     None
+}
+
+/// Whether an out/in-out formal names `target_type_name` in the lexical package
+/// scope of `sp`. Comparing only the bare leaf cross-matched ubiquitous names
+/// such as `Stream_Type` across sibling packages (AGPL selected
+/// `Agpl.Streams.Controlled.Initialize` for a Bandwidth_Throttle stream). For an
+/// unqualified formal, try its owning package and each dotted ancestor so a
+/// child unit can still initialize a type declared by its parent.
+fn out_param_receiver_matches(
+    ast: &StructuralAst,
+    sp: &Subprogram,
+    param: &Parameter,
+    target_type_name: &str,
+) -> bool {
+    let raw_parts = split_name_path(&param.type_ref.name_path);
+    let Some(leaf) = raw_parts.last() else {
+        return false;
+    };
+    if raw_parts.len() > 1 {
+        return crate::registry::type_name_matches(&raw_parts.join("."), target_type_name);
+    }
+
+    let SubprogramOwner::Package(package_id) = sp.owner else {
+        return !target_type_name.contains('.') && leaf.eq_ignore_ascii_case(target_type_name);
+    };
+    let Some(owner) = package_full_name(ast, package_id) else {
+        return false;
+    };
+    let owner_parts: Vec<&str> = owner.split('.').filter(|part| !part.is_empty()).collect();
+    (1..=owner_parts.len()).rev().any(|depth| {
+        let candidate = format!("{}.{}", owner_parts[..depth].join("."), leaf);
+        crate::registry::type_name_matches(&candidate, target_type_name)
+    })
 }
 
 /// When the target is an operation of a generic package reached through a
@@ -1462,6 +1691,7 @@ fn generic_qualified_return_type_name(args: &GenerateDirectArgs<'_>, type_ref: &
 fn resolve_param_type(ast: &StructuralAst, param: &Parameter) -> Parameter {
     let mut resolved_param = param.clone();
     resolved_param.type_ref = resolve_type_ref(ast, &param.type_ref);
+    qualify_nested_package_type(ast, &mut resolved_param.type_ref);
     // An array whose element is a composite type (record/tagged) can't be
     // decoded element-wise as a fuzz byte (zip-ada `huffman.Descriptor =
     // array (...) of Length_Code_Pair`); assigning `U8` to a record element is
@@ -1480,6 +1710,73 @@ fn resolve_param_type(ast: &StructuralAst, param: &Parameter) -> Parameter {
     resolved_param
 }
 
+/// Expand a type named through a nested package that was directly visible in
+/// the target's declaration (`Arg_Lists.Vector`) to the package's full path
+/// (`GNATCOLL.OS.Process.Arg_Lists.Vector`). A standalone harness only `with`s
+/// the compilation unit and therefore cannot see the nested package by its
+/// local simple name.
+fn qualify_nested_package_type(ast: &StructuralAst, type_ref: &mut TypeRef) {
+    let parts = split_name_path(&type_ref.name_path);
+    if parts.len() < 2 {
+        return;
+    }
+    let package_path = parts[..parts.len() - 1].join(".");
+    if package_path.contains('.') {
+        return;
+    }
+    let Some(package) = ast.packages.iter().find(|package| {
+        package.parent.is_some() && package.name.eq_ignore_ascii_case(&package_path)
+    }) else {
+        return;
+    };
+    let Some(full_package) = package_full_name(ast, package.id) else {
+        return;
+    };
+    let mut qualified = full_package
+        .split('.')
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    qualified.push(parts[parts.len() - 1].to_owned());
+    type_ref.name_path = qualified;
+}
+
+/// Generic package instantiations do not open package scopes in the structural
+/// AST (`package Arg_Lists is new Ada.Containers...`). For their canonical
+/// container types, qualify a local two-part name through the target's owning
+/// package so a standalone harness can name it.
+fn qualify_local_container_instance_type(
+    ast: &StructuralAst,
+    target: &Subprogram,
+    type_ref: &mut TypeRef,
+) {
+    let parts = split_name_path(&type_ref.name_path);
+    if parts.len() != 2
+        || !matches!(
+            parts[1].to_ascii_lowercase().as_str(),
+            "vector" | "map" | "list" | "set" | "tree" | "holder" | "instance"
+        )
+    {
+        return;
+    }
+    // A real package node can already be qualified by the normal path above.
+    if ast
+        .packages
+        .iter()
+        .any(|package| package.name.eq_ignore_ascii_case(&parts[0]))
+    {
+        return;
+    }
+    let SubprogramOwner::Package(owner_id) = target.owner else {
+        return;
+    };
+    let Some(owner) = package_full_name(ast, owner_id) else {
+        return;
+    };
+    let mut qualified = owner.split('.').map(str::to_owned).collect::<Vec<_>>();
+    qualified.extend(parts);
+    type_ref.name_path = qualified;
+}
+
 /// Fully-qualify a standard-library type the source referenced via a `use`
 /// clause, so it is visible in the harness (which `with`s but never `use`s).
 /// Only types not declared in the tree (single-component name) are rewritten.
@@ -1489,6 +1786,9 @@ fn qualify_known_library_type(type_ref: &mut TypeRef) {
     }
     let qualified: &[&str] = match type_ref.name_path[0].to_ascii_lowercase().as_str() {
         "unbounded_string" => &["Ada", "Strings", "Unbounded", "Unbounded_String"],
+        "stream_element" => &["Ada", "Streams", "Stream_Element"],
+        "stream_element_count" => &["Ada", "Streams", "Stream_Element_Count"],
+        "stream_element_offset" => &["Ada", "Streams", "Stream_Element_Offset"],
         _ => return,
     };
     type_ref.name_path = qualified.iter().map(|s| (*s).to_owned()).collect();
@@ -1867,6 +2167,7 @@ fn gf_callbacks_sources() -> (&'static str, &'static str) {
          \x20  --  Source callbacks: yield the next fuzz byte, raise GF_Fuzz_EOF at end.\n\
          \x20  procedure Src_Char (C : out Character);\n\
          \x20  procedure Src_Byte (B : out Interfaces.Unsigned_8);\n\
+         \x20  procedure Src_String (Item : out String; Last : out Natural);\n\
          \x20  function  Fn_Char return Character;\n\
          \x20  function  Fn_Byte return Interfaces.Unsigned_8;\n\
          \x20  function  Fn_Integer return Integer;\n\
@@ -1874,6 +2175,7 @@ fn gf_callbacks_sources() -> (&'static str, &'static str) {
          \x20  --  Sink callbacks: discard the value (the callee's output channel).\n\
          \x20  procedure Snk_Char (C : Character);\n\
          \x20  procedure Snk_Byte (B : Interfaces.Unsigned_8);\n\
+         \x20  procedure Snk_String (Item : in String);\n\
          \x20  procedure Noop;\n\
          end Gf_Callbacks;\n",
         "--  SPDX-License-Identifier: Apache-2.0\n\
@@ -1908,6 +2210,18 @@ fn gf_callbacks_sources() -> (&'static str, &'static str) {
          \x20  begin\n\
          \x20     B := Interfaces.Unsigned_8 (Next);\n\
          \x20  end Src_Byte;\n\
+         \x20  procedure Src_String (Item : out String; Last : out Natural) is\n\
+         \x20     Count : Natural := 0;\n\
+         \x20  begin\n\
+         \x20     Item := (others => Character'Val (0));\n\
+         \x20     for I in Item'Range loop\n\
+         \x20        exit when Data = null or else Pos > Gf_Callbacks.Last;\n\
+         \x20        Item (I) := Character'Val (Integer (Data (Pos)));\n\
+         \x20        Pos := Pos + 1;\n\
+         \x20        Count := Count + 1;\n\
+         \x20     end loop;\n\
+         \x20     Last := Count;\n\
+         \x20  end Src_String;\n\
          \x20  function Fn_Char return Character is\n\
          \x20  begin\n\
          \x20     return Character'Val (Integer (Next));\n\
@@ -1938,6 +2252,11 @@ fn gf_callbacks_sources() -> (&'static str, &'static str) {
          \x20  begin\n\
          \x20     null;\n\
          \x20  end Snk_Byte;\n\
+         \x20  procedure Snk_String (Item : in String) is\n\
+         \x20     pragma Unreferenced (Item);\n\
+         \x20  begin\n\
+         \x20     null;\n\
+         \x20  end Snk_String;\n\
          \x20  procedure Noop is\n\
          \x20  begin\n\
          \x20     null;\n\
@@ -2001,6 +2320,14 @@ fn callback_subprogram_for_profile(lower: &str) -> Option<&'static str> {
             None => Some("Noop"),
             Some(inner) if inner.is_empty() => Some("Noop"),
             Some(inner) => {
+                // Buffered reader callback (`Item : out String; Last : out
+                // Natural`), used by yaml-ada and similar stream adapters.
+                if inner.contains(';')
+                    && inner.contains("item : out string")
+                    && inner.contains("last : out natural")
+                {
+                    return Some("Src_String");
+                }
                 // A single in/out scalar parameter is the getchar/putchar shape;
                 // anything with more parameters we cannot match a fixed backing
                 // to, so skip.
@@ -2012,6 +2339,7 @@ fn callback_subprogram_for_profile(lower: &str) -> Option<&'static str> {
                     (CbMode::Out, "character" | "standard.character") => Some("Src_Char"),
                     (CbMode::Out, t) if callback_is_byte(t) => Some("Src_Byte"),
                     (CbMode::In, "character" | "standard.character") => Some("Snk_Char"),
+                    (CbMode::In, "string" | "standard.string") => Some("Snk_String"),
                     (CbMode::In, t) if callback_is_byte(t) => Some("Snk_Byte"),
                     _ => None,
                 }
@@ -2360,6 +2688,8 @@ fn external_base_scalar_kind(name_path: &[String]) -> Option<ScalarKind> {
         // The leaf is unambiguous (no Standard/Ada type shares it).
         | "size_t"
         | "ptrdiff_t" => Some(ScalarKind::Integer),
+        "boolean" => Some(ScalarKind::Boolean),
+        "character" | "wide_character" | "wide_wide_character" => Some(ScalarKind::Character),
         "ieee_float_32" | "ieee_float_64" | "float" | "long_float" | "short_float"
         | "long_long_float" => Some(ScalarKind::Float),
         _ => None,
@@ -2403,6 +2733,18 @@ fn resolve_type_ref(ast: &StructuralAst, type_ref: &TypeRef) -> TypeRef {
                     // type is not its base — but set the kind so the decoder
                     // emits an integer/float decode cast to that name.
                     resolved_type.kind = TypeKind::Scalar(scalar);
+                } else if external_name.last().is_some_and(|name| {
+                    matches!(
+                        name.to_ascii_lowercase().as_str(),
+                        "string" | "wide_string" | "wide_wide_string"
+                    )
+                }) {
+                    // A subtype such as XMLAda's `Byte_Sequence is String`
+                    // should take the normal string decode path. Keeping the
+                    // stale Derived kind makes derived-base resolution fail
+                    // before the distinctive Standard name is considered.
+                    resolved_type.name_path = external_name;
+                    resolved_type.kind = TypeKind::Unknown;
                 } else {
                     // Chain bottomed out at a name we don't have an AST for
                     // (e.g. `subtype Byte_Access is Voidp;` where Voidp is
@@ -2466,9 +2808,12 @@ fn servant_receiver_type_name(
 }
 
 fn find_declared_type<'a>(ast: &'a StructuralAst, type_ref: &TypeRef) -> Option<&'a TypeRef> {
-    ast.types
-        .iter()
-        .find(|declared_type| type_path_matches(&declared_type.name_path, &type_ref.name_path))
+    ast.types.iter().find(|declared_type| {
+        type_path_matches(
+            &qualified_type_name_path(ast, declared_type),
+            &type_ref.name_path,
+        )
+    })
 }
 
 fn resolve_derived_chain<'a>(ast: &'a StructuralAst, type_ref: &'a TypeRef) -> DerivedChainEnd<'a> {
@@ -2483,11 +2828,9 @@ fn resolve_derived_chain<'a>(ast: &'a StructuralAst, type_ref: &'a TypeRef) -> D
         let Some(base_name) = derived_base_name(&current.constraints.0) else {
             return DerivedChainEnd::Resolved(current);
         };
-        match ast
-            .types
-            .iter()
-            .find(|candidate| type_path_matches(&candidate.name_path, &base_name))
-        {
+        match ast.types.iter().find(|candidate| {
+            type_path_matches(&qualified_type_name_path(ast, candidate), &base_name)
+        }) {
             Some(base) => current = base,
             None => return DerivedChainEnd::External(base_name),
         }
@@ -2509,7 +2852,18 @@ fn derived_base_name(constraints: &str) -> Option<Vec<String>> {
         Some(idx) => &base[..idx],
         None => base,
     };
-    let base = base.trim();
+    let mut base = base.trim();
+    // A subtype may add a null exclusion before the actual subtype mark:
+    // `subtype Option_Ptr is not null General_Option_Ptr`. Following the
+    // derived chain through the whole phrase loses the public subtype and emits
+    // an invisible bare `General_Option_Ptr` in the harness. Strip only this Ada
+    // qualifier and keep resolving to the declared access type.
+    if base
+        .get(.."not null ".len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("not null "))
+    {
+        base = base["not null ".len()..].trim_start();
+    }
     if base.is_empty() {
         return None;
     }
@@ -2558,6 +2912,20 @@ fn ada_type_name(type_ref: &TypeRef) -> String {
     }
 
     match &type_ref.kind {
+        TypeKind::Access { .. }
+            if matches!(
+                type_ref
+                    .constraints
+                    .0
+                    .trim_start()
+                    .split_whitespace()
+                    .next(),
+                Some(word) if word.eq_ignore_ascii_case("function")
+                    || word.eq_ignore_ascii_case("procedure")
+            ) =>
+        {
+            format!("access {}", type_ref.constraints.0.trim())
+        }
         TypeKind::Scalar(ScalarKind::Integer) => "Integer".to_owned(),
         TypeKind::Scalar(ScalarKind::Boolean) => "Boolean".to_owned(),
         TypeKind::Scalar(ScalarKind::Float) => "Float".to_owned(),
@@ -2667,33 +3035,48 @@ fn package_full_name(ast: &StructuralAst, package_id: PackageId) -> Option<Strin
     Some(parts.join("."))
 }
 
-/// The compilation unit a parameter's (qualified) type name must be `with`ed
-/// under, or `None` when no extra `with` is needed. Resolves the type's
-/// immediate package against the parsed tree and returns its ROOT compilation
-/// unit (`Zip_Streams.Zipstream_Class_Access` -> `Zip_Streams`; a nested
-/// `BZip2.CRC.X` -> the root `BZip2`, since a nested package is not itself
-/// with-able). Returns `None` for an unqualified type, a type whose package is
-/// NOT in the tree (external `Ada.*`/`Interfaces.*`/`Standard.*`: auto-visible or
-/// template-provided, and `with Standard;` would be illegal), OR a type whose
-/// root compilation unit is a PRIVATE child unit (`private package
-/// UnZip.Decompress.Huffman`): a root harness cannot `with` a private child, so
-/// emitting it would be illegal — such a target is left to the private-child
-/// harness path / clean skip instead.
+/// The compilation unit a parameter's qualified type name must be `with`ed
+/// under, or `None` when no extra `with` is needed. Parser name paths may arrive
+/// component-wise or as one dotted component, so normalize them first. Preserve
+/// child compilation units represented by a dotted package name (`Crypto.Types.
+/// Dword` -> `with Crypto.Types;`), while a true nested package represented by a
+/// parent link still resolves to its with-able root (`BZip2.CRC.X` -> `BZip2`).
+/// Returns `None` for an unqualified/external type or a private package that a
+/// root harness cannot legally `with`.
 fn param_type_unit_with(ast: &StructuralAst, name_path: &[String]) -> Option<String> {
-    if name_path.len() < 2 {
+    let parts = split_name_path(name_path);
+    if parts.len() < 2 {
         return None;
     }
-    let immediate = name_path[name_path.len() - 2].trim_matches('.');
+    let package_path = parts[..parts.len() - 1].join(".");
+    let immediate = parts[parts.len() - 2].trim_matches('.');
     let pkg = ast
         .packages
         .iter()
-        .find(|p| p.name.eq_ignore_ascii_case(immediate))?;
+        .find(|p| {
+            p.name.eq_ignore_ascii_case(&package_path)
+                || package_full_name(ast, p.id)
+                    .is_some_and(|name| name.eq_ignore_ascii_case(&package_path))
+        })
+        // Older AST fixtures may only retain the immediate package component.
+        .or_else(|| {
+            ast.packages
+                .iter()
+                .find(|p| p.name.eq_ignore_ascii_case(immediate))
+        })?;
+    if pkg.is_private {
+        return None;
+    }
     let root = package_root(ast, pkg.id)?;
     // A private compilation unit cannot be named in a root harness's `with`.
     if root.is_private {
         return None;
     }
-    Some(ada_dotted_name(&root.name))
+    if pkg.parent.is_none() && pkg.name.contains('.') {
+        Some(ada_dotted_name(&pkg.name))
+    } else {
+        Some(ada_dotted_name(&root.name))
+    }
 }
 
 /// The top-level (root) ancestor `Package` — the only `with`-able unit for a
@@ -2975,14 +3358,14 @@ fn path_string(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        generate_direct_harness, generate_servant_direct_harness, GenerateDirectArgs,
-        GenerateServantDirectArgs,
+        generate_direct_harness, generate_servant_direct_harness, out_param_receiver_matches,
+        GenerateDirectArgs, GenerateServantDirectArgs,
     };
     use crate::HarnessGenError;
     use ada_parser::ast::{
-        AdaStandard, Aspects, Constraints, Package, PackageId, ParamMode, Parameter, ScalarKind,
-        Span, StructuralAst, Subprogram, SubprogramId, SubprogramKind, SubprogramOwner, TypeId,
-        TypeKind, TypeOwner, TypeRef, Unit, UnitId, UnitKind, UnitRef, Visibility,
+        AdaStandard, Aspects, Constraints, Expr, Package, PackageId, ParamMode, Parameter,
+        ScalarKind, Span, StructuralAst, Subprogram, SubprogramId, SubprogramKind, SubprogramOwner,
+        TypeId, TypeKind, TypeOwner, TypeRef, Unit, UnitId, UnitKind, UnitRef, Visibility,
     };
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -3057,6 +3440,71 @@ mod tests {
             super::standard_library_parent_unit("Sdpcm.Packets.Packet"),
             None
         );
+    }
+
+    #[test]
+    fn nested_package_type_is_qualified_for_root_harness() {
+        let root = package(1, "GNATCOLL.OS.Process");
+        let mut nested = package(2, "Arg_Lists");
+        nested.parent = Some(PackageId(1));
+        let mut ast = StructuralAst::new();
+        ast.packages = vec![root, nested];
+        let mut vector = type_ref("Arg_Lists.Vector", TypeKind::Unknown);
+
+        super::qualify_nested_package_type(&ast, &mut vector);
+
+        assert_eq!(
+            vector.name_path,
+            vec!["GNATCOLL", "OS", "Process", "Arg_Lists", "Vector"]
+        );
+    }
+
+    #[test]
+    fn local_generic_container_type_is_qualified_through_target_package() {
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(1)),
+            "Run",
+            Vec::new(),
+            None,
+        );
+        let mut ast = StructuralAst::new();
+        ast.packages = vec![package(1, "GNATCOLL.OS.Process")];
+        let mut vector = type_ref("Arg_Lists.Vector", TypeKind::Unknown);
+
+        super::qualify_local_container_instance_type(&ast, &target, &mut vector);
+
+        assert_eq!(
+            vector.name_path,
+            vec!["GNATCOLL", "OS", "Process", "Arg_Lists", "Vector"]
+        );
+    }
+
+    #[test]
+    fn local_generic_instance_is_default_declared() {
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(1)),
+            "Validate",
+            vec![param(
+                "Table",
+                "Simple_Type_Tables.Instance",
+                TypeKind::Unknown,
+            )],
+            None,
+        );
+        let ast = ast_with(
+            target.clone(),
+            Vec::new(),
+            vec![package(1, "Schema.Simple_Types")],
+        );
+        let output_dir = temp_dir("generic-instance").join("H-GENERIC-INSTANCE");
+
+        let main_adb =
+            fs::read_to_string(generate_for(&ast, &target, &output_dir).unwrap().main_adb).unwrap();
+
+        assert!(main_adb.contains("Table : Schema.Simple_Types.Simple_Type_Tables.Instance;"));
+        assert!(main_adb.contains("Schema.Simple_Types.Validate (Table);"));
     }
 
     #[test]
@@ -3734,6 +4182,14 @@ mod tests {
     }
 
     #[test]
+    fn derived_base_name_strips_null_exclusion_from_subtype_mark() {
+        assert_eq!(
+            super::derived_base_name("not null General_Option_Ptr"),
+            Some(vec!["General_Option_Ptr".to_owned()])
+        );
+    }
+
+    #[test]
     fn generate_decodes_type_derived_from_external_discrete() {
         // `type File_Mode is new Ada.Streams.Stream_IO.File_Mode` - a distinct
         // discrete type whose base is external. The decoder must emit a 'Val
@@ -3811,6 +4267,196 @@ mod tests {
             main_adb.contains("Use_It (Info)") || main_adb.contains("Zip.Use_It (Info)"),
             "target must be called with the constructed object: {main_adb}"
         );
+    }
+
+    #[test]
+    fn generate_default_initializes_nonabstract_tagged_receiver() {
+        // A definite tagged state holder does not need a factory. In particular,
+        // `type Argument_Parser is new Limited_Controlled with private` has a
+        // language-defined default initialization and is intended to be declared
+        // before its mutators are called.
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(7)),
+            "Set_Prologue",
+            vec![
+                param_with_mode(
+                    "A",
+                    "Argument_Parser",
+                    TypeKind::Tagged {
+                        base: TypeId(0),
+                        is_abstract: false,
+                    },
+                    ParamMode::InOut,
+                ),
+                param("Prologue", "String", TypeKind::Unknown),
+            ],
+            None,
+        );
+        let mut ast = ast_with(target.clone(), Vec::new(), vec![package(7, "Parse_Args")]);
+        let mut argument_parser = type_ref(
+            "Argument_Parser",
+            TypeKind::Tagged {
+                base: TypeId(0),
+                is_abstract: false,
+            },
+        );
+        argument_parser.owner = TypeOwner::Package(PackageId(7));
+        ast.types.push(argument_parser);
+        let output_dir = temp_dir("default-tagged-receiver").join("H-DEFAULT-TAGGED");
+
+        let generated = generate_for(&ast, &target, &output_dir).unwrap();
+        let main_adb = fs::read_to_string(generated.main_adb).unwrap();
+
+        assert!(
+            main_adb.contains("A : Argument_Parser;")
+                || main_adb.contains("A : Parse_Args.Argument_Parser;"),
+            "expected a bare, default-initialized tagged receiver: {main_adb}"
+        );
+        assert!(
+            main_adb.contains("Set_Prologue (A, Prologue)"),
+            "expected the target call to use the fresh receiver: {main_adb}"
+        );
+    }
+
+    #[test]
+    fn generate_uses_nonabstract_root_for_class_wide_receiver() {
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(8)),
+            "Set_Option_Argument",
+            vec![param_with_mode(
+                "A",
+                "Argument_Parser.Class",
+                TypeKind::Unknown,
+                ParamMode::InOut,
+            )],
+            None,
+        );
+        let mut ast = ast_with(
+            target.clone(),
+            Vec::new(),
+            vec![package(7, "Parse_Args"), package(8, "Parse_Args.Concrete")],
+        );
+        ast.types.push(TypeRef {
+            id: TypeId(10),
+            name_path: vec!["Argument_Parser".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(7)),
+            kind: TypeKind::Tagged {
+                base: TypeId(0),
+                is_abstract: false,
+            },
+            constraints: Constraints("Ada.Finalization.Limited_Controlled".to_owned()),
+            aspects: Aspects(Vec::new()),
+        });
+        let output_dir = temp_dir("class-wide-concrete-root").join("H-CLASS-ROOT");
+
+        let generated = generate_for(&ast, &target, &output_dir).unwrap();
+        let main_adb = fs::read_to_string(generated.main_adb).unwrap();
+
+        assert!(
+            main_adb.contains("A : Parse_Args.Argument_Parser;"),
+            "expected the class-wide formal to use a concrete root object: {main_adb}"
+        );
+        assert!(main_adb.contains("with Parse_Args;"));
+    }
+
+    #[test]
+    fn generate_backs_anonymous_access_to_tagged_with_aliased_object() {
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(7)),
+            "Parse_Grammar",
+            vec![param_with_mode(
+                "Handler",
+                "Validating_Reader",
+                TypeKind::Tagged {
+                    base: TypeId(0),
+                    is_abstract: false,
+                },
+                ParamMode::AccessMode,
+            )],
+            None,
+        );
+        let mut ast = ast_with(
+            target.clone(),
+            Vec::new(),
+            vec![package(7, "Schema.Readers")],
+        );
+        ast.types.push(TypeRef {
+            id: TypeId(10),
+            name_path: vec!["Validating_Reader".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(7)),
+            kind: TypeKind::Tagged {
+                base: TypeId(0),
+                is_abstract: false,
+            },
+            constraints: Constraints("Base_Reader".to_owned()),
+            aspects: Aspects(Vec::new()),
+        });
+        let output_dir = temp_dir("access-tagged-backing").join("H-ACCESS-TAGGED");
+
+        let main_adb =
+            fs::read_to_string(generate_for(&ast, &target, &output_dir).unwrap().main_adb).unwrap();
+
+        assert!(main_adb.contains("Handler_Backing : aliased Schema.Readers.Validating_Reader;"));
+        assert!(main_adb.contains(
+            "Handler : constant access Schema.Readers.Validating_Reader := Handler_Backing'Access;"
+        ));
+        assert!(main_adb.contains("Schema.Readers.Parse_Grammar (Handler);"));
+    }
+
+    #[test]
+    fn external_string_subtype_resolves_to_string_decode_kind() {
+        let mut ast = StructuralAst::new();
+        ast.types.push(TypeRef {
+            id: TypeId(10),
+            name_path: vec!["Byte_Sequence".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(7)),
+            kind: TypeKind::Derived { base: TypeId(0) },
+            constraints: Constraints("String".to_owned()),
+            aspects: Aspects(Vec::new()),
+        });
+        ast.packages.push(package(7, "Unicode.CES"));
+        let unresolved = param("URI", "Unicode.CES.Byte_Sequence", TypeKind::Unknown);
+
+        let resolved = super::resolve_param_type(&ast, &unresolved);
+
+        assert_eq!(resolved.type_ref.name_path, vec!["String"]);
+        assert_eq!(resolved.type_ref.kind, TypeKind::Unknown);
+    }
+
+    #[test]
+    fn qualified_type_lookup_does_not_cross_package_on_shared_leaf() {
+        let mut ast = StructuralAst::new();
+        ast.packages = vec![package(1, "Left"), package(2, "Right")];
+        ast.types.push(TypeRef {
+            id: TypeId(10),
+            name_path: vec!["Object_Access".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(1)),
+            kind: TypeKind::Private,
+            constraints: Constraints(String::new()),
+            aspects: Aspects(Vec::new()),
+        });
+        ast.types.push(TypeRef {
+            id: TypeId(11),
+            name_path: vec!["Object_Access".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(2)),
+            kind: TypeKind::Access { target: TypeId(9) },
+            constraints: Constraints(String::new()),
+            aspects: Aspects(Vec::new()),
+        });
+        let unresolved = param("Value", "Right.Object_Access", TypeKind::Unknown);
+
+        let resolved = super::resolve_param_type(&ast, &unresolved);
+
+        assert_eq!(resolved.type_ref.name_path, vec!["Right", "Object_Access"]);
+        assert!(matches!(resolved.type_ref.kind, TypeKind::Access { .. }));
     }
 
     #[test]
@@ -3976,6 +4622,91 @@ mod tests {
             main_adb.contains("Make (W, Gf_Ctor_Stream_1)")
                 || main_adb.contains("Pkg.Make (W, Gf_Ctor_Stream_1)"),
             "constructor must pass the backing stream: {main_adb}"
+        );
+    }
+
+    #[test]
+    fn out_param_constructor_receiver_does_not_cross_sibling_packages() {
+        let mut ast = StructuralAst::new();
+        ast.packages
+            .push(package(1, "Agpl.Streams.Bandwidth_Throttle"));
+        ast.packages.push(package(2, "Agpl.Streams.Controlled"));
+        let controlled_init = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(2)),
+            "Initialize",
+            vec![param_with_mode(
+                "This",
+                "Stream_Type",
+                TypeKind::Private,
+                ParamMode::InOut,
+            )],
+            None,
+        );
+        assert!(!out_param_receiver_matches(
+            &ast,
+            &controlled_init,
+            &controlled_init.params[0],
+            "Agpl.Streams.Bandwidth_Throttle.Stream_Type"
+        ));
+        assert!(out_param_receiver_matches(
+            &ast,
+            &controlled_init,
+            &controlled_init.params[0],
+            "Agpl.Streams.Controlled.Stream_Type"
+        ));
+
+        // A child package may initialize a type declared by its parent.
+        ast.packages.push(package(3, "Zip.Create"));
+        let child_load = subprogram(
+            2,
+            SubprogramOwner::Package(PackageId(3)),
+            "Load",
+            vec![param_with_mode(
+                "Info",
+                "Zip_Info",
+                TypeKind::Private,
+                ParamMode::Out,
+            )],
+            None,
+        );
+        assert!(out_param_receiver_matches(
+            &ast,
+            &child_load,
+            &child_load.params[0],
+            "Zip.Zip_Info"
+        ));
+    }
+
+    #[test]
+    fn anonymous_access_classwide_stream_uses_persistent_fuzz_stream() {
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(7)),
+            "Create",
+            vec![param_with_mode(
+                "Back",
+                "Ada.Streams.Root_Stream_Type.Class",
+                TypeKind::Private,
+                ParamMode::AccessMode,
+            )],
+            None,
+        );
+        let ast = ast_with(target.clone(), Vec::new(), vec![package(7, "Pkg")]);
+        let output_dir = temp_dir("access-source-stream").join("H-STREAM-ACCESS");
+
+        let generated = generate_for(&ast, &target, &output_dir).unwrap();
+        let main_adb = fs::read_to_string(generated.main_adb).unwrap();
+        assert!(main_adb.contains("with Gf_Source_Streams;"), "{main_adb}");
+        assert!(
+            main_adb.contains("Back_Backing : aliased Gf_Source_Streams.Fuzz_Stream;"),
+            "{main_adb}"
+        );
+        assert!(
+            main_adb.contains("Back_Backing'Access;")
+                && main_adb.contains("Gf_Source_Streams.Set (Back_Backing")
+                && main_adb.contains("Pkg.Create (Back);"),
+            "{main_adb}"
         );
     }
 
@@ -4759,6 +5490,7 @@ mod tests {
         use super::param_type_unit_with;
         let mut ast = StructuralAst::new();
         ast.packages.push(package(1, "Zip_Streams"));
+        ast.packages.push(package(5, "Crypto.Types"));
         // Nested package CRC inside root BZip2.
         let mut bzip2 = package(2, "BZip2");
         bzip2.parent = None;
@@ -4777,6 +5509,12 @@ mod tests {
                 ]
             ),
             Some("Zip_Streams".to_owned())
+        );
+        // A dotted child compilation unit is itself with-able, and parser paths
+        // may preserve the entire qualified type as one component.
+        assert_eq!(
+            param_type_unit_with(&ast, &["Crypto.Types.Dword".to_owned()]),
+            Some("Crypto.Types".to_owned())
         );
         // A nested package -> `with` the ROOT compilation unit, not the nested one.
         assert_eq!(
@@ -4867,6 +5605,14 @@ mod tests {
         );
         assert_eq!(callback_subprogram_for_profile("procedure"), Some("Noop"));
         assert_eq!(
+            callback_subprogram_for_profile("procedure (item : out string; last : out natural)"),
+            Some("Src_String")
+        );
+        assert_eq!(
+            callback_subprogram_for_profile("procedure (item : in string)"),
+            Some("Snk_String")
+        );
+        assert_eq!(
             callback_subprogram_for_profile("function return character"),
             Some("Fn_Char")
         );
@@ -4924,6 +5670,78 @@ mod tests {
         // The callback package is emitted beside the harness.
         assert!(output_dir.join("gf_callbacks.ads").exists());
         assert!(output_dir.join("gf_callbacks.adb").exists());
+    }
+
+    #[test]
+    fn unsupported_optional_callback_omits_trailing_defaulted_params() {
+        let mut callback_type = type_ref("", TypeKind::Access { target: TypeId(0) });
+        callback_type.name_path.clear();
+        callback_type.constraints =
+            Constraints("function (Recipient : Email_Address) return Boolean".to_owned());
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(7)),
+            "Reply_To",
+            vec![
+                param("Msg", "Integer", TypeKind::Scalar(ScalarKind::Integer)),
+                Parameter {
+                    name: "Reply_Filter".to_owned(),
+                    mode: ParamMode::AccessMode,
+                    type_ref: callback_type,
+                    default: Some(Expr("null".to_owned())),
+                },
+                Parameter {
+                    name: "Charset".to_owned(),
+                    mode: ParamMode::In,
+                    type_ref: type_ref("String", TypeKind::Unknown),
+                    default: Some(Expr("ASCII".to_owned())),
+                },
+            ],
+            None,
+        );
+        let ast = ast_with(target.clone(), Vec::new(), vec![package(7, "Pkg")]);
+        let output_dir = temp_dir("optional-callback").join("H-OPTIONAL-CB");
+
+        let main_adb =
+            fs::read_to_string(generate_for(&ast, &target, &output_dir).unwrap().main_adb).unwrap();
+
+        assert!(main_adb.contains("Pkg.Reply_To (Msg);"));
+        assert!(!main_adb.contains("Reply_Filter :"));
+        assert!(!main_adb.contains("Charset :"));
+    }
+
+    #[test]
+    fn unsupported_defaulted_suffix_is_omitted() {
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(7)),
+            "Configure",
+            vec![
+                param("Value", "Integer", TypeKind::Scalar(ScalarKind::Integer)),
+                Parameter {
+                    name: "Policy".to_owned(),
+                    mode: ParamMode::In,
+                    type_ref: type_ref("External.Policy", TypeKind::Unknown),
+                    default: Some(Expr("Default_Policy".to_owned())),
+                },
+                Parameter {
+                    name: "Label".to_owned(),
+                    mode: ParamMode::In,
+                    type_ref: type_ref("String", TypeKind::Unknown),
+                    default: Some(Expr("\"\"".to_owned())),
+                },
+            ],
+            None,
+        );
+        let ast = ast_with(target.clone(), Vec::new(), vec![package(7, "Pkg")]);
+        let output_dir = temp_dir("defaulted-suffix").join("H-DEFAULT-SUFFIX");
+
+        let main_adb =
+            fs::read_to_string(generate_for(&ast, &target, &output_dir).unwrap().main_adb).unwrap();
+
+        assert!(main_adb.contains("Pkg.Configure (Value);"));
+        assert!(!main_adb.contains("Policy :"));
+        assert!(!main_adb.contains("Label :"));
     }
 
     #[test]

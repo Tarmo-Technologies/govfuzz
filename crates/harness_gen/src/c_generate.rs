@@ -445,6 +445,25 @@ fn build_param_decoders(
     // produces obviously-wrong harnesses.
     let mut pair_consumed = false;
     while i < params.len() {
+        // Streaming decoders commonly expose an in/out count followed by an
+        // in/out byte cursor (`size_t *available_in, const uint8_t **next_in` and
+        // `size_t *available_out, uint8_t **next_out`). The count and storage
+        // must be emitted together: fuzzing the count independently from the
+        // pointer fabricates an out-of-bounds read/write before target logic is
+        // reached. The const cursor borrows Data; the mutable cursor owns a
+        // bounded output buffer.
+        if i + 1 < params.len()
+            && is_length_pointer_param(&params[i].c_type)
+            && byte_double_pointer_kind(&params[i + 1].c_type).is_some()
+            && looks_like_stream_count_cursor_pair(&params[i], &params[i + 1])
+        {
+            let (len_decl, cursor_decl) = pair_stream_count_byte_cursor(&params[i], &params[i + 1]);
+            out.push(len_decl);
+            out.push(cursor_decl);
+            i += 2;
+            pair_consumed = true;
+            continue;
+        }
         if i + 1 < params.len()
             && is_output_buffer_param(&params[i].c_type, registry)
             && is_length_pointer_param(&params[i + 1].c_type)
@@ -961,6 +980,128 @@ fn is_length_pointer_param(c_type: &str) -> bool {
         return false;
     }
     pointer_base(&canonical).is_some_and(is_length_scalar_base)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ByteDoublePointerKind {
+    Input,
+    Output,
+}
+
+fn byte_double_pointer_kind(c_type: &str) -> Option<ByteDoublePointerKind> {
+    let canonical = canonical_c_type(c_type);
+    let stars = canonical
+        .split_whitespace()
+        .filter(|token| *token == "*")
+        .count();
+    if stars != 2 {
+        return None;
+    }
+    let tokens: Vec<&str> = canonical
+        .split_whitespace()
+        .filter(|token| *token != "*" && *token != "const" && *token != "volatile")
+        .collect();
+    let base = tokens.join(" ");
+    if !is_byte_buffer_base(&base) || base == "void" {
+        return None;
+    }
+    if canonical.split_whitespace().any(|token| token == "const") {
+        Some(ByteDoublePointerKind::Input)
+    } else {
+        Some(ByteDoublePointerKind::Output)
+    }
+}
+
+fn looks_like_stream_count_cursor_pair(length: &CParameter, cursor: &CParameter) -> bool {
+    let len = length.name.to_ascii_lowercase();
+    let ptr = cursor.name.to_ascii_lowercase();
+    let count_shape = len.contains("avail")
+        || len.contains("remain")
+        || len.contains("size")
+        || len.contains("length")
+        || len.contains("count");
+    let cursor_shape = ptr.contains("next")
+        || ptr.contains("cursor")
+        || ptr.contains("input")
+        || ptr.contains("output")
+        || ptr.ends_with("_in")
+        || ptr.ends_with("_out");
+    count_shape && cursor_shape
+}
+
+fn pair_stream_count_byte_cursor(
+    length: &CParameter,
+    cursor: &CParameter,
+) -> (CParamEmission, CParamEmission) {
+    let kind =
+        byte_double_pointer_kind(&cursor.c_type).expect("caller checked byte double-pointer shape");
+    let len_type = emit_c_type(&length.c_type);
+    let len_base = pointer_base(&canonical_c_type(&length.c_type))
+        .expect("caller checked length pointer")
+        .to_owned();
+    let len_name = &length.name;
+    let cursor_type = canonical_c_type(&cursor.c_type);
+    let cursor_name = &cursor.name;
+    let len_storage = format!("_gf_stream_{len_name}");
+
+    match kind {
+        ByteDoublePointerKind::Input => {
+            let inner_type = cursor_type
+                .strip_suffix(" *")
+                .expect("double pointer has outer star")
+                .trim();
+            let ptr_storage = format!("_gf_stream_{cursor_name}");
+            let len_emission = CParamEmission {
+                support: None,
+                decl: format!(
+                    "{len_base} {len_storage} = ({len_base})Size; {len_type} {len_name} = &{len_storage}"
+                ),
+                arg: len_name.to_owned(),
+                c_type: len_type,
+                free: None,
+            };
+            let cursor_emission = CParamEmission {
+                support: None,
+                decl: format!(
+                    "{inner_type} {ptr_storage} = ({inner_type})Data; {cursor_type} {cursor_name} = &{ptr_storage}"
+                ),
+                arg: cursor_name.to_owned(),
+                c_type: cursor_type,
+                free: None,
+            };
+            (len_emission, cursor_emission)
+        }
+        ByteDoublePointerKind::Output => {
+            let inner_type = cursor_type
+                .strip_suffix(" *")
+                .expect("double pointer has outer star")
+                .trim();
+            let cap = format!("_gf_cap_{cursor_name}");
+            let buffer = format!("_gf_buf_{cursor_name}");
+            let ptr_storage = format!("_gf_stream_{cursor_name}");
+            let len_emission = CParamEmission {
+                support: None,
+                decl: format!(
+                    "size_t {cap} = Size <= (1024 * 1024) ? (size_t)Size + 65536 : (1024 * 1024 + 65536); \
+                     {len_base} {len_storage} = ({len_base}){cap}; {len_type} {len_name} = &{len_storage}"
+                ),
+                arg: len_name.to_owned(),
+                c_type: len_type,
+                free: None,
+            };
+            let cursor_emission = CParamEmission {
+                support: None,
+                decl: format!(
+                    "{inner_type} {buffer} = ({inner_type})malloc({cap} ? {cap} : 1); \
+                     {inner_type} {ptr_storage} = {buffer}; {cursor_type} {cursor_name} = &{ptr_storage}"
+                ),
+                arg: cursor_name.to_owned(),
+                c_type: cursor_type,
+                free: Some(format!("free({buffer})")),
+            };
+            (len_emission, cursor_emission)
+        }
+    }
 }
 
 fn is_byte_buffer_base(base: &str) -> bool {
@@ -2991,6 +3132,16 @@ mod tests {
         );
         assert!(mk.contains("main.c"));
         assert!(
+            mk.contains("-include ../../c_compat.mk")
+                && mk.contains("$(SECTION_FLAGS) $(C_COMPAT_FLAGS)"),
+            "C harnesses must honor the auto-detected legacy compatibility cache:\n{mk}"
+        );
+        assert!(
+            mk.contains("SECTION_FLAGS ?= -ffunction-sections -fdata-sections")
+                && mk.contains("SECTION_LDFLAGS ?= -Wl,--gc-sections"),
+            "C harnesses must discard unreachable dependency sections:\n{mk}"
+        );
+        assert!(
             mk.contains("afl-clang-fast"),
             "Makefile should declare an AFL build path"
         );
@@ -3166,6 +3317,10 @@ mod tests {
         assert!(
             main.contains("GOVFUZZ_FRAMED") && main.contains("__sanitizer_cov_trace_pc_guard"),
             "driver must carry the framed protocol + coverage runtime: {main}"
+        );
+        assert!(
+            main.find("#undef getenv") < main.find("getenv(\"GOVFUZZ_COV_SHM\")"),
+            "target-header getenv redirects must be cleared before the coverage runtime: {main}"
         );
         // The driver build must NOT link libFuzzer's own main, and must enable the
         // coverage instrumentation the runtime consumes.
@@ -3516,6 +3671,74 @@ mod tests {
             !main.contains("gf_bounded_length(&Cur"),
             "length must NOT be independently fuzzed (would read past the buffer), got:\n{main}",
         );
+    }
+
+    #[test]
+    fn streaming_byte_cursors_are_coupled_to_their_in_out_counts() {
+        // BrotliDecoderDecompressStream shape. Both count/cursor pairs must share
+        // real storage boundaries; independent scalar and pointer decoders would
+        // manufacture an overread or overwrite in the harness itself.
+        let out = temp_dir("emit-stream-cursors");
+        let args = GenerateCDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            lifecycle: Vec::new(),
+            drive_plan: None,
+            harness_id: "H-CSTREAM".to_owned(),
+            output_dir: out,
+            source_path: PathBuf::from("/tmp/dec.c"),
+            target: cfunction("stream_decode"),
+            params: vec![
+                CParameter {
+                    name: "available_in".to_owned(),
+                    c_type: "size_t *".to_owned(),
+                },
+                CParameter {
+                    name: "next_in".to_owned(),
+                    c_type: "const uint8_t **".to_owned(),
+                },
+                CParameter {
+                    name: "available_out".to_owned(),
+                    c_type: "size_t *".to_owned(),
+                },
+                CParameter {
+                    name: "next_out".to_owned(),
+                    c_type: "uint8_t **".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            target_includes: Vec::new(),
+            target_includes_dirs: Vec::new(),
+            target_sources: vec![PathBuf::from("/tmp/dec.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: false,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: Vec::new(),
+            result_cleanup: None,
+        };
+        let result = generate_c_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_c).unwrap();
+        assert!(
+            main.contains("_gf_stream_available_in = (size_t)Size"),
+            "{main}"
+        );
+        assert!(
+            main.contains("const uint8_t * _gf_stream_next_in = (const uint8_t *)Data"),
+            "{main}"
+        );
+        assert!(
+            main.contains("_gf_stream_available_out = (size_t)_gf_cap_next_out"),
+            "{main}"
+        );
+        assert!(
+            main.contains("uint8_t * _gf_buf_next_out = (uint8_t *)malloc"),
+            "{main}"
+        );
+        assert!(
+            main.contains("uint8_t * * next_out = &_gf_stream_next_out"),
+            "{main}"
+        );
+        assert!(main.contains("free(_gf_buf_next_out)"), "{main}");
     }
 
     #[test]
@@ -4237,9 +4460,9 @@ mod tests {
         let main = fs::read_to_string(&result.main_c).unwrap();
         assert!(main.contains("#define _GNU_SOURCE"));
         assert!(main.contains("#include <stdio.h>"));
-        assert!(main.contains("FILE * stream = fmemopen((void *)Data, Size, \"rb\")"));
+        assert!(main.contains("fmemopen(_gf_file_buf_stream, Size, \"r+\")"));
+        assert!(main.contains("if (stream) fclose(stream); free(_gf_file_buf_stream);"));
         assert!(main.contains("int R = parse_stream(stream);"));
-        assert!(main.contains("if (stream) fclose(stream);"));
 
         if Command::new("clang").arg("--version").output().is_err() {
             eprintln!("skipping generated C FILE* harness compile: clang not on PATH");
@@ -4310,9 +4533,11 @@ mod tests {
         let main = fs::read_to_string(&result.main_c).unwrap();
         assert!(main.contains("#include <stdio.h>"));
         assert!(main.contains("#include \"target.h\""));
-        assert!(main.contains("MZ_FILE * stream = (MZ_FILE *)fmemopen((void *)Data, Size, \"rb\")"));
+        assert!(
+            main.contains("MZ_FILE * stream = (MZ_FILE *)(_gf_file_buf_stream ? (Size ? fmemopen")
+        );
         assert!(main.contains("int R = parse_cfile(stream);"));
-        assert!(main.contains("if (stream) fclose(stream);"));
+        assert!(main.contains("if (stream) fclose(stream); free(_gf_file_buf_stream);"));
 
         if Command::new("clang").arg("--version").output().is_err() {
             eprintln!("skipping generated C MZ_FILE* harness compile: clang not on PATH");

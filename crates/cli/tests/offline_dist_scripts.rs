@@ -144,6 +144,26 @@ fn offline_dist_run_guide_is_packaged_and_documents_core_workflows() {
         readme.contains("RUN-GOVFUZZ.md"),
         "README-DIST should point installed operators at the run guide:\n{readme}"
     );
+    assert!(
+        readme.contains("AUTO-OFFLINE-RUNBOOK.md"),
+        "README-DIST should point operators at the offline auto runbook:\n{readme}"
+    );
+    assert!(
+        script.contains(
+            "cp \"$REPO_ROOT/docs/site/offline-auto-runbook.md\" \"$STAGE_ROOT/AUTO-OFFLINE-RUNBOOK.md\""
+        ),
+        "packager must put the offline auto runbook in the distribution root"
+    );
+    assert!(
+        script.contains(
+            "cp \"$REPO_ROOT/docs/site/offline-auto-runbook.md\" \"$TOOL_DIR/docs/AUTO-OFFLINE-RUNBOOK.md\""
+        ),
+        "packager must install the offline auto runbook under the tool prefix"
+    );
+    assert!(
+        run_guide.contains("AUTO-OFFLINE-RUNBOOK.md"),
+        "RUN-GOVFUZZ should point operators at the detailed offline auto runbook"
+    );
 
     for expected in [
         "govfuzz --help",
@@ -174,6 +194,33 @@ fn offline_dist_run_guide_is_packaged_and_documents_core_workflows() {
         assert!(
             run_guide.contains(expected),
             "RUN-GOVFUZZ template missing {expected:?}:\n{run_guide}"
+        );
+    }
+}
+
+#[test]
+fn offline_auto_runbook_documents_trusted_and_forced_recovery_flows() {
+    let runbook = fs::read_to_string(repo_root().join("docs/site/offline-auto-runbook.md"))
+        .expect("read offline auto runbook");
+
+    for expected in [
+        "Known Build Command",
+        "Unknown Build Command",
+        "--run-untrusted",
+        "--build-command",
+        "--unsafe-search-and-run-build-commands",
+        "--extra-include",
+        "--extra-source",
+        "--ada-deps",
+        "IDL and Generated Source",
+        "--force",
+        "different work directory",
+        "Do not use `--install-deps`",
+        "positive coverage",
+    ] {
+        assert!(
+            runbook.contains(expected),
+            "offline auto runbook missing {expected:?}:\n{runbook}"
         );
     }
 }

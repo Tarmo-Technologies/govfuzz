@@ -1958,7 +1958,11 @@ fn classify_c_header_source(path: &Path) -> Result<Option<CFamilySource>> {
     let cpp_count = cpp_parser::parse_cpp_functions(&source)
         .map(|fns| fns.len())
         .unwrap_or(0);
-    if cpp_count > c_count || header_looks_like_cpp(&source) {
+    let has_c_impl = path.with_extension("c").is_file();
+    let has_cpp_impl = ["cpp", "cc", "cxx", "C"]
+        .iter()
+        .any(|ext| path.with_extension(ext).is_file());
+    if cpp_count > c_count || header_looks_like_cpp(&source) || (has_cpp_impl && !has_c_impl) {
         Ok(Some(CFamilySource::Cpp))
     } else {
         Ok(Some(CFamilySource::C))
@@ -2000,6 +2004,8 @@ fn is_c_family_header(path: &Path) -> bool {
 /// enough to know the harness must NOT emit its own (possibly mismatched) forward
 /// `extern` for a target the included header already declares.
 fn text_declares_function(text: &str, name: &str) -> bool {
+    let code = mask_c_comments_and_literals(text);
+    let text = code.as_str();
     let bytes = text.as_bytes();
     let is_ident = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
     let mut search_from = 0;
@@ -2017,6 +2023,53 @@ fn text_declares_function(text: &str, name: &str) -> bool {
         search_from = end;
     }
     false
+}
+
+/// Replace C/C++ comments and string/character literals with spaces while
+/// preserving byte offsets and newlines for cheap token scans.
+fn mask_c_comments_and_literals(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = bytes.to_vec();
+    let mut i = 0;
+    while i < bytes.len() {
+        let end = if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'/') {
+            let mut j = i + 2;
+            while j < bytes.len() && bytes[j] != b'\n' {
+                j += 1;
+            }
+            j
+        } else if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'*') {
+            let mut j = i + 2;
+            while j + 1 < bytes.len() && !(bytes[j] == b'*' && bytes[j + 1] == b'/') {
+                j += 1;
+            }
+            (j + 2).min(bytes.len())
+        } else if matches!(bytes[i], b'"' | b'\'') {
+            let quote = bytes[i];
+            let mut j = i + 1;
+            while j < bytes.len() {
+                if bytes[j] == b'\\' {
+                    j = (j + 2).min(bytes.len());
+                } else if bytes[j] == quote {
+                    j += 1;
+                    break;
+                } else {
+                    j += 1;
+                }
+            }
+            j
+        } else {
+            i += 1;
+            continue;
+        };
+        for byte in &mut out[i..end] {
+            if *byte != b'\n' && *byte != b'\r' {
+                *byte = b' ';
+            }
+        }
+        i = end;
+    }
+    String::from_utf8(out).expect("masking valid UTF-8 with ASCII spaces preserves UTF-8")
 }
 
 /// True when one of the harness's included headers declares the target function,
@@ -2048,12 +2101,186 @@ fn included_header_declares_target(
     false
 }
 
+fn find_project_header_declaring_target(
+    include_dirs: &[PathBuf],
+    target_name: &str,
+) -> Option<String> {
+    fn collect_headers(dir: &Path, depth: usize, remaining: &mut usize, out: &mut Vec<PathBuf>) {
+        if depth > 3 || *remaining == 0 {
+            return;
+        }
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        let mut entries: Vec<_> = entries.flatten().collect();
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
+            if *remaining == 0 {
+                break;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                let name = entry.file_name();
+                if !name.to_string_lossy().starts_with('.') {
+                    collect_headers(&path, depth + 1, remaining, out);
+                }
+            } else if is_c_family_header(&path) {
+                *remaining -= 1;
+                out.push(path);
+            }
+        }
+    }
+
+    let mut matches: Vec<(usize, String)> = Vec::new();
+    for root in include_dirs {
+        let mut headers = Vec::new();
+        let mut remaining = 512;
+        collect_headers(root, 0, &mut remaining, &mut headers);
+        for header in headers {
+            let Ok(text) = crate::source_text::read_source_text(&header) else {
+                continue;
+            };
+            if !text_declares_function(&text, target_name) {
+                continue;
+            }
+            let Ok(relative) = header.strip_prefix(root) else {
+                continue;
+            };
+            let name = relative.to_string_lossy().replace('\\', "/");
+            let depth = relative.components().count();
+            matches.push((depth, name));
+        }
+    }
+    matches.sort();
+    matches.into_iter().map(|(_, name)| name).next()
+}
+
+/// Whether a C function signature needs a project declaration to make its types
+/// visible to the harness. A definition using only language and standard-library
+/// types is self-contained: pulling in an arbitrary tree-wide declaration header
+/// can import a large, damaged umbrella even though an exact generated prototype
+/// is sufficient (Redis's standalone `crc16` was paired with `cluster.h`).
+fn c_signature_needs_project_header<'a>(
+    return_type: &'a str,
+    param_types: impl IntoIterator<Item = &'a str>,
+) -> bool {
+    std::iter::once(return_type)
+        .chain(param_types)
+        .any(|ty| c_type_needs_project_header(ty))
+}
+
+fn c_type_needs_project_header(ty: &str) -> bool {
+    c_type_identifiers(ty)
+        .into_iter()
+        .any(|identifier| !is_standard_c_type_identifier(identifier))
+}
+
+fn c_type_identifiers(ty: &str) -> Vec<&str> {
+    let bytes = ty.as_bytes();
+    let mut identifiers = Vec::new();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if !bytes[index].is_ascii_alphabetic() && bytes[index] != b'_' {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        index += 1;
+        while index < bytes.len() && (bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_')
+        {
+            index += 1;
+        }
+        identifiers.push(&ty[start..index]);
+    }
+    identifiers
+}
+
+fn is_standard_c_type_identifier(identifier: &str) -> bool {
+    if matches!(
+        identifier,
+        "void"
+            | "char"
+            | "short"
+            | "int"
+            | "long"
+            | "signed"
+            | "unsigned"
+            | "float"
+            | "double"
+            | "const"
+            | "volatile"
+            | "restrict"
+            | "_Atomic"
+            | "_Bool"
+            | "bool"
+            | "struct"
+            | "union"
+            | "enum"
+            | "size_t"
+            | "ssize_t"
+            | "ptrdiff_t"
+            | "intptr_t"
+            | "uintptr_t"
+            | "intmax_t"
+            | "uintmax_t"
+            | "wchar_t"
+            | "wint_t"
+            | "FILE"
+            | "va_list"
+    ) {
+        return true;
+    }
+    let Some(width) = identifier
+        .strip_prefix("uint")
+        .or_else(|| identifier.strip_prefix("int"))
+        .and_then(|rest| rest.strip_suffix("_t"))
+    else {
+        return false;
+    };
+    matches!(width, "8" | "16" | "32" | "64")
+}
+
 fn target_compile_sources(source_path: &Path) -> Vec<PathBuf> {
     if is_c_family_header(source_path) {
         Vec::new()
     } else {
         vec![source_path.to_path_buf()]
     }
+}
+
+/// Feature macros a library source defines specifically to expose its private
+/// static-linking declarations from public headers. The harness includes those
+/// headers in a separate translation unit, so it needs the same visibility
+/// define (LZ4's `LZ4F_STATIC_LINKING_ONLY`).
+fn source_header_visibility_flags(source: &str) -> Vec<String> {
+    let mut flags = Vec::new();
+    for line in source.lines() {
+        let Some(rest) = line
+            .trim_start()
+            .strip_prefix('#')
+            .map(str::trim_start)
+            .and_then(|directive| directive.strip_prefix("define"))
+            .map(str::trim_start)
+        else {
+            continue;
+        };
+        let name = rest
+            .split_whitespace()
+            .next()
+            .unwrap_or("")
+            .trim_end_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_');
+        if name.ends_with("_STATIC_LINKING_ONLY")
+            && name
+                .bytes()
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
+        {
+            let flag = format!("-D{name}");
+            if !flags.contains(&flag) {
+                flags.push(flag);
+            }
+        }
+    }
+    flags
 }
 
 fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
@@ -2066,7 +2293,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // working directory, so relative paths like `cJSON/cJSON.c` would break.
     let source_path = absolutize(&args.source)
         .with_context(|| format!("resolve C source {}", args.source.display()))?;
-    let source = fs::read_to_string(&source_path)
+    let source = crate::source_text::read_source_text(&source_path)
         .with_context(|| format!("read C source {}", source_path.display()))?;
     let functions = c_parser::parse_c_functions(&source)
         .with_context(|| format!("parse C source {}", source_path.display()))?;
@@ -2084,12 +2311,23 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         eprintln!("{warning}");
     }
 
+    // A `va_list` is compiler ABI state, not fuzz bytes. When the same TU
+    // provides the conventional variadic wrapper (`json_vunpack_ex` ->
+    // `json_unpack_ex`), drive that wrapper instead: it creates a valid
+    // `va_list` and immediately calls the selected target. This preserves real
+    // target execution without inventing a non-portable decoder for `va_list`.
+    let invocation_function = if args.kind == "direct" {
+        c_va_list_variadic_wrapper(&function, &functions).unwrap_or_else(|| function.clone())
+    } else {
+        function.clone()
+    };
+
     let id = args
         .id
         .clone()
         .unwrap_or_else(|| format!("H-C{:04X}", function.line));
     let output_dir = args.output.join(&id);
-    let params = function
+    let params = invocation_function
         .params
         .iter()
         .map(|p| harness_gen::c_generate::CParameter {
@@ -2106,20 +2344,35 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     let result_cleanup = args
         .cleanup
         .clone()
-        .or_else(|| auto_detect_c_result_cleanup(&function.return_type, &function.name))
         .or_else(|| {
-            let param_types: Vec<String> =
-                function.params.iter().map(|p| p.c_type.clone()).collect();
+            auto_detect_c_result_cleanup(
+                &invocation_function.return_type,
+                &invocation_function.name,
+            )
+        })
+        .or_else(|| {
+            let param_types: Vec<String> = invocation_function
+                .params
+                .iter()
+                .map(|p| p.c_type.clone())
+                .collect();
             detect_paired_deallocator(
-                &function.return_type,
-                &function.name,
+                &invocation_function.return_type,
+                &invocation_function.name,
                 &param_types,
                 &target_dir,
                 &source_path,
             )
         })
-        .or_else(|| detect_strdup_family_free(&function.return_type, &function.name));
-    let compile_flags = compile_database_flags_for_source(&source_path);
+        .or_else(|| {
+            detect_strdup_family_free(&invocation_function.return_type, &invocation_function.name)
+        });
+    let mut compile_flags = c_build_flags_for_source(&source_path);
+    for flag in source_header_visibility_flags(&source) {
+        if !compile_flags.contains(&flag) {
+            compile_flags.push(flag);
+        }
+    }
     let mut target_includes_dirs = vec![target_dir.clone()];
     for project_inc in auto_detect_project_includes(&source_path) {
         if !target_includes_dirs.contains(&project_inc) {
@@ -2161,7 +2414,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         None
     };
     let static_direct_target =
-        args.kind == "direct" && function.is_static && !is_c_family_header(&source_path);
+        args.kind == "direct" && invocation_function.is_static && !is_c_family_header(&source_path);
     let static_sequence_target = sequence_cluster
         .as_ref()
         .is_some_and(|cluster| cluster.requires_source_include)
@@ -2175,7 +2428,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // (no separate link of that source), so there is no collision. Any
     // library sources the TU needs are still added by the link-closure repair.
     let direct_main_tu = args.kind == "direct"
-        && !function.is_static
+        && !invocation_function.is_static
         && !is_c_family_header(&source_path)
         && functions.iter().any(|f| f.name == "main");
     // The project headers feed type resolution (decoder/dictionary synthesis),
@@ -2186,19 +2439,44 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // lookup3.h -> "redefinition of 'hashlittle'"). So keep the full header set
     // for type resolution but emit *only* the source there.
     let includes_target_source = static_direct_target || static_sequence_target || direct_main_tu;
-    let mut header_includes = auto_detect_c_headers(&source_path, &target_dir);
-    for header in harness_project_includes(&source, &target_includes_dirs) {
-        if !header_includes.contains(&header) {
-            header_includes.push(header);
-        }
-    }
+    let mut header_includes =
+        ordered_c_harness_headers(&source_path, &target_dir, &source, &target_includes_dirs);
     // A C harness is compiled as C; a C++-only header pulled in transitively —
     // libfixmath's `fix16.h` does `#ifdef __cplusplus` / `#include "fix16.hpp"`,
     // and the include scanner doesn't evaluate the guard — would inject
     // `class`/templates into a C TU ("unknown type name 'class'"). Drop C++ header
     // extensions: a real C target's declarations live in a `.h`; a declaration that
     // exists only in a `.hpp` belongs to the C++ harness path, not here.
-    header_includes.retain(|h| !is_cpp_only_header(h));
+    header_includes.retain(|header| {
+        !is_cpp_only_header(header)
+            && !is_partial_impl_header(header)
+            && !is_translation_unit_include(header)
+    });
+    // A deleted private umbrella header can hide an otherwise surviving public
+    // API header from the source's include closure (libyaml's yaml_private.h ->
+    // yaml.h). Recover the public declaration by name from bounded project
+    // include roots. Besides the prototype, that header supplies the complete
+    // public handle layout needed by lifecycle harness generation.
+    if !included_header_declares_target(
+        &source_path,
+        &header_includes,
+        &target_includes_dirs,
+        &invocation_function.name,
+    ) && c_signature_needs_project_header(
+        &invocation_function.return_type,
+        invocation_function
+            .params
+            .iter()
+            .map(|param| param.c_type.as_str()),
+    ) {
+        if let Some(header) =
+            find_project_header_declaring_target(&target_includes_dirs, &invocation_function.name)
+        {
+            if !header_includes.contains(&header) {
+                header_includes.push(header);
+            }
+        }
+    }
     // GAP #6 (tidwall/hashmap.c): a sequence harness stack-allocates + zero-fills the
     // cluster handle and drives it through `&_gf_handle`, which is only valid when the
     // handle's struct is fully defined in a HEADER the harness includes. When the
@@ -2281,7 +2559,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         &source_path,
         &header_includes,
         &target_includes_dirs,
-        &function.name,
+        &invocation_function.name,
     );
     let result = if args.kind == "sequence" {
         let cluster = sequence_cluster.expect("sequence cluster built for sequence harness");
@@ -2324,7 +2602,8 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         // via its discovered deallocator so a successful parse does not leak on
         // every valid input. Added as a delete-only entry, and only if the type
         // has no real input-handle lifecycle already (don't shadow it).
-        if let Some(out_handle) = detect_out_handle_lifecycle(&function, &target_dir, &source_path)
+        if let Some(out_handle) =
+            detect_out_handle_lifecycle(&invocation_function, &target_dir, &source_path)
         {
             if !lifecycle
                 .iter()
@@ -2353,7 +2632,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         // opt-in via GOVFUZZ_DRIVE_DECODERS for targets where the caller has
         // structurally-valid seeds and specifically wants decoder depth.
         let drive_plan = if std::env::var_os("GOVFUZZ_DRIVE_DECODERS").is_some() {
-            c_constructor_drive_plan(&function, &functions)
+            c_constructor_drive_plan(&invocation_function, &functions)
         } else {
             None
         };
@@ -2362,9 +2641,9 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 harness_id: id,
                 output_dir: output_dir.clone(),
                 source_path: source_path.clone(),
-                target: function.clone(),
+                target: invocation_function.clone(),
                 params,
-                return_type: function.return_type.clone(),
+                return_type: invocation_function.return_type.clone(),
                 target_includes,
                 target_includes_dirs,
                 target_sources,
@@ -2598,14 +2877,12 @@ fn resolve_cpp_member_access_from_headers(
     target_includes: &[String],
     include_dirs: &[PathBuf],
 ) {
-    if functions
-        .iter()
-        .all(|f| !f.api.is_method || f.api.member_access.is_some())
-    {
+    if functions.iter().all(|function| !function.api.is_method) {
         return;
     }
     const MAX_TRANSITIVE_HEADERS: usize = 256;
     let mut access: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    let mut static_methods = std::collections::BTreeSet::new();
     let mut queue: Vec<String> = target_includes.to_vec();
     let mut visited: HashSet<PathBuf> = HashSet::new();
     let mut parsed = 0usize;
@@ -2630,22 +2907,49 @@ fn resolve_cpp_member_access_from_headers(
         for (key, acc) in cpp_parser::parse_cpp_method_access(&text) {
             access.entry(key).or_insert(acc);
         }
+        static_methods.extend(cpp_parser::parse_cpp_static_methods(&text));
         for nested in harness_project_includes(&text, include_dirs) {
             queue.push(nested);
         }
     }
-    if access.is_empty() {
-        return;
-    }
     for function in functions.iter_mut() {
-        if function.api.member_access.is_some() {
-            continue;
-        }
         if let Some(class_name) = function.api.class_name.as_deref() {
-            if let Some(acc) = access.get(&format!("{class_name}::{}", function.name)) {
-                function.api.member_access = Some(acc.clone());
+            let key = format!("{class_name}::{}", function.name);
+            if function.api.member_access.is_none() {
+                if let Some(acc) = access.get(&key) {
+                    function.api.member_access = Some(acc.clone());
+                }
+            }
+            if static_methods.contains(&key) {
+                function.is_static = true;
             }
         }
+    }
+}
+
+fn resolve_cpp_namespace_qualified_free_functions(
+    functions: &mut [cpp_parser::CppFunction],
+    header_texts: &[String],
+) {
+    let namespaces: HashSet<Vec<String>> = header_texts
+        .iter()
+        .flat_map(|source| cpp_parser::parse_cpp_namespace_paths(source).unwrap_or_default())
+        .collect();
+    for function in functions {
+        if !function.api.is_method || !namespaces.contains(&function.qualifier_path) {
+            continue;
+        }
+        function.api.api_kind = if function.api.is_template {
+            "template_function".to_owned()
+        } else {
+            "function".to_owned()
+        };
+        function.api.namespace_path = function.qualifier_path.clone();
+        function.api.class_name = None;
+        function.api.member_access = None;
+        function.api.is_method = false;
+        function.api.is_constructor = false;
+        function.api.is_destructor = false;
     }
 }
 
@@ -2802,11 +3106,44 @@ fn c_handle_defined_in_headers(
         &mut defs,
         |header_source| c_parser::parse_c_type_defs(header_source).ok(),
     );
-    let registry = type_model::TypeRegistry::from_defs(defs.iter());
-    !matches!(
-        registry.resolve(handle_type),
-        type_model::TypeShape::Opaque(_)
-    )
+    c_type_has_complete_definition(handle_type, &defs)
+}
+
+/// Follow header typedefs to a concrete struct/union and require its body, not
+/// merely a forward declaration. `TypeRegistry::resolve` intentionally models a
+/// forward-declared tag as struct-shaped in some paths, which is sufficient for
+/// type identity but not for the sequence harness's stack allocation.
+fn c_type_has_complete_definition(handle_type: &str, defs: &[c_parser::CTypeDefs]) -> bool {
+    let mut current = canonical_c_lifecycle_type(handle_type);
+    for _ in 0..16 {
+        current = current.trim_end_matches(" *").trim().to_owned();
+        let tag = current
+            .strip_prefix("struct ")
+            .or_else(|| current.strip_prefix("union "))
+            .unwrap_or(&current)
+            .trim();
+        if defs
+            .iter()
+            .flat_map(|set| set.structs.iter())
+            .any(|item| item.name == tag && item.complete)
+        {
+            return true;
+        }
+        let Some(next) = defs
+            .iter()
+            .flat_map(|set| set.typedefs.iter())
+            .find(|item| item.name == tag)
+            .map(|item| item.underlying.clone())
+        else {
+            return false;
+        };
+        let next = canonical_c_lifecycle_type(&next);
+        if next == current {
+            return false;
+        }
+        current = next;
+    }
+    false
 }
 
 fn c_lifecycle_steps(
@@ -2932,7 +3269,11 @@ pub(crate) fn merge_tree_c_lifecycle(
     tree: &[harness_gen::c_generate::CHandleLifecycle],
 ) {
     for tw in tree {
-        match local.iter_mut().find(|h| h.handle_type == tw.handle_type) {
+        let tree_key = harness_gen::c_decoders::normalize_handle_key(&tw.handle_type);
+        match local
+            .iter_mut()
+            .find(|h| harness_gen::c_decoders::normalize_handle_key(&h.handle_type) == tree_key)
+        {
             Some(existing) => {
                 if existing.init.is_none() && tw.init.is_some() {
                     existing.init = tw.init.clone();
@@ -2956,6 +3297,7 @@ pub(crate) fn c_direct_lifecycle_table(
     use std::collections::{BTreeMap, BTreeSet};
     let mut inits: BTreeMap<String, String> = BTreeMap::new();
     let mut deletes: BTreeMap<String, String> = BTreeMap::new();
+    let mut delete_candidates: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut init_args: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut handles: BTreeSet<String> = BTreeSet::new();
 
@@ -3028,9 +3370,19 @@ pub(crate) fn c_direct_lifecycle_table(
                 handles.insert(base);
             }
         } else if is_c_lifecycle_end(name) {
-            deletes
-                .entry(base.clone())
-                .or_insert_with(|| name.to_owned());
+            let candidates = delete_candidates.entry(base.clone()).or_default();
+            if !candidates.iter().any(|candidate| candidate == name) {
+                candidates.push(name.to_owned());
+            }
+            match deletes.get_mut(&base) {
+                Some(existing) if c_lifecycle_end_rank(name) < c_lifecycle_end_rank(existing) => {
+                    *existing = name.to_owned();
+                }
+                None => {
+                    deletes.insert(base.clone(), name.to_owned());
+                }
+                _ => {}
+            }
             handles.insert(base);
         }
     }
@@ -3062,9 +3414,18 @@ pub(crate) fn c_direct_lifecycle_table(
         let Some(base) = c_lifecycle_handle_key(ret_type, registry) else {
             continue;
         };
-        // An in-place initializer (in `inits` but not `returning`) wins.
-        if inits.contains_key(&base) && !returning.contains(&base) {
-            continue;
+        // A strong in-place initializer (`init`/`setup`) wins. A weak
+        // open-like operation on an already-created handle does not: libarchive
+        // exposes `archive_read_open1(archive *)` beside the actual returning
+        // constructor `archive_read_new()`, and treating open1 as construction
+        // makes an opaque handle impossible to allocate.
+        if let Some(existing) = inits.get(&base) {
+            if !returning.contains(&base)
+                && !existing.starts_with('_')
+                && is_strong_c_inplace_lifecycle_init(existing)
+            {
+                continue;
+            }
         }
         // Among returning candidates prefer the fewest arguments.
         if let Some(existing) = init_args.get(&base) {
@@ -3199,6 +3560,35 @@ pub(crate) fn c_direct_lifecycle_table(
                 deletes.insert(key.clone(), (*dtor).to_owned());
             }
             handles.insert(key);
+        }
+    }
+
+    // Some libraries reuse one opaque type for distinct API families. libarchive,
+    // for example, returns `struct archive *` from both `archive_read_new` and
+    // `archive_write_new`; pairing the selected read constructor with a write-side
+    // free corrupts the harness and often pulls in an unrelated implementation TU.
+    // Prefer the public destructor whose name shares the longest token prefix with
+    // the selected constructor, then fall back to the existing lifecycle rank.
+    for (handle, candidates) in delete_candidates {
+        let init_tokens = inits
+            .get(&handle)
+            .map(|name| c_lifecycle_name_tokens(name))
+            .unwrap_or_default();
+        if let Some(best) = candidates.into_iter().min_by_key(|name| {
+            let end_tokens = c_lifecycle_name_tokens(name);
+            let shared_prefix = init_tokens
+                .iter()
+                .zip(&end_tokens)
+                .take_while(|(left, right)| left == right)
+                .count();
+            (
+                usize::MAX - shared_prefix,
+                name.starts_with('_'),
+                c_lifecycle_end_rank(name),
+                name.clone(),
+            )
+        }) {
+            deletes.insert(handle, best);
         }
     }
 
@@ -3359,6 +3749,8 @@ fn c_lifecycle_handle_key(raw: &str, registry: &type_model::TypeRegistry) -> Opt
     // below) pairs with its accessors. A BARE scalar pointer (`const char *`, no
     // typedef) carries a `*` in the spelling and is NOT matched here, so it stays
     // a string decode input (cJSON_CreateString(const char *)).
+    let canonical = canonical_c_lifecycle_type(raw);
+    let raw = canonical.as_str();
     let bare = raw
         .trim()
         .trim_start_matches("const ")
@@ -3385,7 +3777,14 @@ fn c_lifecycle_handle_key(raw: &str, registry: &type_model::TypeRegistry) -> Opt
     }
 
     if let Some(key) = accept(registry.pointer_base_spelling(raw)) {
-        return Some(finalize(key));
+        let direct_type = key.starts_with("struct ")
+            || key.starts_with("union ")
+            || key.starts_with("enum ")
+            || !key.contains(char::is_whitespace)
+            || registry.alias_target_spelling(&key).is_some();
+        if direct_type {
+            return Some(finalize(key));
+        }
     }
     // Fallback: resolve through noise tokens. Accept only the unique token the
     // registry already knows to be a pointer/handle typedef — macros like
@@ -3425,7 +3824,7 @@ fn is_c_bare_pointer_typedef_value(raw: &str, registry: &type_model::TypeRegistr
 /// are all pointers yields `Some(vec!["NULL"; n])` (the "use defaults" idiom).
 /// Any non-pointer parameter (a size, a flag, a by-value struct) returns `None`
 /// so such constructors are left alone rather than called with a bogus value.
-fn c_neutral_ctor_args<'a>(types: impl Iterator<Item = &'a str>) -> Option<Vec<String>> {
+pub(crate) fn c_neutral_ctor_args<'a>(types: impl Iterator<Item = &'a str>) -> Option<Vec<String>> {
     let types: Vec<&str> = types.collect();
     if types.is_empty() {
         return Some(Vec::new());
@@ -3435,7 +3834,14 @@ fn c_neutral_ctor_args<'a>(types: impl Iterator<Item = &'a str>) -> Option<Vec<S
     }
     let mut args = Vec::with_capacity(types.len());
     for ty in types {
-        if canonical_c_lifecycle_type(ty).ends_with('*') {
+        let canonical = canonical_c_lifecycle_type(ty);
+        let lower = canonical.to_ascii_lowercase();
+        if canonical.ends_with('*')
+            || lower.ends_with("_func")
+            || lower.ends_with("_fn")
+            || lower.ends_with("_callback")
+            || lower.ends_with("_cb")
+        {
             args.push("NULL".to_owned());
         } else {
             return None;
@@ -3513,7 +3919,31 @@ pub(crate) fn is_c_scalar_type(base: &str) -> bool {
 }
 
 pub(crate) fn canonical_c_lifecycle_type(raw: &str) -> String {
-    raw.replace('*', " * ")
+    let unwrapped = c_stub_gen::unwrap_export_macro(raw);
+    let mut type_text = unwrapped.trim();
+    while type_text.starts_with('(') && type_text.ends_with(')') {
+        let mut depth = 0usize;
+        let mut encloses_all = false;
+        for (index, byte) in type_text.bytes().enumerate() {
+            match byte {
+                b'(' => depth += 1,
+                b')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        encloses_all = index + 1 == type_text.len();
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !encloses_all {
+            break;
+        }
+        type_text = type_text[1..type_text.len() - 1].trim();
+    }
+    type_text
+        .replace('*', " * ")
         .split_whitespace()
         .filter(|token| !matches!(*token, "const" | "volatile" | "restrict" | "register"))
         .collect::<Vec<_>>()
@@ -3604,6 +4034,34 @@ pub(crate) fn is_c_lifecycle_end(name: &str) -> bool {
     })
 }
 
+fn is_strong_c_inplace_lifecycle_init(name: &str) -> bool {
+    let tokens = c_lifecycle_name_tokens(name);
+    ["init", "initialize", "initialise", "setup"]
+        .iter()
+        .any(|needle| tokens.iter().any(|token| token == needle))
+}
+
+fn c_lifecycle_end_rank(name: &str) -> u8 {
+    let tokens = c_lifecycle_name_tokens(name);
+    if ["free", "destroy", "delete", "release", "dispose", "deinit"]
+        .iter()
+        .any(|needle| {
+            tokens
+                .iter()
+                .any(|token| token_matches_lifecycle_verb(token, needle, C_END_GLUE_VERBS))
+        })
+    {
+        0
+    } else if tokens
+        .iter()
+        .any(|token| token == "cleanup" || token == "fini")
+    {
+        1
+    } else {
+        2
+    }
+}
+
 /// True when a function name reads like a stream "pump" — a call that advances a
 /// decode/read state machine and is worth driving in a loop after construction.
 /// Deliberately a verb whitelist (not "any non-init/non-end"): it excludes
@@ -3687,6 +4145,42 @@ fn c_constructor_drive_plan(
         steps,
         destroy: Some(destroy),
     })
+}
+
+fn c_va_list_variadic_wrapper(
+    target: &c_parser::CFunction,
+    functions: &[c_parser::CFunction],
+) -> Option<c_parser::CFunction> {
+    let last = target.params.last()?;
+    let last_type = canonical_c_lifecycle_type(&last.c_type);
+    if !matches!(last_type.as_str(), "va_list" | "__builtin_va_list") {
+        return None;
+    }
+
+    let expected_name = if let Some(index) = target.name.rfind("_v") {
+        format!("{}_{}", &target.name[..index], &target.name[index + 2..])
+    } else {
+        target.name.strip_prefix('v')?.to_owned()
+    };
+    let fixed_params = &target.params[..target.params.len() - 1];
+    functions
+        .iter()
+        .find(|candidate| {
+            candidate.name == expected_name
+                && candidate.variadic
+                && canonical_c_lifecycle_type(&candidate.return_type)
+                    == canonical_c_lifecycle_type(&target.return_type)
+                && candidate.params.len() == fixed_params.len()
+                && candidate
+                    .params
+                    .iter()
+                    .zip(fixed_params)
+                    .all(|(left, right)| {
+                        canonical_c_lifecycle_type(&left.c_type)
+                            == canonical_c_lifecycle_type(&right.c_type)
+                    })
+        })
+        .cloned()
 }
 
 /// Find the C function the user asked for, surfacing overload
@@ -4055,13 +4549,25 @@ fn c_name_is_allocator(name: &str) -> bool {
 /// `const`-qualified return legal in the C++ lane). Gated to names ending in
 /// `dup` so a `*_dup` returning a complex handle (cJSON_Duplicate — already
 /// handled by the paired-deallocator search above) and non-allocating returns
-/// are untouched; `free()` of a `malloc`'d block is never an invalid free.
+/// are untouched. Known custom-allocator families use their public deallocator
+/// instead of the host libc's `free()`.
 fn detect_strdup_family_free(return_type: &str, target_name: &str) -> Option<String> {
-    if !target_name.to_ascii_lowercase().ends_with("dup") {
+    let normalized_name = target_name.to_ascii_lowercase();
+    if !normalized_name.ends_with("dup") {
         return None;
     }
     if !return_type.trim_end().ends_with('*') {
         return None;
+    }
+    // mimalloc's strdup family allocates from mimalloc (and the `mi_heap_*`
+    // variants may use an explicit non-default heap). Passing that pointer to
+    // the host libc's `free` aborts; the public cross-heap release API is
+    // `mi_free`.
+    if matches!(
+        normalized_name.as_str(),
+        "mi_strdup" | "mi_strndup" | "mi_heap_strdup" | "mi_heap_strndup"
+    ) {
+        return Some("if (R) mi_free((void *)R)".to_owned());
     }
     Some("if (R) free((void *)R)".to_owned())
 }
@@ -4156,12 +4662,12 @@ fn find_paired_deallocator_name(
             .collect();
         headers.sort();
         for p in headers {
-            if let Ok(t) = std::fs::read_to_string(&p) {
+            if let Ok(t) = crate::source_text::read_source_text(&p) {
                 texts.push(t);
             }
         }
     }
-    if let Ok(t) = std::fs::read_to_string(source_path) {
+    if let Ok(t) = crate::source_text::read_source_text(source_path) {
         texts.push(t);
     }
     // Require the deallocator to share the target's library prefix (`toml_parse`
@@ -4273,14 +4779,25 @@ fn cpp_namespace_begin_macros(texts: &[String]) -> std::collections::BTreeMap<St
     for text in texts {
         let mut lines = text.lines();
         while let Some(line) = lines.next() {
-            let Some(rest) = line.trim_start().strip_prefix("#define ") else {
+            let Some(after_hash) = line.trim_start().strip_prefix('#') else {
                 continue;
             };
+            let after_hash = after_hash.trim_start();
+            let Some(rest) = after_hash.strip_prefix("define") else {
+                continue;
+            };
+            if !rest.chars().next().is_some_and(char::is_whitespace) {
+                continue;
+            }
+            let rest = rest.trim_start();
             let macro_name: String = rest
                 .chars()
                 .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
                 .collect();
-            if !(macro_name.ends_with("_NAMESPACE_BEGIN") || macro_name.ends_with("_NS_BEGIN")) {
+            if !(macro_name.ends_with("_NAMESPACE_BEGIN")
+                || macro_name.ends_with("_BEGIN_NAMESPACE")
+                || macro_name.ends_with("_NS_BEGIN"))
+            {
                 continue;
             }
             // Accumulate the macro body across `\`-continuation lines.
@@ -4602,6 +5119,267 @@ fn compile_database_flags_for_source(source_path: &Path) -> Vec<String> {
     }
 }
 
+/// Recover C compile flags from the strongest available project evidence.
+/// A checked-in/probe compile database remains authoritative. Without one, only
+/// portable standard-header capability macros are safe to infer from CMake;
+/// optional project features remain diagnostic-driven repairs.
+fn c_build_flags_for_source(source_path: &Path) -> Vec<String> {
+    let flags = compile_database_flags_for_source(source_path);
+    if !flags.is_empty() {
+        return flags;
+    }
+    if let Some(cmake) = find_upward_build_file(source_path, &["CMakeLists.txt"]) {
+        let mut flags = infer_cmake_c_build_context(source_path, &cmake).compile_flags;
+        flags.retain(|flag| {
+            matches!(
+                flag.as_str(),
+                "-DHAVE_STDBOOL_H"
+                    | "-DHAVE__BOOL"
+                    | "-DHAVE_STDINT_H"
+                    | "-DHAVE_INTTYPES_H"
+                    | "-DHAVE_STRUCT_TIMEVAL"
+                    | "-DHAVE_STRUCT_SOCKADDR_IN6"
+                    | "-DHAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID"
+            )
+        });
+        for flag in cmake_checked_host_capability_flags(source_path) {
+            push_unique_string(&mut flags, flag);
+        }
+        for flag in cmake_config_template_host_capability_flags(source_path) {
+            push_unique_string(&mut flags, flag);
+        }
+        return flags;
+    }
+    Vec::new()
+}
+
+/// Materialize a small set of native host capabilities that an ancestor CMake
+/// file explicitly probes for a generated config header. This is not general
+/// feature inference: each emitted macro describes a standard header, socket
+/// constant, or POSIX ABI type, and only appears when the project itself names
+/// the corresponding check. Nested component CMakeLists are scanned together
+/// with the project root because configure checks commonly live only at the root
+/// (c-ares).
+fn cmake_checked_host_capability_flags(source_path: &Path) -> Vec<String> {
+    let mut flags = Vec::new();
+    let mut cursor = source_path.parent();
+    for _ in 0..6 {
+        let Some(dir) = cursor else {
+            break;
+        };
+        let cmake = dir.join("CMakeLists.txt");
+        if cmake.is_file() {
+            let Ok(source) = crate::source_text::read_source_text(&cmake) else {
+                cursor = dir.parent();
+                continue;
+            };
+            let lower = source.to_ascii_lowercase();
+            let mut checked = |macro_name: &str, evidence: &str, supported: bool| {
+                if supported && source.contains(macro_name) && lower.contains(evidence) {
+                    push_unique_string(&mut flags, format!("-D{macro_name}"));
+                }
+            };
+            checked("HAVE_STDINT_H", "stdint.h", true);
+            checked("HAVE_INTTYPES_H", "inttypes.h", true);
+            checked("HAVE_STDBOOL_H", "stdbool.h", true);
+            for (macro_name, header) in [
+                ("HAVE_ARPA_INET_H", "arpa/inet.h"),
+                ("HAVE_ASSERT_H", "assert.h"),
+                ("HAVE_ERRNO_H", "errno.h"),
+                ("HAVE_FCNTL_H", "fcntl.h"),
+                ("HAVE_IFADDRS_H", "ifaddrs.h"),
+                ("HAVE_NETDB_H", "netdb.h"),
+                ("HAVE_NET_IF_H", "net/if.h"),
+                ("HAVE_NETINET_IN_H", "netinet/in.h"),
+                ("HAVE_NETINET_TCP_H", "netinet/tcp.h"),
+                ("HAVE_POLL_H", "poll.h"),
+                ("HAVE_SIGNAL_H", "signal.h"),
+                ("HAVE_LIMITS_H", "limits.h"),
+                ("HAVE_MEMORY_H", "memory.h"),
+                ("HAVE_STDLIB_H", "stdlib.h"),
+                ("HAVE_STRING_H", "string.h"),
+                ("HAVE_STRINGS_H", "strings.h"),
+                ("HAVE_SYS_IOCTL_H", "sys/ioctl.h"),
+                ("HAVE_SYS_SELECT_H", "sys/select.h"),
+                ("HAVE_SYS_SOCKET_H", "sys/socket.h"),
+                ("HAVE_SYS_STAT_H", "sys/stat.h"),
+                ("HAVE_SYS_TIME_H", "sys/time.h"),
+                ("HAVE_SYS_TYPES_H", "sys/types.h"),
+                ("HAVE_SYS_UIO_H", "sys/uio.h"),
+                ("HAVE_TIME_H", "time.h"),
+                ("HAVE_UNISTD_H", "unistd.h"),
+            ] {
+                checked(macro_name, header, cfg!(unix));
+            }
+            checked(
+                "HAVE_SYS_RANDOM_H",
+                "sys/random.h",
+                cfg!(target_os = "linux"),
+            );
+            checked("HAVE_AF_INET6", "check_symbol_exists (af_inet6", cfg!(unix));
+            checked("HAVE_PF_INET6", "check_symbol_exists (pf_inet6", cfg!(unix));
+            checked(
+                "HAVE_GETTIMEOFDAY",
+                "check_symbol_exists (gettimeofday",
+                cfg!(unix),
+            );
+            checked("HAVE_SOCKLEN_T", "socklen_t", cfg!(unix));
+            checked("HAVE_SSIZE_T", "ssize_t", cfg!(unix));
+            checked("HAVE_STRUCT_ADDRINFO", "struct addrinfo", cfg!(unix));
+            checked("HAVE_STRUCT_IN6_ADDR", "struct in6_addr", cfg!(unix));
+            checked("HAVE_STRUCT_TIMEVAL", "struct timeval", cfg!(unix));
+            checked(
+                "HAVE_STRUCT_SOCKADDR_IN6",
+                "struct sockaddr_in6",
+                cfg!(unix),
+            );
+            checked(
+                "HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID",
+                "sin6_scope_id",
+                cfg!(unix),
+            );
+            checked(
+                "HAVE_STRUCT_SOCKADDR_STORAGE",
+                "struct sockaddr_storage",
+                cfg!(unix),
+            );
+        }
+        cursor = dir.parent();
+    }
+    flags
+}
+
+/// Recover host-safe capability names from generated CMake config-header
+/// templates. Projects commonly prefix these (`EVENT__HAVE_GETTIMEOFDAY`) even
+/// though the underlying check is the same POSIX capability. Only capabilities
+/// guaranteed by the current host family are materialized; optional library or
+/// product features remain unset.
+fn cmake_config_template_host_capability_flags(source_path: &Path) -> Vec<String> {
+    let unix_capabilities = [
+        "HAVE_ARC4RANDOM",
+        "HAVE_ARC4RANDOM_BUF",
+        "HAVE_ARPA_INET_H",
+        "HAVE_ASSERT_H",
+        "HAVE_ERRNO_H",
+        "HAVE_FCNTL_H",
+        "HAVE_IFADDRS_H",
+        "HAVE_LIMITS_H",
+        "HAVE_MEMORY_H",
+        "HAVE_NETDB_H",
+        "HAVE_NET_IF_H",
+        "HAVE_NETINET_IN_H",
+        "HAVE_NETINET_TCP_H",
+        "HAVE_POLL_H",
+        "HAVE_SIGNAL_H",
+        "HAVE_SIGACTION",
+        "HAVE_STDARG_H",
+        "HAVE_STDDEF_H",
+        "HAVE_STDLIB_H",
+        "HAVE_STRING_H",
+        "HAVE_STRINGS_H",
+        "HAVE_SYS_IOCTL_H",
+        "HAVE_SYS_SELECT_H",
+        "HAVE_SYS_SIGNALFD_H",
+        "HAVE_SYS_SOCKET_H",
+        "HAVE_SYS_STAT_H",
+        "HAVE_SYS_TIME_H",
+        "HAVE_SYS_TYPES_H",
+        "HAVE_SYS_UIO_H",
+        "HAVE_SYS_UN_H",
+        "HAVE_TIME_H",
+        "HAVE_UNISTD_H",
+        "HAVE_GETIFADDRS",
+        "HAVE_GETTIMEOFDAY",
+        "HAVE_NANOSLEEP",
+        "HAVE_USLEEP",
+        "HAVE_SA_FAMILY_T",
+        "HAVE_SOCKLEN_T",
+        "HAVE_SSIZE_T",
+        "HAVE_STRNDUP",
+        "HAVE_STRSEP",
+        "HAVE_STRTOK_R",
+        "HAVE_STRTOLL",
+        "HAVE_STRUCT_ADDRINFO",
+        "HAVE_STRUCT_IN6_ADDR",
+        "HAVE_STRUCT_LINGER",
+        "HAVE_STRUCT_SOCKADDR_IN6",
+        "HAVE_STRUCT_SOCKADDR_STORAGE",
+        "HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY",
+        "HAVE_STRUCT_SOCKADDR_UN",
+    ];
+    let portable_capabilities = [
+        "HAVE_INTTYPES_H",
+        "HAVE_STDBOOL_H",
+        "HAVE_STDINT_H",
+        "HAVE_UINT8_T",
+        "HAVE_UINT16_T",
+        "HAVE_UINT32_T",
+        "HAVE_UINT64_T",
+        "HAVE_UINTPTR_T",
+    ];
+    let host_size_capabilities = [
+        ("SIZEOF_SIZE_T", std::mem::size_of::<usize>()),
+        ("SIZEOF_VOID_P", std::mem::size_of::<*const ()>()),
+    ];
+    let mut flags = Vec::new();
+    let mut cursor = source_path.parent();
+    for _ in 0..6 {
+        let Some(dir) = cursor else {
+            break;
+        };
+        if dir.join("CMakeLists.txt").is_file() {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                cursor = dir.parent();
+                continue;
+            };
+            for entry in entries.flatten().take(128) {
+                let path = entry.path();
+                let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+                    continue;
+                };
+                if !(name.ends_with(".h.cmake") || name.ends_with(".h.in")) {
+                    continue;
+                }
+                let Ok(template) = crate::source_text::read_source_text(&path) else {
+                    continue;
+                };
+                for line in template
+                    .lines()
+                    .filter(|line| line.contains("cmakedefine") || line.contains("#undef"))
+                {
+                    for token in line.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_') {
+                        let supported = portable_capabilities
+                            .iter()
+                            .any(|capability| token.ends_with(capability))
+                            || (cfg!(unix)
+                                && unix_capabilities
+                                    .iter()
+                                    .any(|capability| token.ends_with(capability)));
+                        if supported {
+                            push_unique_string(&mut flags, format!("-D{token}"));
+                        }
+                    }
+                }
+                for line in template
+                    .lines()
+                    .filter(|line| line.trim_start().starts_with("#define"))
+                {
+                    for token in line.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_') {
+                        if let Some((_, size)) = host_size_capabilities
+                            .iter()
+                            .find(|(capability, _)| token.ends_with(capability))
+                        {
+                            push_unique_string(&mut flags, format!("-D{token}={size}"));
+                        }
+                    }
+                }
+            }
+        }
+        cursor = dir.parent();
+    }
+    flags
+}
+
 fn try_compile_database_flags_for_source(source_path: &Path) -> Result<Vec<String>> {
     for db_path in compile_database_candidates(source_path) {
         if !db_path.is_file() {
@@ -4661,7 +5439,13 @@ fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
 /// Upper bound on the number of translation units the §26.1 secondary
 /// whole-library fallback ([`recover_library_translation_units`]) will sweep, so a
 /// pathological source tree cannot blow up a single harness link.
-const MAX_LIBRARY_TRANSLATION_UNITS: usize = 400;
+const MAX_LIBRARY_TRANSLATION_UNITS: usize = 40;
+
+/// Small inferred CMake/Make libraries are cheap enough to link eagerly. Larger
+/// target source sets are deferred until a failed link proves the target needs
+/// them; otherwise a self-contained helper in a large library (LevelDB `Hash`)
+/// recompiles dozens of unrelated TUs on every dialect/repair attempt.
+const MAX_EAGER_BUILD_CONTEXT_SOURCES: usize = 16;
 
 /// Directory walk depth bound for the sibling-source tier of the whole-library
 /// fallback.
@@ -4684,7 +5468,7 @@ fn is_c_or_cpp_translation_unit(path: &Path) -> bool {
 /// recoverable by the per-symbol `AddSource` cascade) rather than mis-link a
 /// second `main`.
 fn source_defines_main(path: &Path) -> bool {
-    fs::read_to_string(path)
+    crate::source_text::read_source_text(path)
         .map(|text| text_declares_function(&text, "main"))
         .unwrap_or(false)
 }
@@ -4696,13 +5480,298 @@ fn source_defines_main(path: &Path) -> bool {
 /// so it must be excluded from the whole-library link (fmt ships `src/fmt.cc` as a
 /// module unit alongside its classic `src/*.cc`). Cheap textual scan.
 fn source_is_cpp_module_unit(path: &Path) -> bool {
-    let Ok(text) = fs::read_to_string(path) else {
+    let Ok(text) = crate::source_text::read_source_text(path) else {
         return false;
     };
     text.lines().any(|line| {
         let line = line.trim_start();
         line.starts_with("export module ") || line.starts_with("module ") || line == "module;"
     })
+}
+
+/// A translation unit whose basename identifies non-library code even when the
+/// project keeps it directly in `src/` or the repository root (classic projects
+/// often ship `testheap.c` beside `heap.c`, without a `tests/` directory).
+fn source_basename_is_non_library(path: &Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    let stem = stem.to_ascii_lowercase();
+    let prefixed = ["test", "example", "demo", "benchmark", "bench", "fuzz"]
+        .iter()
+        .any(|prefix| {
+            stem == *prefix
+                || stem.starts_with(&format!("{prefix}_"))
+                || (prefix == &"test"
+                    && stem
+                        .strip_prefix(prefix)
+                        .and_then(|rest| rest.chars().next())
+                        .is_some_and(|c| c.is_ascii_alphanumeric()))
+        });
+    let suffixed = [
+        "_test",
+        "_tests",
+        "_unittest",
+        "_unittests",
+        "_benchmark",
+        "_benchmarks",
+        "_bench",
+        "_fuzz",
+        "_fuzzer",
+    ]
+    .iter()
+    .any(|suffix| stem.ends_with(suffix));
+    prefixed || suffixed
+}
+
+/// A source basename that is explicitly for a different host operating system.
+/// This covers old flat layouts (`linux.c`, `darwin.c`, `ae_kqueue.c`) where the
+/// path has no platform directory for [`path_in_non_library_dir`] to filter.
+fn source_basename_is_foreign_platform(path: &Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    let lower = stem.to_ascii_lowercase();
+    let tokens: Vec<&str> = lower
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|s| !s.is_empty())
+        .collect();
+    let has = |names: &[&str]| tokens.iter().any(|token| names.contains(token));
+
+    if cfg!(target_os = "windows") {
+        has(&[
+            "linux", "darwin", "macos", "osx", "freebsd", "openbsd", "netbsd", "sunos", "solaris",
+            "aix",
+        ])
+    } else if cfg!(target_os = "macos") {
+        has(&[
+            "linux", "windows", "win32", "win64", "freebsd", "openbsd", "netbsd", "sunos",
+            "solaris", "aix",
+        ])
+    } else if cfg!(target_os = "linux") {
+        has(&[
+            "windows", "win32", "win64", "darwin", "macos", "osx", "freebsd", "openbsd", "netbsd",
+            "sunos", "solaris", "aix", "kqueue", "evport",
+        ]) || lower.contains("iocp")
+            || lower == "wepoll"
+            || lower.starts_with("win32")
+            || lower == "devpoll"
+    } else {
+        false
+    }
+}
+
+/// Whether a source path names an implementation for a platform other than the
+/// build host. Directory layouts (`src/prim/wasi/prim.c`, `src/osx/foo.c`) need
+/// the same treatment as flat basenames (`win32.c`, `ae_kqueue.c`): compiling a
+/// foreign backend can satisfy a symbol name while introducing an incompatible
+/// implementation and its platform-only dependencies.
+pub(crate) fn source_path_is_foreign_platform(path: &Path) -> bool {
+    if source_basename_is_foreign_platform(path) {
+        return true;
+    }
+    let tokens: Vec<String> = path
+        .components()
+        .filter_map(|component| component.as_os_str().to_str())
+        .flat_map(|component| {
+            component
+                .to_ascii_lowercase()
+                .split(|ch: char| !ch.is_ascii_alphanumeric())
+                .filter(|token| !token.is_empty())
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let has = |names: &[&str]| tokens.iter().any(|token| names.contains(&token.as_str()));
+
+    let foreign_os = if cfg!(target_os = "windows") {
+        has(&[
+            "linux", "darwin", "macos", "osx", "freebsd", "openbsd", "netbsd", "sunos", "solaris",
+            "aix",
+        ])
+    } else if cfg!(target_os = "macos") {
+        has(&[
+            "linux", "win", "windows", "win32", "win64", "mingw", "mingw32", "mingw64", "msvc",
+            "freebsd", "openbsd", "netbsd", "sunos", "solaris", "aix",
+        ])
+    } else if cfg!(target_os = "linux") {
+        has(&[
+            "win", "windows", "win32", "win64", "mingw", "mingw32", "mingw64", "msvc", "darwin",
+            "macos", "osx", "freebsd", "openbsd", "netbsd", "sunos", "solaris", "aix", "vxworks",
+            "qnx", "zos",
+        ])
+    } else {
+        false
+    };
+    foreign_os
+        || (!cfg!(target_arch = "wasm32") && has(&["wasi", "wasm", "emscripten"]))
+        || (!cfg!(target_os = "android") && has(&["android"]))
+}
+
+/// Whether a source file unconditionally includes a backend header for another
+/// platform. Guarded includes in portable files are allowed; an unguarded IOCP,
+/// WinSock, kqueue, or similar backend include means the real build selects the
+/// entire translation unit conditionally and it must not enter a native sweep.
+pub(crate) fn source_path_has_unconditional_foreign_platform_include(path: &Path) -> bool {
+    let mut visited = std::collections::HashSet::new();
+    source_path_has_unconditional_foreign_platform_include_inner(path, &mut visited)
+}
+
+fn expression_has_positive_guard_token(expression: &str, tokens: &[&str]) -> bool {
+    let compact = expression
+        .chars()
+        .filter(|ch| !ch.is_ascii_whitespace())
+        .collect::<String>();
+    tokens.iter().any(|token| {
+        let token = token.to_ascii_lowercase();
+        let without_negated = compact
+            .replace(&format!("!defined({token})"), "")
+            .replace(&format!("!defined{token}"), "");
+        without_negated.contains(&token)
+    })
+}
+
+fn source_path_has_unconditional_foreign_platform_include_inner(
+    path: &Path,
+    visited: &mut std::collections::HashSet<String>,
+) -> bool {
+    if !visited.insert(normalized_path_key(path)) {
+        return false;
+    }
+    let Ok(source) = crate::source_text::read_source_text(path) else {
+        return false;
+    };
+    let foreign_system_tokens: &[&str] = if cfg!(target_os = "windows") {
+        &["sys/epoll.h", "sys/event.h"]
+    } else {
+        &["windows.h", "winsock", "winerror.h", "ws2tcpip.h"]
+    };
+    let foreign_backend_tokens: &[&str] = if cfg!(target_os = "windows") {
+        &["epoll", "kqueue"]
+    } else {
+        &["iocp", "wepoll"]
+    };
+    let foreign_code_tokens: &[&str] = if cfg!(target_os = "windows") {
+        &["epoll_", "kevent(", "kqueue("]
+    } else {
+        &[
+            "event_overlapped",
+            "error_io_pending",
+            "event_get_win32_extension_fns_",
+            "wsaget",
+            "wsae",
+        ]
+    };
+    let guard_tokens: &[&str] = if cfg!(target_os = "windows") {
+        &["__linux__", "linux", "kqueue"]
+    } else {
+        &["_win32", "win32", "_windows", "iocp"]
+    };
+    let mut foreign_guards = Vec::new();
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        if let Some(directive) = trimmed.strip_prefix('#').map(str::trim_start) {
+            if directive.starts_with("ifdef ") || directive.starts_with("if ") {
+                let lower = directive.to_ascii_lowercase();
+                foreign_guards.push(expression_has_positive_guard_token(&lower, guard_tokens));
+                continue;
+            }
+            if directive.starts_with("ifndef ") {
+                foreign_guards.push(false);
+                continue;
+            }
+            if directive.starts_with("elif ") {
+                let lower = directive.to_ascii_lowercase();
+                if let Some(branch) = foreign_guards.last_mut() {
+                    *branch = expression_has_positive_guard_token(&lower, guard_tokens);
+                }
+                continue;
+            }
+            if directive == "else" {
+                if let Some(branch) = foreign_guards.last_mut() {
+                    *branch = false;
+                }
+                continue;
+            }
+            if directive == "endif" {
+                foreign_guards.pop();
+                continue;
+            }
+            if directive.starts_with("include") && !foreign_guards.iter().any(|guard| *guard) {
+                let lower = directive.to_ascii_lowercase();
+                if foreign_system_tokens
+                    .iter()
+                    .any(|token| lower.contains(token))
+                {
+                    return true;
+                }
+                if foreign_backend_tokens
+                    .iter()
+                    .any(|token| lower.contains(token))
+                {
+                    let include = directive
+                        .strip_prefix("include")
+                        .map(str::trim_start)
+                        .and_then(|rest| rest.strip_prefix('"'))
+                        .and_then(|quoted| quoted.find('"').map(|end| &quoted[..end]));
+                    let local_header = include
+                        .and_then(|include| path.parent().map(|parent| parent.join(include)));
+                    if let Some(local_header) = local_header.filter(|header| header.is_file()) {
+                        if source_path_has_unconditional_foreign_platform_include_inner(
+                            &local_header,
+                            visited,
+                        ) {
+                            return true;
+                        }
+                        continue;
+                    }
+                    return true;
+                }
+            }
+        } else if is_c_or_cpp_translation_unit(path) && !foreign_guards.iter().any(|guard| *guard) {
+            let lower = trimmed.to_ascii_lowercase();
+            if foreign_code_tokens
+                .iter()
+                .any(|token| lower.contains(token))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn source_basename_is_optional_dependency_backend(path: &Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    let tokens: Vec<String> = stem
+        .to_ascii_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .collect();
+    tokens
+        .iter()
+        .any(|token| matches!(token.as_str(), "openssl" | "mbedtls" | "ssl"))
+}
+
+fn source_is_ineligible_library_tu(path: &Path) -> bool {
+    source_basename_is_non_library(path)
+        || source_path_is_foreign_platform(path)
+        || source_path_has_unconditional_foreign_platform_include(path)
+        || source_basename_is_optional_dependency_backend(path)
+        || source_path_has_missing_translation_unit_include(path)
+}
+
+/// Whether a source file textually includes a C/C++ implementation file that
+/// is absent from the damaged tree. Such a source cannot be compiled as a
+/// repair TU: preprocessing it would replace the missing implementation with
+/// GovFuzz's placeholder header and expose only a misleading partial program.
+pub(crate) fn source_path_has_missing_translation_unit_include(path: &Path) -> bool {
+    included_translation_unit_paths(path)
+        .iter()
+        .any(|included| !included.is_file())
 }
 
 /// Directory names holding non-library code (tests/examples/benchmarks/tools/
@@ -4771,8 +5840,10 @@ fn is_non_library_dir(name: &str) -> bool {
 ///      the whole library.
 ///
 /// The target's own source and any `main`-defining TU are excluded; the result is
-/// deduplicated, deterministically sorted, and bounded
-/// ([`MAX_LIBRARY_TRANSLATION_UNITS`]).
+/// deduplicated and deterministically sorted. An application-sized set above
+/// [`MAX_LIBRARY_TRANSLATION_UNITS`] is rejected wholesale rather than truncated:
+/// an arbitrary partial link is both expensive and almost certainly incorrect,
+/// while the normal per-symbol source-repair cascade remains available.
 pub(crate) fn recover_library_translation_units(
     target_source: &Path,
     cpp_target: bool,
@@ -4780,12 +5851,31 @@ pub(crate) fn recover_library_translation_units(
     let target_key = normalized_path_key(target_source);
     let mut tus = library_translation_units_from_compile_db(target_source, &target_key, cpp_target);
     if tus.is_empty() {
+        tus = find_upward_build_file(target_source, &["CMakeLists.txt"])
+            .map(|cmake| infer_cmake_build_context(target_source, &cmake).extra_sources)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|file| {
+                normalized_path_key(file) != target_key
+                    && file.is_file()
+                    && !source_defines_main(file)
+                    && !source_is_cpp_module_unit(file)
+                    && !source_is_ineligible_library_tu(file)
+                    && (cpp_target || !is_cpp_only_translation_unit(file))
+                    && !path_in_non_library_dir(file)
+            })
+            .collect();
+    }
+    if tus.is_empty() {
         tus = sibling_library_translation_units(target_source, &target_key, cpp_target);
     }
     tus.sort();
     tus.dedup();
-    tus.truncate(MAX_LIBRARY_TRANSLATION_UNITS);
-    tus
+    if tus.len() > MAX_LIBRARY_TRANSLATION_UNITS {
+        Vec::new()
+    } else {
+        tus
+    }
 }
 
 /// A C++-only translation unit (`.cpp`/`.cc`/`.cxx`/`.c++`/`.C`). A C target's
@@ -4838,6 +5928,7 @@ fn library_translation_units_from_compile_db(
                 || !file.is_file()
                 || source_defines_main(&file)
                 || source_is_cpp_module_unit(&file)
+                || source_is_ineligible_library_tu(&file)
                 // #3: a C target's harness builds with a C-only `clang -std=c<NN>`
                 // recipe, so never sweep a C++ TU into its library link; and skip
                 // test/example TUs the compile DB happens to list.
@@ -4870,18 +5961,92 @@ fn sibling_library_translation_units(
         return Vec::new();
     };
     let mut out = Vec::new();
-    collect_sibling_translation_units(root, 0, target_key, cpp_target, &mut out);
+    let max_depth = if source_directory_is_project_root(root) {
+        0
+    } else {
+        SIBLING_TU_MAX_DEPTH
+    };
+    collect_sibling_translation_units(root, 0, max_depth, target_key, cpp_target, &mut out);
+    // An amalgamation that includes the selected target cannot be linked beside
+    // that target without duplicate definitions (mimalloc's `static.c` includes
+    // `alloc.c`). Drop such containers before using includes to suppress their
+    // standalone leaves; those leaves must remain available as normal siblings.
+    out.retain(|source| {
+        !included_translation_unit_paths(source)
+            .iter()
+            .any(|included| normalized_path_key(included) == target_key)
+    });
+    // Some old C libraries split one logical translation unit across files with
+    // a `.c` suffix (Expat's `xcsinc.c`, `xmltok_impl.c`, and `xmltok_ns.c`).
+    // Compiling those include fragments independently loses the declarations and
+    // feature macros established by the including TU. A real compile database is
+    // authoritative and bypasses this fallback; for the sibling heuristic, drop
+    // every candidate that another recovered TU (or the target itself) includes
+    // textually.
+    let mut included_source_paths = std::collections::HashSet::new();
+    for source in std::iter::once(target_source).chain(out.iter().map(PathBuf::as_path)) {
+        included_source_paths.extend(
+            included_translation_unit_paths(source)
+                .into_iter()
+                .map(|included| normalized_path_key(&included)),
+        );
+    }
+    out.retain(|path| !included_source_paths.contains(&normalized_path_key(path)));
     out
+}
+
+/// A target that lives directly in a checkout/source-drop root (zlib's
+/// `uncompr.c`) owns the root-level siblings, not every independent library under
+/// `contrib/`. Nested source directories may still recurse to collect one
+/// component's internal layout.
+fn source_directory_is_project_root(dir: &Path) -> bool {
+    dir.join(".git").exists()
+        || dir.join(".hg").exists()
+        || dir.join(".svn").exists()
+        || [
+            "configure",
+            "configure.ac",
+            "configure.in",
+            "CMakeLists.txt",
+            "meson.build",
+            "WORKSPACE",
+            "WORKSPACE.bazel",
+        ]
+        .iter()
+        .any(|marker| dir.join(marker).is_file())
+}
+
+fn included_translation_unit_paths(path: &Path) -> Vec<PathBuf> {
+    let Ok(source) = crate::source_text::read_source_text(path) else {
+        return Vec::new();
+    };
+    let Some(parent) = path.parent() else {
+        return Vec::new();
+    };
+    source
+        .lines()
+        .filter_map(|line| {
+            let rest = line.trim_start().strip_prefix('#')?.trim_start();
+            let rest = rest.strip_prefix("include")?.trim_start();
+            let include = rest.strip_prefix('"')?;
+            let end = include.find('"')?;
+            let include = Path::new(&include[..end]);
+            is_c_or_cpp_translation_unit(include).then(|| normalize_path(&parent.join(include)))
+        })
+        .collect()
 }
 
 fn collect_sibling_translation_units(
     dir: &Path,
     depth: u32,
+    max_depth: u32,
     target_key: &str,
     cpp_target: bool,
     out: &mut Vec<PathBuf>,
 ) {
-    if out.len() >= MAX_LIBRARY_TRANSLATION_UNITS {
+    // Collect one past the cap so the caller can reject the entire oversized
+    // set; stopping at exactly the cap would silently return an arbitrary prefix.
+    if out.len() > MAX_LIBRARY_TRANSLATION_UNITS {
         return;
     }
     let Ok(entries) = fs::read_dir(dir) else {
@@ -4901,6 +6066,7 @@ fn collect_sibling_translation_units(
             if normalized_path_key(&norm) == target_key
                 || source_defines_main(&norm)
                 || source_is_cpp_module_unit(&norm)
+                || source_is_ineligible_library_tu(&norm)
                 // #3: don't link a C++ TU into a C target's C-only build.
                 || (!cpp_target && is_cpp_only_translation_unit(&norm))
             {
@@ -4911,13 +6077,20 @@ fn collect_sibling_translation_units(
             }
         }
     }
-    if depth < SIBLING_TU_MAX_DEPTH {
+    if depth < max_depth {
         subdirs.sort();
         for sub in subdirs {
-            if out.len() >= MAX_LIBRARY_TRANSLATION_UNITS {
+            if out.len() > MAX_LIBRARY_TRANSLATION_UNITS {
                 break;
             }
-            collect_sibling_translation_units(&sub, depth + 1, target_key, cpp_target, out);
+            collect_sibling_translation_units(
+                &sub,
+                depth + 1,
+                max_depth,
+                target_key,
+                cpp_target,
+                out,
+            );
         }
     }
 }
@@ -5203,6 +6376,13 @@ pub(crate) fn is_partial_impl_header(header: &str) -> bool {
     stem.ends_with("-inl") || stem.ends_with("_inl") || stem.ends_with(".inc")
 }
 
+fn is_translation_unit_include(path: &str) -> bool {
+    matches!(
+        Path::new(path).extension().and_then(|ext| ext.to_str()),
+        Some("c") | Some("cc") | Some("cpp") | Some("cxx") | Some("c++") | Some("C")
+    )
+}
+
 /// Whether a single line is an OpenMP directive: `#pragma omp ...` or an
 /// `#include` of `<omp.h>`/`"omp.h"`. Tolerates leading whitespace and a space
 /// after `#` (`# pragma omp`).
@@ -5302,9 +6482,23 @@ fn foreign_guard_branches(directive_after_hash: &str) -> (bool, bool) {
     if !mentions_foreign || mentions_host {
         return (false, false);
     }
-    // `#ifndef WIN` / `#if !defined(WIN)` select the host branch in `#if`.
-    let negated = d.starts_with("ifndef") || d.contains('!');
-    if negated {
+
+    // A negated FOREIGN term does not negate a positive sibling term:
+    // `defined(_WIN32) && !defined(__CYGWIN__)` is still Windows-only. The old
+    // `d.contains('!')` shortcut inverted that whole expression and pulled
+    // libarchive's archive_windows.h into a Linux harness. Remove only explicitly
+    // negated occurrences, then see whether any positive foreign selector remains.
+    let compact: String = d.chars().filter(|c| !c.is_whitespace()).collect();
+    let mut positive_expr = compact.clone();
+    for name in FOREIGN {
+        positive_expr = positive_expr.replace(&format!("!defined({name})"), "");
+        positive_expr = positive_expr.replace(&format!("!{name}"), "");
+    }
+    let has_positive_foreign = FOREIGN.iter().any(|name| positive_expr.contains(name));
+
+    // `#ifndef WIN` / `#if !defined(WIN)` select the host branch in `#if` when
+    // there is no other positive foreign selector.
+    if d.starts_with("ifndef") || !has_positive_foreign {
         (false, true)
     } else {
         (true, false)
@@ -5357,7 +6551,12 @@ fn direct_project_includes(source: &str, include_dirs: &[PathBuf]) -> Vec<String
         let Some(header) = header.map(str::trim).filter(|h| !h.is_empty()) else {
             continue;
         };
-        if is_partial_impl_header(header) {
+        // A source may textually include implementation fragments under setup
+        // macros (mimalloc's alloc.c includes alloc-override.c/free.c). The real
+        // target TU already pulls them in at the correct point; emitting them as
+        // standalone harness includes loses that context and triggers their
+        // defensive `#error` guards or duplicate definitions.
+        if is_partial_impl_header(header) || is_translation_unit_include(header) {
             continue;
         }
         let header = header.to_owned();
@@ -5393,9 +6592,30 @@ fn harness_project_includes(source: &str, include_dirs: &[PathBuf]) -> Vec<Strin
     let mut ordered = Vec::new();
     let mut visited = std::collections::HashSet::new();
     for header in direct_project_includes(source, include_dirs) {
-        visit_include_closure(&header, include_dirs, &mut ordered, &mut visited);
+        visit_include_closure(&header, include_dirs, &mut ordered, &mut visited, true);
     }
     ordered
+}
+
+fn ordered_c_harness_headers(
+    source_path: &Path,
+    target_dir: &Path,
+    source: &str,
+    include_dirs: &[PathBuf],
+) -> Vec<String> {
+    // Emit the target source's direct includes in their original order. Nested
+    // headers must be left to their parent so they are processed in the same
+    // macro/type context as the real translation unit. Flattening a transitive
+    // closure here can move a late include ahead of definitions in its parent
+    // (Chocolate Doom's h2def.h defines mobj_t before including p_action.h).
+    // Type discovery still walks the transitive closure separately.
+    let mut headers = direct_project_includes(source, include_dirs);
+    for header in auto_detect_c_headers(source_path, target_dir) {
+        if !headers.contains(&header) {
+            headers.push(header);
+        }
+    }
+    headers
 }
 
 /// Post-order DFS: push a header's own resolvable includes (its dependencies)
@@ -5405,6 +6625,7 @@ fn visit_include_closure(
     include_dirs: &[PathBuf],
     ordered: &mut Vec<String>,
     visited: &mut std::collections::HashSet<String>,
+    is_root: bool,
 ) {
     if ordered.len() >= MAX_TRANSITIVE_HEADERS || !visited.insert(header.to_owned()) {
         return;
@@ -5415,9 +6636,23 @@ fn visit_include_closure(
         .find(|p| p.is_file())
     {
         if let Ok(src) = crate::source_text::read_source_text(&path) {
+            // Umbrella-only headers deliberately fail when included directly
+            // (XZ's lzma/*.h children require lzma.h to define LZMA_H_INTERNAL).
+            // Their umbrella already includes them in the correct macro context;
+            // emitting them dependencies-first defeats that contract.
+            if header_rejects_direct_include(&src) {
+                return;
+            }
+            // A transitive legacy header without an include guard must be left to
+            // its parent. Emitting it here and then emitting the parent includes
+            // it twice (Chocolate Doom's h2def.h -> generated info.h), producing
+            // duplicate enums/definitions before recovery can reach the target.
+            if !is_root && !header_has_include_guard(&src) {
+                return;
+            }
             for dep in direct_project_includes(&src, include_dirs) {
                 if dep != header {
-                    visit_include_closure(&dep, include_dirs, ordered, visited);
+                    visit_include_closure(&dep, include_dirs, ordered, visited, false);
                 }
             }
         }
@@ -5425,6 +6660,49 @@ fn visit_include_closure(
     if !ordered.contains(&header.to_owned()) {
         ordered.push(header.to_owned());
     }
+}
+
+fn header_has_include_guard(source: &str) -> bool {
+    if source
+        .lines()
+        .any(|line| line.trim_start().starts_with("#pragma once"))
+    {
+        return true;
+    }
+
+    let mut guard = None;
+    for line in source.lines().take(80) {
+        let directive = line.trim_start().strip_prefix('#').map(str::trim_start);
+        if let Some(name) = directive.and_then(|d| d.strip_prefix("ifndef")) {
+            guard = name.split_whitespace().next().map(str::to_owned);
+            continue;
+        }
+        if let (Some(expected), Some(name)) = (
+            guard.as_deref(),
+            directive.and_then(|d| d.strip_prefix("define")),
+        ) {
+            if name.split_whitespace().next() == Some(expected) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+pub(crate) fn header_rejects_direct_include(source: &str) -> bool {
+    source.lines().any(|line| {
+        let Some(message) = line
+            .trim_start()
+            .strip_prefix('#')
+            .map(str::trim_start)
+            .and_then(|directive| directive.strip_prefix("error"))
+        else {
+            return false;
+        };
+        let message = message.to_ascii_lowercase();
+        (message.contains("include") && message.contains("direct"))
+            || (message.contains("only") && message.contains("internal"))
+    })
 }
 
 fn quoted_local_includes(source: &str) -> Vec<String> {
@@ -5460,7 +6738,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
 
     let source_path = absolutize(&args.source)
         .with_context(|| format!("resolve C++ source {}", args.source.display()))?;
-    let source = fs::read_to_string(&source_path)
+    let source = crate::source_text::read_source_text(&source_path)
         .with_context(|| format!("read C++ source {}", source_path.display()))?;
     let mut functions = cpp_parser::parse_cpp_functions(&source)
         .with_context(|| format!("parse C++ source {}", source_path.display()))?;
@@ -5533,7 +6811,13 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
     };
     let build_context = cpp_build_context_for_source(&source_path);
     let compile_flags = build_context.encoded_flags();
-    for inferred in &build_context.extra_sources {
+    let eager_context_sources =
+        if build_context.extra_sources.len() <= MAX_EAGER_BUILD_CONTEXT_SOURCES {
+            build_context.extra_sources.as_slice()
+        } else {
+            &[]
+        };
+    for inferred in eager_context_sources {
         if static_direct_target && inferred == &source_path {
             continue;
         }
@@ -5610,6 +6894,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         .collect();
     let begin_macros = cpp_namespace_begin_macros(&header_texts);
     let using_namespaces = collect_cpp_using_namespaces(&header_texts, &begin_macros);
+    resolve_cpp_namespace_qualified_free_functions(&mut functions, &header_texts);
     // Out-of-line member definitions in this `.cpp` have no access specifier, so
     // their `member_access` came back None; resolve it from the class declarations
     // in the header include closure before building lifecycle setup steps.
@@ -5619,6 +6904,14 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         &target_includes,
         &target_includes_dirs,
     );
+    if let Some(resolved) = functions.iter().find(|candidate| {
+        candidate.name == function.name
+            && candidate.line == function.line
+            && candidate.qualifier_path == function.qualifier_path
+    }) {
+        function.api = resolved.api.clone();
+        function.is_static = resolved.is_static;
+    }
     let mut type_defs = collect_cpp_type_defs_for_harness(
         &source_path,
         &source,
@@ -5637,7 +6930,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // once the header's aliases are in the registry.
     let ctor_registry = type_model::TypeRegistry::from_defs(type_defs.iter());
     let (constructor_params, default_constructible_classes, receiver_class_override, factory_plan) =
-        if function.api.class_name.is_some() {
+        if function.api.class_name.is_some() && !function.is_static {
             // #456 / §27.4: the abstract base + its concrete subclass commonly live
             // in headers, so resolve them across the include closure, not just the
             // target `.cpp`.
@@ -6691,6 +7984,21 @@ fn find_upward_build_file(source_path: &Path, names: &[&str]) -> Option<PathBuf>
 }
 
 fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildContext {
+    infer_cmake_build_context_with_policy(source_path, cmake_path, true)
+}
+
+/// C has no eager CMake source-set link path, so an unresolved target owner must
+/// not union every target's mutually exclusive compile definitions. Global flags
+/// remain valid; target-scoped flags are included when ownership is explicit.
+fn infer_cmake_c_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildContext {
+    infer_cmake_build_context_with_policy(source_path, cmake_path, false)
+}
+
+fn infer_cmake_build_context_with_policy(
+    source_path: &Path,
+    cmake_path: &Path,
+    union_unowned_targets: bool,
+) -> CppBuildContext {
     let base_dir = cmake_path
         .parent()
         .map(Path::to_path_buf)
@@ -6718,9 +8026,11 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
     // enables DEBUG/TRACE logging (which references private members and then
     // can't even compile). We only ever PRUNE a branch we can prove dead; an
     // indeterminate condition keeps its body (no regression vs. the old union).
+    let commands = cmake_commands(&text);
+    let owning_targets = cmake_targets_for_source(&commands, source_path, &base_dir);
     let mut vars: HashMap<String, String> = HashMap::new();
     let mut branches: Vec<CmakeBranch> = Vec::new();
-    for command in cmake_commands(&text) {
+    for command in commands {
         match command.name.as_str() {
             "if" => {
                 let parent_active = branches.last().is_none_or(|b| b.active);
@@ -6779,6 +8089,15 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
             }
             "option" => record_cmake_option(&command.args, &mut vars),
             "include_directories" | "target_include_directories" => {
+                if command.name.starts_with("target_")
+                    && !cmake_command_targets_source(
+                        &command,
+                        &owning_targets,
+                        union_unowned_targets,
+                    )
+                {
+                    continue;
+                }
                 for value in cmake_values_without_scopes(
                     &command.args,
                     usize::from(command.name.starts_with("target_")),
@@ -6789,7 +8108,16 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
                     push_include_flag(&mut context.compile_flags, &base_dir, value);
                 }
             }
-            "add_definitions" | "target_compile_definitions" => {
+            "add_definitions" | "add_compile_definitions" | "target_compile_definitions" => {
+                if command.name.starts_with("target_")
+                    && !cmake_command_targets_source(
+                        &command,
+                        &owning_targets,
+                        union_unowned_targets,
+                    )
+                {
+                    continue;
+                }
                 for value in cmake_values_without_scopes(
                     &command.args,
                     usize::from(command.name.starts_with("target_")),
@@ -6798,9 +8126,9 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
                     // (FlatBuffers' `-DFLATBUFFERS_MAX_PARSING_DEPTH=${...}`) is
                     // not a real value, and carrying it forward trips the
                     // build-safety metacharacter check and blocks every harness.
-                    if cmake_token_is_dynamic(value) {
+                    let Some(value) = expand_known_cmake_token(value, &vars) else {
                         continue;
-                    }
+                    };
                     // A `*_USE_STD_MODULE` define switches a header-only library to
                     // `import std;` (C++23 standard-library modules) instead of
                     // classic `#include`s. The harness compiles with a plain
@@ -6809,7 +8137,7 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
                     // 'optional' in namespace 'std'"). Such a toggle is a build
                     // VARIANT (magic_enum sets MAGIC_ENUM_USE_STD_MODULE PRIVATE on a
                     // dedicated module-test target); never carry it into the harness.
-                    if cmake_define_enables_std_module(value) {
+                    if cmake_define_enables_std_module(&value) {
                         continue;
                     }
                     if value.starts_with('-') {
@@ -6820,18 +8148,24 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
                         // (`-D-std=c++11` -> "macro name must be an identifier", a
                         // failed build). Pass `-D…` defines and other flags through
                         // verbatim.
-                        push_unique_string(&mut context.compile_flags, value.to_owned());
+                        push_unique_string(&mut context.compile_flags, value);
                     } else {
                         push_unique_string(&mut context.compile_flags, format!("-D{value}"));
                     }
                 }
             }
             "target_compile_options" => {
+                if !cmake_command_targets_source(&command, &owning_targets, union_unowned_targets) {
+                    continue;
+                }
                 for value in cmake_values_without_scopes(&command.args, 1) {
                     push_build_compile_flag(&mut context.compile_flags, &base_dir, value);
                 }
             }
             "target_link_libraries" => {
+                if !cmake_command_targets_source(&command, &owning_targets, union_unowned_targets) {
+                    continue;
+                }
                 for value in cmake_values_without_scopes(&command.args, 1) {
                     if let Some(flag) = link_flag_from_build_token(&base_dir, value) {
                         push_unique_string(&mut context.link_flags, flag);
@@ -6848,6 +8182,9 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
             // referenced `basisu::basis_free_data` and other encoder symbols not in
             // the harness link, failing the build. Never link executable sources.
             "add_library" | "target_sources" => {
+                if !cmake_command_targets_source(&command, &owning_targets, union_unowned_targets) {
+                    continue;
+                }
                 for value in cmake_values_without_scopes(&command.args, 1) {
                     maybe_push_context_source(
                         source_path,
@@ -6862,6 +8199,68 @@ fn infer_cmake_build_context(source_path: &Path, cmake_path: &Path) -> CppBuildC
         }
     }
     context
+}
+
+/// CMake target(s) whose explicit source list contains `source_path`. When this
+/// succeeds, target-scoped compile/link/source commands for every other target
+/// must be ignored. Without the ownership filter, a default-enabled test target
+/// causes its entire source set and flags to be unioned into the library harness
+/// (LevelDB's `leveldb_tests` added 20+ `*_test.cc` files).
+fn cmake_targets_for_source(
+    commands: &[BuildCommand],
+    source_path: &Path,
+    base_dir: &Path,
+) -> HashSet<String> {
+    let source_key = normalized_path_key(source_path);
+    let mut targets = HashSet::new();
+    for command in commands {
+        if !matches!(
+            command.name.as_str(),
+            "add_library" | "add_executable" | "target_sources"
+        ) {
+            continue;
+        }
+        let Some(target) = command.args.first() else {
+            continue;
+        };
+        if cmake_token_is_dynamic(target) {
+            continue;
+        }
+        let owns_source = cmake_values_without_scopes(&command.args, 1).any(|token| {
+            if cmake_token_is_dynamic(token) || !looks_like_cpp_source_token(token) {
+                return false;
+            }
+            let resolved = if Path::new(token).is_absolute() {
+                normalize_path(Path::new(token))
+            } else {
+                normalize_path(&base_dir.join(token))
+            };
+            normalized_path_key(&resolved) == source_key
+        });
+        if owns_source {
+            targets.insert(target.trim_matches(['"', '\'']).to_owned());
+        }
+    }
+    targets
+}
+
+fn cmake_command_targets_source(
+    command: &BuildCommand,
+    owning_targets: &HashSet<String>,
+    union_unowned_targets: bool,
+) -> bool {
+    if owning_targets.is_empty() {
+        // Source ownership can be hidden behind an unexpanded CMake variable.
+        // The C++ context preserves the prior conservative union behavior; the
+        // C fallback keeps only global commands because unioning platform/config
+        // variants produces a flag set no real C target uses.
+        return union_unowned_targets;
+    }
+    command
+        .args
+        .first()
+        .map(|target| target.trim_matches(['"', '\'']))
+        .is_some_and(|target| owning_targets.contains(target))
 }
 
 /// True for a CMake compile define that enables C++23 standard-library modules
@@ -6931,6 +8330,25 @@ fn record_cmake_option(args: &[String], vars: &mut HashMap<String, String>) {
     vars.insert(name.clone(), initial.to_owned());
 }
 
+/// Expand `${NAME}` references whose values were established by an earlier
+/// literal `set()`/`option()`. Generator expressions and unknown variables stay
+/// unsupported and return `None`; this remains conservative while preserving
+/// host selectors such as LevelDB's `${LEVELDB_PLATFORM_NAME}=1`.
+fn expand_known_cmake_token(token: &str, vars: &HashMap<String, String>) -> Option<String> {
+    if token.contains("$<") || token.contains("$(") {
+        return None;
+    }
+    let mut expanded = token.to_owned();
+    while let Some(start) = expanded.find("${") {
+        let rest = &expanded[start + 2..];
+        let end = rest.find('}')?;
+        let name = &rest[..end];
+        let value = vars.get(name)?;
+        expanded.replace_range(start..start + 3 + end, value);
+    }
+    Some(expanded)
+}
+
 /// Tri-state evaluation of a CMake `if`/`elseif` condition for branch pruning.
 /// `Some(true)`/`Some(false)` only when the outcome is determinable from
 /// statically-known variables and host platform predicates; `None` (indeterminate)
@@ -6991,7 +8409,9 @@ fn cmake_eval_single(token: &str, vars: &HashMap<String, String>) -> Option<bool
     match token {
         "WIN32" | "MSVC" | "MSVC_IDE" | "WINCE" | "WINDOWS_PHONE" | "WINDOWS_STORE" | "MSYS"
         | "CYGWIN" | "APPLE" | "IOS" | "ANDROID" | "BORLAND" | "WATCOM" | "MINGW"
-        | "EMSCRIPTEN" => return Some(false),
+        | "EMSCRIPTEN" | "QNX" | "VXWORKS" | "ZOS" | "OS390" | "OPENVMS" | "HAIKU" | "SUNOS" => {
+            return Some(false)
+        }
         "UNIX" => return Some(true),
         _ => {}
     }
@@ -7042,12 +8462,10 @@ fn cmake_commands(text: &str) -> Vec<BuildCommand> {
     // line-by-line parse (requiring `(` and `)` on the same line) silently drops
     // them, and with them the library's real source/define list. Strip line
     // comments, then scan for `name( ... )` with a paren-balanced body that may
-    // cross newlines.
-    let mut buf = String::with_capacity(text.len());
-    for line in text.lines() {
-        buf.push_str(line.split('#').next().unwrap_or(""));
-        buf.push('\n');
-    }
+    // cross newlines. Both operations must respect quoted arguments: XZ's
+    // version-extraction regex contains literal `#define` text and capture
+    // parentheses, neither of which is CMake syntax at that point.
+    let buf = strip_cmake_line_comments(text);
     let bytes = buf.as_bytes();
     let mut commands = Vec::new();
     let mut i = 0;
@@ -7071,10 +8489,19 @@ fn cmake_commands(text: &str) -> Vec<BuildCommand> {
         let args_start = j + 1;
         let mut depth = 1usize;
         let mut k = args_start;
+        let mut in_quote = false;
+        let mut escaped = false;
         while k < bytes.len() && depth > 0 {
+            if escaped {
+                escaped = false;
+                k += 1;
+                continue;
+            }
             match bytes[k] {
-                b'(' => depth += 1,
-                b')' => depth -= 1,
+                b'\\' => escaped = true,
+                b'"' => in_quote = !in_quote,
+                b'(' if !in_quote => depth += 1,
+                b')' if !in_quote => depth -= 1,
                 _ => {}
             }
             k += 1;
@@ -7089,6 +8516,40 @@ fn cmake_commands(text: &str) -> Vec<BuildCommand> {
         i = k;
     }
     commands
+}
+
+fn strip_cmake_line_comments(text: &str) -> String {
+    let mut out = Vec::with_capacity(text.len());
+    let mut in_quote = false;
+    let mut in_comment = false;
+    let mut escaped = false;
+    for byte in text.bytes() {
+        if in_comment {
+            if byte == b'\n' {
+                out.push(byte);
+                in_comment = false;
+            }
+            continue;
+        }
+        if escaped {
+            out.push(byte);
+            escaped = false;
+            continue;
+        }
+        match byte {
+            b'\\' => {
+                out.push(byte);
+                escaped = true;
+            }
+            b'"' => {
+                out.push(byte);
+                in_quote = !in_quote;
+            }
+            b'#' if !in_quote => in_comment = true,
+            _ => out.push(byte),
+        }
+    }
+    String::from_utf8(out).expect("removing ASCII comments preserves UTF-8")
 }
 
 fn cmake_values_without_scopes(args: &[String], skip_prefix: usize) -> impl Iterator<Item = &str> {
@@ -7322,8 +8783,9 @@ fn link_flag_from_build_token(base_dir: &Path, token: &str) -> Option<String> {
 }
 
 /// Whether a bare library name resolves to an actual linkable library in the
-/// standard system search paths (`lib<name>.so`, `lib<name>.a`, or a
-/// runtime-only `lib<name>.so.N` install). Used to drop project-internal CMake
+/// standard system search paths (`lib<name>.so` or `lib<name>.a`). A runtime-only
+/// `lib<name>.so.N` is deliberately insufficient: the linker cannot resolve
+/// `-l<name>` without the development symlink or archive. Used to drop project-internal CMake
 /// targets that masquerade as link libraries (see `link_flag_from_build_token`).
 fn bare_library_resolves(name: &str) -> bool {
     const LIB_DIRS: &[&str] = &[
@@ -7334,27 +8796,15 @@ fn bare_library_resolves(name: &str) -> bool {
         "/lib/x86_64-linux-gnu",
         "/usr/local/lib",
     ];
+    let dirs: Vec<PathBuf> = LIB_DIRS.iter().map(PathBuf::from).collect();
+    bare_library_resolves_in(name, &dirs)
+}
+
+fn bare_library_resolves_in(name: &str, dirs: &[PathBuf]) -> bool {
     let exact_so = format!("lib{name}.so");
     let archive = format!("lib{name}.a");
-    let versioned = format!("lib{name}.so.");
-    LIB_DIRS.iter().any(|dir| {
-        let d = Path::new(dir);
-        if d.join(&exact_so).exists() || d.join(&archive).exists() {
-            return true;
-        }
-        // Runtime-only installs ship `libX.so.N` without the `-dev` `.so`
-        // symlink; accept those so a present library is not dropped.
-        std::fs::read_dir(d)
-            .map(|entries| {
-                entries.flatten().any(|entry| {
-                    entry
-                        .file_name()
-                        .to_str()
-                        .is_some_and(|n| n.starts_with(&versioned))
-                })
-            })
-            .unwrap_or(false)
-    })
+    dirs.iter()
+        .any(|dir| dir.join(&exact_so).exists() || dir.join(&archive).exists())
 }
 
 fn resolve_build_context_path(base_dir: &Path, value: &str) -> String {
@@ -7381,17 +8831,22 @@ fn push_unique_string(values: &mut Vec<String>, value: String) {
 mod tests {
     use super::{
         auto_detect_c_headers, auto_detect_c_result_cleanup, auto_detect_project_includes,
-        bare_library_resolves, c_constructor_drive_plan, c_direct_lifecycle_table,
-        cmake_define_enables_std_module, collect_c_type_defs_for_harness,
-        compile_database_candidates, compute_default_id, cpp_arg_class_name,
-        cpp_arg_is_default_constructible_class, detect_strdup_family_free,
-        detect_top_level_namespaces_in_text, extract_compile_database_flags, generate_for_path,
-        infer_cmake_build_context, is_c_lifecycle_end, is_c_lifecycle_handle_type,
-        is_c_lifecycle_init, is_c_scalar_type, is_harness_incompatible_flag,
-        is_msvc_crt_model_define, is_non_library_dir, link_flag_from_build_token, locate_c_runtime,
-        merge_dependency_packages_and_subprograms, numeric_token_byte_encodings, pick_c_target,
-        pick_cpp_target, push_build_compile_flag, recover_library_translation_units, run,
-        self_prefixed_include_roots, source_defines_main, CompileCommandEntry, DecoderLimitArgs,
+        bare_library_resolves, build_harness_ast, c_build_flags_for_source,
+        c_constructor_drive_plan, c_direct_lifecycle_table, c_signature_needs_project_header,
+        c_va_list_variadic_wrapper, cmake_define_enables_std_module,
+        collect_c_type_defs_for_harness, collect_cpp_using_namespaces, compile_database_candidates,
+        compute_default_id, cpp_arg_class_name, cpp_arg_is_default_constructible_class,
+        cpp_namespace_begin_macros, detect_strdup_family_free, detect_top_level_namespaces_in_text,
+        extract_compile_database_flags, find_project_header_declaring_target, generate_for_path,
+        infer_cmake_build_context, infer_cmake_c_build_context, is_c_lifecycle_end,
+        is_c_lifecycle_handle_type, is_c_lifecycle_init, is_c_scalar_type,
+        is_harness_incompatible_flag, is_msvc_crt_model_define, is_non_library_dir,
+        link_flag_from_build_token, locate_c_runtime, merge_dependency_packages_and_subprograms,
+        merge_tree_c_lifecycle, numeric_token_byte_encodings, pick_c_target, pick_cpp_target,
+        push_build_compile_flag, recover_library_translation_units,
+        resolve_cpp_member_access_from_headers, resolve_cpp_namespace_qualified_free_functions,
+        run, self_prefixed_include_roots, source_defines_main, source_header_visibility_flags,
+        source_path_is_foreign_platform, CompileCommandEntry, DecoderLimitArgs,
         GenerateHarnessArgs,
     };
     use ada_parser::ast::{Package, PackageId, StructuralAst as StructuralAstForMerge};
@@ -7419,6 +8874,144 @@ mod tests {
         assert!(has("/proj/out/compile_commands.json"));
         // Searched at every ancestor level, not just the project root.
         assert!(has("/proj/src/builddir/compile_commands.json"));
+    }
+
+    #[test]
+    fn short_win_directory_is_foreign_on_unix_hosts() {
+        if cfg!(any(target_os = "linux", target_os = "macos")) {
+            assert!(source_path_is_foreign_platform(Path::new(
+                "/project/src/win/thread.c"
+            )));
+            assert!(!source_path_is_foreign_platform(Path::new(
+                "/project/src/unix/thread.c"
+            )));
+        }
+    }
+
+    #[test]
+    fn rtos_and_zos_directories_are_foreign_on_linux_hosts() {
+        if cfg!(target_os = "linux") {
+            assert!(source_path_is_foreign_platform(Path::new(
+                "/project/builds/vxworks/platform.hpp"
+            )));
+            assert!(source_path_is_foreign_platform(Path::new(
+                "/project/builds/qnx/platform.hpp"
+            )));
+            assert!(source_path_is_foreign_platform(Path::new(
+                "/project/builds/zos/platform.hpp"
+            )));
+            assert!(source_path_is_foreign_platform(Path::new(
+                "/project/builds/mingw32/platform.hpp"
+            )));
+        }
+    }
+
+    #[test]
+    fn project_header_lookup_recovers_public_target_declaration() {
+        let root = temp_dir("public-target-header");
+        let include = root.join("include");
+        fs::create_dir_all(include.join("yaml")).unwrap();
+        fs::write(
+            include.join("yaml/api.h"),
+            "int yaml_parser_set_input_string(void *parser, const char *input);\n",
+        )
+        .unwrap();
+        fs::write(
+            include.join("unrelated.h"),
+            "int yaml_parser_set_input_file(void *parser);\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            find_project_header_declaring_target(
+                std::slice::from_ref(&include),
+                "yaml_parser_set_input_string"
+            )
+            .as_deref(),
+            Some("yaml/api.h")
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn primitive_c_signature_does_not_require_project_header() {
+        assert!(!c_signature_needs_project_header(
+            "uint16_t",
+            ["const char *", "int"]
+        ));
+        assert!(c_signature_needs_project_header(
+            "int",
+            ["struct redisCommand *", "client *"]
+        ));
+    }
+
+    #[test]
+    fn header_metadata_marks_out_of_line_static_member() {
+        let root = temp_dir("cpp-static-member");
+        let source_path = root.join("parse.cc");
+        fs::write(
+            &source_path,
+            "class Regexp;\nRegexp* Regexp::Parse(const char* text) { return nullptr; }\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("regexp.h"),
+            "class Regexp { public: static Regexp* Parse(const char* text); };\n",
+        )
+        .unwrap();
+        let source = fs::read_to_string(&source_path).unwrap();
+        let mut functions = cpp_parser::parse_cpp_functions(&source).unwrap();
+
+        resolve_cpp_member_access_from_headers(
+            &mut functions,
+            &source_path,
+            &["regexp.h".to_owned()],
+            std::slice::from_ref(&root),
+        );
+
+        let parse = functions
+            .iter()
+            .find(|function| function.name == "Parse")
+            .unwrap();
+        assert!(parse.api.is_method);
+        assert!(parse.is_static);
+        assert_eq!(parse.api.member_access.as_deref(), Some("public"));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn header_namespace_marks_out_of_line_free_function() {
+        let mut functions = cpp_parser::parse_cpp_functions(
+            "const char *zmq::errno_to_string(int value) { return nullptr; }\n",
+        )
+        .unwrap();
+        assert!(functions[0].api.is_method);
+
+        resolve_cpp_namespace_qualified_free_functions(
+            &mut functions,
+            &["namespace zmq { const char *errno_to_string(int); }\n".to_owned()],
+        );
+
+        let function = &functions[0];
+        assert!(!function.api.is_method);
+        assert_eq!(function.api.namespace_path, vec!["zmq"]);
+        assert_eq!(function.api.class_name, None);
+    }
+
+    #[test]
+    fn target_source_static_linking_visibility_reaches_harness_headers() {
+        let source = r#"
+            #define LZ4F_STATIC_LINKING_ONLY
+            #define ordinary_local_macro 1
+            #define OTHER_STATIC_LINKING_ONLY 1
+        "#;
+        assert_eq!(
+            source_header_visibility_flags(source),
+            vec![
+                "-DLZ4F_STATIC_LINKING_ONLY".to_owned(),
+                "-DOTHER_STATIC_LINKING_ONLY".to_owned()
+            ]
+        );
     }
 
     fn merge_pkg(id: u32, name: &str, parent: Option<u32>) -> Package {
@@ -7618,10 +9211,111 @@ mod tests {
         let src = root.join("src");
         let tests = root.join("tests");
         std::fs::create_dir_all(src.join("contrib")).unwrap();
+        std::fs::create_dir_all(src.join("dispatch/one")).unwrap();
+        std::fs::create_dir_all(src.join("dispatch/two")).unwrap();
+        std::fs::create_dir_all(src.join("prim/wasi")).unwrap();
+        std::fs::create_dir_all(src.join("prim/osx")).unwrap();
+        std::fs::create_dir_all(src.join("prim/unix")).unwrap();
         std::fs::create_dir_all(&tests).unwrap();
         // The target + two library siblings + a tool main + a test main.
         std::fs::write(src.join("emitter.cpp"), "int emit() { return 0; }\n").unwrap();
         std::fs::write(src.join("emitterstate.cpp"), "int state() { return 1; }\n").unwrap();
+        std::fs::write(src.join("linux.cpp"), "int platform() { return 1; }\n").unwrap();
+        std::fs::write(src.join("darwin.cpp"), "int platform() { return 2; }\n").unwrap();
+        std::fs::write(src.join("event_iocp.cpp"), "int iocp() { return 2; }\n").unwrap();
+        std::fs::write(
+            src.join("async_backend.cpp"),
+            "#include \"iocp-backend.h\"\nint async_backend() { return 2; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("iocp-internal.h"),
+            "struct event_overlapped;\n\
+             #ifdef _WIN32\n#include <windows.h>\n#endif\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("core_event.cpp"),
+            "#include \"iocp-internal.h\"\nint evutil_closesocket(int);\n\
+             int core_event() { return evutil_closesocket(1); }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("bufferevent_async.cpp"),
+            "#include \"iocp-internal.h\"\nstruct event_overlapped pending;\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("portable_time.cpp"),
+            "#ifdef _WIN32\n#include <windows.h>\n#endif\nint portable_time() { return 1; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("prim/wasi/prim.cpp"),
+            "int wasi_backend() { return 2; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("prim/osx/zone.cpp"),
+            "int osx_backend() { return 2; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("prim/unix/prim.cpp"),
+            "int unix_backend() { return 1; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("bufferevent_mbedtls.cpp"),
+            "int optional_tls() { return 2; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("testhelpers.cpp"),
+            "int test_only() { return 3; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("emitter_test.cpp"),
+            "int suffix_test_only() { return 4; }\n",
+        )
+        .unwrap();
+        std::fs::write(src.join("detail.cpp"), "int detail() { return 5; }\n").unwrap();
+        std::fs::write(
+            src.join("included_fragment.cpp"),
+            "int fragment() { return 6; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("unity.cpp"),
+            "#include \"included_fragment.cpp\"\nint unity() { return fragment(); }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("target_unity.cpp"),
+            "#include \"emitter.cpp\"\n#include \"emitterstate.cpp\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("broken_optional.cpp"),
+            "#include \"deleted_impl.cpp\"\nint broken_optional() { return 0; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("dispatch/prim.cpp"),
+            "#include \"one/prim.cpp\"\n#include \"two/prim.cpp\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("dispatch/one/prim.cpp"),
+            "int one() { return 1; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("dispatch/two/prim.cpp"),
+            "int two() { return 2; }\n",
+        )
+        .unwrap();
         std::fs::write(
             src.join("contrib/graphbuilder.cpp"),
             "int g() { return 2; }\n",
@@ -7658,6 +9352,87 @@ mod tests {
             !siblings.iter().any(|p| p.ends_with("test_main.cpp")),
             "a tests/ TU must be excluded: {siblings:?}"
         );
+        assert!(
+            !siblings.iter().any(|p| p.ends_with("testhelpers.cpp")),
+            "a root-level test*.cpp TU must be excluded: {siblings:?}"
+        );
+        assert!(
+            !siblings.iter().any(|p| p.ends_with("emitter_test.cpp")),
+            "a root-level *_test.cpp TU must be excluded: {siblings:?}"
+        );
+        assert!(
+            siblings.iter().any(|p| p.ends_with("unity.cpp"))
+                && !siblings
+                    .iter()
+                    .any(|p| p.ends_with("included_fragment.cpp")),
+            "a textually included .cpp fragment must not also compile standalone: {siblings:?}"
+        );
+        assert!(
+            !siblings.iter().any(|p| p.ends_with("target_unity.cpp"))
+                && siblings.iter().any(|p| p.ends_with("emitterstate.cpp")),
+            "an amalgamation containing the target must be excluded without suppressing its standalone siblings: {siblings:?}"
+        );
+        assert!(
+            !siblings.iter().any(|p| p.ends_with("broken_optional.cpp")),
+            "a sibling with a missing textual implementation include must be excluded: {siblings:?}"
+        );
+        assert!(
+            siblings.contains(&src.join("dispatch/prim.cpp"))
+                && !siblings.contains(&src.join("dispatch/one/prim.cpp"))
+                && !siblings.contains(&src.join("dispatch/two/prim.cpp")),
+            "include suppression must compare resolved paths when dispatcher and leaves share a basename: {siblings:?}"
+        );
+        if cfg!(target_os = "linux") {
+            assert!(siblings.iter().any(|p| p.ends_with("linux.cpp")));
+            assert!(
+                siblings.iter().any(|p| p.ends_with("prim/unix/prim.cpp")),
+                "the host-compatible Unix backend must remain: {siblings:?}"
+            );
+            assert!(
+                !siblings.iter().any(|p| p.ends_with("darwin.cpp")),
+                "a foreign flat-layout platform TU must be excluded: {siblings:?}"
+            );
+            assert!(
+                !siblings.iter().any(|p| p.ends_with("event_iocp.cpp")),
+                "a flat-layout IOCP backend must be excluded on Linux: {siblings:?}"
+            );
+            assert!(
+                !siblings.iter().any(|p| p.ends_with("async_backend.cpp")),
+                "an unconditionally IOCP-backed TU must be excluded on Linux: {siblings:?}"
+            );
+            assert!(
+                siblings.iter().any(|p| p.ends_with("core_event.cpp")),
+                "a portable TU may include a locally guarded IOCP header: {siblings:?}"
+            );
+            assert!(
+                !siblings
+                    .iter()
+                    .any(|p| p.ends_with("bufferevent_async.cpp")),
+                "unguarded foreign backend types make the TU host-ineligible: {siblings:?}"
+            );
+            assert!(
+                siblings.iter().any(|p| p.ends_with("portable_time.cpp")),
+                "a portable TU with a guarded Windows include must remain: {siblings:?}"
+            );
+        }
+        if !cfg!(target_arch = "wasm32") {
+            assert!(
+                !siblings.iter().any(|p| p.ends_with("prim/wasi/prim.cpp")),
+                "a WASI directory backend must be excluded on a native host: {siblings:?}"
+            );
+        }
+        if !cfg!(target_os = "macos") {
+            assert!(
+                !siblings.iter().any(|p| p.ends_with("prim/osx/zone.cpp")),
+                "an OSX directory backend must be excluded off macOS: {siblings:?}"
+            );
+        }
+        assert!(
+            !siblings
+                .iter()
+                .any(|p| p.ends_with("bufferevent_mbedtls.cpp")),
+            "an optional external TLS backend must not enter a default library sweep: {siblings:?}"
+        );
 
         // --- Tier 1: a compile_commands.json takes precedence and yields exactly
         // its non-target, non-main C/C++ entries. ---
@@ -7666,6 +9441,7 @@ mod tests {
               {{"directory":"{root}","file":"src/emitter.cpp","arguments":["clang++","-c","src/emitter.cpp"]}},
               {{"directory":"{root}","file":"src/emitterstate.cpp","arguments":["clang++","-c","src/emitterstate.cpp"]}},
               {{"directory":"{root}","file":"src/contrib/graphbuilder.cpp","arguments":["clang++","-c","src/contrib/graphbuilder.cpp"]}},
+              {{"directory":"{root}","file":"src/emitter_test.cpp","arguments":["clang++","-c","src/emitter_test.cpp"]}},
               {{"directory":"{root}","file":"src/yaml_tool.cpp","arguments":["clang++","-c","src/yaml_tool.cpp"]}}
             ]"#,
             root = root.display()
@@ -7678,8 +9454,10 @@ mod tests {
             "compile-DB TUs must be recovered: {from_db:?}"
         );
         assert!(
-            !from_db.contains(&target) && !from_db.iter().any(|p| p.ends_with("yaml_tool.cpp")),
-            "compile-DB path must exclude the target and `main`-defining TUs: {from_db:?}"
+            !from_db.contains(&target)
+                && !from_db.iter().any(|p| p.ends_with("yaml_tool.cpp"))
+                && !from_db.iter().any(|p| p.ends_with("emitter_test.cpp")),
+            "compile-DB path must exclude the target, tests, and `main` TUs: {from_db:?}"
         );
 
         // Predicate spot-checks.
@@ -7687,6 +9465,51 @@ mod tests {
         assert!(!source_defines_main(&src.join("emitterstate.cpp")));
         assert!(is_non_library_dir("tests") && is_non_library_dir("third_party"));
         assert!(!is_non_library_dir("contrib") && !is_non_library_dir("src"));
+    }
+
+    #[test]
+    fn recover_library_tus_rejects_application_sized_sets() {
+        let tmp = tempfile::tempdir().unwrap();
+        let src = tmp.path().join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        let target = src.join("target.c");
+        std::fs::write(&target, "int target(void) { return 0; }\n").unwrap();
+        for i in 0..41 {
+            std::fs::write(
+                src.join(format!("component_{i:03}.c")),
+                format!("int component_{i:03}(void) {{ return {i}; }}\n"),
+            )
+            .unwrap();
+        }
+
+        let tus = recover_library_translation_units(&target, false);
+        assert!(
+            tus.is_empty(),
+            "an oversized application tree must fall back to per-symbol recovery, not an arbitrary partial link: {tus:?}"
+        );
+    }
+
+    #[test]
+    fn recover_library_tus_does_not_cross_project_root_into_contrib() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::create_dir_all(root.join("contrib/other")).unwrap();
+        let target = root.join("codec.c");
+        std::fs::write(&target, "int codec(void) { return helper(); }\n").unwrap();
+        std::fs::write(root.join("helper.c"), "int helper(void) { return 1; }\n").unwrap();
+        std::fs::write(
+            root.join("contrib/other/read.c"),
+            "int read(void) { return 2; }\n",
+        )
+        .unwrap();
+
+        let tus = recover_library_translation_units(&target, false);
+        assert!(tus.iter().any(|path| path.ends_with("helper.c")));
+        assert!(
+            !tus.iter().any(|path| path.ends_with("read.c")),
+            "project-root recovery crossed into an independent contrib component: {tus:?}"
+        );
     }
 
     #[test]
@@ -7748,6 +9571,10 @@ mod tests {
         ));
         // The name not followed by `(` (a field / typedef use) is NOT a decl.
         assert!(!text_declares_function("struct { int parse; } x;", "parse"));
+        assert!(!text_declares_function(
+            "// the main (exit) thread\nconst char *s = \"main()\";\n/* main (also) */\n",
+            "main"
+        ));
     }
 
     #[test]
@@ -7825,6 +9652,25 @@ mod tests {
     }
 
     #[test]
+    fn resolves_begin_namespace_macro_spelling() {
+        let config = r#"#  define FMT_BEGIN_NAMESPACE \\
+namespace fmt { \\
+inline namespace v12 {
+"#;
+        let format = "FMT_BEGIN_NAMESPACE\nnamespace detail { struct value {}; }\n";
+        let texts = vec![config.to_owned(), format.to_owned()];
+        let macros = cpp_namespace_begin_macros(&texts);
+
+        assert_eq!(
+            macros.get("FMT_BEGIN_NAMESPACE"),
+            Some(&vec!["fmt".to_owned(), "v12".to_owned()])
+        );
+        let namespaces = collect_cpp_using_namespaces(&texts, &macros);
+        assert_eq!(namespaces.first().map(String::as_str), Some("fmt"));
+        assert!(namespaces.iter().any(|namespace| namespace == "detail"));
+    }
+
+    #[test]
     fn build_token_drops_unresolvable_project_internal_libs() {
         let base = Path::new("/tmp");
         // A project-internal CMake target with no installed library is dropped,
@@ -7850,6 +9696,21 @@ mod tests {
             link_flag_from_build_token(base, "-lwhatever"),
             Some("-lwhatever".to_owned())
         );
+    }
+
+    #[test]
+    fn runtime_only_versioned_library_is_not_linkable_by_bare_name() {
+        let root = temp_dir("runtime-only-lib");
+        fs::write(root.join("liboptional.so.7"), "not a real library").unwrap();
+        assert!(!super::bare_library_resolves_in(
+            "optional",
+            std::slice::from_ref(&root)
+        ));
+        fs::write(root.join("liboptional.so"), "linker name").unwrap();
+        assert!(super::bare_library_resolves_in(
+            "optional",
+            std::slice::from_ref(&root)
+        ));
     }
 
     #[test]
@@ -7892,6 +9753,16 @@ mod tests {
         // non-glue verb (init/setup) is not prefix-matched.
         assert!(!is_c_lifecycle_init("renew"));
         assert!(!is_c_lifecycle_init("foo_initializer_count")); // 'init' is non-glue
+    }
+
+    #[test]
+    fn callback_typedef_constructor_args_use_null_defaults() {
+        let args = super::c_neutral_ctor_args(
+            ["brotli_alloc_func", "brotli_free_func", "void *"].into_iter(),
+        )
+        .expect("callback and pointer constructor args are nullable");
+        assert_eq!(args, vec!["NULL", "NULL", "NULL"]);
+        assert!(super::c_neutral_ctor_args(["size_t"].into_iter()).is_none());
     }
 
     #[test]
@@ -8115,6 +9986,10 @@ mod tests {
         assert_eq!(
             detect_strdup_family_free("char *", "strndup").as_deref(),
             Some("if (R) free((void *)R)")
+        );
+        assert_eq!(
+            detect_strdup_family_free("char *", "mi_heap_strndup").as_deref(),
+            Some("if (R) mi_free((void *)R)")
         );
         // Not a dup-family name -> no plain free (a paired `<type>_free` or the
         // library-specific list handles real handles; never guess).
@@ -8408,6 +10283,33 @@ mod tests {
     }
 
     #[test]
+    fn tree_lifecycle_fills_equivalent_elaborated_tag_entry() {
+        use harness_gen::c_generate::CHandleLifecycle;
+
+        let mut local = vec![CHandleLifecycle {
+            handle_type: "struct mi_heap_s".to_owned(),
+            init: None,
+            delete: Some("mi_heap_delete".to_owned()),
+            init_returns_handle: false,
+            init_args: Vec::new(),
+        }];
+        let tree = vec![CHandleLifecycle {
+            handle_type: "mi_heap_s".to_owned(),
+            init: Some("mi_heap_new".to_owned()),
+            delete: None,
+            init_returns_handle: true,
+            init_args: Vec::new(),
+        }];
+
+        merge_tree_c_lifecycle(&mut local, &tree);
+
+        assert_eq!(local.len(), 1, "equivalent tag spellings must merge");
+        assert_eq!(local[0].init.as_deref(), Some("mi_heap_new"));
+        assert!(local[0].init_returns_handle);
+        assert_eq!(local[0].delete.as_deref(), Some("mi_heap_delete"));
+    }
+
+    #[test]
     fn c_direct_lifecycle_table_finds_returning_constructor() {
         use c_parser::{CFunction, CParamDescriptor};
         let param = |c_type: &str| CParamDescriptor {
@@ -8458,6 +10360,99 @@ mod tests {
             .expect("blob_t present");
         assert_eq!(blob.init.as_deref(), Some("blob_init"));
         assert!(!blob.init_returns_handle, "in-place init wins");
+    }
+
+    #[test]
+    fn c_direct_lifecycle_pairs_matching_opaque_api_family() {
+        let declarations = c_parser::parse_c_declarations(
+            "struct archive *archive_read_new(void);\n\
+             struct archive *archive_write_new(void);\n\
+             int _archive_write_free(struct archive *a);\n\
+             int _archive_read_free(struct archive *a);\n\
+             int archive_write_free(struct archive *a);\n\
+             int archive_read_free(struct archive *a);\n",
+        )
+        .expect("libarchive declarations parse");
+
+        let table =
+            c_direct_lifecycle_table(&[], &declarations, &type_model::TypeRegistry::default());
+        let archive = table
+            .iter()
+            .find(|entry| entry.handle_type == "archive")
+            .expect("archive lifecycle found");
+        assert_eq!(archive.init.as_deref(), Some("archive_read_new"));
+        assert_eq!(archive.delete.as_deref(), Some("archive_read_free"));
+    }
+
+    #[test]
+    fn c_direct_lifecycle_table_parses_attribute_decorated_handle_apis() {
+        let mimalloc = c_parser::parse_c_declarations(
+            "typedef struct mi_heap_s mi_heap_t;\n\
+             mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new(void);\n\
+             int _mi_heap_guarded_init(mi_heap_t* heap);\n\
+             mi_decl_export void mi_heap_delete(mi_heap_t* heap);\n",
+        )
+        .expect("mimalloc declarations parse");
+        let defs = c_parser::parse_c_type_defs("typedef struct mi_heap_s mi_heap_t;")
+            .expect("mimalloc typedef parses");
+        let registry = type_model::TypeRegistry::from_defs([&defs]);
+        let table = c_direct_lifecycle_table(&[], &mimalloc, &registry);
+        let heap = table
+            .iter()
+            .find(|entry| entry.init.as_deref() == Some("mi_heap_new"))
+            .expect("attribute-decorated returning constructor is found");
+        assert!(heap.init_returns_handle, "{heap:?}");
+        assert_eq!(heap.delete.as_deref(), Some("mi_heap_delete"));
+        let decoded = harness_gen::c_decoders::select_c_decoder_with_lifecycle(
+            "mi_heap_t *",
+            "heap",
+            &registry,
+            &table,
+        )
+        .expect("canonical lifecycle key drives the public heap typedef");
+        assert!(decoded.decl.contains("mi_heap_new()"), "{}", decoded.decl);
+
+        let xz = c_parser::parse_c_declarations(
+            "typedef struct lzma_index_hash_s lzma_index_hash;\n\
+             extern LZMA_API(lzma_index_hash *) lzma_index_hash_init(\n\
+                 lzma_index_hash *index_hash, const void *allocator);\n\
+             extern LZMA_API(void) lzma_index_hash_end(\n\
+                 lzma_index_hash *index_hash, const void *allocator);\n",
+        )
+        .expect("xz declarations parse");
+        let defs = c_parser::parse_c_type_defs("typedef struct lzma_index_hash_s lzma_index_hash;")
+            .expect("xz typedef parses");
+        let registry = type_model::TypeRegistry::from_defs([&defs]);
+        let table = c_direct_lifecycle_table(&[], &xz, &registry);
+        assert!(
+            table
+                .iter()
+                .any(|entry| entry.init.as_deref() == Some("lzma_index_hash_init")),
+            "function-like API macro constructor must be found: decls={xz:?}, table={table:?}"
+        );
+    }
+
+    #[test]
+    fn c_direct_lifecycle_table_finds_libarchive_macro_declarations() {
+        let declarations = c_parser::parse_c_declarations(
+            "__LA_DECL struct archive *archive_read_new(void);\n\
+             __LA_DECL int archive_read_open1(struct archive *);\n\
+             __LA_DECL int archive_read_close(struct archive *);\n\
+             __LA_DECL int archive_read_free(struct archive *);\n\
+             __LA_DECL int archive_read_open_memory2(struct archive *, const void *, size_t, size_t);\n",
+        )
+        .expect("libarchive declarations parse");
+        let table =
+            c_direct_lifecycle_table(&[], &declarations, &type_model::TypeRegistry::default());
+        let archive = table
+            .iter()
+            .find(|entry| entry.handle_type == "archive")
+            .unwrap_or_else(|| {
+                panic!("archive lifecycle missing: {table:?}; decls={declarations:?}")
+            });
+        assert_eq!(archive.init.as_deref(), Some("archive_read_new"));
+        assert!(archive.init_returns_handle);
+        assert_eq!(archive.delete.as_deref(), Some("archive_read_free"));
     }
 
     #[test]
@@ -9014,6 +11009,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             name: name.to_owned(),
             return_type: ret.to_owned(),
             param_types: params.into_iter().map(str::to_owned).collect(),
+            variadic: false,
             line: 1,
         };
         let decls = vec![
@@ -9119,18 +11115,21 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
                 name: "yaml_parser_initialize".to_owned(),
                 return_type: "int".to_owned(),
                 param_types: vec!["yaml_parser_t *".to_owned()],
+                variadic: false,
                 line: 1,
             },
             CDeclaration {
                 name: "yaml_parser_delete".to_owned(),
                 return_type: "void".to_owned(),
                 param_types: vec!["yaml_parser_t *".to_owned()],
+                variadic: false,
                 line: 2,
             },
             CDeclaration {
                 name: "yaml_token_delete".to_owned(),
                 return_type: "void".to_owned(),
                 param_types: vec!["yaml_token_t *".to_owned()],
+                variadic: false,
                 line: 3,
             },
         ];
@@ -9275,11 +11274,13 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let src_dir = root.join("src");
         fs::create_dir_all(&src_dir).unwrap();
         fs::write(src_dir.join("json_valueiterator.inl"), "// partial\n").unwrap();
+        fs::write(src_dir.join("free.c"), "#error include from alloc.c only\n").unwrap();
 
         // jsoncpp-shaped source: angle public header + a quoted .inl partial.
         let source = "#include <vector>\n\
                       #include <json/value.h>\n\
-                      #include \"json_valueiterator.inl\"\n";
+                      #include \"json_valueiterator.inl\"\n\
+                      #include \"free.c\"\n";
         let dirs = vec![inc.clone(), src_dir.clone()];
         let got = harness_project_includes(source, &dirs);
 
@@ -9290,6 +11291,10 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         assert!(
             !got.iter().any(|h| h.ends_with(".inl")),
             ".inl partial must be skipped (not standalone-includable): {got:?}"
+        );
+        assert!(
+            !got.iter().any(|h| h.ends_with(".c")),
+            "textually included implementation TUs must not be standalone includes: {got:?}"
         );
         assert!(
             !got.contains(&"vector".to_owned()),
@@ -9354,7 +11359,11 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         fs::create_dir_all(&common).unwrap();
         // mavlink-shaped: the leaf message header is not self-contained — it needs
         // the umbrella header (which defines the shared types) included first.
-        fs::write(common.join("mavlink.h"), "// umbrella: shared types\n").unwrap();
+        fs::write(
+            common.join("mavlink.h"),
+            "#ifndef MAVLINK_H\n#define MAVLINK_H\n// umbrella: shared types\n#endif\n",
+        )
+        .unwrap();
         fs::write(
             common.join("mavlink_msg_attitude.h"),
             "#include \"mavlink.h\"\nstatic inline int decode(const void *m){return 0;}\n",
@@ -9368,6 +11377,101 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             vec!["mavlink.h".to_owned(), "mavlink_msg_attitude.h".to_owned()],
             "umbrella dependency must precede the non-self-contained leaf: {got:?}"
         );
+    }
+
+    #[test]
+    fn inferred_sibling_headers_do_not_precede_source_ordered_public_headers() {
+        use super::ordered_c_harness_headers;
+
+        let root = temp_dir("public-before-internal-headers");
+        let include = root.join("include");
+        fs::create_dir_all(&include).unwrap();
+        let source_path = root.join("http.c");
+        let source = "#include \"api.h\"\n#include \"http-internal.h\"\n";
+        fs::write(&source_path, source).unwrap();
+        fs::write(include.join("api.h"), "typedef int callback_t;\n").unwrap();
+        fs::write(
+            root.join("http-internal.h"),
+            "struct state { callback_t callback; };\n",
+        )
+        .unwrap();
+
+        let got = ordered_c_harness_headers(&source_path, &root, source, &[include, root.clone()]);
+        let public = got.iter().position(|header| header == "api.h").unwrap();
+        let internal = got
+            .iter()
+            .position(|header| header == "http-internal.h")
+            .unwrap();
+        assert!(
+            public < internal,
+            "the target source's public-header order must win: {got:?}"
+        );
+    }
+
+    #[test]
+    fn c_harness_does_not_flatten_contextual_transitive_headers() {
+        use super::ordered_c_harness_headers;
+
+        let root = temp_dir("contextual-transitive-headers");
+        let source_path = root.join("save.c");
+        let source = "#include \"h2def.h\"\n";
+        fs::write(&source_path, source).unwrap();
+        fs::write(
+            root.join("h2def.h"),
+            "#ifndef H2DEF_H\n#define H2DEF_H\n\
+             typedef struct mobj_s { int x; } mobj_t;\n\
+             #include \"p_action.h\"\n#endif\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("p_action.h"),
+            "#ifndef P_ACTION_H\n#define P_ACTION_H\nvoid act(mobj_t *);\n#endif\n",
+        )
+        .unwrap();
+
+        let got =
+            ordered_c_harness_headers(&source_path, &root, source, std::slice::from_ref(&root));
+        assert_eq!(got, vec!["h2def.h".to_owned()]);
+    }
+
+    #[test]
+    fn harness_project_includes_leaves_umbrella_only_children_to_the_umbrella() {
+        use super::harness_project_includes;
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("govfuzz-umbrella-inc-{nonce}"));
+        let api = root.join("api");
+        fs::create_dir_all(api.join("lzma")).unwrap();
+        fs::write(
+            api.join("lzma.h"),
+            "#define LZMA_H_INTERNAL 1\n#include \"lzma/version.h\"\n",
+        )
+        .unwrap();
+        fs::write(
+            api.join("lzma/version.h"),
+            "#ifndef LZMA_H_INTERNAL\n# error Never include this file directly. Use <lzma.h> instead.\n#endif\n",
+        )
+        .unwrap();
+
+        let got = harness_project_includes("#include <lzma.h>\n", &[api]);
+        assert_eq!(got, vec!["lzma.h".to_owned()]);
+    }
+
+    #[test]
+    fn harness_project_includes_does_not_emit_unguarded_transitive_header_twice() {
+        use super::harness_project_includes;
+        let root = temp_dir("unguarded-transitive-header");
+        fs::write(
+            root.join("h2def.h"),
+            "#ifndef H2DEF_H\n#define H2DEF_H\n#include \"info.h\"\n#endif\n",
+        )
+        .unwrap();
+        fs::write(root.join("info.h"), "enum { SPR_MAN1, SPR_ACLO };\n").unwrap();
+
+        let got = harness_project_includes("#include \"h2def.h\"\n", &[root]);
+        assert_eq!(got, vec!["h2def.h".to_owned()]);
     }
 
     #[test]
@@ -10190,6 +12294,60 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn ada_dependency_merge_preserves_qualified_same_leaf_access_types() {
+        let dir = temp_dir("ada-qualified-access-collision");
+        let target = dir.join("app.ads");
+        fs::write(
+            &target,
+            "with Left; with Right;\n\
+             package App is\n\
+                procedure Create (Value : Right.Object_Access);\n\
+             end App;\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("left.ads"),
+            "package Left is\n\
+                type Object is tagged null record;\n\
+                type Object_Access is access all Object;\n\
+             end Left;\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("right.ads"),
+            "package Right is\n\
+                protected type Object (Size : Positive) is\n\
+                   procedure Touch;\n\
+                end Object;\n\
+                type Object_Access is access all Object;\n\
+             end Right;\n",
+        )
+        .unwrap();
+        let source = fs::read_to_string(&target).unwrap();
+
+        let ast = build_harness_ast(&source, &target, std::slice::from_ref(&dir)).unwrap();
+        let names = ast
+            .types
+            .iter()
+            .map(|type_ref| type_ref.name_path.join("."))
+            .collect::<Vec<_>>();
+
+        assert!(
+            names
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case("Left.Object_Access")),
+            "{names:?}"
+        );
+        assert!(
+            names
+                .iter()
+                .any(|name| name.eq_ignore_ascii_case("Right.Object_Access")),
+            "{names:?}"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn c_handle_defined_in_headers_distinguishes_opaque_from_complete() {
         use super::c_handle_defined_in_headers;
         // GAP #6 (tidwall/hashmap.c): `struct hashmap` is FORWARD-declared in the
@@ -10201,7 +12359,9 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         fs::write(
             &header,
             "struct hashmap;\n\
+             typedef struct hashmap hashmap_t;\n\
              struct point { int x; int y; };\n\
+             typedef struct point point_t;\n\
              const void *hashmap_set_with_hash(struct hashmap *m, const void *i, unsigned long h);\n",
         )
         .unwrap();
@@ -10219,11 +12379,19 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             !c_handle_defined_in_headers("struct hashmap", &source, &includes, &dirs),
             "struct hashmap is forward-declared only in headers"
         );
+        assert!(
+            !c_handle_defined_in_headers("hashmap_t", &source, &includes, &dirs),
+            "a typedef must not make a forward-declared struct complete"
+        );
         // A struct whose full body IS in the header -> true (regression guard: a
         // header-complete handle, like libyaml's `yaml_parser_t`, is NOT over-skipped).
         assert!(
             c_handle_defined_in_headers("struct point", &source, &includes, &dirs),
             "struct point is fully defined in the header"
+        );
+        assert!(
+            c_handle_defined_in_headers("point_t", &source, &includes, &dirs),
+            "a typedef to a header-complete struct remains constructible"
         );
     }
 
@@ -11592,6 +13760,183 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn c_build_flags_infer_portable_cmake_capabilities_without_a_database() {
+        let root = temp_dir("cmake-c-global-definitions");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        let source = src.join("parser.c");
+        fs::write(&source, "int parse(void) { return 0; }\n").unwrap();
+        fs::write(
+            root.join("CMakeLists.txt"),
+            "string(REGEX REPLACE \"^.*\\n#define MAJOR ([0-9]+)\\n.*$\" \"\\\\1\" VERSION \"${HEADER}\")\n\
+             add_compile_definitions(HAVE_STDBOOL_H HAVE__BOOL PACKAGE_NAME=legacy)\n\
+             add_library(legacy src/parser.c)\n",
+        )
+        .unwrap();
+
+        let flags = c_build_flags_for_source(&source);
+        for expected in ["-DHAVE_STDBOOL_H", "-DHAVE__BOOL"] {
+            assert!(
+                flags.iter().any(|flag| flag == expected),
+                "missing {expected}: {flags:?}"
+            );
+        }
+        assert!(
+            !flags.iter().any(|flag| flag.contains("PACKAGE_NAME")),
+            "project metadata/features require an authoritative compile DB: {flags:?}"
+        );
+    }
+
+    #[test]
+    fn c_build_flags_materialize_checked_host_struct_capabilities_from_project_root() {
+        let root = temp_dir("cmake-c-checked-host-capabilities");
+        let src = root.join("src/lib");
+        fs::create_dir_all(&src).unwrap();
+        let source = src.join("resolver.c");
+        fs::write(&source, "int resolve(void) { return 0; }\n").unwrap();
+        fs::write(
+            src.join("CMakeLists.txt"),
+            "add_library(resolver resolver.c)\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("CMakeLists.txt"),
+            "check_include_files(stdint.h HAVE_STDINT_H)\n\
+             check_include_files(sys/socket.h HAVE_SYS_SOCKET_H)\n\
+             check_include_files(netinet/in.h HAVE_NETINET_IN_H)\n\
+             check_include_files(errno.h HAVE_ERRNO_H)\n\
+             check_symbol_exists (AF_INET6 x HAVE_AF_INET6)\n\
+             check_symbol_exists (PF_INET6 x HAVE_PF_INET6)\n\
+             check_symbol_exists (gettimeofday x HAVE_GETTIMEOFDAY)\n\
+             check_type_exists(socklen_t HAVE_SOCKLEN_T)\n\
+             check_type_exists(\"struct addrinfo\" HAVE_STRUCT_ADDRINFO)\n\
+             check_type_exists(\"struct timeval\" HAVE_STRUCT_TIMEVAL)\n\
+             check_type_exists(\"struct sockaddr_in6\" HAVE_STRUCT_SOCKADDR_IN6)\n\
+             check_struct_has_member(\"struct sockaddr_in6\" sin6_scope_id x HAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID)\n",
+        )
+        .unwrap();
+
+        let flags = c_build_flags_for_source(&source);
+        assert!(
+            flags.iter().any(|flag| flag == "-DHAVE_STDINT_H"),
+            "{flags:?}"
+        );
+        if cfg!(unix) {
+            for expected in [
+                "-DHAVE_SYS_SOCKET_H",
+                "-DHAVE_NETINET_IN_H",
+                "-DHAVE_ERRNO_H",
+                "-DHAVE_AF_INET6",
+                "-DHAVE_PF_INET6",
+                "-DHAVE_GETTIMEOFDAY",
+                "-DHAVE_SOCKLEN_T",
+                "-DHAVE_STRUCT_ADDRINFO",
+                "-DHAVE_STRUCT_TIMEVAL",
+                "-DHAVE_STRUCT_SOCKADDR_IN6",
+                "-DHAVE_STRUCT_SOCKADDR_IN6_SIN6_SCOPE_ID",
+            ] {
+                assert!(
+                    flags.iter().any(|flag| flag == expected),
+                    "missing {expected}: {flags:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn c_build_flags_materialize_prefixed_host_capabilities_from_cmake_template() {
+        let root = temp_dir("cmake-prefixed-config-capabilities");
+        let source = root.join("evutil_time.c");
+        fs::write(&source, "int clock_now(void) { return 0; }\n").unwrap();
+        fs::write(
+            root.join("CMakeLists.txt"),
+            "add_library(event evutil_time.c)\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("event-config.h.cmake"),
+            "#cmakedefine EVENT__HAVE_GETTIMEOFDAY 1\n\
+             #cmakedefine EVENT__HAVE_STDLIB_H 1\n\
+             #cmakedefine EVENT__HAVE_ARC4RANDOM_BUF 1\n\
+             #cmakedefine EVENT__HAVE_SYS_SIGNALFD_H 1\n\
+             #cmakedefine EVENT__HAVE_UINT64_T 1\n\
+             #cmakedefine EVENT__HAVE_STRUCT_IN6_ADDR 1\n\
+             #define EVENT__SIZEOF_SIZE_T @EVENT__SIZEOF_SIZE_T@\n\
+             #define EVENT__SIZEOF_VOID_P @EVENT__SIZEOF_VOID_P@\n\
+             #cmakedefine EVENT__ENABLE_OPENSSL 1\n",
+        )
+        .unwrap();
+
+        let flags = c_build_flags_for_source(&source);
+        if cfg!(unix) {
+            for expected in [
+                "-DEVENT__HAVE_GETTIMEOFDAY",
+                "-DEVENT__HAVE_STDLIB_H",
+                "-DEVENT__HAVE_ARC4RANDOM_BUF",
+                "-DEVENT__HAVE_SYS_SIGNALFD_H",
+            ] {
+                assert!(
+                    flags.iter().any(|flag| flag == expected),
+                    "missing {expected}: {flags:?}"
+                );
+            }
+        }
+        assert!(
+            !flags.iter().any(|flag| flag.contains("ENABLE_OPENSSL")),
+            "optional features must remain unset: {flags:?}"
+        );
+        for expected in [
+            "-DEVENT__HAVE_UINT64_T".to_owned(),
+            format!("-DEVENT__SIZEOF_SIZE_T={}", std::mem::size_of::<usize>()),
+            format!(
+                "-DEVENT__SIZEOF_VOID_P={}",
+                std::mem::size_of::<*const ()>()
+            ),
+        ] {
+            assert!(
+                flags.iter().any(|flag| flag == &expected),
+                "missing {expected}: {flags:?}"
+            );
+        }
+        if cfg!(unix) {
+            assert!(
+                flags
+                    .iter()
+                    .any(|flag| flag == "-DEVENT__HAVE_STRUCT_IN6_ADDR"),
+                "missing Unix socket capability: {flags:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn c_build_flags_do_not_union_unowned_target_variants() {
+        let root = temp_dir("cmake-c-unowned-targets");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        let source = src.join("parser.c");
+        fs::write(&source, "int parse(void) { return 0; }\n").unwrap();
+        fs::write(
+            root.join("CMakeLists.txt"),
+            "set(LIB_SOURCES src/parser.c)\n\
+             add_compile_definitions(GLOBAL_ABI=1)\n\
+             add_library(core ${LIB_SOURCES})\n\
+             target_compile_definitions(core PRIVATE CORE_POSIX=1)\n\
+             target_compile_definitions(other PRIVATE CORE_WINDOWS=1)\n",
+        )
+        .unwrap();
+
+        let flags =
+            infer_cmake_c_build_context(&source, &root.join("CMakeLists.txt")).compile_flags;
+        assert!(flags.iter().any(|flag| flag == "-DGLOBAL_ABI=1"));
+        assert!(
+            !flags
+                .iter()
+                .any(|flag| flag.contains("CORE_POSIX") || flag.contains("CORE_WINDOWS")),
+            "unresolved ownership must not combine target variants: {flags:?}"
+        );
+    }
+
+    #[test]
     fn infer_cmake_build_context_drops_std_module_toggle() {
         // magic_enum's CMakeLists sets `MAGIC_ENUM_USE_STD_MODULE` PRIVATE on a
         // dedicated C++23-module test target. Applied to the harness it switches
@@ -11720,6 +14065,26 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn infer_cmake_build_context_prunes_qnx_socket_library_on_linux() {
+        let root = temp_dir("cmake-qnx-branch");
+        let cmake = root.join("CMakeLists.txt");
+        fs::write(
+            &cmake,
+            "add_library(lib target.cpp)\nif(QNX)\n  target_link_libraries(lib -lsocket)\nendif()\n",
+        )
+        .unwrap();
+        let source = root.join("target.cpp");
+        fs::write(&source, "int target() { return 0; }\n").unwrap();
+
+        let ctx = infer_cmake_build_context(&source, &cmake);
+        assert!(
+            !ctx.link_flags.iter().any(|flag| flag == "-lsocket"),
+            "QNX-only socket library must be pruned: {:?}",
+            ctx.link_flags
+        );
+    }
+
+    #[test]
     fn infer_cmake_build_context_keeps_indeterminate_branch() {
         // When the controlling variable is unknown, we cannot prove the branch
         // dead — it must be KEPT (the pre-branch-aware union behavior), so we
@@ -11752,10 +14117,14 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         fs::write(src.join("a.cpp"), "int a(){return 0;}\n").unwrap();
         fs::write(src.join("b.cpp"), "int b(){return 0;}\n").unwrap();
         fs::write(src.join("target.cpp"), "int t(){return 0;}\n").unwrap();
+        fs::write(src.join("target_test.cpp"), "int test_t(){return 0;}\n").unwrap();
         let cmake = src.join("CMakeLists.txt");
         fs::write(
             &cmake,
-            "target_sources( Lib\n    PRIVATE\n        a.cpp\n        b.cpp\n        target.cpp\n)\n",
+            "target_sources( Lib\n    PRIVATE\n        a.cpp\n        b.cpp\n        target.cpp\n)\n\
+             target_sources( LibTests PRIVATE target_test.cpp )\n\
+             target_compile_definitions(Lib PRIVATE LIB_MODE=1)\n\
+             target_compile_definitions(LibTests PRIVATE TEST_MODE=1)\n",
         )
         .unwrap();
         let ctx = infer_cmake_build_context(&src.join("target.cpp"), &cmake);
@@ -11767,6 +14136,87 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         assert!(
             names.contains(&"a.cpp".to_owned()) && names.contains(&"b.cpp".to_owned()),
             "multi-line target_sources siblings must be collected, got: {names:?}"
+        );
+        assert!(
+            !names.contains(&"target_test.cpp".to_owned()),
+            "sources from a different CMake target must be excluded: {names:?}"
+        );
+        assert!(ctx.compile_flags.iter().any(|flag| flag == "-DLIB_MODE=1"));
+        assert!(!ctx.compile_flags.iter().any(|flag| flag == "-DTEST_MODE=1"));
+    }
+
+    #[test]
+    fn infer_cmake_build_context_expands_known_definition_variable() {
+        let root = temp_dir("cmake-known-definition-var");
+        let source = root.join("hash.cpp");
+        fs::write(&source, "int hash_value() { return 0; }\n").unwrap();
+        let cmake = root.join("CMakeLists.txt");
+        fs::write(
+            &cmake,
+            "set(PLATFORM_NAME LEVELDB_PLATFORM_POSIX)\n\
+             target_sources(leveldb PRIVATE hash.cpp)\n\
+             target_compile_definitions(leveldb PRIVATE ${PLATFORM_NAME}=1)\n",
+        )
+        .unwrap();
+
+        let ctx = infer_cmake_build_context(&source, &cmake);
+        assert!(
+            ctx.compile_flags
+                .iter()
+                .any(|flag| flag == "-DLEVELDB_PLATFORM_POSIX=1"),
+            "known CMake variable was not expanded: {:?}",
+            ctx.compile_flags
+        );
+    }
+
+    #[test]
+    fn large_cmake_source_set_is_deferred_from_initial_harness() {
+        let root = temp_dir("cmake-large-deferred");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        let target = src.join("hash.cpp");
+        fs::write(
+            &target,
+            "unsigned hash_bytes(const char *p, unsigned n) { return p ? n : 0; }\n",
+        )
+        .unwrap();
+        let mut cmake = String::from("target_sources(Big PRIVATE src/hash.cpp\n");
+        for index in 0..=super::MAX_EAGER_BUILD_CONTEXT_SOURCES {
+            let name = format!("helper_{index}.cpp");
+            fs::write(
+                src.join(&name),
+                format!("int helper_{index}() {{ return {index}; }}\n"),
+            )
+            .unwrap();
+            cmake.push_str(&format!("  src/{name}\n"));
+        }
+        cmake.push_str(")\n");
+        fs::write(root.join("CMakeLists.txt"), cmake).unwrap();
+
+        run(GenerateHarnessArgs {
+            source: target,
+            target: Some("hash_bytes".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CMAKE-DEFER".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let makefile = fs::read_to_string(root.join("out/H-CMAKE-DEFER/Makefile")).unwrap();
+        assert!(
+            !makefile.contains("helper_0.cpp"),
+            "large inferred source set must be deferred until link recovery: {makefile}"
         );
     }
 
@@ -11937,9 +14387,11 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         .unwrap();
 
         let main = fs::read_to_string(temp.join("out/H-CFILE/main.c")).unwrap();
-        assert!(main.contains("FILE * stream = fmemopen((void *)Data, Size, \"rb\")"));
+        assert!(main.contains("unsigned char *_gf_file_buf_stream"));
+        assert!(main.contains("fmemopen(_gf_file_buf_stream, Size, \"r+\")"));
         assert!(main.contains("parse_stream(stream)"));
         assert!(main.contains("if (stream) fclose(stream);"));
+        assert!(main.contains("free(_gf_file_buf_stream);"));
     }
 
     #[test]
@@ -11991,6 +14443,61 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         assert!(super::is_cpp_only_header("fix.hpp"));
         assert!(super::is_cpp_only_header("a/b.hh"));
         assert!(!super::is_cpp_only_header("fix.h"));
+    }
+
+    #[test]
+    fn header_closure_excludes_compound_guarded_foreign_header() {
+        let temp = temp_dir("c-compound-foreign-header");
+        fs::write(
+            temp.join("platform.h"),
+            "#if (defined(__WIN32__) || defined(_WIN32)) && !defined(__CYGWIN__)\n\
+             #include \"windows_impl.h\"\n\
+             #else\n\
+             #include \"posix_impl.h\"\n\
+             #endif\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.join("windows_impl.h"),
+            "#ifndef WINDOWS_IMPL_H\n#define WINDOWS_IMPL_H\nint windows_only(void);\n#endif\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.join("posix_impl.h"),
+            "#ifndef POSIX_IMPL_H\n#define POSIX_IMPL_H\nint posix_only(void);\n#endif\n",
+        )
+        .unwrap();
+
+        let includes = super::harness_project_includes(
+            "#include \"platform.h\"\n",
+            std::slice::from_ref(&temp),
+        );
+        assert!(includes.iter().any(|header| header == "platform.h"));
+        assert!(includes.iter().any(|header| header == "posix_impl.h"));
+        assert!(
+            !includes.iter().any(|header| header == "windows_impl.h"),
+            "Windows-only transitive header leaked into host closure: {includes:?}"
+        );
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn source_filter_accepts_compound_win32_guarded_system_header() {
+        let temp = temp_dir("compound-foreign-source-filter");
+        let source = temp.join("portable.c");
+        fs::write(
+            &source,
+            "#if defined(_WIN32) && !defined(__CYGWIN__)\n\
+             #include <windows.h>\n\
+             #endif\n\
+             int portable(void) { return 1; }\n",
+        )
+        .unwrap();
+
+        assert!(
+            !super::source_path_has_unconditional_foreign_platform_include(&source),
+            "a positive Win32 guard remains foreign even with a negated Cygwin qualifier"
+        );
     }
 
     #[test]
@@ -12270,6 +14777,39 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn generate_cpp_harness_accepts_latin1_source_comments() {
+        let root = temp_dir("cpp-latin1-source");
+        let source = root.join("legacy.cpp");
+        let mut bytes = b"// Copyright 2006 Peter K".to_vec();
+        bytes.push(0xFC); // Latin-1 u-umlaut, invalid as a lone UTF-8 byte.
+        bytes.extend_from_slice(b"mmel\nint parse_legacy(int value) { return value + 1; }\n");
+        fs::write(&source, bytes).unwrap();
+
+        run(GenerateHarnessArgs {
+            source: source.clone(),
+            target: Some("parse_legacy".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CPP-LATIN1".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .expect("Latin-1 comments must not block C++ harness generation");
+
+        let main = fs::read_to_string(root.join("out/H-CPP-LATIN1/main.cpp")).unwrap();
+        assert!(main.contains("parse_legacy"));
+    }
+
+    #[test]
     fn generate_c_harness_for_header_only_target() {
         let temp = temp_dir("c-header-harness");
         let source = temp.join("parser.h");
@@ -12311,6 +14851,40 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             !makefile.contains(source.to_str().unwrap()),
             "header-only target must not be compiled as a source:\n{makefile}"
         );
+    }
+
+    #[test]
+    fn c_like_header_with_cpp_sibling_generates_cpp_harness() {
+        let temp = temp_dir("cpp-sibling-header-harness");
+        let source = temp.join("Hashes.h");
+        fs::write(
+            &source,
+            "inline void MurmurHash1_test(const void *key) { MurmurHash1(key); }\n",
+        )
+        .unwrap();
+        fs::write(temp.join("Hashes.cpp"), "#include \"Hashes.h\"\n").unwrap();
+
+        run(GenerateHarnessArgs {
+            source,
+            target: Some("MurmurHash1_test".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-X-SIBLING-HDR".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        assert!(temp.join("out/H-X-SIBLING-HDR/main.cpp").is_file());
     }
 
     #[test]
@@ -12507,6 +15081,44 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             pick_c_target(Path::new("x.c"), vec![f(10)], "decode", Some(99)).unwrap();
         assert_eq!(picked.line, 10, "stale line falls back to name match");
         assert!(warning.is_none());
+    }
+
+    #[test]
+    fn va_list_target_uses_matching_variadic_wrapper() {
+        use c_parser::{CFunction, CParamDescriptor};
+        let param = |name: &str, c_type: &str| CParamDescriptor {
+            name: name.to_owned(),
+            c_type: c_type.to_owned(),
+        };
+        let target = CFunction {
+            name: "json_vunpack_ex".to_owned(),
+            line: 896,
+            return_type: "int".to_owned(),
+            params: vec![
+                param("root", "json_t *"),
+                param("error", "json_error_t *"),
+                param("flags", "size_t"),
+                param("fmt", "const char *"),
+                param("ap", "va_list"),
+            ],
+            ..Default::default()
+        };
+        let wrapper = CFunction {
+            name: "json_unpack_ex".to_owned(),
+            line: 935,
+            return_type: "int".to_owned(),
+            params: target.params[..4].to_vec(),
+            variadic: true,
+            ..Default::default()
+        };
+
+        let selected = c_va_list_variadic_wrapper(&target, &[target.clone(), wrapper.clone()])
+            .expect("matching variadic wrapper");
+        assert_eq!(selected, wrapper);
+
+        let mut wrong = wrapper;
+        wrong.params[2].c_type = "unsigned".to_owned();
+        assert!(c_va_list_variadic_wrapper(&target, &[wrong]).is_none());
     }
 
     #[test]

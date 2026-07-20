@@ -12,6 +12,12 @@
 {%- endfor %}
 #include "govfuzz_decode.h"
 
+/* Project headers may redirect getenv to a restricted project wrapper. The
+ * generated runtime must still see its GOVFUZZ_* control variables via libc. */
+#ifdef getenv
+#undef getenv
+#endif
+
 /* Sanitizer-runtime callbacks (edge coverage + cmplog operand capture, #400)
  * must never be instrumented themselves: with `-fsanitize-coverage=trace-cmp`
  * on, an un-attributed compare inside one of these would recurse into the

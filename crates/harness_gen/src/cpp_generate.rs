@@ -299,6 +299,9 @@ struct CppTemplateContext {
     /// `Class _gf_receiver(args);` rather than a member call `_gf_receiver.Class(args)`
     /// (naming a constructor as a member function is illegal C++).
     target_is_constructor: bool,
+    /// Static methods have no receiver object, but they are still class members
+    /// and cannot be forward-declared as namespace-level free functions.
+    target_is_method: bool,
     /// True when at least one header in `target_includes` brings the target
     /// declaration into scope, so the forward declaration block is
     /// redundant (and would conflict for class members).
@@ -1169,7 +1172,10 @@ fn build_cpp_context_common(
     // capitalization of the last qualifier segment wrongly treats a free
     // function in a Capitalized namespace (jsoncpp's `Json::releaseStringValue`)
     // as a method of class `Json`, synthesising a bogus `Json _gf_receiver`.
-    let receiver_class = if input.target.api.is_method && !input.target.qualifier_path.is_empty() {
+    let receiver_class = if input.target.api.is_method
+        && !input.target.is_static
+        && !input.target.qualifier_path.is_empty()
+    {
         // #456: an abstract declaring class is replaced by a concrete subclass the
         // caller resolved, so the receiver is constructible and the virtual method
         // dispatches to the subclass's implementation.
@@ -1282,6 +1288,7 @@ fn build_cpp_context_common(
         constructor_params,
         receiver_class,
         target_is_constructor,
+        target_is_method: input.target.api.is_method,
         has_target_header,
         using_namespaces,
         uses_array,
@@ -1750,6 +1757,11 @@ mod tests {
             main.contains("GOVFUZZ_COV_SHM") && main.contains("GOVFUZZ_FRAMED"),
             "C++ driver missing coverage SHM / framed fork-server main:\n{main}"
         );
+        assert!(
+            main.find("#include \"demo.h\"") < main.find("#undef getenv")
+                && main.find("#undef getenv") < main.find("getenv(\"GOVFUZZ_COV_SHM\")"),
+            "target-header getenv redirects must be cleared before the coverage runtime:\n{main}"
+        );
         // The sanitizer callbacks must have C linkage or name-mangling hides them
         // from the sanitizer runtime.
         assert!(
@@ -1761,6 +1773,7 @@ mod tests {
         assert!(mk.contains("ifeq ($(origin CXX), default)"));
         assert!(mk.contains("CXX = clang++"));
         assert!(mk.contains("CXX_STD ?= gnu++20"));
+        assert!(mk.contains("-Wno-reserved-user-defined-literal"));
         // #408: instrument with trace-pc-guard,trace-cmp (like the C makefile) and
         // do NOT link libFuzzer's own main on the default recipe — mixing it in
         // mis-drove the binary and fabricated empty-testcase findings.
@@ -1777,6 +1790,51 @@ mod tests {
         assert!(
             mk.contains("-fsanitize=address,undefined -fno-sanitize=function,vptr,alignment"),
             "C++ default recipe must subtract FP-prone UBSan checks:\n{mk}"
+        );
+    }
+
+    #[test]
+    fn static_member_uses_qualified_call_without_receiver() {
+        let out = temp_dir("cpp-static-member");
+        let mut target = cppfunction("Parse");
+        target.qualifier_path = vec!["demo".to_owned(), "Regexp".to_owned()];
+        target.api.namespace_path = vec!["demo".to_owned()];
+        target.api.class_name = Some("Regexp".to_owned());
+        target.api.is_method = true;
+        target.is_static = true;
+        let args = GenerateCppDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            harness_id: "H-CPP-STATIC".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/parse.cc"),
+            target,
+            params: vec![CppParameter {
+                name: "text".to_owned(),
+                cpp_type: "const std::string &".to_owned(),
+            }],
+            return_type: "int".to_owned(),
+            target_includes: vec!["regexp.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/parse.cc")],
+            compile_flags: Vec::new(),
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            using_namespaces: Vec::new(),
+            result_cleanup: None,
+            constructor_params: Vec::new(),
+            type_defs: Vec::new(),
+            default_constructible_classes: Vec::new(),
+            receiver_class_override: None,
+            factory_plan: None,
+        };
+
+        let result = generate_cpp_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_cpp).unwrap();
+        assert!(main.contains("demo::Regexp::Parse(text)"), "{main}");
+        assert!(!main.contains("_gf_receiver"), "{main}");
+        assert!(
+            !main.contains("namespace demo::Regexp"),
+            "a static method must not be redeclared as a namespace free function:\n{main}"
         );
     }
 
@@ -2496,6 +2554,11 @@ mod tests {
         assert!(makefile.contains("-o $@ main.cpp /tmp/source.cpp"));
         assert!(makefile.contains("$(AFLPP_CXX) $(AFLPP_CXXFLAGS)"));
         assert!(makefile.contains("-DGOVFUZZ_AFL"));
+        assert!(
+            makefile.contains("SECTION_FLAGS ?= -ffunction-sections -fdata-sections")
+                && makefile.contains("SECTION_LDFLAGS ?= -Wl,--gc-sections"),
+            "C++ harnesses must discard unreachable dependency sections:\n{makefile}"
+        );
     }
 
     #[test]
@@ -2931,9 +2994,11 @@ mod tests {
         let result = generate_cpp_direct_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         assert!(main.contains("#include <stdio.h>"));
-        assert!(main.contains("FILE * stream = fmemopen((void *)Data, Size, \"rb\")"));
+        assert!(main.contains("fmemopen(_gf_file_buf_stream, Size, \"r+\")"));
+        assert!(main.contains("Size ? fmemopen"));
+        assert!(main.contains(": tmpfile()"));
         assert!(main.contains("int R = parse_stream(stream);"));
-        assert!(main.contains("if (stream) fclose(stream);"));
+        assert!(main.contains("if (stream) fclose(stream); free(_gf_file_buf_stream);"));
 
         let Some(cxx_flags) = clangxx_compile_flags("cppgen-file-pointer") else {
             eprintln!(
@@ -2960,6 +3025,42 @@ mod tests {
             String::from_utf8_lossy(&output.stderr),
             main
         );
+    }
+
+    #[test]
+    fn generate_cpp_direct_harness_drives_std_file_pointer_with_fmemopen() {
+        let work = temp_dir("cpp-emit-std-file-pointer");
+        let args = GenerateCppDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            harness_id: "H-CPP-STD-FILE".to_owned(),
+            output_dir: work.join("harness"),
+            source_path: PathBuf::from("/tmp/source.cpp"),
+            target: cppfunction("parse_stream"),
+            params: vec![CppParameter {
+                name: "stream".to_owned(),
+                cpp_type: "std::FILE *".to_owned(),
+            }],
+            return_type: "int".to_owned(),
+            target_includes: Vec::new(),
+            target_includes_dirs: Vec::new(),
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            c_runtime_include: runtime_dir(),
+            using_namespaces: Vec::new(),
+            result_cleanup: None,
+            constructor_params: Vec::new(),
+            type_defs: Vec::new(),
+            default_constructible_classes: Vec::new(),
+            receiver_class_override: None,
+            factory_plan: None,
+        };
+
+        let result = generate_cpp_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_cpp).unwrap();
+        assert!(main.contains("fmemopen(_gf_file_buf_stream, Size, \"r+\")"));
+        assert!(main.contains("parse_stream(stream);"));
+        assert!(main.contains("if (stream) fclose(stream); free(_gf_file_buf_stream);"));
     }
 
     #[test]

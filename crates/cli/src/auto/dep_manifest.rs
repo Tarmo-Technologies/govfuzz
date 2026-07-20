@@ -22,6 +22,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DepKind {
+    /// A compiler, linker, build driver, or language runtime executable required
+    /// to build the discovered language lane on this host.
+    Toolchain,
+    /// A target ABI/runtime (including an emulator) required to execute the real
+    /// target behavior instead of a host-side replacement.
+    Runtime,
+    /// Source produced by configure, an IDL compiler, an autocoder, or another
+    /// project generator. This is separate from an ordinary missing header so it
+    /// is not incorrectly presented as an installable distro package.
+    GeneratedSource,
+    /// Semantically significant dependency source declared by the project but
+    /// absent from the source drop (for example an unfetched Git submodule or
+    /// Alire crate).
+    VendorSource,
     Header,
     CType,
     Macro,
@@ -57,6 +71,10 @@ impl DepKind {
     /// Short human label for the text manifest.
     pub fn label(self) -> &'static str {
         match self {
+            DepKind::Toolchain => "toolchain",
+            DepKind::Runtime => "runtime",
+            DepKind::GeneratedSource => "generated source",
+            DepKind::VendorSource => "vendor/project source",
             DepKind::Header => "header",
             DepKind::CType => "type",
             DepKind::Macro => "macro",
@@ -75,6 +93,22 @@ impl DepKind {
             DepKind::IdlInterface => "idl interface",
             DepKind::Other => "other",
         }
+    }
+
+    /// Requirements that must be supplied to exercise the project's real
+    /// semantics on an offline host. These render before ordinary repair
+    /// artifacts even when GovFuzz managed to substitute a reduced-fidelity
+    /// implementation.
+    pub fn is_critical_offline_requirement(self) -> bool {
+        matches!(
+            self,
+            DepKind::Toolchain
+                | DepKind::Runtime
+                | DepKind::GeneratedSource
+                | DepKind::VendorSource
+                | DepKind::CodegenTool
+                | DepKind::IdlInterface
+        )
     }
 }
 
@@ -136,6 +170,38 @@ pub fn is_configure_generated_header(header: &str) -> bool {
         || stem.ends_with("_features")
 }
 
+/// How GovFuzz knows a requirement exists. This prevents a best-effort inference
+/// from being presented with the same certainty as a project declaration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RequirementBasis {
+    Declared,
+    Observed,
+    Inferred,
+}
+
+impl RequirementBasis {
+    fn label(self) -> &'static str {
+        match self {
+            RequirementBasis::Declared => "declared",
+            RequirementBasis::Observed => "observed",
+            RequirementBasis::Inferred => "inferred",
+        }
+    }
+
+    fn rank(self) -> u8 {
+        match self {
+            RequirementBasis::Declared => 0,
+            RequirementBasis::Observed => 1,
+            RequirementBasis::Inferred => 2,
+        }
+    }
+}
+
+fn default_requirement_basis() -> RequirementBasis {
+    RequirementBasis::Observed
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DepEntry {
     pub kind: DepKind,
@@ -150,11 +216,43 @@ pub struct DepEntry {
     /// confident hint is known.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub acquisition_hint: Option<String>,
+    /// Whether this came from project metadata, an actual build/runtime
+    /// diagnostic, or a conservative inference from naming/source context.
+    #[serde(default = "default_requirement_basis")]
+    pub basis: RequirementBasis,
+    /// Concise source of truth: manifest path/line, diagnostic, guard, or
+    /// preflight probe. Kept machine-readable and shown in the text report.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub evidence: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+fn manifest_schema_version() -> u32 {
+    2
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DependencyManifest {
+    #[serde(default = "manifest_schema_version")]
+    pub schema_version: u32,
+    /// False for an in-progress checkpoint. True only after final report
+    /// generation completed for the recorded target set.
+    #[serde(default)]
+    pub complete: bool,
+    /// Number of completed target attempts folded into this checkpoint.
+    #[serde(default)]
+    pub completed_targets: usize,
     pub entries: Vec<DepEntry>,
+}
+
+impl Default for DependencyManifest {
+    fn default() -> Self {
+        Self {
+            schema_version: manifest_schema_version(),
+            complete: false,
+            completed_targets: 0,
+            entries: Vec::new(),
+        }
+    }
 }
 
 impl DependencyManifest {
@@ -179,6 +277,8 @@ impl DependencyManifest {
             referenced_by,
             stubbed,
             acquisition_hint,
+            basis: RequirementBasis::Observed,
+            evidence: None,
         });
     }
 
@@ -221,20 +321,65 @@ impl DependencyManifest {
         stubbed: bool,
         hint: Option<String>,
     ) {
+        self.push_merge_detailed(
+            kind,
+            name,
+            referenced_by,
+            stubbed,
+            hint,
+            RequirementBasis::Observed,
+            None,
+        );
+    }
+
+    /// Add or merge a requirement while retaining its provenance. A stronger
+    /// basis (declared > observed > inferred) wins when multiple discovery paths
+    /// identify the same requirement.
+    #[allow(clippy::too_many_arguments)]
+    pub fn push_merge_detailed(
+        &mut self,
+        kind: DepKind,
+        name: impl Into<String>,
+        referenced_by: Vec<String>,
+        stubbed: bool,
+        hint: Option<String>,
+        basis: RequirementBasis,
+        evidence: Option<String>,
+    ) {
         let name = name.into();
         if let Some(e) = self
             .entries
             .iter_mut()
             .find(|e| e.kind == kind && e.name == name)
         {
+            let previous_basis_rank = e.basis.rank();
+            // An early declaration scan can only say an output is absent. Once
+            // an actual target proves GovFuzz substituted that same critical
+            // requirement, promote it from "blocking" to "substituted". Any
+            // later real blocker still wins and moves it back to blocking.
+            let declaration_only = e.kind.is_critical_offline_requirement()
+                && !e.stubbed
+                && !e.referenced_by.iter().any(|r| r.starts_with("H-"));
             for r in referenced_by {
                 if !e.referenced_by.contains(&r) {
                     e.referenced_by.push(r);
                 }
             }
-            e.stubbed = e.stubbed && stubbed;
-            if hint.is_some() {
+            e.stubbed = if declaration_only && stubbed {
+                true
+            } else {
+                e.stubbed && stubbed
+            };
+            if hint.is_some()
+                && (e.acquisition_hint.is_none() || basis.rank() <= previous_basis_rank)
+            {
                 e.acquisition_hint = hint;
+            }
+            if basis.rank() < e.basis.rank() {
+                e.basis = basis;
+            }
+            if evidence.is_some() && (e.evidence.is_none() || basis.rank() <= previous_basis_rank) {
+                e.evidence = evidence;
             }
         } else {
             let acquisition_hint = hint.or_else(|| acquisition_hint(kind, &name));
@@ -244,8 +389,33 @@ impl DependencyManifest {
                 referenced_by,
                 stubbed,
                 acquisition_hint,
+                basis,
+                evidence,
             });
         }
+    }
+
+    /// Merge another checkpoint/seed into this manifest.
+    pub fn merge_from(&mut self, other: &DependencyManifest) {
+        for entry in &other.entries {
+            self.push_merge_detailed(
+                entry.kind,
+                entry.name.clone(),
+                entry.referenced_by.clone(),
+                entry.stubbed,
+                entry.acquisition_hint.clone(),
+                entry.basis,
+                entry.evidence.clone(),
+            );
+        }
+        self.completed_targets = self.completed_targets.max(other.completed_targets);
+        self.complete |= other.complete;
+    }
+
+    pub fn mark_checkpoint(&mut self, completed_targets: usize, complete: bool) {
+        self.schema_version = manifest_schema_version();
+        self.completed_targets = completed_targets;
+        self.complete = complete;
     }
 
     pub fn stubbed_count(&self) -> usize {
@@ -260,12 +430,22 @@ impl DependencyManifest {
         serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_owned())
     }
 
-    /// Human-readable manifest. Blocking deps first (they need the user's
-    /// attention), then stubbed ones (fidelity improvements).
+    /// Human-readable manifest. Toolchains/runtimes and semantic generated/vendor
+    /// source are deliberately first, followed by ordinary blockers and then
+    /// reduced-fidelity substitutions.
     pub fn render_text(&self) -> String {
         let mut out = String::new();
         out.push_str("GovFuzz missing-dependency manifest\n");
         out.push_str("===================================\n\n");
+        out.push_str(&format!(
+            "Checkpoint: {} target(s) completed; {}.\n\n",
+            self.completed_targets,
+            if self.complete {
+                "final"
+            } else {
+                "run still in progress"
+            }
+        ));
         if self.entries.is_empty() {
             out.push_str(
                 "No external dependencies were missing — the tree built against its own sources.\n",
@@ -280,40 +460,93 @@ impl DependencyManifest {
             self.stubbed_count(),
         ));
 
-        let mut ordered: Vec<&DepEntry> = self.entries.iter().collect();
-        // Blocking before stubbed; within each, by kind then name for stability.
-        ordered.sort_by(|a, b| {
-            a.stubbed
-                .cmp(&b.stubbed)
-                .then_with(|| a.kind.label().cmp(b.kind.label()))
-                .then_with(|| a.name.cmp(&b.name))
-        });
+        let mut critical: Vec<&DepEntry> = self
+            .entries
+            .iter()
+            .filter(|e| e.kind.is_critical_offline_requirement())
+            .collect();
+        let mut blockers: Vec<&DepEntry> = self
+            .entries
+            .iter()
+            .filter(|e| !e.kind.is_critical_offline_requirement() && !e.stubbed)
+            .collect();
+        let mut substitutions: Vec<&DepEntry> = self
+            .entries
+            .iter()
+            .filter(|e| !e.kind.is_critical_offline_requirement() && e.stubbed)
+            .collect();
+        let stable_sort = |items: &mut Vec<&DepEntry>| {
+            items.sort_by(|a, b| {
+                a.stubbed
+                    .cmp(&b.stubbed)
+                    .then_with(|| a.kind.label().cmp(b.kind.label()))
+                    .then_with(|| a.name.cmp(&b.name))
+            });
+        };
+        stable_sort(&mut critical);
+        stable_sort(&mut blockers);
+        stable_sort(&mut substitutions);
 
-        for e in ordered {
-            let status = if e.stubbed {
-                "stubbed"
-            } else {
-                "STILL BLOCKING"
-            };
-            out.push_str(&format!("[{}] {}  — {}\n", e.kind.label(), e.name, status));
-            if !e.referenced_by.is_empty() {
-                let shown: Vec<&str> = e.referenced_by.iter().take(6).map(String::as_str).collect();
-                let more = e.referenced_by.len().saturating_sub(shown.len());
-                let suffix = if more > 0 {
-                    format!(" (+{more} more)")
+        let render_group = |out: &mut String, title: &str, entries: &[&DepEntry]| {
+            if entries.is_empty() {
+                return;
+            }
+            out.push_str(title);
+            out.push('\n');
+            out.push_str(&"-".repeat(title.len()));
+            out.push_str("\n\n");
+            for e in entries {
+                let status = if e.stubbed {
+                    if e.kind.is_critical_offline_requirement() {
+                        "SUBSTITUTED - real semantics not exercised"
+                    } else {
+                        "stubbed"
+                    }
                 } else {
-                    String::new()
+                    "STILL BLOCKING"
                 };
                 out.push_str(&format!(
-                    "    referenced by: {}{}\n",
-                    shown.join(", "),
-                    suffix
+                    "[{}] {} - {} ({})\n",
+                    e.kind.label(),
+                    e.name,
+                    status,
+                    e.basis.label()
                 ));
+                if !e.referenced_by.is_empty() {
+                    let shown: Vec<&str> =
+                        e.referenced_by.iter().take(6).map(String::as_str).collect();
+                    let more = e.referenced_by.len().saturating_sub(shown.len());
+                    let suffix = if more > 0 {
+                        format!(" (+{more} more)")
+                    } else {
+                        String::new()
+                    };
+                    out.push_str(&format!(
+                        "    referenced by: {}{}\n",
+                        shown.join(", "),
+                        suffix
+                    ));
+                }
+                if let Some(hint) = &e.acquisition_hint {
+                    out.push_str(&format!("    acquire: {hint}\n"));
+                }
+                if let Some(evidence) = &e.evidence {
+                    out.push_str(&format!("    evidence: {evidence}\n"));
+                }
             }
-            if let Some(hint) = &e.acquisition_hint {
-                out.push_str(&format!("    acquire: {hint}\n"));
-            }
-        }
+            out.push('\n');
+        };
+        render_group(
+            &mut out,
+            "Required toolchains, runtimes, generated and vendor source",
+            &critical,
+        );
+        render_group(
+            &mut out,
+            "Other blocking build/runtime artifacts",
+            &blockers,
+        );
+        render_group(&mut out, "Substituted fidelity gaps", &substitutions);
         out
     }
 }
@@ -340,6 +573,18 @@ fn acquisition_hint(kind: DepKind, name: &str) -> Option<String> {
         }
     };
     match kind {
+        DepKind::Toolchain => Some(format!(
+            "install a compatible '{name}' toolchain on the offline host and put it on PATH"
+        )),
+        DepKind::Runtime => Some(format!(
+            "stage the compatible '{name}' runtime/SDK and its execution environment on the offline host"
+        )),
+        DepKind::GeneratedSource => Some(format!(
+            "run the project generator that produces '{name}' on a connected/trusted build host, then transfer the output and its generator inputs"
+        )),
+        DepKind::VendorSource => Some(format!(
+            "transfer the project-declared source for '{name}' at the revision/version pinned by the project"
+        )),
         DepKind::SharedLibrary => Some(match known_pkg(&lname) {
             Some(pkg) => format!("apt-get install {pkg}  (or place lib{name}.so on the linker path)"),
             None => format!("apt-file search 'lib{name}.so'  (find the package providing it)"),
@@ -541,6 +786,48 @@ mod tests {
             e.acquisition_hint.as_deref(),
             Some("supply the generated ares_build.h")
         );
+    }
+
+    #[test]
+    fn observed_substitution_updates_early_declaration_but_real_blocker_wins() {
+        let mut m = DependencyManifest::new();
+        m.push_merge_detailed(
+            DepKind::GeneratedSource,
+            "config.h",
+            vec!["CMakeLists.txt".to_owned()],
+            false,
+            Some("run cmake".to_owned()),
+            RequirementBasis::Declared,
+            Some("configure_file declaration".to_owned()),
+        );
+        m.push_merge_detailed(
+            DepKind::GeneratedSource,
+            "config.h",
+            vec!["H-C0001".to_owned()],
+            true,
+            Some("synthesized".to_owned()),
+            RequirementBasis::Observed,
+            Some("placeholder repair".to_owned()),
+        );
+        let entry = &m.entries[0];
+        assert!(entry.stubbed, "the target proved a substitution was used");
+        assert_eq!(entry.basis, RequirementBasis::Declared);
+        assert_eq!(
+            entry.evidence.as_deref(),
+            Some("configure_file declaration")
+        );
+        assert_eq!(entry.acquisition_hint.as_deref(), Some("run cmake"));
+
+        m.push_merge_detailed(
+            DepKind::GeneratedSource,
+            "config.h",
+            vec!["H-C0002".to_owned()],
+            false,
+            None,
+            RequirementBasis::Observed,
+            Some("compiler still failed".to_owned()),
+        );
+        assert!(!m.entries[0].stubbed, "a later blocker must win");
     }
 
     #[test]

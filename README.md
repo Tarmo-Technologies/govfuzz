@@ -149,6 +149,7 @@ them all.
 - [Cross-compilation](docs/site/cross-compilation.md) — qemu-user / wine backends and sandboxes.
 - [Windows](docs/site/windows.md) — native install + Visual Studio solution fuzzing.
 - [Offline deployment](docs/site/offline-deployment.md) — air-gapped install and content packs.
+- [Offline Ada/C/C++ `auto` runbook](docs/site/offline-auto-runbook.md) — strongest known-build and unknown-build commands, dependency staging, IDL codegen, and the separate forced fallback.
 - [Licensing](docs/site/licensing.md) — policy profiles and audits.
 - Validation: [DoD-domain recovery](docs/validation/2026-06-15-dod-domain-recovery.md), [real code / broken builds](docs/validation/2026-06-08-real-code-broken-builds.md).
 

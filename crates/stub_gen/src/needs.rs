@@ -34,6 +34,8 @@ pub struct StubParam {
     pub name: String,
     pub mode: Option<String>,
     pub type_name: String,
+    #[serde(default)]
+    pub default: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

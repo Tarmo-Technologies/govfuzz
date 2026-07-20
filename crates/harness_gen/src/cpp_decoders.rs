@@ -235,6 +235,18 @@ pub(crate) fn select_cpp_decoder_limited(
     }
     .replace("std::size_t", "size_t");
 
+    // `<cstdio>` is permitted to expose the C stream type as `std::FILE`, while
+    // the C decoder (and the generated harness's `<stdio.h>`) use `FILE`. They
+    // name the same ABI type, so route the qualified spellings through the
+    // existing fmemopen/fclose decoder instead of rejecting an otherwise useful
+    // stream parser target (legacy Loki's `FPrintf(std::FILE *, ...)`).
+    if matches!(
+        stripped.as_str(),
+        "std::FILE *" | "std::FILE*" | "::FILE *" | "::FILE*"
+    ) {
+        return select_c_decoder("FILE *", name);
+    }
+
     if let Some(emission) = select_cpp_file_path_decoder(&stripped, name) {
         return Some(emission);
     }
@@ -257,6 +269,13 @@ pub(crate) fn select_cpp_decoder_limited(
     }
 
     match stripped.as_str() {
+        "format_args" | "fmt::format_args" => Some(CParamEmission {
+            support: None,
+            decl: format!("{stripped} {name}{{}}"),
+            arg: name.to_owned(),
+            c_type: stripped.clone(),
+            free: None,
+        }),
         "std::monostate" => Some(CParamEmission {
             support: None,
             decl: format!("std::monostate {name}{{}}; (void){name}"),
@@ -668,6 +687,16 @@ pub fn select_cpp_decoder_with_registry_limited(
                 }
             }
         }
+    }
+    // Some libraries expose a string-view type directly rather than through a
+    // project alias (RE2 uses `absl::string_view`). Check this only after alias
+    // resolution so a project `string_view` alias to std::string_view keeps the
+    // standard decoder.
+    if matches!(
+        classify_string_alias_target(&stripped),
+        Some(StringAliasKind::NonStdStringView)
+    ) {
+        return Ok(string_view_alias_emission(&normalized, &stripped, name));
     }
     if let Some(emission) =
         select_std_optional_decoder_with_registry(&normalized, &stripped, name, registry, limits)
@@ -2576,6 +2605,16 @@ mod tests {
     }
 
     #[test]
+    fn select_cpp_decoder_handles_direct_nonstd_string_view() {
+        let e =
+            select_cpp_decoder_with_registry("absl::string_view", "view", &TypeRegistry::default())
+                .expect("absl::string_view is constructible from a byte slice");
+        assert!(e.decl.contains("absl::string_view view("), "{}", e.decl);
+        assert!(e.decl.contains("gf_data_slice"), "{}", e.decl);
+        assert_eq!(e.c_type, "absl::string_view");
+    }
+
+    #[test]
     fn select_cpp_decoder_handles_vector_uint8() {
         let e = select_cpp_decoder("const std::vector<uint8_t> &", "bytes")
             .expect("vector<uint8_t> is supported");
@@ -2949,6 +2988,15 @@ mod tests {
             select_cpp_decoder_with_registry("const Unknown &", "x", &TypeRegistry::default())
                 .is_err()
         );
+    }
+
+    #[test]
+    fn select_cpp_decoder_default_constructs_fmt_format_args() {
+        let emission =
+            select_cpp_decoder_with_registry("format_args", "args", &TypeRegistry::default())
+                .expect("fmt format_args has a public empty state");
+        assert_eq!(emission.decl, "format_args args{}");
+        assert_eq!(emission.arg, "args");
     }
 
     #[test]

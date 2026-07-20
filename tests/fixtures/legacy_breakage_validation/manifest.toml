@@ -1,0 +1,203 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[settings]
+minimum_success_rate = 0.90
+iterations = 8
+per_target_time = 10
+max_repair_rounds = 8
+scenario_timeout = 300
+
+[[scenarios]]
+id = "cjson_missing_dependency_source"
+repository_id = "cjson"
+url = "https://github.com/DaveGamble/cJSON.git"
+rev = "fb16e5cf358798aabb049655975cde8427101056"
+materialized_path = "extra/cjson"
+language = "c"
+mutation_class = "missing_dependency_source"
+target_name = "cJSONUtils_GetPointer"
+target_file = "cJSON_Utils.c"
+probe_file = "cJSON_Utils.c"
+probe_contains = "cJSON_GetObjectItemCaseSensitive(object, name)"
+removed_contains = "cJSON_GetObjectItemCaseSensitive(const cJSON"
+remove_files = ["cJSON.c"]
+
+[[scenarios]]
+id = "expat_missing_dependency_source"
+repository_id = "expat"
+url = "https://github.com/libexpat/libexpat.git"
+rev = "551a88f879477e4fc2a396d88cbb461be11f04ce"
+materialized_path = "extra/expat"
+language = "c"
+mutation_class = "missing_dependency_source"
+target_name = "XML_Parse"
+target_file = "expat/lib/xmlparse.c"
+probe_file = "expat/lib/xmlparse.c"
+probe_contains = "XmlPrologStateInit(&parser->m_prologState)"
+removed_contains = "XmlPrologStateInit(PROLOG_STATE *state)"
+remove_files = ["expat/lib/xmlrole.c"]
+
+[[scenarios]]
+id = "libarchive_missing_dependency_source"
+repository_id = "libarchive"
+url = "https://github.com/libarchive/libarchive.git"
+rev = "e70bf490b8dbe9d335060e6035834dd60de48a2c"
+materialized_path = "extra/libarchive"
+language = "c"
+mutation_class = "missing_dependency_source"
+target_name = "archive_read_open_memory2"
+target_file = "libarchive/archive_read_open_memory.c"
+probe_file = "libarchive/archive_read_open_memory.c"
+probe_contains = "archive_read_open1(a)"
+removed_contains = "archive_read_open1(struct archive *_a)"
+remove_files = ["libarchive/archive_read.c"]
+
+[[scenarios]]
+id = "yajl_missing_dependency_source"
+repository_id = "yajl"
+url = "https://github.com/lloyd/yajl.git"
+rev = "5e3a7856e643b4d6410ddc3f84bc2f38174f2872"
+materialized_path = "c/yajl"
+language = "c"
+mutation_class = "missing_dependency_source"
+target_name = "yajl_tree_parse"
+target_file = "src/yajl_tree.c"
+probe_file = "src/yajl.c"
+probe_contains = "yajl_do_parse(hand, jsonText, jsonTextLen)"
+removed_contains = "yajl_do_parse(yajl_handle hand"
+remove_files = ["src/yajl_parser.c"]
+
+[[scenarios]]
+id = "zlib_missing_dependency_source"
+repository_id = "zlib"
+url = "https://github.com/madler/zlib.git"
+rev = "e3dc0a85b7032e98380dec011bc8f2c2ee0d8fca"
+materialized_path = "extra/zlib"
+language = "c"
+mutation_class = "missing_dependency_source"
+target_name = "uncompress"
+target_file = "uncompr.c"
+probe_file = "uncompr.c"
+probe_contains = "err = inflate(&stream, Z_NO_FLUSH)"
+removed_contains = "int ZEXPORT inflate(z_streamp strm, int flush)"
+remove_files = ["inflate.c"]
+
+[[scenarios]]
+id = "jsoncpp_missing_public_header"
+repository_id = "jsoncpp"
+url = "https://github.com/open-source-parsers/jsoncpp.git"
+rev = "edc01ab10f52135ec80e3589b6b4e0a9c65b27fd"
+materialized_path = "extra/jsoncpp"
+language = "cpp"
+mutation_class = "missing_public_header"
+target_name = "Json::decodePrefixedString"
+target_file = "src/lib_json/json_value.cpp"
+probe_file = "src/lib_json/json_value.cpp"
+probe_contains = "#include <json/assertions.h>"
+remove_files = ["include/json/assertions.h"]
+
+[[scenarios]]
+id = "leveldb_missing_private_header"
+repository_id = "leveldb"
+url = "https://github.com/google/leveldb.git"
+rev = "7ee830d02b623e8ffe0b95d59a74db1e58da04c5"
+materialized_path = "extra/leveldb"
+language = "cpp"
+mutation_class = "missing_private_header"
+target_name = "leveldb::Hash"
+target_file = "util/hash.cc"
+probe_file = "util/hash.cc"
+probe_contains = '#include "util/coding.h"'
+remove_files = ["util/coding.h"]
+
+[[scenarios]]
+id = "loki_missing_transitive_header"
+repository_id = "loki"
+url = "https://github.com/snaewe/loki-lib.git"
+rev = "7c29d87ecdecd60e39db969125753f6a4f549131"
+materialized_path = "cpp/loki-lib"
+language = "cpp"
+mutation_class = "missing_transitive_header"
+target_name = "Loki::Printf(const std::string &)"
+target_symbol = "Printf"
+target_file = "src/SafeFormat.cpp"
+probe_file = "include/loki/SafeFormat.h"
+probe_contains = "#include <loki/LokiExport.h>"
+remove_files = ["include/loki/LokiExport.h"]
+
+[[scenarios]]
+id = "tinyxml2_missing_dependency_source"
+repository_id = "tinyxml2"
+url = "https://github.com/leethomason/tinyxml2.git"
+rev = "8224e427b655b83dae5e2298f1e6919523a78737"
+materialized_path = "extra/tinyxml2"
+language = "cpp"
+mutation_class = "missing_dependency_source"
+target_name = "tinyxml2::StrPair::Set"
+target_symbol = "Set"
+target_file = "tinyxml2.h"
+probe_file = "tinyxml2.h"
+probe_contains = "Reset();"
+removed_contains = "void StrPair::Reset()"
+remove_files = ["tinyxml2.cpp"]
+
+[[scenarios]]
+id = "ada_crypto_missing_child_unit"
+repository_id = "ada_crypto"
+url = "https://github.com/cforler/Ada-Crypto-Library.git"
+rev = "a9c201d586f31b475802e04dfa1441e50d18d9ff"
+materialized_path = "ada/ada-crypto"
+language = "ada"
+mutation_class = "missing_ada_unit"
+target_name = "round_blake2"
+target_file = "src/crypto-symmetric-algorithm-argoncf.ads"
+probe_file = "src/crypto-symmetric-algorithm-argoncf.adb"
+probe_contains = "with Crypto.Symmetric.Algorithm.Blake2b_Utils;"
+removed_contains = "package body Crypto.Symmetric.Algorithm.Blake2b_Utils is"
+remove_files = ["src/crypto-symmetric-algorithm-blake2b_utils.adb"]
+
+[[scenarios]]
+id = "gnatcoll_missing_child_unit"
+repository_id = "gnatcoll_core"
+url = "https://github.com/AdaCore/gnatcoll-core.git"
+rev = "96ae806114170156e540141d6c494ea8476a8329"
+materialized_path = "ada/gnatcoll-core"
+language = "ada"
+mutation_class = "missing_ada_unit"
+target_name = "set_text_payload"
+target_line = 449
+target_file = "core/src/gnatcoll-email.ads"
+probe_file = "core/src/gnatcoll-email.adb"
+probe_contains = "with GNATCOLL.Email.Utils;"
+removed_contains = "package body GNATCOLL.Email.Utils is"
+remove_files = ["core/src/gnatcoll-email-utils.adb"]
+
+[[scenarios]]
+id = "parse_args_missing_child_unit"
+repository_id = "parse_args"
+url = "https://github.com/jhumphry/parse_args.git"
+rev = "635f9e4f5318dccd535ca889d744b1053ab2362e"
+materialized_path = "ada/parse_args"
+language = "ada"
+mutation_class = "missing_ada_unit"
+target_name = "add_option"
+target_file = "src/parse_args.ads"
+probe_file = "src/parse_args.adb"
+probe_contains = "with Parse_Args.Concrete;"
+removed_contains = "package body Parse_Args.Concrete is"
+remove_files = ["src/parse_args-concrete.adb"]
+
+[[scenarios]]
+id = "xmlada_missing_child_unit"
+repository_id = "xmlada"
+url = "https://github.com/AdaCore/xmlada.git"
+rev = "0037f965a1990b0f0227493f79c5a4765a30182f"
+materialized_path = "ada/xmlada"
+language = "ada"
+mutation_class = "missing_ada_unit"
+target_name = "set_attribute"
+target_file = "sax/sax-attributes.ads"
+probe_file = "sax/sax-attributes.adb"
+probe_contains = "with Unicode.CES;"
+removed_contains = "package body Unicode.CES is"
+remove_files = ["unicode/unicode-ces.adb"]

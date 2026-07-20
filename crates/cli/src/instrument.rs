@@ -14,7 +14,7 @@ pub struct InstrumentArgs {
 }
 
 pub fn run(args: InstrumentArgs) -> Result<()> {
-    let source = std::fs::read_to_string(&args.source)
+    let source = crate::source_text::read_source_text(&args.source)
         .with_context(|| format!("read Ada source {}", args.source.display()))?;
     let ast = ada_parser::reconcile::build_structural_ast(&source, None, &args.source)
         .with_context(|| format!("scan Ada source {}", args.source.display()))?;

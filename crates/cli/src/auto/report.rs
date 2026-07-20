@@ -16,7 +16,9 @@ use crate::auto::repair::Repair;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Debug, Serialize)]
 struct RunJson<'a> {
@@ -264,8 +266,72 @@ pub fn persist_target_result(work_dir: &Path, result: &AttemptResult) {
         harness_dir: result.harness_dir.to_string_lossy().into_owned(),
     };
     if let Ok(bytes) = serde_json::to_vec(&dto) {
-        let _ = std::fs::write(dir.join("result.json"), bytes);
+        let _ = atomic_write(&dir.join("result.json"), &bytes);
     }
+}
+
+/// Replace a file through a same-directory, flushed temporary file. A kill/OOM
+/// can leave an unreferenced `.tmp-*`, but never a half-written destination; the
+/// next successful checkpoint removes its own temporary file via rename.
+pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(parent)?;
+    let leaf = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("checkpoint");
+    // Remove only abandoned temporaries for this destination. Multiple govfuzz
+    // processes can legitimately share a work directory, so never remove a
+    // temporary owned by a process that is still alive.
+    let stale_prefix = format!(".{leaf}.tmp-");
+    if let Ok(entries) = std::fs::read_dir(parent) {
+        for entry in entries.flatten() {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+            let owner = file_name
+                .strip_prefix(&stale_prefix)
+                .and_then(|suffix| suffix.split_once('-'))
+                .and_then(|(pid, _)| pid.parse::<u32>().ok());
+            if owner.is_some_and(|pid| !checkpoint_writer_is_alive(pid)) {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+    let temp = parent.join(format!(
+        ".{leaf}.tmp-{}-{}",
+        std::process::id(),
+        SEQUENCE.fetch_add(1, Ordering::Relaxed)
+    ));
+    let result = (|| {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        std::fs::rename(&temp, path)?;
+        if let Ok(dir) = std::fs::File::open(parent) {
+            let _ = dir.sync_all();
+        }
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temp);
+    }
+    result
+}
+
+#[cfg(target_os = "linux")]
+fn checkpoint_writer_is_alive(pid: u32) -> bool {
+    Path::new("/proc").join(pid.to_string()).exists()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn checkpoint_writer_is_alive(_pid: u32) -> bool {
+    // Without a portable, race-free process-liveness query, preserve the file.
+    // A failed write still removes its own temporary below.
+    true
 }
 
 /// Whether a target already completed (has a well-formed persisted result), for
@@ -676,6 +742,9 @@ pub fn write_reports(
             E::MissingHeader { path } => format!("missing header '{path}'"),
             E::MissingMacro { name, .. } => format!("undefined macro '{name}'"),
             E::UndefinedSymbol { name } => format!("undefined symbol '{name}'"),
+            E::UndeclaredFunction { name, file, line } => {
+                format!("undeclared function '{name}' at {file}:{line}")
+            }
             E::MalformedFunctionDecl { file, line } => {
                 format!("malformed declarator at {file}:{line}")
             }
@@ -797,8 +866,15 @@ pub fn write_reports(
     // sources for unresolved `*C.h`/`*S.h` includes and record the missing IDL —
     // turning a silent skip into "bring bank.idl".
     add_idl_deps_from_skipped_targets(&mut manifest, source_root, results);
-    std::fs::write(auto_dir.join("missing-deps.json"), manifest.to_json())?;
-    std::fs::write(auto_dir.join("missing-deps.txt"), manifest.render_text())?;
+    // Merge the early declaration/toolchain seed and every incrementally
+    // checkpointed semantic requirement. The run-start checkpoint overwrites any
+    // prior run, so this cannot resurrect stale entries from an older campaign.
+    if let Some(checkpoint) = load_dependency_manifest(work_dir) {
+        manifest.merge_from(&checkpoint);
+    }
+    add_semantic_requirements_from_results(&mut manifest, source_root, results);
+    manifest.mark_checkpoint(results.len(), true);
+    write_dependency_manifest_files(work_dir, &manifest)?;
     if !manifest.is_empty() {
         eprintln!(
             "govfuzz auto: {} external dependenc{} needed ({} still blocking, {} stubbed) — see {}",
@@ -1358,16 +1434,38 @@ fn build_dependency_manifest(
             // and the configure step instead of a dead-end apt-file hint. When no
             // template is found, push_merge_with_hint falls back to the per-kind
             // default (which still special-cases generated-header *names*).
-            None => m.push_merge_with_hint(
-                DepKind::Header,
-                a.name.clone(),
-                a.referenced_by_targets.clone(),
-                stubbed,
-                configure_template_hint(source_root, &a.name),
-            ),
+            None => {
+                let hint = configure_template_hint(source_root, &a.name);
+                let kind = if hint.is_some()
+                    || crate::auto::dep_manifest::is_configure_generated_header(&a.name)
+                {
+                    DepKind::GeneratedSource
+                } else {
+                    DepKind::Header
+                };
+                m.push_merge_with_hint(
+                    kind,
+                    a.name.clone(),
+                    a.referenced_by_targets.clone(),
+                    stubbed,
+                    hint,
+                );
+            }
         }
     }
-    add(DepKind::CType, &needed.synthesized_types, true, &mut m);
+    // ConfigTypeAlias entries are generated-source requirements and are added
+    // from the structured Repair ledger below. Do not also mislabel the
+    // human-formatted width assumption as an ordinary missing C type.
+    let ordinary_types: Vec<Aggregated> = needed
+        .synthesized_types
+        .iter()
+        .filter(|entry| !entry.name.contains("(synthesised config default"))
+        .map(|entry| Aggregated {
+            name: entry.name.clone(),
+            referenced_by_targets: entry.referenced_by_targets.clone(),
+        })
+        .collect();
+    add(DepKind::CType, &ordinary_types, true, &mut m);
     add(DepKind::Macro, &needed.synthesized_macros, true, &mut m);
     add(
         DepKind::Symbol,
@@ -1432,8 +1530,15 @@ fn record_failed_build_blockers(
                     // hint (which already special-cases generated-header names)
                     // applies.
                     let hint = configure_template_hint(source_root, path);
+                    let kind = if hint.is_some()
+                        || crate::auto::dep_manifest::is_configure_generated_header(path)
+                    {
+                        DepKind::GeneratedSource
+                    } else {
+                        DepKind::Header
+                    };
                     manifest.push_merge_with_hint(
-                        DepKind::Header,
+                        kind,
                         path.clone(),
                         vec![id.clone()],
                         false,
@@ -1478,6 +1583,16 @@ fn record_failed_build_blockers(
                     Some(format!(
                         "'{name}' is undefined — link the library/object that defines it, or supply \
                          its source"
+                    )),
+                ),
+                E::UndeclaredFunction { name, file, line } => manifest.push_merge_with_hint(
+                    DepKind::Symbol,
+                    name.clone(),
+                    vec![id.clone()],
+                    false,
+                    Some(format!(
+                        "'{name}' has no declaration visible at {file}:{line} — restore the damaged \
+                         header macro/declaration or supply the header that declares it"
                     )),
                 ),
                 E::MalformedFunctionDecl { file, line } => manifest.push_merge_with_hint(
@@ -1652,7 +1767,9 @@ fn add_idl_deps_from_skipped_targets(
 ) {
     use crate::auto::dep_manifest::{corba_generated_idl, DepKind};
     let present = header_basenames_present(source_root);
-    for r in results {
+    let mut ordered: Vec<&AttemptResult> = results.iter().collect();
+    ordered.sort_by(|a, b| a.candidate.harness_id.cmp(&b.candidate.harness_id));
+    for r in ordered {
         if !matches!(r.outcome, Outcome::UnsupportedParams { .. }) {
             continue;
         }
@@ -1673,6 +1790,415 @@ fn add_idl_deps_from_skipped_targets(
                 );
             }
         }
+    }
+}
+
+/// Atomically persist an in-progress dependency manifest after completed target
+/// attempts. `seed` is the pre-target declaration/toolchain scan. Rebuilding the
+/// small manifest from completed results makes the checkpoint deterministic and
+/// avoids keeping mutable dependency state in worker threads.
+pub fn write_dependency_checkpoint(
+    source_root: &Path,
+    work_dir: &Path,
+    seed: &crate::auto::dep_manifest::DependencyManifest,
+    results: &[AttemptResult],
+) -> Result<crate::auto::dep_manifest::DependencyManifest> {
+    let mut manifest = seed.clone();
+    manifest.complete = false;
+    let mut ordered: Vec<&AttemptResult> = results.iter().collect();
+    ordered.sort_by(|a, b| a.candidate.harness_id.cmp(&b.candidate.harness_id));
+    for result in ordered {
+        add_checkpoint_result(&mut manifest, source_root, result);
+    }
+    add_idl_deps_from_skipped_targets(&mut manifest, source_root, results);
+    manifest.mark_checkpoint(results.len(), false);
+    write_dependency_manifest_files(work_dir, &manifest)?;
+    Ok(manifest)
+}
+
+/// Extend an existing durable checkpoint with one newly completed target. This
+/// is the hot sweep path: it avoids rescanning every prior result after each
+/// target while preserving the same merge semantics as a reconstructed resume
+/// checkpoint.
+pub fn checkpoint_dependency_result(
+    source_root: &Path,
+    work_dir: &Path,
+    manifest: &mut crate::auto::dep_manifest::DependencyManifest,
+    result: &AttemptResult,
+) -> Result<()> {
+    add_checkpoint_result(manifest, source_root, result);
+    add_idl_deps_from_skipped_targets(manifest, source_root, std::slice::from_ref(result));
+    manifest.mark_checkpoint(manifest.completed_targets.saturating_add(1), false);
+    write_dependency_manifest_files(work_dir, manifest)
+}
+
+/// Write both human and machine manifests through atomic replacement. The human
+/// handoff list is committed first because that is the file printed to the
+/// operator; if the process dies between renames, both files remain valid and
+/// the text list is the newest checkpoint.
+fn write_dependency_manifest_files(
+    work_dir: &Path,
+    manifest: &crate::auto::dep_manifest::DependencyManifest,
+) -> Result<()> {
+    let auto_dir = work_dir.join("auto");
+    std::fs::create_dir_all(&auto_dir)?;
+    atomic_write(
+        &auto_dir.join("missing-deps.txt"),
+        manifest.render_text().as_bytes(),
+    )?;
+    atomic_write(
+        &auto_dir.join("missing-deps.json"),
+        manifest.to_json().as_bytes(),
+    )?;
+    Ok(())
+}
+
+pub fn load_dependency_manifest(
+    work_dir: &Path,
+) -> Option<crate::auto::dep_manifest::DependencyManifest> {
+    std::fs::read_to_string(work_dir.join("auto/missing-deps.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+}
+
+/// One stable terminal/summary line. Always names the human file, even when a
+/// filesystem error made the JSON count unavailable.
+pub fn dependency_manifest_pointer(work_dir: &Path) -> String {
+    let path = work_dir.join("auto/missing-deps.txt");
+    match load_dependency_manifest(work_dir) {
+        Some(manifest) => format!(
+            "{} ({} blocking, {} substituted; {} target checkpoint{})",
+            path.display(),
+            manifest.blocking_count(),
+            manifest.stubbed_count(),
+            manifest.completed_targets,
+            if manifest.complete {
+                ", final"
+            } else {
+                ", in progress"
+            }
+        ),
+        None => format!("{} (manifest unavailable)", path.display()),
+    }
+}
+
+fn add_checkpoint_result(
+    manifest: &mut crate::auto::dep_manifest::DependencyManifest,
+    source_root: &Path,
+    result: &AttemptResult,
+) {
+    use crate::auto::dep_manifest::{DepKind, RequirementBasis};
+    use crate::auto::repair::Repair;
+    let id = result.candidate.harness_id.clone();
+    let repairs: &[Repair] = match &result.outcome {
+        Outcome::BuiltAndFuzzed { repairs, .. }
+        | Outcome::Built { repairs, .. }
+        | Outcome::FailedBuild { repairs, .. }
+        | Outcome::UnrecoverableLink { repairs, .. }
+        | Outcome::UnrecoverableRuntime { repairs, .. } => repairs,
+        Outcome::UnsupportedParams { .. } | Outcome::ReportOnly { .. } => &[],
+    };
+    for repair in repairs {
+        match repair {
+            Repair::HeaderPlaceholder { virtual_path } => {
+                add_missing_header_requirement(manifest, source_root, virtual_path, &id, true)
+            }
+            Repair::ConfigHeaderSynth { virtual_path } => manifest.push_merge_detailed(
+                DepKind::GeneratedSource,
+                virtual_path.clone(),
+                vec![id.clone()],
+                true,
+                configure_template_hint(source_root, virtual_path),
+                RequirementBasis::Observed,
+                Some("GovFuzz synthesized a minimal configuration header".to_owned()),
+            ),
+            Repair::TypePlaceholder { type_name } => {
+                if !build_classifier::is_recovery_artifact(type_name)
+                    && !crate::auto::repair::is_synthesized_type_report_noise(type_name)
+                {
+                    manifest.push_merge(
+                        DepKind::CType,
+                        type_name.clone(),
+                        vec![id.clone()],
+                        true,
+                    );
+                }
+            }
+            Repair::TypeAlias { type_name, .. } => manifest.push_merge(
+                DepKind::CType,
+                type_name.clone(),
+                vec![id.clone()],
+                true,
+            ),
+            Repair::ConfigTypeAlias {
+                type_name,
+                underlying,
+                header_path,
+            } => {
+                let name = header_path
+                    .clone()
+                    .unwrap_or_else(|| format!("generated definition for {type_name}"));
+                manifest.push_merge_detailed(
+                    DepKind::GeneratedSource,
+                    name,
+                    vec![id.clone()],
+                    true,
+                    Some(format!(
+                        "supply the project's generated definition for '{type_name}' instead of GovFuzz's assumed '{underlying}' default"
+                    )),
+                    RequirementBasis::Inferred,
+                    Some(format!(
+                        "GovFuzz substituted default type '{underlying}' for '{type_name}'"
+                    )),
+                );
+            }
+            Repair::MacroDefine { name, .. } => manifest.push_merge(
+                DepKind::Macro,
+                name.clone(),
+                vec![id.clone()],
+                true,
+            ),
+            Repair::IncludeStdHeader { symbol, header } => manifest.push_merge(
+                DepKind::Macro,
+                format!("{symbol} -> <{header}>"),
+                vec![id.clone()],
+                true,
+            ),
+            Repair::StubDeclared { symbol, .. } | Repair::StubBlind { symbol } => manifest
+                .push_merge(
+                    DepKind::Symbol,
+                    symbol.clone(),
+                    vec![id.clone()],
+                    true,
+                ),
+            Repair::AdaPackageStub { unit, .. } | Repair::AdaPackageBodyStub { unit, .. } => {
+                manifest.push_merge(
+                    DepKind::AdaUnit,
+                    unit.clone(),
+                    vec![id.clone()],
+                    true,
+                )
+            }
+            Repair::OverrideAdaBodyStub { source, unit, .. } => manifest.push_merge_detailed(
+                DepKind::Runtime,
+                format!("target-compatible Ada runtime/body for {unit}"),
+                vec![id.clone()],
+                true,
+                Some(format!(
+                    "stage the GNAT runtime/toolchain matching '{}' or supply a host-compatible implementation of {}",
+                    source.display(),
+                    source.display()
+                )),
+                RequirementBasis::Observed,
+                Some(format!(
+                    "the host assembler/compiler rejected '{}'; GovFuzz neutralized that body",
+                    source.display()
+                )),
+            ),
+            Repair::PlatformStub { platform } => manifest.push_merge_detailed(
+                DepKind::Runtime,
+                format!("{platform} SDK/runtime"),
+                vec![id.clone()],
+                true,
+                Some(format!(
+                    "stage the compatible {platform} SDK/runtime and a runnable target environment to exercise real platform behavior"
+                )),
+                RequirementBasis::Observed,
+                Some("the target built with GovFuzz's platform stub".to_owned()),
+            ),
+            Repair::HeaderForward { .. }
+            | Repair::AddIncludeDir { .. }
+            | Repair::IncludeTypeHeader { .. }
+            | Repair::DeclareFunction { .. }
+            | Repair::AddSource { .. }
+            | Repair::EnvVarInjection { .. }
+            | Repair::AddAdaSource { .. }
+            | Repair::Win32Pack => {}
+        }
+    }
+
+    match &result.outcome {
+        Outcome::FailedBuild { last_errors, .. } => {
+            for error in last_errors {
+                match error {
+                    build_classifier::BuildErrorKind::MissingSharedLib { name } => manifest
+                        .push_merge(
+                            DepKind::SharedLibrary,
+                            name.clone(),
+                            vec![id.clone()],
+                            false,
+                        ),
+                    build_classifier::BuildErrorKind::MissingGprImport { path } => manifest
+                        .push_merge(
+                            DepKind::GprImport,
+                            path.clone(),
+                            vec![id.clone()],
+                            false,
+                        ),
+                    build_classifier::BuildErrorKind::MissingAdaWith { unit }
+                    | build_classifier::BuildErrorKind::MissingAdaPackageBody { unit } => manifest
+                        .push_merge(
+                            DepKind::AdaUnit,
+                            unit.clone(),
+                            vec![id.clone()],
+                            false,
+                        ),
+                    build_classifier::BuildErrorKind::MissingAdaSymbol { unit, symbol }
+                        if !unit.is_empty() => manifest.push_merge(
+                            DepKind::AdaUnit,
+                            format!("{unit}.{symbol}"),
+                            vec![id.clone()],
+                            false,
+                        ),
+                    build_classifier::BuildErrorKind::UncompilableAdaBody { source } => manifest
+                        .push_merge_detailed(
+                            DepKind::Runtime,
+                            format!("target-compatible Ada runtime/body for {source}"),
+                            vec![id.clone()],
+                            false,
+                            Some(format!(
+                                "stage the matching GNAT target runtime/toolchain or a compatible implementation of '{source}'"
+                            )),
+                            RequirementBasis::Observed,
+                            Some("compiler/assembler rejected target-specific Ada body".to_owned()),
+                        ),
+                    _ => {}
+                }
+            }
+            record_failed_build_blockers(
+                manifest,
+                &[(id.clone(), last_errors.clone())],
+                source_root,
+            );
+        }
+        Outcome::UnrecoverableLink { missing, .. } => {
+            for name in missing {
+                let kind = if name.ends_with(".gpr") {
+                    DepKind::GprImport
+                } else {
+                    DepKind::SharedLibrary
+                };
+                manifest.push_merge(kind, name.clone(), vec![id.clone()], false);
+            }
+        }
+        Outcome::BuiltAndFuzzed {
+            runtrace_events, ..
+        }
+        | Outcome::UnrecoverableRuntime {
+            runtrace_events, ..
+        } => add_runtrace_requirements(manifest, &id, runtrace_events),
+        Outcome::ReportOnly { reason, .. } => {
+            if reason.contains("external SDK/framework") {
+                manifest.push_merge_detailed(
+                    DepKind::VendorSource,
+                    format!("external SDK/framework source required by {id}"),
+                    vec![id],
+                    false,
+                    Some(
+                        "identify the owner of the named unresolved types in the target reason and transfer that SDK's headers and semantic source"
+                            .to_owned(),
+                    ),
+                    RequirementBasis::Inferred,
+                    Some(reason.clone()),
+                );
+            }
+        }
+        Outcome::Built { .. } | Outcome::UnsupportedParams { .. } => {}
+    }
+}
+
+fn add_missing_header_requirement(
+    manifest: &mut crate::auto::dep_manifest::DependencyManifest,
+    source_root: &Path,
+    header: &str,
+    id: &str,
+    stubbed: bool,
+) {
+    use crate::auto::dep_manifest::{
+        corba_generated_idl, is_configure_generated_header, DepKind, RequirementBasis,
+    };
+    if let Some(idl) = corba_generated_idl(header) {
+        manifest.push_merge_detailed(
+            DepKind::IdlInterface,
+            idl,
+            vec![id.to_owned()],
+            stubbed,
+            None,
+            RequirementBasis::Inferred,
+            Some(format!("missing generated CORBA header '{header}'")),
+        );
+        return;
+    }
+    let generated_hint = configure_template_hint(source_root, header);
+    if generated_hint.is_some() || is_configure_generated_header(header) {
+        manifest.push_merge_detailed(
+            DepKind::GeneratedSource,
+            header.to_owned(),
+            vec![id.to_owned()],
+            stubbed,
+            generated_hint,
+            RequirementBasis::Observed,
+            Some(format!(
+                "compiler reported generated/config header '{header}' missing"
+            )),
+        );
+    } else {
+        manifest.push_merge(
+            DepKind::Header,
+            header.to_owned(),
+            vec![id.to_owned()],
+            stubbed,
+        );
+    }
+}
+
+fn add_runtrace_requirements(
+    manifest: &mut crate::auto::dep_manifest::DependencyManifest,
+    id: &str,
+    events: &[crate::auto::runtrace::RuntraceEvent],
+) {
+    use crate::auto::dep_manifest::DepKind;
+    use crate::auto::runtrace::RuntraceEvent;
+    for event in events {
+        match event {
+            RuntraceEvent::EnvVarMissing { name, .. } => {
+                manifest.push_merge(DepKind::EnvVar, name.clone(), vec![id.to_owned()], true)
+            }
+            RuntraceEvent::FileMissing { path, .. } => manifest.push_merge(
+                classify_missing_path(path),
+                path.clone(),
+                vec![id.to_owned()],
+                is_debuginfod_cache(path),
+            ),
+            RuntraceEvent::NetworkUnreachable { address, .. } if !address.is_empty() => manifest
+                .push_merge(
+                    DepKind::NetworkEndpoint,
+                    address.clone(),
+                    vec![id.to_owned()],
+                    true,
+                ),
+            RuntraceEvent::DlopenFailed { library } => manifest.push_merge(
+                DepKind::DlopenLibrary,
+                library.clone(),
+                vec![id.to_owned()],
+                true,
+            ),
+            _ => {}
+        }
+    }
+}
+
+/// Add semantic substitutions that the aggregate `NeededForBuild` ledger cannot
+/// represent precisely (target runtimes, generated type definitions, and
+/// platform SDK substitutions). Safe to call more than once because entries
+/// merge by kind+name.
+fn add_semantic_requirements_from_results(
+    manifest: &mut crate::auto::dep_manifest::DependencyManifest,
+    source_root: &Path,
+    results: &[AttemptResult],
+) {
+    for result in results {
+        add_checkpoint_result(manifest, source_root, result);
     }
 }
 
@@ -1837,10 +2363,15 @@ fn aggregate_repairs(
                 .entry(virtual_path.clone())
                 .or_default()
                 .push(id.to_owned()),
-            // A synthesized config.h is a build adjustment, not a maintainer
-            // artifact; report it under headers with a clear label.
+            // A forwarding header references a real in-tree header. It is a
+            // build-layout adjustment, not a missing dependency or stub.
+            Repair::HeaderForward { .. } => {}
+            Repair::IncludeTypeHeader { .. } => {}
+            // The manifest classifies this as generated source from the
+            // structured repair. Keep the run ledger's original path so it can
+            // merge without a second, human-label-suffixed entry.
             Repair::ConfigHeaderSynth { virtual_path } => headers
-                .entry(format!("{virtual_path} (synthesised minimal config.h)"))
+                .entry(virtual_path.clone())
                 .or_default()
                 .push(id.to_owned()),
             Repair::MacroDefine { name, .. } => {
@@ -1853,6 +2384,10 @@ fn aggregate_repairs(
                 .entry(format!("{symbol} -> <{header}>"))
                 .or_default()
                 .push(id.to_owned()),
+            // Prototype-only visibility repair: the real project definition is
+            // still linked and executed, so this is not a synthesized dependency
+            // or a stub inventory entry.
+            Repair::DeclareFunction { .. } => {}
             Repair::TypePlaceholder { type_name } => {
                 // A clang recovery-artifact placeholder (`type`/`expression`) is not
                 // a real missing type the maintainer must ship — never report it as a
@@ -2395,7 +2930,7 @@ mod tests {
             .iter()
             .find(|e| e.name == "ares_build.h")
             .expect("ares_build.h must be recorded");
-        assert_eq!(e.kind, DepKind::Header);
+        assert_eq!(e.kind, DepKind::GeneratedSource);
         assert!(!e.stubbed, "an unresolved header is STILL BLOCKING");
         assert!(e.referenced_by.contains(&"H-CARES".to_owned()));
         let hint = e.acquisition_hint.as_deref().unwrap_or("");
@@ -2690,6 +3225,85 @@ mod tests {
             input_reachability: None,
             dialect: None,
         }
+    }
+
+    #[test]
+    fn dependency_checkpoint_survives_before_final_report_and_is_atomic() {
+        let work = std::env::temp_dir().join(format!(
+            "govfuzz-dep-checkpoint-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = work.join("src");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("generated.h.in"), "#define X 1\n").unwrap();
+
+        let mut seed = crate::auto::dep_manifest::DependencyManifest::new();
+        seed.push(
+            DepKind::Toolchain,
+            "missing-cc",
+            vec!["preflight: C".to_owned()],
+            false,
+        );
+        let mut durable = write_dependency_checkpoint(&source, &work, &seed, &[]).unwrap();
+        let initial = load_dependency_manifest(&work).expect("initial checkpoint");
+        assert_eq!(initial.completed_targets, 0);
+        assert!(!initial.complete);
+
+        let result = AttemptResult {
+            candidate: cand("H-C-CHECKPOINT"),
+            outcome: Outcome::Built {
+                repairs: vec![Repair::HeaderPlaceholder {
+                    virtual_path: "generated.h".to_owned(),
+                }],
+                retries: 1,
+            },
+            harness_dir: work.join("harnesses/H-C-CHECKPOINT"),
+        };
+        checkpoint_dependency_result(&source, &work, &mut durable, &result).unwrap();
+        let checkpoint = load_dependency_manifest(&work).expect("target checkpoint");
+        assert_eq!(checkpoint.completed_targets, 1);
+        assert!(
+            !checkpoint.complete,
+            "only final reporting marks it complete"
+        );
+        assert!(checkpoint.has(DepKind::Toolchain, "missing-cc"));
+        assert!(checkpoint.has(DepKind::GeneratedSource, "generated.h"));
+        let text = std::fs::read_to_string(work.join("auto/missing-deps.txt")).unwrap();
+        assert!(text.contains("run still in progress"), "{text}");
+        assert!(text.contains("Required toolchains"), "{text}");
+        assert!(std::fs::read_dir(work.join("auto"))
+            .unwrap()
+            .flatten()
+            .all(|entry| !entry.file_name().to_string_lossy().contains(".tmp-")));
+        let _ = std::fs::remove_dir_all(work);
+    }
+
+    #[test]
+    fn atomic_write_preserves_another_live_writers_temporary() {
+        let dir = std::env::temp_dir().join(format!(
+            "govfuzz-atomic-writer-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let destination = dir.join("missing-deps.txt");
+        let live_temp = dir.join(format!(
+            ".missing-deps.txt.tmp-{}-999999",
+            std::process::id()
+        ));
+        std::fs::write(&live_temp, b"other writer").unwrap();
+
+        atomic_write(&destination, b"checkpoint").unwrap();
+
+        assert_eq!(std::fs::read(&destination).unwrap(), b"checkpoint");
+        assert_eq!(std::fs::read(&live_temp).unwrap(), b"other writer");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

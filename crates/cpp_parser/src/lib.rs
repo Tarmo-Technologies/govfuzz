@@ -61,6 +61,7 @@ pub struct CppDeclaration {
     pub name: String,
     pub return_type: String,
     pub param_types: Vec<String>,
+    pub function_suffix: String,
     pub line: u32,
 }
 
@@ -73,6 +74,9 @@ impl c_stub_gen::DeclarationView for CppDeclaration {
     }
     fn param_types(&self) -> &[String] {
         &self.param_types
+    }
+    fn function_suffix(&self) -> &str {
+        &self.function_suffix
     }
 }
 
@@ -277,6 +281,114 @@ fn preceding_line_is_directive(bytes: &[u8], nl: usize) -> bool {
         k += 1;
     }
     k < nl && bytes[k] == b'#'
+}
+
+/// Blank function-like declaration annotations such as
+/// `JSONCPP_DEPRECATED("Use `key = name();` instead.")`. Unlike a bare export
+/// macro, the annotation owns a balanced argument list and usually sits on the
+/// line before the declaration. Leaving it opaque can make tree-sitter recover
+/// the entire surrounding class as an `ERROR` node, hiding every later member.
+///
+/// A known decoration token is blanked only when the token is followed by a
+/// balanced invocation and the next non-whitespace byte can begin another
+/// annotation or a declaration. A statement-like macro call followed by `;`,
+/// `,`, or an operator is therefore untouched. Newlines are preserved so all
+/// downstream byte offsets and line numbers remain stable.
+fn blank_function_like_decoration_macros(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let is_ident = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
+    let mut spans = Vec::new();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if !is_ident(bytes[i]) || (i > 0 && is_ident(bytes[i - 1])) {
+            i += 1;
+            continue;
+        }
+        let token_start = i;
+        while i < bytes.len() && is_ident(bytes[i]) {
+            i += 1;
+        }
+        if !is_decoration_macro_token(&source[token_start..i]) {
+            continue;
+        }
+
+        let line_start = source[..token_start]
+            .rfind('\n')
+            .map_or(0, |newline| newline + 1);
+        if source[line_start..token_start]
+            .trim_start()
+            .starts_with('#')
+        {
+            continue;
+        }
+
+        let mut open = i;
+        while open < bytes.len() && matches!(bytes[open], b' ' | b'\t' | b'\r') {
+            open += 1;
+        }
+        if bytes.get(open) != Some(&b'(') {
+            continue;
+        }
+
+        let mut cursor = open;
+        let mut depth = 0usize;
+        let mut quote = None;
+        let mut escaped = false;
+        let mut invocation_end = None;
+        while cursor < bytes.len() {
+            let byte = bytes[cursor];
+            if let Some(active_quote) = quote {
+                if escaped {
+                    escaped = false;
+                } else if byte == b'\\' {
+                    escaped = true;
+                } else if byte == active_quote {
+                    quote = None;
+                }
+            } else {
+                match byte {
+                    b'\'' | b'"' => quote = Some(byte),
+                    b'(' => depth += 1,
+                    b')' => {
+                        depth = depth.saturating_sub(1);
+                        if depth == 0 {
+                            invocation_end = Some(cursor + 1);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            cursor += 1;
+        }
+        let Some(end) = invocation_end else {
+            continue;
+        };
+        let mut next = end;
+        while next < bytes.len() && bytes[next].is_ascii_whitespace() {
+            next += 1;
+        }
+        if next >= bytes.len()
+            || !(is_ident(bytes[next]) || matches!(bytes[next], b'*' | b'&' | b'~' | b'['))
+        {
+            continue;
+        }
+        spans.push((token_start, end));
+        i = end;
+    }
+
+    if spans.is_empty() {
+        return source.to_owned();
+    }
+    let mut out = bytes.to_vec();
+    for (start, end) in spans {
+        for byte in &mut out[start..end] {
+            if *byte != b'\n' {
+                *byte = b' ';
+            }
+        }
+    }
+    String::from_utf8(out).unwrap_or_else(|_| source.to_owned())
 }
 
 fn blank_function_decoration_macros(source: &str) -> String {
@@ -551,8 +663,8 @@ fn blank_namespace_delimiter_macros(source: &str) -> String {
 /// macros. Each is brace-neutral and length-preserving, so byte offsets reported by
 /// tree-sitter still index the ORIGINAL source.
 fn prepare_cpp_source(source: &str) -> String {
-    blank_function_decoration_macros(&blank_class_modifier_macros(
-        &blank_namespace_delimiter_macros(source),
+    blank_function_decoration_macros(&blank_function_like_decoration_macros(
+        &blank_class_modifier_macros(&blank_namespace_delimiter_macros(source)),
     ))
 }
 
@@ -788,6 +900,57 @@ pub fn parse_cpp_declarations(source: &str) -> Result<Vec<CppDeclaration>, CppPa
     let mut decls = Vec::new();
     collect_declarations(tree.root_node(), source.as_bytes(), &mut decls);
     Ok(decls)
+}
+
+/// Structurally declared namespace paths in a C++ source/header. Nested and
+/// C++17 compact namespace declarations are expanded (`namespace a::b` records
+/// both `a` and `a::b`) so callers can distinguish `ns::free_function` from an
+/// out-of-line `Class::method` without capitalization heuristics.
+pub fn parse_cpp_namespace_paths(source: &str) -> Result<Vec<Vec<String>>, CppParseError> {
+    let source = prepare_cpp_source(source);
+    let mut parser = tree_sitter::Parser::new();
+    parser
+        .set_language(&tree_sitter_cpp::LANGUAGE.into())
+        .map_err(|_| CppParseError::Grammar)?;
+    let tree = parser
+        .parse(source.as_str(), None)
+        .ok_or(CppParseError::Parse)?;
+    let mut paths = Vec::new();
+    collect_namespace_paths(tree.root_node(), source.as_bytes(), &[], &mut paths);
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
+}
+
+fn collect_namespace_paths(
+    node: tree_sitter::Node<'_>,
+    source: &[u8],
+    enclosing: &[String],
+    out: &mut Vec<Vec<String>>,
+) {
+    let Some(_depth_guard) = AstDepthGuard::enter() else {
+        return;
+    };
+    let mut nested = enclosing.to_vec();
+    if node.kind() == "namespace_definition" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| name.utf8_text(source).ok())
+        {
+            for component in name
+                .split("::")
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+            {
+                nested.push(component.to_owned());
+                out.push(nested.clone());
+            }
+        }
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_namespace_paths(child, source, &nested, out);
+    }
 }
 
 pub fn parse_cpp_type_defs(source: &str) -> Result<c_parser::CTypeDefs, CppParseError> {
@@ -1672,10 +1835,12 @@ fn collect_declarations(
                 if !is_cpp_keyword(&name) {
                     let return_type = declaration_return_type(node, source);
                     let param_types = function_param_types(declarator, source);
+                    let function_suffix = function_declarator_suffix(declarator, source);
                     decls.push(CppDeclaration {
                         name,
                         return_type,
                         param_types,
+                        function_suffix,
                         line: node.start_position().row as u32 + 1,
                     });
                 }
@@ -1686,6 +1851,24 @@ fn collect_declarations(
     for child in node.children(&mut cursor) {
         collect_declarations(child, source, decls);
     }
+}
+
+fn function_declarator_suffix(declarator: tree_sitter::Node<'_>, source: &[u8]) -> String {
+    let Some(parameters) = declarator.child_by_field_name("parameters") else {
+        return String::new();
+    };
+    let Ok(tail) = std::str::from_utf8(&source[parameters.end_byte()..declarator.end_byte()])
+    else {
+        return String::new();
+    };
+    let before_initializer = tail.split('=').next().unwrap_or(tail).trim();
+    before_initializer
+        .split_whitespace()
+        .filter(|token| {
+            matches!(*token, "const" | "volatile" | "&" | "&&") || token.starts_with("noexcept")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn find_function_declarator<'a>(node: tree_sitter::Node<'a>) -> Option<tree_sitter::Node<'a>> {
@@ -1728,11 +1911,35 @@ fn declaration_return_type(decl: tree_sitter::Node<'_>, source: &[u8]) -> String
         }
     }
 
-    if leading_quals.is_empty() {
+    let mut return_type = if leading_quals.is_empty() {
         type_text.trim().to_owned()
     } else {
         format!("{} {}", leading_quals.join(" "), type_text.trim())
+    };
+
+    // Direct pointer/reference return declarators wrap the function declarator:
+    // `const Value& deref() const` has type=`Value`, a sibling `const`, and an
+    // outer declarator whose prefix before `deref()` is `&`. Preserve that prefix
+    // or an out-of-line stub changes the return type and cannot match the header.
+    if let Some(outer) = decl.child_by_field_name("declarator") {
+        if let Some(function) = find_function_declarator(outer) {
+            if outer.start_byte() <= function.start_byte() {
+                let prefix = &source[outer.start_byte()..function.start_byte()];
+                if !prefix.is_empty()
+                    && prefix
+                        .iter()
+                        .all(|byte| matches!(*byte, b'*' | b'&' | b' ' | b'\t' | b'\r' | b'\n'))
+                {
+                    let decoration = std::str::from_utf8(prefix)
+                        .unwrap_or("")
+                        .split_whitespace()
+                        .collect::<String>();
+                    return_type.push_str(&decoration);
+                }
+            }
+        }
     }
+    return_type
 }
 
 fn function_param_types(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec<String> {
@@ -1745,7 +1952,7 @@ fn function_param_types(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec
         if child.kind() != "parameter_declaration" {
             continue;
         }
-        let span = child
+        let mut span = child
             .utf8_text(source)
             .map(str::trim)
             .unwrap_or("")
@@ -1753,7 +1960,20 @@ fn function_param_types(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec
         if span == "void" || span.is_empty() {
             continue;
         }
-        out.push(span);
+        // DeclarationView consumers need ABSTRACT parameter types. Keeping the
+        // source identifier here makes stub generation append a second name
+        // (`const void * key _gf_p0`), which is invalid C++.
+        if let Some(decl) = child.child_by_field_name("declarator") {
+            if let Some(name) = declarator_name_text(decl, source) {
+                if let Some(pos) = span.rfind(&name) {
+                    span.replace_range(pos..pos + name.len(), "");
+                }
+            }
+        }
+        let span = normalize_type(&span);
+        if !span.is_empty() {
+            out.push(span);
+        }
     }
     out
 }
@@ -2318,6 +2538,64 @@ pub fn parse_cpp_method_access(source: &str) -> std::collections::BTreeMap<Strin
         &mut out,
     );
     out
+}
+
+/// `<class>::<method>` for every static member function declared in a class or
+/// struct body. Out-of-line definitions omit the `static` keyword, so callers
+/// use this header metadata to avoid constructing an instance for a callable
+/// such as `Regexp::Parse`.
+pub fn parse_cpp_static_methods(source: &str) -> std::collections::BTreeSet<String> {
+    let source = prepare_cpp_source(source);
+    let mut out = std::collections::BTreeSet::new();
+    let mut parser = tree_sitter::Parser::new();
+    if parser
+        .set_language(&tree_sitter_cpp::LANGUAGE.into())
+        .is_err()
+    {
+        return out;
+    }
+    let Some(tree) = parser.parse(source.as_str(), None) else {
+        return out;
+    };
+    collect_static_methods(tree.root_node(), source.as_bytes(), None, &mut out);
+    out
+}
+
+fn collect_static_methods(
+    node: tree_sitter::Node<'_>,
+    source: &[u8],
+    enclosing_class: Option<&str>,
+    out: &mut std::collections::BTreeSet<String>,
+) {
+    let Some(_depth_guard) = AstDepthGuard::enter() else {
+        return;
+    };
+    let mut class_name = enclosing_class.map(str::to_owned);
+    if matches!(node.kind(), "class_specifier" | "struct_specifier") {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|n| n.utf8_text(source).ok())
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+        {
+            class_name = Some(name.to_owned());
+        }
+    }
+    if node.kind() == "field_declaration" && has_static_storage(node, source) {
+        if let (Some(class_name), Some(declarator)) =
+            (class_name.as_deref(), find_function_declarator(node))
+        {
+            if let Some(name) = declarator_name_text(declarator, source) {
+                if !is_cpp_keyword(&name) {
+                    out.insert(format!("{class_name}::{name}"));
+                }
+            }
+        }
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_static_methods(child, source, class_name.as_deref(), out);
+    }
 }
 
 fn collect_method_access(
@@ -3773,13 +4051,55 @@ struct MappedFile {
         assert_eq!(decls.len(), 1);
         assert_eq!(decls[0].name, "decode");
         assert_eq!(decls[0].return_type, "int");
+        assert_eq!(
+            decls[0].param_types,
+            vec!["const std::string &".to_owned(), "std::size_t".to_owned()]
+        );
+    }
+
+    #[test]
+    fn parse_cpp_declarations_preserves_method_qualifiers() {
+        let decls = parse_cpp_declarations(
+            "class Iterator {\n\
+             bool isEqual(const Iterator& other) const noexcept;\n\
+             const Value& deref() const;\n\
+             Value& deref();\n\
+             };\n",
+        )
+        .expect("parses");
+        assert_eq!(decls.len(), 3);
+        assert_eq!(decls[0].name, "isEqual");
+        assert_eq!(decls[0].function_suffix, "const noexcept");
+        assert_eq!(decls[1].return_type, "const Value&");
+        assert_eq!(decls[1].function_suffix, "const");
+        assert_eq!(decls[2].return_type, "Value&");
+        assert!(decls[2].function_suffix.is_empty());
+    }
+
+    #[test]
+    fn function_like_deprecation_annotation_does_not_hide_later_members() {
+        let decls = parse_cpp_declarations(
+            "class JSON_API ValueIteratorBase {\n\
+             public:\n\
+             JSONCPP_DEPRECATED(\"Use `key = name();` instead.\")\n\
+             char const* memberName() const;\n\
+             private:\n\
+             bool isNull_{true};\n\
+             public:\n\
+             ValueIteratorBase();\n\
+             explicit ValueIteratorBase(const int& current);\n\
+             };\n",
+        )
+        .expect("parses");
         assert!(
-            decls[0]
-                .param_types
+            decls
                 .iter()
-                .any(|p| p.contains("std::string")),
-            "param types: {:?}",
-            decls[0].param_types
+                .any(|decl| decl.name == "ValueIteratorBase" && decl.param_types.is_empty()),
+            "default constructor must survive the annotation: {decls:?}"
+        );
+        assert!(
+            decls.iter().any(|decl| decl.name == "memberName"),
+            "the annotated declaration should remain visible: {decls:?}"
         );
     }
 
@@ -3789,6 +4109,17 @@ struct MappedFile {
             parse_cpp_declarations("extern const std::string get_name();\n").expect("parses");
         assert_eq!(decls.len(), 1);
         assert_eq!(decls[0].return_type, "const std::string");
+    }
+
+    #[test]
+    fn parse_cpp_declarations_preserves_pointer_after_export_macro() {
+        let decls = parse_cpp_declarations(
+            "BROTLI_COMMON_API const BrotliTransforms* BrotliGetTransforms(void);\n",
+        )
+        .expect("parses");
+        assert_eq!(decls.len(), 1);
+        assert_eq!(decls[0].name, "BrotliGetTransforms");
+        assert_eq!(decls[0].return_type, "const BrotliTransforms*");
     }
 
     #[test]
@@ -4198,6 +4529,23 @@ struct MappedFile {
         assert_eq!(access.get("Bag::poke").map(String::as_str), Some("public"));
     }
 
+    #[test]
+    fn parse_cpp_static_methods_reads_header_declarations() {
+        let methods = parse_cpp_static_methods(
+            r#"
+            class Regexp {
+            public:
+                static Regexp* Parse(const char* text, int flags);
+                Regexp* Rewrite(const char* text);
+            };
+            struct Utility { static int Decode(const char* text); };
+            "#,
+        );
+        assert!(methods.contains("Regexp::Parse"), "{methods:?}");
+        assert!(methods.contains("Utility::Decode"), "{methods:?}");
+        assert!(!methods.contains("Regexp::Rewrite"), "{methods:?}");
+    }
+
     /// Regression for the O(n^2) hang in `collect_type_defs` / `collect_functions`:
     /// both used to call `has_template_ancestor`, walking `Node::parent()` to the
     /// root per node. `parent()` is O(tree) in tree-sitter, so on a large TU the
@@ -4431,6 +4779,18 @@ LIB_NAMESPACE_END
         assert_eq!(f.qualifier_path, vec!["ada".to_owned()]);
         assert_eq!(f.api.namespace_path, vec!["ada".to_owned()]);
         assert!(!f.api.is_method);
+    }
+
+    #[test]
+    fn namespace_paths_expand_nested_and_compact_declarations() {
+        let paths = parse_cpp_namespace_paths(
+            "namespace outer { namespace inner { int f(); } }\nnamespace api::v2 { int g(); }\n",
+        )
+        .unwrap();
+        assert!(paths.contains(&vec!["outer".to_owned()]));
+        assert!(paths.contains(&vec!["outer".to_owned(), "inner".to_owned()]));
+        assert!(paths.contains(&vec!["api".to_owned()]));
+        assert!(paths.contains(&vec!["api".to_owned(), "v2".to_owned()]));
     }
 
     /// Templated / inline / static return shapes must keep a clean name and not

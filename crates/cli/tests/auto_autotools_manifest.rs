@@ -108,6 +108,11 @@ fn autotools_failed_build_has_actionable_manifest_not_opaque() {
     let entries = manifest["entries"]
         .as_array()
         .expect("manifest.entries is an array");
+    assert_eq!(manifest["complete"].as_bool(), Some(true), "{manifest:#}");
+    assert!(
+        manifest["completed_targets"].as_u64().unwrap_or(0) >= 1,
+        "{manifest:#}"
+    );
     assert!(
         !entries.is_empty(),
         "#418: a failed_build must not leave an EMPTY missing-deps manifest"
@@ -156,6 +161,11 @@ fn autotools_failed_build_has_actionable_manifest_not_opaque() {
         .iter()
         .find(|e| e["name"].as_str() == Some("gencfg.h"))
         .expect("the configure-generated header must appear in the manifest");
+    assert_eq!(
+        gencfg["kind"].as_str(),
+        Some("generated_source"),
+        "generated output must be in the first-class offline requirements section"
+    );
     let hint = gencfg["acquisition_hint"].as_str().unwrap_or("");
     assert!(
         hint.contains("configure"),
@@ -172,5 +182,17 @@ fn autotools_failed_build_has_actionable_manifest_not_opaque() {
     assert!(
         text.contains("not configured") || text.contains("configure"),
         "the configure blocker must be visible in missing-deps.txt:\n{text}"
+    );
+    assert!(
+        text.contains("Required toolchains, runtimes, generated and vendor source"),
+        "the offline handoff section must be first-class:\n{text}"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let last = stderr.lines().last().unwrap_or_default();
+    assert!(
+        last.contains("govfuzz auto: requirements:")
+            && last.contains("auto/missing-deps.txt")
+            && last.contains("final"),
+        "last terminal line must point at the final requirement list, got {last:?}\n{stderr}"
     );
 }

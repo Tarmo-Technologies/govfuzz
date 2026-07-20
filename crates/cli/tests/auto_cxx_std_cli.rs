@@ -36,6 +36,21 @@ fn write_fixture(dir: &Path) {
     .unwrap();
 }
 
+fn write_adjacent_literal_fixture(dir: &Path) {
+    std::fs::write(
+        dir.join("adjacent.cpp"),
+        "#include <inttypes.h>\n\
+         #include <stdint.h>\n\
+         #include <stdio.h>\n\
+         int parse_counter(const char *data, unsigned long len) {\n\
+         \x20   int64_t value = len ? (unsigned char)data[0] : 0;\n\
+         \x20   if (len > 1 && data[1] == 'P') printf(\"%\" PRId64, value);\n\
+         \x20   return (int)value;\n\
+         }\n",
+    )
+    .unwrap();
+}
+
 /// Whether run.json records at least one built_and_fuzzed target.
 fn has_built_and_fuzzed(work: &Path) -> bool {
     let Ok(bytes) = std::fs::read(work.join("auto/run.json")) else {
@@ -122,4 +137,35 @@ fn auto_cxx_std_ladder_builds_legacy_cpp_and_rejects_bogus() {
     );
 
     let _ = std::fs::remove_dir_all(Path::new(&tmp));
+}
+
+#[test]
+fn auto_builds_pre_cpp11_adjacent_format_macro_under_modern_clang() {
+    let bin = govfuzz_bin();
+    if !bin.exists() {
+        eprintln!("skip: govfuzz binary not built");
+        return;
+    }
+    if !have_clang() {
+        eprintln!("skip: clang++/make unavailable");
+        return;
+    }
+
+    let tmp = std::env::temp_dir().join(format!(
+        "govfuzz-cxx-adjacent-literal-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&tmp);
+    let src = tmp.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    write_adjacent_literal_fixture(&src);
+
+    let out = run_auto(&bin, &src, &tmp.join("work"), &[]);
+    assert!(
+        has_built_and_fuzzed(&tmp.join("work")),
+        "legacy adjacent format macro must compile under the modern harness floor:\n{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let _ = std::fs::remove_dir_all(&tmp);
 }

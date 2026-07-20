@@ -27,9 +27,11 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 /// Cap corpus replays per harness so a huge queue can't stall the run.
 const MAX_CORPUS: usize = 400;
+const PROFILE_BUDGET: Duration = Duration::from_secs(30);
 
 /// Profile every native harness's capabilities and emit GF-668 findings for the
 /// input-triggered ones. Returns the number of findings written.
@@ -99,15 +101,23 @@ fn profile_one(
     if !bin.is_file() || !is_native_harness(hdir, harness_id) {
         return None;
     }
+    let deadline = Instant::now() + PROFILE_BUDGET;
     // Baseline: empty + deterministic unstructured buffers (no magic-gate structure).
     let baseline = baseline_inputs();
     let mut baseline_caps: BTreeSet<Capability> = BTreeSet::new();
     let scratch = hdir.join("cap_scratch");
     let _ = std::fs::create_dir_all(&scratch);
     for (i, input) in baseline.iter().enumerate() {
+        if Instant::now() >= deadline {
+            let _ = std::fs::remove_dir_all(&scratch);
+            return None;
+        }
         let path = scratch.join(format!("base_{i}.bin"));
         if std::fs::write(&path, input).is_ok() {
-            replay_into(&bin, &path, ld_preload, hdir, &mut baseline_caps);
+            if !replay_into(&bin, &path, ld_preload, hdir, &mut baseline_caps) {
+                let _ = std::fs::remove_dir_all(&scratch);
+                return None;
+            }
         }
     }
 
@@ -117,13 +127,16 @@ fn profile_one(
     let mut replayed = 0usize;
     if let Ok(inputs) = std::fs::read_dir(&queue) {
         for input in inputs.flatten() {
-            if replayed >= MAX_CORPUS {
+            if replayed >= MAX_CORPUS || Instant::now() >= deadline {
                 break;
             }
             let p = input.path();
             if p.is_file() {
                 replayed += 1;
-                replay_into(&bin, &p, ld_preload, hdir, &mut fuzz_caps);
+                if !replay_into(&bin, &p, ld_preload, hdir, &mut fuzz_caps) {
+                    let _ = std::fs::remove_dir_all(&scratch);
+                    return None;
+                }
             }
         }
     }
@@ -177,10 +190,10 @@ fn replay_into(
     ld_preload: &str,
     hdir: &Path,
     caps: &mut BTreeSet<Capability>,
-) {
+) -> bool {
     let log = hdir.join("cap_runtrace.jsonl");
     let _ = std::fs::write(&log, "");
-    let _ = replay_command(bin)
+    let completed = replay_command(bin)
         .arg(input)
         .env("LD_PRELOAD", ld_preload)
         .env("GOVFUZZ_RUNTRACE_LOG", &log)
@@ -191,7 +204,9 @@ fn replay_into(
         // (run without the shim's symbolizer scoping in this post-hoc replay), which
         // would wedge the whole capability pass on the first crashing input.
         .env("ASAN_OPTIONS", "abort_on_error=0:exitcode=0:symbolize=0")
-        .output();
+        .output()
+        .map(|output| !matches!(output.status.code(), Some(124 | 137)))
+        .unwrap_or(false);
     let mut events = runtrace::parse_log(&log).unwrap_or_default();
     runtrace::dedupe_in_place(&mut events);
     let _ = std::fs::remove_file(&log);
@@ -200,6 +215,7 @@ fn replay_into(
             caps.insert(cap);
         }
     }
+    completed
 }
 
 /// Build the replay command, wrapping in `timeout` when available so a

@@ -17,13 +17,12 @@ pub fn collect_raise_insertions(
         if !valid_raise_span(source, raise) {
             continue;
         }
-        if is_raise_expression(source, raise.span.start_byte as usize) {
-            // `raise` is an *expression* here (an Ada 2012 raise expression,
-            // e.g. an expression function `... is (raise Constraint_Error with
-            // Msg)`), not a statement. Injecting a `On_Explicit_Raise (...);`
-            // statement before it produces invalid Ada (an unbalanced
-            // parenthesis / a statement inside an expression). Leave it
-            // un-instrumented rather than corrupt the source.
+        if !is_raise_statement(ast, source, raise) {
+            // Ada 2012 permits `raise` anywhere an expression is accepted,
+            // including a conditional arm (`if Bad then raise E else Value`).
+            // A textual check for a preceding `(` misses those forms. Only a
+            // raise whose byte offset is one of the parser's statement starts
+            // can safely receive a statement-form probe.
             continue;
         }
 
@@ -38,13 +37,14 @@ pub fn collect_raise_insertions(
     Ok(inserted)
 }
 
-/// Whether the `raise` at `start` is a raise *expression* rather than a
-/// statement. A raise expression is parenthesised - the token immediately
-/// before it (skipping whitespace) is `(` - as in an expression function
-/// `... is (raise E with Msg)` or any `(raise ...)`. A raise *statement* is
-/// preceded by `;`, `begin`, `then`, `=>`, etc., never `(`.
-fn is_raise_expression(source: &str, start: usize) -> bool {
-    source[..start.min(source.len())].trim_end().ends_with('(')
+fn is_raise_statement(ast: &StructuralAst, source: &str, raise: &RaiseSite) -> bool {
+    ada_parser::raise_is_statement(source, raise.span.start_byte).unwrap_or_else(|| {
+        raise.kind == RaiseKind::Reraise
+            || ast
+                .statements
+                .iter()
+                .any(|statement| statement.file_byte_offset == raise.span.start_byte)
+    })
 }
 
 fn valid_raise_span(source: &str, raise: &RaiseSite) -> bool {
@@ -163,6 +163,17 @@ mod tests {
     }
 
     #[test]
+    fn raise_in_conditional_expression_is_not_instrumented() {
+        let source = "package P is\n\
+            \x20  function F (Bad : Boolean) return Natural is\n\
+            \x20    (if Bad then raise Constraint_Error else 1);\n\
+            end P;\n";
+        let out = rewrite(source);
+        assert_eq!(out, source, "conditional raise expression was corrupted");
+        assert!(!out.contains("On_Explicit_Raise"));
+    }
+
+    #[test]
     fn raise_statement_is_still_instrumented_alongside_a_raise_expression() {
         let source = "package body P is\n\
             \x20  function F return Integer is (raise Program_Error);\n\
@@ -176,6 +187,17 @@ mod tests {
         assert!(
             out.contains("is (raise Program_Error)"),
             "the raise expression must remain intact: {out}"
+        );
+    }
+
+    #[test]
+    fn nested_raise_statement_is_instrumented() {
+        let source = "procedure P is\nbegin\n   if Bad then\n      raise Constraint_Error;\n   end if;\nend P;";
+        let out = rewrite(source);
+
+        assert!(
+            out.contains("On_Explicit_Raise"),
+            "nested raise was missed: {out}"
         );
     }
 

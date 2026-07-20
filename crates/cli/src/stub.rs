@@ -234,7 +234,7 @@ fn select_harness(work_dir: &Path, requested: Option<&str>) -> Result<(String, P
 
 fn detect_ada_standard(source_dir: &Path) -> Result<AdaStandard, String> {
     let source_path = first_ada_source(source_dir)?;
-    let source = fs::read_to_string(&source_path)
+    let source = crate::source_text::read_source_text(&source_path)
         .map_err(|error| format!("read Ada source '{}': {error}", source_path.display()))?;
     let ast = ada_parser::reconcile::build_structural_ast(&source, None, &source_path)
         .map_err(|error| format!("scan Ada source '{}': {error}", source_path.display()))?;

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 use crate::{StubNeed, StubNeedKind, StubOp};
 
@@ -43,7 +46,6 @@ fn synth_package_spec(unit_name: &str, decls: &[String], output_root: &Path) -> 
     let mut content = String::new();
     content.push_str("--  SPDX-License-Identifier: Apache-2.0\n");
     content.push_str("--  Auto-stubbed by govfuzz from compiler diagnostics.\n");
-    content.push_str("pragma Ada_95;\n");
     content.push_str(&format!("package {unit_name} is\n"));
     content.push_str("   pragma Preelaborate;\n");
     content.push_str("   --  Auto-stubbed: declarations referenced from real code\n");
@@ -62,7 +64,13 @@ fn synth_package_body(unit_name: &str, ops: &[StubOp], output_root: &Path) -> St
     let mut content = String::new();
     content.push_str("--  SPDX-License-Identifier: Apache-2.0\n");
     content.push_str("--  Auto-stubbed by govfuzz from compiler diagnostics.\n");
-    content.push_str("pragma Ada_95;\n");
+    let context_units = ada_context_units_for_ops(unit_name, ops);
+    for context_unit in &context_units {
+        content.push_str(&format!("with {context_unit};\n"));
+    }
+    if !context_units.is_empty() {
+        content.push('\n');
+    }
     content.push_str(&format!("package body {unit_name} is\n\n"));
     for op in ops {
         match op.kind {
@@ -76,6 +84,33 @@ fn synth_package_body(unit_name: &str, ops: &[StubOp], output_root: &Path) -> St
         path: output_root.join(format!("{}.adb", unit_file_stem(unit_name))),
         content,
     }
+}
+
+pub fn ada_context_units_for_ops(unit_name: &str, ops: &[StubOp]) -> BTreeSet<String> {
+    let mut units = BTreeSet::new();
+    for type_name in ops.iter().flat_map(|op| {
+        op.params
+            .iter()
+            .map(|param| param.type_name.as_str())
+            .chain(op.return_type.iter().map(String::as_str))
+    }) {
+        for token in type_name.split(|character: char| {
+            !(character.is_ascii_alphanumeric() || matches!(character, '_' | '.'))
+        }) {
+            let Some((context_unit, _)) = token.rsplit_once('.') else {
+                continue;
+            };
+            if !context_unit.is_empty()
+                && !context_unit.eq_ignore_ascii_case(unit_name)
+                && !unit_name
+                    .strip_prefix(context_unit)
+                    .is_some_and(|suffix| suffix.starts_with('.'))
+            {
+                units.insert(context_unit.to_owned());
+            }
+        }
+    }
+    units
 }
 
 /// GNAT's crunched file stem for an Ada unit: lowercased with `.` → `-`.
@@ -133,16 +168,30 @@ fn push_function_body(content: &mut String, op: &StubOp) {
     let return_type = op.return_type.as_deref().unwrap_or("Integer");
     let profile = render_profile(&op.params);
     content.push_str(&format!(
-        "   function {}{profile} return {return_type} is\n   begin\n",
+        "   function {}{profile} return {return_type} is\n",
         op.name
     ));
     match neutral_default(return_type) {
         Some(value) => {
+            content.push_str("   begin\n");
             content.push_str(&format!(
                 "      return {value};  -- auto-stubbed neutral default\n"
             ));
         }
-        None => content.push_str("      raise Program_Error;\n"),
+        None => {
+            // A bare `raise Program_Error` is not a return statement, so GNAT
+            // rejects the function body before it can serve as a dependency
+            // stub. A null access-to-result dereference is type-correct for a
+            // named scalar, record, private, class-wide, or unconstrained result
+            // type and raises Constraint_Error immediately if this fallback is
+            // actually executed.
+            content.push_str(&format!(
+                "      type Govfuzz_Result_Access is access {return_type};\n\
+                 \x20     Govfuzz_Result : constant Govfuzz_Result_Access := null;\n\
+                 \x20  begin\n\
+                 \x20     return Govfuzz_Result.all;  -- auto-stubbed exceptional default\n"
+            ));
+        }
     }
     content.push_str(&format!("   end {};\n\n", op.name));
 }
@@ -153,12 +202,17 @@ fn render_profile(params: &[crate::StubParam]) -> String {
     }
     let rendered = params
         .iter()
-        .map(
-            |param| match param.mode.as_deref().filter(|mode| !mode.is_empty()) {
+        .map(|param| {
+            let mut rendered = match param.mode.as_deref().filter(|mode| !mode.is_empty()) {
                 Some(mode) => format!("{} : {mode} {}", param.name, param.type_name),
                 None => format!("{} : {}", param.name, param.type_name),
-            },
-        )
+            };
+            if let Some(default) = param.default.as_deref() {
+                rendered.push_str(" := ");
+                rendered.push_str(default);
+            }
+            rendered
+        })
         .collect::<Vec<_>>()
         .join("; ");
     format!(" ({rendered})")
@@ -207,7 +261,7 @@ mod tests {
 
         assert_eq!(
             stub.content,
-            "--  SPDX-License-Identifier: Apache-2.0\n--  Auto-stubbed by govfuzz from compiler diagnostics.\npragma Ada_95;\npackage External_Lib is\n   pragma Preelaborate;\n   --  Auto-stubbed: declarations referenced from real code\n   procedure Process;\n   procedure Reset;\nend External_Lib;\n"
+            "--  SPDX-License-Identifier: Apache-2.0\n--  Auto-stubbed by govfuzz from compiler diagnostics.\npackage External_Lib is\n   pragma Preelaborate;\n   --  Auto-stubbed: declarations referenced from real code\n   procedure Process;\n   procedure Reset;\nend External_Lib;\n"
         );
     }
 
@@ -347,6 +401,7 @@ mod tests {
                             name: "N".to_owned(),
                             mode: None,
                             type_name: "Natural".to_owned(),
+                            default: Some("10".to_owned()),
                         }],
                     }],
                 },
@@ -356,7 +411,74 @@ mod tests {
 
         assert!(stub
             .content
-            .contains("function Score (N : Natural) return Integer is"));
+            .contains("function Score (N : Natural := 10) return Integer is"));
+    }
+
+    #[test]
+    fn synthesized_stubs_inherit_project_dialect_for_in_out_functions() {
+        let stub = synth_stub(
+            &StubNeed {
+                unit_name: "External_Lib".to_owned(),
+                kind: StubNeedKind::PackageBody {
+                    ops: vec![StubOp {
+                        name: "Final_Round".to_owned(),
+                        kind: StubOpKind::Function,
+                        return_type: Some("Integer".to_owned()),
+                        params: vec![crate::StubParam {
+                            name: "This".to_owned(),
+                            mode: Some("in out".to_owned()),
+                            type_name: "State".to_owned(),
+                            default: None,
+                        }],
+                    }],
+                },
+            },
+            Path::new("/tmp/stubs"),
+        );
+
+        assert!(!stub.content.contains("pragma Ada_"));
+        assert!(stub
+            .content
+            .contains("function Final_Round (This : in out State) return Integer is"));
+    }
+
+    #[test]
+    fn package_body_adds_context_for_qualified_profile_types() {
+        let stub = synth_stub(
+            &StubNeed {
+                unit_name: "PolyORB_HI.Output_Low_Level".to_owned(),
+                kind: StubNeedKind::PackageBody {
+                    ops: vec![StubOp {
+                        name: "C_Write".to_owned(),
+                        kind: StubOpKind::Procedure,
+                        return_type: None,
+                        params: vec![
+                            crate::StubParam {
+                                name: "Fd".to_owned(),
+                                mode: None,
+                                type_name: "Interfaces.C.Int".to_owned(),
+                                default: None,
+                            },
+                            crate::StubParam {
+                                name: "P".to_owned(),
+                                mode: None,
+                                type_name: "System.Address".to_owned(),
+                                default: None,
+                            },
+                        ],
+                    }],
+                },
+            },
+            Path::new("/tmp/stubs"),
+        );
+
+        assert!(stub.content.starts_with(
+            "--  SPDX-License-Identifier: Apache-2.0\n\
+             --  Auto-stubbed by govfuzz from compiler diagnostics.\n\
+             with Interfaces.C;\n\
+             with System;\n\n\
+             package body PolyORB_HI.Output_Low_Level is\n"
+        ));
     }
 
     #[test]
@@ -382,10 +504,13 @@ mod tests {
     }
 
     #[test]
-    fn synth_package_body_function_raises_program_error_for_unknown_type() {
+    fn synth_package_body_function_uses_typed_exceptional_default_for_unknown_type() {
         let stub = synth_stub(&package_body_need(), Path::new("/tmp/stubs"));
 
-        assert!(stub.content.contains("      raise Program_Error;"));
+        assert!(stub
+            .content
+            .contains("type Govfuzz_Result_Access is access Widget;"));
+        assert!(stub.content.contains("return Govfuzz_Result.all;"));
     }
 
     #[test]
@@ -394,7 +519,7 @@ mod tests {
 
         assert_eq!(
             stub.content,
-            "--  SPDX-License-Identifier: Apache-2.0\n--  Auto-stubbed by govfuzz from compiler diagnostics.\npragma Ada_95;\npackage body External_Lib is\n\n   procedure Process is\n   begin\n      null;  -- auto-stubbed\n   end Process;\n\n   function Get_Count return Integer is\n   begin\n      return 0;  -- auto-stubbed neutral default\n   end Get_Count;\n\n   function Find return Widget is\n   begin\n      raise Program_Error;\n   end Find;\n\nend External_Lib;\n"
+            "--  SPDX-License-Identifier: Apache-2.0\n--  Auto-stubbed by govfuzz from compiler diagnostics.\npackage body External_Lib is\n\n   procedure Process is\n   begin\n      null;  -- auto-stubbed\n   end Process;\n\n   function Get_Count return Integer is\n   begin\n      return 0;  -- auto-stubbed neutral default\n   end Get_Count;\n\n   function Find return Widget is\n      type Govfuzz_Result_Access is access Widget;\n      Govfuzz_Result : constant Govfuzz_Result_Access := null;\n   begin\n      return Govfuzz_Result.all;  -- auto-stubbed exceptional default\n   end Find;\n\nend External_Lib;\n"
         );
     }
 

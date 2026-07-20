@@ -326,6 +326,13 @@ govfuzz auto path/to/src --work-dir govfuzz_work \
   --ada-deps /opt/staged/ada-units
 ```
 
+Those files exist before the first target build and are atomically checkpointed
+after every completed target. Start with the first `Required toolchains,
+runtimes, generated and vendor source` section. Each row identifies its evidence
+as declared, observed, or inferred; `missing-deps.json` also records whether the
+checkpoint is final. A parent-process OOM preserves everything learned before
+the target that was running when the kill occurred.
+
 `--run-untrusted` / `--probe-build` are needed only when a dependency is
 *generated* by the project's own build (CMake/configure codegen, Alire config),
 and they run that build offline — use them only when you accept executing the

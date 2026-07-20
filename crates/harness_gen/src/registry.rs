@@ -73,7 +73,7 @@ impl ConstructorRegistry {
     }
 }
 
-fn type_name_matches(entry_name: &str, lookup_name: &str) -> bool {
+pub(crate) fn type_name_matches(entry_name: &str, lookup_name: &str) -> bool {
     if entry_name.eq_ignore_ascii_case(lookup_name) {
         return true;
     }
@@ -190,7 +190,16 @@ pub fn discover_constructors(ast: &StructuralAst) -> ConstructorRegistry {
         let param_type_names = subprogram
             .params
             .iter()
-            .map(|param| param.type_ref.name_path.join("."))
+            .map(|param| {
+                if param.type_ref.name_path.is_empty()
+                    && matches!(param.type_ref.kind, TypeKind::Access { .. })
+                    && !param.type_ref.constraints.0.trim().is_empty()
+                {
+                    format!("access {}", param.type_ref.constraints.0.trim())
+                } else {
+                    param.type_ref.name_path.join(".")
+                }
+            })
             .collect();
         let param_has_default = subprogram
             .params
@@ -933,6 +942,38 @@ mod tests {
             "sparknacl.cryptobox.Construct"
         );
         assert_eq!(registry.entries[0].tagged_type_name, "public_key");
+    }
+
+    #[test]
+    fn discover_constructor_preserves_anonymous_callback_profile() {
+        let mut callback = type_ref("", TypeKind::Access { target: TypeId(0) });
+        callback.name_path.clear();
+        callback.constraints =
+            Constraints("procedure (Item : out String; Last : out Natural)".to_owned());
+        let ast = StructuralAst {
+            packages: vec![package(3, "YAML")],
+            subprograms: vec![subprogram(
+                1,
+                SubprogramOwner::Package(PackageId(3)),
+                "Create",
+                SubprogramKind::Function,
+                Some(type_ref("Parser", TypeKind::Private)),
+                vec![Parameter {
+                    name: "Input".to_owned(),
+                    mode: ParamMode::AccessMode,
+                    type_ref: callback,
+                    default: None,
+                }],
+            )],
+            ..StructuralAst::new()
+        };
+
+        let registry = discover_constructors(&ast);
+
+        assert_eq!(
+            registry.entries[0].param_type_names,
+            vec!["access procedure (Item : out String; Last : out Natural)"]
+        );
     }
 
     #[test]

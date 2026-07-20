@@ -513,6 +513,13 @@ impl TypeRegistry {
             }
         }
 
+        // Only infer a project-prefixed scalar after consulting real tree
+        // declarations. A source typedef such as `char8_t utf8_int8_t` is more
+        // authoritative than the `_int8_t` spelling heuristic.
+        if let Some(kind) = project_prefixed_scalar_kind(&normalized) {
+            return TypeShape::Scalar(kind);
+        }
+
         TypeShape::Opaque(normalized)
     }
 
@@ -568,6 +575,29 @@ pub fn scalar_kind(normalized: &str) -> Option<ScalarKind> {
         .iter()
         .find(|(spelling, _)| *spelling == normalized)
         .map(|(_, kind)| *kind)
+}
+
+fn project_prefixed_scalar_kind(normalized: &str) -> Option<ScalarKind> {
+    for (suffix, kind) in [
+        ("_bool", ScalarKind::Bool),
+        ("_int8_t", ScalarKind::I8),
+        ("_uint8_t", ScalarKind::U8),
+        ("_int16_t", ScalarKind::I16),
+        ("_uint16_t", ScalarKind::U16),
+        ("_int32_t", ScalarKind::I32),
+        ("_uint32_t", ScalarKind::U32),
+        ("_int64_t", ScalarKind::I64),
+        ("_uint64_t", ScalarKind::U64),
+        ("_ssize_t", ScalarKind::I64),
+        ("_size_t", ScalarKind::U64),
+        ("_option_t", ScalarKind::I32),
+        ("_flags_t", ScalarKind::U32),
+    ] {
+        if normalized.len() > suffix.len() && normalized.ends_with(suffix) {
+            return Some(kind);
+        }
+    }
+    None
 }
 
 /// Collapse whitespace and strip qualifiers that don't affect decoding.
@@ -678,6 +708,35 @@ mod tests {
         assert_eq!(
             reg.resolve("const utf8_int8_t *"),
             TypeShape::Pointer(Box::new(TypeShape::Scalar(ScalarKind::U8)))
+        );
+    }
+
+    #[test]
+    fn project_prefixed_fixed_width_aliases_resolve_without_their_header() {
+        let reg = TypeRegistry::default();
+        assert_eq!(
+            reg.resolve("cJSON_bool"),
+            TypeShape::Scalar(ScalarKind::Bool)
+        );
+        assert_eq!(
+            reg.resolve("const utf8proc_uint8_t *"),
+            TypeShape::Pointer(Box::new(TypeShape::Scalar(ScalarKind::U8)))
+        );
+        assert_eq!(
+            reg.resolve("vendor_int32_t"),
+            TypeShape::Scalar(ScalarKind::I32)
+        );
+        assert_eq!(
+            reg.resolve("utf8proc_ssize_t"),
+            TypeShape::Scalar(ScalarKind::I64)
+        );
+        assert_eq!(
+            reg.resolve("utf8proc_option_t"),
+            TypeShape::Scalar(ScalarKind::I32)
+        );
+        assert_eq!(
+            reg.resolve("widget_bool_t"),
+            TypeShape::Opaque("widget_bool_t".to_owned())
         );
     }
 

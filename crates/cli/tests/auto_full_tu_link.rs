@@ -1,25 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! GAP 2 (campaign: yaml-cpp) — the §26.1 SECONDARY whole-library fallback:
-//! compile+link the library's FULL recovered translation-unit set when no prebuilt
-//! `*.a` exists and the harness link fails with undefined externals across sibling
-//! TUs.
+//! Multi-TU source recovery for a library with no prebuilt archive.
 //!
 //! yaml-cpp is a header + many `src/*.cpp` built via CMake `file(GLOB)`, with no
 //! shipped static archive. A harness for a function whose definition references
 //! sibling translation units links only the target's own `.cpp` and fails with
-//! undefined references; the §26.1 archive fallback has no archive to link, and the
-//! per-symbol `AddSource` cascade is slow/incomplete. The fix links the whole
-//! library's recovered TU set in one shot.
+//! undefined references. The definition index should map those symbols to the two
+//! exact sibling sources instead of sweeping every translation unit into the link.
 //!
 //! This fixture is a multi-TU C++ library WITH a `compile_commands.json` and NO
 //! prebuilt archive: `process()` (the fuzzable buffer+len target) is defined in
 //! `src/process.cpp` and calls SIX `helperN()` defined across the sibling
 //! `src/helpers_a.cpp` / `src/helpers_b.cpp`. The target harness links only
 //! `process.cpp`, fails on six undefined externals (a genuine library-wide link
-//! failure, past `WHOLE_LIBRARY_TU_MIN_UNDEFINED`), and is closed by linking the
-//! full TU set recovered from the compile database — whereas a single missing
-//! helper stays on the precise per-symbol `AddSource` path.
+//! failure), and is closed by adding the two definition-bearing sources recovered
+//! from the compile database.
 //!
 //! Shells the built `govfuzz` binary; gated on clang++ so a toolchain-less lane
 //! skips cleanly.
@@ -38,11 +33,8 @@ fn clangxx_available() -> bool {
 fn write_fixture(root: &Path) {
     std::fs::create_dir_all(root.join("include")).unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
-    // A genuine library-wide link failure: the target references SIX sibling
-    // symbols across two TUs, so the harness link misses well past
-    // WHOLE_LIBRARY_TU_MIN_UNDEFINED and the one-shot full-TU-set link is the
-    // right fallback (a single missing helper stays on the precise per-symbol
-    // AddSource path — see auto_attempt's per-symbol tests).
+    // A genuine multi-TU link failure: the target references SIX sibling symbols
+    // whose exact definitions live across two source files.
     std::fs::write(
         root.join("include/lib.h"),
         "#pragma once\n\
@@ -97,7 +89,7 @@ fn write_fixture(root: &Path) {
 }
 
 #[test]
-fn full_tu_set_link_closes_a_multi_tu_library_without_an_archive() {
+fn precise_source_repairs_close_a_multi_tu_library_without_an_archive() {
     if !clangxx_available() {
         return;
     }
@@ -129,17 +121,33 @@ fn full_tu_set_link_closes_a_multi_tu_library_without_an_archive() {
         }),
     )
     .expect("parse run.json");
-    let built_and_fuzzed = run["summary"]["built_and_fuzzed"].as_u64().unwrap_or(0);
+    let process = run["targets"]
+        .as_array()
+        .and_then(|targets| targets.iter().find(|target| target["name"] == "process"))
+        .unwrap_or_else(|| panic!("process target missing from run.json; stderr:\n{stderr}"));
+    let repaired_sources: Vec<&str> = process["outcome"]["repairs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|repair| repair["kind"] == "add_source")
+        .filter_map(|repair| repair["source_path"].as_str())
+        .collect();
 
-    // The full-TU-set fallback must have closed the link...
     assert!(
-        stderr.contains("full recovered TU set"),
-        "the §26.1 full-TU-set whole-library fallback must fire for the multi-TU target;\nstderr:\n{stderr}"
+        process["outcome"]["outcome"] == "built_and_fuzzed",
+        "process must build and fuzz after precise source repair; outcome={}\nstderr:\n{stderr}",
+        process["outcome"],
     );
-    // ...and the target must build + fuzz as a result.
+    for expected in ["helpers_a.cpp", "helpers_b.cpp"] {
+        assert!(
+            repaired_sources
+                .iter()
+                .any(|source| Path::new(source).ends_with(expected)),
+            "expected exact source repair for {expected}; got {repaired_sources:?}; stderr:\n{stderr}",
+        );
+    }
     assert!(
-        built_and_fuzzed >= 1,
-        "target must build+fuzz via the full-TU-set link; summary={}\nstderr:\n{stderr}",
-        run["summary"],
+        !stderr.contains("full recovered TU set"),
+        "exact definition sources should prevent a whole-library sweep; stderr:\n{stderr}",
     );
 }

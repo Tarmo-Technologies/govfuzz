@@ -88,9 +88,12 @@ end Dispatch;
         .unwrap()
         .iter()
         .find(|target| {
-            target["target"]["name"]
+            target["file"]
                 .as_str()
-                .is_some_and(|name| name.eq_ignore_ascii_case("Dispatch"))
+                .is_some_and(|path| path.ends_with("legacy-dispatch.adb"))
+                && target["target"]["name"]
+                    .as_str()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("Legacy.Dispatch"))
         })
         .expect("Dispatch target");
     let dispatch = &dispatch["target"];

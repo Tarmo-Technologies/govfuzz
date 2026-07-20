@@ -5,7 +5,19 @@ use regex::Regex;
 use std::sync::OnceLock;
 
 pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
-    for line in stderr.lines() {
+    let lines = stderr.lines().collect::<Vec<_>>();
+    for (line_index, line) in lines.iter().enumerate() {
+        // Some autoconf-era portability headers do not attempt to include the
+        // generated config file when it is absent. They emit `#error No
+        // config.h ...` instead (libarchive's archive_platform.h), so clang has
+        // no ordinary "file not found" diagnostic for the existing config
+        // synthesis repair to recognize.
+        if line.contains("error:") && line.contains("No config.h") {
+            hits.push(BuildErrorKind::MissingHeader {
+                path: "config.h".to_owned(),
+            });
+            continue;
+        }
         if let Some(caps) = missing_header().captures(line) {
             hits.push(BuildErrorKind::MissingHeader {
                 path: caps[1].to_owned(),
@@ -52,18 +64,87 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
             });
             continue;
         }
+        if let Some(caps) = undeclared_identifier().captures(line) {
+            // When a deleted project header was the only path to a C++ standard
+            // header, Clang diagnoses the qualifier rather than the actual type:
+            // `use of undeclared identifier 'std'` followed by `using std::string`.
+            // Preserve the qualified member from the source-context line so repair
+            // can include the correct standard header.
+            if &caps[1] == "std" {
+                if let Some(member) = lines
+                    .iter()
+                    .skip(line_index + 1)
+                    .take(3)
+                    .find_map(|context| std_qualified_identifier().captures(context))
+                {
+                    hits.push(BuildErrorKind::MissingType {
+                        name: format!("std::{}", &member[1]),
+                    });
+                    continue;
+                }
+            }
+            // Clang++ reports a missing declaration as "use of undeclared
+            // identifier" rather than C's "call to undeclared function". Only
+            // promote the curated libc/POSIX function set; arbitrary lowercase
+            // identifiers remain Other so variables are never stubbed as calls.
+            if is_known_header_function(&caps[1]) {
+                hits.push(BuildErrorKind::UndefinedSymbol {
+                    name: caps[1].to_owned(),
+                });
+                continue;
+            }
+            // Clang++ uses the same diagnostic for an undeclared variable and
+            // an undeclared function. Source/caret context disambiguates them:
+            // only a following `name (` call expression is repairable. A
+            // function-like neutral macro is sufficient for a missing inline
+            // dependency helper such as LevelDB's DecodeFixed32.
+            if identifier_used_as_call(&lines, line_index, &caps[1]) {
+                hits.push(BuildErrorKind::MissingMacro {
+                    name: caps[1].to_owned(),
+                    as_value: true,
+                });
+                continue;
+            }
+            // Mixed-case project constants and typedef aliases lost with a
+            // private/public header (cJSON_IsReference, bzip2's True/UChar) do
+            // not match the ALL_CAPS fast path. Promote only identifiers that
+            // start uppercase or use cJSON's established namespace; the repair
+            // planner resolves surviving typedefs and exact duplicate #defines
+            // before considering a synthesized value.
+            if (caps[1].len() >= 2
+                && caps[1]
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.is_ascii_uppercase()))
+                || caps[1].starts_with("cJSON_")
+            {
+                hits.push(BuildErrorKind::MissingMacro {
+                    name: caps[1].to_owned(),
+                    as_value: true,
+                });
+                continue;
+            }
+        }
         if let Some(caps) = call_to_undeclared().captures(line) {
             // clang frontend: `call to undeclared function 'foo';
             // ISO C99 and later do not support implicit function
-            // declarations`. Routes to UndefinedSymbol so the repair
-            // planner stubs the symbol the same way it would for an
-            // ld undefined-reference error.
+            // declarations`. Keep it distinct from an ld undefined reference:
+            // a standalone stub cannot supply the missing call-site declaration.
             let symbol = &caps[1];
             if let Some(lib) = system_lib_for_symbol(symbol) {
                 hits.push(BuildErrorKind::MissingSharedLib {
                     name: lib.to_owned(),
                 });
+            } else if let Some((file, line)) = diagnostic_location(line) {
+                hits.push(BuildErrorKind::UndeclaredFunction {
+                    name: symbol.to_owned(),
+                    file,
+                    line,
+                });
             } else {
+                // Preserve the old fallback for nonstandard compiler output that
+                // omits a source location; normal clang/gcc diagnostics take the
+                // location-aware arm above.
                 hits.push(BuildErrorKind::UndefinedSymbol {
                     name: symbol.to_owned(),
                 });
@@ -106,7 +187,57 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
                 continue;
             }
         }
+        if let Some(caps) = type_specifier_missing().captures(line) {
+            let column = caps[3].parse::<usize>().ok();
+            if let (Some(column), Some(rendered_line)) = (column, lines.get(line_index + 1)) {
+                // Clang commonly renders context as `  97 | <source>`. The
+                // diagnostic column is relative to `<source>`, not that gutter.
+                let source_line = rendered_line
+                    .split_once('|')
+                    .map(|(_, source)| source.strip_prefix(' ').unwrap_or(source))
+                    .unwrap_or(rendered_line);
+                if let Some(name) = identifier_at_column(source_line, column) {
+                    if is_macro_like(name) {
+                        hits.push(BuildErrorKind::MissingMacro {
+                            name: name.to_owned(),
+                            as_value: false,
+                        });
+                        continue;
+                    }
+                }
+            }
+        }
     }
+}
+
+fn identifier_at_column(line: &str, one_based_column: usize) -> Option<&str> {
+    let bytes = line.as_bytes();
+    if bytes.is_empty() {
+        return None;
+    }
+    let mut index = one_based_column.saturating_sub(1).min(bytes.len() - 1);
+    while index > 0 && !(bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_') {
+        index -= 1;
+    }
+    if !(bytes[index].is_ascii_alphanumeric() || bytes[index] == b'_') {
+        return None;
+    }
+    let mut start = index;
+    while start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_') {
+        start -= 1;
+    }
+    let mut end = index + 1;
+    while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'_') {
+        end += 1;
+    }
+    std::str::from_utf8(&bytes[start..end]).ok()
+}
+
+fn identifier_used_as_call(lines: &[&str], diagnostic_index: usize, name: &str) -> bool {
+    lines.iter().skip(diagnostic_index).take(4).any(|line| {
+        line.match_indices(name)
+            .any(|(offset, _)| line[offset + name.len()..].trim_start().starts_with('('))
+    })
 }
 
 fn malformed_function_body() -> &'static Regex {
@@ -117,9 +248,18 @@ fn malformed_function_body() -> &'static Regex {
     })
 }
 
+fn type_specifier_missing() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r#"^(.+?):(\d+):(\d+): error: type specifier missing"#).expect("regex")
+    })
+}
+
 fn missing_header() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r#"fatal error: ['"](.+?)['"] file not found"#).expect("regex"))
+    R.get_or_init(|| {
+        Regex::new(r#"(?:fatal )?error: ['"](.+?)['"] file not found"#).expect("regex")
+    })
 }
 
 fn incomplete_type() -> &'static Regex {
@@ -149,7 +289,17 @@ fn undefined_reference() -> &'static Regex {
 
 fn call_to_undeclared() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r#"call to undeclared function '(.+?)'"#).expect("regex"))
+    R.get_or_init(|| {
+        Regex::new(r#"call to undeclared (?:library )?function '(.+?)'"#).expect("regex")
+    })
+}
+
+fn diagnostic_location(line: &str) -> Option<(String, u32)> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let captures = R
+        .get_or_init(|| Regex::new(r#"^(.+):(\d+):\d+: (?:fatal )?error:"#).expect("regex"))
+        .captures(line)?;
+    Some((captures[1].to_owned(), captures[2].parse().ok()?))
 }
 
 /// True when a name has the shape of a preprocessor macro: only ALL-CAPS
@@ -175,6 +325,36 @@ fn undeclared_macro() -> &'static Regex {
     R.get_or_init(|| {
         Regex::new(r#"error: use of undeclared identifier '([A-Z][A-Z0-9_]+)'"#).expect("regex")
     })
+}
+
+fn undeclared_identifier() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r#"error: use of undeclared identifier '([A-Za-z_][A-Za-z0-9_]*)'"#)
+            .expect("regex")
+    })
+}
+
+fn std_qualified_identifier() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r#"\bstd::([A-Za-z_][A-Za-z0-9_]*)"#).expect("regex"))
+}
+
+fn is_known_header_function(name: &str) -> bool {
+    matches!(
+        name,
+        "htons"
+            | "htonl"
+            | "ntohs"
+            | "ntohl"
+            | "stricmp"
+            | "strcmpi"
+            | "strnicmp"
+            | "strncmpi"
+            | "wcslen"
+            | "true"
+            | "false"
+    )
 }
 
 fn ld_cannot_find_lib() -> &'static Regex {

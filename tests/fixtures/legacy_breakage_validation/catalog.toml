@@ -1,0 +1,401 @@
+# SPDX-License-Identifier: Apache-2.0
+# Exact repository pins for the broad destructive legacy campaign.
+
+[[repositories]]
+id = "ada_crypto"
+url = "https://github.com/cforler/Ada-Crypto-Library.git"
+rev = "a9c201d586f31b475802e04dfa1441e50d18d9ff"
+materialized_path = "ada/ada-crypto"
+language = "ada"
+
+[[repositories]]
+id = "agpl"
+url = "https://github.com/mosteo/agpl.git"
+rev = "c16703180a62aeb4e715408493b0b75c727e65c3"
+materialized_path = "ada/agpl"
+language = "ada"
+
+[[repositories]]
+id = "drake"
+url = "https://github.com/ytomino/drake.git"
+rev = "4e4bdcd8b8e23a11a29b31d3a8861fdf60090ea2"
+materialized_path = "ada/drake"
+language = "ada"
+
+[[repositories]]
+id = "gnatcoll_core"
+url = "https://github.com/AdaCore/gnatcoll-core.git"
+rev = "96ae806114170156e540141d6c494ea8476a8329"
+materialized_path = "ada/gnatcoll-core"
+language = "ada"
+
+[[repositories]]
+id = "ocarina"
+url = "https://github.com/OpenAADL/ocarina.git"
+rev = "9873d8b03542ab7244d89a8c082f7e56ada7a2f1"
+materialized_path = "ada/ocarina"
+language = "ada"
+
+[[repositories]]
+id = "parse_args"
+url = "https://github.com/jhumphry/parse_args.git"
+rev = "635f9e4f5318dccd535ca889d744b1053ab2362e"
+materialized_path = "ada/parse_args"
+language = "ada"
+
+[[repositories]]
+id = "polyorb_hi_ada"
+url = "https://github.com/OpenAADL/polyorb-hi-ada.git"
+rev = "f956a4059f947de0df82886c8b15d7f39130be17"
+materialized_path = "ada/polyorb-hi-ada"
+language = "c"
+
+[[repositories]]
+id = "tamp"
+url = "https://github.com/Lucretia/tamp.git"
+rev = "9fbc92482d7cfdec22fbcfc9cc24f6b722736ff8"
+materialized_path = "ada/tamp"
+language = "ada"
+
+[[repositories]]
+id = "xmlada"
+url = "https://github.com/AdaCore/xmlada.git"
+rev = "0037f965a1990b0f0227493f79c5a4765a30182f"
+materialized_path = "ada/xmlada"
+language = "ada"
+
+[[repositories]]
+id = "yaml_ada"
+url = "https://github.com/ytomino/yaml-ada.git"
+rev = "0c93b15709ecf2cea7ea0e8f20456a8fd1961f29"
+materialized_path = "ada/yaml-ada"
+language = "ada"
+
+[[repositories]]
+id = "beanstalkd"
+url = "https://github.com/beanstalkd/beanstalkd.git"
+rev = "25085c5f090031fd7110613a77fd6f816681d801"
+materialized_path = "c/beanstalkd"
+language = "c"
+
+[[repositories]]
+id = "chocolate_doom"
+url = "https://github.com/chocolate-doom/chocolate-doom.git"
+rev = "353cf5001dfd5777c13327010fa58acb57b913b2"
+materialized_path = "c/chocolate-doom"
+language = "c"
+
+[[repositories]]
+id = "cparser"
+url = "https://github.com/libfirm/cparser.git"
+rev = "81330da3ee9650c88a1afdc93de654b9dfd9fb78"
+materialized_path = "c/cparser"
+language = "c"
+
+[[repositories]]
+id = "lacc"
+url = "https://github.com/larmel/lacc.git"
+rev = "30839843daaff9d87574b5854854c9ee4610cdcd"
+materialized_path = "c/lacc"
+language = "c"
+
+[[repositories]]
+id = "libffi"
+url = "https://github.com/libffi/libffi.git"
+rev = "46cb2e3871059f7f5113329ddcca818de3a8cfae"
+materialized_path = "c/libffi"
+language = "c"
+
+[[repositories]]
+id = "memcached"
+url = "https://github.com/memcached/memcached.git"
+rev = "2d51e364799bc9698bd4b11728ea978cea12da6e"
+materialized_path = "c/memcached"
+language = "c"
+
+[[repositories]]
+id = "redis"
+url = "https://github.com/redis/redis.git"
+rev = "799e7c5c24ae5ff96e1550e93fa90f4cc5617730"
+materialized_path = "c/redis"
+language = "c"
+
+[[repositories]]
+id = "yajl"
+url = "https://github.com/lloyd/yajl.git"
+rev = "5e3a7856e643b4d6410ddc3f84bc2f38174f2872"
+materialized_path = "c/yajl"
+language = "c"
+
+[[repositories]]
+id = "cmdline"
+url = "https://github.com/tanakh/cmdline.git"
+rev = "e4cd007fb8f0314002d9a5b4d82939106e4144e4"
+materialized_path = "cpp/cmdline"
+language = "cpp"
+
+[[repositories]]
+id = "libzmq"
+url = "https://github.com/zeromq/libzmq.git"
+rev = "ba63f0372701751f5435dbfbdaf23ab3dc1ae320"
+materialized_path = "cpp/libzmq"
+language = "c"
+
+[[repositories]]
+id = "loki_lib"
+url = "https://github.com/snaewe/loki-lib.git"
+rev = "7c29d87ecdecd60e39db969125753f6a4f549131"
+materialized_path = "cpp/loki-lib"
+language = "cpp"
+
+[[repositories]]
+id = "luabind"
+url = "https://github.com/luabind/luabind.git"
+rev = "cc743c37a7fffc72c809aed39e75385a34502ece"
+materialized_path = "cpp/luabind"
+language = "cpp"
+
+[[repositories]]
+id = "minisat"
+url = "https://github.com/niklasso/minisat.git"
+rev = "37dc6c67e2af26379d88ce349eb9c4c6160e8543"
+materialized_path = "cpp/minisat"
+language = "cpp"
+
+[[repositories]]
+id = "signals"
+url = "https://github.com/pbhogan/Signals.git"
+rev = "17881fb92ec314bb43549cc2cc8acfac24916f91"
+materialized_path = "cpp/signals"
+language = "cpp"
+
+[[repositories]]
+id = "thrift"
+url = "https://github.com/apache/thrift.git"
+rev = "40d5a7ed9558adaacefc2aa4958fb6742d9b3f3f"
+materialized_path = "cpp/thrift"
+language = "unknown"
+
+[[repositories]]
+id = "uncrustify"
+url = "https://github.com/uncrustify/uncrustify.git"
+rev = "76b54da8c2b4fa69e63e3a06137c0ea226b423e6"
+materialized_path = "cpp/uncrustify"
+language = "cpp"
+
+[[repositories]]
+id = "brotli"
+url = "https://github.com/google/brotli.git"
+rev = "037b70e2ad03b20480e6407ed5851e0f114b67a7"
+materialized_path = "expanded/brotli"
+language = "c"
+
+[[repositories]]
+id = "bzip2"
+url = "https://github.com/libarchive/bzip2.git"
+rev = "1ea1ac188ad4b9cb662e3f8314673c63df95a589"
+materialized_path = "expanded/bzip2"
+language = "c"
+
+[[repositories]]
+id = "c_ares"
+url = "https://github.com/c-ares/c-ares.git"
+rev = "589b5887d47736e5b70a1fddaf9bf90297adde65"
+materialized_path = "expanded/c-ares"
+language = "c"
+
+[[repositories]]
+id = "fmt"
+url = "https://github.com/fmtlib/fmt.git"
+rev = "b5d1e5404bd678df41f20d0f053222a6c60fe74b"
+materialized_path = "expanded/fmt"
+language = "cpp"
+
+[[repositories]]
+id = "http_parser"
+url = "https://github.com/nodejs/http-parser.git"
+rev = "ec8b5ee63f0e51191ea43bb0c6eac7bfbff3141d"
+materialized_path = "expanded/http-parser"
+language = "c"
+
+[[repositories]]
+id = "jansson"
+url = "https://github.com/akheron/jansson.git"
+rev = "851a2145e3256f2e67e5dfe24b0e456bf198b741"
+materialized_path = "expanded/jansson"
+language = "c"
+
+[[repositories]]
+id = "libevent"
+url = "https://github.com/libevent/libevent.git"
+rev = "e1f0335d2f3af1235421c939c62943bb99b3d652"
+materialized_path = "expanded/libevent"
+language = "c"
+
+[[repositories]]
+id = "libpng"
+url = "https://github.com/pnggroup/libpng.git"
+rev = "d1d0abeffede1cc898ddc3d0e600839cf026d749"
+materialized_path = "expanded/libpng"
+language = "c"
+
+[[repositories]]
+id = "libuv"
+url = "https://github.com/libuv/libuv.git"
+rev = "2cadaa40167050baf7c6905ac897e6fb57afb2c6"
+materialized_path = "expanded/libuv"
+language = "c"
+
+[[repositories]]
+id = "libyaml"
+url = "https://github.com/yaml/libyaml.git"
+rev = "893682bb98d5ed663a3e314c46dceaf9b1c8802f"
+materialized_path = "expanded/libyaml"
+language = "c"
+
+[[repositories]]
+id = "mimalloc"
+url = "https://github.com/microsoft/mimalloc.git"
+rev = "76d3f8a934f9761e4ee75fa8b071e58d482f2758"
+materialized_path = "expanded/mimalloc"
+language = "c"
+
+[[repositories]]
+id = "mpc"
+url = "https://github.com/orangeduck/mpc.git"
+rev = "1049534fc56b1971345c7aaa792dea55d6f9b7bc"
+materialized_path = "expanded/mpc"
+language = "c"
+
+[[repositories]]
+id = "pugixml"
+url = "https://github.com/zeux/pugixml.git"
+rev = "27b68329de32cf9c601ca8eb6c588fd639960c40"
+materialized_path = "expanded/pugixml"
+language = "cpp"
+
+[[repositories]]
+id = "rapidjson"
+url = "https://github.com/Tencent/rapidjson.git"
+rev = "24b5e7a8b27f42fa16b96fc70aade9106cf7102f"
+materialized_path = "expanded/rapidjson"
+language = "cpp"
+
+[[repositories]]
+id = "re2"
+url = "https://github.com/google/re2.git"
+rev = "972a15cedd008d846f1a39b2e88ce48d7f166cbd"
+materialized_path = "expanded/re2"
+language = "cpp"
+
+[[repositories]]
+id = "utf8proc"
+url = "https://github.com/JuliaStrings/utf8proc.git"
+rev = "74e0b22e8fcd890eea578f3063c0531e6f6ec05d"
+materialized_path = "expanded/utf8proc"
+language = "c"
+
+[[repositories]]
+id = "xxhash"
+url = "https://github.com/Cyan4973/xxHash.git"
+rev = "e573d4d2aaeaba0f3e5a0a9a54144a1f2b4b56e7"
+materialized_path = "expanded/xxhash"
+language = "c"
+
+[[repositories]]
+id = "xz"
+url = "https://github.com/tukaani-project/xz.git"
+rev = "f3b5688159c60495f48db3942a36509671dfce89"
+materialized_path = "expanded/xz"
+language = "c"
+
+[[repositories]]
+id = "yaml_cpp"
+url = "https://github.com/jbeder/yaml-cpp.git"
+rev = "356643ba267039367d87fa70ce3d8f87144f55e9"
+materialized_path = "expanded/yaml-cpp"
+language = "cpp"
+
+[[repositories]]
+id = "zstd"
+url = "https://github.com/facebook/zstd.git"
+rev = "5c7b7bad26808e6b40ac3b3d0075466e27738a9d"
+materialized_path = "expanded/zstd"
+language = "c"
+
+[[repositories]]
+id = "ada_drivers_library"
+url = "https://github.com/AdaCore/Ada_Drivers_Library.git"
+rev = "81c04806d267fc12116a6f746c8e05012cef0484"
+materialized_path = "extra/ada-drivers-library"
+language = "ada"
+
+[[repositories]]
+id = "cjson"
+url = "https://github.com/DaveGamble/cJSON.git"
+rev = "fb16e5cf358798aabb049655975cde8427101056"
+materialized_path = "extra/cjson"
+language = "c"
+
+[[repositories]]
+id = "expat"
+url = "https://github.com/libexpat/libexpat.git"
+rev = "551a88f879477e4fc2a396d88cbb461be11f04ce"
+materialized_path = "extra/expat"
+language = "c"
+
+[[repositories]]
+id = "gnatcoll_bindings"
+url = "https://github.com/AdaCore/gnatcoll-bindings.git"
+rev = "f6c42009490585e7cf63ab688f5d4bd0694ec468"
+materialized_path = "extra/gnatcoll-bindings"
+language = "ada"
+
+[[repositories]]
+id = "jsoncpp"
+url = "https://github.com/open-source-parsers/jsoncpp.git"
+rev = "edc01ab10f52135ec80e3589b6b4e0a9c65b27fd"
+materialized_path = "extra/jsoncpp"
+language = "cpp"
+
+[[repositories]]
+id = "leveldb"
+url = "https://github.com/google/leveldb.git"
+rev = "7ee830d02b623e8ffe0b95d59a74db1e58da04c5"
+materialized_path = "extra/leveldb"
+language = "cpp"
+
+[[repositories]]
+id = "libarchive"
+url = "https://github.com/libarchive/libarchive.git"
+rev = "e70bf490b8dbe9d335060e6035834dd60de48a2c"
+materialized_path = "extra/libarchive"
+language = "c"
+
+[[repositories]]
+id = "lz4"
+url = "https://github.com/lz4/lz4.git"
+rev = "0774d05537f9762f838f7ab541b7765f1a729cb5"
+materialized_path = "extra/lz4"
+language = "c"
+
+[[repositories]]
+id = "smhasher"
+url = "https://github.com/aappleby/smhasher.git"
+rev = "07bb4de10a63e8cc2e1724865454eba635742383"
+materialized_path = "extra/smhasher"
+language = "c"
+
+[[repositories]]
+id = "tinyxml2"
+url = "https://github.com/leethomason/tinyxml2.git"
+rev = "8224e427b655b83dae5e2298f1e6919523a78737"
+materialized_path = "extra/tinyxml2"
+language = "cpp"
+
+[[repositories]]
+id = "zlib"
+url = "https://github.com/madler/zlib.git"
+rev = "e3dc0a85b7032e98380dec011bc8f2c2ee0d8fca"
+materialized_path = "extra/zlib"
+language = "c"

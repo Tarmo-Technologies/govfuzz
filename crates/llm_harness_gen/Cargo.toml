@@ -15,3 +15,7 @@ path = "src/lib.rs"
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+ureq = { version = "2.12", default-features = false, features = ["json", "tls"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

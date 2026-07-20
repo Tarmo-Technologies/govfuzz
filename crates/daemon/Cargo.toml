@@ -25,6 +25,7 @@ cli = { package = "govfuzz", path = "../cli" }
 cpp_parser = { path = "../cpp_parser" }
 govfuzz_report = { package = "report", path = "../report" }
 instrumenter = { path = "../instrumenter" }
+llm_harness_gen = { path = "../llm_harness_gen" }
 serde.workspace = true
 serde_json.workspace = true
 static_analysis = { path = "../static_analysis" }

@@ -47,6 +47,7 @@ idl_parser = { path = "../idl_parser" }
 instrumenter = { path = "../instrumenter" }
 lang_profile = { path = "../lang_profile" }
 license_policy = { path = "../license_policy" }
+llm_harness_gen = { path = "../llm_harness_gen" }
 multicore_fuzz = { path = "../multicore_fuzz" }
 num_cpus = "1"
 go_parser = { path = "../go_parser" }

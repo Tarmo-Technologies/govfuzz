@@ -36,6 +36,7 @@ mod license_audit;
 pub mod list_fakes;
 pub mod list_oracles;
 mod list_targets;
+mod llm;
 mod minimize;
 mod model;
 mod pack;
@@ -79,6 +80,7 @@ COMMANDS BY AREA (run `govfuzz <command> --help` for details):
   Supply chain  sbom, license-audit, static-scan, extract-state-machines
   Reference     rules, list oracles
   Governance    policy, audit, pack, export
+  Assistance    llm (Codex, Claude, API, local, MCP workflows)
   Ops & CI      ci, runners, clean, introspect
 
 `list` and `binary` group related subcommands (`govfuzz list targets`,
@@ -205,6 +207,8 @@ enum Command {
     Clean(clean::CleanArgs),
     /// Compare discovered targets against a prior auto/run.json to surface coverage blockers (diagnostics)
     Introspect(introspect::IntrospectArgs),
+    /// Use Codex, Claude, API, or local LLMs for evidence-grounded planning, harness help, findings, and diagnostics
+    Llm(llm::LlmArgs),
 
     // ── Internal / metrics: hidden from the default menu, still runnable ─────
     /// Emit governance dashboard data (audit, policy, runner manifest) as JSON
@@ -342,6 +346,7 @@ where
         Some(Command::LicenseAudit(license_audit_args)) => {
             license_audit::run(license_audit_args, profile)
         }
+        Some(Command::Llm(args)) => llm::run(args),
         Some(Command::ListOracles(args)) => list_oracles::run(args),
         Some(Command::ListTargets(list_args)) => match list_targets::run(list_args) {
             Ok(()) => 0,

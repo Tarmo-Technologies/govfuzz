@@ -574,16 +574,6 @@ pub fn source_fingerprint(root: &Path, filter: &DirFilter) -> String {
     format!("{:016x}", hasher.finish())
 }
 
-/// A build-stable content hash of a file's bytes ([`StableHasher`], FNV-1a), used
-/// by the discovery fingerprint so identity tracks content, not mtime, and is
-/// identical across govfuzz rebuilds.
-fn hash_bytes(bytes: &[u8]) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = StableHasher::new();
-    bytes.hash(&mut hasher);
-    hasher.finish()
-}
-
 /// Recursive helper for [`source_fingerprint`]: mirrors [`walk`]'s directory
 /// pruning but records (path, len, content-hash) instead of parsing. An
 /// unreadable file is recorded as zeros so a permissions hiccup degrades to a
@@ -611,15 +601,34 @@ fn fingerprint_walk(
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .into_owned();
-            // Identity is CONTENT, not mtime (see `source_fingerprint`): read
-            // the bytes and fold in a stable content hash. Unreadable → zeros.
-            let (len, content) = match std::fs::read(&path) {
-                Ok(bytes) => (bytes.len() as u64, hash_bytes(&bytes)),
-                Err(_) => (0, 0),
-            };
+            // Identity is CONTENT, not mtime (see `source_fingerprint`). Hash in
+            // fixed-size chunks rather than `fs::read`-ing the whole file: the
+            // fingerprint walk runs before the guarded parser read, so a single
+            // giant generated source must not transiently allocate its full size.
+            let (len, content) = hash_file(&path).unwrap_or((0, 0));
             out.push((rel, len, content));
         }
     }
+}
+
+fn hash_file(path: &Path) -> std::io::Result<(u64, u64)> {
+    use std::hash::{Hash, Hasher};
+    use std::io::Read;
+
+    let mut file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    let mut hasher = StableHasher::new();
+    // Match the logical shape of hashing a byte slice: length, then contents.
+    (len as usize).hash(&mut hasher);
+    let mut buf = [0_u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buf)?;
+        if read == 0 {
+            break;
+        }
+        hasher.write(&buf[..read]);
+    }
+    Ok((len, hasher.finish()))
 }
 
 /// The bare symbol name: strip a C++ qualifier path (`ns::fn`) and any parameter
@@ -706,10 +715,9 @@ fn apply_entrypoint_callgraph(candidates: &mut [Candidate]) {
     }
 
     // Parse ALL functions (not just candidates) per file so caller/callee counts
-    // see the whole tree, and slice each function's body by start lines.
+    // see the whole tree. Retain compact (name,line) metadata, not body text.
     let mut all_names: HashSet<String> = HashSet::new();
-    // (path, name, start_line) -> body text
-    let mut bodies: Vec<(std::path::PathBuf, String, u32, String)> = Vec::new();
+    let mut functions_by_file = Vec::new();
     for path in &files {
         let lang = candidates
             .iter()
@@ -724,9 +732,20 @@ fn apply_entrypoint_callgraph(candidates: &mut [Candidate]) {
             continue;
         }
         fns.sort_by_key(|f| f.1);
+        all_names.extend(fns.iter().map(|(name, _)| name.clone()));
+        functions_by_file.push((path.clone(), fns));
+    }
+
+    // Build the graph in a second streaming pass. Only one file and one joined
+    // function body are resident at a time; the retained graph is names/counts.
+    let mut callers: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut fan_out: HashMap<(std::path::PathBuf, u32), usize> = HashMap::new();
+    for (path, fns) in functions_by_file {
+        let Ok(source) = crate::source_text::read_source_text(&path) else {
+            continue;
+        };
         let lines: Vec<&str> = source.lines().collect();
         for (i, (name, start)) in fns.iter().enumerate() {
-            all_names.insert(name.clone());
             // Bound the body by BRACE MATCHING, not the next detected function: in a
             // big single-header (dr_libs/stb, ~9k lines) the parser detects function
             // starts sparsely, so "start..next_start" can swallow several functions
@@ -740,29 +759,17 @@ fn apply_entrypoint_callgraph(candidates: &mut [Candidate]) {
             let end = function_body_end(&lines, *start, cap);
             let lo = (*start as usize).saturating_sub(1).min(lines.len());
             let hi = (end as usize).saturating_sub(1).min(lines.len());
-            bodies.push((path.clone(), name.clone(), *start, lines[lo..hi].join("\n")));
-        }
-    }
-
-    // Build the graph: callee name -> set of distinct caller names; and
-    // (path,start) -> fan-out (distinct in-tree callees).
-    let mut callers: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut fan_out: HashMap<(std::path::PathBuf, u32), usize> = HashMap::new();
-    for (path, name, start, body) in &bodies {
-        let mut callees = 0usize;
-        for callee in &all_names {
-            if callee == name {
-                continue; // ignore self/recursion
-            }
-            if text_calls(body, callee) {
-                callees += 1;
+            let body = lines[lo..hi].join("\n");
+            let mut callees = call_names_in_text(&body, &all_names);
+            callees.remove(name); // ignore self/recursion
+            for callee in &callees {
                 callers
                     .entry(callee.clone())
                     .or_default()
                     .insert(name.clone());
             }
+            fan_out.insert((path.clone(), *start), callees.len());
         }
-        fan_out.insert((path.clone(), *start), callees);
     }
 
     for c in candidates.iter_mut() {
@@ -872,9 +879,6 @@ fn functions_with_lines(source: &str, lang: Lang) -> Vec<(String, u32)> {
     }
 }
 
-/// Whether `body` contains a CALL to `name`: the identifier bounded on the left
-/// by a non-identifier char and followed (after optional whitespace) by `(`. Cheap
-/// textual scan — good enough to distinguish call-graph sources from sinks.
 /// The 1-based line just past a function body, found by matching `{`/`}` from the
 /// first brace at/after `start`, capped by `cap` (the next detected function start
 /// — so a declaration-only or brace-skewed body can never run past it). Line
@@ -907,31 +911,40 @@ fn function_body_end(lines: &[&str], start: u32, cap: u32) -> u32 {
     cap
 }
 
-fn text_calls(body: &str, name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-    let b = body.as_bytes();
-    let nlen = name.len();
-    let is_ident = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
-    let mut from = 0usize;
-    while let Some(rel) = body.get(from..).and_then(|s| s.find(name)) {
-        let p = from + rel;
-        let before_ok = p == 0 || !is_ident(b[p - 1]);
-        let q = p + nlen;
-        let immediate_ok = q >= b.len() || !is_ident(b[q]); // not a longer identifier
-        if before_ok && immediate_ok {
-            let mut j = q;
-            while j < b.len() && (b[j] as char).is_ascii_whitespace() {
-                j += 1;
-            }
-            if j < b.len() && b[j] == b'(' {
-                return true;
+fn call_names_in_text(
+    body: &str,
+    all_names: &std::collections::HashSet<String>,
+) -> std::collections::HashSet<String> {
+    let bytes = body.as_bytes();
+    let mut out = std::collections::HashSet::new();
+    for (open, byte) in bytes.iter().enumerate() {
+        if *byte != b'(' {
+            continue;
+        }
+        let mut end = open;
+        while end > 0 && bytes[end - 1].is_ascii_whitespace() {
+            end -= 1;
+        }
+        let mut start = end;
+        while start > 0
+            && (bytes[start - 1].is_ascii_alphanumeric() || matches!(bytes[start - 1], b'_' | b':'))
+        {
+            start -= 1;
+        }
+        let token = body.get(start..end).unwrap_or_default().trim_matches(':');
+        if token.is_empty() {
+            continue;
+        }
+        if all_names.contains(token) {
+            out.insert(token.to_owned());
+        }
+        if let Some(short) = token.rsplit("::").next() {
+            if all_names.contains(short) {
+                out.insert(short.to_owned());
             }
         }
-        from = p + nlen;
     }
-    false
+    out
 }
 
 /// Walk the tree collecting a `Class::method -> access` map from every C++ class
@@ -969,7 +982,7 @@ fn accumulate_cpp_member_access(path: &Path, out: &mut std::collections::BTreeMa
     if !has_targetable_extension(path) {
         return;
     }
-    let Ok(source) = std::fs::read_to_string(path) else {
+    let Ok(source) = crate::source_text::read_source_text(path) else {
         return;
     };
     if !matches!(detect_lang(path, &source), Some(Lang::Cpp)) {
@@ -2296,7 +2309,7 @@ pub(crate) fn gpr_main_sources(
     collect_gpr_files(root, filter, &mut gprs);
     let mut out = std::collections::HashMap::new();
     for gpr in gprs {
-        let Ok(text) = std::fs::read_to_string(&gpr) else {
+        let Ok(text) = crate::source_text::read_source_text(&gpr) else {
             continue;
         };
         let mains = gpr_attribute_string_list(&text, "main");

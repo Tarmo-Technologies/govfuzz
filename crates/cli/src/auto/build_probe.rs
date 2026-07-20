@@ -700,7 +700,10 @@ fn probe_cmake(
     // configure abort can be reported ACTIONABLY (§26.2). The output is replayed
     // to the parent streams afterwards so build progress/errors stay visible.
     let mut command = build_command(tree, &args, &[], sandbox_program);
-    let output = match command.output() {
+    let output = match crate::command_output::output_with_timeout(
+        &mut command,
+        std::time::Duration::from_secs(600),
+    ) {
         Ok(output) => output,
         Err(error) => {
             eprintln!("govfuzz auto: --probe-build: failed to run cmake: {error}");
@@ -982,18 +985,22 @@ fn probe_ninja(tree: &Path, db: &Path, sandbox_program: Option<&Path>) -> Option
         return None;
     }
     let mut command = build_command(tree, &ninja_compdb_args(tree), &[], sandbox_program);
-    let output = match command.output() {
-        Ok(output) => output,
+    let db_file = std::fs::File::create(db).ok()?;
+    command
+        .stdout(std::process::Stdio::from(db_file))
+        .stderr(std::process::Stdio::inherit());
+    let status = match command.status() {
+        Ok(status) => status,
         Err(error) => {
             eprintln!("govfuzz auto: --probe-build: failed to run ninja compdb: {error}");
             return None;
         }
     };
-    if !output.status.success() || output.stdout.is_empty() {
+    if !status.success() || !std::fs::metadata(db).is_ok_and(|metadata| metadata.len() > 0) {
         eprintln!("govfuzz auto: --probe-build: `ninja -t compdb` produced no database");
+        let _ = std::fs::remove_file(db);
         return None;
     }
-    std::fs::write(db, &output.stdout).ok()?;
     Some(db.to_path_buf())
 }
 

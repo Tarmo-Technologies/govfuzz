@@ -16,6 +16,7 @@ use crate::auto::candidate::Candidate;
 use crate::auto::lua::{parse_lua, LuaFunction};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 pub enum LuaBuildResult {
     Built,
@@ -123,13 +124,13 @@ pub fn build_lua_harness(
     // un-loadable target (missing module, load-time error) is a CLEAN SKIP, not a
     // silent zero-exec run. `-e "assert(loadfile(...))"` checks syntax; then actually
     // running it loads the target.
-    let smoke = Command::new(&lua)
-        .arg("-e")
-        .arg(format!(
+    let smoke = crate::command_output::output_with_timeout(
+        Command::new(&lua).arg("-e").arg(format!(
             "local f=assert(loadfile('{}')); f()",
             harness_path.display()
-        ))
-        .output();
+        )),
+        Duration::from_secs(30),
+    );
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
@@ -190,7 +191,7 @@ pub fn build_lua_harness(
 /// Resolve the target function + the Lua call expression against the dofile'd module
 /// (`mod`) or the global env (`_G`).
 fn resolve_target(candidate: &Candidate) -> Result<(LuaFunction, String), String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let funcs = parse_lua(&source);
     let f = funcs

@@ -119,7 +119,7 @@ fn find_crate_root(source: &Path) -> Option<PathBuf> {
 /// `[lib] name`, else `[package] name` with `-` normalized to `_` (the Rust
 /// import-name rule).
 fn crate_import_name(manifest_dir: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(manifest_dir.join("Cargo.toml")).ok()?;
+    let text = crate::source_text::read_source_text(&manifest_dir.join("Cargo.toml")).ok()?;
     // A crude but robust TOML scan: find `[lib]` then its `name`, else
     // `[package]` then its `name`. Avoids pulling a TOML dep into the CLI.
     let lib_name = section_value(&text, "lib", "name");
@@ -135,7 +135,7 @@ fn crate_import_name(manifest_dir: &Path) -> Option<String> {
 /// while the harness source imports it by the `_`-normalized name. `None` if
 /// unreadable.
 fn crate_package_name(manifest_dir: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(manifest_dir.join("Cargo.toml")).ok()?;
+    let text = crate::source_text::read_source_text(&manifest_dir.join("Cargo.toml")).ok()?;
     section_value(&text, "package", "name")
 }
 
@@ -168,7 +168,7 @@ fn section_value(toml: &str, section: &str, key: &str) -> Option<String> {
 fn read_crate_root_src(manifest_dir: &Path) -> String {
     let src = manifest_dir.join("src");
     for f in ["lib.rs", "main.rs"] {
-        if let Ok(t) = std::fs::read_to_string(src.join(f)) {
+        if let Ok(t) = crate::source_text::read_source_text(&src.join(f)) {
             return t;
         }
     }
@@ -462,8 +462,8 @@ fn module_chain_has_private(manifest_dir: &Path, crate_root_src: &str, module: &
         if i + 1 < module.len() {
             let as_file = prefix.join(format!("{seg}.rs"));
             let as_mod = prefix.join(seg).join("mod.rs");
-            parent_src = std::fs::read_to_string(&as_file)
-                .or_else(|_| std::fs::read_to_string(&as_mod))
+            parent_src = crate::source_text::read_source_text(&as_file)
+                .or_else(|_| crate::source_text::read_source_text(&as_mod))
                 .unwrap_or_default();
             prefix = prefix.join(seg);
         }
@@ -506,8 +506,8 @@ fn module_chain_all_pub(manifest_dir: &Path, crate_root_src: &str, prefix: &[Str
         if i + 1 < prefix.len() {
             let as_file = path.join(format!("{seg}.rs"));
             let as_mod = path.join(seg).join("mod.rs");
-            parent_src = std::fs::read_to_string(&as_file)
-                .or_else(|_| std::fs::read_to_string(&as_mod))
+            parent_src = crate::source_text::read_source_text(&as_file)
+                .or_else(|_| crate::source_text::read_source_text(&as_mod))
                 .unwrap_or_default();
             path = path.join(seg);
         }
@@ -528,8 +528,8 @@ fn read_module_src(manifest_dir: &Path, crate_root_src: &str, prefix: &[String])
     }
     let as_file = path.join(format!("{last}.rs"));
     let as_mod = path.join(last).join("mod.rs");
-    std::fs::read_to_string(&as_file)
-        .or_else(|_| std::fs::read_to_string(&as_mod))
+    crate::source_text::read_source_text(&as_file)
+        .or_else(|_| crate::source_text::read_source_text(&as_mod))
         .unwrap_or_default()
 }
 
@@ -1664,7 +1664,7 @@ fn find_unit_enum_path(
     let mut files = Vec::new();
     collect_rs_files(&src_dir, &mut files);
     for file in files {
-        let Ok(text) = std::fs::read_to_string(&file) else {
+        let Ok(text) = crate::source_text::read_source_text(&file) else {
             continue;
         };
         if !text.contains(enum_name) {
@@ -1949,7 +1949,7 @@ fn resolve_in_crate_trait_path(
     let mut files = Vec::new();
     collect_rs_files(&src_dir, &mut files);
     for file in &files {
-        let Ok(text) = std::fs::read_to_string(file) else {
+        let Ok(text) = crate::source_text::read_source_text(file) else {
             continue;
         };
         if !text.lines().any(|l| pub_trait_decl_is(l, leaf)) {
@@ -2151,7 +2151,7 @@ fn find_trait_impl_marker(
     let mut pub_types: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut impls: Vec<(String, PathBuf)> = Vec::new();
     for file in &files {
-        let Ok(text) = std::fs::read_to_string(file) else {
+        let Ok(text) = crate::source_text::read_source_text(file) else {
             continue;
         };
         for line in text.lines() {
@@ -2250,7 +2250,7 @@ fn find_type_const(
     let mut files = Vec::new();
     collect_rs_files(&manifest_dir.join("src"), &mut files);
     for file in files {
-        let Ok(text) = std::fs::read_to_string(&file) else {
+        let Ok(text) = crate::source_text::read_source_text(&file) else {
             continue;
         };
         if !text.contains(type_leaf) {
@@ -2301,7 +2301,7 @@ fn type_default_available_in_crate(manifest_dir: &Path, crate_root_src: &str, ty
     let mut files = Vec::new();
     collect_rs_files(&manifest_dir.join("src"), &mut files);
     files.iter().any(|file| {
-        std::fs::read_to_string(file)
+        crate::source_text::read_source_text(file)
             .ok()
             .is_some_and(|text| text.contains(leaf) && type_default_available(&text, leaf))
     })
@@ -2354,7 +2354,7 @@ fn find_default_type_path(
     let mut files = Vec::new();
     collect_rs_files(&src_dir, &mut files);
     for file in &files {
-        let Ok(text) = std::fs::read_to_string(file) else {
+        let Ok(text) = crate::source_text::read_source_text(file) else {
             continue;
         };
         if !text.contains(leaf) {
@@ -2386,7 +2386,7 @@ fn find_default_type_path(
 }
 
 fn resolve_target(candidate: &Candidate) -> Result<ResolvedTarget, String> {
-    let source = std::fs::read_to_string(&candidate.source_path)
+    let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read Rust source {}: {e}", candidate.source_path.display()))?;
     let manifest_dir = find_crate_root(&candidate.source_path)
         .ok_or_else(|| "no Cargo.toml found above the Rust target source".to_owned())?;
@@ -3068,21 +3068,23 @@ pub fn build_rust_harness(
 
     // cargo build the staticlib.
     let target_dir = crate_dir.join("target");
-    let build = Command::new(&toolchain.cargo)
-        .arg(&toolchain.channel_arg)
-        .arg("build")
-        .arg("--manifest-path")
-        .arg(crate_dir.join("Cargo.toml"))
-        .arg("--target-dir")
-        .arg(&target_dir)
-        // Explicit host `--target` so build scripts + proc-macros build for the
-        // host without the sanitizer RUSTFLAGS (sanitizers can't be applied to
-        // host-run proc-macros like `zerofrom_derive`); target crates still get
-        // them. Output then lands in `target/<triple>/debug/`.
-        .arg("--target")
-        .arg(&toolchain.host_triple)
-        .env("RUSTFLAGS", sancov_rustflags())
-        .output();
+    let build = crate::command_output::output_with_timeout(
+        Command::new(&toolchain.cargo)
+            .arg(&toolchain.channel_arg)
+            .arg("build")
+            .arg("--manifest-path")
+            .arg(crate_dir.join("Cargo.toml"))
+            .arg("--target-dir")
+            .arg(&target_dir)
+            // Explicit host `--target` so build scripts + proc-macros build for the
+            // host without the sanitizer RUSTFLAGS (sanitizers can't be applied to
+            // host-run proc-macros like `zerofrom_derive`); target crates still get
+            // them. Output then lands in `target/<triple>/debug/`.
+            .arg("--target")
+            .arg(&toolchain.host_triple)
+            .env("RUSTFLAGS", sancov_rustflags()),
+        std::time::Duration::from_secs(30 * 60),
+    );
     let build = match build {
         Ok(o) => o,
         Err(e) => {
@@ -3124,23 +3126,25 @@ pub fn build_rust_harness(
     // clang-link: driver main.c + the Rust staticlib -> harnesses/<id>/main, with the
     // SAME sancov+ASan instrumentation on the driver so its callbacks match.
     let main_bin = auto_dir.join("main");
-    let link = Command::new("clang")
-        .arg("-O1")
-        .arg("-g")
-        .arg("-fsanitize=address")
-        .arg("-fsanitize-coverage=trace-pc-guard,trace-cmp")
-        .arg("-I")
-        .arg(c_runtime_dir)
-        .arg("-o")
-        .arg(&main_bin)
-        .arg(&main_c)
-        .arg(&staticlib)
-        // The Rust staticlib needs libstd's transitive C deps.
-        .arg("-lpthread")
-        .arg("-ldl")
-        .arg("-lm")
-        .arg("-lrt")
-        .output();
+    let link = crate::command_output::output_with_timeout(
+        Command::new("clang")
+            .arg("-O1")
+            .arg("-g")
+            .arg("-fsanitize=address")
+            .arg("-fsanitize-coverage=trace-pc-guard,trace-cmp")
+            .arg("-I")
+            .arg(c_runtime_dir)
+            .arg("-o")
+            .arg(&main_bin)
+            .arg(&main_c)
+            .arg(&staticlib)
+            // The Rust staticlib needs libstd's transitive C deps.
+            .arg("-lpthread")
+            .arg("-ldl")
+            .arg("-lm")
+            .arg("-lrt"),
+        std::time::Duration::from_secs(10 * 60),
+    );
     let link = match link {
         Ok(o) => o,
         Err(e) => {
@@ -3217,7 +3221,7 @@ fn build_in_crate(
 
     // Read the lib root once, up front, both to gate on `#![forbid(unsafe_code)]`
     // and to inject the harness module declaration below.
-    let lib_text = match std::fs::read_to_string(&lib_root) {
+    let lib_text = match crate::source_text::read_source_text(&lib_root) {
         Ok(t) => t,
         Err(e) => {
             return RustBuildResult::Failed {
@@ -3278,7 +3282,7 @@ fn build_in_crate(
         };
     };
     let manifest_path = crate_copy.join("Cargo.toml");
-    let manifest_text = match std::fs::read_to_string(&manifest_path) {
+    let manifest_text = match crate::source_text::read_source_text(&manifest_path) {
         Ok(t) => t,
         Err(e) => {
             return RustBuildResult::Failed {
@@ -3311,17 +3315,19 @@ fn build_in_crate(
 
     // Build the copied crate (now a staticlib exporting `govfuzz_run_one`).
     let target_dir = crate_copy.join("target");
-    let build = Command::new(&toolchain.cargo)
-        .arg(&toolchain.channel_arg)
-        .arg("build")
-        .arg("--manifest-path")
-        .arg(&manifest_path)
-        .arg("--target-dir")
-        .arg(&target_dir)
-        .arg("--target")
-        .arg(&toolchain.host_triple)
-        .env("RUSTFLAGS", sancov_rustflags())
-        .output();
+    let build = crate::command_output::output_with_timeout(
+        Command::new(&toolchain.cargo)
+            .arg(&toolchain.channel_arg)
+            .arg("build")
+            .arg("--manifest-path")
+            .arg(&manifest_path)
+            .arg("--target-dir")
+            .arg(&target_dir)
+            .arg("--target")
+            .arg(&toolchain.host_triple)
+            .env("RUSTFLAGS", sancov_rustflags()),
+        std::time::Duration::from_secs(30 * 60),
+    );
     let build = match build {
         Ok(o) => o,
         Err(e) => {
@@ -3362,22 +3368,24 @@ fn build_in_crate(
 
     // clang-link the driver + the crate staticlib -> harnesses/<id>/main.
     let main_bin = auto_dir.join("main");
-    let link = Command::new("clang")
-        .arg("-O1")
-        .arg("-g")
-        .arg("-fsanitize=address")
-        .arg("-fsanitize-coverage=trace-pc-guard,trace-cmp")
-        .arg("-I")
-        .arg(c_runtime_dir)
-        .arg("-o")
-        .arg(&main_bin)
-        .arg(&main_c)
-        .arg(&staticlib)
-        .arg("-lpthread")
-        .arg("-ldl")
-        .arg("-lm")
-        .arg("-lrt")
-        .output();
+    let link = crate::command_output::output_with_timeout(
+        Command::new("clang")
+            .arg("-O1")
+            .arg("-g")
+            .arg("-fsanitize=address")
+            .arg("-fsanitize-coverage=trace-pc-guard,trace-cmp")
+            .arg("-I")
+            .arg(c_runtime_dir)
+            .arg("-o")
+            .arg(&main_bin)
+            .arg(&main_c)
+            .arg(&staticlib)
+            .arg("-lpthread")
+            .arg("-ldl")
+            .arg("-lm")
+            .arg("-lrt"),
+        std::time::Duration::from_secs(10 * 60),
+    );
     let link = match link {
         Ok(o) => o,
         Err(e) => {
@@ -3997,7 +4005,7 @@ fn parse_feature_predicate(c: &str) -> Option<String> {
 /// (no `toml` dependency in the CLI's link graph — it is dev-only).
 fn available_features(manifest_dir: &Path) -> std::collections::HashSet<String> {
     let mut set = std::collections::HashSet::new();
-    let Ok(text) = std::fs::read_to_string(manifest_dir.join("Cargo.toml")) else {
+    let Ok(text) = crate::source_text::read_source_text(&manifest_dir.join("Cargo.toml")) else {
         return set;
     };
     #[derive(PartialEq)]

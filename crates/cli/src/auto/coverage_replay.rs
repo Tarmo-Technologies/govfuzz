@@ -57,12 +57,12 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     if hdir.join("covered-lines.txt").is_file() {
         return false;
     }
-    let built = Command::new("make")
-        .arg("cov")
-        .current_dir(hdir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let built = crate::command_output::output_with_timeout(
+        Command::new("make").arg("cov").current_dir(hdir),
+        Duration::from_secs(600),
+    )
+    .map(|o| o.status.success())
+    .unwrap_or(false);
     let bin = hdir.join("main_cov");
     if !built || !bin.is_file() {
         return false;
@@ -89,15 +89,15 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
         }
         replayed += 1;
         // Fresh process per input (argv[1]) so the profile flushes at exit.
-        let completed = replay_command(&bin)
-            .arg(&path)
-            .env(
+        let completed = crate::command_output::output_with_timeout(
+            replay_command(&bin).arg(&path).env(
                 "LLVM_PROFILE_FILE",
                 prof_dir.join(format!("cov-{i}.profraw")),
-            )
-            .output()
-            .map(|output| !matches!(output.status.code(), Some(124 | 137)))
-            .unwrap_or(false);
+            ),
+            Duration::from_secs(15),
+        )
+        .map(|output| !matches!(output.status.code(), Some(124 | 137)))
+        .unwrap_or(false);
         if !completed {
             return false;
         }
@@ -119,30 +119,40 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     if raws.is_empty() {
         return false;
     }
-    let merge_ok = Command::new(profdata)
-        .arg("merge")
-        .arg("-sparse")
-        .args(&raws)
-        .arg("-o")
-        .arg(&merged)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let merge_ok = crate::command_output::output_with_timeout(
+        Command::new(profdata)
+            .arg("merge")
+            .arg("-sparse")
+            .args(&raws)
+            .arg("-o")
+            .arg(&merged),
+        Duration::from_secs(300),
+    )
+    .map(|o| o.status.success())
+    .unwrap_or(false);
     if !merge_ok {
         return false;
     }
-    let Ok(export) = Command::new(cov)
-        .args(["export", "--format=lcov"])
-        .arg(format!("-instr-profile={}", merged.display()))
-        .arg(&bin)
-        .output()
-    else {
+    let Ok(export) = crate::command_output::output_with_timeout(
+        Command::new(cov)
+            .args(["export", "--format=lcov"])
+            .arg(format!("-instr-profile={}", merged.display()))
+            .arg(&bin),
+        Duration::from_secs(300),
+    ) else {
         return false;
     };
     if !export.status.success() {
         return false;
     }
-    let covered = parse_lcov_covered(&String::from_utf8_lossy(&export.stdout));
+    let export_text = String::from_utf8_lossy(&export.stdout);
+    if export_text.contains("[govfuzz: subprocess output truncated]") {
+        eprintln!(
+            "govfuzz: llvm-cov output for {harness_id} exceeded the bounded capture; \
+             negative-confirmation coverage is partial"
+        );
+    }
+    let covered = parse_lcov_covered(&export_text);
     let _ = std::fs::remove_dir_all(&prof_dir);
     if covered.is_empty() {
         return false;
@@ -168,7 +178,9 @@ fn parse_lcov_covered(lcov: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut file = String::new();
     for line in lcov.lines() {
-        if let Some(rest) = line.strip_prefix("SF:") {
+        if line.contains("[govfuzz: subprocess output truncated]") {
+            file.clear();
+        } else if let Some(rest) = line.strip_prefix("SF:") {
             file = rest.trim().to_owned();
         } else if let Some(rest) = line.strip_prefix("DA:") {
             let mut parts = rest.split(',');

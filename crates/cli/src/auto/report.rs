@@ -1773,7 +1773,7 @@ fn add_idl_deps_from_skipped_targets(
         if !matches!(r.outcome, Outcome::UnsupportedParams { .. }) {
             continue;
         }
-        let Ok(text) = std::fs::read_to_string(&r.candidate.source_path) else {
+        let Ok(text) = crate::source_text::read_source_text(&r.candidate.source_path) else {
             continue;
         };
         for include in scan_include_targets(&text) {

@@ -192,8 +192,10 @@ with the evidence-preserving run.
 - `--static` complements fuzzing and covers files that still cannot execute.
 - `--resume` is for continuing an interrupted run with the same work directory
   and unchanged source. Do not use it to turn the real run into a forced run.
-- Size `--jobs` against memory: peak allowance is approximately
-  `jobs * --rss-limit-mb`.
+- Size `--jobs` against memory: `jobs * --rss-limit-mb` is the fuzz-child
+  allowance, not total peak. Also reserve RAM for GovFuzz's declaration index,
+  retained target results, compiler processes, and the OS. Use `--jobs 1` on an
+  8 GiB host unless measurement demonstrates safe headroom.
 
 ## Acceptance Check
 

@@ -171,7 +171,8 @@ pub struct AttemptOptions {
     /// Per-harness resident-set memory cap in MB (`auto --rss-limit-mb`). A single
     /// test case that allocates past this is killed and reported as an OOM finding
     /// (GF-209) instead of OOM-killing the host (#386). Mirrors libFuzzer's
-    /// `-rss_limit_mb`; default 2048.
+    /// `-rss_limit_mb`; the default follows the auto CLI's available-memory
+    /// calculation.
     pub rss_limit_mb: usize,
     /// Cap on build-fail -> repair -> retry rounds per target (`auto
     /// --max-repair-rounds`; default [`DEFAULT_MAX_REPAIR_ROUNDS`] = 16). Each
@@ -249,7 +250,7 @@ impl Default for AttemptOptions {
             extra_include_dirs: Vec::new(),
             extra_sources: Vec::new(),
             iterations: None,
-            rss_limit_mb: 2048,
+            rss_limit_mb: crate::auto::cli::default_auto_rss_limit_mb(),
             max_repair_rounds: DEFAULT_MAX_REPAIR_ROUNDS,
             comparison_progress: false,
             sanitizers: multicore_fuzz::SanitizerSelection::Default,
@@ -3551,7 +3552,7 @@ fn cpp_target_undefined_return_type(
     candidate: &Candidate,
     decl_index: &DeclarationIndex,
 ) -> Option<String> {
-    let source = std::fs::read_to_string(&candidate.source_path).ok()?;
+    let source = crate::source_text::read_source_text(&candidate.source_path).ok()?;
     let functions = cpp_parser::parse_cpp_functions(&source).ok()?;
     let target = functions
         .iter()

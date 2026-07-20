@@ -82,6 +82,12 @@ as `new`, `unchanged`, or `resolved`, `--policy <JSON>` / `--enable-rule` /
 `--disable-rule` to apply policy-as-code rule filters, and `--fail-on
 low|medium|high|critical` for CI-style static gates.
 
+Use `--jobs <N>` to bound parallel file workers and `--max-memory-mb <MB>` to
+set the static process RSS ceiling. At the ceiling the Linux scanner stops
+admitting new work and records an analysis gap. The default ceiling is the
+smaller of 80% of host-available memory and 70% of the cgroup memory limit.
+On an 8 GiB host, start with `--jobs 2 --max-memory-mb 4096`.
+
 Use `--sloc <FILE>` to also write an accurate per-language SLOC breakdown
 (`LANGUAGE`, `FILES`, `TOTAL`, `COMMENTS`, `BLANKS`, `SLOC`) as a side output of
 the scan. A `.json` extension emits JSON; anything else emits an aligned text
@@ -456,11 +462,11 @@ Flags:
 - `--per-target-finding-count <N>` — stop a target's cascade as soon as it has produced N *distinct* findings (crash signatures), or when `--per-target-time` is spent, whichever first. Checked mid-pass (stops the instant the Nth lands; remaining passes skipped). `1` ≈ libFuzzer stop-on-first-crash. Unset by default (collect every finding).
 - `--total-time <SECS>` — **deprecated** alias of `--per-target-time` (overrides it when set); retained for existing benchmark/parity invocations. Hidden from `--help`.
 - `--iterations <N>` — per-pass execution cap (libFuzzer `-runs`); unset (or `0`) lets `--per-target-time` govern depth. The old hardcoded 1024 cap is retired.
-- `--rss-limit-mb <MB>` — per-harness resident-set memory cap; a test case over budget is killed and reported as a GF-209 OOM finding instead of OOM-killing the host (libFuzzer `-rss_limit_mb`). Default `2048`.
-- `--max-targets <N>` — keep only the top-N highest-scored targets after ranking, before the build/fuzz sweep; `--list-targets` still prints the full ranked list and the kept-vs-total count is logged (never a silent truncation). Bounds *which* targets a huge tree attempts. Unset by default.
+- `--rss-limit-mb <MB>` — per-harness resident-set memory cap; a test case over budget is killed and reported as a GF-209 OOM finding instead of OOM-killing the host (libFuzzer `-rss_limit_mb`). Defaults to one quarter of available host/cgroup memory, clamped to 512..8192 MiB; pass an exact value or `0` to disable.
+- `--max-targets <N>` — keep only the top-N highest-scored targets after ranking, before the build/fuzz sweep; `--dry-run` prints this bounded plan, while `--list-targets` still prints the full ranked list. The kept-vs-total count is logged (never a silent truncation). Bounds *which* targets a huge tree attempts. Unset by default.
 - `--campaign-time <SECS>` — whole-*run* budget across all targets. Default: an OUTER wall-clock cap — once exceeded, `auto` stops STARTING new (ranked) targets and reports how many of the N discovered were reached. With `--min-target-time`, switches to SPLIT mode (below). Unset by default.
 - `--min-target-time <SECS>` — SPLIT-mode floor, used only with `--campaign-time` (errors otherwise): divide the campaign budget across the N attempted targets — each gets `max(min, campaign / N)` of fuzz time, and only the top `floor(campaign / per_target)` ranked targets are attempted (the rest logged unfuzzed), never below this floor. Overrides `--per-target-time`. Unset by default.
-- `--jobs <N>` / `-j <N>` — build+fuzz up to N targets concurrently via a bounded worker pool. Peak RAM ≈ `jobs × --rss-limit-mb`, so size it to the host (too high OOM-kills, e.g. inside a cgroup `MemoryMax` slice). Results aggregate deterministically regardless of completion order. Default `1` (serial).
+- `--jobs <N>` / `-j <N>` — build+fuzz up to N targets concurrently via a bounded worker pool. `jobs × --rss-limit-mb` is only the child allowance; also reserve RAM for the parent declaration index/results, compiler processes, and the OS. Results aggregate deterministically regardless of completion order. Default `1` (serial).
 - `--passes <SET>` — restrict the per-target cascade to a comma list of passes (`empty`, `rng`, `fuzz`); e.g. `--passes fuzz` runs only the fuzz-driven pass (~3× the 3-pass throughput). Mutually exclusive with `--single-pass`. Default: all passes.
 - `--single-pass` — convenience for `--passes fuzz`: run only the fuzz-driven pass per target.
 - `--max-repair-rounds <N>` — ceiling on build-fail → repair → retry rounds per target; the default covers all 95 successful clean/damaged samples in the strengthened 53-repository matrix (p95 6, p99/max 14 rounds). The no-progress early-break still applies, so it is a cap, not a fixed cost. Default `16`.

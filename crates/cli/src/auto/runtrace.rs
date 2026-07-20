@@ -134,8 +134,28 @@ pub enum RuntraceEvent {
 /// parse are returned as `RuntraceEvent::Unknown` so the consumer
 /// can surface them without dropping signal.
 pub fn parse_log(path: &Path) -> Result<Vec<RuntraceEvent>> {
-    let bytes =
-        std::fs::read(path).with_context(|| format!("read runtrace log {}", path.display()))?;
+    use std::io::Read;
+
+    let max_parse_bytes = crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_RUNTRACE_PARSE_BYTES",
+        512,
+        16 * crate::resource_limits::MIB,
+        16 * crate::resource_limits::MIB,
+        256 * crate::resource_limits::MIB,
+    ) as u64;
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("open runtrace log {}", path.display()))?;
+    let mut bytes = Vec::new();
+    file.take(max_parse_bytes + 1)
+        .read_to_end(&mut bytes)
+        .with_context(|| format!("read runtrace log {}", path.display()))?;
+    if bytes.len() as u64 > max_parse_bytes {
+        anyhow::bail!(
+            "runtrace log {} is above the {} MiB parse cap",
+            path.display(),
+            max_parse_bytes / (1024 * 1024)
+        );
+    }
     let text = String::from_utf8_lossy(&bytes).into_owned();
     Ok(parse_str(&text))
 }
@@ -404,9 +424,64 @@ fn sink_observation(event: &RuntraceEvent) -> Option<(SinkClass, &str, &str, Opt
 /// Fed one execution at a time via [`observe`](Self::observe) (the events are
 /// read per-input from the runtrace stream) and queried once at run end via
 /// [`confirmed`](Self::confirmed).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SinkTaintTracker {
     entries: BTreeMap<(SinkClass, String), SinkStat>,
+    dropped_entries: usize,
+    entry_limit: usize,
+    subject_bytes: usize,
+    representative_input_bytes: usize,
+}
+
+/// Defensive campaign-duration bounds. A target can derive a fresh path/URL/SQL
+/// string from every fuzz input; retaining all distinct subjects (and one full
+/// input for each) otherwise grows until the parent OOMs on a long run. The
+/// default tracking budget scales with available memory; every dimension has an
+/// exact environment override for unusually high-cardinality targets.
+fn sink_tracker_limits() -> (usize, usize, usize) {
+    let subject_bytes =
+        crate::resource_limits::env_usize("GOVFUZZ_MAX_SINK_SUBJECT_BYTES").unwrap_or(16 * 1024);
+    let representative_input_bytes =
+        crate::resource_limits::env_usize("GOVFUZZ_MAX_SINK_INPUT_BYTES").unwrap_or(32 * 1024);
+    let budget = crate::resource_limits::dynamic_bytes(
+        "GOVFUZZ_MAX_SINK_TRACKING_BYTES",
+        128,
+        32 * crate::resource_limits::MIB,
+        48 * crate::resource_limits::MIB,
+        512 * crate::resource_limits::MIB,
+    );
+    let estimated_entry_bytes = subject_bytes
+        .saturating_add(representative_input_bytes)
+        .saturating_add(512)
+        .max(1);
+    let derived_entries = (budget / estimated_entry_bytes).clamp(1024, 65_536);
+    let entry_limit =
+        crate::resource_limits::env_usize("GOVFUZZ_MAX_SINK_SUBJECTS").unwrap_or(derived_entries);
+    (entry_limit, subject_bytes, representative_input_bytes)
+}
+
+impl Default for SinkTaintTracker {
+    fn default() -> Self {
+        let (entry_limit, subject_bytes, representative_input_bytes) = sink_tracker_limits();
+        Self {
+            entries: BTreeMap::new(),
+            dropped_entries: 0,
+            entry_limit,
+            subject_bytes,
+            representative_input_bytes,
+        }
+    }
+}
+
+fn bounded_sink_subject(subject: &str, max_bytes: usize) -> String {
+    if subject.len() <= max_bytes {
+        return subject.to_owned();
+    }
+    let mut end = max_bytes;
+    while !subject.is_char_boundary(end) {
+        end -= 1;
+    }
+    subject[..end].to_owned()
 }
 
 impl SinkTaintTracker {
@@ -417,20 +492,23 @@ impl SinkTaintTracker {
             let Some((class, api, subject, taint)) = sink_observation(event) else {
                 continue;
             };
-            let stat = self
-                .entries
-                .entry((class, subject.to_owned()))
-                .or_insert_with(|| SinkStat {
-                    api: api.to_owned(),
-                    taint_offset: None,
-                    untainted_seen: false,
-                    representative_input: Vec::new(),
-                });
+            let key = (class, bounded_sink_subject(subject, self.subject_bytes));
+            if !self.entries.contains_key(&key) && self.entries.len() >= self.entry_limit {
+                self.dropped_entries = self.dropped_entries.saturating_add(1);
+                continue;
+            }
+            let stat = self.entries.entry(key).or_insert_with(|| SinkStat {
+                api: api.to_owned(),
+                taint_offset: None,
+                untainted_seen: false,
+                representative_input: Vec::new(),
+            });
             match taint {
                 Some(offset) => {
                     if stat.taint_offset.is_none() {
                         stat.taint_offset = Some(offset);
-                        stat.representative_input = input.to_vec();
+                        stat.representative_input =
+                            input[..input.len().min(self.representative_input_bytes)].to_vec();
                         stat.api = api.to_owned();
                     }
                 }
@@ -458,6 +536,36 @@ impl SinkTaintTracker {
                 })
             })
             .collect()
+    }
+
+    /// Consume the tracker and move retained evidence into the result. Production
+    /// calls this once at campaign end so large representative inputs are not
+    /// duplicated at peak RSS merely to emit findings.
+    pub fn into_confirmed(self) -> Vec<ConfirmedSink> {
+        self.entries
+            .into_iter()
+            .filter_map(|((class, subject), stat)| {
+                let taint_offset = stat.taint_offset?;
+                if stat.untainted_seen {
+                    return None;
+                }
+                Some(ConfirmedSink {
+                    class,
+                    api: stat.api,
+                    subject,
+                    taint_offset,
+                    input: stat.representative_input,
+                })
+            })
+            .collect()
+    }
+
+    pub fn dropped_entries(&self) -> usize {
+        self.dropped_entries
+    }
+
+    pub fn entry_limit(&self) -> usize {
+        self.entry_limit
     }
 }
 
@@ -1098,6 +1206,47 @@ fn format_assertion_source(file: &str, line: Option<i64>, function: &str) -> Str
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sink_tracker_bounds_distinct_subjects_and_representative_inputs() {
+        let mut tracker = SinkTaintTracker {
+            entries: BTreeMap::new(),
+            dropped_entries: 0,
+            entry_limit: 4,
+            subject_bytes: 16,
+            representative_input_bytes: 8,
+        };
+        for index in 0..=tracker.entry_limit {
+            tracker.observe(
+                &[RuntraceEvent::FileMissing {
+                    syscall: "open".to_owned(),
+                    path: format!("/tmp/{index}"),
+                    taint_offset: Some(0),
+                }],
+                b"x",
+            );
+        }
+
+        assert_eq!(tracker.entries.len(), tracker.entry_limit);
+        assert_eq!(tracker.dropped_entries(), 1);
+
+        let mut representative = SinkTaintTracker {
+            entries: BTreeMap::new(),
+            dropped_entries: 0,
+            entry_limit: 4,
+            subject_bytes: 16,
+            representative_input_bytes: 8,
+        };
+        representative.observe(
+            &[RuntraceEvent::FileMissing {
+                syscall: "open".to_owned(),
+                path: "/tmp/large".to_owned(),
+                taint_offset: Some(0),
+            }],
+            &vec![b'x'; representative.representative_input_bytes + 1],
+        );
+        assert_eq!(representative.confirmed()[0].input.len(), 8);
+    }
 
     #[test]
     fn parses_getenv_event() {

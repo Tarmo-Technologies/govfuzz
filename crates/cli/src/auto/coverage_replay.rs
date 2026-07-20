@@ -17,8 +17,10 @@
 
 use std::path::Path;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 const MAX_INPUTS: usize = 2000;
+const REPLAY_BUDGET: Duration = Duration::from_secs(30);
 
 /// Build + replay every C/C++ harness's corpus under source coverage, writing each
 /// harness's executed `(file:line)` set to `<harness>/covered-lines.txt`. Returns the
@@ -65,6 +67,7 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     if !built || !bin.is_file() {
         return false;
     }
+    let deadline = Instant::now() + REPLAY_BUDGET;
 
     let queue = work_dir.join("corpus").join(harness_id).join("queue");
     let Ok(inputs) = std::fs::read_dir(&queue) else {
@@ -77,7 +80,7 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     }
     let mut replayed = 0usize;
     for (i, input) in inputs.flatten().enumerate() {
-        if replayed >= MAX_INPUTS {
+        if replayed >= MAX_INPUTS || Instant::now() >= deadline {
             break;
         }
         let path = input.path();
@@ -86,13 +89,18 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
         }
         replayed += 1;
         // Fresh process per input (argv[1]) so the profile flushes at exit.
-        let _ = Command::new(&bin)
+        let completed = replay_command(&bin)
             .arg(&path)
             .env(
                 "LLVM_PROFILE_FILE",
                 prof_dir.join(format!("cov-{i}.profraw")),
             )
-            .output();
+            .output()
+            .map(|output| !matches!(output.status.code(), Some(124 | 137)))
+            .unwrap_or(false);
+        if !completed {
+            return false;
+        }
     }
     if replayed == 0 {
         return false;
@@ -140,6 +148,18 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
         return false;
     }
     std::fs::write(hdir.join("covered-lines.txt"), covered.join("\n")).is_ok()
+}
+
+/// Coverage is a best-effort post-pass. Bound every replay so a target that hangs
+/// after consuming its input cannot hold the complete auto campaign open.
+fn replay_command(bin: &Path) -> Command {
+    if which::which("timeout").is_ok() {
+        let mut command = Command::new("timeout");
+        command.arg("-s").arg("KILL").arg("10").arg(bin);
+        command
+    } else {
+        Command::new(bin)
+    }
 }
 
 /// Parse an LCOV export into `<file>:<line>` for each line with a non-zero hit count.

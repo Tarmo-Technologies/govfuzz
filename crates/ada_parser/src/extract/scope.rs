@@ -100,6 +100,18 @@ fn is_package_declaration_start(tokens: &[Token], index: usize) -> bool {
 fn is_subprogram_declaration_start(tokens: &[Token], index: usize) -> bool {
     !previous_kind_is(tokens, index, &TokenKind::KwEnd)
         && !previous_kind_is(tokens, index, &TokenKind::KwWith)
+        && !is_subprogram_instantiation(tokens, index)
+}
+
+/// `procedure Free is new Generic (...)` is a generic instantiation, not a
+/// subprogram body. It ends at `;` and has no `end Free`; pushing it as a body
+/// scope would make every later package operation look local to `Free`.
+fn is_subprogram_instantiation(tokens: &[Token], index: usize) -> bool {
+    let Some((_, after_name)) = parse_dotted_name(tokens, index.saturating_add(1)) else {
+        return false;
+    };
+    kind_at(tokens, after_name, &TokenKind::KwIs)
+        && kind_at(tokens, after_name.saturating_add(1), &TokenKind::KwNew)
 }
 
 fn previous_kind_is(tokens: &[Token], index: usize, kind: &TokenKind) -> bool {
@@ -144,9 +156,12 @@ fn parse_package_scope(
     } else {
         (ScopeKind::PackageSpec, index + 1)
     };
-    let (name, after_name) = parse_dotted_name(tokens, name_index)?;
+    let (local_name, after_name) = parse_dotted_name(tokens, name_index)?;
+    let name = separate_parent_before(tokens, index)
+        .map(|parent| format!("{parent}.{local_name}"))
+        .unwrap_or_else(|| local_name.clone());
     let end_index =
-        find_named_end(tokens, after_name, &name).unwrap_or_else(|| last_token_index(tokens));
+        find_named_end(tokens, after_name, &local_name).unwrap_or_else(|| last_token_index(tokens));
     let decl_span = span_from_token_range(tokens, index, end_index);
     let body_span = if kind == ScopeKind::PackageBody {
         Some(decl_span)
@@ -189,7 +204,10 @@ fn parse_subprogram_scope(
     parent: Option<usize>,
     is_generic: bool,
 ) -> Option<Scope> {
-    let (name, after_name) = parse_dotted_name(tokens, index + 1)?;
+    let (local_name, after_name) = parse_dotted_name(tokens, index + 1)?;
+    let name = separate_parent_before(tokens, index)
+        .map(|parent| format!("{parent}.{local_name}"))
+        .unwrap_or_else(|| local_name.clone());
     let header_end = find_subprogram_header_end(tokens, after_name);
     let is_index = find_token_before(tokens, after_name, header_end, &TokenKind::KwIs);
     let is_body = is_index.is_some_and(|position| !is_abstract_spec(tokens, position));
@@ -197,7 +215,7 @@ fn parse_subprogram_scope(
         if is_expression_function(tokens, is_index) {
             find_depth_zero_semicolon(tokens, is_index.unwrap_or(header_end)).unwrap_or(header_end)
         } else {
-            find_named_end(tokens, header_end, &name).unwrap_or(header_end)
+            find_named_end(tokens, header_end, &local_name).unwrap_or(header_end)
         }
     } else {
         header_end
@@ -225,6 +243,26 @@ fn parse_subprogram_scope(
         parent,
         is_generic,
     })
+}
+
+/// The parent named by an Ada subunit's `separate (Parent.Unit)` clause when
+/// the declaration at `index` immediately follows that clause. Subunits are
+/// compiled as children of the named parent; treating their local leaf as a
+/// library-level unit makes generated harnesses emit invalid `with Leaf;` and
+/// `Leaf.Operation` references.
+fn separate_parent_before(tokens: &[Token], index: usize) -> Option<String> {
+    let separate = (0..index)
+        .rev()
+        .find(|candidate| kind_at(tokens, *candidate, &TokenKind::KwSeparate))?;
+    if !kind_at(tokens, separate.saturating_add(1), &TokenKind::LParen) {
+        return None;
+    }
+    let (parent, after_parent) = parse_dotted_name(tokens, separate.saturating_add(2))?;
+    if !kind_at(tokens, after_parent, &TokenKind::RParen) || after_parent.saturating_add(1) != index
+    {
+        return None;
+    }
+    Some(parent)
 }
 
 fn package_declarative_span(
@@ -312,6 +350,13 @@ fn find_package_spec_declarative_end(
             Some(TokenKind::KwEnd) if next_is_construct_close(tokens, index) => {
                 index = index.saturating_add(2);
             }
+            Some(TokenKind::KwProtected | TokenKind::KwTask) => {
+                if let Some(close) = concurrent_declaration_end(tokens, index, end_index) {
+                    index = close.saturating_add(1);
+                } else {
+                    index = index.saturating_add(1);
+                }
+            }
             Some(TokenKind::KwPrivate) if !is_private_type_keyword(tokens, index) => {
                 return Some(index);
             }
@@ -376,6 +421,13 @@ fn find_body_declarative_end(
                     index = index.saturating_add(1);
                 }
             }
+            Some(TokenKind::KwProtected | TokenKind::KwTask) => {
+                if let Some(close) = concurrent_declaration_end(tokens, index, end_index) {
+                    index = close.saturating_add(1);
+                } else {
+                    index = index.saturating_add(1);
+                }
+            }
             Some(TokenKind::KwProcedure | TokenKind::KwFunction | TokenKind::KwEntry)
                 if is_subprogram_declaration_start(tokens, index) =>
             {
@@ -412,6 +464,44 @@ fn find_body_declarative_end(
     }
 
     Some(end_index)
+}
+
+/// End token of a protected/task declaration beginning at `index`, including
+/// optional `type` and discriminants. A forward declaration (`task type T;`)
+/// has no `is` and therefore no embedded `end` to skip.
+fn concurrent_declaration_end(tokens: &[Token], index: usize, limit: usize) -> Option<usize> {
+    if !matches!(
+        tokens.get(index).map(|token| &token.effective_kind),
+        Some(TokenKind::KwProtected | TokenKind::KwTask)
+    ) {
+        return None;
+    }
+    let name_index = if kind_at(tokens, index.saturating_add(1), &TokenKind::KwType) {
+        index.saturating_add(2)
+    } else {
+        index.saturating_add(1)
+    };
+    let (name, after_name) = parse_dotted_name(tokens, name_index)?;
+    let mut cursor = after_name;
+    let mut paren_depth = 0u32;
+    let mut has_body = false;
+    while cursor <= limit && cursor < tokens.len() {
+        match tokens.get(cursor).map(|token| &token.effective_kind) {
+            Some(TokenKind::LParen) => paren_depth = paren_depth.saturating_add(1),
+            Some(TokenKind::RParen) => paren_depth = paren_depth.saturating_sub(1),
+            Some(TokenKind::KwIs) if paren_depth == 0 => {
+                has_body = true;
+                break;
+            }
+            Some(TokenKind::Semicolon) if paren_depth == 0 => return None,
+            Some(TokenKind::Eof) | None => return None,
+            Some(_) => {}
+        }
+        cursor = cursor.saturating_add(1);
+    }
+    has_body
+        .then(|| find_named_end(tokens, cursor.saturating_add(1), &name))
+        .flatten()
 }
 
 fn body_subprogram_header_end(tokens: &[Token], start: usize) -> Option<usize> {
@@ -712,6 +802,44 @@ mod tests {
     }
 
     #[test]
+    fn separate_package_body_is_qualified_by_parent_unit() {
+        let source = "with Dependency; separate (Crypto.Types.Big_Numbers) \
+                      package body Utils is procedure Run is begin null; end Run; end Utils;";
+        let tree = build_scope_tree(&tokens(source));
+
+        let package = tree
+            .scopes
+            .iter()
+            .find(|scope| scope.kind == ScopeKind::PackageBody)
+            .unwrap();
+        assert_eq!(package.name, "crypto.types.big_numbers.utils");
+        let run = tree
+            .scopes
+            .iter()
+            .find(|scope| scope.kind == ScopeKind::SubprogramBody)
+            .unwrap();
+        assert_eq!(run.name, "run");
+        assert_eq!(
+            run.parent,
+            tree.scopes.iter().position(|scope| scope == package)
+        );
+    }
+
+    #[test]
+    fn separate_subprogram_is_qualified_by_parent_unit() {
+        let source = "separate (Crypto.Types.Big_Numbers) \
+                      function Parse (S : String) return Integer is begin return 0; end Parse;";
+        let tree = build_scope_tree(&tokens(source));
+        let function = tree
+            .scopes
+            .iter()
+            .find(|scope| scope.kind == ScopeKind::SubprogramBody)
+            .unwrap();
+        assert_eq!(function.name, "crypto.types.big_numbers.parse");
+        assert_eq!(function.parent, None);
+    }
+
+    #[test]
     fn generic_package_marks_is_generic() {
         let source = "generic type T is private; package P is end P;";
         let tree = build_scope_tree(&tokens(source));
@@ -824,6 +952,30 @@ mod tests {
     }
 
     #[test]
+    fn generic_subprogram_instance_does_not_orphan_following_package_operations() {
+        let source = "package P is\n\
+                      procedure Free is new Ada.Unchecked_Deallocation (T, T_Access);\n\
+                      procedure Read_Bom (S : String);\n\
+                      function Write_Bom return String;\n\
+                      end P;";
+        let tree = build_scope_tree(&tokens(source));
+        let pkg = tree
+            .scopes
+            .iter()
+            .position(|scope| scope.kind == ScopeKind::PackageSpec)
+            .expect("package scope");
+        assert!(tree.scopes.iter().all(|scope| scope.name != "free"));
+        for name in ["read_bom", "write_bom"] {
+            let scope = tree
+                .scopes
+                .iter()
+                .find(|scope| scope.name == name)
+                .unwrap_or_else(|| panic!("{name} scope present"));
+            assert_eq!(scope.parent, Some(pkg));
+        }
+    }
+
+    #[test]
     fn incomplete_package_at_eof_does_not_panic() {
         let tree = build_scope_tree(&tokens("package Broken is procedure P;"));
 
@@ -868,6 +1020,23 @@ mod tests {
             text.contains("After_It"),
             "declarative span truncated at the variant record's `end case`: {text:?}"
         );
+    }
+
+    #[test]
+    fn package_spec_declarative_span_spans_past_protected_type() {
+        let source = "package P is\n\
+            protected type Object (Size : Positive) is\n\
+               procedure Touch;\n\
+            private\n\
+               Value : Integer := Size;\n\
+            end Object;\n\
+            type Object_Access is access all Object;\n\
+            end P;";
+        let tokens = crate::lexer::lex(source, crate::ast::AdaStandard::Ada2012);
+        let tree = build_scope_tree(&tokens);
+        let span = tree.scopes[0].declarative_span.unwrap();
+        let text = &source[span.start_byte as usize..span.end_byte as usize];
+        assert!(text.contains("type Object_Access"), "{text}");
     }
 
     #[test]

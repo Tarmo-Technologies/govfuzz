@@ -6,12 +6,12 @@ description = """
 The vendor/ subdirectory goes missing — the harness #include of
 vendor/vendor.h fails to find both the header and the implementation
 file. Auto's repair planner emits a HeaderPlaceholder for the missing
-header and a StubBlind for vendor_helper (no declaration available
-once the header is gone).
+header and a function-like MacroDefine for vendor_helper (no declaration
+is available once the header is gone).
 
 First scenario exercising the `directory` Missing kind. Recursive
 unlink of the vendor/ subtree, then assert auto surfaces both the
-synthesized header and the blind stub.
+synthesized header and replacement macro.
 """
 must_build_after_repair = false
 
@@ -25,8 +25,8 @@ expect_surfaced = "synthesized_headers"
 locator_override = "vendor/vendor.h"
 
 # vendor_helper symbol — no declaration survives the directory delete,
-# so the StubBlind path lands in stubbed_symbols_blind.
+# so the implicit-call diagnostic lands in synthesized_macros.
 [[missing]]
-kind = "system_lib"
+kind = "unknown_symbol"
 name = "vendor_helper"
-expect_surfaced = "stubbed_symbols_blind"
+expect_surfaced = "synthesized_macros"

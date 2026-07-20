@@ -5,7 +5,7 @@ pub use diagnostics::{parse_json, parse_text, Diagnostic, DiagnosticKind, Severi
 pub use error::StubGenError;
 pub use manifest::{read_manifest, write_manifest, StubManifest, StubManifestEntry};
 pub use needs::{derive_stub_needs, StubNeed, StubNeedKind, StubOp, StubOpKind, StubParam};
-pub use synth::{synth_all, synth_stub, StubFile};
+pub use synth::{ada_context_units_for_ops, synth_all, synth_stub, StubFile};
 
 pub mod build_loop;
 pub mod diagnostics;

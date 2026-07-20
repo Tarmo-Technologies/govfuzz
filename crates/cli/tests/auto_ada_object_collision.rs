@@ -2,12 +2,12 @@
 //! Campaign regression: a source tree with a same-stem Ada body and C source
 //! (`sxxx.adb` + `sxxx.c`). Both compile to `sxxx.o`, and gprbuild rejects the
 //! whole project with "... have the same object file name", so the Ada harness
-//! failed to build. govfuzz now excludes the colliding C file from the generated
-//! project (`for Excluded_Source_Files use ("sxxx.c");`) so the Ada unit — the
-//! harness target — wins and the build succeeds.
+//! failed to build. govfuzz now restricts the generated project to its staged Ada
+//! closure, so the unrelated colliding C file is outside every `Source_Dirs`
+//! entry and the Ada unit — the harness target — wins.
 //!
 //! Drives the real `govfuzz auto` against the bundled fixture and asserts the Ada
-//! `run` target built+fuzzed and the generated `govfuzz_build.gpr` excludes the C.
+//! `run` target built+fuzzed and the staged source closure excludes the C.
 //!
 //! Gated on the Ada toolchain being installed; skipped (with a notice) otherwise.
 
@@ -95,7 +95,7 @@ fn same_stem_c_source_excluded_so_ada_harness_builds() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    // The generated project must have dropped the colliding C file.
+    // The generated project must not be able to see the colliding C file.
     let harness_id = run_target["harness_id"].as_str().expect("harness_id");
     let gpr = std::fs::read_to_string(
         work_dir
@@ -104,8 +104,13 @@ fn same_stem_c_source_excluded_so_ada_harness_builds() {
             .join("govfuzz_build.gpr"),
     )
     .expect("read govfuzz_build.gpr");
+    assert!(gpr.contains("govfuzz_work/src_instrumented"), "{gpr}");
     assert!(
-        gpr.contains("for Excluded_Source_Files use (\"sxxx.c\");"),
-        "the colliding C source must be excluded:\n{gpr}"
+        !gpr.contains(&format!("\"{}\"", srcroot.display())),
+        "the original mixed-language source root must not be a Source_Dirs entry:\n{gpr}"
+    );
+    assert!(
+        !work_dir.join("src_instrumented/sxxx.c").exists(),
+        "the colliding C source must not enter the staged Ada closure:\n{gpr}"
     );
 }

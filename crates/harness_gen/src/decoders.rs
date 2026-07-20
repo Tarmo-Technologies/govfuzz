@@ -30,11 +30,30 @@ pub fn select_decoder_for_param(
     p: &Parameter,
     registry: &ConstructorRegistry,
 ) -> Result<DecoderEmission, HarnessGenError> {
+    // Container instance types often resolve to a generic runtime declaration
+    // whose derived base cannot be followed in this project AST. Their standard
+    // empty constants are nevertheless always valid public values.
+    if let Some(neutral) = generic_container_neutral(&p.type_ref) {
+        return Ok(DecoderEmission {
+            call_expr: neutral,
+            setup_lines: Vec::new(),
+        });
+    }
     // Known stdlib discrete subtypes parse as opaque named types; decode them
     // within their fixed range instead of failing for "no constructor".
     if let Some((qualified, lo, hi)) = known_stdlib_scalar_subtype(&p.type_ref) {
         return Ok(DecoderEmission {
             call_expr: format!("{qualified} (AdaFuzz.Decode.Bounded_Range (Cur, {lo}, {hi}))"),
+            setup_lines: Vec::new(),
+        });
+    }
+    // Predefined float types are not represented by declarations in a project
+    // AST. Some old runtimes nevertheless leave them with an opaque/tagged kind;
+    // recognize only exact Standard spellings before dispatching on that stale
+    // kind (`Long_Long_Float` in the GNAT runtime sources vendored by drake).
+    if let Some(qualified) = predefined_float_type(&p.type_ref) {
+        return Ok(DecoderEmission {
+            call_expr: format!("{qualified} (AdaFuzz.Decode.F64 (Cur))"),
             setup_lines: Vec::new(),
         });
     }
@@ -55,6 +74,15 @@ pub fn select_decoder_for_param(
                 .to_owned(),
             setup_lines: Vec::new(),
         });
+    }
+    // Runtime-owned Interfaces/Interfaces.C scalars are commonly classified as
+    // private because their declarations live outside the project AST. Their
+    // language-defined numeric identity still makes them directly decodable.
+    if is_integer_alias_name(&p.type_ref) {
+        return Ok(integer_alias_decoder(
+            p,
+            interfaces_integer_bound(&p.type_ref),
+        ));
     }
     match &p.type_ref.kind {
         TypeKind::Scalar(ScalarKind::Integer) => Ok(DecoderEmission {
@@ -273,6 +301,77 @@ pub fn select_decoder_for_param(
         TypeKind::Access { .. } => {
             let acc_type = ada_type_name(p);
             let param_name = ada_name(&p.name);
+            // An unsupported anonymous access-to-subprogram profile still has a
+            // valid conservative value: null. Supported byte callbacks are
+            // intercepted by generate.rs before reaching this decoder.
+            if p.type_ref.name_path.is_empty()
+                && matches!(
+                    p.type_ref
+                        .constraints
+                        .0
+                        .trim_start()
+                        .split_whitespace()
+                        .next(),
+                    Some(word) if word.eq_ignore_ascii_case("function")
+                        || word.eq_ignore_ascii_case("procedure")
+                )
+            {
+                return Ok(DecoderEmission {
+                    call_expr: "null".to_owned(),
+                    setup_lines: Vec::new(),
+                });
+            }
+            // A null-excluding access subtype cannot use the ordinary null/slot
+            // decoder. Prefer public factory functions returning the subtype
+            // (`Parse_Args.Option_Ptr` and its `Make_*_Option` factories). This
+            // both satisfies the constraint and gives the target a real object.
+            if p.type_ref
+                .constraints
+                .0
+                .trim_start()
+                .to_ascii_lowercase()
+                .starts_with("not null ")
+            {
+                let constructors: Vec<&ConstructorEntry> = registry
+                    .for_tagged_type(&acc_type)
+                    .into_iter()
+                    .filter(|constructor| constructor_is_usable(constructor))
+                    .collect();
+                if constructors.is_empty() {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "not-null access type {acc_type} has no constructor with synthesizable parameters"
+                    )));
+                }
+
+                let decode_name = format!("Decode_{param_name}");
+                let mut setup_lines = vec![
+                    format!("function {decode_name} return {acc_type} is"),
+                    "begin".to_owned(),
+                    format!(
+                        "   case AdaFuzz.Decode.Choose_Tag (Cur, {}) is",
+                        constructors.len()
+                    ),
+                ];
+                for (idx, constructor) in constructors.iter().enumerate() {
+                    setup_lines.push(format!(
+                        "      when {} => return {};",
+                        idx + 1,
+                        constructor_call(constructor)
+                    ));
+                }
+                setup_lines.push(format!(
+                    "      when others => return {};",
+                    constructor_call(constructors[0])
+                ));
+                setup_lines.push("   end case;".to_owned());
+                setup_lines.push(format!("end {decode_name};"));
+
+                return Ok(DecoderEmission {
+                    call_expr: decode_name,
+                    setup_lines,
+                });
+            }
+
             let temp_name = format!("Tmp_{param_name}");
             let slots_name = format!("Slots_{param_name}");
             let idx_name = format!("Idx_{param_name}");
@@ -401,6 +500,9 @@ pub fn select_decoder_for_param(
 
 fn builtin_named_type_neutral(type_ref: &TypeRef) -> Option<String> {
     let dotted = type_path_parts(type_ref).join(".").to_ascii_lowercase();
+    if let Some(neutral) = generic_container_neutral(type_ref) {
+        return Some(neutral);
+    }
     match dotted.as_str() {
         "system.address" => Some("System.Null_Address".to_owned()),
         "system.storage_elements.storage_offset"
@@ -412,6 +514,34 @@ fn builtin_named_type_neutral(type_ref: &TypeRef) -> Option<String> {
         }
         _ => None,
     }
+}
+
+fn generic_container_neutral(type_ref: &TypeRef) -> Option<String> {
+    let parts = type_path_parts(type_ref);
+    if parts.len() >= 2 {
+        let prefix = parts[..parts.len() - 1]
+            .iter()
+            .map(|part| ada_name(part))
+            .collect::<Vec<_>>()
+            .join(".");
+        let empty = match parts.last()?.to_ascii_lowercase().as_str() {
+            // Canonical public types/constants exported by Ada.Containers
+            // generic instances. These cover nested project instances whose
+            // concrete type declarations live in the generic runtime rather
+            // than the parsed source tree (`Arg_Lists.Vector`).
+            "vector" => "Empty_Vector",
+            "list" => "Empty_List",
+            "map" => "Empty_Map",
+            "set" => "Empty_Set",
+            "tree" => "Empty_Tree",
+            "holder" => "Empty_Holder",
+            _ => "",
+        };
+        if !empty.is_empty() {
+            return Some(format!("{prefix}.{empty}"));
+        }
+    }
+    None
 }
 
 /// Known Ada standard-library scalar subtypes whose definitions live in the
@@ -438,6 +568,28 @@ fn known_stdlib_scalar_subtype(type_ref: &TypeRef) -> Option<(&'static str, i64,
         ("ada.calendar.day_duration", _) | (_, "day_duration") => {
             Some(("Ada.Calendar.Day_Duration", 0, 86_400))
         }
+        ("ada.streams.stream_element", _) | (_, "stream_element") => {
+            Some(("Ada.Streams.Stream_Element", 0, 255))
+        }
+        ("ada.streams.stream_element_count", _) | (_, "stream_element_count") => {
+            // The runtime subtype's theoretical upper bound is implementation
+            // dependent and enormous; a MiB is valid and useful for fuzzing.
+            Some(("Ada.Streams.Stream_Element_Count", 0, 1_048_576))
+        }
+        ("ada.streams.stream_element_offset", _) | (_, "stream_element_offset") => {
+            Some(("Ada.Streams.Stream_Element_Offset", -1_048_576, 1_048_576))
+        }
+        _ => None,
+    }
+}
+
+fn predefined_float_type(type_ref: &TypeRef) -> Option<&'static str> {
+    let dotted = type_path_parts(type_ref).join(".").to_ascii_lowercase();
+    match dotted.as_str() {
+        "float" | "standard.float" => Some("Float"),
+        "short_float" | "standard.short_float" => Some("Short_Float"),
+        "long_float" | "standard.long_float" => Some("Long_Float"),
+        "long_long_float" | "standard.long_long_float" => Some("Long_Long_Float"),
         _ => None,
     }
 }
@@ -447,8 +599,12 @@ fn known_stdlib_scalar_subtype(type_ref: &TypeRef) -> Option<(&'static str, i64,
 /// `Ada.Streams.Stream_Element_Array` decoding also needs `Ada.Streams` (already
 /// in the direct template, but added for the generic/servant paths).
 pub fn known_stdlib_type_with(type_ref: &TypeRef) -> Option<&'static str> {
-    if known_stdlib_scalar_subtype(type_ref).is_some() {
-        return Some("Ada.Calendar");
+    if let Some((qualified, _, _)) = known_stdlib_scalar_subtype(type_ref) {
+        return if qualified.starts_with("Ada.Streams.") {
+            Some("Ada.Streams")
+        } else {
+            Some("Ada.Calendar")
+        };
     }
     if is_stream_element_array(type_ref) {
         return Some("Ada.Streams");
@@ -473,7 +629,10 @@ pub fn known_stdlib_with_for_type_name(name: &str) -> Option<&'static str> {
     let leaf = name.rsplit('.').next().unwrap_or(name).to_ascii_lowercase();
     match leaf.as_str() {
         "year_number" | "month_number" | "day_number" | "day_duration" => Some("Ada.Calendar"),
-        "stream_element_array" => Some("Ada.Streams"),
+        "stream_element"
+        | "stream_element_count"
+        | "stream_element_offset"
+        | "stream_element_array" => Some("Ada.Streams"),
         _ => None,
     }
 }
@@ -498,6 +657,12 @@ fn select_neutral_for_param(
     p: &Parameter,
     registry: &ConstructorRegistry,
 ) -> Result<DecoderEmission, HarnessGenError> {
+    if let Some(neutral) = generic_container_neutral(&p.type_ref) {
+        return Ok(DecoderEmission {
+            call_expr: neutral,
+            setup_lines: Vec::new(),
+        });
+    }
     if let Some((qualified, _lo, _hi)) = known_stdlib_scalar_subtype(&p.type_ref) {
         return Ok(DecoderEmission {
             call_expr: format!("{qualified}'First"),
@@ -516,6 +681,9 @@ fn select_neutral_for_param(
             call_expr: "0.0".to_owned(),
             setup_lines: Vec::new(),
         });
+    }
+    if is_integer_alias_name(&p.type_ref) {
+        return Ok(scalar_neutral(p, "0"));
     }
     match &p.type_ref.kind {
         // Use `'First` rather than a `0`/`1` literal: it is always in range for
@@ -815,12 +983,21 @@ fn array_neutral(p: &Parameter) -> DecoderEmission {
     let param_name = ada_name(&p.name);
     let temp_name = format!("Tmp_{param_name}");
     let decode_name = format!("Decode_{param_name}");
+    let unconstrained = matches!(
+        &p.type_ref.kind,
+        TypeKind::Array { bounds, .. } if bounds.is_empty() || bounds.contains("<>")
+    );
+    let declaration = if unconstrained {
+        format!("   {temp_name} : {arr_type} (1 .. 16) := (others => 0);")
+    } else {
+        format!("   {temp_name} : {arr_type} := (others => 0);")
+    };
 
     DecoderEmission {
         call_expr: decode_name.clone(),
         setup_lines: vec![
             format!("function {decode_name} return {arr_type} is"),
-            format!("   {temp_name} : {arr_type} (1 .. 16) := (others => 0);"),
+            declaration,
             "begin".to_owned(),
             format!("   return {temp_name};"),
             format!("end {decode_name};"),
@@ -1259,6 +1436,9 @@ fn guess_decoder_for_type(ty: &str) -> String {
 
 fn guess_neutral_for_type(ty: &str) -> String {
     let normalized = ty.trim();
+    if let Some(callback) = callback_constructor_neutral(normalized) {
+        return callback.to_owned();
+    }
     let last = normalized
         .split('.')
         .next_back()
@@ -1294,6 +1474,9 @@ fn guess_neutral_for_type(ty: &str) -> String {
 /// Root_Zipstream_Type)`) would otherwise emit `Get_Time (0)` ("no candidate
 /// interpretations match the actuals").
 fn type_has_known_neutral(ty: &str) -> bool {
+    if callback_constructor_neutral(ty).is_some() {
+        return true;
+    }
     let last = ty
         .trim()
         .split('.')
@@ -1316,6 +1499,27 @@ fn type_has_known_neutral(ty: &str) -> bool {
             | "day_duration"
             | "ref"
     ) || looks_like_fixed_size_byte_alias(&last)
+}
+
+/// Constructor arguments that are anonymous streaming callbacks and can be
+/// backed by the generated callback package. Keep this exact to profiles for
+/// which `Gf_Callbacks` declares a subtype-conformant subprogram.
+fn callback_constructor_neutral(type_name: &str) -> Option<&'static str> {
+    let lower = type_name
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
+    if !lower.starts_with("access procedure") {
+        return None;
+    }
+    if lower.contains("item : out string") && lower.contains("last : out natural") {
+        return Some("Gf_Callbacks.Src_String'Access");
+    }
+    if lower.contains("item : in string") && !lower.contains(';') {
+        return Some("Gf_Callbacks.Snk_String'Access");
+    }
+    None
 }
 
 /// A constructor is usable for neutral synthesis only when every required
@@ -1367,6 +1571,20 @@ fn ada_type_name(p: &Parameter) -> String {
     }
 
     match &p.type_ref.kind {
+        TypeKind::Access { .. }
+            if matches!(
+                p.type_ref
+                    .constraints
+                    .0
+                    .trim_start()
+                    .split_whitespace()
+                    .next(),
+                Some(word) if word.eq_ignore_ascii_case("function")
+                    || word.eq_ignore_ascii_case("procedure")
+            ) =>
+        {
+            format!("access {}", p.type_ref.constraints.0.trim())
+        }
         TypeKind::Scalar(ScalarKind::Integer) => "Integer".to_owned(),
         TypeKind::Scalar(ScalarKind::Float) => "Long_Float".to_owned(),
         TypeKind::Scalar(ScalarKind::Boolean) => "Boolean".to_owned(),
@@ -1752,6 +1970,41 @@ mod tests {
             super::guess_neutral_for_type("Ada.Calendar.Year_Number"),
             "Ada.Calendar.Year_Number'First"
         );
+
+        // Ada.Streams integer/modular subtypes are likewise runtime-owned and
+        // can carry a stale composite kind after resolving a project subtype.
+        let count = select_decoder_for_param(
+            &StructuralAst::new(),
+            &param(
+                "Ada.Streams.Stream_Element_Count",
+                TypeKind::Tagged {
+                    base: TypeId(0),
+                    is_abstract: false,
+                },
+            ),
+            &registry,
+        )
+        .unwrap();
+        assert_eq!(
+            count.call_expr,
+            "Ada.Streams.Stream_Element_Count (AdaFuzz.Decode.Bounded_Range (Cur, 0, 1048576))"
+        );
+        assert_eq!(
+            known_stdlib_type_with(&type_ref_with_kind_and_name(
+                TypeKind::Private,
+                &["Ada", "Streams", "Stream_Element_Count"]
+            )),
+            Some("Ada.Streams")
+        );
+    }
+
+    #[test]
+    fn predefined_long_long_float_ignores_stale_composite_kind() {
+        let decoder = select(&param("Long_Long_Float", TypeKind::Private)).unwrap();
+        assert_eq!(
+            decoder.call_expr,
+            "Long_Long_Float (AdaFuzz.Decode.F64 (Cur))"
+        );
     }
 
     #[test]
@@ -2055,6 +2308,21 @@ mod tests {
     }
 
     #[test]
+    fn private_interfaces_c_integer_is_decoded_as_standard_scalar() {
+        let parameter = param("Interfaces.C.Unsigned_Long", TypeKind::Private);
+        let decoder = select(&parameter).unwrap();
+        assert_eq!(
+            decoder.call_expr,
+            "Interfaces.C.Unsigned_Long (AdaFuzz.Decode.Bounded_Range (Cur, 0, 2147483647))"
+        );
+
+        let mut output = parameter;
+        output.mode = ParamMode::Out;
+        let neutral = select_initializer(&output).unwrap();
+        assert_eq!(neutral.call_expr, "Interfaces.C.Unsigned_Long (0)");
+    }
+
+    #[test]
     fn corba_object_ref_decoder_uses_nil_and_fake_factories() {
         let decoder = select(&param("CORBA.Object.Ref", TypeKind::Unknown)).unwrap();
 
@@ -2310,6 +2578,29 @@ mod tests {
             "constrained array must iterate its own range: {:?}",
             decoder.setup_lines
         );
+    }
+
+    #[test]
+    fn constrained_out_array_neutral_declares_bare_without_added_bounds() {
+        let initializer = select_initializer(&param_with_mode(
+            "W_Block256",
+            TypeKind::Array {
+                idx_types: vec![TypeId(2)],
+                elem_type: TypeId(3),
+                bounds: "W_Block256_Range".to_owned(),
+                elem_name: "word".to_owned(),
+            },
+            ParamMode::Out,
+        ))
+        .unwrap();
+
+        assert!(initializer
+            .setup_lines
+            .contains(&"   Tmp_Value : W_Block256 := (others => 0);".to_owned()));
+        assert!(!initializer
+            .setup_lines
+            .iter()
+            .any(|line| line.contains("W_Block256 (1 .. 16)")));
     }
 
     #[test]
@@ -2989,6 +3280,51 @@ mod tests {
         assert_eq!(decoder.call_expr, "Decode_Value");
     }
 
+    #[test]
+    fn anonymous_access_function_can_fall_back_to_null() {
+        let mut value = param("", TypeKind::Access { target: TypeId(0) });
+        value.type_ref.name_path.clear();
+        value.type_ref.constraints =
+            Constraints("function (Item : Address) return Boolean".to_owned());
+
+        let decoder = select(&value).unwrap();
+
+        assert_eq!(decoder.call_expr, "null");
+        assert!(decoder.setup_lines.is_empty());
+    }
+
+    #[test]
+    fn generic_container_instance_uses_standard_empty_constant() {
+        let decoder = select(&param("Arg_Lists.Vector", TypeKind::Unknown)).unwrap();
+
+        assert_eq!(decoder.call_expr, "Arg_Lists.Empty_Vector");
+    }
+
+    #[test]
+    fn non_null_access_param_uses_public_factory() {
+        let mut value = param(
+            "Parse_Args.Option_Ptr",
+            TypeKind::Access { target: TypeId(2) },
+        );
+        value.type_ref.constraints = Constraints("not null General_Option_Ptr".to_owned());
+        let registry = ConstructorRegistry {
+            entries: vec![constructor(
+                "Option_Ptr",
+                "Parse_Args.Make_Boolean_Option",
+                0,
+            )],
+        };
+
+        let decoder = select_decoder_for_param(&StructuralAst::new(), &value, &registry).unwrap();
+
+        assert_eq!(decoder.call_expr, "Decode_Value");
+        assert!(decoder
+            .setup_lines
+            .iter()
+            .any(|line| { line.contains("return Parse_Args.Make_Boolean_Option;") }));
+        assert!(!decoder.setup_lines.iter().any(|line| line.contains("null")));
+    }
+
     fn constructor(
         tagged_type_name: &str,
         qualified_path: &str,
@@ -3097,6 +3433,21 @@ mod tests {
         assert_eq!(
             super::guess_neutral_for_type("Ada.Strings.Unbounded.Unbounded_String"),
             "Ada.Strings.Unbounded.Null_Unbounded_String"
+        );
+        let callback_ctor = ConstructorEntry {
+            tagged_type_name: "YAML.Parser".to_owned(),
+            constructor_name: "Create".to_owned(),
+            qualified_path: "YAML.Create".to_owned(),
+            param_count: 1,
+            param_type_names: vec![
+                "access procedure (Item : out String; Last : out Natural)".to_owned()
+            ],
+            param_has_default: vec![false],
+        };
+        assert!(super::constructor_is_usable(&callback_ctor));
+        assert_eq!(
+            super::constructor_call(&callback_ctor),
+            "YAML.Create(Gf_Callbacks.Src_String'Access)"
         );
         // No recorded param types -> assume usable (legacy behaviour).
         let unknown_ctor = ConstructorEntry {

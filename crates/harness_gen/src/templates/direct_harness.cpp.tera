@@ -75,6 +75,12 @@
 #include "{{ header }}"
 {%- endfor %}
 
+// Keep target-header libc redirects out of the generated coverage/runtime
+// driver. For example, c-ares maps getenv to its restricted ares_getenv.
+#ifdef getenv
+#undef getenv
+#endif
+
 // Sanitizer-runtime callbacks (edge coverage + cmplog operand capture, #400)
 // must never be instrumented themselves: with `-fsanitize-coverage=trace-cmp`
 // on, an un-attributed compare inside one of these would recurse into the
@@ -106,7 +112,7 @@ using namespace {{ ns }};
    `StdAfx.h`) frequently does NOT declare this particular symbol — without the
    decl the qualified call is an `undeclared identifier`. A namespace-scoped
    redeclaration matching the real one is legal C++. #}
-{%- if not passthrough_libfuzzer_entrypoint and not receiver_class and (not has_target_header or forward_namespace) %}
+{%- if not passthrough_libfuzzer_entrypoint and not target_is_method and (not has_target_header or forward_namespace) %}
 {% if forward_namespace %}namespace {{ forward_namespace }} {
 {% endif %}{{ return_type }} {{ target_name }}({% for p in params %}{{ p.c_type }}{% if not loop.last %}, {% endif %}{% endfor %});
 {% if forward_namespace %}}

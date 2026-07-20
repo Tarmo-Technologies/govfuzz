@@ -125,7 +125,7 @@ pub struct AutoArgs {
     #[arg(long = "max-targets", value_name = "N")]
     pub max_targets: Option<usize>,
 
-    /// Cap on build-fail -> repair -> retry rounds per target (default 48). Each
+    /// Cap on build-fail -> repair -> retry rounds per target (default 16). Each
     /// round only runs when the previous one applied a NEW repair (the no-progress
     /// early-break is preserved), so this is a ceiling, not a fixed cost. A LOW
     /// value (2-3) fails un-buildable targets fast — useful for a quick triage
@@ -726,6 +726,18 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // IDL/CORBA scaffolding, ranking, report) can still flush the bug report.
     crate::auto::bug_report::set_output_dir(work.join("auto"));
 
+    // Establish a valid checkpoint before configuration, build probing, or
+    // discovery. Later passes replace it with progressively richer evidence.
+    // Even an early error or OOM therefore leaves a stable file and terminal
+    // path instead of no handoff artifact at all.
+    let empty_dependency_seed = crate::auto::dep_manifest::DependencyManifest::new();
+    crate::auto::report::write_dependency_checkpoint(&path, &work, &empty_dependency_seed, &[])?;
+    eprintln!(
+        "govfuzz auto: checkpointing offline requirements to {}",
+        work.join("auto/missing-deps.txt").display()
+    );
+    let mut dependency_pointer_guard = DependencyPointerGuard::new(&work);
+
     // Project config (--config <PATH>, or an auto-loaded .govfuzz.toml in the tree):
     // fill options the CLI left at their default. Applied BEFORE the env-publish and
     // build-recovery blocks below, which read the resulting args.
@@ -792,6 +804,20 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         args.run_untrusted = true;
     }
 
+    // Project-declared requirements are knowable without executing the build or
+    // discovering targets. Persist them before the untrusted probe so a killed
+    // probe cannot erase `.gitmodules`, Alire, or generated-output evidence.
+    let early_dependency_seed = crate::auto::requirements::scan(
+        &path,
+        &[],
+        &crate::auto::preflight::PreflightReport { lanes: Vec::new() },
+        &args.ada_deps,
+        &work,
+        false,
+    );
+    crate::auto::report::write_dependency_checkpoint(&path, &work, &early_dependency_seed, &[])?;
+    let probe_requested = args.probe_build || args.run_untrusted || args.build_command.is_some();
+
     // --sloc: write a per-language SLOC breakdown of the source tree up front,
     // independent of build/fuzz outcomes. A failure here shouldn't abort the run.
     // A relative path lands beside the other run outputs in `<work>/auto/`, not the
@@ -814,7 +840,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // `--run-untrusted` is the umbrella consent gate: it implies `--probe-build`
     // (CMake/Make) and additionally runs an Ada build probe (alr/gprbuild).
     // `--build-command` is its own trigger: an explicit command to intercept.
-    if args.probe_build || args.run_untrusted || args.build_command.is_some() {
+    if probe_requested {
         let sandbox = crate::auto::build_probe::resolve_sandbox_program();
         eprintln!(
             "govfuzz auto: running the project's build offline{} to recover compile flags / generated files",
@@ -850,6 +876,23 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         }
     }
 
+    // A build probe can produce exact missing-package/tool diagnostics and can
+    // also satisfy generated-output declarations. Refresh and checkpoint both
+    // facts immediately, before discovery creates another OOM/interrupt window.
+    let project_dependency_seed = if probe_requested {
+        crate::auto::requirements::scan(
+            &path,
+            &[],
+            &crate::auto::preflight::PreflightReport { lanes: Vec::new() },
+            &args.ada_deps,
+            &work,
+            true,
+        )
+    } else {
+        early_dependency_seed.clone()
+    };
+    crate::auto::report::write_dependency_checkpoint(&path, &work, &project_dependency_seed, &[])?;
+
     // Auto-generate CORBA/IDL scaffolding from any `.idl` files in the tree so an
     // Ada CORBA project's harnesses build without a manual `fake-corba` step.
     // govfuzz's own IDL parser — executes no project code — so it runs by default.
@@ -857,6 +900,15 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if idl_mapped > 0 {
         eprintln!(
             "govfuzz auto: generated CORBA scaffolding from {idl_mapped} in-tree .idl file(s)"
+        );
+    }
+
+    let vcs_recovery = crate::auto::vcs_recovery::materialize_deleted_tracked_files(&path, &work);
+    if let Some(recovery) = &vcs_recovery {
+        eprintln!(
+            "govfuzz auto: recovered {} deleted tracked dependency file(s) from local Git HEAD into isolated work dir {}",
+            recovery.relative_paths.len(),
+            recovery.root.display()
         );
     }
 
@@ -938,6 +990,19 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let preflight = crate::auto::preflight::run(&candidates);
     eprint!("{}", preflight.render());
 
+    // Seed and atomically persist the offline-requirements manifest before any
+    // target starts. If the parent is later OOM-killed, this declaration and
+    // toolchain analysis still survives; completed targets extend it below.
+    let mut dependency_seed = project_dependency_seed;
+    crate::auto::requirements::add_target_requirements(
+        &mut dependency_seed,
+        &candidates,
+        &preflight,
+    );
+    dependency_seed.mark_checkpoint(0, false);
+    let mut dependency_checkpoint =
+        crate::auto::report::write_dependency_checkpoint(&path, &work, &dependency_seed, &[])?;
+
     // --dry-run: show the plan (toolchains + ranked targets + build-recovery note) and
     // exit without building or fuzzing, so a long run can be validated first.
     if args.dry_run {
@@ -1008,6 +1073,9 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         );
     }
     let mut idx = DeclarationIndex::build_indexed(&path, &header_root)?;
+    if let Some(recovery) = &vcs_recovery {
+        idx.add_vcs_recovery_root(&recovery.root)?;
+    }
     // Extra C/C++ include dirs (`--extra-include`): dependency headers outside
     // the swept tree (OSAL/PSP for cFE, a vendored SDK include/). Fold them into
     // the cross-dir header index so type modeling resolves the real defs, and
@@ -1123,6 +1191,15 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
              effective peak memory ≈ jobs x rss-limit-mb = {} MB — size it to the host",
             jobs.saturating_mul(args.rss_limit_mb)
         );
+        if candidates
+            .iter()
+            .any(|candidate| candidate.lang == crate::auto::candidate::Lang::Ada)
+        {
+            eprintln!(
+                "govfuzz auto: Ada targets share the staged source layout and will build \
+                 serially; non-Ada targets still use --jobs {jobs}"
+            );
+        }
     }
     // Parse `--sanitizers asan,ubsan,…` once via the same validator the standalone
     // `govfuzz fuzz` path uses, so every harness in the sweep builds+runs with the
@@ -1274,6 +1351,16 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         );
     }
     let resumed = resumed_results.len();
+    // Recovered prior results are already durable individually. Fold them into
+    // the new run's manifest before any remaining target starts.
+    if !resumed_results.is_empty() {
+        dependency_checkpoint = crate::auto::report::write_dependency_checkpoint(
+            &path,
+            &work,
+            &dependency_seed,
+            &resumed_results,
+        )?;
+    }
 
     // Directed fuzzing (--static): run the whole-tree static scan UP FRONT and fuzz
     // the candidates whose file carries a flagged sink FIRST. Under a `--campaign-time`
@@ -1399,6 +1486,18 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             // Persist the full result the moment this target finishes, so a
             // `--resume` run (or one after an interrupt mid-sweep) reloads it.
             crate::auto::report::persist_target_result(&work, &result);
+            crate::auto::report::checkpoint_dependency_result(
+                &path,
+                &work,
+                &mut dependency_checkpoint,
+                &result,
+            )
+            .map_err(|error| {
+                anyhow::anyhow!(
+                    "could not checkpoint offline requirements after {}: {error:#}",
+                    result.candidate.harness_id
+                )
+            })?;
             results.push(result);
         }
         results
@@ -1412,6 +1511,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             &options,
             args.verbose,
             campaign_deadline,
+            &path,
+            &dependency_checkpoint,
         )?
     };
 
@@ -1684,6 +1785,14 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         emit_campaign_sbom(&path, &work);
     }
 
+    // Keep this as the final terminal feedback: it is the handoff list an
+    // offline operator needs after the campaign scrollback ends.
+    eprintln!(
+        "govfuzz auto: requirements: {}",
+        crate::auto::report::dependency_manifest_pointer(&work)
+    );
+    dependency_pointer_guard.disarm();
+
     // M22 (campaign fix): a 100%-legacy run produces only `report_only` outcomes
     // (discovered + statically analyzed, not fuzzed) — that is a SUCCESSFUL scan,
     // not a failure. Count report-only targets and any emitted finding toward
@@ -1697,6 +1806,38 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             1
         },
     )
+}
+
+/// Ensures ordinary errors, early returns, and unwindable panics still end with
+/// the durable requirements pointer. SIGKILL/OOM cannot run destructors, so the
+/// run-start checkpoint line remains the fallback for that case.
+struct DependencyPointerGuard {
+    work: PathBuf,
+    armed: bool,
+}
+
+impl DependencyPointerGuard {
+    fn new(work: &Path) -> Self {
+        Self {
+            work: work.to_path_buf(),
+            armed: true,
+        }
+    }
+
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for DependencyPointerGuard {
+    fn drop(&mut self) {
+        if self.armed {
+            eprintln!(
+                "govfuzz auto: requirements: {}",
+                crate::auto::report::dependency_manifest_pointer(&self.work)
+            );
+        }
+    }
 }
 
 /// Emit the `--sbom` bundle for a finished campaign: the scanned tree's
@@ -1881,6 +2022,8 @@ fn run_parallel_sweep(
     options: &AttemptOptions,
     verbose: bool,
     campaign_deadline: Option<std::time::Instant>,
+    source_root: &Path,
+    checkpoint_base: &crate::auto::dep_manifest::DependencyManifest,
 ) -> Result<Vec<crate::auto::attempt::AttemptResult>> {
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Mutex;
@@ -1897,6 +2040,13 @@ fn run_parallel_sweep(
     let reached = AtomicUsize::new(0);
     let stopped = AtomicBool::new(false);
     let stderr_lock = Mutex::new(());
+    let dependency_checkpoint = Mutex::new(checkpoint_base.clone());
+    // Ada's build pipeline stages the target closure under the run-level
+    // `<work>/src_instrumented` directory. Two workers rebuilding that directory
+    // concurrently can delete units while the other compiler reads them (real
+    // campaign symptom: `gnat1: Cannot find: crypto.ads`). Serialize only Ada
+    // attempts; C/C++ and interpreted targets retain full `--jobs` parallelism.
+    let ada_attempt_lock = Mutex::new(());
     let worker_count = jobs.min(n);
 
     std::thread::scope(|scope| {
@@ -1938,7 +2088,12 @@ fn run_parallel_sweep(
                     language: Some(format!("{:?}", candidate.lang)),
                 };
                 let synth_candidate = candidate.clone();
-                let result = match crate::auto::bug_report::catch(attempt_ctx, || {
+                let _ada_guard = if candidate.lang == crate::auto::candidate::Lang::Ada {
+                    Some(ada_attempt_lock.lock().unwrap())
+                } else {
+                    None
+                };
+                let mut result = match crate::auto::bug_report::catch(attempt_ctx, || {
                     crate::auto::attempt::attempt(candidate, work, idx, options.clone())
                 }) {
                     Ok(inner) => inner,
@@ -1965,6 +2120,30 @@ fn run_parallel_sweep(
                         Err(error) => eprintln!("{prefix} → error: {error:#}"),
                     }
                 }
+                // Persist and checkpoint inside the worker, before the result is
+                // handed back to the final collector. This is the difference
+                // between preserving completed parallel targets and losing the
+                // whole batch when the parent is killed before all workers join.
+                if let Ok(completed) = &result {
+                    crate::auto::report::persist_target_result(work, completed);
+                    let mut checkpoint = dependency_checkpoint.lock().unwrap();
+                    if let Err(error) = crate::auto::report::checkpoint_dependency_result(
+                        source_root,
+                        work,
+                        &mut checkpoint,
+                        completed,
+                    ) {
+                        let _g = stderr_lock.lock().unwrap();
+                        eprintln!(
+                            "warning: could not checkpoint offline requirements after {}: {error:#}",
+                            completed.candidate.harness_id
+                        );
+                        result = Err(anyhow::anyhow!(
+                            "could not checkpoint offline requirements after {}: {error:#}",
+                            completed.candidate.harness_id
+                        ));
+                    }
+                }
                 reached.fetch_add(1, Ordering::SeqCst);
                 slots.lock().unwrap()[i] = Some(result);
             });
@@ -1983,7 +2162,6 @@ fn run_parallel_sweep(
     for slot in slots.into_inner().unwrap() {
         match slot {
             Some(Ok(r)) => {
-                crate::auto::report::persist_target_result(work, &r);
                 results.push(r);
             }
             Some(Err(error)) => return Err(error),
@@ -2263,6 +2441,11 @@ impl AutoSummary {
         let _ = writeln!(s, "Output:");
         let _ = writeln!(s, "  report:    {}", auto_dir.join("run.md").display());
         let _ = writeln!(s, "             {}", auto_dir.join("run.json").display());
+        let _ = writeln!(
+            s,
+            "  requirements: {}",
+            crate::auto::report::dependency_manifest_pointer(&self.work)
+        );
         let _ = writeln!(s, "  harnesses: {}/<harness-id>/", harness_root.display());
         if self.findings > 0 {
             let _ = writeln!(s, "  findings:  {}/", self.work.join("findings").display());
@@ -2771,19 +2954,21 @@ fn summarize_repairs(repairs: &[crate::auto::repair::Repair]) -> Option<String> 
         mut headers,
         mut types,
         mut macros,
+        mut declarations,
         mut symbols,
         mut sources,
         mut envs,
         mut ada,
         mut incdirs,
         mut platforms,
-    ) = (0, 0, 0, 0, 0, 0, 0, 0, 0);
+    ) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     for repair in repairs {
         match repair {
             HeaderPlaceholder { .. } | ConfigHeaderSynth { .. } => headers += 1,
-            AddIncludeDir { .. } => incdirs += 1,
+            HeaderForward { .. } | AddIncludeDir { .. } | IncludeTypeHeader { .. } => incdirs += 1,
             TypePlaceholder { .. } | TypeAlias { .. } | ConfigTypeAlias { .. } => types += 1,
             MacroDefine { .. } | IncludeStdHeader { .. } => macros += 1,
+            DeclareFunction { .. } => declarations += 1,
             StubDeclared { .. } | StubBlind { .. } => symbols += 1,
             AddSource { .. } | AddAdaSource { .. } => sources += 1,
             EnvVarInjection { .. } => envs += 1,
@@ -2806,6 +2991,12 @@ fn summarize_repairs(repairs: &[crate::auto::repair::Repair]) -> Option<String> 
     }
     if macros > 0 {
         parts.push(format!("defined {macros} macro{}", plural(macros)));
+    }
+    if declarations > 0 {
+        parts.push(format!(
+            "restored {declarations} declaration{}",
+            plural(declarations)
+        ));
     }
     if symbols > 0 {
         parts.push(format!("stubbed {symbols} symbol{}", plural(symbols)));
@@ -2836,6 +3027,9 @@ fn build_error_brief(err: &build_classifier::BuildErrorKind) -> String {
         IncompleteType { name } => format!("incomplete type '{name}' (definition unavailable)"),
         MissingMacro { name, .. } => format!("undefined build-config macro '{name}'"),
         UndefinedSymbol { name } => format!("undefined symbol '{name}'"),
+        UndeclaredFunction { name, file, line } => {
+            format!("undeclared function '{name}' at {file}:{line}")
+        }
         MissingSharedLib { name } => format!("missing shared library '{name}'"),
         MissingAdaWith { unit } => format!("missing Ada unit '{unit}'"),
         MissingAdaSymbol { unit, symbol } => format!("missing Ada symbol '{unit}.{symbol}'"),
@@ -3846,6 +4040,10 @@ mod tests {
         assert!(out.contains("Languages:    C 191 (12 built)"), "{out}");
         assert!(out.contains("Findings:     112"), "{out}");
         assert!(out.contains("report:    /w/auto/run.md"), "{out}");
+        assert!(
+            out.contains("requirements: /w/auto/missing-deps.txt"),
+            "{out}"
+        );
         assert!(out.contains("findings:  /w/findings/"), "{out}");
         assert!(out.contains("summary:   /w/auto/summary.txt"), "{out}");
     }

@@ -34,6 +34,16 @@ pub struct StreamInit {
 /// the root tagged type (`foo`).
 pub fn class_wide_root(name_path: &[String]) -> Option<String> {
     let last = name_path.last()?;
+    // Current parser representation keeps the class-wide mark attached to its
+    // type path (`pkg.message'class`). Accept the older split representation
+    // below as well so serialized and hand-built ASTs remain compatible.
+    if let Some(base) = last.to_ascii_lowercase().strip_suffix("'class") {
+        return base
+            .split('.')
+            .map(str::trim)
+            .rfind(|segment| !segment.is_empty())
+            .map(str::to_owned);
+    }
     if !last.trim_matches('.').eq_ignore_ascii_case("class") {
         return None;
     }
@@ -233,6 +243,10 @@ mod tests {
         assert_eq!(
             class_wide_root(&["root_zipstream_type.".to_owned(), "class".to_owned()]),
             Some("root_zipstream_type".to_owned())
+        );
+        assert_eq!(
+            class_wide_root(&["gnatcoll.email.message'class".to_owned()]),
+            Some("message".to_owned())
         );
     }
 

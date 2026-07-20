@@ -35,6 +35,7 @@ pub struct CDeclaration {
     pub name: String,
     pub return_type: String,
     pub param_types: Vec<String>,
+    pub variadic: bool,
     pub line: u32,
 }
 
@@ -47,6 +48,9 @@ impl c_stub_gen::DeclarationView for CDeclaration {
     }
     fn param_types(&self) -> &[String] {
         &self.param_types
+    }
+    fn variadic(&self) -> bool {
+        self.variadic
     }
 }
 
@@ -533,7 +537,17 @@ fn collect_call_targets(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldAccessPath {
     pub components: Vec<String>,
+    /// Component indexes whose value is dereferenced with `->` to reach the
+    /// following component. For a missing `Node`, `n->next->value` marks `next`
+    /// as a pointer to another `Node`; `n->embedded.value` marks none.
+    pub self_pointer_components: Vec<usize>,
     pub leaf_indexed: bool,
+    pub leaf_pointer: bool,
+    /// The indexed element, rather than the field itself, is consumed as a
+    /// pointer (`free(x->items[i])`). The field therefore needs pointer depth
+    /// two, not the ordinary one-level indexed-buffer shape.
+    pub leaf_index_element_pointer: bool,
+    pub leaf_callable: bool,
     pub max_index: usize,
 }
 
@@ -632,12 +646,16 @@ fn collect_field_chains(
             .map(|p| p.kind() != "field_expression")
             .unwrap_or(true)
     {
-        if let Some((root, components)) = chain_components(node, bytes) {
+        if let Some((root, components, self_pointer_components)) = chain_components(node, bytes) {
             if roots.contains(&root) && !components.is_empty() {
                 let (leaf_indexed, max_index) = leaf_index_info(node, bytes);
                 paths.push(FieldAccessPath {
                     components,
+                    self_pointer_components,
                     leaf_indexed,
+                    leaf_pointer: leaf_pointer_info(node, bytes),
+                    leaf_index_element_pointer: leaf_index_element_pointer_info(node, bytes),
+                    leaf_callable: leaf_callable_info(node),
                     max_index,
                 });
             }
@@ -655,20 +673,35 @@ fn collect_field_chains(
 fn chain_components(
     field_expr: tree_sitter::Node<'_>,
     bytes: &[u8],
-) -> Option<(String, Vec<String>)> {
+) -> Option<(String, Vec<String>, Vec<usize>)> {
     let mut components = Vec::new();
+    let mut operators = Vec::new();
     let mut cur = field_expr;
     loop {
         match cur.kind() {
             "field_expression" => {
+                let argument = cur.child_by_field_name("argument")?;
                 let field = cur.child_by_field_name("field")?;
                 components.push(field.utf8_text(bytes).ok()?.to_owned());
-                cur = cur.child_by_field_name("argument")?;
+                operators.push(
+                    std::str::from_utf8(&bytes[argument.end_byte()..field.start_byte()])
+                        .ok()?
+                        .trim()
+                        .to_owned(),
+                );
+                cur = argument;
             }
             "identifier" => {
                 let root = cur.utf8_text(bytes).ok()?.to_owned();
                 components.reverse();
-                return Some((root, components));
+                operators.reverse();
+                let self_pointer_components = operators
+                    .iter()
+                    .enumerate()
+                    .skip(1)
+                    .filter_map(|(index, operator)| (operator == "->").then_some(index - 1))
+                    .collect();
+                return Some((root, components, self_pointer_components));
             }
             "parenthesized_expression" => {
                 cur = cur.named_child(0)?;
@@ -676,6 +709,117 @@ fn chain_components(
             _ => return None,
         }
     }
+}
+
+fn leaf_pointer_info(field_expr: tree_sitter::Node<'_>, bytes: &[u8]) -> bool {
+    expression_pointer_context(field_expr, bytes)
+}
+
+fn leaf_index_element_pointer_info(field_expr: tree_sitter::Node<'_>, bytes: &[u8]) -> bool {
+    let mut node = field_expr;
+    while let Some(parent) = node.parent() {
+        match parent.kind() {
+            "parenthesized_expression" => node = parent,
+            "subscript_expression" => return expression_pointer_context(parent, bytes),
+            _ => return false,
+        }
+    }
+    false
+}
+
+fn expression_pointer_context(expression: tree_sitter::Node<'_>, bytes: &[u8]) -> bool {
+    let mut node = expression;
+    while let Some(parent) = node.parent() {
+        match parent.kind() {
+            "parenthesized_expression" => node = parent,
+            "cast_expression" => {
+                return parent
+                    .child_by_field_name("type")
+                    .and_then(|ty| ty.utf8_text(bytes).ok())
+                    .is_some_and(|ty| ty.contains('*'));
+            }
+            "pointer_expression" => {
+                let operator = parent
+                    .child(0)
+                    .and_then(|op| op.utf8_text(bytes).ok())
+                    .unwrap_or("");
+                return operator == "*";
+            }
+            // A comparison with NULL is not enough to establish pointer type:
+            // C integer flags are routinely compared with zero/NULL-compatible
+            // constants, and a larger `a == NULL || (x->flags & BIT)` expression
+            // must not turn `flags` into `void *`.
+            "binary_expression" => return false,
+            "assignment_expression" => {
+                let field_is_left = parent.child_by_field_name("left").is_some_and(|left| {
+                    left.start_byte() <= expression.start_byte()
+                        && left.end_byte() >= expression.end_byte()
+                });
+                if field_is_left {
+                    return parent
+                        .child_by_field_name("right")
+                        .and_then(|right| right.utf8_text(bytes).ok())
+                        .is_some_and(|right| {
+                            right.trim() == "NULL"
+                                || right.contains("malloc(")
+                                || right.contains("calloc(")
+                                || right.contains("realloc(")
+                                || right.trim_start().starts_with('(') && right.contains("*)")
+                        });
+                }
+                return false;
+            }
+            "argument_list" => {
+                let callee = parent
+                    .parent()
+                    .filter(|call| call.kind() == "call_expression")
+                    .and_then(|call| call.child_by_field_name("function"))
+                    .and_then(|function| function.utf8_text(bytes).ok())
+                    .unwrap_or("");
+                return matches!(
+                    callee,
+                    "free"
+                        | "realloc"
+                        | "strlen"
+                        | "strcpy"
+                        | "strncpy"
+                        | "strcmp"
+                        | "strncmp"
+                        | "strchr"
+                        | "memcpy"
+                        | "memmove"
+                        | "memcmp"
+                        | "memset"
+                );
+            }
+            _ => return false,
+        }
+    }
+    false
+}
+
+/// Whether the leaf field is used as the callee of a call expression, e.g.
+/// `hooks->allocate(size)`. This is stronger evidence than argument decay or a
+/// scalar read and lets the synthetic struct expose an old-style function
+/// pointer that accepts the observed call without guessing its ABI.
+fn leaf_callable_info(field_expr: tree_sitter::Node<'_>) -> bool {
+    let mut node = field_expr;
+    while let Some(parent) = node.parent() {
+        if parent.kind() == "parenthesized_expression" {
+            node = parent;
+            continue;
+        }
+        if parent.kind() != "call_expression" {
+            return false;
+        }
+        return parent
+            .child_by_field_name("function")
+            .is_some_and(|function| {
+                function.start_byte() <= field_expr.start_byte()
+                    && function.end_byte() >= field_expr.end_byte()
+            });
+    }
+    false
 }
 
 /// Whether the leaf field is array-shaped, and the largest constant index seen
@@ -706,12 +850,99 @@ fn leaf_index_info(field_expr: tree_sitter::Node<'_>, bytes: &[u8]) -> (bool, us
     (false, 0)
 }
 
+fn is_c_declaration_decoration(token: &str) -> bool {
+    let lower = token.to_ascii_lowercase();
+    if matches!(
+        lower.as_str(),
+        "__cdecl"
+            | "__stdcall"
+            | "__fastcall"
+            | "__thiscall"
+            | "__vectorcall"
+            | "_cdecl"
+            | "_stdcall"
+            | "_fastcall"
+            | "mi_cdecl"
+    ) {
+        return true;
+    }
+    if lower.contains("attr_")
+        || lower.ends_with("_noexcept")
+        || lower.ends_with("_nothrow")
+        || lower.ends_with("_callconv")
+    {
+        return true;
+    }
+    let upper = token.to_ascii_uppercase();
+    [
+        "_API",
+        "_EXPORT",
+        "_IMPORT",
+        "_PUBLIC",
+        "INLINE",
+        "NODISCARD",
+        "DEPRECATED",
+        "NORETURN",
+        "WARN_UNUSED",
+        "VISIBILITY",
+        "CALLCONV",
+    ]
+    .iter()
+    .any(|marker| upper.contains(marker))
+}
+
+/// Blank known declaration-decoration macros before feeding headers to
+/// tree-sitter-c. Legacy libraries commonly place calling conventions between
+/// the return type and name and attribute macros after the parameter list:
+/// `void mi_cdecl f(void) mi_attr_noexcept;`. Those identifiers are expanded by
+/// the real preprocessor, but as raw source they can hide the prototype or turn
+/// the macro into its apparent return type. Replacing only recognized tokens,
+/// while preserving bytes and newlines, keeps declaration locations stable.
+fn prepare_c_declaration_source(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let is_ident = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
+    let mut out = bytes.to_vec();
+    let mut i = 0usize;
+    let mut line_is_directive = false;
+    let mut at_line_start = true;
+    while i < bytes.len() {
+        if at_line_start {
+            let mut cursor = i;
+            while cursor < bytes.len() && matches!(bytes[cursor], b' ' | b'\t') {
+                cursor += 1;
+            }
+            line_is_directive = bytes.get(cursor) == Some(&b'#');
+            at_line_start = false;
+        }
+        if bytes[i] == b'\n' {
+            at_line_start = true;
+            i += 1;
+            continue;
+        }
+        if line_is_directive || !is_ident(bytes[i]) || (i > 0 && is_ident(bytes[i - 1])) {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < bytes.len() && is_ident(bytes[i]) {
+            i += 1;
+        }
+        if is_c_declaration_decoration(&source[start..i]) {
+            for byte in &mut out[start..i] {
+                *byte = b' ';
+            }
+        }
+    }
+    String::from_utf8(out).unwrap_or_else(|_| source.to_owned())
+}
+
 pub fn parse_c_declarations(source: &str) -> Result<Vec<CDeclaration>, CParseError> {
+    let source = prepare_c_declaration_source(source);
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&tree_sitter_c::LANGUAGE.into())
         .map_err(|_| CParseError::Grammar)?;
-    let tree = parser.parse(source, None).ok_or(CParseError::Parse)?;
+    let tree = parser.parse(&source, None).ok_or(CParseError::Parse)?;
     let mut decls = Vec::new();
     collect_declarations(tree.root_node(), source.as_bytes(), &mut decls);
     Ok(decls)
@@ -1097,9 +1328,40 @@ fn collect_typedef(node: tree_sitter::Node<'_>, source: &[u8], defs: &mut CTypeD
     // The alias name sits in a type_identifier, possibly wrapped in
     // pointer/array declarators (those make the alias non-scalar; we
     // record the raw underlying text either way).
-    let Some(alias) = type_identifier_text(declarator, source) else {
+    // For a function typedef, inspect only the declarator's name-bearing group.
+    // Recursing through the whole function_declarator can encounter a parameter
+    // type_identifier first and index the typedef under that parameter type
+    // (`read_file_func` became a bogus second `voidpf` typedef in zlib).
+    // Never scan inside a struct/union/enum body for a typedef-level function
+    // pointer alias. Anonymous records commonly contain callback fields; the
+    // old whole-node textual fallback mistook the first member (`next`) for the
+    // outer alias (`bz_stream`) when a later member was a function pointer.
+    let textual_funcptr_alias = (!matches!(
+        type_node.kind(),
+        "struct_specifier" | "union_specifier" | "enum_specifier"
+    ))
+    .then(|| function_pointer_typedef_alias(node, source))
+    .flatten();
+    let alias = textual_funcptr_alias.clone().unwrap_or_else(|| {
+        if declarator.kind() == "function_declarator" {
+            declarator
+                .child_by_field_name("declarator")
+                .map(|group| {
+                    let name = funcptr_declarator_name(group, source);
+                    if name.is_empty() {
+                        type_identifier_text(group, source).unwrap_or_default()
+                    } else {
+                        name
+                    }
+                })
+                .unwrap_or_default()
+        } else {
+            type_identifier_text(declarator, source).unwrap_or_default()
+        }
+    });
+    if alias.is_empty() {
         return;
-    };
+    }
     if is_c_keyword(&alias) {
         return;
     }
@@ -1131,7 +1393,8 @@ fn collect_typedef(node: tree_sitter::Node<'_>, source: &[u8], defs: &mut CTypeD
         return;
     }
 
-    if typedef_declarator_is_function_pointer(declarator, source) {
+    if textual_funcptr_alias.is_some() || typedef_declarator_is_function_pointer(declarator, source)
+    {
         if let Some(underlying) =
             function_pointer_typedef_underlying(type_node, declarator, source, &alias)
         {
@@ -1206,9 +1469,10 @@ fn typedef_declarator_is_function_pointer(
     declarator: tree_sitter::Node<'_>,
     source: &[u8],
 ) -> bool {
-    declarator
-        .utf8_text(source)
-        .is_ok_and(|text| text.contains("(*") && text.contains(')'))
+    declarator.kind() == "function_declarator"
+        || declarator
+            .utf8_text(source)
+            .is_ok_and(|text| text.contains("(*") && text.contains(')'))
 }
 
 fn function_pointer_typedef_underlying(
@@ -1225,9 +1489,48 @@ fn function_pointer_typedef_underlying(
         return None;
     }
     let declarator_text = declarator.utf8_text(source).ok()?.trim();
-    let without_alias = declarator_text.replacen(alias, "", 1);
-    let signature = normalize_type(&format!("{return_type} {without_alias}"));
+    let signature = if return_type.contains(alias) {
+        // With an unknown calling-convention macro, tree-sitter can attach the
+        // entire `(CONV *alias)` group to the type node and leave only the
+        // parameter list as the declarator. Remove the alias where it actually
+        // appears before assembling the abstract function-pointer spelling.
+        normalize_type(&format!(
+            "{} {declarator_text}",
+            return_type.replacen(alias, "", 1)
+        ))
+    } else {
+        let without_alias = declarator_text.replacen(alias, "", 1);
+        normalize_type(&format!("{return_type} {without_alias}"))
+    };
     (!signature.is_empty()).then_some(signature)
+}
+
+/// Recover the declared alias from a function-pointer typedef's source text.
+/// Unknown calling-convention macros can make tree-sitter attach the outer
+/// `(CONV *alias)` group to the type node, so AST-only name traversal falls into
+/// the parameter list and mistakes its first type_identifier for the alias.
+fn function_pointer_typedef_alias(node: tree_sitter::Node<'_>, source: &[u8]) -> Option<String> {
+    let text = node.utf8_text(source).ok()?;
+    for (star, _) in text.match_indices('*') {
+        let after_star = text[star + 1..].trim_start();
+        let ident_len = after_star
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .map(char::len_utf8)
+            .sum::<usize>();
+        if ident_len == 0 {
+            continue;
+        }
+        let alias = &after_star[..ident_len];
+        let after_alias = after_star[ident_len..].trim_start();
+        let Some(close) = after_alias.find(')') else {
+            continue;
+        };
+        if after_alias[close + 1..].trim_start().starts_with('(') {
+            return Some(alias.to_owned());
+        }
+    }
+    None
 }
 
 fn typedef_pointer_depth(declarator: tree_sitter::Node<'_>) -> usize {
@@ -1446,10 +1749,11 @@ fn collect_declarations(node: tree_sitter::Node<'_>, source: &[u8], decls: &mut 
     }
     if node.kind() == "declaration" {
         if let Some(declarator) = find_function_declarator(node) {
-            if let Some(name) = function_identifier(declarator)
-                .and_then(|n| n.utf8_text(source).ok())
-                .map(str::to_owned)
-            {
+            if let Some(name) = macro_wrapped_name(declarator, source).or_else(|| {
+                function_identifier(declarator)
+                    .and_then(|n| n.utf8_text(source).ok())
+                    .map(str::to_owned)
+            }) {
                 if !is_c_keyword(&name) {
                     let return_type = declaration_return_type(node, source);
                     let param_types = function_param_types(declarator, source);
@@ -1457,6 +1761,7 @@ fn collect_declarations(node: tree_sitter::Node<'_>, source: &[u8], decls: &mut 
                         name,
                         return_type,
                         param_types,
+                        variadic: parameter_list_is_variadic(declarator),
                         line: node.start_position().row as u32 + 1,
                     });
                 }
@@ -1521,6 +1826,27 @@ fn declaration_return_type(decl: tree_sitter::Node<'_>, source: &[u8]) -> String
                 .map(normalize_return_type_prefix)
         })
         .unwrap_or_default();
+    // Unknown decoration macros can make tree-sitter recover by starting the
+    // declaration node after part of the type (`ZEXTERN int ZEXPORT f`, or
+    // `__LA_DECL struct archive *f`). Retry from the physical line start and
+    // prefer it when it restores a concrete builtin/tag marker absent from the
+    // apparent return type.
+    if let Some(declarator) = decl.child_by_field_name("declarator") {
+        let line_start = source[..decl.start_byte()]
+            .iter()
+            .rposition(|byte| *byte == b'\n')
+            .map_or(0, |index| index.saturating_add(1));
+        if let Ok(prefix) = std::str::from_utf8(&source[line_start..declarator.start_byte()]) {
+            let recovered = normalize_return_type_prefix(prefix);
+            let has_type_marker = |text: &str| {
+                text.split_whitespace()
+                    .any(|part| is_c_builtin_type_word(part) || is_c_tag_keyword(part))
+            };
+            if has_type_marker(&recovered) && !has_type_marker(&return_type) {
+                return_type = recovered;
+            }
+        }
+    }
     if return_type.is_empty() {
         let Ok(type_text) = type_node.utf8_text(source) else {
             return String::new();
@@ -1577,10 +1903,57 @@ fn normalize_return_type_prefix(prefix: &str) -> String {
             )
         })
         .collect::<Vec<_>>();
-    while parts.len() > 1 && is_export_macro_token(parts[0]) {
+    while parts.len() > 1
+        && (is_export_macro_token(parts[0])
+            || (is_macro_shaped_token(parts[0])
+                && parts
+                    .iter()
+                    .skip(1)
+                    .any(|part| is_c_builtin_type_word(part) || is_c_tag_keyword(part))))
+    {
         parts.remove(0);
     }
+    // Some legacy headers use linkage macros whose names do not contain the
+    // usual API/EXPORT marker, or place a calling-convention macro after the
+    // actual type (`__LA_DECL int`, `ZEXTERN int ZEXPORT`). Once a concrete C
+    // builtin is present, macro-shaped tokens are decorations rather than the
+    // return type. Keep an all-caps typedef intact when no builtin is present.
+    if parts.iter().any(|part| is_c_builtin_type_word(part)) {
+        parts.retain(|part| is_c_builtin_type_word(part) || !is_macro_shaped_token(part));
+    }
     parts.join(" ")
+}
+
+fn is_c_builtin_type_word(token: &str) -> bool {
+    matches!(
+        token,
+        "void"
+            | "char"
+            | "short"
+            | "int"
+            | "long"
+            | "float"
+            | "double"
+            | "signed"
+            | "unsigned"
+            | "_Bool"
+            | "bool"
+            | "const"
+            | "volatile"
+            | "restrict"
+            | "_Atomic"
+    )
+}
+
+fn is_c_tag_keyword(token: &str) -> bool {
+    matches!(token, "struct" | "union" | "enum")
+}
+
+fn is_macro_shaped_token(token: &str) -> bool {
+    token.chars().any(|ch| ch.is_ascii_alphabetic())
+        && token
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
 }
 
 fn is_export_macro_token(token: &str) -> bool {
@@ -1590,7 +1963,8 @@ fn is_export_macro_token(token: &str) -> bool {
         && (token.contains("EXPORT")
             || token.contains("API")
             || token.contains("PUBLIC")
-            || token.contains("INLINE"))
+            || token.contains("INLINE")
+            || token.contains("STATIC"))
 }
 
 fn function_param_types(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec<String> {
@@ -1685,12 +2059,63 @@ fn is_c_keyword(name: &str) -> bool {
     C_KEYWORDS.contains(&name)
 }
 
+fn immediately_preceding_preproc_has_static(node: tree_sitter::Node<'_>, source: &[u8]) -> bool {
+    let Some(prefix) = source
+        .get(..node.start_byte())
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+    else {
+        return false;
+    };
+    let lines: Vec<&str> = prefix.lines().collect();
+    let Some(end) = lines.iter().rposition(|line| !line.trim().is_empty()) else {
+        return false;
+    };
+    if !lines[end].trim_start().starts_with("#endif") {
+        return false;
+    }
+
+    let mut depth = 0usize;
+    let mut start = None;
+    for index in (0..=end).rev() {
+        let line = lines[index].trim_start();
+        if line.starts_with("#endif") {
+            depth += 1;
+        } else if line.starts_with("#if") {
+            depth = depth.saturating_sub(1);
+            if depth == 0 {
+                start = Some(index);
+                break;
+            }
+        }
+    }
+    let Some(start) = start else {
+        return false;
+    };
+
+    lines[start + 1..end].iter().any(|line| {
+        let line = line.trim_start();
+        !line.starts_with('#')
+            && line
+                .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .any(|token| token == "static")
+    })
+}
+
 fn has_static_storage(node: tree_sitter::Node<'_>, source: &[u8]) -> bool {
-    let mut cursor = node.walk();
-    let found = node.children(&mut cursor).any(|c| {
-        c.kind() == "storage_class_specifier" && c.utf8_text(source).is_ok_and(|t| t == "static")
-    });
-    found
+    // Function bodies can contain thousands of nested expression nodes. Walk
+    // iteratively so looking for a declaration-level storage specifier cannot
+    // overflow the thread stack on otherwise valid deep input.
+    let mut pending = vec![node];
+    while let Some(current) = pending.pop() {
+        if current.kind() == "storage_class_specifier"
+            && current.utf8_text(source).is_ok_and(|text| text == "static")
+        {
+            return true;
+        }
+        let mut cursor = current.walk();
+        pending.extend(current.children(&mut cursor));
+    }
+    immediately_preceding_preproc_has_static(node, source)
 }
 
 // RTOS/vendor platform macros are foreign on ANY host (a Linux/Windows lab box
@@ -1835,7 +2260,14 @@ fn collect_functions(
 /// Returns the real function name when the outer declarator's `declarator`
 /// field is itself a function_declarator. Used for bzip2's `BZ_API`,
 /// libxml2's `LIBXML_DLL_IMPORT`, libsodium's `SODIUM_EXPORT`, etc.
-fn macro_wrapped_name(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Option<String> {
+fn macro_wrapped_name(mut declarator: tree_sitter::Node<'_>, source: &[u8]) -> Option<String> {
+    // Pointer-returning functions (`const char *BZ_API(name)(void)`) own the
+    // return star in one or more pointer_declarator wrappers outside the real
+    // function_declarator. Peel only that declarator spine before recognizing
+    // the nested macro-call/real-parameter shape.
+    while declarator.kind() == "pointer_declarator" {
+        declarator = declarator.child_by_field_name("declarator")?;
+    }
     if declarator.kind() != "function_declarator" {
         return None;
     }
@@ -2028,7 +2460,13 @@ fn funcptr_declarator_name(group: tree_sitter::Node<'_>, source: &[u8]) -> Strin
 /// node inside the `parameter_list` (it is NOT a `parameter_declaration`, so it
 /// is dropped by `function_params`). The same macro-wrapped declarator handling
 /// as `function_params` is applied so the real parameter list is inspected.
-fn parameter_list_is_variadic(declarator: tree_sitter::Node<'_>) -> bool {
+fn parameter_list_is_variadic(mut declarator: tree_sitter::Node<'_>) -> bool {
+    while declarator.kind() == "pointer_declarator" {
+        let Some(inner) = declarator.child_by_field_name("declarator") else {
+            return false;
+        };
+        declarator = inner;
+    }
     let Some(list) = declarator
         .child_by_field_name("parameters")
         .or_else(|| find_parameter_list(declarator))
@@ -2091,8 +2529,14 @@ fn trailing_error_param_name(param_decl: tree_sitter::Node<'_>, source: &[u8]) -
     None
 }
 
-fn function_params(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec<CParamDescriptor> {
+fn function_params(mut declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec<CParamDescriptor> {
     let mut params = Vec::new();
+    while declarator.kind() == "pointer_declarator" {
+        let Some(inner) = declarator.child_by_field_name("declarator") else {
+            return params;
+        };
+        declarator = inner;
+    }
     // For macro-wrapped declarators (`int BZ_API(name)(real, args)`),
     // the OUTER function_declarator's `parameters` field is the real
     // parameter list. Recursive search would pick the macro's args
@@ -2451,6 +2895,28 @@ mod tests {
     }
 
     #[test]
+    fn parse_c_functions_recovers_pointer_return_wrapped_name() {
+        let src = "const char * BZ_API(BZ2_bzlibVersion)(void) { return \"1.0\"; }";
+        let fns = parse_c_functions(src).unwrap();
+        assert_eq!(fns.len(), 1, "{fns:?}");
+        assert_eq!(fns[0].name, "BZ2_bzlibVersion");
+        assert_eq!(fns[0].return_type, "const char *");
+        assert!(fns[0].params.is_empty(), "{:?}", fns[0].params);
+    }
+
+    #[test]
+    fn parse_c_declarations_recovers_pointer_return_wrapped_name() {
+        let src = "extern const char * BZ_API(BZ2_bzlibVersion)(void);";
+        let decls = parse_c_declarations(src).unwrap();
+        let decl = decls
+            .iter()
+            .find(|decl| decl.name == "BZ2_bzlibVersion")
+            .expect("real wrapped function name");
+        assert_eq!(decl.return_type, "const char *");
+        assert!(decl.param_types.is_empty(), "{:?}", decl.param_types);
+    }
+
+    #[test]
     fn parse_c_functions_captures_const_char_pointer_param() {
         let src = "int parse(const char *input, size_t len) { return 0; }";
         let fns = parse_c_functions(src).unwrap();
@@ -2724,6 +3190,92 @@ mod tests {
     }
 
     #[test]
+    fn parse_c_declarations_strips_legacy_linkage_macros_around_builtin_type() {
+        let decls = parse_c_declarations(
+            "__LA_DECL int archive_read_open1(struct archive *a);\n\
+             ZEXTERN int ZEXPORT inflate(void *stream, int flush);\n",
+        )
+        .expect("parses");
+        assert_eq!(decls.len(), 2);
+        assert_eq!(decls[0].name, "archive_read_open1");
+        assert_eq!(decls[0].return_type, "int");
+        assert_eq!(decls[1].name, "inflate");
+        assert_eq!(decls[1].return_type, "int");
+
+        let typedef_return = parse_c_declarations("RESULT_CODE run(void);\n").expect("parses");
+        assert_eq!(typedef_return[0].return_type, "RESULT_CODE");
+
+        let tagged = parse_c_declarations("__LA_DECL struct archive *archive_read_new(void);\n")
+            .expect("parses");
+        assert_eq!(tagged[0].return_type, "struct archive *");
+    }
+
+    #[test]
+    fn parse_c_declarations_strips_calling_convention_and_postfix_attribute() {
+        let decls =
+            parse_c_declarations("void mi_cdecl _mi_auto_process_done(void) mi_attr_noexcept;\n")
+                .expect("parses");
+        assert_eq!(decls.len(), 1);
+        assert_eq!(decls[0].name, "_mi_auto_process_done");
+        assert_eq!(decls[0].return_type, "void");
+        assert!(decls[0].param_types.is_empty());
+    }
+
+    #[test]
+    fn parse_c_type_defs_preserves_old_style_function_typedef_profile() {
+        let defs = parse_c_type_defs(
+            "struct archive;\n\
+             typedef int archive_open_callback(struct archive *, void *);\n",
+        )
+        .expect("parses");
+        let callback = defs
+            .typedefs
+            .iter()
+            .find(|typedef| typedef.name == "archive_open_callback")
+            .expect("callback typedef");
+        assert!(callback.underlying.starts_with("int ("), "{callback:?}");
+        assert!(
+            callback.underlying.contains("struct archive *"),
+            "{callback:?}"
+        );
+        assert!(callback.underlying.contains("void *"), "{callback:?}");
+    }
+
+    #[test]
+    fn function_pointer_typedef_name_does_not_alias_its_first_parameter_type() {
+        let defs = parse_c_type_defs(
+            "typedef void *voidpf;\n\
+             typedef unsigned long uLong;\n\
+             typedef uLong (ZCALLBACK *read_file_func)(voidpf opaque, voidpf stream);\n",
+        )
+        .expect("parses zlib callback typedef");
+
+        let voidpf = defs
+            .typedefs
+            .iter()
+            .filter(|typedef| typedef.name == "voidpf")
+            .collect::<Vec<_>>();
+        assert_eq!(
+            voidpf.len(),
+            1,
+            "parameter type must not become the alias: {:?}",
+            defs.typedefs
+        );
+        assert_eq!(voidpf[0].underlying, "void *");
+
+        let callback = defs
+            .typedefs
+            .iter()
+            .find(|typedef| typedef.name == "read_file_func")
+            .expect("callback alias is recorded under its declared name");
+        assert!(callback.underlying.starts_with("uLong"), "{callback:?}");
+        assert!(
+            callback.underlying.contains("voidpf opaque"),
+            "{callback:?}"
+        );
+    }
+
+    #[test]
     fn parse_c_declarations_decays_array_params_to_pointers() {
         // A stub signature must match the real prototype's decayed pointer types.
         // `cv[8]` is `unsigned char *`, `*data[4]` is `int **` — collapsing the
@@ -2775,6 +3327,15 @@ mod tests {
     }
 
     #[test]
+    fn parse_c_functions_strips_static_storage_macro_from_typedef_return() {
+        let functions = parse_c_functions(
+            "MEM_STATIC size_t ZSTD_decompressLegacy(const void *src) { return 0; }",
+        )
+        .expect("parses");
+        assert_eq!(functions[0].return_type, "size_t");
+    }
+
+    #[test]
     fn marks_static_functions() {
         let functions = parse_c_functions(
             "static int helper(int x) { return x + 1; }\nint entry(int x) { return helper(x); }\n",
@@ -2782,6 +3343,22 @@ mod tests {
         .expect("C parses");
         assert!(functions[0].is_static, "helper is static");
         assert!(!functions[1].is_static, "entry is external");
+    }
+
+    #[test]
+    fn marks_preprocessor_split_static_function() {
+        let functions = parse_c_functions(
+            "#if !defined(_WIN32) || defined(__CYGWIN__)\n\
+             static\n\
+             #endif\n\
+             int archive_read_open_filenames_w(void *archive) { return archive != 0; }\n",
+        )
+        .expect("C parses");
+        let function = functions
+            .iter()
+            .find(|function| function.name == "archive_read_open_filenames_w")
+            .expect("function found");
+        assert!(function.is_static, "conditional storage class is preserved");
     }
 
     #[test]
@@ -3144,11 +3721,90 @@ mod tests {
     }
 
     #[test]
+    fn field_access_paths_detect_pointer_valued_index_elements() {
+        let src = r#"
+            void release(ParseError *error) {
+                free(error->expected[0]);
+                error->expected[1] = NULL;
+            }
+        "#;
+        let paths = field_access_paths(src, "ParseError").unwrap();
+        assert!(
+            paths.iter().any(|path| {
+                path.components == ["expected"]
+                    && path.leaf_indexed
+                    && path.leaf_index_element_pointer
+            }),
+            "{paths:?}"
+        );
+    }
+
+    #[test]
     fn field_access_paths_empty_when_type_absent() {
         let src = "void f(int x) { int y = x + 1; (void)y; }";
         assert!(field_access_paths(src, "CFE_MSG_Message_t")
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn field_access_paths_preserve_self_pointer_and_leaf_pointer_evidence() {
+        let src = r#"
+            void drop_node(Node *n) {
+                free(n->text);
+                if (n->next != NULL) n->next->value = 1;
+                n->embedded.value = 2;
+            }
+        "#;
+        let paths = field_access_paths(src, "Node").unwrap();
+        assert!(
+            paths
+                .iter()
+                .any(|path| { path.components == ["text"] && path.leaf_pointer }),
+            "{paths:?}"
+        );
+        assert!(
+            paths.iter().any(|path| {
+                path.components == ["next", "value"] && path.self_pointer_components == [0]
+            }),
+            "{paths:?}"
+        );
+        assert!(
+            paths.iter().any(|path| {
+                path.components == ["embedded", "value"] && path.self_pointer_components.is_empty()
+            }),
+            "{paths:?}"
+        );
+    }
+
+    #[test]
+    fn field_access_paths_distinguish_callbacks_from_numeric_null_expressions() {
+        let src = r#"
+            void use_hooks(Hooks *hooks, int flag) {
+                void *p = hooks->allocate(32);
+                hooks->type = cJSON_NULL;
+                if (p == NULL || (hooks->type & flag)) hooks->deallocate(p);
+            }
+        "#;
+        let paths = field_access_paths(src, "Hooks").unwrap();
+        assert!(
+            paths
+                .iter()
+                .any(|path| path.components == ["allocate"] && path.leaf_callable),
+            "{paths:?}"
+        );
+        assert!(
+            paths
+                .iter()
+                .any(|path| path.components == ["deallocate"] && path.leaf_callable),
+            "{paths:?}"
+        );
+        assert!(
+            paths.iter().any(|path| {
+                path.components == ["type"] && !path.leaf_pointer && !path.leaf_callable
+            }),
+            "a sibling NULL comparison must not make an integer field a pointer: {paths:?}"
+        );
     }
 
     #[test]
@@ -3196,6 +3852,19 @@ mod tests {
         );
         let cmp = ops.fields.iter().find(|f| f.name == "cmp").unwrap();
         assert_eq!(cmp.c_type, "int (*)(const void *, const void *)");
+    }
+
+    #[test]
+    fn anonymous_struct_with_function_pointer_fields_keeps_typedef_alias() {
+        let source = "typedef struct { char *next; void *(*alloc)(void *, int, int); \
+                      void (*free_fn)(void *, void *); } Hooks;";
+        let defs = parse_c_type_defs(source).unwrap();
+        let hooks = defs
+            .structs
+            .iter()
+            .find(|record| record.name == "Hooks")
+            .unwrap_or_else(|| panic!("structs={:?}, typedefs={:?}", defs.structs, defs.typedefs));
+        assert_eq!(hooks.fields.len(), 3, "{:?}", hooks.fields);
     }
 
     #[test]

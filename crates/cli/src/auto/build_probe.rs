@@ -41,6 +41,47 @@ use std::process::Command;
 /// `compile_database_candidates` in `generate_harness`, so the produced DB is
 /// found without any extra plumbing.
 pub const PROBE_DIR: &str = ".govfuzz-build";
+const PROBE_REQUIREMENTS_FILE: &str = "missing-requirements.json";
+
+/// A precise dependency/tool failure observed while running the project's own
+/// build probe. The requirements scanner folds this sidecar into the durable
+/// `missing-deps.*` checkpoint immediately after the probe.
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+pub struct ProbeRequirement {
+    pub kind: crate::auto::dep_manifest::DepKind,
+    pub name: String,
+    pub acquisition_hint: String,
+    pub evidence: String,
+}
+
+pub fn load_probe_requirements(tree: &Path) -> Vec<ProbeRequirement> {
+    std::fs::read_to_string(tree.join(PROBE_DIR).join(PROBE_REQUIREMENTS_FILE))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+fn record_probe_requirement(tree: &Path, requirement: ProbeRequirement) {
+    let path = tree.join(PROBE_DIR).join(PROBE_REQUIREMENTS_FILE);
+    let mut requirements = load_probe_requirements(tree);
+    if let Some(existing) = requirements
+        .iter_mut()
+        .find(|entry| entry.kind == requirement.kind && entry.name == requirement.name)
+    {
+        *existing = requirement;
+    } else {
+        requirements.push(requirement);
+    }
+    requirements.sort_by(|a, b| {
+        a.kind
+            .label()
+            .cmp(b.kind.label())
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    if let Ok(bytes) = serde_json::to_vec_pretty(&requirements) {
+        let _ = crate::auto::report::atomic_write(&path, &bytes);
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildSystem {
@@ -544,6 +585,7 @@ pub fn probe_build(tree: &Path, sandbox_program: Option<&Path>) -> Option<PathBu
     if std::fs::create_dir_all(&probe_dir).is_err() {
         return None;
     }
+    let _ = std::fs::remove_file(probe_dir.join(PROBE_REQUIREMENTS_FILE));
     let db = probe_dir.join("compile_commands.json");
     match detect_build_system(tree) {
         BuildSystem::CMake => probe_cmake(tree, &probe_dir, &db, sandbox_program),
@@ -640,6 +682,17 @@ fn probe_cmake(
 ) -> Option<PathBuf> {
     if !find_on_path("cmake") {
         eprintln!("govfuzz auto: --probe-build: cmake not on PATH; skipping CMake probe");
+        record_probe_requirement(
+            tree,
+            ProbeRequirement {
+                kind: crate::auto::dep_manifest::DepKind::CodegenTool,
+                name: "cmake".to_owned(),
+                acquisition_hint: "install a CMake version compatible with this project's CMakeLists.txt"
+                    .to_owned(),
+                evidence: "CMakeLists.txt is present and the requested build probe found no cmake executable on PATH"
+                    .to_owned(),
+            },
+        );
         return None;
     }
     let args = cmake_probe_args(tree, probe_dir, cfg!(windows), find_on_path("ninja"));
@@ -672,13 +725,28 @@ fn probe_cmake(
         String::from_utf8_lossy(&output.stderr)
     );
     match cmake_missing_dependency(&combined) {
-        Some(pkg) => eprintln!(
-            "govfuzz auto: --probe-build: CMake configure FAILED — required dependency `{pkg}` was \
+        Some(pkg) => {
+            record_probe_requirement(
+                tree,
+                ProbeRequirement {
+                    kind: crate::auto::dep_manifest::DepKind::SharedLibrary,
+                    name: pkg.clone(),
+                    acquisition_hint: format!(
+                        "stage the development package/source for CMake package '{pkg}', or set {pkg}_ROOT/CMAKE_PREFIX_PATH to its offline location"
+                    ),
+                    evidence: format!(
+                        "CMake configure reported `Could NOT find {pkg}` for a required find_package dependency"
+                    ),
+                },
+            );
+            eprintln!(
+                "govfuzz auto: --probe-build: CMake configure FAILED — required dependency `{pkg}` was \
              not found (`find_package({pkg} REQUIRED)`). This aborted the whole probe, so no \
              compile_commands.json was produced and every target will fail to build until it is \
              resolved. Install `{pkg}` (its dev headers/library) or point CMake at it (e.g. set \
              `{pkg}_ROOT`/`CMAKE_PREFIX_PATH`), then re-run with --probe-build."
-        ),
+            )
+        }
         None => eprintln!(
             "govfuzz auto: --probe-build: `cmake` configure produced no compile_commands.json at {}",
             db.display()
@@ -1168,6 +1236,7 @@ pub fn probe_build_command(
     if std::fs::create_dir_all(&intercept_dir).is_err() {
         return None;
     }
+    let _ = std::fs::remove_file(probe_dir.join(PROBE_REQUIREMENTS_FILE));
     let log = intercept_dir.join("cc-invocations.log");
     let _ = std::fs::remove_file(&log);
 
@@ -1391,6 +1460,25 @@ mod tests {
             "lexicographically first for determinism"
         );
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn probe_requirement_sidecar_round_trips_and_deduplicates() {
+        let root = tmpdir();
+        fs::create_dir_all(root.join(PROBE_DIR)).unwrap();
+        let requirement = ProbeRequirement {
+            kind: crate::auto::dep_manifest::DepKind::SharedLibrary,
+            name: "ZLIB".to_owned(),
+            acquisition_hint: "stage zlib development files".to_owned(),
+            evidence: "CMake Could NOT find ZLIB".to_owned(),
+        };
+        record_probe_requirement(&root, requirement.clone());
+        record_probe_requirement(&root, requirement);
+        let loaded = load_probe_requirements(&root);
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].name, "ZLIB");
+        assert!(loaded[0].evidence.contains("Could NOT find"));
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]

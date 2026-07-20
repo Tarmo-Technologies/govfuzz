@@ -1,7 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
+fn include_candidate_is_host_usable(path: &Path) -> bool {
+    if crate::generate_harness::source_path_is_foreign_platform(path) {
+        return false;
+    }
+
+    let Ok(source) = std::fs::read_to_string(path) else {
+        return true;
+    };
+    !source.lines().any(|line| {
+        let directive = line
+            .trim_start()
+            .strip_prefix('#')
+            .map(str::trim_start)
+            .unwrap_or_default();
+        let Some(message) = directive.strip_prefix("error") else {
+            return false;
+        };
+        let message = message.to_ascii_lowercase();
+        message.contains("foreign") && (message.contains("configure") || message.contains("build"))
+    })
+}
+
+fn merge_vec_map<K, V>(destination: &mut HashMap<K, Vec<V>>, source: HashMap<K, Vec<V>>)
+where
+    K: Eq + Hash,
+    V: PartialEq,
+{
+    for (key, values) in source {
+        let existing = destination.entry(key).or_default();
+        for value in values {
+            if !existing.contains(&value) {
+                existing.push(value);
+            }
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct DeclarationIndex {
@@ -10,10 +49,41 @@ pub struct DeclarationIndex {
     /// auto loop logs and picks the first by source-tree order.
     pub c: HashMap<String, Vec<c_parser::CDeclaration>>,
     pub cpp: HashMap<String, Vec<cpp_parser::CppDeclaration>>,
+    /// C++ declaration leaf -> header(s) that declare it. Declared C++ stubs
+    /// compile in their own translation unit and need the owning header for
+    /// namespace/class-qualified definitions.
+    cpp_declaration_headers: HashMap<String, Vec<PathBuf>>,
+    /// C declarations originating in headers. Tree-wide lifecycle discovery uses
+    /// this public surface only; source declarations include private `static`
+    /// helpers whose storage class the declaration parser intentionally omits.
+    c_header_declarations: Vec<c_parser::CDeclaration>,
+    /// C declaration name -> header(s) that declare it. A generated C stub should
+    /// include the owning header so typedef-backed parameter and return types are
+    /// real, rather than cascading into incompatible opaque placeholders.
+    c_declaration_headers: HashMap<String, Vec<PathBuf>>,
+    /// C type name -> surviving header(s) that define the complete record or
+    /// typedef. A damaged private header can remove the include edge while the
+    /// real public type still exists elsewhere (bzip2's `bz_stream`); repair can
+    /// force-include that unique real header instead of synthesizing a colliding
+    /// layout.
+    c_type_definition_headers: HashMap<String, Vec<PathBuf>>,
     /// C function name -> source file(s) that define it. Used by auto
     /// build recovery to add real project source files before falling
     /// back to generated stubs.
     c_definitions: HashMap<String, Vec<PathBuf>>,
+    /// External C data symbol -> declared type. Undefined data must recover as
+    /// a weak object, not a blind function with the same linker name.
+    c_extern_data: HashMap<String, String>,
+    /// External C data symbol -> header declarations. A weak definition should
+    /// use the exact typedef spelling from its owning header when that header is
+    /// unique, rather than resolving an anonymous enum/struct typedef into a
+    /// nonexistent tagged type.
+    c_extern_data_headers: HashMap<String, Vec<(PathBuf, String)>>,
+    /// Object-like C preprocessor definitions found anywhere in the surviving
+    /// tree. A deleted private header may duplicate foundational constants in a
+    /// utility source (bzip2's `True`/`False`); recovery can reuse the exact
+    /// replacement instead of guessing zero.
+    c_object_macros: HashMap<String, Vec<String>>,
     /// C++ function name / qualified name -> source file(s) that define it.
     /// For source files that include definition-bearing implementation
     /// headers, the source file is indexed instead of the header so the
@@ -50,6 +120,13 @@ pub struct DeclarationIndex {
     pub c_type_defs: std::sync::Arc<c_parser::CTypeDefs>,
     /// Tree-wide C++ type defs, used identically for the C++ harness path.
     pub cpp_type_defs: std::sync::Arc<c_parser::CTypeDefs>,
+    /// Scalar typedefs recovered from implementation files. These are not used
+    /// for target discovery or parameter decoding because a source-local type is
+    /// not necessarily public, but the repair loop may use an unambiguous scalar
+    /// definition after a damaged private header removes the same alias from a
+    /// sibling TU (bzip2's `Bool`/`UChar`). Conflicting definitions are rejected
+    /// by `resolve_tree_typedef_chain` rather than guessed.
+    pub(crate) c_source_scalar_type_defs: std::sync::Arc<c_parser::CTypeDefs>,
     /// Header basename -> full paths of every C/C++ header in the tree. Lets a
     /// `MissingHeader` build error be repaired by adding the real header's
     /// directory to the include path (multi-module trees like cFS keep headers
@@ -76,8 +153,8 @@ pub struct DeclarationIndex {
     /// json11.hpp). Such members are pre-skipped instead of attempted-and-failed.
     cpp_source_class_names: HashSet<String>,
     /// Tree-wide C opaque-handle lifecycle pairs (§27.2): init/destroy pairs found
-    /// by scanning the C declarations of ALL translation units in the tree (not
-    /// just a target's include closure), computed ONCE here. Threaded into the
+    /// by scanning public C header declarations throughout the tree (not just a
+    /// target's include closure), computed ONCE here. Threaded into the
     /// per-target lifecycle table (`generate_harness::merge_tree_c_lifecycle`) so a
     /// handle whose constructor is declared in a header the target does NOT directly
     /// `#include` is still paired. Held behind `Arc` so the per-target harness path
@@ -299,6 +376,62 @@ impl DeclarationIndex {
         Ok(())
     }
 
+    /// Merge exact dependency files recovered into an isolated VCS shadow. This
+    /// is deliberately broader than `--extra-include`: a deleted public header
+    /// may carry class/type declarations, while a deleted C/C++/Ada body must be
+    /// visible to the real-source repair indexes. Only files in the recovery
+    /// root are parsed, so the surviving tree is not duplicated.
+    pub fn add_vcs_recovery_root(&mut self, root: &Path) -> std::io::Result<()> {
+        let recovered = Self::build_parsed(root)?;
+        merge_vec_map(&mut self.c, recovered.c);
+        merge_vec_map(&mut self.cpp, recovered.cpp);
+        merge_vec_map(
+            &mut self.cpp_declaration_headers,
+            recovered.cpp_declaration_headers,
+        );
+        for declaration in recovered.c_header_declarations {
+            if !self.c_header_declarations.contains(&declaration) {
+                self.c_header_declarations.push(declaration);
+            }
+        }
+        merge_vec_map(
+            &mut self.c_declaration_headers,
+            recovered.c_declaration_headers,
+        );
+        merge_vec_map(
+            &mut self.c_type_definition_headers,
+            recovered.c_type_definition_headers,
+        );
+        merge_vec_map(&mut self.c_definitions, recovered.c_definitions);
+        for (name, data_type) in recovered.c_extern_data {
+            self.c_extern_data.entry(name).or_insert(data_type);
+        }
+        merge_vec_map(
+            &mut self.c_extern_data_headers,
+            recovered.c_extern_data_headers,
+        );
+        merge_vec_map(&mut self.c_object_macros, recovered.c_object_macros);
+        merge_vec_map(&mut self.cpp_definitions, recovered.cpp_definitions);
+        merge_vec_map(&mut self.ada_package_ops, recovered.ada_package_ops);
+        self.ada_package_bodies.extend(recovered.ada_package_bodies);
+        merge_vec_map(&mut self.ada_unit_paths, recovered.ada_unit_paths);
+        self.cpp_type_names.extend(recovered.cpp_type_names);
+        std::sync::Arc::make_mut(&mut self.c_type_defs)
+            .merge(recovered.c_type_defs.as_ref().clone());
+        std::sync::Arc::make_mut(&mut self.cpp_type_defs)
+            .merge(recovered.cpp_type_defs.as_ref().clone());
+        std::sync::Arc::make_mut(&mut self.c_source_scalar_type_defs)
+            .merge(recovered.c_source_scalar_type_defs.as_ref().clone());
+        merge_vec_map(&mut self.header_paths, recovered.header_paths);
+        self.source_type_names.extend(recovered.source_type_names);
+        self.cpp_header_class_names
+            .extend(recovered.cpp_header_class_names);
+        self.cpp_source_class_names
+            .extend(recovered.cpp_source_class_names);
+        self.c_tree_lifecycle = std::sync::Arc::new(self.compute_c_tree_lifecycle());
+        Ok(())
+    }
+
     /// Record an Ada source file under its unit key, derived from the file stem
     /// (GNAT crunches `Keccak.Arch` to `keccak-arch`). Deduped.
     fn record_ada_unit_path(&mut self, path: &Path) {
@@ -337,14 +470,34 @@ impl DeclarationIndex {
         let mut cpp_sources = Vec::new();
         let mut c_type_defs = c_parser::CTypeDefs::default();
         let mut cpp_type_defs = c_parser::CTypeDefs::default();
+        let mut c_source_scalar_type_defs = c_parser::CTypeDefs::default();
         for entry in entries {
             let Some(ext) = entry.extension().and_then(|e| e.to_str()) else {
                 continue;
             };
-            if matches!(ext, "h" | "hpp" | "hh" | "hxx" | "hp" | "inc") {
-                if let Some(name) = entry.file_name().and_then(|n| n.to_str()) {
+            if let Some(name) = entry.file_name().and_then(|n| n.to_str()) {
+                let indexed_name = if matches!(ext, "h" | "hpp" | "hh" | "hxx" | "hp" | "inc") {
+                    Some(name)
+                } else {
+                    // Some source releases ship the configured public header as
+                    // an explicit prebuilt fallback (libpng's
+                    // `pnglibconf.h.prebuilt`). A missing `pnglibconf.h` should
+                    // forward to that real feature surface, not an empty stub
+                    // that compiles the API out.
+                    name.strip_suffix(".prebuilt")
+                        .or_else(|| name.strip_suffix(".dist"))
+                        .filter(|base| {
+                            Path::new(base)
+                                .extension()
+                                .and_then(|suffix| suffix.to_str())
+                                .is_some_and(|suffix| {
+                                    matches!(suffix, "h" | "hpp" | "hh" | "hxx" | "hp" | "inc")
+                                })
+                        })
+                };
+                if let Some(indexed_name) = indexed_name {
                     idx.header_paths
-                        .entry(name.to_owned())
+                        .entry(indexed_name.to_owned())
                         .or_default()
                         .push(entry.clone());
                 }
@@ -352,6 +505,14 @@ impl DeclarationIndex {
             let Ok(source) = crate::source_text::read_source_text(&entry) else {
                 continue;
             };
+            if !crate::generate_harness::source_path_is_foreign_platform(&entry) {
+                for (name, value) in object_macro_definitions(&source) {
+                    let values = idx.c_object_macros.entry(name).or_default();
+                    if !values.contains(&value) {
+                        values.push(value);
+                    }
+                }
+            }
             // Record C++ class/struct/union leaf names so a member whose owning
             // class is defined only in a `.cpp` (never declared in a header) can be
             // pre-skipped. Every header extension is parsed with the C++ type-def
@@ -375,6 +536,18 @@ impl DeclarationIndex {
             }
             match ext {
                 "c" | "h" => {
+                    for (name, data_type) in c_extern_data_declarations(&source) {
+                        idx.c_extern_data
+                            .entry(name.clone())
+                            .or_insert_with(|| data_type.clone());
+                        if ext == "h" {
+                            let declarations = idx.c_extern_data_headers.entry(name).or_default();
+                            let declaration = (entry.clone(), data_type);
+                            if !declarations.contains(&declaration) {
+                                declarations.push(declaration);
+                            }
+                        }
+                    }
                     if ext == "h" {
                         cpp_headers.push((entry.clone(), source.clone()));
                         // Tree-wide type-def fallback is collected from headers
@@ -394,24 +567,83 @@ impl DeclarationIndex {
                             // as non-flat-POD, so the redefinition guard lost them).
                             for s in defs.structs.iter().filter(|s| s.complete) {
                                 idx.source_type_names.insert(s.name.clone());
+                                let headers = idx
+                                    .c_type_definition_headers
+                                    .entry(s.name.clone())
+                                    .or_default();
+                                if !headers.contains(&entry) {
+                                    headers.push(entry.clone());
+                                }
                             }
                             for t in &defs.typedefs {
                                 idx.source_type_names.insert(t.name.clone());
+                                let headers = idx
+                                    .c_type_definition_headers
+                                    .entry(t.name.clone())
+                                    .or_default();
+                                if !headers.contains(&entry) {
+                                    headers.push(entry.clone());
+                                }
+                            }
+                            for e in &defs.enums {
+                                let headers = idx
+                                    .c_type_definition_headers
+                                    .entry(e.name.clone())
+                                    .or_default();
+                                if !headers.contains(&entry) {
+                                    headers.push(entry.clone());
+                                }
                             }
                             c_type_defs.merge(defs.clone());
                             cpp_type_defs.merge(defs);
                         }
+                        // Plain `.h` is also the dominant header convention in
+                        // legacy C++ (smhasher). Index its prototypes in the C++
+                        // declaration map as well, so a demangled link error with
+                        // a parameter signature can synthesize a C++-linkage stub
+                        // instead of falling through to an unmangled blind C stub.
+                        if let Ok(decls) = cpp_parser::parse_cpp_declarations(&source) {
+                            for d in decls {
+                                idx.index_cpp_declaration(d, &entry, true);
+                            }
+                        }
                     }
                     if let Ok(decls) = c_parser::parse_c_declarations(&source) {
+                        if ext == "h" {
+                            idx.c_header_declarations.extend(decls.iter().cloned());
+                        }
                         for d in decls {
+                            if ext == "h" {
+                                let headers =
+                                    idx.c_declaration_headers.entry(d.name.clone()).or_default();
+                                if !headers.contains(&entry) {
+                                    headers.push(entry.clone());
+                                }
+                            }
                             idx.c.entry(d.name.clone()).or_default().push(d);
                         }
                     }
                     if ext == "c" {
                         if let Ok(functions) = c_parser::parse_c_functions(&source) {
                             for f in functions {
+                                let name = f.name.clone();
+                                if !f.is_static {
+                                    idx.c.entry(name.clone()).or_default().push(
+                                        c_parser::CDeclaration {
+                                            name: name.clone(),
+                                            return_type: f.return_type,
+                                            param_types: f
+                                                .params
+                                                .into_iter()
+                                                .map(|param| param.c_type)
+                                                .collect(),
+                                            variadic: f.variadic,
+                                            line: f.line,
+                                        },
+                                    );
+                                }
                                 idx.c_definitions
-                                    .entry(f.name)
+                                    .entry(name)
                                     .or_default()
                                     .push(entry.clone());
                             }
@@ -425,6 +657,7 @@ impl DeclarationIndex {
                             for t in &defs.typedefs {
                                 idx.source_type_names.insert(t.name.clone());
                             }
+                            c_source_scalar_type_defs.typedefs.extend(defs.typedefs);
                         }
                         // Also index file-scope global VARIABLE definitions so a
                         // cross-file reference to a shared global (PX4 rc parsers
@@ -454,7 +687,7 @@ impl DeclarationIndex {
                     }
                     if let Ok(decls) = cpp_parser::parse_cpp_declarations(&source) {
                         for d in decls {
-                            idx.cpp.entry(d.name.clone()).or_default().push(d);
+                            idx.index_cpp_declaration(d, &entry, !is_cpp_source);
                         }
                     }
                     if let Ok(functions) = cpp_parser::parse_cpp_functions(&source) {
@@ -497,8 +730,9 @@ impl DeclarationIndex {
         retain_flat_pod_structs(&mut cpp_type_defs);
         idx.c_type_defs = std::sync::Arc::new(c_type_defs);
         idx.cpp_type_defs = std::sync::Arc::new(cpp_type_defs);
+        idx.c_source_scalar_type_defs = std::sync::Arc::new(c_source_scalar_type_defs);
         // §27.2: compute the tree-wide C opaque-handle lifecycle pairs ONCE, from
-        // the declarations of EVERY C translation unit in the tree (`idx.c`), so a
+        // public declarations in every C header in the tree, so a
         // handle whose constructor/destructor lives in a header a given target does
         // not `#include` is still pairable. Reuses the exact per-target pairing
         // (`c_direct_lifecycle_table` with no same-file functions, all tree decls as
@@ -514,11 +748,28 @@ impl DeclarationIndex {
     /// key. Returns an empty vec when the tree declares no opaque-handle lifecycle.
     fn compute_c_tree_lifecycle(&self) -> Vec<harness_gen::c_generate::CHandleLifecycle> {
         let registry = type_model::TypeRegistry::from_defs(std::iter::once(&*self.c_type_defs));
-        let tree_decls: Vec<c_parser::CDeclaration> = self.c.values().flatten().cloned().collect();
+        let tree_decls = self.c_header_declarations.clone();
         if tree_decls.is_empty() {
             return Vec::new();
         }
         crate::generate_harness::c_direct_lifecycle_table(&[], &tree_decls, &registry)
+    }
+
+    fn index_cpp_declaration(
+        &mut self,
+        declaration: cpp_parser::CppDeclaration,
+        source_path: &Path,
+        is_header: bool,
+    ) {
+        let name = declaration.name.clone();
+        self.cpp.entry(name.clone()).or_default().push(declaration);
+        if is_header {
+            let headers = self.cpp_declaration_headers.entry(name).or_default();
+            let path = source_path.to_path_buf();
+            if !headers.contains(&path) {
+                headers.push(path);
+            }
+        }
     }
 
     /// Record the namespace components, class name, and param/return type leaf
@@ -560,6 +811,7 @@ impl DeclarationIndex {
         let needle = format!("/{spelling}");
         let mut roots: Vec<PathBuf> = candidates
             .iter()
+            .filter(|path| include_candidate_is_host_usable(path))
             .filter_map(|path| {
                 let path_str = path.to_string_lossy().replace('\\', "/");
                 path_str
@@ -570,11 +822,268 @@ impl DeclarationIndex {
             .collect();
         // Prefer the shortest root (the canonical include dir over a deep copy).
         roots.sort_by_key(|root| root.as_os_str().len());
-        roots.into_iter().next()
+        if let Some(root) = roots.into_iter().next() {
+            return Some(root);
+        }
+
+        // A surviving header can include a deleted sibling through a parent-relative
+        // spelling such as `../allocators.h`. Clang searches each include directory
+        // using that spelling verbatim, so the ordinary suffix calculation above
+        // cannot produce a root. When exactly one usable candidate matches the
+        // non-parent suffix, return a synthetic child path beneath its real parent:
+        // `parent/.govfuzz-up-0/../allocators.h` then resolves to the recovered blob.
+        // apply_repair creates these work-directory-only marker directories before
+        // adding them to the compiler search path.
+        let path = Path::new(&spelling);
+        let parent_count = path
+            .components()
+            .take_while(|component| matches!(component, std::path::Component::ParentDir))
+            .count();
+        if parent_count == 0 {
+            return None;
+        }
+        let suffix = path.components().skip(parent_count).collect::<PathBuf>();
+        if suffix.as_os_str().is_empty()
+            || suffix
+                .components()
+                .any(|component| !matches!(component, std::path::Component::Normal(_)))
+        {
+            return None;
+        }
+        let suffix_components = suffix.components().count();
+        let mut matches = candidates
+            .iter()
+            .filter(|candidate| include_candidate_is_host_usable(candidate))
+            .filter(|candidate| candidate.ends_with(&suffix))
+            .filter_map(|candidate| candidate.ancestors().nth(suffix_components))
+            .map(Path::to_path_buf)
+            .collect::<Vec<_>>();
+        matches.sort();
+        matches.dedup();
+        if matches.len() != 1 {
+            return None;
+        }
+        let mut root = matches.remove(0);
+        for level in 0..parent_count {
+            root.push(format!(".govfuzz-relative-include-{level}"));
+        }
+        Some(root)
+    }
+
+    /// Resolve an include whose directory layout differs from the checkout to a
+    /// unique real header with the same basename. The caller creates a forwarding
+    /// header at the requested spelling. Ambiguous basenames are intentionally
+    /// refused: choosing one of several unrelated `config.h`/`types.h` files
+    /// would silently corrupt the build model.
+    pub fn unique_header_for(&self, spelling: &str) -> Option<PathBuf> {
+        let spelling = spelling.trim().replace('\\', "/");
+        let basename = std::path::Path::new(&spelling).file_name()?.to_str()?;
+        let mut candidates = self.header_paths.get(basename)?.clone();
+        candidates.retain(|path| include_candidate_is_host_usable(path));
+        candidates.sort();
+        candidates.dedup();
+        (candidates.len() == 1).then(|| candidates.remove(0))
     }
 
     pub fn lookup_c(&self, name: &str) -> Option<&c_parser::CDeclaration> {
         self.c.get(name).and_then(|v| v.first())
+    }
+
+    pub(crate) fn unique_c_type_definition_header(&self, name: &str) -> Option<PathBuf> {
+        let mut headers = self.c_type_definition_headers.get(name)?.clone();
+        headers.sort();
+        headers.dedup();
+        (headers.len() == 1).then(|| headers.remove(0))
+    }
+
+    /// Resolve an ambiguous type name through the target's own include graph.
+    /// Multi-module trees commonly define the same leaf typedef in several
+    /// components. The one definition reachable from a unique direct include is
+    /// the ABI the target actually uses. Return that direct include so repair
+    /// preserves the component's prerequisite include order.
+    pub(crate) fn lookup_c_type_definition_header_near_includes(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Option<PathBuf> {
+        let definitions = self.c_type_definition_headers.get(name)?;
+        let include_paths: Vec<&PathBuf> = quoted_includes(source)
+            .into_iter()
+            .filter_map(|include| {
+                let basename = Path::new(&include).file_name()?.to_str()?;
+                self.header_paths.get(basename)
+            })
+            .filter(|paths| paths.len() == 1)
+            .flatten()
+            .collect();
+
+        let mut reachable = Vec::new();
+        for (index, definition) in definitions.iter().enumerate() {
+            for include in &include_paths {
+                let mut seen = HashSet::new();
+                if self.header_reaches_header(include, definition, 6, &mut seen) {
+                    reachable.push((index, (*include).clone()));
+                    break;
+                }
+            }
+        }
+        reachable.sort_by_key(|(index, _)| *index);
+        reachable.dedup_by_key(|(index, _)| *index);
+        if reachable.len() == 1 {
+            return Some(reachable.remove(0).1);
+        }
+
+        // The target may directly include an ambiguous leaf (`p_local.h`) that
+        // cannot enter `include_paths`, while another unique include in the same
+        // module (`hexen/h2def.h`) still locates the correct sibling definition
+        // (`hexen/r_local.h`). Require a unique longest shared path prefix; ties
+        // remain unresolved rather than selecting a same-named type arbitrarily.
+        let mut scored: Vec<(usize, usize)> = definitions
+            .iter()
+            .enumerate()
+            .map(|(index, header)| {
+                let shared = include_paths
+                    .iter()
+                    .map(|include| {
+                        header
+                            .components()
+                            .zip(include.components())
+                            .take_while(|(left, right)| left == right)
+                            .count()
+                    })
+                    .max()
+                    .unwrap_or(0);
+                (shared, index)
+            })
+            .collect();
+        scored.sort_by_key(|(shared, _)| std::cmp::Reverse(*shared));
+        let (best_shared, best_index) = *scored.first()?;
+        if best_shared == 0
+            || scored
+                .get(1)
+                .is_some_and(|(shared, _)| *shared == best_shared)
+        {
+            return None;
+        }
+        Some(definitions[best_index].clone())
+    }
+
+    pub(crate) fn lookup_c_extern_data_type(&self, name: &str) -> Option<&str> {
+        self.c_extern_data.get(name).map(String::as_str)
+    }
+
+    pub(crate) fn lookup_unique_c_extern_data_header(&self, name: &str) -> Option<(&Path, &str)> {
+        let declarations = self.c_extern_data_headers.get(name)?;
+        (declarations.len() == 1).then(|| (declarations[0].0.as_path(), declarations[0].1.as_str()))
+    }
+
+    pub(crate) fn lookup_c_extern_data_header_near_includes(
+        &self,
+        name: &str,
+        source: &str,
+    ) -> Option<(&Path, &str)> {
+        let declarations = self.c_extern_data_headers.get(name)?;
+        let include_paths: Vec<&PathBuf> = quoted_includes(source)
+            .into_iter()
+            .filter_map(|include| {
+                let basename = Path::new(&include).file_name()?.to_str()?;
+                self.header_paths.get(basename)
+            })
+            .filter(|paths| paths.len() == 1)
+            .flatten()
+            .collect();
+
+        let mut reachable = Vec::new();
+        for (index, (declaration, _)) in declarations.iter().enumerate() {
+            for include in &include_paths {
+                let mut seen = HashSet::new();
+                if self.header_reaches_header(include, declaration, 6, &mut seen) {
+                    reachable.push((index, include.as_path()));
+                    break;
+                }
+            }
+        }
+        reachable.sort_by_key(|(index, _)| *index);
+        reachable.dedup_by_key(|(index, _)| *index);
+        if reachable.len() == 1 {
+            let (index, include) = reachable[0];
+            return Some((include, declarations[index].1.as_str()));
+        }
+
+        let mut scored: Vec<(usize, usize)> = declarations
+            .iter()
+            .enumerate()
+            .map(|(index, (header, _))| {
+                let shared = include_paths
+                    .iter()
+                    .map(|include| {
+                        header
+                            .components()
+                            .zip(include.components())
+                            .take_while(|(left, right)| left == right)
+                            .count()
+                    })
+                    .max()
+                    .unwrap_or(0);
+                (shared, index)
+            })
+            .collect();
+        scored.sort_by_key(|(shared, _)| std::cmp::Reverse(*shared));
+        let (best_shared, best_index) = *scored.first()?;
+        if best_shared == 0
+            || scored
+                .get(1)
+                .is_some_and(|(shared, _)| *shared == best_shared)
+        {
+            return None;
+        }
+        Some((
+            declarations[best_index].0.as_path(),
+            declarations[best_index].1.as_str(),
+        ))
+    }
+
+    fn header_reaches_header(
+        &self,
+        current: &Path,
+        target: &Path,
+        depth: usize,
+        seen: &mut HashSet<PathBuf>,
+    ) -> bool {
+        if current == target {
+            return true;
+        }
+        if depth == 0 || !seen.insert(current.to_path_buf()) {
+            return false;
+        }
+        let Ok(source) = crate::source_text::read_source_text(current) else {
+            return false;
+        };
+        quoted_includes(&source).into_iter().any(|include| {
+            let local = current
+                .parent()
+                .map(|parent| parent.join(&include))
+                .filter(|path| path.is_file());
+            if let Some(local) = local {
+                return self.header_reaches_header(&local, target, depth - 1, seen);
+            }
+            let Some(basename) = Path::new(&include)
+                .file_name()
+                .and_then(|name| name.to_str())
+            else {
+                return false;
+            };
+            self.header_paths.get(basename).is_some_and(|paths| {
+                paths
+                    .iter()
+                    .any(|path| self.header_reaches_header(path, target, depth - 1, seen))
+            })
+        })
+    }
+
+    pub(crate) fn lookup_unique_object_macro(&self, name: &str) -> Option<&str> {
+        let values = self.c_object_macros.get(name)?;
+        (values.len() == 1).then(|| values[0].as_str())
     }
 
     /// Whether `name` is a struct/union tag or typedef already FULLY defined in a
@@ -600,7 +1109,63 @@ impl DeclarationIndex {
     }
 
     pub fn lookup_cpp(&self, name: &str) -> Option<&cpp_parser::CppDeclaration> {
-        self.cpp.get(name).and_then(|v| v.first())
+        let expected_arity = cpp_symbol_param_arity(name);
+        let expected_const = cpp_symbol_is_const_method(name);
+        let symbol_params = cpp_symbol_param_text(name).unwrap_or("");
+        cpp_symbol_lookup_keys(name).into_iter().find_map(|key| {
+            let declarations = self.cpp.get(&key)?;
+            expected_arity
+                .and_then(|arity| {
+                    let mut best = None;
+                    let mut best_score = 0usize;
+                    for declaration in declarations.iter().filter(|declaration| {
+                        declaration.param_types.len() == arity
+                            && declaration
+                                .function_suffix
+                                .split_whitespace()
+                                .any(|qualifier| qualifier == "const")
+                                == expected_const
+                    }) {
+                        let score = cpp_declaration_param_match_score(declaration, symbol_params);
+                        if best.is_none() || score > best_score {
+                            best = Some(declaration);
+                            best_score = score;
+                        }
+                    }
+                    best
+                })
+                .or_else(|| declarations.first())
+        })
+    }
+
+    pub(crate) fn lookup_c_stub_header(&self, symbol: &str) -> Option<&Path> {
+        self.c_declaration_headers
+            .get(symbol)
+            .and_then(|paths| paths.first())
+            .map(PathBuf::as_path)
+    }
+
+    /// Return a declaration prepared for an out-of-line C++ stub definition.
+    /// Header declarations are indexed by their leaf name (`Status`/`ToString`),
+    /// while linker diagnostics carry the namespace/class-qualified symbol. The
+    /// definition must use that qualified spelling or it emits an unrelated free
+    /// function and leaves the original symbol unresolved.
+    pub(crate) fn lookup_cpp_stub_declaration(
+        &self,
+        symbol: &str,
+    ) -> Option<cpp_parser::CppDeclaration> {
+        let mut declaration = self.lookup_cpp(symbol)?.clone();
+        declaration.name = cpp_symbol_qualified_name(symbol)?;
+        Some(declaration)
+    }
+
+    pub(crate) fn lookup_cpp_stub_header(&self, symbol: &str) -> Option<&Path> {
+        cpp_symbol_lookup_keys(symbol).into_iter().find_map(|key| {
+            self.cpp_declaration_headers
+                .get(&key)
+                .and_then(|paths| paths.first())
+                .map(PathBuf::as_path)
+        })
     }
 
     /// Whether the C++ class/struct `name` (a leaf class name, no namespace) is
@@ -627,16 +1192,67 @@ impl DeclarationIndex {
         self.cpp_header_class_names.contains(leaf)
             || self.cpp_source_class_names.contains(leaf)
             || self.type_defined_in_compiled_source(leaf)
+            || self
+                .cpp_type_defs
+                .enums
+                .iter()
+                .any(|definition| definition.name == leaf)
+            || self
+                .cpp_type_defs
+                .typedefs
+                .iter()
+                .any(|definition| definition.name == leaf)
+            || self
+                .cpp_type_defs
+                .structs
+                .iter()
+                .any(|definition| definition.name == leaf)
     }
 
     pub fn lookup_c_definition_source(&self, name: &str) -> Option<&Path> {
+        self.lookup_c_definition_source_impl(name, None)
+    }
+
+    pub fn lookup_c_definition_source_near(&self, name: &str, reference: &Path) -> Option<&Path> {
+        self.lookup_c_definition_source_impl(name, Some(reference))
+    }
+
+    fn lookup_c_definition_source_impl(
+        &self,
+        name: &str,
+        reference: Option<&Path>,
+    ) -> Option<&Path> {
         self.c_definitions
             .get(name)
-            .and_then(|v| v.first())
+            .and_then(|paths| {
+                paths
+                    .iter()
+                    .filter(|path| {
+                        !crate::generate_harness::source_path_is_foreign_platform(path)
+                            && !crate::generate_harness::source_path_has_unconditional_foreign_platform_include(path)
+                            && !crate::generate_harness::source_path_has_missing_translation_unit_include(path)
+                            && !self.source_has_unavailable_unconditional_include(path)
+                    })
+                    .min_by_key(|path| {
+                        definition_source_repair_score_near(path, reference)
+                    })
+            })
             .map(PathBuf::as_path)
     }
 
     pub fn lookup_cpp_definition_source(&self, name: &str) -> Option<&Path> {
+        self.lookup_cpp_definition_source_impl(name, None)
+    }
+
+    pub fn lookup_cpp_definition_source_near(&self, name: &str, reference: &Path) -> Option<&Path> {
+        self.lookup_cpp_definition_source_impl(name, Some(reference))
+    }
+
+    fn lookup_cpp_definition_source_impl(
+        &self,
+        name: &str,
+        reference: Option<&Path>,
+    ) -> Option<&Path> {
         let mut candidates = Vec::new();
         for key in cpp_symbol_lookup_keys(name) {
             if let Some(paths) = self.cpp_definitions.get(&key) {
@@ -645,8 +1261,98 @@ impl DeclarationIndex {
         }
         candidates
             .into_iter()
-            .min_by_key(|path| cpp_source_repair_score(path))
+            .filter(|path| {
+                !crate::generate_harness::source_path_is_foreign_platform(path)
+                    && !crate::generate_harness::source_path_has_unconditional_foreign_platform_include(path)
+                    && !crate::generate_harness::source_path_has_missing_translation_unit_include(
+                        path,
+                    )
+                    && !self.source_has_unavailable_unconditional_include(path)
+            })
+            .min_by_key(|path| definition_source_repair_score_near(path, reference))
             .map(PathBuf::as_path)
+    }
+
+    pub fn lookup_definition_source_near(&self, name: &str, reference: &Path) -> Option<&Path> {
+        self.lookup_c_definition_source_near(name, reference)
+            .or_else(|| self.lookup_cpp_definition_source_near(name, reference))
+    }
+
+    fn source_has_unavailable_unconditional_include(&self, path: &Path) -> bool {
+        let Ok(source) = crate::source_text::read_source_text(path) else {
+            return true;
+        };
+        let mut conditional_depth = 0usize;
+        for line in source.lines() {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("#if") {
+                conditional_depth += 1;
+                continue;
+            }
+            if trimmed.starts_with("#endif") {
+                conditional_depth = conditional_depth.saturating_sub(1);
+                continue;
+            }
+            if conditional_depth != 0 || !trimmed.starts_with("#include") {
+                continue;
+            }
+            let spelling = trimmed["#include".len()..]
+                .trim()
+                .strip_prefix(['<', '"'])
+                .and_then(|rest| rest.split(['>', '"']).next())
+                .unwrap_or("")
+                .trim();
+            if spelling.is_empty() || self.include_spelling_is_available(spelling, path) {
+                continue;
+            }
+            return true;
+        }
+        false
+    }
+
+    fn include_spelling_is_available(&self, spelling: &str, source_path: &Path) -> bool {
+        const COMPILER_BUILTIN_HEADERS: &[&str] = &[
+            "float.h",
+            "iso646.h",
+            "stdalign.h",
+            "stdarg.h",
+            "stdatomic.h",
+            "stdbool.h",
+            "stddef.h",
+            "tgmath.h",
+            "unwind.h",
+            "varargs.h",
+        ];
+        if c_stub_gen::is_config_header(spelling)
+            || (!spelling.contains('/') && !spelling.contains('.'))
+            || COMPILER_BUILTIN_HEADERS.contains(&spelling)
+        {
+            return true;
+        }
+        let include_path = Path::new(spelling);
+        if include_path.is_absolute() && include_path.is_file() {
+            return true;
+        }
+        if source_path
+            .parent()
+            .is_some_and(|parent| parent.join(include_path).is_file())
+        {
+            return true;
+        }
+        let Some(basename) = include_path.file_name().and_then(|name| name.to_str()) else {
+            return false;
+        };
+        if self.header_paths.contains_key(basename) {
+            return true;
+        }
+        [
+            Path::new("/usr/include").join(include_path),
+            Path::new("/usr/local/include").join(include_path),
+            Path::new("/usr/include/x86_64-linux-gnu").join(include_path),
+            Path::new("/opt/homebrew/include").join(include_path),
+        ]
+        .iter()
+        .any(|candidate| candidate.is_file())
     }
 
     pub fn lookup_ada_package_ops(&self, unit: &str) -> Vec<stub_gen::StubOp> {
@@ -678,6 +1384,18 @@ impl DeclarationIndex {
                 continue;
             }
             if !is_body_source && subprogram.visibility != ada_parser::ast::Visibility::Public {
+                continue;
+            }
+            // An expression function declared in a package spec already has its
+            // body in that spec. Re-emitting it in a synthesized package body is
+            // illegal ("body conflicts with expression function").
+            if !is_body_source && subprogram.body_span.is_some() {
+                continue;
+            }
+            // A renaming declaration (`function Image ... renames Value`) is a
+            // complete implementation in the spec and must not be duplicated in
+            // a synthesized package body.
+            if !is_body_source && ada_subprogram_decl_is_renaming(source, subprogram) {
                 continue;
             }
             let ada_parser::ast::SubprogramOwner::Package(package_id) = &subprogram.owner else {
@@ -737,6 +1455,128 @@ impl DeclarationIndex {
             }
         }
     }
+}
+
+fn c_extern_data_declarations(source: &str) -> Vec<(String, String)> {
+    let mut declarations = Vec::new();
+    for raw_line in source.lines() {
+        let line = raw_line.split_once("//").map_or(raw_line, |(code, _)| code);
+        // Headers routinely annotate extern objects after the semicolon. Keep
+        // the declaration and discard the trailing C block comment; otherwise
+        // `extern Type state; /* note */` misses `strip_suffix(';')` and a later
+        // unresolved data reference is wrongly synthesized as a function.
+        let line = line.split_once("/*").map_or(line, |(code, _)| code);
+        let Some((extern_pos, _)) = line.match_indices("extern").find(|(pos, word)| {
+            let before = pos
+                .checked_sub(1)
+                .and_then(|index| line.as_bytes().get(index))
+                .is_none_or(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_');
+            let after = line
+                .as_bytes()
+                .get(pos + word.len())
+                .is_none_or(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_');
+            before && after
+        }) else {
+            continue;
+        };
+        let Some(statement) = line[extern_pos + "extern".len()..]
+            .trim()
+            .strip_suffix(';')
+            .map(str::trim)
+        else {
+            continue;
+        };
+        if let Some(captures) = extern_function_pointer().captures(statement) {
+            declarations.push((
+                captures[2].to_owned(),
+                format!("{} (*){}", captures[1].trim(), captures[3].trim()),
+            ));
+            continue;
+        }
+        if statement.contains(['(', ',', '=']) {
+            continue;
+        }
+        let (declarator, array_suffix) = statement.find('[').map_or((statement, ""), |start| {
+            (statement[..start].trim_end(), statement[start..].trim())
+        });
+        if !array_suffix.is_empty()
+            && (!array_suffix.ends_with(']')
+                || array_suffix.bytes().filter(|byte| *byte == b'[').count()
+                    != array_suffix.bytes().filter(|byte| *byte == b']').count())
+        {
+            continue;
+        }
+        let bytes = declarator.as_bytes();
+        let Some(end) = bytes
+            .iter()
+            .rposition(|byte| byte.is_ascii_alphanumeric() || *byte == b'_')
+            .map(|index| index + 1)
+        else {
+            continue;
+        };
+        let start = bytes[..end]
+            .iter()
+            .rposition(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_')
+            .map_or(0, |index| index + 1);
+        let name = &declarator[start..end];
+        let base_type = declarator[..start].trim();
+        let data_type = if array_suffix.is_empty() {
+            base_type.to_owned()
+        } else {
+            format!("{base_type} {array_suffix}")
+        };
+        if name.is_empty()
+            || base_type.is_empty()
+            || !name
+                .chars()
+                .next()
+                .is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_')
+            || !name
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        {
+            continue;
+        }
+        declarations.push((name.to_owned(), data_type));
+    }
+    declarations
+}
+
+fn extern_function_pointer() -> &'static regex::Regex {
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        regex::Regex::new(r"^(.+?)\(\s*\*\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)(\s*\([^;]*\))$")
+            .expect("extern function-pointer regex")
+    })
+}
+
+fn cpp_symbol_is_const_method(symbol: &str) -> bool {
+    symbol
+        .rsplit_once(')')
+        .is_some_and(|(_, suffix)| suffix.split_whitespace().any(|part| part == "const"))
+}
+
+fn cpp_declaration_param_match_score(
+    declaration: &cpp_parser::CppDeclaration,
+    symbol_params: &str,
+) -> usize {
+    let symbol_tokens = symbol_params
+        .split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
+        .filter(|token| !token.is_empty())
+        .collect::<std::collections::HashSet<_>>();
+    declaration
+        .param_types
+        .iter()
+        .flat_map(|param| param.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_'))
+        .filter(|token| {
+            token.len() >= 3
+                && !matches!(
+                    *token,
+                    "const" | "volatile" | "struct" | "class" | "unsigned" | "signed" | "std"
+                )
+        })
+        .filter(|token| symbol_tokens.contains(token))
+        .count()
 }
 
 fn quoted_includes(source: &str) -> Vec<String> {
@@ -801,7 +1641,7 @@ fn cpp_source_uses_module_unit(source: &str) -> bool {
     false
 }
 
-fn cpp_source_repair_score(path: &Path) -> (u8, usize, String) {
+fn definition_source_repair_score(path: &Path) -> (u8, usize, String) {
     let normalized = path.to_string_lossy().replace('\\', "/");
     let file_name = path
         .file_name()
@@ -821,6 +1661,25 @@ fn cpp_source_repair_score(path: &Path) -> (u8, usize, String) {
         1
     };
     (tier, normalized.len(), normalized)
+}
+
+fn definition_source_repair_score_near(
+    path: &Path,
+    reference: Option<&Path>,
+) -> (u8, std::cmp::Reverse<usize>, usize, String) {
+    let (tier, length, normalized) = definition_source_repair_score(path);
+    let shared_components = reference.map_or(0, |reference| {
+        path.components()
+            .zip(reference.components())
+            .take_while(|(left, right)| left == right)
+            .count()
+    });
+    (
+        tier,
+        std::cmp::Reverse(shared_components),
+        length,
+        normalized,
+    )
 }
 
 fn cpp_symbol_lookup_keys(symbol: &str) -> Vec<String> {
@@ -847,6 +1706,44 @@ fn cpp_symbol_qualified_name(symbol: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+fn cpp_symbol_param_arity(symbol: &str) -> Option<usize> {
+    let params = cpp_symbol_param_text(symbol)?;
+    if params.is_empty() || params == "void" {
+        return Some(0);
+    }
+    let mut nesting = 0usize;
+    let mut arity = 1usize;
+    for byte in params.bytes() {
+        match byte {
+            b'<' | b'(' | b'[' | b'{' => nesting += 1,
+            b'>' | b')' | b']' | b'}' => nesting = nesting.saturating_sub(1),
+            b',' if nesting == 0 => arity += 1,
+            _ => {}
+        }
+    }
+    Some(arity)
+}
+
+fn cpp_symbol_param_text(symbol: &str) -> Option<&str> {
+    let bytes = symbol.as_bytes();
+    let mut depth = 0usize;
+    let mut open = None;
+    for index in (0..bytes.len()).rev() {
+        match bytes[index] {
+            b')' => depth += 1,
+            b'(' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    open = Some(index);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    Some(symbol.get(open? + 1..symbol.rfind(')')?)?.trim())
+}
+
 fn stub_op_from_ada_subprogram(subprogram: &ada_parser::ast::Subprogram) -> stub_gen::StubOp {
     stub_gen::StubOp {
         name: ada_display_name(&subprogram.name),
@@ -863,23 +1760,49 @@ fn stub_op_from_ada_subprogram(subprogram: &ada_parser::ast::Subprogram) -> stub
             .iter()
             .map(|param| stub_gen::StubParam {
                 name: ada_display_name(&param.name),
-                mode: ada_param_mode_display_name(&param.mode),
+                mode: ada_param_mode_display_name(param),
                 type_name: ada_type_ref_display_name(&param.type_ref),
+                default: param.default.as_ref().map(|expr| expr.0.clone()),
             })
             .collect(),
     }
 }
 
-fn ada_param_mode_display_name(mode: &ada_parser::ast::ParamMode) -> Option<String> {
-    match mode {
+fn ada_param_mode_display_name(param: &ada_parser::ast::Parameter) -> Option<String> {
+    match &param.mode {
         ada_parser::ast::ParamMode::In => None,
         ada_parser::ast::ParamMode::Out => Some("out".to_owned()),
         ada_parser::ast::ParamMode::InOut => Some("in out".to_owned()),
-        ada_parser::ast::ParamMode::AccessMode => Some("access".to_owned()),
+        ada_parser::ast::ParamMode::AccessMode => Some(
+            if param
+                .type_ref
+                .aspects
+                .0
+                .iter()
+                .any(|aspect| aspect == "not_null_access")
+            {
+                "not null access"
+            } else {
+                "access"
+            }
+            .to_owned(),
+        ),
     }
 }
 
+fn ada_subprogram_decl_is_renaming(source: &str, subprogram: &ada_parser::ast::Subprogram) -> bool {
+    let start = subprogram.decl_span.start_byte as usize;
+    let end = subprogram.decl_span.end_byte as usize;
+    source.get(start..end).is_some_and(|decl| {
+        decl.split(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
+            .any(|word| word.eq_ignore_ascii_case("renames"))
+    })
+}
+
 fn ada_type_ref_display_name(type_ref: &ada_parser::ast::TypeRef) -> String {
+    if type_ref.name_path.is_empty() && !type_ref.constraints.0.trim().is_empty() {
+        return type_ref.constraints.0.trim().to_owned();
+    }
     type_ref
         .name_path
         .iter()
@@ -1060,6 +1983,67 @@ fn retain_flat_pod_structs(defs: &mut c_parser::CTypeDefs) {
         .retain(|s| struct_is_flat_pod(s, &snapshot, &enum_names));
 }
 
+fn object_macro_definitions(source: &str) -> Vec<(String, String)> {
+    let mut definitions = Vec::new();
+    let mut logical_lines = Vec::new();
+    let mut logical = String::new();
+    for raw in source.lines() {
+        if logical.is_empty() {
+            logical.push_str(raw);
+        } else {
+            logical.push_str(raw.trim_start());
+        }
+        if logical.trim_end().ends_with('\\') {
+            let trimmed_len = logical.trim_end().len();
+            logical.truncate(trimmed_len - 1);
+            logical.truncate(logical.trim_end().len());
+            logical.push(' ');
+            continue;
+        }
+        logical_lines.push(std::mem::take(&mut logical));
+    }
+    if !logical.is_empty() {
+        logical_lines.push(logical);
+    }
+
+    for raw in logical_lines {
+        let line = raw.trim_start();
+        let Some(rest) = line.strip_prefix('#') else {
+            continue;
+        };
+        let rest = rest.trim_start();
+        let Some(rest) = rest.strip_prefix("define") else {
+            continue;
+        };
+        if !rest.chars().next().is_some_and(char::is_whitespace) {
+            continue;
+        }
+        let rest = rest.trim_start();
+        let name_len = rest
+            .char_indices()
+            .take_while(|(index, ch)| {
+                (*index == 0 && (ch.is_ascii_alphabetic() || *ch == '_'))
+                    || (*index > 0 && (ch.is_ascii_alphanumeric() || *ch == '_'))
+            })
+            .map(|(index, ch)| index + ch.len_utf8())
+            .last()
+            .unwrap_or(0);
+        if name_len == 0 || rest[name_len..].starts_with('(') {
+            continue;
+        }
+        let value = rest[name_len..].trim();
+        if
+        // Unconfigured Autoconf/CMake templates are not C expressions.
+        // Re-emitting `@PROJECT_VERSION_MAJOR@` as an "exact" value turns a
+        // recoverable config gap into `expected expression` in every TU.
+        value.contains('@') || value.contains("${") {
+            continue;
+        }
+        definitions.push((rest[..name_len].to_owned(), value.to_owned()));
+    }
+    definitions
+}
+
 fn struct_is_flat_pod(
     def: &c_parser::CStructDef,
     defs: &c_parser::CTypeDefs,
@@ -1235,6 +2219,87 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
     }
 
     #[test]
+    fn ada_stub_ops_preserve_qualified_classwide_and_anonymous_access_types() {
+        let root = tmpdir();
+        fs::write(
+            root.join("callbacks.ads"),
+            "package Callbacks is\n\
+             \x20  function Now return Ada.Calendar.Time;\n\
+             \x20  procedure Parse\n\
+             \x20    (Parser : Argument_Parser'Class;\n\
+             \x20     Put_Parts : not null access procedure (Text : String));\n\
+             \x20  function Existing return Integer is (1);\n\
+             end Callbacks;\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        let ops = idx.lookup_ada_package_ops("Callbacks");
+        let now = ops.iter().find(|op| op.name == "Now").expect("Now op");
+        assert_eq!(now.return_type.as_deref(), Some("Ada.Calendar.Time"));
+        let parse = ops.iter().find(|op| op.name == "Parse").expect("Parse op");
+        assert_eq!(parse.params[0].type_name, "Argument_Parser'class");
+        assert_eq!(parse.params[1].mode.as_deref(), Some("not null access"));
+        assert_eq!(parse.params[1].type_name, "procedure (Text : String)");
+        assert!(
+            ops.iter().all(|op| op.name != "Existing"),
+            "expression function must not be emitted in a package body: {ops:?}"
+        );
+    }
+
+    #[test]
+    fn ada_stub_ops_continue_after_generic_instantiation() {
+        let root = tmpdir();
+        fs::write(
+            root.join("unicode-ces.ads"),
+            "with Ada.Unchecked_Deallocation;\n\
+             package Unicode.CES is\n\
+             \x20  subtype Byte_Sequence is String;\n\
+             \x20  type Byte_Sequence_Access is access all Byte_Sequence;\n\
+             \x20  procedure Free is new Ada.Unchecked_Deallocation\n\
+             \x20    (Byte_Sequence, Byte_Sequence_Access);\n\
+             \x20  procedure Read_Bom (Str : String; Len : out Natural);\n\
+             \x20  function Write_Bom (BOM : Integer) return String;\n\
+             \x20  function Index_From_Offset\n\
+             \x20    (Str : Byte_Sequence; Offset : Natural) return Integer;\n\
+             end Unicode.CES;\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        let ops = idx.lookup_ada_package_ops("Unicode.CES");
+        let names = ops.iter().map(|op| op.name.as_str()).collect::<Vec<_>>();
+        assert!(names.contains(&"Read_Bom"), "{names:?}");
+        assert!(names.contains(&"Write_Bom"), "{names:?}");
+        assert!(names.contains(&"Index_From_Offset"), "{names:?}");
+        assert!(
+            !names.contains(&"Free"),
+            "generic instance needs no body: {names:?}"
+        );
+    }
+
+    #[test]
+    fn ada_stub_ops_preserve_defaults_and_skip_renamings() {
+        let root = tmpdir();
+        fs::write(
+            root.join("defaults.ads"),
+            "package Defaults is\n\
+             \x20  procedure Read (Enabled : Boolean := True);\n\
+             \x20  function Value return String;\n\
+             \x20  function Image return String renames Value;\n\
+             end Defaults;\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        let ops = idx.lookup_ada_package_ops("Defaults");
+        let read = ops.iter().find(|op| op.name == "Read").expect("Read op");
+        assert_eq!(read.params[0].default.as_deref(), Some("True"));
+        assert!(ops.iter().any(|op| op.name == "Value"), "{ops:?}");
+        assert!(ops.iter().all(|op| op.name != "Image"), "{ops:?}");
+    }
+
+    #[test]
     fn ada_unit_in_gpr_scenario_excluded_dir_is_not_resolvable() {
         // Regression: the cross-dir unit recovery must not re-add a unit the
         // default GPR scenario excludes (libkeccak's SIMD `src/x86_64/AVX2`),
@@ -1382,7 +2447,57 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
     }
 
     #[test]
-    fn indexes_c_declarations_across_tree() {
+    fn static_source_initializer_does_not_shadow_public_tree_constructor() {
+        let root = tmpdir();
+        fs::write(
+            root.join("mimalloc.h"),
+            "typedef struct mi_heap_s mi_heap_t;\n\
+             mi_heap_t *mi_heap_new(void);\n\
+             void mi_heap_delete(mi_heap_t *heap);\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("heap.c"),
+            "#include \"mimalloc.h\"\n\
+             static int _mi_heap_guarded_init(mi_heap_t *heap) { return heap != 0; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        let heap = idx
+            .c_tree_lifecycle
+            .iter()
+            .find(|entry| entry.handle_type.contains("mi_heap"))
+            .expect("heap lifecycle found");
+        assert_eq!(heap.init.as_deref(), Some("mi_heap_new"));
+        assert!(heap.init_returns_handle);
+        assert_eq!(heap.delete.as_deref(), Some("mi_heap_delete"));
+    }
+
+    #[test]
+    fn cpp_enum_in_header_is_a_defined_return_type() {
+        let root = tmpdir();
+        fs::write(
+            root.join("tinyxml2.h"),
+            "namespace tinyxml2 { enum XMLError { XML_SUCCESS = 0 }; }\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("tinyxml2.cpp"),
+            "#include \"tinyxml2.h\"\n\
+             tinyxml2::XMLError parse() { return tinyxml2::XML_SUCCESS; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert!(
+            idx.cpp_type_name_defined_in_tree("XMLError"),
+            "a header enum must not be classified as an unavailable SDK type"
+        );
+    }
+
+    #[test]
+    fn indexes_c_declarations_and_external_definitions_across_tree() {
         let root = tmpdir();
         fs::write(
             root.join("a.h"),
@@ -1391,15 +2506,165 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
         .unwrap();
         fs::write(
             root.join("b.c"),
-            "extern int decoder_create(void);\nint helper(void){return 0;}\n",
+            "extern int decoder_create(void);\nint helper(void){return 0;}\nstatic int private_helper(void){return 0;}\n",
         )
         .unwrap();
         let idx = DeclarationIndex::build(&root).unwrap();
         assert!(idx.lookup_c("decoder_create").is_some());
         assert!(idx.lookup_c("decoder_destroy").is_some());
+        assert!(idx.lookup_c("helper").is_some());
+        assert!(idx.lookup_c("private_helper").is_none());
+    }
+
+    #[test]
+    fn indexes_non_pod_anonymous_struct_typedef_and_wrapped_pointer_return() {
+        let root = tmpdir();
+        let header = "typedef struct {\n\
+                 char *next_in;\n\
+                 void *(*bzalloc)(void *, int, int);\n\
+                 void (*bzfree)(void *, void *);\n\
+             } bz_stream;\n";
+        fs::write(root.join("bzlib.h"), header).unwrap();
+        fs::write(
+            root.join("version.c"),
+            "typedef unsigned char Bool;\n\
+             #define True ((Bool)1)\n\
+             #define False ((Bool)0)\n\
+             const char * BZ_API(BZ2_bzlibVersion)(void) { return \"1\"; }\n",
+        )
+        .unwrap();
+        let parsed = c_parser::parse_c_type_defs(header).unwrap();
         assert!(
-            idx.lookup_c("helper").is_none(),
-            "function definitions stay out of the declaration index"
+            parsed
+                .structs
+                .iter()
+                .any(|record| record.name == "bz_stream"),
+            "parsed structs: {:?}; typedefs: {:?}",
+            parsed.structs,
+            parsed.typedefs
+        );
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert!(
+            idx.type_defined_in_compiled_source("bz_stream"),
+            "a surviving public-header typedef must block a colliding synthetic struct"
+        );
+        assert!(
+            idx.lookup_c("BZ2_bzlibVersion").is_some(),
+            "the real name inside a pointer-returning declaration wrapper must be indexed"
+        );
+        assert_eq!(idx.lookup_unique_object_macro("True"), Some("((Bool)1)"));
+        assert_eq!(idx.lookup_unique_object_macro("False"), Some("((Bool)0)"));
+    }
+
+    #[test]
+    fn ignores_unresolved_config_template_macro_values() {
+        let root = tmpdir();
+        fs::write(
+            root.join("yaml.h"),
+            "#define YAML_VERSION_MAJOR @YAML_VERSION_MAJOR@\n\
+             #define YAML_VERSION_STRING \"@YAML_VERSION_STRING@\"\n\
+             #define YAML_READY 1\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(idx.lookup_unique_object_macro("YAML_VERSION_MAJOR"), None);
+        assert_eq!(idx.lookup_unique_object_macro("YAML_VERSION_STRING"), None);
+        assert_eq!(idx.lookup_unique_object_macro("YAML_READY"), Some("1"));
+    }
+
+    #[test]
+    fn ignores_object_macros_from_foreign_platform_headers() {
+        let foreign_header = if cfg!(target_os = "windows") {
+            "archive_linux.h"
+        } else if cfg!(any(target_os = "linux", target_os = "macos")) {
+            "archive_windows.h"
+        } else {
+            return;
+        };
+        let root = tmpdir();
+        fs::write(
+            root.join(foreign_header),
+            "#define O_RDONLY _O_RDONLY\n#define HOST_ONLY_ALIAS foreign_value\n",
+        )
+        .unwrap();
+        fs::write(root.join("portable.h"), "#define PORTABLE_LIMIT 64\n").unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(idx.lookup_unique_object_macro("O_RDONLY"), None);
+        assert_eq!(idx.lookup_unique_object_macro("HOST_ONLY_ALIAS"), None);
+        assert_eq!(idx.lookup_unique_object_macro("PORTABLE_LIMIT"), Some("64"));
+    }
+
+    #[test]
+    fn indexes_multiline_object_macro_values() {
+        let root = tmpdir();
+        fs::write(
+            root.join("base.h"),
+            concat!(
+                "#define FMT_BEGIN_NAMESPACE \\",
+                "\n",
+                "  namespace fmt { \\",
+                "\n",
+                "  inline namespace v12 {\n",
+                "#define FMT_END_NAMESPACE \\",
+                "\n",
+                "  } \\",
+                "\n",
+                "  }\n",
+            ),
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_unique_object_macro("FMT_BEGIN_NAMESPACE"),
+            Some("namespace fmt { inline namespace v12 {")
+        );
+        assert_eq!(
+            idx.lookup_unique_object_macro("FMT_END_NAMESPACE"),
+            Some("} }")
+        );
+    }
+
+    #[test]
+    fn empty_object_macro_keeps_conditional_definition_ambiguous() {
+        let root = tmpdir();
+        fs::write(
+            root.join("base.h"),
+            "#define FMT_BEGIN_EXPORT\n#define API_ONLY\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("module.cpp"),
+            "#define FMT_BEGIN_EXPORT export {\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(idx.lookup_unique_object_macro("FMT_BEGIN_EXPORT"), None);
+        assert_eq!(idx.lookup_unique_object_macro("API_ONLY"), Some(""));
+    }
+
+    #[test]
+    fn indexes_external_c_definitions_as_stub_declarations() {
+        let root = tmpdir();
+        fs::write(
+            root.join("api.c"),
+            "void release_buffer(unsigned char *ptr) { (void)ptr; }\n\
+             static int private_helper(int value) { return value; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        let declaration = idx
+            .lookup_c("release_buffer")
+            .expect("external definition supplies a declaration");
+        assert_eq!(declaration.return_type, "void");
+        assert_eq!(declaration.param_types, vec!["unsigned char *"]);
+        assert!(
+            idx.lookup_c("private_helper").is_none(),
+            "private definitions must not become externally linked stubs"
         );
     }
 
@@ -1519,6 +2784,73 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
     }
 
     #[test]
+    fn missing_host_platform_header_rejects_foreign_and_build_only_copies() {
+        let root = tmpdir();
+        for dir in [
+            "builds/vxworks",
+            "builds/qnx",
+            "builds/zos",
+            "builds/mingw32",
+        ] {
+            let dir = root.join(dir);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("platform.hpp"), "#define FOREIGN_PLATFORM 1\n").unwrap();
+        }
+        let gyp = root.join("builds/gyp");
+        fs::create_dir_all(&gyp).unwrap();
+        fs::write(
+            gyp.join("platform.hpp"),
+            "#ifndef ZMQ_GYP_BUILD\n# error \"foreign platform.hpp detected, please re-configure\"\n#endif\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(idx.include_root_for("platform.hpp"), None);
+        assert_eq!(idx.unique_header_for("platform.hpp"), None);
+    }
+
+    #[test]
+    fn generated_host_platform_header_remains_resolvable() {
+        let root = tmpdir();
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("platform.hpp"), "#define ZMQ_HAVE_LINUX 1\n").unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(idx.include_root_for("platform.hpp"), Some(src));
+    }
+
+    #[test]
+    fn resolves_missing_header_to_explicit_prebuilt_fallback() {
+        let root = tmpdir();
+        let prebuilt = root.join("pnglibconf.h.prebuilt");
+        fs::write(&prebuilt, "#define PNG_READ_SUPPORTED\n").unwrap();
+        let dist = root.join("ares_build.h.dist");
+        fs::write(&dist, "#define CARES_TYPEOF_ARES_SOCKLEN_T socklen_t\n").unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+
+        assert_eq!(idx.include_root_for("pnglibconf.h"), None);
+        assert_eq!(idx.unique_header_for("pnglibconf.h"), Some(prebuilt));
+        assert_eq!(idx.include_root_for("ares_build.h"), None);
+        assert_eq!(idx.unique_header_for("ares_build.h"), Some(dist));
+    }
+
+    #[test]
+    fn resolves_parent_relative_include_to_unique_recovered_header() {
+        let root = tmpdir();
+        let include = root.join("vcs_recovery/include/rapidjson");
+        fs::create_dir_all(&include).unwrap();
+        fs::write(include.join("allocators.h"), "#pragma once\n").unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.include_root_for("../allocators.h"),
+            Some(include.join(".govfuzz-relative-include-0"))
+        );
+    }
+
+    #[test]
     fn indexes_c_definition_source_paths_across_tree() {
         let root = tmpdir();
         let helper = root.join("helper.c");
@@ -1537,6 +2869,149 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
     }
 
     #[test]
+    fn c_definition_source_selection_is_deterministic_and_prefers_production() {
+        let root = tmpdir();
+        let src = root.join("src");
+        let tests = root.join("tests");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&tests).unwrap();
+        let fast = src.join("crc32_fast.c");
+        fs::write(&fast, "int crc32_impl(void) { return 1; }\n").unwrap();
+        fs::write(
+            src.join("crc32_small.c"),
+            "int crc32_impl(void) { return 2; }\n",
+        )
+        .unwrap();
+        fs::write(
+            tests.join("crc32.c"),
+            "int crc32_impl(void) { return 3; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_definition_source("crc32_impl"),
+            Some(fast.as_path())
+        );
+    }
+
+    #[test]
+    fn c_definition_source_selection_prefers_the_targets_subproject() {
+        let root = tmpdir();
+        let doom = root.join("src/doom");
+        let hexen = root.join("src/hexen");
+        fs::create_dir_all(&doom).unwrap();
+        fs::create_dir_all(&hexen).unwrap();
+        let doom_definition = doom.join("game.c");
+        let hexen_definition = hexen.join("game.c");
+        let target = hexen.join("save.c");
+        fs::write(&doom_definition, "int shared_state;\n").unwrap();
+        fs::write(&hexen_definition, "int shared_state;\n").unwrap();
+        fs::write(
+            &target,
+            "extern int shared_state;\nint save(void) { return shared_state; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_definition_source_near("shared_state", &target),
+            Some(hexen_definition.as_path())
+        );
+    }
+
+    #[test]
+    fn c_definition_source_selection_rejects_unavailable_external_header() {
+        let root = tmpdir();
+        let source = root.join("helper.c");
+        fs::write(
+            &source,
+            "#include <vendor_sdk/missing.h>\nint helper(void) { return 1; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(idx.lookup_c_definition_source("helper"), None);
+
+        fs::write(root.join("missing.h"), "#define VENDOR_READY 1\n").unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_definition_source("helper"),
+            Some(source.as_path())
+        );
+    }
+
+    #[test]
+    fn c_definition_source_selection_accepts_compiler_builtin_header() {
+        let root = tmpdir();
+        let source = root.join("helper.c");
+        fs::write(
+            &source,
+            "#include <stddef.h>\nint helper(const void *p) { return p != NULL; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_definition_source("helper"),
+            Some(source.as_path())
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn c_definition_source_selection_excludes_foreign_platform_directories() {
+        let root = tmpdir();
+        let unix = root.join("src/prim/unix");
+        let wasi = root.join("src/prim/wasi");
+        fs::create_dir_all(&unix).unwrap();
+        fs::create_dir_all(&wasi).unwrap();
+        let host_source = unix.join("prim.c");
+        fs::write(&host_source, "int platform_output(void) { return 1; }\n").unwrap();
+        fs::write(
+            wasi.join("prim.c"),
+            "int platform_output(void) { return 2; }\n\
+             int foreign_only(void) { return 3; }\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/async.c"),
+            "#include \"iocp-internal.h\"\nint async_only(void) { return 4; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_definition_source("platform_output"),
+            Some(host_source.as_path())
+        );
+        assert!(
+            idx.lookup_c_definition_source("foreign_only").is_none(),
+            "a WASI implementation must not be linked into a Linux repair"
+        );
+        assert!(
+            idx.lookup_c_definition_source("async_only").is_none(),
+            "an unconditionally IOCP-backed source must not enter a Linux repair"
+        );
+    }
+
+    #[test]
+    fn c_definition_source_selection_excludes_missing_textual_implementation() {
+        let root = tmpdir();
+        fs::write(
+            root.join("broken.c"),
+            "#include \"deleted_impl.c\"\nint broken_helper(void) { return 1; }\n",
+        )
+        .unwrap();
+
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert!(
+            idx.lookup_c_definition_source("broken_helper").is_none(),
+            "a TU that textually includes a deleted implementation must not be linked as a repair"
+        );
+    }
+
+    #[test]
     fn libcbor_extern_data_object_resolves_to_addsource_not_blind_stub() {
         // #27: libcbor's `_cbor_malloc`/`_cbor_realloc`/`_cbor_free` are extern DATA
         // objects (function-pointer-typedef variables) DEFINED in allocators.c. A TU
@@ -1544,6 +3019,8 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
         // planner consults `lookup_c_definition_source` — instead of blind-stubbing
         // them as weak NULL FUNCTIONS (the wrong symbol kind).
         let root = tmpdir();
+        fs::create_dir_all(root.join("cbor")).unwrap();
+        fs::write(root.join("cbor/common.h"), "/* allocator typedefs */\n").unwrap();
         fs::write(
             root.join("allocators.c"),
             "#include \"cbor/common.h\"\n\
@@ -1624,6 +3101,33 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
     }
 
     #[test]
+    fn indexes_owning_header_for_c_stub_declaration() {
+        let root = tmpdir();
+        let header = root.join("transform.h");
+        fs::write(
+            &header,
+            "typedef struct BrotliTransforms BrotliTransforms;\n\
+             int BrotliTransformDictionaryWord(const BrotliTransforms* transforms);\n\
+             void mi_cdecl _mi_auto_process_done(void) mi_attr_noexcept;\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_stub_header("BrotliTransformDictionaryWord"),
+            Some(header.as_path())
+        );
+        assert_eq!(
+            idx.lookup_c("_mi_auto_process_done")
+                .map(|declaration| declaration.return_type.as_str()),
+            Some("void")
+        );
+        assert_eq!(
+            idx.lookup_c_stub_header("_mi_auto_process_done"),
+            Some(header.as_path())
+        );
+    }
+
+    #[test]
     fn indexes_cpp_hh_declarations() {
         let root = tmpdir();
         fs::write(
@@ -1635,6 +3139,117 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
         let idx = DeclarationIndex::build(&root).unwrap();
 
         assert!(idx.lookup_cpp("parse_hh").is_some());
+    }
+
+    #[test]
+    fn demangled_cpp_lookup_selects_constructor_overload_by_arity() {
+        let root = tmpdir();
+        fs::write(
+            root.join("status.hh"),
+            "namespace leveldb { class Slice; class Status {\n\
+             public: Status(const Status &);\n\
+             private: enum Code { kOk }; Status(Code, const Slice &, const Slice &);\n\
+             }; }\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+
+        let declaration = idx
+            .lookup_cpp_stub_declaration(
+                "leveldb::Status::Status(leveldb::Status::Code, leveldb::Slice const&, leveldb::Slice const&)",
+            )
+            .expect("three-argument constructor declaration");
+        assert_eq!(declaration.name, "leveldb::Status::Status");
+        assert_eq!(declaration.param_types.len(), 3, "{declaration:?}");
+        assert_eq!(
+            idx.lookup_cpp_stub_header("leveldb::Status::Status(leveldb::Status::Code, leveldb::Slice const&, leveldb::Slice const&)"),
+            Some(root.join("status.hh").as_path())
+        );
+    }
+
+    #[test]
+    fn demangled_cpp_lookup_selects_const_method_overload() {
+        let root = tmpdir();
+        fs::write(
+            root.join("value.hh"),
+            "namespace Json { class Value; class Iterator {\n\
+             public: const Value& deref() const; Value& deref();\n\
+             }; }\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+
+        let const_decl = idx
+            .lookup_cpp_stub_declaration("Json::Iterator::deref() const")
+            .expect("const overload");
+        assert_eq!(const_decl.return_type, "const Value&");
+        assert_eq!(const_decl.function_suffix, "const");
+
+        let mutable_decl = idx
+            .lookup_cpp_stub_declaration("Json::Iterator::deref()")
+            .expect("mutable overload");
+        assert_eq!(mutable_decl.return_type, "Value&");
+        assert!(mutable_decl.function_suffix.is_empty());
+    }
+
+    #[test]
+    fn demangled_cpp_lookup_scores_same_arity_parameter_types() {
+        let root = tmpdir();
+        fs::write(
+            root.join("value.hh"),
+            "namespace Json { class ValueIterator; class Value {\n\
+             public: struct ObjectValues { class iterator; };\n\
+             }; class ValueConstIterator {\n\
+             public: ValueConstIterator(const ValueIterator&);\n\
+             private: explicit ValueConstIterator(const Value::ObjectValues::iterator&);\n\
+             }; }\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+
+        let declaration = idx
+            .lookup_cpp_stub_declaration(
+                "Json::ValueConstIterator::ValueConstIterator(std::_Rb_tree_iterator<std::pair<Json::Value, int> > const&)",
+            )
+            .expect("iterator constructor declaration");
+        assert!(
+            declaration.param_types[0].contains("ObjectValues"),
+            "{declaration:?}"
+        );
+    }
+
+    #[test]
+    fn demangled_cpp_lookup_finds_default_base_constructor() {
+        let root = tmpdir();
+        fs::write(
+            root.join("value.hh"),
+            "namespace Json { class Value { public: struct ObjectValues { using iterator = int; }; };\n\
+             class JSON_API ValueIteratorBase {\n\
+             public: using SelfType = ValueIteratorBase;\n\
+             bool operator==(const SelfType& other) const { return isEqual(other); }\n\
+             bool operator!=(const ValueIteratorBase& other) const { return !isEqual(other); }\n\
+             bool isEqual(const ValueIteratorBase& other) const;\n\
+             JSONCPP_DEPRECATED(\"Use `key = name();` instead.\")\n\
+             char const* memberName() const;\n\
+             protected: void increment();\n\
+             private: Value::ObjectValues::iterator current_;\n\
+             bool isNull_{true};\n\
+             public: ValueIteratorBase();\n\
+             explicit ValueIteratorBase(const Value::ObjectValues::iterator& current);\n\
+             }; }\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+
+        let declaration = idx
+            .lookup_cpp_stub_declaration("Json::ValueIteratorBase::ValueIteratorBase()")
+            .expect("default base constructor declaration");
+        assert_eq!(
+            declaration.name,
+            "Json::ValueIteratorBase::ValueIteratorBase"
+        );
+        assert!(declaration.return_type.is_empty());
+        assert!(declaration.param_types.is_empty());
     }
 
     #[test]
@@ -1785,6 +3400,37 @@ CBOR_EXPORT _cbor_free_t _cbor_free = free;
         assert!(
             !idx.cpp_class_defined_only_in_translation_unit("url"),
             "class url is declared in url.h (a C++ .h header) and must stay harnessable"
+        );
+    }
+
+    #[test]
+    fn indexes_extern_data_with_trailing_block_comment() {
+        let root = tmpdir();
+        fs::write(
+            root.join("server.h"),
+            "typedef struct { int value; } BucketsType;\n\
+             extern BucketsType subexpiresBucketsType; /* global expires */\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_extern_data_type("subexpiresBucketsType"),
+            Some("BucketsType")
+        );
+    }
+
+    #[test]
+    fn indexes_extern_function_pointer_as_data() {
+        let root = tmpdir();
+        fs::write(
+            root.join("monotonic.h"),
+            "typedef unsigned long monotime;\nextern monotime (*getMonotonicUs)(void);\n",
+        )
+        .unwrap();
+        let idx = DeclarationIndex::build(&root).unwrap();
+        assert_eq!(
+            idx.lookup_c_extern_data_type("getMonotonicUs"),
+            Some("monotime (*)(void)")
         );
     }
 }

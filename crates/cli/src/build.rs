@@ -134,6 +134,37 @@ fn dir_contains_c_source(dir: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// Whether a staged source directory contains an explicit implementation of a
+/// predefined Ada hierarchy. Alternate runtime projects intentionally provide
+/// `Ada.*`/`System.*` units; GNAT requires implementation mode (`-gnatg`) to
+/// compile those bodies. Structural parsing avoids triggering on comments or on
+/// ordinary files that merely `with` a runtime unit.
+fn dir_contains_in_tree_ada_runtime_unit(dir: &Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.flatten().any(|entry| {
+            let path = entry.path();
+            if !path.extension().is_some_and(|extension| {
+                extension.eq_ignore_ascii_case("ads") || extension.eq_ignore_ascii_case("adb")
+            }) {
+                return false;
+            }
+            let Ok(source) = crate::source_text::read_source_text(&path) else {
+                return false;
+            };
+            let Ok(ast) = ada_parser::reconcile::build_structural_ast(&source, None, &path) else {
+                return false;
+            };
+            ast.packages.iter().any(|package| {
+                let root = package.name.split('.').next().unwrap_or(&package.name);
+                matches!(
+                    root.to_ascii_lowercase().as_str(),
+                    "ada" | "system" | "interfaces" | "gnat"
+                )
+            })
+        })
+    })
+}
+
 /// C source *base names* in the source closure whose stem matches an Ada
 /// `.ads`/`.adb` stem — these would collide on `<stem>.o`, which gprbuild rejects
 /// ("... have the same object file name"). Returned for `Excluded_Source_Files`
@@ -288,6 +319,18 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     // specification into a fuzzing oracle — code that ships with assertions disabled
     // still gets them exercised under the fuzzer, at no cost to production behavior.
     switches.default.push("-gnata".to_owned());
+    if source_roots
+        .iter()
+        .any(|root| dir_contains_in_tree_ada_runtime_unit(&root.path))
+    {
+        // `-gnatg` authorizes compilation of predefined-hierarchy units. It also
+        // enables GNAT's own style profile, which is inappropriate for generated
+        // harness/runtime support, so cancel style checks while retaining the
+        // implementation-unit semantics.
+        switches.default.push("-gnatg".to_owned());
+        switches.default.push("-gnatyN".to_owned());
+        switches.default.push("-gnatws".to_owned());
+    }
     // Declare C in the project when any source dir carries C glue (copied in by
     // ensure_ada_src_instrumented from a real Ada library's bindings — gnatcoll's
     // gnatcoll_support.c / libc-wrappers.c). Without this gprbuild skips the .c and
@@ -1154,6 +1197,25 @@ fn absolutize(path: &Path) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_staged_in_tree_ada_runtime_unit() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::write(
+            temp.path().join("s-valint.ads"),
+            "package System.Val_Int is\nend System.Val_Int;\n",
+        )
+        .unwrap();
+        assert!(dir_contains_in_tree_ada_runtime_unit(temp.path()));
+
+        fs::write(
+            temp.path().join("ordinary.ads"),
+            "with System;\npackage Ordinary is\nend Ordinary;\n",
+        )
+        .unwrap();
+        fs::remove_file(temp.path().join("s-valint.ads")).unwrap();
+        assert!(!dir_contains_in_tree_ada_runtime_unit(temp.path()));
+    }
 
     #[test]
     fn afl_build_uses_afl_target_and_main_afl() {

@@ -1674,7 +1674,7 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
     match ext.to_ascii_lowercase().as_str() {
         "ads" | "adb" => Some(Lang::Ada),
         "c" => Some(Lang::C),
-        "h" => Some(classify_c_header(source)),
+        "h" => Some(classify_c_header(path, source)),
         "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" => Some(Lang::Cpp),
         "rs" => Some(Lang::Rust),
         "java" => Some(Lang::Java),
@@ -1696,14 +1696,18 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
     }
 }
 
-fn classify_c_header(source: &str) -> Lang {
+fn classify_c_header(path: &Path, source: &str) -> Lang {
     let c_count = c_parser::parse_c_functions(source)
         .map(|fns| fns.len())
         .unwrap_or(0);
     let cpp_count = cpp_parser::parse_cpp_functions(source)
         .map(|fns| fns.len())
         .unwrap_or(0);
-    if cpp_count > c_count || header_looks_like_cpp(source) {
+    let has_c_impl = path.with_extension("c").is_file();
+    let has_cpp_impl = ["cpp", "cc", "cxx", "C"]
+        .iter()
+        .any(|ext| path.with_extension(ext).is_file());
+    if cpp_count > c_count || header_looks_like_cpp(source) || (has_cpp_impl && !has_c_impl) {
         Lang::Cpp
     } else {
         Lang::C
@@ -4136,7 +4140,22 @@ mod tests {
             !header_looks_like_cpp(src),
             "pure-C header with C++ words only in comments must not look like C++"
         );
-        assert_eq!(classify_c_header(src), Lang::C);
+        assert_eq!(classify_c_header(Path::new("yyjson.h"), src), Lang::C);
+    }
+
+    #[test]
+    fn c_like_header_with_cpp_implementation_sibling_is_classified_cpp() {
+        let dir = tempfile::tempdir().unwrap();
+        let header = dir.path().join("Hashes.h");
+        fs::write(
+            &header,
+            "inline void MurmurHash1_test(const void *key) { MurmurHash1(key); }\n",
+        )
+        .unwrap();
+        fs::write(dir.path().join("Hashes.cpp"), "#include \"Hashes.h\"\n").unwrap();
+
+        let source = fs::read_to_string(&header).unwrap();
+        assert_eq!(classify_c_header(&header, &source), Lang::Cpp);
     }
 
     #[test]

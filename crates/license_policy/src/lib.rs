@@ -20,6 +20,7 @@ const ALLOWED_DEPENDENCY_LICENSES: &[&str] = &[
     "ISC",
     "Zlib",
     "CC0-1.0",
+    "CDLA-Permissive-2.0",
 ];
 const ALLOWED_LICENSE_EXCEPTIONS: &[&str] = &["LLVM-exception"];
 

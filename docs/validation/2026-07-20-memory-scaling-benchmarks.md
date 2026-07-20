@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Memory-scaling benchmarks (2026-07-20)
 
 This validation exercises the memory-safety changes against real repositories,

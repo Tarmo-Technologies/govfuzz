@@ -16,8 +16,9 @@ govfuzz license-audit --profile research-lab        # unrestricted; allows all t
 
 The command validates every reachable dependency against a fixed allowed-license
 list — Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, Unicode (DFS-2016/3.0), ISC,
-Zlib, and CC0-1.0 (a `WITH LLVM-exception` suffix is accepted) — and rejects
-unknown, copyleft-only, or missing license metadata.
+Zlib, CC0-1.0, and CDLA-Permissive-2.0 for certificate trust-anchor data (a
+`WITH LLVM-exception` suffix is accepted) — and rejects unknown, copyleft-only,
+or missing license metadata.
 
 The `--profile` flag does not change that dependency-license list; it gates which
 external tools may run as subprocesses (they are never linked). `strict-permissive`

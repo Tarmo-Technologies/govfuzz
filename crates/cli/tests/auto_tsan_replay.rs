@@ -10,13 +10,15 @@
 
 use std::path::Path;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use cli::auto::tsan::run_tsan_replay;
 
 fn clang_has_tsan() -> bool {
     let probe = std::env::temp_dir().join(format!("govfuzz-tsan-probe-{}", std::process::id()));
+    let probe_log = probe.with_extension("log");
     let ok = Command::new("clang")
-        .args(["-fsanitize=thread", "-x", "c", "-", "-o"])
+        .args(["-fsanitize=thread", "-pthread", "-x", "c", "-", "-o"])
         .arg(&probe)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
@@ -28,24 +30,62 @@ fn clang_has_tsan() -> bool {
                 .stdin
                 .take()
                 .unwrap()
-                .write_all(b"int main(void){return 0;}")?;
+                .write_all(
+                    b"#include <pthread.h>\nstatic int x;\nstatic void *w(void *p){(void)p;x=1;return 0;}\nint main(void){pthread_t t;pthread_create(&t,0,w,0);x=2;pthread_join(t,0);return 0;}",
+                )?;
             child.wait()
         })
         .map(|status| status.success())
         .unwrap_or(false);
-    // Compiling is not enough: on hosts where the TSan runtime cannot start
-    // (e.g. GitHub runners with vm.mmap_rnd_bits too high for its shadow
-    // mapping), the probe builds fine but every TSan binary aborts at startup
-    // — so run it and require a clean exit before trusting TSan output.
-    let ok = ok
-        && Command::new(&probe)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false);
+    // Compiling and running a single-threaded binary is not enough. Some hosts'
+    // high-entropy ASLR lets that probe exit but makes the runtime hang as soon
+    // as instrumented threads touch shared state. Require the canonical race to
+    // produce an actual report, with a short wall-clock bound.
+    let ok = ok && tsan_probe_reports_race(&probe, &probe_log);
     let _ = std::fs::remove_file(&probe);
+    let _ = std::fs::remove_file(&probe_log);
     ok
+}
+
+fn tsan_probe_reports_race(probe: &Path, log: &Path) -> bool {
+    let Ok(stderr) = std::fs::File::create(log) else {
+        return false;
+    };
+    let Ok(mut child) = Command::new(probe)
+        .env("TSAN_OPTIONS", "halt_on_error=1:exitcode=86")
+        .stdout(std::process::Stdio::null())
+        .stderr(stderr)
+        .spawn()
+    else {
+        return false;
+    };
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let exited = loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break true,
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break false;
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break false;
+            }
+        }
+    };
+    if !exited {
+        return false;
+    }
+    let Ok(file) = std::fs::File::open(log) else {
+        return false;
+    };
+    let mut output = Vec::new();
+    use std::io::Read;
+    let _ = file.take(1024 * 1024).read_to_end(&mut output);
+    String::from_utf8_lossy(&output).contains("data race")
 }
 
 #[test]

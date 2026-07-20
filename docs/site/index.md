@@ -59,6 +59,9 @@ source-generated harnesses and a permissively licensed core.
   backends, qemu-user replay, and sandboxing.
 - [Daemon](./daemon/) — JSON-RPC service that powers the VS Code and GNAT
   Studio integrations.
+- [LLM Assistance](./llm/) — evidence-grounded Codex, Claude, API, local-model,
+  and MCP workflows for planning, harnesses, findings, explanations, and
+  diagnostics.
 - [Licensing](./licensing/) — policy profiles, SPDX metadata, and audits.
 - [Release Packaging](./release-packaging/) — distributed archives,
   checksums, and signed content packs.

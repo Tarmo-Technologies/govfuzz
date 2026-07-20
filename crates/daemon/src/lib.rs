@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fmt;
 use std::fs;
-use std::io::{BufRead, Write};
+use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 
 pub fn crate_name() -> &'static str {
@@ -38,6 +38,372 @@ pub fn run_json_rpc_with_security<R: BufRead, W: Write>(
         }
     }
 
+    Ok(())
+}
+
+/// Run a Model Context Protocol server over newline-delimited stdio. In this
+/// mode the host Codex/Claude session does the reasoning; GovFuzz exposes
+/// deterministic analysis and prompt/preflight tools, so no API token is
+/// required by the server.
+pub fn run_mcp<R: BufRead, W: Write>(
+    mut reader: R,
+    mut writer: W,
+) -> Result<(), JsonRpcServerError> {
+    let limit = llm_harness_gen::memory_aware_byte_limit("GOVFUZZ_MCP_MAX_MESSAGE_BYTES");
+    while let Some(line) = read_mcp_line(&mut reader, limit)? {
+        if line.is_empty() {
+            continue;
+        }
+        let response = match serde_json::from_slice::<McpRequest>(&line) {
+            Ok(request) => handle_mcp_request(request),
+            Err(error) => Some(error_response(
+                Value::Null,
+                RpcFailure::invalid_request(format!("invalid MCP JSON-RPC request: {error}")),
+            )),
+        };
+        if let Some(response) = response {
+            write_mcp_message(&mut writer, &response, limit)?;
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+struct McpRequest {
+    jsonrpc: String,
+    #[serde(default)]
+    id: Option<Value>,
+    method: String,
+    #[serde(default)]
+    params: Option<Value>,
+}
+
+fn handle_mcp_request(request: McpRequest) -> Option<Value> {
+    let Some(id) = request.id else {
+        // MCP notifications (notably notifications/initialized) do not receive
+        // responses. Unknown notifications are also safely ignored.
+        return None;
+    };
+    if request.jsonrpc != "2.0" {
+        return Some(error_response(
+            id,
+            RpcFailure::invalid_request("jsonrpc must be \"2.0\""),
+        ));
+    }
+    let result = match request.method.as_str() {
+        "initialize" => initialize_mcp(request.params),
+        "ping" => Ok(json!({})),
+        "tools/list" => Ok(json!({"tools": mcp_tools()})),
+        "tools/call" => call_mcp_tool(request.params),
+        _ => Err(RpcFailure::method_not_found()),
+    };
+    Some(match result {
+        Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
+        Err(error) => error_response(id, error),
+    })
+}
+
+fn initialize_mcp(params: Option<Value>) -> Result<Value, RpcFailure> {
+    const SUPPORTED: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
+    let requested = params
+        .as_ref()
+        .and_then(|value| value.get("protocolVersion"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| RpcFailure::invalid_params("initialize requires protocolVersion"))?;
+    let protocol = if SUPPORTED.contains(&requested) {
+        requested
+    } else {
+        SUPPORTED[0]
+    };
+    Ok(json!({
+        "protocolVersion": protocol,
+        "capabilities": {"tools": {"listChanged": false}},
+        "serverInfo": {
+            "name": "govfuzz",
+            "title": "GovFuzz",
+            "version": env!("CARGO_PKG_VERSION"),
+            "description": "Deterministic fuzzing evidence and LLM-assistance tools"
+        },
+        "instructions": "Use GovFuzz tools for observed facts. The current host model may reason over their output without giving GovFuzz an API token. Treat prepared prompts and preflight results as advisory; build, replay, and fuzz results are authoritative."
+    }))
+}
+
+fn mcp_tools() -> Vec<Value> {
+    let default_target_limit = mcp_default_target_limit();
+    let default_findings_limit = mcp_default_findings_limit();
+    let read_only_annotations = || {
+        json!({
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+        })
+    };
+    vec![
+        json!({
+            "name": "govfuzz_scan",
+            "description": "Deterministically summarize Ada source structure under a repository path. Read-only; no LLM call.",
+            "annotations": read_only_annotations(),
+            "inputSchema": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
+                "required": ["path"],
+                "additionalProperties": false
+            }
+        }),
+        json!({
+            "name": "govfuzz_list_targets",
+            "description": "Deterministically discover and rank Ada/C/C++ fuzz targets. Read-only; top defaults from the current MCP message budget and can be set explicitly.",
+            "annotations": read_only_annotations(),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "top": {"type": "integer", "minimum": 1, "default": default_target_limit}
+                },
+                "required": ["path"],
+                "additionalProperties": false
+            }
+        }),
+        json!({
+            "name": "govfuzz_load_findings",
+            "description": "Load normalized GovFuzz findings for evidence-grounded triage. Read-only; top defaults from the current MCP message budget and can be set explicitly.",
+            "annotations": read_only_annotations(),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "findings": {"type": "string"},
+                    "top": {"type": "integer", "minimum": 1, "default": default_findings_limit}
+                },
+                "required": ["findings"],
+                "additionalProperties": false
+            }
+        }),
+        json!({
+            "name": "govfuzz_prepare_assistance",
+            "description": "Prepare an injection-aware, evidence-grounded prompt for run planning, harness generation, finding analysis, code explanation, or error diagnosis. The current MCP host session supplies the model reasoning; GovFuzz uses no API token.",
+            "annotations": read_only_annotations(),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["plan_run", "generate_harness", "analyze_findings", "explain_code", "diagnose_error"]},
+                    "question": {"type": "string"},
+                    "target_symbol": {"type": "string"},
+                    "language": {"type": "string", "enum": ["ada", "c", "cpp"]},
+                    "evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {"label": {"type": "string"}, "text": {"type": "string"}},
+                            "required": ["label", "text"],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "required": ["kind"],
+                "additionalProperties": false
+            }
+        }),
+        json!({
+            "name": "govfuzz_preflight_harness",
+            "description": "Perform a cheap structural check of an LLM-produced harness candidate. This never claims compilation, linking, reachability, or coverage; follow with deterministic GovFuzz build/fuzz validation.",
+            "annotations": read_only_annotations(),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "target_symbol": {"type": "string"},
+                    "language": {"type": "string", "enum": ["ada", "c", "cpp"]},
+                    "source": {"type": "string"}
+                },
+                "required": ["target_symbol", "language", "source"],
+                "additionalProperties": false
+            }
+        }),
+    ]
+}
+
+fn mcp_default_target_limit() -> usize {
+    // Reserve ample space for paths, score breakdowns, spans, and protocol
+    // framing. This is a dynamic output budget, not a discovery ceiling:
+    // callers can still request an explicit positive `top` value.
+    (llm_harness_gen::memory_aware_byte_limit("GOVFUZZ_MCP_MAX_MESSAGE_BYTES") / 4096).max(1)
+}
+
+fn mcp_default_findings_limit() -> usize {
+    (llm_harness_gen::memory_aware_byte_limit("GOVFUZZ_MCP_MAX_MESSAGE_BYTES") / (16 * 1024)).max(1)
+}
+
+#[derive(Debug, Deserialize)]
+struct McpCallParams {
+    name: String,
+    #[serde(default)]
+    arguments: Value,
+}
+
+#[derive(Debug, Deserialize)]
+struct McpAssistanceParams {
+    kind: String,
+    #[serde(default)]
+    question: Option<String>,
+    #[serde(default)]
+    target_symbol: Option<String>,
+    #[serde(default)]
+    language: Option<String>,
+    #[serde(default)]
+    evidence: Vec<llm_harness_gen::Evidence>,
+}
+
+#[derive(Debug, Deserialize)]
+struct McpHarnessParams {
+    target_symbol: String,
+    language: String,
+    source: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct McpFindingsParams {
+    findings: PathBuf,
+    #[serde(default)]
+    top: Option<usize>,
+}
+
+fn call_mcp_tool(params: Option<Value>) -> Result<Value, RpcFailure> {
+    let params = parse_params::<McpCallParams>(params)?;
+    let result = match params.name.as_str() {
+        "govfuzz_scan" => {
+            dispatch_json_rpc_method("scan", Some(params.arguments), &AuthorizedIdentity::Local)
+        }
+        "govfuzz_list_targets" => {
+            let mut parsed: ListTargetsRpcParams = serde_json::from_value(params.arguments)
+                .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
+            parsed.top = Some(parsed.top.unwrap_or_else(mcp_default_target_limit));
+            to_result(list_targets(parsed.path, parsed.top))
+        }
+        "govfuzz_load_findings" => {
+            let parsed: McpFindingsParams = serde_json::from_value(params.arguments)
+                .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
+            to_result(load_findings_limited(
+                parsed.findings,
+                parsed.top.unwrap_or_else(mcp_default_findings_limit),
+            ))
+        }
+        "govfuzz_prepare_assistance" => {
+            let params: McpAssistanceParams = serde_json::from_value(params.arguments)
+                .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
+            let kind = params
+                .kind
+                .parse()
+                .map_err(|error: llm_harness_gen::LlmError| {
+                    RpcFailure::invalid_params(error.to_string())
+                })?;
+            let language = params
+                .language
+                .as_deref()
+                .map(str::parse)
+                .transpose()
+                .map_err(|error: llm_harness_gen::LlmError| {
+                    RpcFailure::invalid_params(error.to_string())
+                })?;
+            llm_harness_gen::prepare_assistance(&llm_harness_gen::AssistanceRequest {
+                kind,
+                question: params.question,
+                target_symbol: params.target_symbol,
+                language,
+                evidence: params.evidence,
+            })
+            .and_then(|prompt| {
+                serde_json::to_value(prompt)
+                    .map_err(|error| llm_harness_gen::LlmError::Provider(error.to_string()))
+            })
+            .map_err(|error| RpcFailure::invalid_params(error.to_string()))
+        }
+        "govfuzz_preflight_harness" => {
+            let params: McpHarnessParams = serde_json::from_value(params.arguments)
+                .map_err(|error| RpcFailure::invalid_params(error.to_string()))?;
+            let language =
+                params
+                    .language
+                    .parse()
+                    .map_err(|error: llm_harness_gen::LlmError| {
+                        RpcFailure::invalid_params(error.to_string())
+                    })?;
+            serde_json::to_value(llm_harness_gen::preflight_harness(
+                &params.target_symbol,
+                language,
+                &params.source,
+            ))
+            .map_err(|error| RpcFailure::server_error(error.to_string()))
+        }
+        _ => Err(RpcFailure::invalid_params(format!(
+            "unknown MCP tool `{}`",
+            params.name
+        ))),
+    };
+    match result {
+        Ok(value) => Ok(mcp_tool_result(value, false)),
+        Err(error) => Ok(mcp_tool_result(
+            json!({"error": error.message, "code": error.code}),
+            true,
+        )),
+    }
+}
+
+fn mcp_tool_result(value: Value, is_error: bool) -> Value {
+    let text = serde_json::to_string_pretty(&value)
+        .unwrap_or_else(|error| format!("serialize GovFuzz MCP result: {error}"));
+    json!({
+        "content": [{"type": "text", "text": text}],
+        "isError": is_error
+    })
+}
+
+fn read_mcp_line<R: BufRead>(
+    reader: &mut R,
+    limit: usize,
+) -> Result<Option<Vec<u8>>, JsonRpcServerError> {
+    let mut line = Vec::new();
+    loop {
+        let available = reader.fill_buf()?;
+        if available.is_empty() {
+            return if line.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(line))
+            };
+        }
+        let newline = available.iter().position(|byte| *byte == b'\n');
+        let take = newline.map_or(available.len(), |index| index);
+        if line.len().saturating_add(take) > limit {
+            return Err(JsonRpcServerError::InvalidFrame(format!(
+                "MCP message exceeds the memory-aware {limit}-byte limit; set GOVFUZZ_MCP_MAX_MESSAGE_BYTES to override"
+            )));
+        }
+        line.extend_from_slice(&available[..take]);
+        let consumed = take + usize::from(newline.is_some());
+        reader.consume(consumed);
+        if newline.is_some() {
+            if line.last() == Some(&b'\r') {
+                line.pop();
+            }
+            return Ok(Some(line));
+        }
+    }
+}
+
+fn write_mcp_message<W: Write>(
+    writer: &mut W,
+    response: &Value,
+    limit: usize,
+) -> Result<(), JsonRpcServerError> {
+    let bytes = serde_json::to_vec(response)?;
+    if bytes.len() > limit {
+        return Err(JsonRpcServerError::InvalidFrame(format!(
+            "MCP response exceeds the memory-aware {limit}-byte limit; narrow the request or set GOVFUZZ_MCP_MAX_MESSAGE_BYTES"
+        )));
+    }
+    writer.write_all(&bytes)?;
+    writer.write_all(b"\n")?;
+    writer.flush()?;
     Ok(())
 }
 
@@ -429,13 +795,28 @@ fn error_response(id: Value, error: RpcFailure) -> Value {
 }
 
 fn read_frame<R: BufRead>(reader: &mut R) -> Result<Option<Vec<u8>>, JsonRpcServerError> {
+    let limit = llm_harness_gen::memory_aware_byte_limit("GOVFUZZ_DAEMON_MAX_MESSAGE_BYTES");
+    read_frame_with_limit(reader, limit)
+}
+
+fn read_frame_with_limit<R: BufRead>(
+    reader: &mut R,
+    limit: usize,
+) -> Result<Option<Vec<u8>>, JsonRpcServerError> {
     let mut content_length = None;
     let mut saw_header = false;
     let mut line = String::new();
 
     loop {
         line.clear();
-        let bytes = reader.read_line(&mut line)?;
+        let bytes = reader
+            .take(u64::try_from(limit).unwrap_or(u64::MAX).saturating_add(1))
+            .read_line(&mut line)?;
+        if bytes > limit || (bytes > 0 && !line.ends_with('\n')) {
+            return Err(JsonRpcServerError::InvalidFrame(format!(
+                "JSON-RPC header line exceeds the memory-aware {limit}-byte limit; set GOVFUZZ_DAEMON_MAX_MESSAGE_BYTES to override"
+            )));
+        }
         if bytes == 0 {
             if saw_header {
                 return Err(JsonRpcServerError::InvalidFrame(
@@ -463,6 +844,11 @@ fn read_frame<R: BufRead>(reader: &mut R) -> Result<Option<Vec<u8>>, JsonRpcServ
     let length = content_length.ok_or_else(|| {
         JsonRpcServerError::InvalidFrame("missing Content-Length header".to_owned())
     })?;
+    if length > limit {
+        return Err(JsonRpcServerError::InvalidFrame(format!(
+            "JSON-RPC frame exceeds the memory-aware {limit}-byte limit; set GOVFUZZ_DAEMON_MAX_MESSAGE_BYTES to override"
+        )));
+    }
     let mut body = vec![0; length];
     reader.read_exact(&mut body)?;
     Ok(Some(body))
@@ -570,6 +956,8 @@ struct ScannedFile {
 #[derive(Debug, Serialize)]
 struct ListTargetsResult {
     targets: Vec<RpcTarget>,
+    total_candidates: usize,
+    truncated: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -594,6 +982,8 @@ struct RpcTarget {
 #[derive(Debug, Serialize)]
 struct FindingsResult {
     findings: Vec<govfuzz_report::FindingReport>,
+    total_findings: usize,
+    truncated: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -715,27 +1105,50 @@ fn scan(path: PathBuf) -> Result<ScanResult, String> {
 
 fn list_targets(path: PathBuf, top: Option<usize>) -> Result<ListTargetsResult, String> {
     let mut targets = Vec::new();
+    let mut total_candidates = 0_usize;
     for file_path in walk_targetable_files(&path)? {
-        match detect_source_language(&file_path)? {
+        let mut file_targets = match detect_source_language(&file_path)? {
             Some(SourceLanguage::Ada) => {
                 let (_source, ast) = parse_ada_file(&file_path)?;
-                targets.extend(ranked_targets_for_ast(&file_path, &ast));
+                ranked_targets_for_ast(&file_path, &ast)
             }
             Some(SourceLanguage::C) => {
                 let source = read_source_file(&file_path)?;
                 let functions = c_parser::parse_c_functions(&source)
                     .map_err(|error| format!("scan C source {}: {error}", file_path.display()))?;
-                targets.extend(ranked_c_targets(&file_path, &functions));
+                ranked_c_targets(&file_path, &functions)
             }
             Some(SourceLanguage::Cpp) => {
                 let source = read_source_file(&file_path)?;
                 let functions = cpp_parser::parse_cpp_functions(&source)
                     .map_err(|error| format!("scan C++ source {}: {error}", file_path.display()))?;
-                targets.extend(ranked_cpp_targets(&file_path, &functions));
+                ranked_cpp_targets(&file_path, &functions)
             }
-            None => {}
+            None => Vec::new(),
+        };
+        total_candidates = total_candidates.saturating_add(file_targets.len());
+        targets.append(&mut file_targets);
+        if let Some(top) = top {
+            let compact_at = top.saturating_mul(2).max(top.saturating_add(1));
+            if targets.len() >= compact_at {
+                sort_rpc_targets(&mut targets);
+                targets.truncate(top);
+            }
         }
     }
+    sort_rpc_targets(&mut targets);
+    if let Some(top) = top {
+        targets.truncate(top);
+    }
+
+    Ok(ListTargetsResult {
+        targets,
+        total_candidates,
+        truncated: top.is_some_and(|top| total_candidates > top),
+    })
+}
+
+fn sort_rpc_targets(targets: &mut [RpcTarget]) {
     targets.sort_by(|left, right| {
         right
             .score
@@ -743,16 +1156,23 @@ fn list_targets(path: PathBuf, top: Option<usize>) -> Result<ListTargetsResult, 
             .then_with(|| left.name.cmp(&right.name))
             .then_with(|| left.file.cmp(&right.file))
     });
-    if let Some(top) = top {
-        targets.truncate(top);
-    }
-
-    Ok(ListTargetsResult { targets })
 }
 
 fn load_findings(findings: PathBuf) -> Result<FindingsResult, String> {
     let findings = govfuzz_report::load_findings(&findings).map_err(|error| error.to_string())?;
-    Ok(FindingsResult { findings })
+    let total_findings = findings.len();
+    Ok(FindingsResult {
+        findings,
+        total_findings,
+        truncated: false,
+    })
+}
+
+fn load_findings_limited(findings: PathBuf, top: usize) -> Result<FindingsResult, String> {
+    let mut result = load_findings(findings)?;
+    result.findings.truncate(top);
+    result.truncated = result.total_findings > top;
+    Ok(result)
 }
 
 fn rank_at(params: RankAtParams) -> Result<RankAtResult, String> {
@@ -1923,6 +2343,8 @@ mod tests {
         assert_eq!(responses[0]["result"]["total_subprograms"], 1);
         assert_eq!(responses[1]["id"], 2);
         assert_eq!(responses[1]["result"]["targets"][0]["name"], "run");
+        assert_eq!(responses[1]["result"]["total_candidates"], 1);
+        assert_eq!(responses[1]["result"]["truncated"], false);
         assert_eq!(
             responses[1]["result"]["targets"][0]["file"].as_str(),
             Some(source.to_string_lossy().as_ref())
@@ -2239,6 +2661,130 @@ mod tests {
         assert!(output
             .bytes
             .ends_with(br#"{"jsonrpc":"2.0","id":1,"result":{}}"#));
+    }
+
+    #[test]
+    fn json_rpc_reader_rejects_an_oversized_header_before_body_allocation() {
+        let input = format!("X-Test: {}\n", "x".repeat(64));
+        let error =
+            super::read_frame_with_limit(&mut BufReader::new(input.as_bytes()), 32).unwrap_err();
+        assert!(error.to_string().contains("header line exceeds"));
+    }
+
+    #[test]
+    fn mcp_negotiates_lists_tools_and_prepares_session_prompt() {
+        let messages = [
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {"name": "test", "version": "1"}
+                }
+            }),
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            }),
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list",
+                "params": {}
+            }),
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "govfuzz_prepare_assistance",
+                    "arguments": {
+                        "kind": "diagnose_error",
+                        "question": "Why did linking fail?",
+                        "language": "cpp",
+                        "evidence": [{
+                            "label": "linker.log",
+                            "text": "undefined reference to parse_packet"
+                        }]
+                    }
+                }
+            }),
+        ];
+        let input = messages
+            .iter()
+            .map(|message| serde_json::to_string(message).unwrap())
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+        let mut output = Vec::new();
+
+        super::run_mcp(BufReader::new(input.as_bytes()), &mut output).unwrap();
+
+        let responses = String::from_utf8(output)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            responses.len(),
+            3,
+            "notification must not receive a response"
+        );
+        assert_eq!(responses[0]["result"]["protocolVersion"], "2025-11-25");
+        let tools = responses[1]["result"]["tools"].as_array().unwrap();
+        assert!(tools
+            .iter()
+            .any(|tool| tool["name"] == "govfuzz_prepare_assistance"));
+        assert!(tools
+            .iter()
+            .find(|tool| tool["name"] == "govfuzz_list_targets")
+            .and_then(|tool| tool["inputSchema"]["properties"]["top"]["default"].as_u64())
+            .is_some_and(|top| top > 0));
+        assert!(tools
+            .iter()
+            .find(|tool| tool["name"] == "govfuzz_load_findings")
+            .and_then(|tool| tool["inputSchema"]["properties"]["top"]["default"].as_u64())
+            .is_some_and(|top| top > 0));
+        assert!(tools.iter().all(|tool| {
+            tool["annotations"]["readOnlyHint"] == true
+                && tool["annotations"]["destructiveHint"] == false
+                && tool["annotations"]["idempotentHint"] == true
+                && tool["annotations"]["openWorldHint"] == false
+        }));
+        let prepared = responses[2]["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap();
+        assert!(prepared.contains("undefined reference"));
+        assert!(prepared.contains("untrusted data"));
+        assert_eq!(responses[2]["result"]["isError"], false);
+    }
+
+    #[test]
+    fn mcp_harness_preflight_does_not_claim_build_success() {
+        let message = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "govfuzz_preflight_harness",
+                "arguments": {
+                    "target_symbol": "parse_packet",
+                    "language": "c",
+                    "source": "int LLVMFuzzerTestOneInput(const unsigned char *d, unsigned long n) { parse_packet(d, n); return 0; }"
+                }
+            }
+        });
+        let input = serde_json::to_string(&message).unwrap() + "\n";
+        let mut output = Vec::new();
+
+        super::run_mcp(BufReader::new(input.as_bytes()), &mut output).unwrap();
+
+        let response: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let text = response["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("requires_build_validation"));
+        assert!(text.contains("cannot prove compilation"));
     }
 
     #[derive(Default)]

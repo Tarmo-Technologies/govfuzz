@@ -2166,7 +2166,7 @@ fn c_signature_needs_project_header<'a>(
 ) -> bool {
     std::iter::once(return_type)
         .chain(param_types)
-        .any(|ty| c_type_needs_project_header(ty))
+        .any(c_type_needs_project_header)
 }
 
 fn c_type_needs_project_header(ty: &str) -> bool {

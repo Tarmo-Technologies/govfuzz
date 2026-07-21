@@ -304,7 +304,10 @@ where
     }
 
     match args.command {
-        Some(Command::Auto(auto_args)) => auto::cli::run(auto_args),
+        Some(Command::Auto(auto_args)) => {
+            build::activate_compatible_clang();
+            auto::cli::run(auto_args)
+        }
         // Nested parents. The flat BinaryScan/.../ListOracles arms below are
         // retained for the hidden back-compat aliases.
         Some(Command::Binary(binary)) => match binary.command {
@@ -327,7 +330,10 @@ where
         Some(Command::BinaryAdapter(args)) => binary_adapter::run(args, profile),
         Some(Command::BinaryFuzz(args)) => binary_fuzz::run(args),
         Some(Command::BinaryScan(args)) => binary_scan::run(args),
-        Some(Command::Build(build_args)) => build::run(build_args),
+        Some(Command::Build(build_args)) => {
+            build::activate_compatible_clang();
+            build::run(build_args)
+        }
         Some(Command::Capsule(args)) => capsule::run(args),
         Some(Command::VerifyPoc(args)) => capsule::run_verify(args),
         Some(Command::EnvCapsule(args)) => env_capsule::run(args),
@@ -387,7 +393,10 @@ where
         Some(Command::Rules(rules_args)) => rules::run(rules_args),
         Some(Command::Runners(args)) => runners::run(args),
         Some(Command::Scan(scan_args)) => scan::run(scan_args),
-        Some(Command::Snippet(snippet_args)) => snippet::run(snippet_args),
+        Some(Command::Snippet(snippet_args)) => {
+            build::activate_compatible_clang();
+            snippet::run(snippet_args)
+        }
         Some(Command::Sbom(args)) => sbom::run(args),
         Some(Command::StaticScan(args)) => static_scan::run(args),
         Some(Command::Sloc(args)) => sloc::run(args),

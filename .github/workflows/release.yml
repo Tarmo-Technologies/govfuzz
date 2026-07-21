@@ -108,10 +108,12 @@ jobs:
       # - N "local" tasks that build each platform's binaries and platform-specific installers
       matrix: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix }}
     runs-on: ${{ matrix.runner }}
-    container: ${{ matrix.container && matrix.container.image || null }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
+      DIST_ARGS: ${{ matrix.dist_args }}
+      DIST_TAG_FLAG: ${{ needs.plan.outputs.tag-flag }}
+      RHEL7_BUILD_IMAGE: quay.io/pypa/manylinux2014_x86_64@sha256:0d25b049964b2549b83384036abdff06789a8c0b1e9ff003ec80f0d531f79e50
     steps:
       - name: enable windows longpaths
         run: |
@@ -139,10 +141,38 @@ jobs:
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
-      - name: Build artifacts
+      - name: Build Linux artifacts on the RHEL 7 ABI
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
-          # Actually do builds and make zips and whatnot
-          dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
+          # Build the Linux matrix entry against manylinux2014 / glibc 2.17
+          # while JavaScript actions stay on the modern host runner.
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            --workdir "$GITHUB_WORKSPACE" \
+            --env GH_TOKEN \
+            --env DIST_ARGS \
+            --env DIST_TAG_FLAG \
+            --env CARGO_HOME=/tmp/cargo \
+            --env RUSTUP_HOME=/tmp/rustup \
+            "$RHEL7_BUILD_IMAGE" \
+            bash -lc '
+              set -euo pipefail
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+              export PATH="$CARGO_HOME/bin:$PATH"
+              curl --proto "=https" --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.31.0/cargo-dist-installer.sh | sh
+              dist build $DIST_TAG_FLAG --print=linkage --output-format=json $DIST_ARGS > dist-manifest.json
+              release_dir=target/x86_64-unknown-linux-gnu/dist
+              [[ -d $release_dir ]] || release_dir=target/dist
+              scripts/check-linux-release-abi.sh "$release_dir"
+            '
+          echo "dist ran successfully"
+      - name: Build Windows artifacts
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist build $DIST_TAG_FLAG --print=linkage --output-format=json $DIST_ARGS > dist-manifest.json
           echo "dist ran successfully"
       - id: cargo-dist
         name: Post-build

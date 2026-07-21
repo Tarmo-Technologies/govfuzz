@@ -12,6 +12,11 @@
   Linux-only runtime and compiler-interception shims remain separate Linux
   assets.
 
+- **Native Windows C harness linking.** Generated harnesses and the external
+  driver no longer emit competing COFF weak defaults for the Linux-only
+  runtrace input hook. This fixes the `LNK1227` failure that previously stopped
+  an otherwise valid MSVC/Clang harness before fuzzing.
+
 - **UTF-8-safe C++ type qualification.** The C++ decoder no longer slices
   through a multibyte character when fuzzed or recovered type text places a
   non-ASCII scalar immediately before an identifier. This fixes the GF-210

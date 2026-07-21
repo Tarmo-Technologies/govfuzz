@@ -61,6 +61,7 @@
 
 /* The Rust staticlib defines this; the driver only calls it. */
 extern int govfuzz_run_one(const uint8_t *Data, size_t Size);
+extern int LLVMFuzzerInitialize(int *argc, char ***argv) __attribute__((weak));
 
 /* Auto-injected shim hook: republish the fuzz input to the runtrace shim so
  * fuzz-driven mode can route the current iteration's bytes into fake fds /
@@ -417,9 +418,13 @@ static void govfuzz_run_file(const char *path) {
     long n = ftell(f);
     if (n < 0) n = 0;
     rewind(f);
-    uint8_t *b = (uint8_t *)malloc((size_t)(n ? n : 1));
+    /* Match the persistent path: over-allocate and NUL-terminate so a harness
+     * that deliberately feeds a C-string API cannot read beyond an exact-size
+     * replay allocation. */
+    uint8_t *b = (uint8_t *)malloc((size_t)(n ? n : 1) + 1);
     if (!b) { fclose(f); return; }
     size_t r = fread(b, 1, (size_t)n, f);
+    b[r] = 0;
     fclose(f);
     govfuzz_run_one_bytes(b, r);
     free(b);
@@ -435,6 +440,7 @@ static int govfuzz_read_n(int fd, void *buf, size_t n) {
     return 1;
 }
 int main(int argc, char **argv) {
+    if (LLVMFuzzerInitialize) LLVMFuzzerInitialize(&argc, &argv);
 #ifdef _WIN32
     /* On Windows the trace-pc path has no guard-init to open the maps, so open
      * them here; and install the crash handler that makes a fault a detectable

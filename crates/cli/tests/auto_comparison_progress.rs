@@ -103,6 +103,7 @@ fn standalone_progress_sum(main: &Path, work: &Path, tag: &str, input: &[u8]) ->
         .arg(&input_path)
         .env("GOVFUZZ_CMP_PROGRESS_SHM", &cmpp)
         .env("ASAN_OPTIONS", "detect_leaks=0")
+        .env("DEBUGINFOD_URLS", "")
         // Defensive: never let an inherited env put the driver into framed mode.
         .env_remove("GOVFUZZ_FRAMED")
         .stdout(Stdio::null())

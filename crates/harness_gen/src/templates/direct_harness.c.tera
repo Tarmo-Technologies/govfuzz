@@ -59,6 +59,16 @@
 #define GOVFUZZ_NOCOV
 #endif
 
+/* Keep a value-returning target call observable even when its result is not
+ * otherwise consumed. Source-local/header-only targets are visible to the
+ * optimizer; a plain `(void)R` lets it delete a pure parser call entirely. */
+#if defined(__GNUC__) || defined(__clang__)
+#define GOVFUZZ_KEEP_RESULT(value) \
+    __asm__ __volatile__("" : : "g"(&(value)) : "memory")
+#else
+#define GOVFUZZ_KEEP_RESULT(value) ((void)(value))
+#endif
+
 {#- support blocks (callback typedefs + trampolines) must precede the
     forward declaration that references the typedef names #}
 {%- if not passthrough_libfuzzer_entrypoint %}
@@ -80,7 +90,12 @@ extern {{ return_type }} {{ qualified_target_name }}({% for p in params %}{{ p.c
 extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attribute__((weak));
 
 {%- if passthrough_libfuzzer_entrypoint %}
-{% raw %}/* govfuzz driver for a passthrough libFuzzer entrypoint.
+extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
+int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+    return LLVMFuzzerTestOneInput(Data, Size);
+}
+{% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
+/* govfuzz driver for a passthrough libFuzzer entrypoint.
  *
  * The project already supplies `LLVMFuzzerTestOneInput`. Rather than linking
  * libFuzzer's own `main`/`RunOneTest` (`-fsanitize=fuzzer`) and then mis-driving
@@ -596,9 +611,10 @@ int main(int argc, char **argv) {
     govfuzz_run_file(argv[1]);
     return 0;
 }
+#endif /* !GOVFUZZ_EXTERNAL_DRIVER */
 {% endraw %}
 {%- else %}
-GOVFUZZ_NOCOV static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(Data, Size);
     gf_cursor Cur = gf_open(Data, Size);
 {%- for p in params %}
@@ -615,7 +631,7 @@ GOVFUZZ_NOCOV static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- else %}
     {% if return_type_present %}{{ return_type }} R = {% endif %}{{ qualified_target_name }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- if return_type_present %}
-    (void)R;
+    GOVFUZZ_KEEP_RESULT(R);
 {%- if drive_steps and not byte_stream %}
     /* Constructor drive loop (#decoder-drive): the target returns an opaque
      * handle built from the fuzz bytes; pump the decode/read state machine so
@@ -708,7 +724,8 @@ int main(int argc, char **argv) {
     return 0;
 }
 #else
-{% raw %}/* govfuzz driver (default, non-AFL). No libFuzzer `main`: the built-in engine
+{% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
+/* govfuzz driver (default, non-AFL). No libFuzzer `main`: the built-in engine
  * drives this in one persistent process via the framed fork-server protocol
  * (#399) — millions of execs in a budget instead of an ASan-instrumented
  * per-spawn startup per input — with a SanitizerCoverage edge-coverage runtime
@@ -1136,6 +1153,7 @@ int main(int argc, char **argv) {
     govfuzz_run_file(argv[1]);
     return 0;
 }
+#endif /* !GOVFUZZ_EXTERNAL_DRIVER */
 {% endraw %}
 #endif
 {%- endif %}

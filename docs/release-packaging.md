@@ -27,8 +27,12 @@ distributed binary lists so test and legacy compatibility binaries such as
 The runtrace shim package opts in with `package-libraries = ["cdylib"]` and
 `install-libraries = ["cdylib"]` so dist publishes a shim archive and installer
 containing `libgovfuzz_runtrace_shim`. The runtime preload libraries are
-Linux-only, and the generated release workflow currently publishes the
-smoke-tested `x86_64-unknown-linux-gnu` binary target. For archive installs,
+Linux-only. The generated workflow publishes the CLI and daemon for
+`x86_64-unknown-linux-gnu` and `x86_64-pc-windows-msvc`, while publishing the
+two preload libraries only for Linux. The Linux target is built in a pinned
+manylinux2014 / CentOS 7 container and checked for a maximum glibc 2.17 ABI,
+covering Ubuntu and RHEL 7 through RHEL 9. The same gate verifies the runtrace
+shim's required interposition exports. For archive installs,
 extract the `govfuzz_runtrace_shim-*` archive next to the `govfuzz-*` archive
 directory, or set `GOVFUZZ_RUNTRACE_SHIM` to the library path. For installer
 installs, install both `govfuzz` and `govfuzz_runtrace_shim` so the library
@@ -83,14 +87,17 @@ only when the C toolchain is intentionally absent.
 
 ## Targets
 
-The generated release workflow builds this target triple:
+The generated release workflow builds these target triples:
 
 - `x86_64-unknown-linux-gnu`
+- `x86_64-pc-windows-msvc` (`govfuzz` and `govfuzz-daemon` only)
 
-Each archive has a SHA-256 checksum sidecar. macOS, Windows, and Linux/aarch64
-artifacts are intentionally not published until the Linux-only preload packages
-are split from the portable CLI and daemon archives or gain native support on
-those targets.
+Each archive has a SHA-256 checksum sidecar. The Linux binaries are built in the
+pinned manylinux2014 container for Ubuntu and RHEL 7 through 9. Windows binaries
+are built and smoke-tested on Windows Server 2022, and their PowerShell
+installers are published alongside the Unix shell installers. The runtime and
+compiler-interception preload shims remain Linux-only assets. macOS,
+Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
 
 GitHub Artifact Attestations are disabled in the generated workflow because
 GitHub currently rejects attestation persistence for this private
@@ -138,7 +145,7 @@ semantic version, such as `v0.1.0`, run the full release workflow:
    version and refresh `Cargo.lock`
 1. plan artifacts with `dist plan`
 2. build platform archives and checksums
-3. generate shell installers
+3. generate Unix shell and Windows PowerShell installers
 4. upload artifacts to a GitHub Release
 
 Run this before opening release-packaging changes or cutting a tag:

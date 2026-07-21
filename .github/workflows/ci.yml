@@ -101,8 +101,12 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Test portable Windows packages
-        run: cargo test --locked -p govfuzz -p govfuzz-daemon --lib
+      - name: Test Windows-specific logic and daemon
+        shell: pwsh
+        run: |
+          cargo test --locked -p govfuzz-daemon --lib
+          cargo test --locked -p govfuzz --lib windows
+          cargo test --locked -p govfuzz --lib vcxproj
 
       - name: Build Windows release artifacts
         run: cargo build --locked --release -p govfuzz -p govfuzz-daemon --target x86_64-pc-windows-msvc
@@ -112,3 +116,42 @@ jobs:
         run: |
           .\target\x86_64-pc-windows-msvc\release\govfuzz.exe --version
           .\target\x86_64-pc-windows-msvc\release\govfuzz-daemon.exe --help
+          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe scan `
+            tests\fixtures\engine_parity\magic_byte `
+            --work-dir "$env:RUNNER_TEMP\govfuzz-windows-scan"
+          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe auto `
+            tests\fixtures\engine_parity\magic_byte `
+            --work-dir "$env:RUNNER_TEMP\govfuzz-windows-plan" `
+            --languages c --list-targets --no-discovery-cache
+
+      - name: Install Windows C fuzz smoke prerequisites
+        shell: pwsh
+        run: |
+          if (-not (Get-Command clang -ErrorAction SilentlyContinue)) {
+            choco install llvm --yes --no-progress
+          }
+          if (-not (Get-Command make -ErrorAction SilentlyContinue)) {
+            choco install make --yes --no-progress
+          }
+          clang --version
+          make --version
+
+      - name: Run native Windows C fuzz smoke
+        shell: pwsh
+        run: |
+          $work = "$env:RUNNER_TEMP\govfuzz-windows-fuzz"
+          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe auto `
+            tests\fixtures\engine_parity\magic_byte `
+            --work-dir $work `
+            --languages c `
+            --target parse_frame `
+            --iterations 32 `
+            --single-pass `
+            --sanitizers none `
+            --per-target-time 5 `
+            --no-discovery-cache `
+            --verbose
+          $report = Get-Content "$work\auto\run.json" -Raw | ConvertFrom-Json
+          if ($report.summary.built_and_fuzzed -ne 1) {
+            throw "Windows smoke did not build and fuzz parse_frame: $($report.summary | ConvertTo-Json -Compress)"
+          }

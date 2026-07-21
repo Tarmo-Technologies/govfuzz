@@ -3,7 +3,7 @@
 # Release Packaging
 
 GovFuzz uses `dist` to publish binary archives for the `govfuzz` CLI, the
-`govfuzz-daemon` JSON-RPC service, the `govfuzz_runtrace_shim` cdylib that
+`govfuzz-daemon` JSON-RPC/read-only-MCP service, the `govfuzz_runtrace_shim` cdylib that
 `govfuzz auto` loads for runtime virtualisation on Linux, and the
 `govfuzz_cc_intercept` cdylib that C/C++ build recovery uses to observe
 absolute-path and `posix_spawn` compiler invocations.
@@ -24,7 +24,7 @@ The GitHub Release contains one archive and one shell installer per component:
 | `govfuzz-*` | Main CLI | All CLI workflows |
 | `govfuzz_runtrace_shim-*` | Runtime virtualisation `LD_PRELOAD` shim | Full `govfuzz auto` runtime audit/fake-resource support |
 | `govfuzz_cc_intercept-*` | Build-time compiler interception `LD_PRELOAD` shim | C/C++ `--probe-build` / `--build-command` recovery when builds invoke compilers by absolute path or via `posix_spawn` |
-| `govfuzz-daemon-*` | JSON-RPC daemon | IDE/editor integrations |
+| `govfuzz-daemon-*` | JSON-RPC and read-only MCP daemon | IDE/editor or MCP/agent integrations |
 | `source.tar.gz` | Release source snapshot | Source audit or rebuilds |
 | `dist-manifest.json`, `sha256.sum`, `*.sha256` | dist metadata and checksums | Automation and integrity verification |
 
@@ -64,6 +64,13 @@ package does not include the GovFuzz application source tree; it does include
 runtime support files needed to compile generated harnesses on the destination.
 It also includes `README-DIST.md` for install options and `RUN-GOVFUZZ.md` for
 post-install operation.
+
+The staged runtime trees cover C/C++, Ada, Rust, Java, Python, Perl, C#,
+JavaScript/TypeScript, Ruby, Lua, and PHP. COBOL, Fortran, and Go use their
+system toolchains plus the shared C runtime and do not have separate runtime
+trees. `--languages all` selects all sixteen installer dependency profiles;
+the interactive/default profile remains the original eight core lanes so new
+toolchains are opt-in.
 
 The bundled `install.sh` prompts with an arrow-key terminal checklist for
 languages, compile targets, fuzzers, and extras. Up/Down moves through options

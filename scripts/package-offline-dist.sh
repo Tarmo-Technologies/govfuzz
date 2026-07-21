@@ -11,7 +11,6 @@ SBOM_CVE_DB=""
 BINARY_CVE_DB=""
 SEED_DIR=""
 SIGN_KEY="govfuzz-dist-root"
-ALLOW_EMPTY_CVE_DB=0
 SKIP_BUILD=0
 DRY_RUN=0
 GENERATE_SBOM_CVE_DB=0
@@ -187,7 +186,6 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --allow-empty-cve-db)
-      ALLOW_EMPTY_CVE_DB=1
       shift
       ;;
     --skip-build)
@@ -310,6 +308,11 @@ copy_tree "$REPO_ROOT/python_runtime" "$TOOL_DIR/python_runtime"
 run find "$TOOL_DIR/python_runtime" -type d -name __pycache__ -prune -exec rm -rf {} +
 copy_tree "$REPO_ROOT/perl_runtime" "$TOOL_DIR/perl_runtime"
 copy_tree "$REPO_ROOT/crates/rust_runtime" "$TOOL_DIR/crates/rust_runtime"
+copy_tree "$REPO_ROOT/csharp_runtime" "$TOOL_DIR/csharp_runtime"
+copy_tree "$REPO_ROOT/js_runtime" "$TOOL_DIR/js_runtime"
+copy_tree "$REPO_ROOT/ruby_runtime" "$TOOL_DIR/ruby_runtime"
+copy_tree "$REPO_ROOT/lua_runtime" "$TOOL_DIR/lua_runtime"
+copy_tree "$REPO_ROOT/php_runtime" "$TOOL_DIR/php_runtime"
 
 run cp "$SCRIPT_DIR/install-dist.sh" "$STAGE_ROOT/install.sh"
 run chmod +x "$STAGE_ROOT/install.sh"
@@ -373,7 +376,8 @@ Installer options:
 --prefix DIR            Install prefix (default: /opt/govfuzz)
 --bin-dir DIR           Directory for govfuzz symlinks (default: /usr/local/bin)
 --non-interactive       Do not prompt; use selected or default profiles
---languages LIST        Comma list: c,cpp,rust,java,python,perl,go,ada,all,none
+--languages LIST        Comma list: c,cpp,rust,java,python,perl,go,ada,cobol,
+                        fortran,csharp,javascript,typescript,ruby,lua,php,all,none
 --targets LIST          Comma list: native,windows,aarch64,all,none
 --fuzzers LIST          Comma list: builtin,afl,all,none
 --extras LIST           Comma list: build-recovery,sandbox,archives,all,none
@@ -409,6 +413,12 @@ Full install example:
   --extras all \
   --install-seeds
 ```
+
+`--languages all` means all sixteen fuzzing lanes. With no language option, the
+installer keeps the original eight core lanes selected and offers COBOL,
+Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP as opt-ins. The C# lane
+requires a separately staged .NET 8 SDK and `SharpFuzz.CommandLine`; TypeScript
+requires `esbuild` on `PATH` or already installed in the target project.
 
 The bundled content pack lives under `content/packs/current` and is verified
 before install.
@@ -449,7 +459,7 @@ symlinks in `/usr/local/bin`.
 Useful locations:
 
 - `/opt/govfuzz/govfuzz` - CLI binary
-- `/opt/govfuzz/govfuzz-daemon` - JSON-RPC daemon for IDE integrations
+- `/opt/govfuzz/govfuzz-daemon` - JSON-RPC/read-only-MCP daemon for IDE and agent integrations
 - `/opt/govfuzz/libgovfuzz_runtrace.so` - LD_PRELOAD runtime shim
 - `/opt/govfuzz/packs/` - installed signed offline content packs
 - `/opt/govfuzz/corpora/seeds/` - bundled seeds when installed with
@@ -492,10 +502,13 @@ govfuzz auto /path/to/source-tree \
   --verbose
 ```
 
+`auto` recognizes all sixteen source lanes: Ada, C, C++, Rust, Java, Python,
+Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP.
+
 Useful options:
 
-- `--languages c,cpp,ada,rust,java,python,perl,go` limits the sweep to selected
-  lanes.
+- `--languages c,cpp,ada,csharp,javascript` limits the sweep to selected lanes;
+  omit it to use every lane found in the tree.
 - `--max-targets 25` runs only the highest ranked targets.
 - `--campaign-time 3600` caps the whole run at 3600 seconds, which is one hour.
   This is the whole-campaign maximum time; use it when you want the sweep to
@@ -656,29 +669,34 @@ govfuzz replay --finding govfuzz_work/findings/F-0001 \
 
 ## Runtime Shim
 
-Native Ada, C, C++, Rust, Go, Python, and Perl runs use the bundled runtrace
-shim for resource virtualization and runtime findings. If the CLI cannot find
+The shim is armed for native Ada, C, C++, Rust, Go, COBOL, and Fortran runs plus
+Python, Perl, Ruby, Lua, and PHP interpreter processes. If the CLI cannot find
 the shim automatically, point it at the installed copy:
 
 ```sh
 export GOVFUZZ_RUNTRACE_SHIM=/opt/govfuzz/libgovfuzz_runtrace.so
 ```
 
-Java fuzzing does not load the LD_PRELOAD shim because it would interpose JVM
-runtime activity instead of only target behavior.
+Java, C#, JavaScript, and TypeScript fuzzing do not load the LD_PRELOAD shim
+because interposing their managed runtime processes would mostly observe the
+launcher/runtime rather than target behavior. Cross-compiled and emulated runs
+also leave it disabled.
 
 ## Daemon and IDE Use
 
-`govfuzz-daemon` is installed for IDE thin clients and JSON-RPC integrations.
-Run the daemon from the installed prefix or through the symlink configured by
-the installer:
+`govfuzz-daemon` is installed for IDE thin clients, JSON-RPC integrations, and
+five read-only MCP tools. Run the daemon from the installed prefix or through
+the symlink configured by the installer:
 
 ```sh
 govfuzz-daemon
+# MCP stdio transport for an approved local agent host:
+govfuzz-daemon --mcp
 ```
 
-Use the CLI for batch and CI jobs; use the daemon when an editor integration is
-responsible for launching and managing GovFuzz sessions.
+Use the CLI for batch and CI jobs. Use default daemon mode when an editor owns
+GovFuzz sessions, or `--mcp` for read-only static scan, target ranking, harness
+preflight, report summary, and finding lookup. MCP does not build or fuzz.
 
 ## Offline Content
 

@@ -17,7 +17,7 @@ const BUILD_CONTEXT_LDFLAG_PREFIX: &str = "@govfuzz-build-context-ldflag=";
 
 #[derive(Debug, Clone, clap::Args, PartialEq)]
 pub struct GenerateHarnessArgs {
-    /// Path to the Ada source file containing the target subprogram.
+    /// Path to the Ada, C, or C++ source file containing the target subprogram.
     pub source: PathBuf,
 
     /// Subprogram name to harness. If omitted, harness the highest-ranked target.

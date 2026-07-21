@@ -41,7 +41,8 @@ Options:
   --prefix DIR            Install prefix (default: /opt/govfuzz)
   --bin-dir DIR           Directory for govfuzz symlinks (default: /usr/local/bin)
   --non-interactive       Do not prompt; use selected or default profiles
-  --languages LIST        Comma list: c,cpp,rust,java,python,perl,go,ada,all,none
+  --languages LIST        Comma list: c,cpp,rust,java,python,perl,go,ada,cobol,
+                          fortran,csharp,javascript,typescript,ruby,lua,php,all,none
   --targets LIST          Comma list: native,windows,aarch64,all,none
   --fuzzers LIST          Comma list: builtin,afl,all,none
   --extras LIST           Comma list: build-recovery,sandbox,archives,all,none
@@ -72,8 +73,9 @@ normalize_list() {
 }
 
 contains_item() {
-  local list=",$(normalize_list "$1"),"
+  local list
   local item
+  list=",$(normalize_list "$1"),"
   item="$(normalize_list "$2")"
   [[ "$list" == *",$item,"* ]]
 }
@@ -279,10 +281,10 @@ terminal_checklist() {
         ;;
       " ")
         if (( cursor < choice_count )); then
-          if [[ "${states[$cursor]}" == "on" ]]; then
-            states[$cursor]="off"
+          if [[ "${states[cursor]}" == "on" ]]; then
+            states[cursor]="off"
           else
-            states[$cursor]="on"
+            states[cursor]="on"
           fi
         elif (( cursor == choice_count )); then
           printf '\033[H\033[J' >&2
@@ -558,20 +560,28 @@ if [[ "$NON_INTERACTIVE" -eq 0 ]]; then
   FUZZERS="${FUZZERS:-$DEFAULT_FUZZERS}"
   EXTRAS="${EXTRAS:-$DEFAULT_EXTRAS}"
   LANGUAGES="$(ask_checklist "Languages to support" "$LANGUAGES" \
-    "c|C harnesses with clang/libFuzzer|on" \
-    "cpp|C++ harnesses with clang++/libFuzzer|on" \
+    "c|C harnesses with clang + built-in engine|on" \
+    "cpp|C++ harnesses with clang++ + built-in engine|on" \
     "rust|Rust harnesses with nightly sanitizers|on" \
     "java|Java harnesses and coverage agent|on" \
     "python|Python harnesses and coverage driver|on" \
     "perl|Perl harnesses and coverage driver|on" \
-    "go|Go harnesses|on" \
-    "ada|Ada harnesses with GNAT/GPRbuild|on")"
+    "go|Go harnesses with atomic coverage|on" \
+    "ada|Ada harnesses with GNAT/GPRbuild|on" \
+    "cobol|COBOL harnesses with GnuCOBOL|off" \
+    "fortran|Fortran harnesses with gfortran|off" \
+    "csharp|C# harnesses with .NET + SharpFuzz|off" \
+    "javascript|JavaScript harnesses with Node.js|off" \
+    "typescript|TypeScript with Node.js + esbuild|off" \
+    "ruby|Ruby harnesses and coverage driver|off" \
+    "lua|Lua harnesses and coverage driver|off" \
+    "php|PHP harnesses and coverage driver|off")"
   TARGETS="$(ask_checklist "Compile targets to support" "$TARGETS" \
     "native|Native Linux target|on" \
     "windows|Windows cross target and Wine smoke execution|off" \
     "aarch64|AArch64 cross target and qemu-user execution|off")"
   FUZZERS="$(ask_checklist "Fuzzers to install" "$FUZZERS" \
-    "builtin|GovFuzz built-in libFuzzer/fork-server path|on" \
+    "builtin|GovFuzz built-in coverage-guided fork-server engine|on" \
     "afl|AFL++ for native C/C++ targets|off")"
   EXTRAS="$(ask_checklist "Additional tooling" "$EXTRAS" \
     "build-recovery|Build recovery tools: cmake, ninja, autotools, meson|on" \
@@ -584,7 +594,7 @@ else
   EXTRAS="${EXTRAS:-$DEFAULT_EXTRAS}"
 fi
 
-LANGUAGES="$(expand_selection "$LANGUAGES" c cpp rust java python perl go ada)"
+LANGUAGES="$(expand_selection "$LANGUAGES" c cpp rust java python perl go ada cobol fortran csharp javascript typescript ruby lua php)"
 TARGETS="$(expand_selection "$TARGETS" native windows aarch64)"
 FUZZERS="$(expand_selection "$FUZZERS" builtin afl)"
 EXTRAS="$(expand_selection "$EXTRAS" build-recovery sandbox archives)"
@@ -623,6 +633,24 @@ if contains_item "$LANGUAGES" perl; then
 fi
 if contains_item "$LANGUAGES" go; then
   add_unique APT_PACKAGES golang-go
+fi
+if contains_item "$LANGUAGES" cobol; then
+  add_unique APT_PACKAGES gnucobol make clang llvm
+fi
+if contains_item "$LANGUAGES" fortran; then
+  add_unique APT_PACKAGES gfortran make clang llvm
+fi
+if contains_item "$LANGUAGES" javascript || contains_item "$LANGUAGES" typescript; then
+  add_unique APT_PACKAGES nodejs npm
+fi
+if contains_item "$LANGUAGES" ruby; then
+  add_unique APT_PACKAGES ruby
+fi
+if contains_item "$LANGUAGES" lua; then
+  add_unique APT_PACKAGES lua5.4
+fi
+if contains_item "$LANGUAGES" php; then
+  add_unique APT_PACKAGES php-cli
 fi
 if contains_item "$TARGETS" windows; then
   add_unique APT_PACKAGES gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 wine64
@@ -697,6 +725,28 @@ if contains_item "$LANGUAGES" rust && [[ "$NO_RUSTUP" -eq 0 ]]; then
   fi
 else
   printf 'Skipping rustup nightly setup.\n'
+fi
+
+# Debian/Ubuntu does not expose one stable, distribution-independent package
+# name for the current .NET SDK, SharpFuzz.CommandLine is a dotnet global tool,
+# and esbuild may be project-local. Keep those choices explicit instead of
+# silently adding a third-party feed or fetching npm/NuGet content.
+if contains_item "$LANGUAGES" csharp; then
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf 'C# prerequisite: install a .NET 8 SDK and: dotnet tool install --global SharpFuzz.CommandLine\n'
+  else
+    command -v dotnet >/dev/null 2>&1 || warn "C# selected but no dotnet SDK is on PATH; install a .NET 8 SDK before fuzzing C#"
+    if ! command -v sharpfuzz >/dev/null 2>&1 && [[ ! -x "${HOME}/.dotnet/tools/sharpfuzz" ]]; then
+      warn "C# selected but SharpFuzz.CommandLine is missing; install it on a connected staging host with 'dotnet tool install --global SharpFuzz.CommandLine'"
+    fi
+  fi
+fi
+if contains_item "$LANGUAGES" typescript; then
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf 'TypeScript prerequisite: put esbuild on PATH or in the target project for npx --no-install esbuild.\n'
+  elif ! command -v esbuild >/dev/null 2>&1; then
+    warn "TypeScript selected but esbuild is not on PATH; a project-local esbuild reachable by 'npx --no-install esbuild' also works"
+  fi
 fi
 
 [[ -d "$TOOL_DIR" ]] || die "missing tool directory: $TOOL_DIR"

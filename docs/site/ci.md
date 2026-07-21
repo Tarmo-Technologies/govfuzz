@@ -55,7 +55,7 @@ fuzz-confirmed finding.
 |---|---|---|
 | `path` | `.` | Source root to scan. |
 | `base-ref` | *(auto)* | Git ref to diff against. Default: PR base / default branch. |
-| `languages` | *(all)* | Comma list to restrict lanes (`ada,c,cpp,rust,java,python,perl,go`). |
+| `languages` | *(all)* | Comma list to restrict any of the sixteen lanes (`ada,c,cpp,rust,java,python,perl,go,cobol,fortran,csharp,javascript,typescript,ruby,lua,php`). |
 | `campaign-time` | `180` | Whole-run wall-clock budget (seconds). |
 | `per-target-time` | `30` | Per-target fuzz budget (seconds). |
 | `pr-gate` | `confirmed` | `confirmed` \| `all` \| `never` — when to fail the check. |
@@ -116,6 +116,22 @@ govfuzz ci . \
   machine-readable result (counts by severity/verdict, confirmed count, scoped
   file count) for your own reporting.
 - Exit code is `0` unless the gate fails.
+
+## LLM and agent use in CI
+
+GovFuzz does not require or call an LLM in CI. Keep PR gates deterministic:
+gate on GovFuzz exit status, actionability, replay, and SARIF/JSON fields—not on
+a model's wording or severity guess. `govfuzz llm prompt` can render a bounded,
+provider-free triage prompt as a separate artifact; `llm assist` makes a remote
+or local provider request and should remain a non-gating, explicitly configured
+step.
+
+If a CI agent summarizes findings, give it the normalized finding and bounded
+run metadata rather than the checkout or full logs. Review artifacts for target
+credentials and private source before sending them to a cloud or authenticated
+CLI provider, inject provider keys through the CI secret store, and do not write
+key values into arguments, workflow YAML, caches, or uploaded prompts. See
+[LLM Assistance](./llm.md) for the exact provider and MCP boundaries.
 
 ## Honesty
 

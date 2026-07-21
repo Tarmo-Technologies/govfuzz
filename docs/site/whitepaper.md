@@ -15,14 +15,14 @@ cost is prohibitive, and for Ada there is simply no off-the-shelf tool at all.
 
 **govfuzz removes the cost.** Point it at a source tree and it discovers the
 fuzzable entry points, generates typed harnesses, recovers the build when there
-isn't one, and fuzzes — in **C, C++, Ada, Rust, Java, Python, Perl, and Go**,
-with a built-in coverage-guided engine or by driving AFL++ directly on native
-C/C++ targets.
+isn't one, and fuzzes across **sixteen lanes: Ada, C, C++, Rust, Java, Python,
+Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP**, with
+a built-in engine or by driving AFL++ directly on native C/C++ targets.
 
 In head-to-head measurements against the most popular fuzzer for each language,
 govfuzz finds the same bugs the specialists find while requiring **zero**
-hand-written harness code (versus 5–13 lines each), supporting **eight languages
-instead of one**, fuzzing code that has **no working build**, and auto-harnessing
+hand-written harness code (versus 5–13 lines each), covering **eight measured
+languages instead of one**, fuzzing code that has **no working build**, and auto-harnessing
 **185 targets from a single command** where the alternatives need one harness
 apiece. It is the only one of the group that fuzzes Ada.
 
@@ -57,8 +57,8 @@ plumbing tax is infinite: there is no AFL++ for Ada, no libFuzzer, no Jazzer.
 
 ## The govfuzz approach: delete the plumbing
 
-govfuzz is a front-end that automates all three steps, for eight languages, on
-top of best-in-class engines.
+govfuzz is a front-end that automates all three steps across sixteen current
+language lanes.
 
 **Discovery.** It parses the whole tree and ranks fuzzable subprograms by
 attacker-reachability — byte-channel parsers score highest, getters and internal
@@ -87,15 +87,14 @@ input-to-state gates cold, with no configuration. When you want a specific
 engine's exact behaviour, govfuzz can drive AFL++ itself instead, on native
 C/C++ targets.
 
-**Eight languages on one engine.** The three newest lanes — Python, Perl, and
-Go — run on govfuzz's own builtin engine; no Atheris, no `go test -fuzz`, no
-third-party fuzzer. The two interpreted lanes (Python, Perl) get real coverage
-feedback — a `sys.monitoring`/`DB::DB` tracer feeds the same shared coverage map
-the native lanes use, and the behavioral/taint shim is armed on the interpreter
-process. The Go lane is compiled and statically typed (the harness decodes by
-declared type, like the C/Rust lanes), though for now its coverage is black-box;
-coverage-guided Go is a documented follow-up, and Go panics readily, so shallow
-bugs surface fast.
+**Sixteen languages on one engine.** Ada/C/C++ use typed direct generators and
+the deepest repair loop; Rust and Java use native/JVM builders; Python, Perl,
+JavaScript/TypeScript, Ruby, Lua, and PHP use persistent interpreter drivers;
+and Go, COBOL, Fortran, and C# use their lane-specific compiled/runtime paths.
+The LD_PRELOAD behavioral/taint layer is narrower than the fuzzing surface: it
+runs on native Ada/C/C++/Rust/Go/COBOL/Fortran harnesses and interposes the
+Python/Perl/Ruby/Lua/PHP interpreters. Java, C#, and JavaScript/TypeScript retain
+their managed-runtime coverage and crash/exception signals without that shim.
 
 ---
 
@@ -107,7 +106,7 @@ engine's feedback has to work. Competitors ran in their **best** configuration
 (AFL++ with a CMPLOG binary, libFuzzer with value-profile). The methodology and
 every raw number are in the [comparison](comparison.md); the headlines:
 
-- **Zero harness, every language.** govfuzz needs **0 lines** of hand-written
+- **Zero harness, every benchmarked language.** govfuzz needs **0 lines** of hand-written
   harness in C, C++, Ada, Rust, Java, Python, Perl, and Go. The alternatives
   need 5–13 lines *per
   target* — libFuzzer 6, AFL++ 13, cargo-fuzz 5, Jazzer 5.
@@ -137,7 +136,7 @@ every raw number are in the [comparison](comparison.md); the headlines:
 | | govfuzz | best alternative |
 |---|---|---|
 | Hand-written harness / target | **0 lines** | 5–13 lines |
-| Languages | **C, C++, Ada, Rust, Java, Python, Perl, Go** | one each |
+| Current product languages | **16** (the 8 named above were measured here) | one each |
 | Targets per command | **all (185 on miniz)** | one |
 | Fuzzes with no working build | **yes** | no |
 | Fuzzes Ada | **yes** | no |
@@ -163,10 +162,11 @@ for the pipelines these programs already run.
 
 The fuzzing engines are a solved problem. The barrier to fuzzing real, legacy,
 multi-language, mission-critical software is the human plumbing around them —
-and for Ada, the total absence of a tool. govfuzz removes the plumbing and adds
-the missing language: one tool that finds the same bugs as AFL++, libFuzzer,
-cargo-fuzz, and Jazzer, with no harness, across eight languages, on code that
-doesn't even build — and the only fuzzer that handles Ada.
+and for Ada, the total absence of a tool. govfuzz removes the plumbing: one tool
+with sixteen current language lanes that found the same planted bugs as AFL++,
+libFuzzer, cargo-fuzz, and Jazzer across the eight lanes measured here, with no
+harness, on code that does not even build — and the only fuzzer in this
+comparison that handles Ada.
 
 One fuzzer for the whole codebase.
 

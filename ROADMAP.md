@@ -1,8 +1,16 @@
 # govfuzz — Engineering Roadmap
 
-An offline fuzz lab generator for government legacy Ada, C, C++, Rust, Java,
-Python, Perl, and Go software. Permissive core, partial-build aware, sanitizer and
-swallowed-exception aware, CORBA-friendly without a real ORB.
+This is a historical engineering plan as well as a forward roadmap. Dated
+milestones, command sketches, agent instructions, and acceptance criteria below
+record what was proposed at the time; they are not the operator reference. Use
+[`docs/site/`](docs/site/) and live `govfuzz <command> --help` output for current
+behavior. Current optional LLM/MCP workflows are documented in
+[`docs/site/llm.md`](docs/site/llm.md).
+
+GovFuzz currently fuzzes sixteen languages: Ada, C, C++, Rust, Java, Python,
+Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP.
+Permissive core, partial-build aware, sanitizer and swallowed-exception aware,
+CORBA-friendly without a real ORB.
 
 Supported Ada standards: **95, 2005, 2012, 2022** (full fuzzing). **Ada 83** is
 supported best-effort as a legacy dialect (M22 §29): it parses (reduced 83
@@ -15,11 +23,10 @@ keyword set, built with `-gnat83`) and is discovered + statically analyzed
 
 The user-facing current behavior is documented under `docs/site/`. In brief:
 
-- `govfuzz scan`, `list-targets`, and `auto` handle Ada, C, C++, Rust, Java,
-  Python, Perl, and Go source files. C/C++/Rust/Java/Python/Perl/Go discovery is
-  tree-sitter-based and
-  signature-ranked (Ada uses a from-scratch lexer reconciled with
-  tree-sitter-ada). Source reading transcodes non-UTF-8 legacy files
+- `govfuzz auto` is the complete sixteen-lane entry point. The narrower manual
+  commands intentionally differ: `scan` and `generate-harness` cover Ada/C/C++,
+  while `list targets` covers Ada/C/C++/Java/Rust. Source reading transcodes
+  non-UTF-8 legacy files
   (Latin-1/Windows-1252) instead of skipping them, so older government Ada/C is
   not silently dropped.
 - The Ada lane includes source instrumentation, handler and breadcrumb events,
@@ -28,16 +35,15 @@ The user-facing current behavior is documented under `docs/site/`. In brief:
 - The C/C++ lane includes direct-call harnesses for common byte-oriented APIs,
   compile database flag ingestion, sanitizer findings, build repair, runtime
   audit, and optional AFL++ targets through `govfuzz build --c-engine afl++`
-  (the AFL++ adapter is native C/C++ only — Ada, Rust, Java, Python, Perl, and Go use the
-  built-in engine).
+  (the AFL++ adapter is native C/C++ only; every lane uses the built-in engine
+  by default).
 - The Rust and Java lanes are native fuzzing lanes (not SBOM-only). Both are
   built before the repair loop and share the built-in cascade with direct-only
   harnesses (no public sequence harness). Rust compiles a staticlib with
   sancov + ASan coverage linked to the C fork-server driver; Java uses
   govfuzz's own ASM bytecode JVM coverage agent (not Jazzer) over
-  javac/maven/gradle builds. The behavioral/taint runtrace oracles are
-  native-only and are not armed during Java fuzzing or under cross/emulated
-  targets.
+  javac/maven/gradle builds. The behavioral/taint runtrace shim is deliberately
+  not armed for Java, C#, JavaScript/TypeScript, or cross/emulated targets.
 - The Python, Perl, and Go lanes (M3.1–M3.3) are native fuzzing lanes driven by
   govfuzz's own built-in engine over the framed fork-server protocol — no
   third-party fuzzer (no Atheris, no `go test -fuzz`, no libFuzzer). Python
@@ -60,6 +66,11 @@ The user-facing current behavior is documented under `docs/site/`. In brief:
   The behavioral/taint runtrace oracles ARE armed for these lanes (the
   LD_PRELOAD shim interposes the CPython and Perl interpreter processes and the
   native Go binary), unlike Java.
+- COBOL and Fortran compile through GnuCOBOL/gfortran into the native C driver;
+  C# uses SharpFuzz IL coverage in a warm CLR; JavaScript/TypeScript use V8 block
+  coverage in warm Node; and Ruby, Lua, and PHP use interpreter coverage. The
+  Linux runtrace shim also covers native COBOL/Fortran and the Ruby/Lua/PHP
+  interpreter processes.
 - The parity program closes the remaining C/C++ gaps: richer build-system
   ingestion, C++ lifecycle/sequence harnesses, and IDE/daemon parity.
 - The §25 top-of-class gap program (#341–#345) is **delivered** (2026-06-19):
@@ -1197,7 +1208,11 @@ JSON (always), Markdown (always), **SARIF 2.1.0** when `--sarif`, JUnit XML when
 
 ---
 
-## 16. CLI design
+## 16. Historical CLI design
+
+This section preserves the original command design. Several names and scopes
+changed during implementation; use `docs/site/cli.md` and live `--help`, not the
+sketches below, for current automation.
 
 Each command: `inputs`, `outputs`, `example`, `failure behavior`.
 
@@ -2067,11 +2082,10 @@ program office adopts". Each is tracked as a GitHub issue:
    CWE-732 — e.g. an archive extractor honoring an attacker-controlled entry
    mode). **Delivered** (17 registered oracles spanning the OWASP/CWE logic-bug
    classes); additional oracle classes are continuous improvement. The
-   behavioral/taint oracles run on the native LD_PRELOAD runtrace shim and are
-   therefore native-only — not armed during Java fuzzing or under
-   cross/emulated targets. They ARE armed for the Python, Perl, and Go lanes:
-   the shim interposes the CPython and Perl interpreter processes and the native
-   Go fork-server binary. (#343)
+   behavioral/taint oracles run on the Linux LD_PRELOAD runtrace shim. The
+   current shim scope is native C/C++/Ada/Rust/Go/COBOL/Fortran plus the
+   Python/Perl/Ruby/Lua/PHP interpreter processes; it is off for Java, C#,
+   JavaScript/TypeScript, and cross/emulated targets. (#343)
 4. **CycloneDX SBOM (CISA 2025 minimum elements) + offline NVD/KEV CVE
    correlation** — CycloneDX, KEV metadata, and first-pass reached-CVE
    ranking now land in offline reports; runtime `dlopen` evidence from
@@ -2082,12 +2096,9 @@ program office adopts". Each is tracked as a GitHub issue:
    by `package.purl` or `package.cpe` with high-confidence precise-identity
    findings that are emitted both in `vulnerabilities.json` and CycloneDX
    `vulnerabilities` entries with CVSS, CWE, KEV, advisory URLs, and
-   reachability properties. SBOM/SCA ingestion spans 12 ecosystems (Node.js,
-   Ruby, PHP, and .NET in addition to the eight fuzzing lanes — the new `cpan`
-   cataloger for Perl reads cpanfile/META.json/Makefile.PL), but
-   SBOM coverage is not fuzzing coverage — only Ada, C, C++, Rust, Java, Python,
-   Perl, and Go are
-   fuzzable.
+   reachability properties. SBOM/SCA ingestion spans 12 ecosystems, including
+   Node.js, Ruby, PHP, .NET, and the `cpan` cataloger for Perl. SBOM ecosystem
+   count is independent of the current sixteen fuzzing lanes.
    (#344)
 5. **Generalized C/C++ lifecycle & stateful-sequence harnesses** —
    struct/opaque-handle/callback APIs (the 170/185 miniz skip bucket).
@@ -2740,12 +2751,10 @@ rather than degrading.
 
 ## 30. v1.1 development program (2026-07-11)
 
-Post public-launch direction. The tool is already broad (8 fuzzing lanes, all
-coverage-guided) and deep (25+ taint-confirmed oracles, cmplog/RedQueen, AFL++,
-SBOM/CVE, `--force`). The next leverage is **distribution** (get it into people's
-CI with zero friction), **one new confirmed-bug class** (differential fuzzing),
-and **targeted breadth** (COBOL/Fortran on the legacy-government thesis, plus
-JavaScript and C#). Ordered by leverage; each ships incrementally.
+This dated program is now substantially delivered: the product has sixteen
+fuzzing lanes, PR-native CI, differential fuzzing, and the COBOL, Fortran,
+JavaScript/TypeScript, and C# paths described below. The original sequencing is
+preserved as the implementation record.
 
 ### 30.1 PR-native incremental CI + GitHub Action — usability is the acceptance bar
 
@@ -2886,7 +2895,6 @@ mainstream.
 - **Strict-permissive thesis holds:** any GPL compiler (GnuCOBOL, gfortran) is
   subprocess-only, never linked; every new tree-sitter grammar is re-verified
   MIT/permissive per §1.2 before vendoring.
-- **Coverage-guided where the runtime allows** from day one (JS via V8 coverage, C#
-  via an IL agent). COBOL/Fortran may start report-only + black-box fuzz and add
-  edge coverage as a follow-up if the compiler exposes it; that limitation will be
-  documented, not hidden.
+- **Coverage-guided where the runtime allows.** Shipped: JS/TS use V8 coverage,
+  C# uses SharpFuzz IL coverage, and COBOL/Fortran use compiler edge/compare
+  coverage on the generated/native C path.

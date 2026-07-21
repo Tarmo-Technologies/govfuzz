@@ -2,6 +2,12 @@
 
 # Fuzzing Landscape Research - 2026-05-20
 
+This is a dated research snapshot and backlog record, not current product
+documentation. Several “later” items below—including additional language lanes
+and bounded LLM assistance—have since shipped. Use
+[`site/llm.md`](site/llm.md), [`site/auto.md`](site/auto.md), and live CLI help
+for current workflows and limitations.
+
 This memo summarizes current fuzzing tool capabilities, recurring user pain
 points, and feature opportunities for GovFuzz. Scope is Ada and C/C++ first.
 Other languages should stay behind this backlog until GovFuzz is clearly
@@ -265,6 +271,10 @@ The same problems show up across papers, project issues, and forum threads:
 
    Use LLM-generated harnesses only as candidates. Accept only if they compile,
    reach the target, improve coverage, and preserve deterministic replay.
+   **Current status:** shipped as optional `govfuzz llm prompt|assist` workflows
+   and five read-only `govfuzz-daemon --mcp` tools. Structural preflight is
+   Ada/C/C++ only and never substitutes for compile, link, target-reachability,
+   coverage, replay, or minimization evidence. See `site/llm.md`.
 
 12. Team triage dashboard.
 

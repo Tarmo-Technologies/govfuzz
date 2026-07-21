@@ -2,6 +2,17 @@
 
 # Changelog
 
+## 0.2.17 - 2026-07-21
+
+- **Self-contained release harness runtimes.** Supersedes v0.2.16: the
+  published CLI archives now carry all eleven language-runtime trees needed to
+  generate and compile C/C++, Ada, Rust, Java, Python, Perl, C#, JavaScript /
+  TypeScript, Ruby, Lua, PHP, COBOL, Fortran, and Go harnesses. Installer-only
+  deployments securely materialize the same sources from the CLI's embedded
+  copy, so a release binary never depends on the GitHub runner checkout path.
+  Linux and Windows release jobs now inspect their completed archives and fail
+  if any runtime is missing.
+
 ## 0.2.16 - 2026-07-21
 
 - **Windows, Ubuntu, and RHEL release artifacts.** Releases now publish the

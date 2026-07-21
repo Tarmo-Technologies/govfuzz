@@ -978,28 +978,8 @@ fn agent_jar_cache_path() -> PathBuf {
 }
 
 fn locate_build_agent_script() -> Option<PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("java_runtime/build-agent.sh");
-                if cand.is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .map(|root| root.join("java_runtime/build-agent.sh"));
-    if let Some(p) = from_manifest {
-        if p.is_file() {
-            return Some(p);
-        }
-    }
-    None
+    crate::runtime_assets::locate("java_runtime", "build-agent.sh")
+        .map(|runtime| runtime.join("build-agent.sh"))
 }
 
 #[cfg(unix)]

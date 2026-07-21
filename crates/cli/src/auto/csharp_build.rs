@@ -63,28 +63,7 @@ fn locate_sharpfuzz() -> Option<PathBuf> {
 /// Locate the bundled `csharp_runtime/Driver.cs`, relative to the source tree
 /// (dev) or the installed binary (release) — mirrors `locate_python_runtime`.
 fn locate_csharp_runtime() -> Option<PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("csharp_runtime");
-                if cand.join("Driver.cs").is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .map(|root| root.join("csharp_runtime"));
-    if let Some(p) = &from_manifest {
-        if p.join("Driver.cs").is_file() {
-            return from_manifest;
-        }
-    }
-    None
+    crate::runtime_assets::locate("csharp_runtime", "Driver.cs")
 }
 
 /// Walk up from the source file to the nearest directory holding a `*.csproj`.

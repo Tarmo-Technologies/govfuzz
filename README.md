@@ -105,7 +105,7 @@ ephemeral child session using the CLI's cached login.
 govfuzz llm status --json
 govfuzz llm test --provider codex
 govfuzz llm test --provider claude
-govfuzz llm prompt --task diagnose-error --input govfuzz_work/build/link.log
+govfuzz llm prompt --task diagnose-error --input govfuzz_work/auto/run.json
 ```
 
 LLM output is advisory: normal build, target-reachability, coverage, replay, and
@@ -151,8 +151,8 @@ annotations, posts a sticky summary comment, and fails only on a fuzz-confirmed 
   instead of a hard failure.
 - **Sixteen languages, one engine.** Ada, C, C++, Rust, Java, Python, Perl, Go, COBOL, Fortran,
   C#, JavaScript, TypeScript, Ruby, Lua, and PHP are peer first-class lanes over a shared
-  coverage-guided fork-server engine — no cargo-fuzz, Jazzer, Atheris, SharpFuzz, jsfuzz, or
-  `go test -fuzz` required (AFL++ is an optional adapter for native C/C++). COBOL is fuzzed via
+  coverage-guided fork-server engine — no cargo-fuzz, Jazzer, Atheris, jsfuzz, or
+  `go test -fuzz` runner is required (AFL++ is an optional adapter for native C/C++). COBOL is fuzzed via
   GnuCOBOL (`cobc -C`, the first turnkey COBOL fuzzer → [cobol.md](docs/site/cobol.md)); Fortran
   via gfortran with ASan (→ [fortran.md](docs/site/fortran.md)); C# via `dotnet` + SharpFuzz IL
   instrumentation, warm-CLR and zero-harness (→ [csharp.md](docs/site/csharp.md)); JavaScript and
@@ -181,8 +181,9 @@ annotations, posts a sticky summary comment, and fails only on a fuzz-confirmed 
   firmware blobs, with source-unavailable crash replay.
 
 Behavioral / taint oracles (path control, command injection, insecure temp, sensitive env) run
-under the runtime virtualisation shim on native C/C++/Ada/Rust/Go targets and the Python/Perl
-interpreters.
+under the Linux runtime virtualisation shim on native C/C++/Ada/Rust/Go/COBOL/Fortran
+targets and the Python/Perl/Ruby/Lua/PHP interpreters. The shim is deliberately
+off for Java, C#, JavaScript/TypeScript, and cross/emulated targets.
 
 ## Commands
 
@@ -200,6 +201,7 @@ interpreters.
 | `govfuzz binary fuzz <bin>` | Fuzz a source-unavailable executable |
 | `govfuzz sloc <src>` | Fast per-language SLOC count |
 | `govfuzz generate-harness <file> --target <fn>` | Generate one harness by hand |
+| `govfuzz llm status\|test\|prompt\|assist` | Optional bounded LLM assistance; MCP is served by `govfuzz-daemon --mcp` |
 
 Every subcommand is documented in [docs/site/cli.md](docs/site/cli.md); `govfuzz --help` lists
 them all.
@@ -210,6 +212,7 @@ them all.
 - [`govfuzz auto`](docs/site/auto.md) — end-to-end, scaling to large trees, force-fuzz, static integration.
 - [PR-native CI](docs/site/ci.md) — the GitHub Action, diff-scoping, and the confirmed-findings gate.
 - [C/C++ guide](docs/site/c-cpp.md) — prerequisites, supported parameter shapes, limits.
+- [COBOL guide](docs/site/cobol.md) and [Fortran guide](docs/site/fortran.md) — translated/compiler lanes, coverage, oracles, and limits.
 - [C# / .NET guide](docs/site/csharp.md) — dotnet + SharpFuzz, coverage bridge, vs the field.
 - [JavaScript / Node.js guide](docs/site/javascript.md) — warm Node, V8 block coverage, vs Jazzer.js.
 - [CLI reference](docs/site/cli.md) — every subcommand.
@@ -219,8 +222,9 @@ them all.
 - [Windows](docs/site/windows.md) — native install + Visual Studio solution fuzzing.
 - [Offline deployment](docs/site/offline-deployment.md) — air-gapped install and content packs.
 - [Offline Ada/C/C++ `auto` runbook](docs/site/offline-auto-runbook.md) — strongest known-build and unknown-build commands, dependency staging, IDL codegen, and the separate forced fallback.
+- [LLM and MCP assistance](docs/site/llm.md) — current-session agents, CLI/API/local providers, harness help, findings, diagnostics, privacy, and validation boundaries.
 - [Licensing](docs/site/licensing.md) — policy profiles and audits.
-- Validation: [DoD-domain recovery](docs/validation/2026-06-15-dod-domain-recovery.md), [real code / broken builds](docs/validation/2026-06-08-real-code-broken-builds.md).
+- Validation: [DoD-domain recovery](docs/validation/2026-06-15-dod-domain-recovery.md), [real code / broken builds](docs/validation/2026-06-08-real-code-broken-builds.md), [memory scaling](docs/validation/2026-07-20-memory-scaling-benchmarks.md), and [LLM/MCP paths](docs/validation/2026-07-20-llm-mcp-validation.md).
 
 The engineering roadmap is in [ROADMAP.md](ROADMAP.md).
 

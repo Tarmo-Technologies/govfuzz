@@ -15,7 +15,16 @@ The same binary also supports standards-based Model Context Protocol stdio with
 `govfuzz-daemon --mcp`. MCP messages are newline-delimited JSON-RPC rather than
 LSP-framed. This mode lets a Codex or Claude host session use deterministic
 GovFuzz tools without giving GovFuzz an API token; see
-[LLM Assistance](./llm/).
+[LLM Assistance](../llm/).
+
+The MCP mode exposes five read-only tools: Ada structure scan, Ada/C/C++ ranked
+targets, bounded normalized-finding loading, task-prompt preparation, and an
+Ada/C/C++ structural harness preflight. It does not expose build, fuzz, replay,
+minimization, file editing, or shell execution. All five tools advertise
+read-only, non-destructive, idempotent, closed-world annotations. Target and
+finding defaults derive from the current MCP message budget; explicit positive
+`top` values override those breadth defaults, and responses report totals and
+truncation.
 
 ## Methods
 
@@ -25,14 +34,16 @@ GovFuzz tools without giving GovFuzz an API token; see
 - `rankAt` returns the ranked target containing a source location (Ada-only).
 - `instrumentPreview` returns rewritten source and probe breadcrumbs without
   writing files (Ada-only).
-- `staticScan` runs the offline Ada/C/C++ static scanner, writes JSON,
-  Markdown, and optional SARIF artifacts, and returns the full static report
-  plus a CI-style `exit_code`.
+- `staticScan` runs the same full offline static engine as the CLI (the eight
+  core static languages plus JavaScript/TypeScript and supported QML/config/IaC
+  inputs), writes JSON, Markdown, and optional SARIF artifacts, and returns the
+  full static report plus a CI-style `exit_code`.
 
-`rankAt` and `instrumentPreview` are Ada-only today. Use
-`staticScan` for daemon-served Ada/C/C++ static findings and the CLI
-`scan`, `list targets`, `generate-harness`, `build`, `auto`, and `fuzz`
-commands for full Ada/C/C++/Rust/Java/Python/Perl/Go workflows.
+`rankAt` and `instrumentPreview` are Ada-only today. The flagship CLI `auto`
+command fuzzes all
+sixteen current lanes; narrower manual commands state their exact language
+scope in `govfuzz <command> --help`. Long-running or mutating operations remain
+explicit CLI actions rather than daemon/MCP calls.
 
 ## IDE Clients
 

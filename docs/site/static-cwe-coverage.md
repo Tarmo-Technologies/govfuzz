@@ -154,7 +154,8 @@ A dependency listed in `go.mod`/`Cargo.toml` but never imported stays merely
 govulncheck/Snyk "reachability" story at import granularity, offline.
 
 **The interprocedural taint engine confirms multiple injection classes**, across
-all eight languages, with sanitizer clearing, return-value summaries, branch-aware
+the eight core static-analysis languages (Ada, C, C++, Go, Rust, Java, Python,
+Perl), with sanitizer clearing, return-value summaries, branch-aware
 guards, loop-carried closure, and field/container sensitivity — each superseding
 the lower-confidence pattern heuristic at a confirmed site:
 

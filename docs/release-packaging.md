@@ -13,7 +13,7 @@ release artifacts from GitHub Actions.
 The releasable applications are:
 
 - `govfuzz`: the command-line interface from `crates/cli`
-- `govfuzz-daemon`: the JSON-RPC daemon from `crates/daemon`
+- `govfuzz-daemon`: the JSON-RPC and read-only MCP daemon from `crates/daemon`
 - `govfuzz_runtrace_shim`: the `cdylib` loaded by `govfuzz auto` for runtime
   virtualisation on Linux
 - `govfuzz_cc_intercept`: the build-time compiler-interception `cdylib` used by
@@ -63,6 +63,12 @@ fixture, and a signed content pack, then produces
 tarball includes `install.sh`, `README-DIST.md`, and `RUN-GOVFUZZ.md`.
 `install.sh` can install or update interactively with an arrow-key terminal
 checklist or non-interactively:
+
+The runtime trees cover C/C++, Ada, Rust, Java, Python, Perl, C#,
+JavaScript/TypeScript, Ruby, Lua, and PHP. COBOL, Fortran, and Go use their
+system toolchains plus the shared C runtime. `--languages all` selects installer
+dependencies for all sixteen lanes; the default checklist keeps the original
+eight core lanes selected and offers the newer lanes as opt-ins.
 
 ```sh
 ./install.sh --non-interactive \

@@ -90,7 +90,8 @@ fn offline_dist_readme_documents_install_options_without_source_tree_note() {
         "--bin-dir DIR",
         "--non-interactive",
         "--languages LIST",
-        "c,cpp,rust,java,python,perl,go,ada,all,none",
+        "c,cpp,rust,java,python,perl,go,ada,cobol,",
+        "fortran,csharp,javascript,typescript,ruby,lua,php,all,none",
         "--targets LIST",
         "native,windows,aarch64,all,none",
         "--fuzzers LIST",
@@ -287,7 +288,7 @@ fn offline_dist_installer_dry_run_maps_choices_to_dependency_groups() {
         .arg("--prefix")
         .arg(bundle.join("install").to_str().unwrap())
         .arg("--languages")
-        .arg("c,cpp,rust,java,python,perl,go,ada")
+        .arg("all")
         .arg("--targets")
         .arg("native,windows,aarch64")
         .arg("--fuzzers")
@@ -307,7 +308,7 @@ fn offline_dist_installer_dry_run_maps_choices_to_dependency_groups() {
             .arg("--prefix")
             .arg(bundle.join("install").to_str().unwrap())
             .arg("--languages")
-            .arg("c,cpp,rust,java,python,perl,go,ada")
+            .arg("all")
             .arg("--targets")
             .arg("native,windows,aarch64")
             .arg("--fuzzers")
@@ -326,6 +327,12 @@ fn offline_dist_installer_dry_run_maps_choices_to_dependency_groups() {
         "gprbuild",
         "default-jdk",
         "golang-go",
+        "gnucobol",
+        "gfortran",
+        "nodejs",
+        "ruby",
+        "lua5.4",
+        "php-cli",
         "afl++",
         "wine64",
         "qemu-user",
@@ -337,9 +344,35 @@ fn offline_dist_installer_dry_run_maps_choices_to_dependency_groups() {
         );
     }
     assert!(stdout.contains("rustup toolchain install nightly"));
+    assert!(stdout.contains("SharpFuzz.CommandLine"));
+    assert!(stdout.contains("esbuild"));
     assert!(stdout.contains("pack verify"));
     assert!(stdout.contains("govfuzz-smoke"));
     assert!(stdout.contains("auto"));
+}
+
+#[test]
+fn offline_dist_packager_stages_every_external_harness_runtime() {
+    let script = fs::read_to_string(repo_root().join("scripts/package-offline-dist.sh")).unwrap();
+
+    for runtime in [
+        "c_runtime",
+        "ada_runtime",
+        "java_runtime",
+        "python_runtime",
+        "perl_runtime",
+        "crates/rust_runtime",
+        "csharp_runtime",
+        "js_runtime",
+        "ruby_runtime",
+        "lua_runtime",
+        "php_runtime",
+    ] {
+        assert!(
+            script.contains(&format!("$REPO_ROOT/{runtime}")),
+            "packager does not stage {runtime}"
+        );
+    }
 }
 
 #[test]
@@ -365,7 +398,7 @@ fn offline_dist_installer_interactive_prompt_accepts_down_arrow_to_ok() {
     create_minimal_bundle(&bundle);
 
     let mut keys = String::new();
-    keys.push_str(&down_arrow(8));
+    keys.push_str(&down_arrow(16));
     keys.push('\n');
     keys.push_str(&down_arrow(3));
     keys.push('\n');

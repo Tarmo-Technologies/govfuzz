@@ -40,10 +40,10 @@ winget install --id Rustlang.Rustup -e                  # build govfuzz from sou
 ```
 
 Then add the tool `bin` dirs to `PATH` (LLVM, w64devkit) for the shell you build/run in.
-Optional per-lane toolchains, only if you fuzz that language (each is `winget install`-able:
-`Python.Python.3.12`, `StrawberryPerl.StrawberryPerl`, `GoLang.Go`,
-`Microsoft.OpenJDK.21`); see the limitations note below for what the non-C/C++ lanes
-do and don't do on native Windows.
+Optional per-lane toolchains are needed only for a lane you actually run. See
+the limitations below before installing them: several managed/interpreted lanes
+currently emit POSIX launchers and should be run under WSL/Linux rather than
+native Windows.
 
 ## Getting `govfuzz.exe`
 
@@ -194,13 +194,15 @@ cmplog, and ASan all work natively on Windows.
 ## Notes / current limitations
 
 - govfuzz itself runs on Linux and Windows; macOS is not yet a target.
-- The **C/C++ lane** (incl. Visual Studio solutions) is the primary, most-exercised
-  native-Windows path. The Go lane compiles a native binary and works on Windows
-  with `go` installed; the Python/Perl/Java lanes run if their interpreters/JDK are
-  installed (the lane dispatch is OS-agnostic). The Ada lane needs a Windows GNAT
-  (e.g. via Alire) and is least exercised on Windows. Any lane whose toolchain is
-  absent skips cleanly — so a stock VM with just LLVM + VS Build Tools + make
-  fuzzes C/C++ out of the box.
+- The **C/C++ lane** (including Visual Studio solutions) is the primary,
+  most-exercised native-Windows path. Go emits a native binary and works with
+  `go` installed. Rust, Ada, COBOL, and Fortran also produce native binaries but
+  their Windows toolchain combinations are less exercised; validate them on a
+  representative target before relying on a campaign.
+- Java, Python, Perl, C#, JavaScript/TypeScript, Ruby, Lua, and PHP currently
+  emit POSIX `main` launchers even though discovery is portable. Run those lanes
+  under WSL/Linux for now; installing only the interpreter/JDK on native Windows
+  is not sufficient. A missing toolchain still skips cleanly.
 - The persistent fork-server + coverage-guided engine run on Windows the same as
   on Linux (shared-memory coverage via Win32 file mapping).
 - The LD_PRELOAD runtrace shim is Linux-only (an empty stub on Windows), so the

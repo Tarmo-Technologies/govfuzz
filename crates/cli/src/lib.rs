@@ -61,13 +61,13 @@ mod target_filter;
 #[derive(Debug, Parser)]
 #[command(name = "govfuzz")]
 #[command(version = env!("GOVFUZZ_VERSION_FULL"))]
-#[command(about = "Offline fuzz lab generator for legacy Ada, C, and C++ software")]
+#[command(about = "Offline fuzz lab generator for sixteen-language software estates")]
 #[command(long_about = "\
-Offline fuzz lab generator for legacy Ada, C, and C++ software.
+Offline fuzz lab generator for sixteen-language software estates.
 
 Scan untrusted source (or binaries), rank fuzzable subprograms, generate typed
 harnesses + stubs, build with your installed toolchains, fuzz with a builtin
-engine or external adapters (AFL++, libFuzzer, LibAFL, Nyx), and emit
+engine or the AFL++ adapter, and emit
 JSON/Markdown/SARIF/JUnit/CSV findings — fully offline.
 
 Most users want `govfuzz auto <source-dir>`, which runs the whole pipeline.

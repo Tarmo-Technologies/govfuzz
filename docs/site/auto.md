@@ -9,6 +9,12 @@ code with broken `#include` chains, undefined externs, missing types, missing
 `with` clauses, or no runtime environment — and produces a fuzz lab plus a
 findings report without manual harnessing.
 
+Optional LLM assistance is not part of this pipeline and `auto` never calls a
+model. Use the [LLM and MCP guide](../llm/) to plan a bounded run, diagnose an
+artifact, or review findings after the deterministic command has produced
+evidence. Model output does not change target ranking, build status, coverage,
+finding verdicts, replay, or minimization.
+
 ```sh
 govfuzz auto path/to/src --work-dir govfuzz_work --per-target-time 60
 ```
@@ -17,15 +23,17 @@ govfuzz auto path/to/src --work-dir govfuzz_work --per-target-time 60
 
 For each candidate function discovered in the source tree:
 
-1. Generate a harness via the same generator the `generate-harness` subcommand
-   uses. C first-parameter handle APIs and C++ class methods with visible
-   same-class setup methods are tried as lifecycle sequence harnesses first,
-   then fall back to direct-call harnesses.
+1. Generate a lane-specific harness. Ada/C/C++ use the same generator as the
+   narrower `generate-harness` subcommand; the other lanes use their dedicated
+   `auto` builders. C first-parameter handle APIs and C++ class methods with
+   visible same-class setup methods are tried as lifecycle sequence harnesses
+   first, then fall back to direct-call harnesses.
 2. Try to build it. On build failure, classify the diagnostics, synthesise the
-   smallest repair that lets the build progress, retry. Retries up to a high
-   safety cap (48), but the loop breaks the moment a round applies no new
-   repair — so the real cost is bounded by how many distinct repairs a target
-   needs (deep flight-software type/config chains surface one new dependency per
+   smallest repair that lets the build progress, retry. Retries stop at a
+   configurable safety cap (`--max-repair-rounds`, default 16), but the loop
+   breaks the moment a round applies no new repair — so the real cost is bounded
+   by how many distinct repairs a target needs (deep flight-software
+   type/config chains surface one new dependency per
    round), not by the cap. Repairs are cumulative.
 3. Run the built harness through three fuzz passes (Empty, Rng, FuzzDriven)
    with the runtime virtualisation shim loaded. Each pass runs until its
@@ -73,11 +81,12 @@ their own interpreters with in-process edge coverage.
 | `--single-pass` | off | Convenience for `--passes fuzz`: run ONLY the fuzz-driven pass per target |
 | `--max-repair-rounds <N>` | `16` | Ceiling on build-fail → repair → retry rounds per target. The default covers all 95 successful clean/damaged samples in the strengthened 53-repository matrix (p95 6, p99/max 14 rounds); the no-progress early-break still applies, so it is a cap, not a fixed cost |
 | _(discovery cache)_ | **on** | Discovery is cached by default to `<work>/discovery-cache.json` and reused on a re-run when a **build-stable** content fingerprint of the target source (file paths + sizes + content hashes + dir-filter) is unchanged, skipping the tree-sitter re-parse + re-rank — the dominant re-run cost on a big tree. The fingerprint depends only on the fuzzed code (not on which govfuzz build computed it), so rebuilding govfuzz does not invalidate it. A mismatch recomputes and rewrites the cache; a stale cache is never used silently |
+| `--discovery-cache <PATH>` | `<work>/discovery-cache.json` | Put the default-on cache at an explicit path, useful when work directories change or the cache belongs on a known volume |
 | `--fresh-discovery` | off | Force a fresh discovery this run (ignore any cache), then overwrite the cache with the new result |
 | `--no-discovery-cache` | off | Disable the discovery cache entirely (never read or write it) |
 | `--resume` | off | Resume a prior sweep over the SAME work-dir: reload targets that already completed and re-run only the rest. A per-target `harnesses/<id>/result.json` is written the moment each target finishes (so an INTERRUPTED run is resumable), and on a re-run it is loaded back into the report FULLY re-integrated — its outcome bucket, repair manifest, findings, and per-pass detail all appear in the new `run.json`/`run.md` exactly as if it had been re-run, plus a `resumed` count of how many were carried over. Requires the discovery cache to hit (target source unchanged); on a source change every target is re-attempted to avoid stale results |
 | `--reuse-discovery` | — | Deprecated no-op (caching is now the default); accepted for back-compat |
-| `--sanitizers <asan,ubsan,msan,tsan,lsan \| none>` | none | Arm the named sanitizer matrix on the auto build (same arming `govfuzz fuzz --sanitizers` does). `none` builds coverage-only with no `-fsanitize=` (crash-only, zero ASan/UBSan false positives). Operator `<SAN>_OPTIONS` (suppressions / FP-killers) are merged, not clobbered. See [Sanitizers](../sanitizers/) |
+| `--sanitizers <asan,ubsan,msan,tsan,lsan \| none>` | none | Arm the named matrix for native C/C++ builds (the other lanes own their instrumentation). `none` builds native C/C++ coverage-only with no `-fsanitize=` (crash-only, zero ASan/UBSan false positives). Operator `<SAN>_OPTIONS` (suppressions / FP-killers) are merged, not clobbered. See [Sanitizers](../sanitizers/) |
 | `--comparison-progress` | off | Enable laf-intel comparison-progress coverage (#421); rewards an input that matches more leading bytes of a multi-byte magic/format gate. Alias `--cmp-progress` |
 | `--engine <LIST>` | `builtin` | Fuzz engine(s) for the per-target fuzz phase, comma-separated. `builtin` is the in-process coverage-guided engine; `afl++` drives AFL++ on the auto-recovered build (C/C++ only; needs `afl-fuzz` + `afl-clang-fast`, else falls back to builtin with a warning). `--engine builtin,afl++` runs both per target, splitting `--per-target-time` between them |
 | `--differential <A:B>` | unset | Two-compiler differential fuzzing (C/C++), e.g. `clang:gcc`: after the normal run, rebuild each C/C++ harness under both compilers and replay the corpus through both, flagging any input whose exit/crash behavior diverges (a codegen- or UB-dependent bug) as a GF-301 finding |
@@ -94,7 +103,7 @@ their own interpreters with in-process edge coverage.
 | `--run-untrusted` | off | Consent umbrella for `--probe-build` plus an Ada (`alr build` / `gprbuild`) build probe that materializes Alire config + codegen — **required** for Ada pre-build context recovery; implies `--probe-build`. EXECUTES untrusted scripts |
 | `--unsafe-search-and-run-build-commands` | off | UNSAFE convenience: search the tree for its own build entry point and EXECUTE it to recover flags, instead of you passing `--build-command`. Finds a custom build (build.sh, autotools bootstrap/autogen/configure, SCons, Waf, Bazel) and runs it under the compiler-intercepting shim, and enables the `--probe-build` tiers (CMake/Meson/Make) + the Ada build probe. Runs sandboxed when available, but it executes UNTRUSTED code from the scanned tree — use only on sources you trust. An explicit `--build-command` overrides the search |
 | `--deps-only` | off | Build each target as far as possible, emit the missing-dependency manifest, and SKIP fuzzing — the fast "what does this tree need?" scan |
-| `--static` | off | Run the static analyzer over the WHOLE tree in addition to fuzzing — not only as a fallback when a target can't be built/fuzzed. Findings (classification `static_scan`, ids `F-STATIC-*`) merge into the unified report (findings.csv, run.json, SARIF) next to the fuzz findings, so a target that built+fuzzed still gets static coverage and files with no fuzzable subprogram are analyzed too. Same engine as the standalone `govfuzz scan`. govfuzz's OWN generated harnesses/stubs under the work-dir are excluded, and dependency/build/cache trees such as `node_modules`, virtualenvs, `dist`, vendored deps, and generated JS `compiled/` bundles are pruned before analysis — the scan reports the target tree, not scaffolding or dependency payloads |
+| `--static` | off | Run the static analyzer over the WHOLE tree in addition to fuzzing — not only as a fallback when a target can't be built/fuzzed. Findings (classification `static_scan`, ids `F-STATIC-*`) merge into the unified report (findings.csv, run.json, SARIF) next to the fuzz findings, so a target that built+fuzzed still gets static coverage and files with no fuzzable subprogram are analyzed too. Same engine as the standalone `govfuzz static-scan`. GovFuzz's own generated harnesses/stubs under the work-dir are excluded, and dependency/build/cache trees such as `node_modules`, virtualenvs, `dist`, vendored deps, and generated JS `compiled/` bundles are pruned before analysis — the scan reports the target tree, not scaffolding or dependency payloads |
 | `--external-tools` | off | Also drive installed EXTERNAL analyzers (gosec/Bandit/semgrep/GNATcheck) as **subprocesses** (never linked), parse their SARIF into the report (ids `F-EXT-*`), and let the fuzz-confirmation join confirm/downgrade them too. Each tool runs only if the active license profile (`GOVFUZZ_PROFILE`, default `strict-permissive`) permits its subprocess — the default runs NONE, so the default profile never invokes a GPL tool; set `GOVFUZZ_PROFILE=external-tools` to opt in. Missing tools are skipped. Implies `--static` |
 | `--force` / `--force-fuzz` | off | Force-fuzz mode: attempt EVERY discovered C/C++/Ada function even when a parameter can't be driven or a type/symbol is undefined. Bypasses the pre-build skip gates, synthesizes a best-effort driver for opaque/function-pointer/unknown params, stubs whatever the compiler reports undefined until the harness builds, and never hard-fails (report-only is the floor). Findings from a forced/stub-heavy build are floored to **Low** confidence with a `forced` note and counted separately — a forced crash may be a stub artifact, not a real defect. Persistence honors `--max-repair-rounds`; does not imply `--static` |
 | `--static-dynamic` | off | Run in static-dynamic mode: add a `scan_type` column to `findings.csv` labeling each row — `static-dynamic` for a static-scan result (govfuzz's static + fuzz-confirmation pipeline) and `dynamic` for a fuzzed result. Off by default so the CSV schema is unchanged unless requested |
@@ -245,6 +254,13 @@ Walks the source tree with the same exclusions the `scan` subcommand uses
 | `.py` | `python_parser::parse_python_functions` | `target_rank::rank_python_targets` |
 | `.pl`, `.pm` | `perl_parser::parse_perl_subs` | `target_rank::rank_perl_targets` |
 | `.go` (skips `_test.go`) | `go_parser::parse_go_functions` | `target_rank::rank_go_targets` |
+| `.cob`, `.cbl`, `.cobol`, `.cble` | lane-specific `parse_cobol` | byte-buffer `LINKAGE` / `USING` eligibility |
+| `.f`, `.for`, `.f77`, `.f90`, `.f95`, `.f03`, `.f08` | lane-specific `parse_fortran` | character-argument eligibility |
+| `.cs` | lane-specific `parse_csharp` | public byte/string/stream input methods |
+| `.js`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.mts`, `.cts` | lane-specific `parse_js` | exported functions/public exported-class methods (`.d.ts` skipped) |
+| `.rb` | lane-specific `parse_ruby` | callable input methods |
+| `.lua` | lane-specific `parse_lua` | callable input functions |
+| `.php` | lane-specific `parse_php` | functions/public methods with an input channel |
 
 Candidates with unsupported parameter types are dropped before the attempt
 loop runs, so the report does not carry pre-doomed entries.
@@ -262,15 +278,16 @@ targets "build" by interpreter check (`py_compile` + import smoke-test;
 `perl -c` + `require`) and run under a persistent CPython / `perl -d:GovfuzzCov`
 process over the framed fork-server protocol; Go targets compile with `go build`
 (against the target package via a module `replace`) to a native framed
-fork-server binary. All three are built before the attempt loop and bypass the
-C/Ada repair path.
+fork-server binary. COBOL, Fortran, C#, JavaScript/TypeScript, Ruby, Lua, and PHP
+likewise use their lane-specific pre-build/interpreter paths described above.
+All of these lanes bypass the Ada/C/C++ repair path.
 
 ## Repair Synthesis
 
 Build errors are matched against compiler diagnostics by the `build_classifier`
 crate and dispatched to language-specific repair planners. Repair synthesis
-applies to the C/C++ and Ada lanes only — Rust, Java, Python, Perl, and Go
-harnesses are prebuilt before the attempt loop and never enter the
+applies to the C/C++ and Ada lanes only. Every other lane is prebuilt or
+interpreter-checked before the attempt loop and never enters the
 diagnostics-driven repair path.
 
 C / C++ (`crates/c_stub_gen`):
@@ -309,18 +326,16 @@ fake resources is set per pass via `GOVFUZZ_RUNTRACE_MODE`:
   iteration. The engine's coverage feedback learns to route interesting
   bytes to whichever fake resource gates a code path.
 
-All three passes run regardless of earlier findings — they exercise
-orthogonal paths.
+By default all three passes run because they exercise orthogonal paths. An
+explicit `--passes`/`--single-pass`, the shared deadline, or
+`--per-target-finding-count` can stop or skip remaining passes.
 
-The runtime-virtualisation shim that backs these passes is native-only: it is
-armed for the C, C++, Ada, and Rust lanes — and for the Python and Perl lanes
-(the shim interposes the interpreter process) and the Go lane (native binary) —
-but **not** during Java fuzzing
-(which runs in-process under govfuzz's JVM coverage agent) and **not** for
-cross-compiled or emulated (qemu/wine) targets. The behavioral and taint
-oracles (GF-405 path-controlled open, GF-304 command injection, GF-417 insecure
-temp, GF-305 sensitive env) are therefore unavailable in the Java lane and on
-emulated targets.
+The runtime-virtualisation shim that backs these passes is Linux-only. It is
+armed for native C/C++/Ada/Rust/Go/COBOL/Fortran harnesses and interposes the
+Python/Perl/Ruby/Lua/PHP interpreters. It is deliberately off for Java, C#, and
+JavaScript/TypeScript (where managed-runtime startup activity would create false
+positives) and for cross-compiled or emulated (qemu/wine) targets. Those
+configurations do not receive the GF-405/GF-304/GF-417/GF-305 runtrace oracles.
 
 ## Outputs
 
@@ -444,8 +459,11 @@ same mode and env.
 ## Re-Runs
 
 `govfuzz auto <same path>` reuses any per-target `repairs/` files surviving
-from a prior run, so cumulative repairs are not redone. The declaration index
-is rebuilt each run. Use `govfuzz clean --all <work>` to wipe state.
+from a prior run, so cumulative repairs are not redone. Discovery caching is on
+by default: an unchanged source/filter fingerprint reuses
+`<work>/discovery-cache.json`; a mismatch rebuilds the index, and
+`--fresh-discovery` forces that rebuild. Use `govfuzz clean --all <work>` to
+wipe state.
 
 The coverage-guided corpus is persisted to `corpus/<harness-id>/queue/`
 (content-hash-named, seeds included) at the end of each run (#401), so it
@@ -469,22 +487,22 @@ restarting from the tiny built-in seeds.
 - **Multi-threaded targets.** The shim is thread-safe, but fake-data RNGs
   are single-state per resource — two threads reading the same fake fd race
   for bytes.
-- **Java runtime virtualisation.** The LD_PRELOAD behavioral/taint shim is not
-  armed during Java fuzzing, which runs in-process under govfuzz's JVM coverage
-  agent. The behavioral oracles (GF-405 path-controlled open, GF-304 command
-  injection, GF-417 insecure temp, GF-305 sensitive env) are therefore
-  unavailable in the Java lane.
+- **Runtime virtualisation by lane.** The LD_PRELOAD behavioral/taint shim is
+  armed for native Ada/C/C++/Rust/Go/COBOL/Fortran and for the
+  Python/Perl/Ruby/Lua/PHP interpreter processes. It is not armed for Java, C#,
+  JavaScript/TypeScript, or cross/emulated targets. Those configurations retain
+  their documented fuzz coverage and crash/exception oracles;
+  GF-405/GF-304/GF-417/GF-305 runtrace findings are the unavailable layer.
 - **C++ API lifecycle.** C++ harnesses cover both direct-call and
   lifecycle-sequence shapes but remain partly heuristic. Template
   metaprogramming and user-defined literals, abstract receivers that require
   non-default constructors, and operator-overload / `shared_ptr` receivers are
   still partial and usually need a wrapper or more manual flags.
-- **Go coverage is black-box.** The Go lane is the fastest (compiled to a native
-  fork-server binary, thousands of exec/s) but its fuzzing is currently
-  black-box — coverage-guided Go needs the Go fuzzing runtime's sancov and is a
-  documented follow-up. Go panics readily, so shallow bugs still surface fast.
-  The interpreted Python and Perl lanes, by contrast, get real coverage feedback
-  (`sys.monitoring` / `sys.settrace` and `DB::DB` edge counters into the shared map).
+- **Go coverage fallback.** Go normally gets real block feedback from
+  `go build -cover -covermode=atomic`; each input's executed-block set is folded
+  into the shared edge map. If that instrumented build or counter format is not
+  usable, the lane retries/builds safely in black-box mode instead of discarding
+  the target or inventing coverage.
 
 See [Runtime Virtualisation](../runtime-virtualisation/) for the shim's
 intercept list, env-var contract, and replay envelope.

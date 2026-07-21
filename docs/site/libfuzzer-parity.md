@@ -30,7 +30,7 @@ coming from `clang -fsanitize=fuzzer` know what to reach for.
 | `-merge=1` | `govfuzz corpus merge` (content dedup) / `govfuzz corpus minimize --harness` (coverage-minimal) | `merge` deduplicates by content; `minimize` replays each input and keeps only those that add a new corpus signature. |
 | `-minimize_crash=1` | `govfuzz minimize` | Shrink a crashing input by binary search while preserving the finding. |
 | `-seed_inputs` / corpus dir | `--seed-input` / `--seed-file` | Seed corpus. |
-| `-detect_leaks=1` | `--sanitizers lsan` | Part of the sanitizer matrix (asan/msan/ubsan/tsan/lsan). C/C++-native harnesses only; Ada/Rust/Java ignore the user-selected matrix and the build wires in their own instrumentation automatically. Cross-compiled/emulated targets run with no sanitizer instrumentation at all (ASan's shadow memory does not survive qemu-user/wine), so the matrix is ignored and the run uses builtin/event-log coverage only. |
+| `-detect_leaks=1` | `--sanitizers lsan` | Part of the sanitizer matrix (asan/msan/ubsan/tsan/lsan). Native C/C++ harnesses only; every other language lane owns its instrumentation. Cross-compiled/emulated targets run without host sanitizer instrumentation (ASan's shadow memory does not survive qemu-user/wine), so the matrix is ignored and the run uses its portable feedback path. |
 
 ## Coverage granularity
 

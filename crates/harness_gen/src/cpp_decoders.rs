@@ -89,14 +89,18 @@ pub(crate) fn qualify_std_type_names(s: &str) -> String {
             }
             let token = &s[start..i];
             // Already qualified (`std::string`, `foo::string`) -> leave it.
-            let already_qualified = start >= 2 && &s[start - 2..start] == "::";
+            let already_qualified = start >= 2 && &bytes[start - 2..start] == b"::";
             if !already_qualified && STD_NAMES.contains(&token) {
                 out.push_str("std::");
             }
             out.push_str(token);
         } else {
-            out.push(bytes[i] as char);
-            i += 1;
+            // Preserve a complete UTF-8 scalar. Advancing one byte at a time
+            // could leave `i` inside a multibyte character; the next ASCII
+            // identifier then made the `start - 2..start` string slice panic.
+            let ch = s[i..].chars().next().expect("i is within the UTF-8 string");
+            out.push(ch);
+            i += ch.len_utf8();
         }
     }
     out
@@ -2594,6 +2598,21 @@ mod tests {
         // Already-qualified names are untouched; user names are left alone.
         assert_eq!(qualify_std_type_names("std::string"), "std::string");
         assert_eq!(qualify_std_type_names("MyString"), "MyString");
+    }
+
+    #[test]
+    fn qualify_std_type_names_preserves_utf8_before_an_identifier() {
+        // Regression for GF-210: fuzzed replacement/non-ASCII characters can
+        // put the following ASCII token two bytes after the middle of a
+        // multibyte scalar. Qualification must never slice through that scalar.
+        assert_eq!(
+            qualify_std_type_names("abc\u{fffd}string"),
+            "abc\u{fffd}std::string"
+        );
+        assert_eq!(
+            qualify_std_type_names("\u{00e9}vector<string>"),
+            "\u{00e9}std::vector<std::string>"
+        );
     }
 
     #[test]

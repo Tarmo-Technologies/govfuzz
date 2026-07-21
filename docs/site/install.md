@@ -29,6 +29,28 @@ your `PATH`, or `cargo install --path crates/cli` (then also build the shims wit
 `GOVFUZZ_RUNTRACE_SHIM` / `GOVFUZZ_CC_INTERCEPT` to their paths — `cargo install`
 does not stage them beside the binary).
 
+### RHEL support matrix
+
+The published GNU/Linux release target is x86_64 and supports RHEL 7, 8, and 9.
+“Supported” here means that the release binaries are held to the EL7 glibc 2.17
+ABI, the installer handles the applicable `yum`/`dnf` family, and GovFuzz can
+select a compiler with the required sanitizer-coverage capabilities. It is not
+a Red Hat certification claim.
+
+| Version | Release status | Package manager | C/C++ compiler | Validation evidence |
+|---|---|---|---|---|
+| RHEL 7 | Supported by the prebuilt x86_64 release | `yum` | Software Collections `llvm-toolset-7.0-clang`; stock Clang 3.4 is insufficient | CentOS 7.9 EL7-compatible Proxmox guest, glibc 2.17, SELinux enforcing |
+| RHEL 8 | Supported by the prebuilt x86_64 release | `dnf` | A sanitizer-coverage-capable Clang from enabled RHEL repositories | Covered by the EL7 ABI gate and RHEL-family installer tests; no separate RHEL 8 guest run in the current validation record |
+| RHEL 9 | Supported by the prebuilt x86_64 release | `dnf` | AppStream Clang/LLVM | AlmaLinux 9.8 RHEL-compatible Proxmox guest |
+
+The guest records use freely available, binary-compatible distributions because
+licensed Red Hat media was unavailable. See the
+[EL7 validation record](https://github.com/Tarmo-Technologies/govfuzz/blob/main/docs/validation/2026-07-21-rhel7-proxmox.md)
+and
+[EL9 validation record](https://github.com/Tarmo-Technologies/govfuzz/blob/main/docs/validation/2026-07-20-rhel9-proxmox.md)
+for the exact VMs and results. Other architectures can be built from source,
+but they are not covered by this x86_64 release claim.
+
 ### Per-language toolchains
 
 govfuzz fuzzes sixteen languages; each lane needs its own toolchain, installed
@@ -54,6 +76,44 @@ sudo apt-get install -y php-cli                         # PHP
 dotnet tool install --global SharpFuzz.CommandLine
 sudo apt-get install -y afl++                           # optional: AFL++ engine (C/C++ only)
 ```
+
+On RHEL 8 or 9 and compatible distributions (AlmaLinux/Rocky Linux), the base
+and AppStream repositories provide the core build and most language toolchains:
+
+```sh
+sudo dnf install -y gcc gcc-c++ make clang llvm lld    # source build + C/C++ fuzzing
+sudo dnf install -y java-17-openjdk-devel maven        # Java
+sudo dnf install -y python3 perl golang                # Python / Perl / Go
+sudo dnf install -y gcc-gfortran                       # Fortran
+sudo dnf install -y nodejs npm ruby lua php-cli        # interpreter lanes
+rustup toolchain install nightly                       # Rust fuzzing lane
+```
+
+On RHEL 7, the released GovFuzz binaries run against the system glibc 2.17.
+The stock Clang 3.4 cannot instrument GovFuzz harnesses, so enable the Red Hat
+Software Collections repository approved for the host and install LLVM 7.0:
+
+```sh
+sudo subscription-manager repos --enable rhel-server-rhscl-7-rpms
+sudo yum install -y gcc gcc-c++ make \
+  llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt
+```
+
+GovFuzz discovers and activates `/opt/rh/llvm-toolset-7.0/root/usr`
+automatically; an interactive `scl enable` shell is not required.
+
+RHEL 7 hosts need an active vendor/organization package source, and CentOS 7
+test hosts need an archive mirror because the original mirrorlist is retired.
+The stock EL7 linker is too old to link the current preload shim from source;
+use the prebuilt release, or reproduce the release build in the pinned
+manylinux2014 image from `.github/workflows/release.yml`.
+
+GNAT/GPRbuild, GnuCOBOL, Gradle, AFL++, Wine/mingw, and foreign-architecture
+cross compilers are not consistently present in the standard RHEL repositories.
+Enable an organization-approved supplemental repository or stage those tools
+separately when their lanes are needed. The binary distribution installer uses
+`dnf` automatically on RHEL and installs every available selected dependency
+without allowing an absent optional package to block the core C/C++ setup.
 
 The full per-lane matrix lives in
 [offline-deployment.md](./offline-deployment.md#toolchains-on-the-offline-host).
@@ -81,6 +141,13 @@ findings to any provider.
 
 ## Prebuilt release binaries
 
+GNU/Linux release artifacts are built in a pinned manylinux2014 / CentOS 7
+userspace. CI rejects an artifact that requires a symbol newer than glibc 2.17,
+so the published binaries are compatible with RHEL 7, 8, and 9. A binary built
+locally on a newer distribution may not be portable to RHEL; use the published
+artifact or the same pinned build image if the loader reports
+`GLIBC_2.xx not found`.
+
 GitHub releases ship per-component archives and shell installers (one component
 at a time). You do **not** need every asset for every install:
 
@@ -107,12 +174,28 @@ For archive installs, verify the `.sha256` sidecars, extract the component
 archives, and keep the shim archives beside the `govfuzz-*` directory or set
 `GOVFUZZ_RUNTRACE_SHIM` / `GOVFUZZ_CC_INTERCEPT` to the extracted library paths.
 
-## Native Windows build
+## Native Windows release or build
+
+Releases include `govfuzz-x86_64-pc-windows-msvc.zip`,
+`govfuzz-daemon-x86_64-pc-windows-msvc.zip`, their SHA-256 sidecars, and native
+PowerShell installers. For example:
+
+```powershell
+$Version = "v0.2.16"
+irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
+govfuzz.exe --version
+```
+
+The release executables do not require Rust. LLVM, Visual Studio Build Tools,
+and GNU make are still required to compile and fuzz native C/C++ targets; see
+[windows.md](./windows.md).
+
+To build from source instead:
 
 ```sh
-rustup target add x86_64-pc-windows-gnu
-cargo build --release --target x86_64-pc-windows-gnu -p govfuzz
-# -> target/x86_64-pc-windows-gnu/release/govfuzz.exe
+rustup target add x86_64-pc-windows-msvc
+cargo build --release --target x86_64-pc-windows-msvc -p govfuzz
+# -> target/x86_64-pc-windows-msvc/release/govfuzz.exe
 ```
 
 `govfuzz.exe` runs the full pipeline on Windows — discovery, clang harness builds

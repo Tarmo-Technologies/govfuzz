@@ -51,6 +51,8 @@ AFLPP_CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsa
 # the recovered C++ dialect carries over; ASan stays on (identical across compilers).
 DIFF_CXX ?= clang++
 DIFF_CXXFLAGS ?= -O2 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address
+GOVFUZZ_DRIVER_SOURCE ?= {{ c_runtime_include }}/govfuzz_driver.c
+GOVFUZZ_DRIVER_CFLAGS ?= -O1 -g
 INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
 BUILD_CONTEXT_PROVENANCE = {{ build_context_provenance }}
 BUILD_CONTEXT_CONFIDENCE = {{ build_context_confidence }}
@@ -65,8 +67,11 @@ all: main
 # absolute Windows source path carries a drive-letter colon (`C:\...`) that GNU
 # make parses as a target:prereq separator. In the recipe it is just a compiler
 # argument, so the colon is harmless. (The harness dir is regenerated per attempt.)
-main: main.cpp
-	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
+	$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
+
+main: main.cpp govfuzz_driver.o
+	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 afl: main_afl
 
@@ -75,8 +80,8 @@ main_afl: main.cpp
 
 diff: main_diff
 
-main_diff: main.cpp
-	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_diff: main.cpp govfuzz_driver.o
+	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
-	rm -f main main_afl main_diff
+	rm -f main main_afl main_diff govfuzz_driver.o

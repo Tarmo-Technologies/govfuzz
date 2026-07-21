@@ -88,6 +88,35 @@ fn tsan_probe_reports_race(probe: &Path, log: &Path) -> bool {
     String::from_utf8_lossy(&output).contains("data race")
 }
 
+fn tsan_fixture_report(binary: &Path, input: &Path, log: &Path) -> Option<String> {
+    let stderr = std::fs::File::create(log).ok()?;
+    let mut child = Command::new(binary)
+        .arg(input)
+        .env("TSAN_OPTIONS", "halt_on_error=1:exitcode=86")
+        .stdout(std::process::Stdio::null())
+        .stderr(stderr)
+        .spawn()
+        .ok()?;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    }
+    std::fs::read_to_string(log).ok()
+}
+
 #[test]
 fn tsan_replay_writes_gf556_for_target_source_data_race() {
     if !clang_has_tsan() {
@@ -157,6 +186,25 @@ fn tsan_replay_writes_gf556_for_target_source_data_race() {
     std::fs::write(queue.join("seed"), b"anything").unwrap();
 
     let written = run_tsan_replay(&work);
+    if written == 0 {
+        let binary = hdir.join("main_tsan");
+        assert!(
+            binary.is_file(),
+            "the TSan fixture did not build even though the compiler preflight passed"
+        );
+        let postflight =
+            tsan_fixture_report(&binary, &queue.join("seed"), &tmp.join("postflight.log"))
+                .unwrap_or_default();
+        if !postflight.contains("data race") {
+            eprintln!("skip: ThreadSanitizer became unavailable after its preflight: {postflight}");
+            let _ = std::fs::remove_dir_all(&tmp);
+            return;
+        }
+        assert!(
+            postflight.contains(&race_c.to_string_lossy().into_owned()),
+            "TSan emitted a race without a symbolized target frame:\n{postflight}"
+        );
+    }
     assert_eq!(
         written, 1,
         "expected exactly one GF-556 data-race finding, got {written}"

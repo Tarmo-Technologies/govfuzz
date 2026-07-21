@@ -27,13 +27,15 @@ use std::time::Duration;
 /// the run; the coverage-diverse queue front is what matters for race detection.
 const MAX_INPUTS: usize = 2000;
 
-/// Extra attempts to re-run a single input under TSan when a run aborts
-/// abnormally with no race report. Under heavy concurrent sanitizer load, TSan's
-/// large shadow-memory reservation can transiently fail to map, so the process
-/// aborts at init before ever running the target — losing a real race to
-/// scheduling luck. Retrying the transient (not a clean no-race run) makes the
-/// replay robust (regression: auto_tsan_replay flaked under the parallel suite).
+/// Extra attempts for an unexplained abnormal exit. This preserves the existing
+/// tolerance for a busy sanitizer host without repeatedly executing a target that
+/// is deterministically broken.
 const TSAN_RUN_RETRIES: usize = 4;
+
+/// Extra attempts when TSan explicitly says its shadow-memory runtime could not
+/// initialize. High-entropy ASLR can make this intermittent even after a working
+/// preflight; these failures happen before target code runs and are safe to retry.
+const TSAN_MAPPING_RETRIES: usize = 16;
 
 /// Replay every C harness's corpus through its TSan build, writing a GF-556 finding
 /// per distinct data-race site. Returns the number of findings written.
@@ -89,11 +91,12 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
             continue;
         }
         replayed += 1;
-        // The govfuzz C driver replays a single input passed as argv[1]. Retry a
-        // transient TSan-init abort (abnormal exit with no "data race" report)
-        // under concurrent-sanitizer load; a clean no-race run (exit 0) is a real
-        // result and is not retried. See TSAN_RUN_RETRIES.
-        for _ in 0..=TSAN_RUN_RETRIES {
+        // The govfuzz C driver replays a single input passed as argv[1]. A clean
+        // no-race run (exit 0) is a real result. Retry an unsymbolized race report
+        // or unexplained abnormal exit a few times, and give TSan's explicit
+        // shadow-mapping initialization failure a larger retry budget because no
+        // target code ran. See TSAN_RUN_RETRIES and TSAN_MAPPING_RETRIES.
+        for attempt in 0..=TSAN_MAPPING_RETRIES {
             let Ok(out) = crate::command_output::output_with_timeout(
                 Command::new(&bin)
                     .arg(&path)
@@ -106,12 +109,23 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
             if stderr.contains("data race") {
                 if let Some(site) = first_target_frame(&stderr, hdir) {
                     sites.insert(site);
+                    break;
                 }
+                if attempt >= TSAN_RUN_RETRIES {
+                    break;
+                }
+                continue;
+            }
+            // No race report: a clean exit is a genuine no-race run (stop).
+            if out.status.success() {
                 break;
             }
-            // No race report: a clean exit is a genuine no-race run (stop); an
-            // abnormal exit is the shadow-mapping transient (retry).
-            if out.status.success() {
+            let retry_budget = if is_tsan_mapping_failure(&stderr) {
+                TSAN_MAPPING_RETRIES
+            } else {
+                TSAN_RUN_RETRIES
+            };
+            if attempt >= retry_budget {
                 break;
             }
         }
@@ -126,6 +140,15 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
         }
     }
     written
+}
+
+fn is_tsan_mapping_failure(stderr: &str) -> bool {
+    let lower = stderr.to_ascii_lowercase();
+    lower.contains("threadsanitizer: unexpected memory mapping")
+        || lower.contains("threadsanitizer: failed to mmap")
+        || lower.contains("threadsanitizer check failed")
+        || lower.contains("threadsanitizer: check failed")
+        || (lower.contains("threadsanitizer") && lower.contains("shadow memory"))
 }
 
 /// The first stack frame in a TSan report that lands in a TARGET source — not the
@@ -289,5 +312,24 @@ WARNING: ThreadSanitizer: data race (pid=1)\n\
             parse_locator("/proj/src/race.c:12"),
             Some(("/proj/src/race.c".to_owned(), 12))
         );
+    }
+
+    #[test]
+    fn recognizes_only_tsan_runtime_mapping_failures_for_extended_retries() {
+        assert!(is_tsan_mapping_failure(
+            "FATAL: ThreadSanitizer: unexpected memory mapping 0x123-0x456"
+        ));
+        assert!(is_tsan_mapping_failure(
+            "FATAL: ThreadSanitizer: failed to mmap the shadow memory"
+        ));
+        assert!(is_tsan_mapping_failure(
+            "FATAL: ThreadSanitizer: CHECK failed: sanitizer_allocator_primary64.h"
+        ));
+        assert!(!is_tsan_mapping_failure(
+            "ThreadSanitizer: data race in target.c:12"
+        ));
+        assert!(!is_tsan_mapping_failure(
+            "target process exited with code 2"
+        ));
     }
 }

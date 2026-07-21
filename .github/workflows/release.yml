@@ -179,8 +179,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          archive=$(find target/distrib -maxdepth 1 -type f -name "govfuzz-*.tar.xz" -print -quit)
-          [[ -n "$archive" ]] || { echo "govfuzz Linux archive not found" >&2; exit 1; }
+          archive=target/distrib/govfuzz-x86_64-unknown-linux-gnu.tar.xz
+          [[ -f "$archive" ]] || { echo "govfuzz Linux archive not found" >&2; exit 1; }
           entries=$(tar -tf "$archive")
           for marker in \
             ada_runtime/adafuzz.ads \
@@ -201,8 +201,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $archive = Get-ChildItem target/distrib -Filter "govfuzz-*.zip" | Select-Object -First 1
-          if (-not $archive) { throw "govfuzz Windows archive not found" }
+          $archive = Get-Item target/distrib/govfuzz-x86_64-pc-windows-msvc.zip
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead($archive.FullName)
           try {

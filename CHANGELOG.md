@@ -2,6 +2,15 @@
 
 # Changelog
 
+## 0.2.18 - 2026-07-21
+
+- **Exact CLI archive validation.** The Linux and Windows release gates now
+  select the exact `govfuzz` CLI archive instead of allowing the similarly
+  named daemon archive to win an order-dependent wildcard match. This release
+  completes publication of the self-contained harness-runtime packaging added
+  in v0.2.17; the v0.2.17 tag did not publish after its gate correctly rejected
+  the mistakenly selected daemon archive.
+
 ## 0.2.17 - 2026-07-21
 
 - **Self-contained release harness runtimes.** Supersedes v0.2.16: the

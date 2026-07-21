@@ -309,7 +309,6 @@ pub fn select_decoder_for_param(
                     p.type_ref
                         .constraints
                         .0
-                        .trim_start()
                         .split_whitespace()
                         .next(),
                     Some(word) if word.eq_ignore_ascii_case("function")
@@ -1576,7 +1575,6 @@ fn ada_type_name(p: &Parameter) -> String {
                 p.type_ref
                     .constraints
                     .0
-                    .trim_start()
                     .split_whitespace()
                     .next(),
                 Some(word) if word.eq_ignore_ascii_case("function")

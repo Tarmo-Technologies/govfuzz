@@ -7,7 +7,8 @@ PREFIX="/opt/govfuzz"
 BIN_DIR="/usr/local/bin"
 NON_INTERACTIVE=0
 DRY_RUN=0
-NO_APT=0
+NO_SYSTEM_PACKAGES=0
+PACKAGE_MANAGER="auto"
 NO_RUSTUP=0
 NO_CONTENT=0
 NO_SYMLINK=0
@@ -47,7 +48,10 @@ Options:
   --fuzzers LIST          Comma list: builtin,afl,all,none
   --extras LIST           Comma list: build-recovery,sandbox,archives,all,none
   --install-seeds         Extract bundled seed corpus into <prefix>/corpora/seeds
-  --no-apt                Skip apt-get dependency installation
+  --package-manager NAME  System package manager: auto, apt-get, dnf, yum, none
+                          (default: auto)
+  --no-system-packages    Skip system package installation
+  --no-apt                Compatibility alias for --no-system-packages
   --no-rustup             Skip rustup installation and nightly toolchain setup
   --no-content            Skip signed content pack verify/install
   --no-symlink            Do not create govfuzz symlinks in --bin-dir
@@ -101,6 +105,16 @@ run() {
   fi
 }
 
+run_with_optional_prefix() {
+  local prefix=$1
+  shift
+  if [[ -n "$prefix" ]]; then
+    run "$prefix" "$@"
+  else
+    run "$@"
+  fi
+}
+
 path_writable_for_create() {
   local path="$1"
   local parent
@@ -124,17 +138,34 @@ sudo_prefix_for_path() {
 }
 
 add_unique() {
-  local -n arr_ref=$1
+  local array_name=$1
   shift
   local item existing
   for item in "$@"; do
     [[ -n "$item" ]] || continue
-    for existing in "${arr_ref[@]:-}"; do
-      if [[ "$existing" == "$item" ]]; then
-        continue 2
-      fi
-    done
-    arr_ref+=("$item")
+    case "$array_name" in
+      APT_PACKAGES)
+        for existing in "${APT_PACKAGES[@]:-}"; do
+          [[ "$existing" == "$item" ]] && continue 2
+        done
+        APT_PACKAGES+=("$item")
+        ;;
+      RPM_PACKAGES)
+        for existing in "${RPM_PACKAGES[@]:-}"; do
+          [[ "$existing" == "$item" ]] && continue 2
+        done
+        RPM_PACKAGES+=("$item")
+        ;;
+      AVAILABLE_RPM_PACKAGES)
+        for existing in "${AVAILABLE_RPM_PACKAGES[@]:-}"; do
+          [[ "$existing" == "$item" ]] && continue 2
+        done
+        AVAILABLE_RPM_PACKAGES+=("$item")
+        ;;
+      *)
+        die "internal error: unsupported package array '$array_name'"
+        ;;
+    esac
   done
 }
 
@@ -172,10 +203,10 @@ expand_selection() {
 terminal_checklist_render() {
   local title="$1"
   local cursor="$2"
-  local -n tags_ref=$3
-  local -n descs_ref=$4
-  local -n states_ref=$5
-  local count="${#tags_ref[@]}"
+  # Bash uses dynamic scoping for local variables, so these arrays resolve to
+  # terminal_checklist's locals. Avoid namerefs (`local -n`), which require
+  # Bash 4.3 and are unavailable on RHEL 7's Bash 4.2.
+  local count="${#tags[@]}"
   local i marker checked
 
   printf '\033[H\033[J' >&2
@@ -188,10 +219,10 @@ terminal_checklist_render() {
       marker=">"
     fi
     checked=" "
-    if [[ "${states_ref[$i]}" == "on" ]]; then
+    if [[ "${states[$i]}" == "on" ]]; then
       checked="x"
     fi
-    printf '%s [%s] %-14s %s\n' "$marker" "$checked" "${tags_ref[$i]}" "${descs_ref[$i]}" >&2
+    printf '%s [%s] %-14s %s\n' "$marker" "$checked" "${tags[$i]}" "${descs[$i]}" >&2
   done
 
   printf '\n' >&2
@@ -208,13 +239,11 @@ terminal_checklist_render() {
 }
 
 terminal_checklist_emit() {
-  local -n tags_ref=$1
-  local -n states_ref=$2
   local selected=()
   local i
-  for ((i = 0; i < ${#tags_ref[@]}; i++)); do
-    if [[ "${states_ref[$i]}" == "on" ]]; then
-      selected+=("${tags_ref[$i]}")
+  for ((i = 0; i < ${#tags[@]}; i++)); do
+    if [[ "${states[$i]}" == "on" ]]; then
+      selected+=("${tags[$i]}")
     fi
   done
   (IFS=,; printf '%s' "${selected[*]}")
@@ -247,7 +276,7 @@ terminal_checklist() {
   max_cursor=$((choice_count + 1))
 
   while true; do
-    terminal_checklist_render "$title" "$cursor" tags descs states
+    terminal_checklist_render "$title" "$cursor"
     IFS= read -rsn1 key || key=""
     case "$key" in
       $'\033')
@@ -288,7 +317,7 @@ terminal_checklist() {
           fi
         elif (( cursor == choice_count )); then
           printf '\033[H\033[J' >&2
-          terminal_checklist_emit tags states
+          terminal_checklist_emit
           return 0
         else
           printf '\033[H\033[J' >&2
@@ -302,7 +331,7 @@ terminal_checklist() {
           printf 'Install cancelled.\n' >&2
           return 130
         fi
-        terminal_checklist_emit tags states
+        terminal_checklist_emit
         return 0
         ;;
     esac
@@ -506,8 +535,13 @@ while [[ $# -gt 0 ]]; do
       INSTALL_SEEDS=1
       shift
       ;;
-    --no-apt)
-      NO_APT=1
+    --package-manager)
+      [[ $# -ge 2 ]] || die "--package-manager requires a name"
+      PACKAGE_MANAGER="$(normalize_list "$2")"
+      shift 2
+      ;;
+    --no-system-packages|--no-apt)
+      NO_SYSTEM_PACKAGES=1
       shift
       ;;
     --no-rustup)
@@ -607,88 +641,234 @@ printf '  targets:   %s\n' "${TARGETS:-none}"
 printf '  fuzzers:   %s\n' "${FUZZERS:-none}"
 printf '  extras:    %s\n' "${EXTRAS:-none}"
 
+detect_package_manager() {
+  local requested="$1"
+  local os_id=""
+  local os_like=""
+
+  case "$requested" in
+    apt|apt-get) printf 'apt-get'; return 0 ;;
+    dnf|yum|none) printf '%s' "$requested"; return 0 ;;
+    auto) ;;
+    *) die "unknown package manager '$requested' (expected: auto, apt-get, dnf, yum, none)" ;;
+  esac
+
+  if [[ -r /etc/os-release ]]; then
+    # os-release is a shell-compatible file supplied by the operating system.
+    # shellcheck disable=SC1091
+    os_id="$(. /etc/os-release; printf '%s' "${ID:-}")"
+    # shellcheck disable=SC1091
+    os_like="$(. /etc/os-release; printf '%s' "${ID_LIKE:-}")"
+  fi
+  case " $os_id $os_like " in
+    *rhel*|*fedora*|*centos*|*rocky*|*almalinux*)
+      if command -v dnf >/dev/null 2>&1; then
+        printf 'dnf'
+      elif command -v yum >/dev/null 2>&1; then
+        printf 'yum'
+      else
+        printf 'none'
+      fi
+      return 0
+      ;;
+    *debian*|*ubuntu*)
+      command -v apt-get >/dev/null 2>&1 && printf 'apt-get' || printf 'none'
+      return 0
+      ;;
+  esac
+
+  if command -v dnf >/dev/null 2>&1; then
+    printf 'dnf'
+  elif command -v yum >/dev/null 2>&1; then
+    printf 'yum'
+  elif command -v apt-get >/dev/null 2>&1; then
+    printf 'apt-get'
+  else
+    printf 'none'
+  fi
+}
+
 APT_PACKAGES=()
+RPM_PACKAGES=()
 add_unique APT_PACKAGES ca-certificates curl
+add_unique RPM_PACKAGES ca-certificates curl
 
 if [[ "$NO_SMOKE" -eq 0 ]]; then
   add_unique APT_PACKAGES make clang llvm
+  add_unique RPM_PACKAGES make clang llvm
 fi
 if contains_item "$LANGUAGES" c || contains_item "$LANGUAGES" cpp || contains_item "$LANGUAGES" rust; then
   add_unique APT_PACKAGES make clang llvm lld
+  add_unique RPM_PACKAGES make clang llvm lld
+  # RHEL 7's base clang is 3.4 and predates SanitizerCoverage. When the
+  # supported RHSCL/SCLo repository is enabled, install LLVM Toolset 7 as the
+  # coverage-capable compiler; the govfuzz binary activates its nonstandard
+  # PATH/LD_LIBRARY_PATH automatically.
+  RPM_PLATFORM_VERSION="$(awk -F= '$1 == "VERSION_ID" { gsub(/\"/, "", $2); print $2; exit }' /etc/os-release 2>/dev/null)"
+  if [[ "$RPM_PLATFORM_VERSION" == 7 || "$RPM_PLATFORM_VERSION" == 7.* ]]; then
+    add_unique RPM_PACKAGES llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt
+  fi
 fi
 if contains_item "$LANGUAGES" cpp; then
   add_unique APT_PACKAGES g++
+  add_unique RPM_PACKAGES gcc-c++
 fi
 if contains_item "$LANGUAGES" ada; then
   add_unique APT_PACKAGES gnat gprbuild
+  add_unique RPM_PACKAGES gcc-gnat gprbuild
 fi
 if contains_item "$LANGUAGES" java; then
   add_unique APT_PACKAGES default-jdk maven gradle
+  add_unique RPM_PACKAGES java-17-openjdk-devel maven gradle
 fi
 if contains_item "$LANGUAGES" python; then
   add_unique APT_PACKAGES python3
+  add_unique RPM_PACKAGES python3
 fi
 if contains_item "$LANGUAGES" perl; then
   add_unique APT_PACKAGES perl
+  add_unique RPM_PACKAGES perl
 fi
 if contains_item "$LANGUAGES" go; then
   add_unique APT_PACKAGES golang-go
+  add_unique RPM_PACKAGES golang
 fi
 if contains_item "$LANGUAGES" cobol; then
   add_unique APT_PACKAGES gnucobol make clang llvm
+  add_unique RPM_PACKAGES gnucobol make clang llvm
 fi
 if contains_item "$LANGUAGES" fortran; then
   add_unique APT_PACKAGES gfortran make clang llvm
+  add_unique RPM_PACKAGES gcc-gfortran make clang llvm
 fi
 if contains_item "$LANGUAGES" javascript || contains_item "$LANGUAGES" typescript; then
   add_unique APT_PACKAGES nodejs npm
+  add_unique RPM_PACKAGES nodejs npm
 fi
 if contains_item "$LANGUAGES" ruby; then
   add_unique APT_PACKAGES ruby
+  add_unique RPM_PACKAGES ruby
 fi
 if contains_item "$LANGUAGES" lua; then
   add_unique APT_PACKAGES lua5.4
+  add_unique RPM_PACKAGES lua
 fi
 if contains_item "$LANGUAGES" php; then
   add_unique APT_PACKAGES php-cli
+  add_unique RPM_PACKAGES php-cli
 fi
 if contains_item "$TARGETS" windows; then
   add_unique APT_PACKAGES gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 wine64
+  add_unique RPM_PACKAGES mingw64-gcc mingw64-gcc-c++ wine
 fi
 if contains_item "$TARGETS" aarch64; then
   add_unique APT_PACKAGES gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user
+  # RHEL does not provide stable package names for these cross tools in its
+  # base repositories. Keep qemu-user in the plan when an enabled supplemental
+  # repository provides it; stage the cross compiler separately otherwise.
+  add_unique RPM_PACKAGES qemu-user
 fi
 if contains_item "$FUZZERS" afl; then
   add_unique APT_PACKAGES afl++
+  add_unique RPM_PACKAGES aflplusplus
 fi
 if contains_item "$EXTRAS" build-recovery; then
   add_unique APT_PACKAGES build-essential pkg-config cmake ninja-build meson autoconf automake libtool
+  add_unique RPM_PACKAGES gcc gcc-c++ pkgconf-pkg-config cmake ninja-build meson autoconf automake libtool
 fi
 if contains_item "$EXTRAS" sandbox; then
   add_unique APT_PACKAGES bubblewrap firejail
+  add_unique RPM_PACKAGES bubblewrap firejail
 fi
 if contains_item "$EXTRAS" archives; then
   add_unique APT_PACKAGES zip unzip tar gzip xz-utils zstd
+  add_unique RPM_PACKAGES zip unzip tar gzip xz zstd
 fi
 
-SUDO_APT=()
+SUDO_PACKAGES_WORD=""
 if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
-  SUDO_APT=(sudo)
+  SUDO_PACKAGES_WORD="sudo"
 fi
 
-if [[ "$NO_APT" -eq 0 && "${#APT_PACKAGES[@]}" -gt 0 ]]; then
-  # Best-effort: on an OFFLINE host — the common case for an UPDATE, where these
-  # packages were already installed during the first connected install — apt
-  # cannot reach its mirrors. Warn and continue instead of aborting the whole
-  # install; the GovFuzz binaries + runtimes below install fine without apt. Pass
-  # --no-apt to skip this step entirely and silence the warning.
-  if ! run "${SUDO_APT[@]}" apt-get update; then
-    warn "apt-get update failed (no network?); skipping apt dependency install. If a system toolchain is genuinely missing, install it on a connected host or via your offline mirror. Continuing."
-  elif ! run "${SUDO_APT[@]}" apt-get install -y "${APT_PACKAGES[@]}"; then
-    warn "apt-get install failed (no network?); some optional system toolchains may be missing. Continuing."
+PACKAGE_MANAGER="$(detect_package_manager "$PACKAGE_MANAGER")"
+if [[ "$NO_SYSTEM_PACKAGES" -eq 1 ]]; then
+  PACKAGE_MANAGER="none"
+fi
+
+case "$PACKAGE_MANAGER" in
+  apt-get)
+    # Best-effort: an offline update may already have every required package.
+    # Warn and continue when the mirror cannot be reached; the bundled GovFuzz
+    # binaries and runtimes can still be installed.
+    if ! run_with_optional_prefix "$SUDO_PACKAGES_WORD" apt-get update; then
+      warn "apt-get update failed (no network?); skipping dependency installation. Stage missing toolchains through your offline mirror and rerun, or use --no-system-packages. Continuing."
+    elif ! run_with_optional_prefix "$SUDO_PACKAGES_WORD" apt-get install -y "${APT_PACKAGES[@]}"; then
+      warn "apt-get install failed; some optional system toolchains may be missing. Continuing."
+    fi
+    ;;
+  dnf|yum)
+    if ! run_with_optional_prefix "$SUDO_PACKAGES_WORD" "$PACKAGE_MANAGER" -y makecache; then
+      warn "$PACKAGE_MANAGER makecache failed (no network?); skipping dependency installation. Stage missing toolchains through your RHEL repository mirror and rerun, or use --no-system-packages. Continuing."
+    elif [[ "$DRY_RUN" -eq 1 ]]; then
+      run_with_optional_prefix "$SUDO_PACKAGES_WORD" "$PACKAGE_MANAGER" install -y "${RPM_PACKAGES[@]}"
+    else
+      # RHEL base/AppStream and optional supplemental repositories expose
+      # different subsets. Install every requested package that is available so
+      # one absent optional lane (for example GNAT or Wine) cannot block C/C++.
+      AVAILABLE_RPM_PACKAGES=()
+      for package in "${RPM_PACKAGES[@]}"; do
+        if rpm -q "$package" >/dev/null 2>&1 \
+          || "$PACKAGE_MANAGER" -q list --available "$package" >/dev/null 2>&1; then
+          add_unique AVAILABLE_RPM_PACKAGES "$package"
+        else
+          warn "$package is unavailable in the enabled $PACKAGE_MANAGER repositories; its language/target lane may remain unavailable"
+        fi
+      done
+      if [[ "${#AVAILABLE_RPM_PACKAGES[@]}" -gt 0 ]] \
+        && ! run_with_optional_prefix "$SUDO_PACKAGES_WORD" "$PACKAGE_MANAGER" install -y "${AVAILABLE_RPM_PACKAGES[@]}"; then
+        warn "$PACKAGE_MANAGER install failed; some optional system toolchains may be missing. Continuing."
+      fi
+    fi
+    ;;
+  none)
+    printf 'Skipping system package dependency installation.\n'
+    ;;
+esac
+
+clang_supports_govfuzz_coverage() {
+  local compiler="$1"
+  local runtime_lib="${2:-}"
+  if [[ -n "$runtime_lib" ]]; then
+    LD_LIBRARY_PATH="$runtime_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+      "$compiler" -x c -c /dev/null -o /dev/null \
+        -fsanitize-coverage=trace-pc-guard,trace-cmp >/dev/null 2>&1
+  else
+    "$compiler" -x c -c /dev/null -o /dev/null \
+      -fsanitize-coverage=trace-pc-guard,trace-cmp >/dev/null 2>&1
   fi
-else
-  printf 'Skipping apt-get dependency installation.\n'
+}
+
+if [[ "$DRY_RUN" -eq 0 ]] \
+  && { [[ "$NO_SMOKE" -eq 0 ]] \
+    || contains_item "$LANGUAGES" c \
+    || contains_item "$LANGUAGES" cpp \
+    || contains_item "$LANGUAGES" rust; }; then
+  COVERAGE_CLANG_OK=0
+  if command -v clang >/dev/null 2>&1 \
+    && clang_supports_govfuzz_coverage "$(command -v clang)"; then
+    COVERAGE_CLANG_OK=1
+  else
+    for SCL_ROOT in /opt/rh/llvm-toolset-7.0/root/usr /opt/rh/llvm-toolset-7/root/usr; do
+      if [[ -x "$SCL_ROOT/bin/clang" ]] \
+        && clang_supports_govfuzz_coverage "$SCL_ROOT/bin/clang" "$SCL_ROOT/lib64"; then
+        COVERAGE_CLANG_OK=1
+        break
+      fi
+    done
+  fi
+  if [[ "$COVERAGE_CLANG_OK" -ne 1 ]]; then
+    die "C/C++ fuzzing requires Clang with -fsanitize-coverage=trace-pc-guard,trace-cmp. On RHEL 7, enable the Red Hat Software Collections repository (rhel-server-rhscl-7-rpms), install llvm-toolset-7.0-clang and llvm-toolset-7.0-compiler-rt, then rerun this installer"
+  fi
 fi
 
 if contains_item "$LANGUAGES" rust && [[ "$NO_RUSTUP" -eq 0 ]]; then
@@ -727,10 +907,10 @@ else
   printf 'Skipping rustup nightly setup.\n'
 fi
 
-# Debian/Ubuntu does not expose one stable, distribution-independent package
-# name for the current .NET SDK, SharpFuzz.CommandLine is a dotnet global tool,
-# and esbuild may be project-local. Keep those choices explicit instead of
-# silently adding a third-party feed or fetching npm/NuGet content.
+# Linux distributions do not expose one stable, distribution-independent
+# package name for the current .NET SDK, SharpFuzz.CommandLine is a dotnet
+# global tool, and esbuild may be project-local. Keep those choices explicit
+# instead of silently adding a third-party feed or fetching npm/NuGet content.
 if contains_item "$LANGUAGES" csharp; then
   if [[ "$DRY_RUN" -eq 1 ]]; then
     printf 'C# prerequisite: install a .NET 8 SDK and: dotnet tool install --global SharpFuzz.CommandLine\n'
@@ -753,45 +933,37 @@ fi
 [[ -f "$TOOL_DIR/govfuzz" ]] || die "missing GovFuzz binary: $TOOL_DIR/govfuzz"
 
 SUDO_INSTALL_WORD="$(sudo_prefix_for_path "$PREFIX")"
-SUDO_INSTALL=()
-if [[ -n "$SUDO_INSTALL_WORD" ]]; then
-  SUDO_INSTALL=("$SUDO_INSTALL_WORD")
-fi
 
 TIMESTAMP="$(date +%Y%m%d%H%M%S)"
 NEW_PREFIX="${PREFIX}.new.$$"
 BACKUP_PREFIX="${PREFIX}.backup.${TIMESTAMP}"
 
-run "${SUDO_INSTALL[@]}" rm -rf "$NEW_PREFIX"
-run "${SUDO_INSTALL[@]}" mkdir -p "$NEW_PREFIX"
-run "${SUDO_INSTALL[@]}" cp -a "$TOOL_DIR/." "$NEW_PREFIX/"
+run_with_optional_prefix "$SUDO_INSTALL_WORD" rm -rf "$NEW_PREFIX"
+run_with_optional_prefix "$SUDO_INSTALL_WORD" mkdir -p "$NEW_PREFIX"
+run_with_optional_prefix "$SUDO_INSTALL_WORD" cp -a "$TOOL_DIR/." "$NEW_PREFIX/"
 
 if [[ -d "$PREFIX/packs" ]]; then
-  run "${SUDO_INSTALL[@]}" rm -rf "$NEW_PREFIX/packs"
-  run "${SUDO_INSTALL[@]}" cp -a "$PREFIX/packs" "$NEW_PREFIX/packs"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" rm -rf "$NEW_PREFIX/packs"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" cp -a "$PREFIX/packs" "$NEW_PREFIX/packs"
 fi
 if [[ -d "$PREFIX/corpora" ]]; then
-  run "${SUDO_INSTALL[@]}" rm -rf "$NEW_PREFIX/corpora"
-  run "${SUDO_INSTALL[@]}" cp -a "$PREFIX/corpora" "$NEW_PREFIX/corpora"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" rm -rf "$NEW_PREFIX/corpora"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" cp -a "$PREFIX/corpora" "$NEW_PREFIX/corpora"
 fi
 
 if [[ -e "$PREFIX" ]]; then
-  run "${SUDO_INSTALL[@]}" rm -rf "$BACKUP_PREFIX"
-  run "${SUDO_INSTALL[@]}" mv "$PREFIX" "$BACKUP_PREFIX"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" rm -rf "$BACKUP_PREFIX"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" mv "$PREFIX" "$BACKUP_PREFIX"
   printf 'Previous install moved to %s\n' "$BACKUP_PREFIX"
 fi
-run "${SUDO_INSTALL[@]}" mv "$NEW_PREFIX" "$PREFIX"
+run_with_optional_prefix "$SUDO_INSTALL_WORD" mv "$NEW_PREFIX" "$PREFIX"
 
 if [[ "$NO_SYMLINK" -eq 0 ]]; then
   SUDO_BIN_WORD="$(sudo_prefix_for_path "$BIN_DIR")"
-  SUDO_BIN=()
-  if [[ -n "$SUDO_BIN_WORD" ]]; then
-    SUDO_BIN=("$SUDO_BIN_WORD")
-  fi
-  run "${SUDO_BIN[@]}" mkdir -p "$BIN_DIR"
-  run "${SUDO_BIN[@]}" ln -sfn "$PREFIX/govfuzz" "$BIN_DIR/govfuzz"
+  run_with_optional_prefix "$SUDO_BIN_WORD" mkdir -p "$BIN_DIR"
+  run_with_optional_prefix "$SUDO_BIN_WORD" ln -sfn "$PREFIX/govfuzz" "$BIN_DIR/govfuzz"
   if [[ -f "$PREFIX/govfuzz-daemon" ]]; then
-    run "${SUDO_BIN[@]}" ln -sfn "$PREFIX/govfuzz-daemon" "$BIN_DIR/govfuzz-daemon"
+    run_with_optional_prefix "$SUDO_BIN_WORD" ln -sfn "$PREFIX/govfuzz-daemon" "$BIN_DIR/govfuzz-daemon"
   fi
 fi
 
@@ -803,16 +975,16 @@ if [[ "$NO_CONTENT" -eq 0 && -f "$PACK_MANIFEST" ]]; then
     PACK_INSTALL+=(--policy "$POLICY_FILE")
   fi
   run "${PACK_VERIFY[@]}"
-  run "${SUDO_INSTALL[@]}" mkdir -p "$PREFIX/packs"
-  run "${SUDO_INSTALL[@]}" "${PACK_INSTALL[@]}"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" mkdir -p "$PREFIX/packs"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" "${PACK_INSTALL[@]}"
 else
   printf 'Skipping signed content pack installation.\n'
 fi
 
 SEED_TAR="$PACK_ROOT/corpus/seeds.tar.gz"
 if [[ "$INSTALL_SEEDS" -eq 1 && -f "$SEED_TAR" ]]; then
-  run "${SUDO_INSTALL[@]}" mkdir -p "$PREFIX/corpora/seeds"
-  run "${SUDO_INSTALL[@]}" tar -C "$PREFIX/corpora/seeds" -xzf "$SEED_TAR"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" mkdir -p "$PREFIX/corpora/seeds"
+  run_with_optional_prefix "$SUDO_INSTALL_WORD" tar -C "$PREFIX/corpora/seeds" -xzf "$SEED_TAR"
 fi
 
 printf '+ '

@@ -8,6 +8,11 @@ GovFuzz uses `dist` to publish binary archives for the `govfuzz` CLI, the
 `govfuzz_cc_intercept` cdylib that C/C++ build recovery uses to observe
 absolute-path and `posix_spawn` compiler invocations.
 
+The CLI archives include the complete Ada, C/C++, C#, Java, JavaScript,
+Lua, Perl, PHP, Python, Ruby, and Rust harness-runtime trees. The executable
+also embeds those sources as a fallback for shell/PowerShell installer installs,
+so neither install style depends on a source checkout or a CI build path.
+
 ## Artifacts
 
 The CLI and daemon archives are built for `x86_64-unknown-linux-gnu` and
@@ -115,10 +120,11 @@ release plan:
 dist host --steps=create --tag=vX.Y.Z
 ```
 
-Tag pushes matching semantic versions, such as `v0.2.16`, run the generated
+Tag pushes matching semantic versions, such as `v0.2.17`, run the generated
 release workflow. The workflow plans artifacts, builds the EL7-compatible Linux
-and Windows MSVC archives and checksums, generates Unix shell and PowerShell
-installers, and uploads the verified artifacts to the GitHub Release.
+and Windows MSVC archives and checksums, verifies that every harness runtime is
+inside both CLI archives, generates Unix shell and PowerShell installers, and
+uploads the verified artifacts to the GitHub Release.
 
 ## Air-Gapped Packs
 

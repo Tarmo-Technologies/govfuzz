@@ -4349,22 +4349,12 @@ fn absolutize(p: &Path) -> std::io::Result<PathBuf> {
 /// beside the executable; dev builds fall back to the source tree via
 /// `CARGO_MANIFEST_DIR`. Mirrors `rust_build::locate_c_runtime_dir`.
 pub(crate) fn locate_c_runtime() -> PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        for dir in exe.ancestors().skip(1) {
-            let cand = dir.join("c_runtime");
-            if cand.join("govfuzz_decode.h").is_file() {
-                return cand;
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("c_runtime");
-    if from_manifest.join("govfuzz_decode.h").is_file() {
-        return from_manifest;
-    }
-    from_manifest
+    crate::runtime_assets::locate("c_runtime", "govfuzz_decode.h").unwrap_or_else(|| {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("c_runtime")
+    })
 }
 
 /// Pattern-match common library return types to a matching deallocator so

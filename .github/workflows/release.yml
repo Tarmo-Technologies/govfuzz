@@ -174,6 +174,60 @@ jobs:
           set -euo pipefail
           dist build $DIST_TAG_FLAG --print=linkage --output-format=json $DIST_ARGS > dist-manifest.json
           echo "dist ran successfully"
+      - name: Validate packaged harness runtimes (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive=$(find target/distrib -maxdepth 1 -type f -name "govfuzz-*.tar.xz" -print -quit)
+          [[ -n "$archive" ]] || { echo "govfuzz Linux archive not found" >&2; exit 1; }
+          entries=$(tar -tf "$archive")
+          for marker in \
+            ada_runtime/adafuzz.ads \
+            c_runtime/govfuzz_driver.c \
+            csharp_runtime/Driver.cs \
+            java_runtime/build-agent.sh \
+            js_runtime/govfuzz_driver.js \
+            lua_runtime/govfuzz_driver.lua \
+            perl_runtime/Devel/GovfuzzCov.pm \
+            php_runtime/govfuzz_driver.php \
+            python_runtime/govfuzz_driver.py \
+            ruby_runtime/govfuzz_driver.rb \
+            rust_runtime/Cargo.toml
+          do
+            grep -Fq "$marker" <<<"$entries" || { echo "missing $marker from $archive" >&2; exit 1; }
+          done
+      - name: Validate packaged harness runtimes (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem target/distrib -Filter "govfuzz-*.zip" | Select-Object -First 1
+          if (-not $archive) { throw "govfuzz Windows archive not found" }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($archive.FullName)
+          try {
+            $entries = @($zip.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+            $markers = @(
+              "ada_runtime/adafuzz.ads",
+              "c_runtime/govfuzz_driver.c",
+              "csharp_runtime/Driver.cs",
+              "java_runtime/build-agent.sh",
+              "js_runtime/govfuzz_driver.js",
+              "lua_runtime/govfuzz_driver.lua",
+              "perl_runtime/Devel/GovfuzzCov.pm",
+              "php_runtime/govfuzz_driver.php",
+              "python_runtime/govfuzz_driver.py",
+              "ruby_runtime/govfuzz_driver.rb",
+              "rust_runtime/Cargo.toml"
+            )
+            foreach ($marker in $markers) {
+              if (-not ($entries | Where-Object { $_ -eq $marker -or $_.EndsWith("/$marker") })) {
+                throw "missing $marker from $($archive.FullName)"
+              }
+            }
+          } finally {
+            $zip.Dispose()
+          }
       - id: cargo-dist
         name: Post-build
         # We force bash here just because github makes it really hard to get values up

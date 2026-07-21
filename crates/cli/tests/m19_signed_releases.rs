@@ -55,6 +55,39 @@ fn release_targets_match_supported_cross_platform_binary_matrix() {
     assert!(docs.contains("preload shims remain Linux-only assets"));
 }
 
+#[test]
+fn release_cli_is_self_contained_for_every_harness_runtime() {
+    let root = repo_root();
+    let cli_manifest = read(root.join("crates/cli/Cargo.toml"));
+    let workflow = read(root.join(".github/workflows/release.yml"));
+
+    for runtime in [
+        "ada_runtime",
+        "c_runtime",
+        "csharp_runtime",
+        "java_runtime",
+        "js_runtime",
+        "lua_runtime",
+        "perl_runtime",
+        "php_runtime",
+        "python_runtime",
+        "ruby_runtime",
+        "rust_runtime",
+    ] {
+        assert!(
+            cli_manifest.contains(runtime),
+            "CLI dist metadata omitted {runtime}"
+        );
+        assert!(
+            workflow.contains(runtime),
+            "release archive gate omitted {runtime}"
+        );
+    }
+
+    assert!(workflow.contains("Validate packaged harness runtimes (Linux)"));
+    assert!(workflow.contains("Validate packaged harness runtimes (Windows)"));
+}
+
 fn read(path: impl AsRef<Path>) -> String {
     let path = path.as_ref();
     fs::read_to_string(path).unwrap_or_else(|error| {

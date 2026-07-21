@@ -1,8 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # govfuzz vs the field: a measured comparison
 
-This page compares **govfuzz** against the most widely used fuzzer for each
-language it supports, on identical planted-bug targets, with real measurements.
+This page compares **govfuzz** against the most widely used fuzzer for each of
+the eight languages covered by this benchmark suite, on identical planted-bug
+targets, with real measurements. GovFuzz now has sixteen fuzzing lanes; COBOL,
+Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP were added after this
+suite and are not represented in its measured bug/TTFC claims.
 Every number here is produced by the scripts under [`benchmarks/`](https://github.com/Tarmo-Technologies/govfuzz/tree/main/benchmarks)
 — nothing is hand-edited. See [Methodology](#methodology) for the rules and
 [Reproduce](#reproduce) to run it yourself.
@@ -11,7 +14,7 @@ Every number here is produced by the scripts under [`benchmarks/`](https://githu
 
 | | **govfuzz** | libFuzzer | AFL++ | cargo-fuzz | Jazzer |
 |---|---|---|---|---|---|
-| Languages | **C, C++, Ada, Rust, Java, Python, Perl, Go** | C/C++ | C/C++ | Rust | Java |
+| Languages measured here | **C, C++, Ada, Rust, Java, Python, Perl, Go** | C/C++ | C/C++ | Rust | Java |
 | Hand-written harness per target | **0 lines** | 6 lines | 13 lines | 5 lines | 5 lines |
 | Fuzzes **Ada** | **yes** | no | no | no | no |
 | Targets fuzzed per command | **all** (185 on miniz) | 1 | 1 | 1 | 1 |
@@ -39,7 +42,9 @@ isn't one, and fuzzes — with a built-in coverage-guided engine that has
 cmplog/RedQueen on by default, or by driving AFL++ when you
 want its exact behaviour. (libFuzzer support is deferred pending Ada/LLVM
 toolchain viability.) The result is the same crashes with none of the
-setup, across eight languages instead of one.
+setup, across eight measured languages instead of one. The current product
+surface is sixteen lanes; that broader count is not retroactively treated as a
+benchmark result.
 
 ## Results by language
 
@@ -76,9 +81,10 @@ pre-built harness starts faster — that is what libFuzzer/AFL++ are for. govfuz
 built-in engine still solves **all three gate classes cold** (including the
 input-to-state gate that needs cmplog — on by default, no `-c` build, no flags),
 in a comparable end-to-end time, **with zero harness**. For raw-throughput
-parity govfuzz also ships the AFL++ engine adapter (and optional LibAFL support
-via cargo feature); the built-in
-engine is the zero-config default measured here.
+parity govfuzz also ships the AFL++ engine adapter. An experimental LibAFL
+adapter crate can be built with its cargo feature, but it is not a selectable
+`govfuzz fuzz --engine` value. The built-in engine is the zero-config default
+measured here.
 
 ### Rust — vs cargo-fuzz
 
@@ -147,10 +153,11 @@ C/C++/Ada/Rust engines use. The behavioral/taint LD_PRELOAD shim is armed for
 both (it interposes the interpreter process), and native for Go — unlike the Java
 lane, where it is not. **Go** is the **fastest** lane: the generated harness
 compiles to a native fork-server binary that recovers panics into CWE-mapped
-findings. Its coverage, however, is currently **black-box** — Go's sancov needs
-the Go fuzzing runtime, so coverage-guided Go is a documented follow-up; Go
-panics readily, so shallow bugs still surface fast. Findings in all three lanes
-carry CWEs and cluster by crash site, like the original five.
+findings. It normally builds with `-cover -covermode=atomic`, clears counters per
+input, and folds the executed-block set into GovFuzz's shared edge map. A failed
+coverage build or unrecognized counter format degrades safely to black-box mode
+instead of losing the target. Findings in all three lanes carry CWEs and cluster
+by crash site, like the original five.
 
 ## Coverage per command
 
@@ -176,7 +183,7 @@ scales with one command:
   This understates govfuzz's real-world advantage, which would also count the
   minutes a human spends writing the 5–13-line harness the competitor needs.
 - **Honesty.** govfuzz also ships the AFL++ engine adapter (libFuzzer is
-  deferred; LibAFL is an optional cargo feature); on
+  deferred; the optional LibAFL adapter crate is not exposed by the CLI); on
   these micro-targets the built-in engine was the more reliable zero-config
   default, so it is what the tables show. The competitors are not strawmen — they
   all find their bug; govfuzz's win is the *workflow*, not a claim that the

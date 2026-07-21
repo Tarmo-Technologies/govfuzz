@@ -2143,8 +2143,8 @@ fn run_builtin_with_progress(
     // ForkServer::spawn handshake is the backstop — it returns Err -> None for
     // anything that doesn't complete the protocol.
     let driver_harness = is_govfuzz_driver_harness(&prepared.runner);
-    let mut fork_server = if driver_harness
-        || (prepared.fork_server && !is_c_libfuzzer_harness(&prepared.runner, &prepared.work_dir))
+    let mut fork_server = if prepared.fork_server
+        && (driver_harness || !is_c_libfuzzer_harness(&prepared.runner, &prepared.work_dir))
     {
         ForkServer::spawn(
             &prepared.runner,

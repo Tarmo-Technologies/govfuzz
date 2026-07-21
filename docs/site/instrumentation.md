@@ -2,15 +2,24 @@
 
 # Instrumentation
 
-GovFuzz instruments eight fuzzing lanes with different mechanisms. The Ada lane
-**rewrites source** to emit probe events; the C, C++, and Rust lanes rely on
-**compiler-inserted** SanitizerCoverage and add no source rewriting; the Java
-lane uses GovFuzz's own **ASM bytecode** coverage agent (not Jazzer); the Python
-and Perl lanes instrument the **interpreter** with runtime tracers
-(`sys.monitoring`/`sys.settrace`, `DB::DB`) that feed edge counters into the
-shared map; and the Go lane is **compiled** to a native fork-server binary that
-fuzzes **black-box** for now. Every coverage lane feeds the built-in engine's
-coverage-guided corpus.
+GovFuzz's sixteen fuzzing lanes obtain feedback through lane-appropriate
+mechanisms:
+
+| Lanes | Coverage mechanism |
+|---|---|
+| Ada | source probe events plus compiler `trace-pc` edge coverage |
+| C, C++, Rust | compiler SanitizerCoverage edge/compare feedback |
+| Java | GovFuzz ASM bytecode agent |
+| Python, Perl, Ruby, Lua | interpreter tracing into the shared edge map |
+| Go | `go build -cover -covermode=atomic` block sets; safe black-box fallback |
+| COBOL, Fortran | generated/native C path with compiler edge/compare coverage |
+| C# | SharpFuzz IL instrumentation bridged into GovFuzz's map |
+| JavaScript, TypeScript | V8 precise block coverage from a warm Node process |
+| PHP | `pcov` line coverage when available, with a black-box fallback |
+
+Only Ada rewrites the target source for GovFuzz probe events. Every available
+coverage channel feeds the built-in engine's corpus decisions; a documented
+fallback never fabricates coverage when an instrumenter is unavailable.
 
 ## Ada source instrumentation
 
@@ -115,8 +124,8 @@ lane instruments the **CPython interpreter** at runtime. The generated driver
 runs under a persistent CPython held open by the framed fork-server protocol, and
 coverage is collected by `sys.monitoring` (3.12+) or a `sys.settrace` fallback,
 whose edge counters are written into the same file-backed `GOVFUZZ_COV_SHM` map
-the engine reads for every other lane. So unlike the Go lane this is
-**real coverage feedback**, not black-box. The LD_PRELOAD runtrace shim is armed
+the engine reads for every other lane. This is **real coverage feedback**, not
+black-box. The LD_PRELOAD runtrace shim is armed
 for this lane (it interposes the interpreter process), so the behavioral/taint
 oracles run alongside coverage — unlike the Java lane, where the shim is not
 armed. Python uses this single edge map only; the hit-count-bucket and
@@ -132,14 +141,34 @@ but the coverage feedback is real, not black-box. The LD_PRELOAD runtrace shim i
 armed here too (it interposes the `perl` process). Perl uses this single edge map
 only.
 
-## Go (compiled, black-box for now)
+## Go instrumentation
 
 Go harnesses are **compiled**: the generated `main` imports the target package
 through a module `replace`, decodes by Go type, and is built with `go build` to a
 native framed fork-server binary that recovers panics into findings. The runtrace
-shim is native for this lane. Unlike the other compiled lanes, Go coverage is
-currently **black-box** — Go's libFuzzer SanitizerCoverage needs the Go fuzzing
-runtime, so the edge map is not populated and the lane is **not coverage-guided
-yet** (coverage-guided Go is a documented follow-up). Because Go panics readily,
-shallow bugs still surface fast, and it is among the fastest lanes (compiled;
-thousands of exec/s).
+shim is native for this lane. Go coverage is
+normally collected with `go build -cover -covermode=atomic`. Before each input
+the driver clears the counters; afterward it reads the executed-block set with
+`runtime/coverage.WriteCounters` and folds stable block ids into
+`GOVFUZZ_COV_SHM`. Counter values are deliberately ignored, so one execution
+maps to one edge set. If the coverage build fails or the counter encoding is not
+recognized, GovFuzz retries safely in black-box mode rather than losing the
+target or interpreting invalid data as coverage.
+
+## COBOL, Fortran, C#, JavaScript, Ruby, Lua, and PHP
+
+COBOL translates through GnuCOBOL to the existing C driver and receives edge
+coverage, CmpLog/RedQueen, and sanitizer/runtime checks. Fortran compiles with
+gfortran ASan plus `trace-pc`/`trace-cmp` into the C fork-server path. See the
+[COBOL](cobol.md) and [Fortran](fortran.md) lane guides.
+
+C# uses SharpFuzz to rewrite target IL, then bridges its 64 KiB edge bitmap into
+`GOVFUZZ_COV_SHM` while one warm CLR serves framed inputs. JavaScript and
+TypeScript use the Node inspector's V8 precise block coverage in one warm Node
+process. See the [C#](csharp.md) and
+[JavaScript/TypeScript](javascript.md) guides.
+
+Ruby uses `TracePoint`, Lua uses `debug.sethook`, and PHP uses `pcov` when the
+extension is available; all feed per-line/edge ids into the shared map from a
+persistent interpreter. PHP degrades to black-box execution when `pcov` is not
+available. These interpreter lanes do not use compiler SanitizerCoverage.

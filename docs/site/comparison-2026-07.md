@@ -27,7 +27,7 @@ confirmation, and integration.
 
 | Feature | Verdict | Deciding number |
 |---|---|---|
-| Zero-harness multi-language auto-fuzzing | **#1, uncontested** | 0 harnesses vs N-per-target for every competitor; 8 languages / 1 engine; fuzzes broken/non-building code |
+| Zero-harness multi-language auto-fuzzing | **#1, uncontested** | 0 harnesses vs N-per-target for every competitor; 16 current product lanes / 1 engine (8 represented in this corpus); fuzzes broken/non-building code |
 | Fuzz-confirmation of static findings | **#1, uncontested** | No other tool performs static→dynamic confirmation |
 | Static analysis — Go | **#1** | go_gin: govfuzz 14 taint findings vs gosec **0** (build-gated) vs semgrep 20 (mostly CI-noise) |
 | Static analysis — Java | **#1** | deserialization sinks + JNDI injection (Log4Shell, GF-551/CWE-917) — the classes a Java security tool must catch |
@@ -143,7 +143,7 @@ sweeps.
 | Capability | govfuzz | AFL++ | libFuzzer | cargo-fuzz | Jazzer |
 |---|:-:|:-:|:-:|:-:|:-:|
 | Harnesses required to start | **0** | 1/target | 1/target | 1/target | 1/target |
-| Languages driven by one engine | **8** | C/C++ | C/C++ | Rust | JVM |
+| Languages driven by one engine | **16 current** (8 measured in this campaign) | C/C++ | C/C++ | Rust | JVM |
 | Fuzzes broken / non-building code | **yes** | no | no | no | no |
 | Recovers build context (no compile_commands) | **yes** | no | no | n/a | n/a |
 | Fuzz-confirmation of static findings | **yes** | no | no | no | no |
@@ -183,7 +183,8 @@ leads:
   cargo-fuzz/Jazzer) with mature mutators (RedQueen/CmpLog, LLVM integration) win a
   long shootout on one already-harnessed, already-building target. That is an
   architectural trade-off, not a fixable gap: govfuzz spends its engineering on
-  *getting to a fuzzable state with zero setup across 8 languages* and on
+  *getting to a fuzzable state with zero setup across sixteen current lanes*
+  (eight represented in this campaign) and on
   *confirming static findings*, which is the right trade for triaging an unknown
   tree — not for grinding one known target. (Even here govfuzz is competitive, not
   absent: it drives a coverage-guided engine with CmpLog/RedQueen and AFL++ as an

@@ -22,16 +22,16 @@ The M18 service exposes IDE-facing methods:
   `params.column` in `params.path`.
 - `instrumentPreview`: return rewritten instrumented Ada source and breadcrumbs
   for `params.path` without writing files.
-- `staticScan`: run the offline Ada/C/C++ static scanner for `params.path`,
-  write static report artifacts under `params.out` or `govfuzz_work/static`,
-  and return `summary`, `report`, and `exit_code`. It accepts `suppressions`,
-  `baseline`, `policy`, `enabled_rules`, `disabled_rules`, `sarif`, and
-  `fail_on` parameters matching the CLI.
+- `staticScan`: run the same full offline static engine as the CLI for
+  `params.path` (the eight core static languages plus JavaScript/TypeScript and
+  supported QML/config/IaC inputs), write report artifacts under `params.out`
+  or `govfuzz_work/static`, and return `summary`, `report`, and `exit_code`. It
+  accepts `suppressions`, `baseline`, `policy`, `enabled_rules`,
+  `disabled_rules`, `sarif`, and `fail_on` parameters matching the CLI.
 
 Target ranking via `listTargets` covers Ada, C, and C++. The `rankAt` and
-`instrumentPreview` methods are Ada-only. Static analysis covers Ada, C, and
-C++; C/C++ harness generation, build, and fuzzing remain exposed through the
-CLI.
+`instrumentPreview` methods are Ada-only. Harness generation, build, and
+fuzzing remain exposed through the CLI rather than this JSON-RPC service.
 
 Example request body:
 
@@ -57,6 +57,20 @@ Static scan request body:
 
 Responses use standard JSON-RPC success and error objects. Unknown methods
 return code `-32601`; invalid params return code `-32602`.
+
+## Model Context Protocol mode
+
+The same executable supports newline-delimited MCP stdio with
+`govfuzz-daemon --mcp`. That is a separate protocol mode from the LSP-framed
+JSON-RPC service above. It exposes five read-only tools for Ada structure scan,
+Ada/C/C++ ranked targets, bounded finding loading, assistance-prompt preparation,
+and Ada/C/C++ structural harness preflight. Build, fuzz, replay, minimization,
+file editing, and shell execution are deliberately not MCP tools.
+
+The host model performs any reasoning, so GovFuzz receives no host API token.
+See the canonical [LLM and MCP guide](site/llm.md) for registration, schemas,
+provider choices, memory limits, privacy boundaries, and deterministic
+verification workflows.
 
 ## Security Modes
 

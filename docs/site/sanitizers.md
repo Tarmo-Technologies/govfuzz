@@ -11,13 +11,12 @@ code, where stock ASan tends to drown a run in false positives.
 `--sanitizers` governs the C/C++ matrix only. Ada uses source instrumentation
 rather than LLVM sanitizers; Rust always builds with ASan + sancov via hardcoded
 flags (not tunable through `--sanitizers`); Java runs in the JVM under govfuzz's
-own bytecode coverage agent, where LLVM sanitizers do not apply; the interpreted
-Python and Perl lanes get coverage from `sys.monitoring`/`DB::DB` edge counters
-and detect faults through interpreter exceptions/dies plus the LD_PRELOAD runtrace
-shim; and the compiled Go lane recovers panics from its native binary and gets
-real edge coverage from a `-cover -covermode=atomic` build (folded into the
-shared edge map; black-box only if the `-cover` build fails) — none of these are
-LLVM-sanitizer paths.
+own bytecode coverage agent, where LLVM sanitizers do not apply; Python, Perl,
+Ruby, Lua, and PHP use interpreter coverage plus exception/error oracles; C#
+uses SharpFuzz IL coverage; JavaScript/TypeScript use V8 block coverage; and Go
+uses atomic compiler coverage with a safe black-box fallback. COBOL and Fortran
+have lane-owned ASan/coverage builds. None of those settings are selected by
+the C/C++ `--sanitizers` matrix.
 
 ## `--sanitizers <set | none>`
 
@@ -32,15 +31,14 @@ LLVM-sanitizer paths.
   RTOS builds — without paying the qemu-user cross-compile tax. `none` is
   standalone; combining it with a real sanitizer is rejected.
 
-`--sanitizers` is inert on the Ada, Rust, Java, Python, Perl, Go, and
-cross-compiled (qemu-user / wine) paths: Ada uses source instrumentation, the JVM
-lane is covered by the bytecode agent, the interpreted Python and Perl lanes trace
-coverage through `sys.monitoring`/`DB::DB` and catch faults via interpreter
-exceptions/dies plus the runtrace shim, the Go lane recovers panics from its native
-binary with real edge coverage from a `-cover` build, and cross/emulated builds drop host
-sanitizers (ASan's shadow memory does not survive qemu-user/wine) — while the Rust
-lane always applies ASan + sancov via hardcoded `RUSTFLAGS` that `--sanitizers`
-does not control.
+`--sanitizers` is inert on every lane except native C/C++. Ada uses source
+instrumentation; Rust always applies ASan + sancov through lane-owned
+`RUSTFLAGS`; Java and the managed/interpreted lanes use their coverage and
+exception mechanisms; Go recovers panics and uses atomic compiler coverage;
+COBOL and Fortran own their native build flags. Cross/emulated builds drop host
+sanitizers because ASan's shadow memory does not survive qemu-user/wine. See
+[Instrumentation](./instrumentation.md) for the complete sixteen-lane feedback
+matrix and fallback behavior.
 
 ## Tuning, not disabling: `<SAN>_OPTIONS` passthrough
 

@@ -14,7 +14,7 @@ inputs:
     required: false
     default: ""
   languages:
-    description: "Comma list to restrict lanes (ada,c,cpp,rust,java,python,perl,go). Default: all found."
+    description: "Comma list to restrict any of the 16 lanes. Default: all found; run 'govfuzz auto --help' for names."
     required: false
     default: ""
   campaign-time:

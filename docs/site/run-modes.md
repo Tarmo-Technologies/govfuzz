@@ -35,6 +35,10 @@ Regardless of mode, each finding is classified from evidence into one verdict:
 
 Switching modes never moves a finding between these buckets.
 
+LLM output never moves a finding between them either. Optional agent/model
+assistance may explain or prioritize the evidence, but only deterministic run,
+reachability, replay, stub/fake, and oracle fields compute the verdict.
+
 ## Reporting Mode (default)
 
 Developer-workflow quality first. Findings are surfaced with replay commands,

@@ -3,10 +3,11 @@
 # Differential Fuzzing
 
 GovFuzz ships a `govfuzz differential` subcommand: it replays each input
-through two already-built harness binaries (or one harness under a metamorphic
+through two already-built harness executables (or one harness under a metamorphic
 transform) and flags behavioural divergences. It is language-agnostic — the
-harnesses can come from any supported lane (Ada, C, C++, Rust, or Java); the
-language is fixed by the target source, not by this tool.
+executables can come from any of the sixteen current lanes as long as they obey
+the normal one-input harness contract; the language is fixed by the target
+source, not by this tool.
 
 Automated comparison *across Ada compilers* — toolchain discovery and
 multi-compiler matrix orchestration — remains a v1.1+ research boundary.

@@ -43,6 +43,14 @@ installs, install both `govfuzz` and `govfuzz_runtrace_shim` so the library
 lands beside the CLI. The CLI also accepts the renamed
 `libgovfuzz_runtrace.so` produced by source builds.
 
+After `dist` generates the main Unix installer, the release workflow runs
+`scripts/augment-release-installer.py`. On an EL7-family host the resulting
+installer explains, before downloading the CLI, that it does not enable system
+repositories or install toolchains/shims; it prints the exact RHSCL LLVM 7
+packages and the separate runtrace/compiler-interception installer commands.
+The augmentation is idempotent and the release workflow rejects an installer
+that does not contain the guidance marker.
+
 ## Binary-Only Distribution Package
 
 Use `scripts/package-offline-dist.sh` when a connected build machine has the

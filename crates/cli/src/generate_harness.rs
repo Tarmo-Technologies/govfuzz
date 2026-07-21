@@ -5587,7 +5587,7 @@ pub(crate) fn source_path_is_foreign_platform(path: &Path) -> bool {
     let foreign_os = if cfg!(target_os = "windows") {
         has(&[
             "linux", "darwin", "macos", "osx", "freebsd", "openbsd", "netbsd", "sunos", "solaris",
-            "aix",
+            "aix", "vxworks", "qnx", "zos",
         ])
     } else if cfg!(target_os = "macos") {
         has(&[
@@ -6270,7 +6270,7 @@ fn resolve_compile_database_path(directory: &Path, value: &str) -> String {
     } else {
         normalize_path(&directory.join(path))
     };
-    resolved.display().to_string()
+    harness_gen::build_safety::make_path(&resolved)
 }
 
 fn split_compile_command(command: &str) -> Vec<String> {
@@ -8814,7 +8814,7 @@ fn resolve_build_context_path(base_dir: &Path, value: &str) -> String {
     } else {
         normalize_path(&base_dir.join(path))
     };
-    resolved.display().to_string()
+    harness_gen::build_safety::make_path(&resolved)
 }
 
 fn cmake_token_is_dynamic(token: &str) -> bool {

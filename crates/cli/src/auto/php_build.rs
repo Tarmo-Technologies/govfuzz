@@ -28,28 +28,7 @@ fn probe_php() -> Option<PathBuf> {
 
 /// Locate the bundled `php_runtime/` (the driver).
 fn locate_php_runtime() -> Option<PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("php_runtime");
-                if cand.join("govfuzz_driver.php").is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .map(|root| root.join("php_runtime"));
-    if let Some(p) = &from_manifest {
-        if p.join("govfuzz_driver.php").is_file() {
-            return from_manifest;
-        }
-    }
-    None
+    crate::runtime_assets::locate("php_runtime", "govfuzz_driver.php")
 }
 
 pub fn build_php_harness(

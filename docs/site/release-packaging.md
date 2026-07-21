@@ -120,7 +120,7 @@ release plan:
 dist host --steps=create --tag=vX.Y.Z
 ```
 
-Tag pushes matching semantic versions, such as `v0.2.17`, run the generated
+Tag pushes matching semantic versions, such as `v0.2.18`, run the generated
 release workflow. The workflow plans artifacts, builds the EL7-compatible Linux
 and Windows MSVC archives and checksums, verifies that every harness runtime is
 inside both CLI archives, generates Unix shell and PowerShell installers, and

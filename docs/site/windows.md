@@ -47,7 +47,17 @@ native Windows.
 
 ## Getting `govfuzz.exe`
 
-Either build it natively:
+Download the `govfuzz-x86_64-pc-windows-msvc.zip` archive from the GitHub
+release and verify its `.sha256` sidecar, or use the release's PowerShell
+installer:
+
+```powershell
+$Version = "v0.2.16"
+irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
+govfuzz.exe --version
+```
+
+The release binary does not require Rust. Alternatively, build it natively:
 
 ```powershell
 rustup target add x86_64-pc-windows-msvc   # or -gnu

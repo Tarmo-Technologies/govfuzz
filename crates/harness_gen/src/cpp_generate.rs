@@ -2533,7 +2533,9 @@ mod tests {
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         let makefile = fs::read_to_string(&result.makefile).unwrap();
 
-        assert!(main.contains("static int govfuzz_run_one"));
+        assert!(main.contains("extern \"C\" int govfuzz_run_one"));
+        assert!(main.contains("GOVFUZZ_KEEP_RESULT(R)"));
+        assert!(main.contains("#ifndef GOVFUZZ_EXTERNAL_DRIVER"));
         assert!(main.contains("#if defined(GOVFUZZ_AFL)"));
         assert!(main.contains("__AFL_LOOP(10000)"));
         assert!(main.contains("#else"));
@@ -2546,6 +2548,9 @@ mod tests {
         // The two-compiler differential build target.
         assert!(makefile.contains("diff: main_diff"));
         assert!(makefile.contains("DIFF_CXX ?= clang++"));
+        assert!(makefile.contains("govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)"));
+        assert!(makefile.contains("$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) -c"));
+        assert!(makefile.contains("-DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp"));
         // The afl target is declared; target sources live in the recipe, not the
         // prerequisites (an absolute Windows source path carries a drive-letter
         // colon that GNU make would parse as a target:prereq separator).

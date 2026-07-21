@@ -23,6 +23,93 @@ pub struct CFamilyCompilerOverride {
     pub cxxflags: Vec<String>,
 }
 
+/// Activate a coverage-capable Clang from the RHEL 7 LLVM Software Collection
+/// when the base-system `clang` is too old for SanitizerCoverage. The SCL ships
+/// outside the normal PATH and needs its lib64 directory at compiler run time;
+/// applying those variables to this process also covers every later `make`,
+/// replay, and optional sanitizer build spawned by `auto`.
+///
+/// This is deliberately capability-based rather than version-based: a vendor
+/// compiler is accepted when it compiles the exact edge+comparison coverage
+/// flags govfuzz uses. Explicit CC/CXX choices remain authoritative.
+pub(crate) fn activate_compatible_clang() -> bool {
+    #[cfg(unix)]
+    {
+        if std::env::var_os("CC").is_some() || std::env::var_os("CXX").is_some() {
+            return false;
+        }
+        if clang_supports_govfuzz_coverage("clang", None) {
+            return false;
+        }
+
+        const SCL_ROOTS: [&str; 2] = [
+            "/opt/rh/llvm-toolset-7.0/root/usr",
+            "/opt/rh/llvm-toolset-7/root/usr",
+        ];
+        for root in SCL_ROOTS {
+            let root = Path::new(root);
+            let clang = root.join("bin/clang");
+            let lib64 = root.join("lib64");
+            if !clang.is_file() || !clang_supports_govfuzz_coverage(&clang, Some(&lib64)) {
+                continue;
+            }
+
+            prepend_process_path("PATH", &[root.join("bin"), root.join("sbin")]);
+            prepend_process_path("LD_LIBRARY_PATH", &[lib64]);
+            eprintln!(
+                "govfuzz: using RHEL 7 LLVM Toolset compiler {} (base clang lacks SanitizerCoverage)",
+                clang.display()
+            );
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(unix)]
+fn clang_supports_govfuzz_coverage(
+    compiler: impl AsRef<std::ffi::OsStr>,
+    runtime_lib: Option<&Path>,
+) -> bool {
+    let mut command = std::process::Command::new(compiler);
+    command.args([
+        "-x",
+        "c",
+        "-c",
+        "/dev/null",
+        "-o",
+        "/dev/null",
+        "-fsanitize-coverage=trace-pc-guard,trace-cmp",
+    ]);
+    if let Some(runtime_lib) = runtime_lib {
+        let mut paths = vec![runtime_lib.to_path_buf()];
+        if let Some(existing) = std::env::var_os("LD_LIBRARY_PATH") {
+            paths.extend(std::env::split_paths(&existing));
+        }
+        if let Ok(joined) = std::env::join_paths(paths) {
+            command.env("LD_LIBRARY_PATH", joined);
+        }
+    }
+    command
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn prepend_process_path(key: &str, prefixes: &[PathBuf]) {
+    let mut paths = prefixes.to_vec();
+    if let Some(existing) = std::env::var_os(key) {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    if let Ok(joined) = std::env::join_paths(paths) {
+        std::env::set_var(key, joined);
+    }
+}
+
 #[derive(Debug, Clone, clap::Args, PartialEq)]
 pub struct BuildArgs {
     /// Path to govfuzz_work directory containing src_instrumented and harnesses/generated_harnesses.

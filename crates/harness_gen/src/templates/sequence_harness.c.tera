@@ -37,6 +37,15 @@
 #define GOVFUZZ_NOCOV
 #endif
 
+/* Keep value-returning lifecycle calls observable when a source-local target is
+ * visible to the optimizer; `(void)result` alone permits dead-code removal. */
+#if defined(__GNUC__) || defined(__clang__)
+#define GOVFUZZ_KEEP_RESULT(value) \
+    __asm__ __volatile__("" : : "g"(&(value)) : "memory")
+#else
+#define GOVFUZZ_KEEP_RESULT(value) ((void)(value))
+#endif
+
 {#- support blocks (callback typedefs + trampolines) must precede the
     forward declarations that reference the typedef names #}
 {%- if init_step %}
@@ -78,7 +87,7 @@ extern {{ end_step.return_type }} {{ end_step.name }}({{ handle_type }} *{% for 
  * / socket peers / dlopen stubs. The symbol is a weak extern so harnesses
  * built without the shim loaded link cleanly (the call is a no-op). */
 extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attribute__((weak));
-static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(Data, Size);
     gf_cursor Cur = gf_open(Data, Size);
     {{ handle_type }} _gf_handle;
@@ -89,7 +98,7 @@ static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
     {% if init_step.return_type_present %}{{ init_step.return_type }} {{ init_step.result_name }} = {% endif %}{{ init_step.name }}(&_gf_handle{% for p in init_step.params %}, {{ p.arg }}{% endfor %});
 {%- if init_step.return_type_present %}
-    (void){{ init_step.result_name }};
+    GOVFUZZ_KEEP_RESULT({{ init_step.result_name }});
 {%- endif %}
 {%- for p in init_step.params %}
 {%- if p.free %}
@@ -115,7 +124,7 @@ static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
             {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}(&_gf_handle{% for p in step.params %}, {{ p.arg }}{% endfor %});
 {%- if step.return_type_present %}
-            (void){{ step.result_name }};
+            GOVFUZZ_KEEP_RESULT({{ step.result_name }});
 {%- endif %}
 {%- for p in step.params %}
 {%- if p.free %}
@@ -135,7 +144,7 @@ static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
     {% if end_step.return_type_present %}{{ end_step.return_type }} {{ end_step.result_name }} = {% endif %}{{ end_step.name }}(&_gf_handle{% for p in end_step.params %}, {{ p.arg }}{% endfor %});
 {%- if end_step.return_type_present %}
-    (void){{ end_step.result_name }};
+    GOVFUZZ_KEEP_RESULT({{ end_step.result_name }});
 {%- endif %}
 {%- for p in end_step.params %}
 {%- if p.free %}
@@ -206,7 +215,8 @@ int main(int argc, char **argv) {
     return 0;
 }
 #else
-{% raw %}/* govfuzz driver (default, non-AFL). No libFuzzer `main`: the built-in engine
+{% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
+/* govfuzz driver (default, non-AFL). No libFuzzer `main`: the built-in engine
  * drives this in one persistent process via the framed fork-server protocol
  * (#399) — millions of execs in a budget instead of an ASan-instrumented
  * per-spawn startup per input — with a SanitizerCoverage edge-coverage runtime
@@ -639,5 +649,6 @@ int main(int argc, char **argv) {
     govfuzz_run_file(argv[1]);
     return 0;
 }
+#endif /* !GOVFUZZ_EXTERNAL_DRIVER */
 {% endraw %}
 #endif

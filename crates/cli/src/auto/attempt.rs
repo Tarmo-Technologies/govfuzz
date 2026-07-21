@@ -3988,29 +3988,31 @@ fn try_build_c(
     // the retry removes that class of error. Every C Makefile lane includes the
     // same fragment, so AFL/MSan/TSan/coverage/differential replay stay aligned.
     let c_compat_path = work_dir.join("c_compat.mk");
-    if !is_cpp && !c_compat_path.is_file() && output_may_require_fcommon(&raw_output) {
-        if std::fs::write(&c_compat_path, "C_COMPAT_FLAGS := -fcommon\n").is_ok() {
-            let compat_output = crate::build::try_run_c_make_build_with_target(
-                work_dir,
-                harness_id,
-                extra_sources,
-                extra_includes,
-                compiler,
-                None,
-                None,
-            );
-            if compat_output.status.success() {
-                return BuildOutcome::Success;
-            }
-            let compat_raw = combined_build_output(&compat_output);
-            if !output_may_require_fcommon(&compat_raw) {
-                raw_output = compat_raw;
-                errors = build_classifier::classify(&raw_output);
-            } else {
-                // Function duplicates and accidentally repeated source files are
-                // not fixed by -fcommon; do not weaken later targets for them.
-                let _ = std::fs::remove_file(&c_compat_path);
-            }
+    if !is_cpp
+        && !c_compat_path.is_file()
+        && output_may_require_fcommon(&raw_output)
+        && std::fs::write(&c_compat_path, "C_COMPAT_FLAGS := -fcommon\n").is_ok()
+    {
+        let compat_output = crate::build::try_run_c_make_build_with_target(
+            work_dir,
+            harness_id,
+            extra_sources,
+            extra_includes,
+            compiler,
+            None,
+            None,
+        );
+        if compat_output.status.success() {
+            return BuildOutcome::Success;
+        }
+        let compat_raw = combined_build_output(&compat_output);
+        if !output_may_require_fcommon(&compat_raw) {
+            raw_output = compat_raw;
+            errors = build_classifier::classify(&raw_output);
+        } else {
+            // Function duplicates and accidentally repeated source files are
+            // not fixed by -fcommon; do not weaken later targets for them.
+            let _ = std::fs::remove_file(&c_compat_path);
         }
     }
 

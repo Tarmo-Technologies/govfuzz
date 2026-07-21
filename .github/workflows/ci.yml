@@ -61,3 +61,54 @@ jobs:
 
       - name: Validate JUnit emitter
         run: cargo test -p report junit -- --nocapture
+
+  rhel7-build:
+    name: RHEL 7 compatible build
+    runs-on: ubuntu-latest
+    env:
+      RHEL7_BUILD_IMAGE: quay.io/pypa/manylinux2014_x86_64@sha256:0d25b049964b2549b83384036abdff06789a8c0b1e9ff003ec80f0d531f79e50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Build and test on the RHEL 7 ABI
+        run: |
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/io" \
+            --workdir /io \
+            --env CARGO_HOME=/tmp/cargo \
+            --env RUSTUP_HOME=/tmp/rustup \
+            --env CARGO_TARGET_DIR=/io/target/rhel7 \
+            "$RHEL7_BUILD_IMAGE" \
+            bash -lc '
+              set -euo pipefail
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+              export PATH="$CARGO_HOME/bin:$PATH"
+              cargo test --locked -p govfuzz --test offline_dist_scripts -- --nocapture
+              cargo build --locked --release --workspace
+              scripts/check-linux-release-abi.sh "$CARGO_TARGET_DIR/release"
+            '
+
+  windows-build:
+    name: Windows MSVC build and tests
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+
+      - name: Test portable Windows packages
+        run: cargo test --locked -p govfuzz -p govfuzz-daemon --lib
+
+      - name: Build Windows release artifacts
+        run: cargo build --locked --release -p govfuzz -p govfuzz-daemon --target x86_64-pc-windows-msvc
+
+      - name: Smoke Windows executables
+        shell: pwsh
+        run: |
+          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe --version
+          .\target\x86_64-pc-windows-msvc\release\govfuzz-daemon.exe --help

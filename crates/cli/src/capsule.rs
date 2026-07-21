@@ -370,12 +370,9 @@ fn verify_capsule(cap: &Path) -> (bool, String) {
     if !built || !cap.join("poc").is_file() {
         return (false, String::new());
     }
-    let Ok(out) = Command::new("./poc")
-        .arg("input/testcase.bin")
-        .current_dir(cap)
-        .env("ASAN_OPTIONS", "abort_on_error=1:handle_abort=1")
-        .output()
-    else {
+    let mut replay = Command::new("./poc");
+    configure_capsule_replay(&mut replay);
+    let Ok(out) = replay.arg("input/testcase.bin").current_dir(cap).output() else {
         return (false, String::new());
     };
     let stderr = String::from_utf8_lossy(&out.stderr);
@@ -383,6 +380,16 @@ fn verify_capsule(cap: &Path) -> (bool, String) {
         Some(sig) => (true, sig),
         None => (false, String::new()),
     }
+}
+
+/// Keep capsule verification local and deterministic. On Ubuntu,
+/// `DEBUGINFOD_URLS` is commonly set system-wide; a sanitizer crash can then
+/// make llvm-symbolizer wait on the network indefinitely. Capsules are promised
+/// to verify offline, so their replay must never inherit that remote lookup.
+fn configure_capsule_replay(command: &mut Command) {
+    command
+        .env("ASAN_OPTIONS", "abort_on_error=1:handle_abort=1")
+        .env("DEBUGINFOD_URLS", "");
 }
 
 /// Extract a stable sanitizer-crash signature from a replay's stderr — the ASan
@@ -669,6 +676,24 @@ fn read_json(path: &Path) -> Option<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capsule_replay_disables_remote_debuginfod() {
+        let mut command = Command::new("true");
+        configure_capsule_replay(&mut command);
+        let env: std::collections::HashMap<_, _> = command
+            .get_envs()
+            .filter_map(|(key, value)| value.map(|value| (key, value)))
+            .collect();
+        assert_eq!(
+            env.get(std::ffi::OsStr::new("DEBUGINFOD_URLS")),
+            Some(&std::ffi::OsStr::new(""))
+        );
+        assert_eq!(
+            env.get(std::ffi::OsStr::new("ASAN_OPTIONS")),
+            Some(&std::ffi::OsStr::new("abort_on_error=1:handle_abort=1"))
+        );
+    }
 
     #[test]
     fn signature_from_asan_stderr() {

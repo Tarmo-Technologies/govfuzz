@@ -2920,26 +2920,7 @@ fn resolve_in_crate_target(
 /// lane finds the same driver source the C lane uses, with an executable-relative
 /// fallback for an installed binary whose source tree is elsewhere.
 fn locate_c_runtime_dir() -> Option<PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("c_runtime");
-                if cand.join("govfuzz_driver.c").is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("c_runtime");
-    if from_manifest.join("govfuzz_driver.c").is_file() {
-        return Some(from_manifest);
-    }
-    None
+    crate::runtime_assets::locate("c_runtime", "govfuzz_driver.c")
 }
 
 /// Generate the harness crate + driver into `harness_dir` and build it to
@@ -4168,29 +4149,7 @@ fn locate_rust_runtime() -> Option<PathBuf> {
             return Some(p);
         }
     }
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("crates/rust_runtime");
-                if cand.join("Cargo.toml").is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    // Relative to the source tree (CARGO_MANIFEST_DIR is crates/cli at build).
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent() // crates/
-        .and_then(Path::parent) // workspace root
-        .map(|root| root.join("crates/rust_runtime"));
-    if let Some(p) = from_manifest {
-        if p.join("Cargo.toml").is_file() {
-            return Some(p);
-        }
-    }
-    None
+    crate::runtime_assets::locate("rust_runtime", "Cargo.toml")
 }
 
 /// Find the first `libgovfuzz_rust_harness*.a` staticlib under

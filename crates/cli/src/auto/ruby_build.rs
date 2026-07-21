@@ -47,28 +47,7 @@ fn ruby_version(ruby: &Path) -> Option<(u32, u32)> {
 
 /// Locate the bundled `ruby_runtime/` (the driver + coverage).
 fn locate_ruby_runtime() -> Option<PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("ruby_runtime");
-                if cand.join("govfuzz_driver.rb").is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .map(|root| root.join("ruby_runtime"));
-    if let Some(p) = &from_manifest {
-        if p.join("govfuzz_driver.rb").is_file() {
-            return from_manifest;
-        }
-    }
-    None
+    crate::runtime_assets::locate("ruby_runtime", "govfuzz_driver.rb")
 }
 
 pub fn build_ruby_harness(

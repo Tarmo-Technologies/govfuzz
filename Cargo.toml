@@ -65,7 +65,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.package]
-version = "0.2.15"
+version = "0.2.16"
 edition = "2021"
 rust-version = "1.83"
 license = "Apache-2.0"
@@ -81,12 +81,11 @@ ci = "github"
 # commit SHAs, least-privilege permissions), so skip dist's generated-file check.
 allow-dirty = ["ci"]
 # The installers to generate for each app
-installers = ["shell"]
-# Target platforms to build apps for (Rust target-triple syntax). The dist-able
-# runtime preload libraries are Linux-only, so the published release matrix is
-# limited to the smoke-tested Linux archive until those packages are split from
-# non-Linux CLI/daemon artifacts.
-targets = ["x86_64-unknown-linux-gnu"]
+installers = ["shell", "powershell"]
+# Target platforms to build apps for (Rust target-triple syntax). Portable CLI
+# and daemon packages publish for Linux and Windows; their package-local target
+# overrides retain both. The LD_PRELOAD libraries override this list to Linux.
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Checksums to generate for each App
 checksum = "sha256"
 # GitHub Artifact Attestations are disabled because GitHub currently rejects

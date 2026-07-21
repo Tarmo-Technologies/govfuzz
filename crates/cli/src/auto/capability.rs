@@ -113,11 +113,11 @@ fn profile_one(
             return None;
         }
         let path = scratch.join(format!("base_{i}.bin"));
-        if std::fs::write(&path, input).is_ok() {
-            if !replay_into(&bin, &path, ld_preload, hdir, &mut baseline_caps) {
-                let _ = std::fs::remove_dir_all(&scratch);
-                return None;
-            }
+        if std::fs::write(&path, input).is_ok()
+            && !replay_into(&bin, &path, ld_preload, hdir, &mut baseline_caps)
+        {
+            let _ = std::fs::remove_dir_all(&scratch);
+            return None;
         }
     }
 

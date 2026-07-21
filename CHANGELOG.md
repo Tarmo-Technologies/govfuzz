@@ -2,7 +2,30 @@
 
 # Changelog
 
-## Unreleased
+## 0.2.16 - 2026-07-21
+
+- **Windows, Ubuntu, and RHEL release artifacts.** Releases now publish the
+  `govfuzz` CLI and daemon for both `x86_64-pc-windows-msvc` and
+  `x86_64-unknown-linux-gnu`, with native PowerShell and Unix shell installers.
+  Windows Server 2022 CI tests and smokes the Windows executables. The Linux
+  artifact is built at the GLIBC 2.17 baseline for Ubuntu and RHEL 7 through 9;
+  Linux-only runtime and compiler-interception shims remain separate Linux
+  assets.
+
+- **Offline sanitizer replay reliability.** Capsule verification and direct
+  sanitizer integration runners no longer inherit a distro-configured remote
+  `DEBUGINFOD_URLS`. This prevents `llvm-symbolizer` from hanging indefinitely
+  when the network or debuginfod service is unavailable; the ASan pool bridge
+  regression also has a hard timeout.
+
+- **RHEL 7 through RHEL 9 support and release compatibility.** GNU/Linux release
+  artifacts now build in a pinned manylinux2014 / CentOS 7 userspace and pass an
+  automated GLIBC 2.17 ABI plus preload-export gate instead of inheriting the
+  newer Ubuntu runner ABI. The binary distribution installer auto-detects
+  `dnf`/`yum`, maps selected lanes to RHEL package names, and installs available
+  dependencies even when an optional supplemental package is absent. Dedicated
+  RHEL-compatible CI and Proxmox validation cover the release build, package
+  install, signed content, bundled C smoke target, and a real miniz run.
 
 - **TypeScript fuzzing lane.** `govfuzz auto --languages typescript` discovers
   exported functions and public class methods in `.ts`/`.tsx` source (the

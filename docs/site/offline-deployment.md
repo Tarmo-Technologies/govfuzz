@@ -147,12 +147,14 @@ verifies the signed content pack, and installs it under
 `/opt/govfuzz/packs/<pack_id>`. It then runs a tiny C `govfuzz auto` smoke test
 from the bundled `smoke/c` fixture to prove discovery, harness generation,
 build, fuzz execution, and reporting work after install. Use `./install.sh
---help` for `--prefix`, `--bin-dir`, `--no-apt`, `--no-rustup`,
+--help` for `--prefix`, `--bin-dir`, `--package-manager`,
+`--no-system-packages`, `--no-rustup`,
 `--no-content`, `--install-seeds`, `--no-smoke`, and other automation controls.
 
-If the destination host is truly air-gapped, stage the apt/rustup toolchains
-through your normal offline mirror first, then run the installer with `--no-apt`
-and/or `--no-rustup`.
+If the destination host is truly air-gapped, stage the apt/dnf and rustup
+toolchains through your normal offline mirror first, then run the installer with
+`--no-system-packages` and/or `--no-rustup`. The old `--no-apt` spelling remains
+as a compatibility alias.
 
 ### A1. Use the published release archives (preferred)
 
@@ -215,8 +217,10 @@ export GOVFUZZ_CC_INTERCEPT=/opt/govfuzz/libgovfuzz_cc_intercept.so
 Use this when you need a tag/commit that has no published archive, or a target
 triple the release job does not build.
 
-On the **connected** host — build on an OS that matches the offline host
-(same distro family and glibc; a matching container image is the reliable way):
+On the **connected** host, build against a glibc no newer than the offline host.
+For RHEL 7 through 9, use the pinned manylinux2014 image and ABI check shown in
+`.github/workflows/release.yml`; a normal build on a current Ubuntu host is not
+portable back to EL7:
 
 ```sh
 cargo build --release --workspace
@@ -236,6 +240,11 @@ target/release/libgovfuzz_runtrace_shim.so
 > on a host whose glibc is the same as, or older than, the offline host's. A
 > mismatched/newer glibc shows up as `version 'GLIBC_2.xx' not found` when a
 > harness runs. When in doubt, use Model B.
+
+The published Linux release is checked against a GLIBC 2.17 ceiling and is the
+preferred Model A artifact for RHEL 7, 8, and 9. The stock EL7 linker cannot
+link the current preload shim from source, so an EL7 source rebuild should use
+the pinned manylinux2014 build image rather than stock binutils.
 
 ---
 
@@ -308,13 +317,19 @@ and build-recovery; Ada, C, and C++ targets then report as un-buildable, while
 targets in every lane whose compiler/interpreter is absent skip cleanly (no
 error and no finding), for example Rust without nightly or Go without `go`.
 
-The binary installer maps Debian/Ubuntu package names for every lane where a
-stable distribution package exists. The C# lane still requires an explicitly
-staged .NET 8 SDK and global `SharpFuzz.CommandLine` tool. TypeScript requires
-`esbuild` either on `PATH` or already present in the target project so
-`npx --no-install esbuild` succeeds. A C# harness also restores its SharpFuzz
-NuGet package; pre-populate the NuGet cache or configure an approved offline
-package source before moving into the enclave.
+The binary installer maps both Debian/Ubuntu (`apt-get`) and RHEL-family
+(`dnf`/`yum`) package names. On RHEL it filters the selected set through the
+enabled repositories before installing, so an unavailable supplemental package
+does not prevent available core tools from being installed. The C# lane still
+requires an explicitly staged .NET 8 SDK and global `SharpFuzz.CommandLine`
+tool. TypeScript requires `esbuild` either on `PATH` or already present in the
+target project so `npx --no-install esbuild` succeeds. A C# harness also restores
+its SharpFuzz NuGet package; pre-populate the NuGet cache or configure an
+approved offline package source before moving into the enclave.
+
+On RHEL 7, point `yum` at an active subscription or organization mirror before
+running the installer. CentOS 7 compatibility labs must use an archive mirror;
+the retired default mirrorlist can no longer supply dependencies.
 
 > **License profile reminder.** GNAT and GPRbuild are GPL. GovFuzz only ever
 > invokes them as subprocesses under `--profile external-tools`; the default

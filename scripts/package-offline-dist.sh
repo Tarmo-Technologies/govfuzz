@@ -382,7 +382,10 @@ Installer options:
 --fuzzers LIST          Comma list: builtin,afl,all,none
 --extras LIST           Comma list: build-recovery,sandbox,archives,all,none
 --install-seeds         Extract bundled seed corpus into <prefix>/corpora/seeds
---no-apt                Skip apt-get dependency installation
+--package-manager NAME  System package manager: auto, apt-get, dnf, yum, none
+                        (default: auto)
+--no-system-packages    Skip system package installation
+--no-apt                Compatibility alias for --no-system-packages
 --no-rustup             Skip rustup installation and nightly toolchain setup
 --no-content            Skip signed content pack verify/install
 --no-symlink            Do not create govfuzz symlinks in --bin-dir
@@ -419,6 +422,11 @@ installer keeps the original eight core lanes selected and offers COBOL,
 Fortran, C#, JavaScript, TypeScript, Ruby, Lua, and PHP as opt-ins. The C# lane
 requires a separately staged .NET 8 SDK and `SharpFuzz.CommandLine`; TypeScript
 requires `esbuild` on `PATH` or already installed in the target project.
+
+The installer detects Debian/Ubuntu (`apt-get`) and RHEL-family
+(`dnf`/`yum`) hosts automatically. On RHEL, packages absent from the enabled
+repositories are reported per lane while available core dependencies continue
+to install. Use `--package-manager` to override detection.
 
 The bundled content pack lives under `content/packs/current` and is verified
 before install.

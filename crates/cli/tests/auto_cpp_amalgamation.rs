@@ -383,6 +383,7 @@ fn fork_server_state_masked_crash_is_caught_by_fresh_reverify() {
         let out = Command::new(&main)
             .arg(&input_path)
             .env("ASAN_OPTIONS", "abort_on_error=1:detect_leaks=0")
+            .env("DEBUGINFOD_URLS", "")
             .output()
             .expect("run built harness standalone");
         let stderr = String::from_utf8_lossy(&out.stderr);

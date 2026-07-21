@@ -82,13 +82,20 @@ extern {{ end_step.return_type }} {{ end_step.name }}({{ handle_type }} *{% for 
 {%- endif %}
 {%- endif %}
 
-/* Auto-injected by govfuzz: republish fuzz input to the runtrace shim so
- * fuzz-driven mode can route the current iteration's bytes into fake fds
- * / socket peers / dlopen stubs. The symbol is a weak extern so harnesses
- * built without the shim loaded link cleanly (the call is a no-op). */
+/* Auto-injected by govfuzz: republish fuzz input to the Linux runtrace shim so
+ * fuzz-driven mode can route the current iteration's bytes into fake fds /
+ * socket peers / dlopen stubs. Windows has no preload shim and must not emit a
+ * COFF weak reference: multiple weak defaults conflict under link.exe. */
+#if defined(_WIN32)
+#define GOVFUZZ_PUBLISH_INPUT(data, size) ((void)0)
+#else
 extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attribute__((weak));
+#define GOVFUZZ_PUBLISH_INPUT(data, size) do { \
+    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input((data), (size)); \
+} while (0)
+#endif
 int govfuzz_run_one(const uint8_t *Data, size_t Size) {
-    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(Data, Size);
+    GOVFUZZ_PUBLISH_INPUT(Data, Size);
     gf_cursor Cur = gf_open(Data, Size);
     {{ handle_type }} _gf_handle;
     memset(&_gf_handle, 0, sizeof _gf_handle);

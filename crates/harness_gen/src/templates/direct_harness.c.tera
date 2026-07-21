@@ -83,11 +83,18 @@
 extern {{ return_type }} {{ qualified_target_name }}({% for p in params %}{{ p.c_type }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
 
-/* Auto-injected by govfuzz: republish fuzz input to the runtrace shim so
- * fuzz-driven mode can route the current iteration's bytes into fake fds
- * / socket peers / dlopen stubs. The symbol is a weak extern so harnesses
- * built without the shim loaded link cleanly (the call is a no-op). */
+/* Auto-injected by govfuzz: republish fuzz input to the Linux runtrace shim so
+ * fuzz-driven mode can route the current iteration's bytes into fake fds /
+ * socket peers / dlopen stubs. Windows has no preload shim and must not emit a
+ * COFF weak reference: multiple weak defaults conflict under link.exe. */
+#if defined(_WIN32)
+#define GOVFUZZ_PUBLISH_INPUT(data, size) ((void)0)
+#else
 extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attribute__((weak));
+#define GOVFUZZ_PUBLISH_INPUT(data, size) do { \
+    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input((data), (size)); \
+} while (0)
+#endif
 
 {%- if passthrough_libfuzzer_entrypoint %}
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
@@ -515,7 +522,7 @@ static void govfuzz_vp_open(void) {}
 #endif /* !GOVFUZZ_AFL */
 
 GOVFUZZ_NOCOV static void govfuzz_run_one_bytes(const uint8_t *data, size_t size) {
-    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(data, size);
+    GOVFUZZ_PUBLISH_INPUT(data, size);
     LLVMFuzzerTestOneInput(data, size);
 }
 static void govfuzz_run_file(const char *path) {
@@ -615,7 +622,7 @@ int main(int argc, char **argv) {
 {% endraw %}
 {%- else %}
 int govfuzz_run_one(const uint8_t *Data, size_t Size) {
-    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(Data, Size);
+    GOVFUZZ_PUBLISH_INPUT(Data, Size);
     gf_cursor Cur = gf_open(Data, Size);
 {%- for p in params %}
     {{ p.decl }};

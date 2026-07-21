@@ -17,6 +17,13 @@
   sanitizer load. The live-runtime E2E also rechecks TSan availability at the
   point of failure instead of treating an ASLR/runtime outage as a govfuzz defect.
 
+- **Clear RHEL 7 installation prerequisites.** The README now includes a
+  copy-paste EL7 quick install. The v0.2.18 Unix CLI installer detects RHEL /
+  CentOS 7 and explains that it installs only the CLI, prints the exact RHSCL
+  LLVM 7 packages, and links the separate runtrace and compiler-interception
+  shim installers instead of leaving a fresh host with an unexplained toolchain
+  failure.
+
 ## 0.2.17 - 2026-07-21
 
 - **Self-contained release harness runtimes.** Supersedes v0.2.16: the

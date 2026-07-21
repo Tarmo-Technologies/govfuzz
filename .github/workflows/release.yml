@@ -279,6 +279,8 @@ jobs:
         shell: bash
         run: |
           dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
+          python3 scripts/augment-release-installer.py target/distrib/govfuzz-installer.sh
+          grep -Fq GOVFUZZ_RHEL7_GUIDANCE_BEGIN target/distrib/govfuzz-installer.sh
           echo "dist ran successfully"
 
           # Parse out what we just built and upload it to scratch storage

@@ -12,6 +12,11 @@
   Linux-only runtime and compiler-interception shims remain separate Linux
   assets.
 
+- **UTF-8-safe C++ type qualification.** The C++ decoder no longer slices
+  through a multibyte character when fuzzed or recovered type text places a
+  non-ASCII scalar immediately before an identifier. This fixes the GF-210
+  panic found by the repository's self-fuzzing PR gate.
+
 - **Offline sanitizer replay reliability.** Capsule verification and direct
   sanitizer integration runners no longer inherit a distro-configured remote
   `DEBUGINFOD_URLS`. This prevents `llvm-symbolizer` from hanging indefinitely

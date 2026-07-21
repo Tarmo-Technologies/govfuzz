@@ -12,6 +12,11 @@
   Linux-only runtime and compiler-interception shims remain separate Linux
   assets.
 
+- **Windows cargo-dist packaging.** The Linux-only runtrace shim now skips its
+  GNU C hook compilation and linker version script when cargo-dist assembles a
+  Windows release. Windows CI explicitly builds the shim package to keep this
+  release-only path covered.
+
 - **Native Windows C harness linking.** Generated harnesses and the external
   driver no longer emit competing COFF weak defaults for the Linux-only
   runtrace input hook. This fixes the `LNK1227` failure that previously stopped

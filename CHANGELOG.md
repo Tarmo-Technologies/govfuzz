@@ -2,6 +2,21 @@
 
 # Changelog
 
+## 0.2.18 - 2026-07-21
+
+- **Exact CLI archive validation.** The Linux and Windows release gates now
+  select the exact `govfuzz` CLI archive instead of allowing the similarly
+  named daemon archive to win an order-dependent wildcard match. This release
+  completes publication of the self-contained harness-runtime packaging added
+  in v0.2.17; the v0.2.17 tag did not publish after its gate correctly rejected
+  the mistakenly selected daemon archive.
+
+- **ThreadSanitizer replay reliability.** Corpus replay now gives explicit TSan
+  shadow-memory mapping failures a bounded extended retry budget and retries
+  transient unsymbolized reports, avoiding missed GF-556 findings under parallel
+  sanitizer load. The live-runtime E2E also rechecks TSan availability at the
+  point of failure instead of treating an ASLR/runtime outage as a govfuzz defect.
+
 ## 0.2.17 - 2026-07-21
 
 - **Self-contained release harness runtimes.** Supersedes v0.2.16: the

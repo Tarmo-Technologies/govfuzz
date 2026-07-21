@@ -294,13 +294,11 @@ fn vcxproj_entries(vcxproj: &Path) -> Vec<ProbeEntry> {
         return Vec::new();
     };
     let proj_dir = vcxproj.parent().unwrap_or_else(|| Path::new("."));
-    let proj_dir_slash = format!("{}/", proj_dir.display());
+    let proj_dir_rendered = harness_gen::build_safety::make_path(proj_dir);
+    let proj_dir_slash = format!("{proj_dir_rendered}/");
     let resolve_macros = |raw: &str| -> String {
         raw.replace("$(ProjectDir)", &proj_dir_slash)
-            .replace(
-                "$(MSBuildProjectDirectory)",
-                &proj_dir.display().to_string(),
-            )
+            .replace("$(MSBuildProjectDirectory)", &proj_dir_rendered)
             .replace("$(SolutionDir)", &proj_dir_slash)
     };
     // Union every declared include dir + define across the file. Over-approxing
@@ -314,14 +312,14 @@ fn vcxproj_entries(vcxproj: &Path) -> Vec<ProbeEntry> {
                 continue;
             }
             let abs = resolve_against(proj_dir, &resolve_macros(piece));
-            let s = abs.display().to_string();
+            let s = harness_gen::build_safety::make_path(&abs);
             if !include_dirs.contains(&s) {
                 include_dirs.push(s);
             }
         }
     }
     // The project dir itself is always an include root (for `#include "sibling.h"`).
-    let proj_dir_s = proj_dir.display().to_string();
+    let proj_dir_s = proj_dir_rendered;
     if !include_dirs.contains(&proj_dir_s) {
         include_dirs.push(proj_dir_s);
     }
@@ -1838,7 +1836,10 @@ mod tests {
         assert_eq!(entries.len(), 1, "one ClCompile source -> one entry");
         let args = entries[0].arguments.join(" ");
         assert!(
-            args.contains(&format!("-I{}", root.join("include").display())),
+            args.contains(&format!(
+                "-I{}",
+                harness_gen::build_safety::make_path(&root.join("include"))
+            )),
             "include dir resolved from $(ProjectDir): {args}"
         );
         assert!(

@@ -22,7 +22,10 @@ direct installers linked below) and make sure the listed `bin` directories are o
 | **Rust** (optional) | Only to build govfuzz from source; you can also use a prebuilt `govfuzz.exe`. | [rustup](https://rustup.rs). |
 
 clang on Windows links against the MSVC CRT, so **VS Build Tools must be
-installed even when clang is your compiler**.
+installed even when clang is your compiler**. Run GovFuzz from an **x64
+Developer PowerShell for VS 2022** (or initialize that environment as shown
+below); a plain PowerShell session may find `clang.exe` but still leave its
+linker unable to find the MSVC CRT and Windows SDK.
 
 ### One-shot setup on a stock Windows 11 VM
 
@@ -39,7 +42,20 @@ winget install --id Rustlang.Rustup -e                  # build govfuzz from sou
 #   https://github.com/skeeto/w64devkit/releases
 ```
 
-Then add the tool `bin` dirs to `PATH` (LLVM, w64devkit) for the shell you build/run in.
+Then open **Developer PowerShell for VS 2022**, select its x64 environment, and
+add the tool `bin` dirs to `PATH` (LLVM, w64devkit) for the shell you build/run
+in. To initialize an ordinary PowerShell session non-interactively, use:
+
+```powershell
+$VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+$VsPath = & $VsWhere -latest -products * `
+  -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+  -property installationPath
+Import-Module (Join-Path $VsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
+Enter-VsDevShell -VsInstallPath $VsPath -SkipAutomaticLocation `
+  -DevCmdArguments "-arch=x64 -host_arch=x64"
+```
+
 Optional per-lane toolchains are needed only for a lane you actually run. See
 the limitations below before installing them: several managed/interpreted lanes
 currently emit POSIX launchers and should be run under WSL/Linux rather than
@@ -47,7 +63,17 @@ native Windows.
 
 ## Getting `govfuzz.exe`
 
-Either build it natively:
+Download the `govfuzz-x86_64-pc-windows-msvc.zip` archive from the GitHub
+release and verify its `.sha256` sidecar, or use the release's PowerShell
+installer:
+
+```powershell
+$Version = "v0.2.16"
+irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
+govfuzz.exe --version
+```
+
+The release binary does not require Rust. Alternatively, build it natively:
 
 ```powershell
 rustup target add x86_64-pc-windows-msvc   # or -gnu
@@ -64,8 +90,9 @@ cargo build --release --target x86_64-pc-windows-gnu -p govfuzz
 
 ## Running
 
-`govfuzz` works the same as on Linux. Make sure clang + make are on `PATH` for
-the current shell, then point `auto` at a source tree:
+`govfuzz` works the same as on Linux. Use an x64 Developer PowerShell (or run
+the initialization snippet above), make sure clang + make are on `PATH`, then
+point `auto` at a source tree:
 
 ```powershell
 $env:Path = "C:\Program Files\LLVM\bin;C:\w64devkit\bin;$env:Path"

@@ -99,6 +99,8 @@ fn offline_dist_readme_documents_install_options_without_source_tree_note() {
         "--extras LIST",
         "build-recovery,sandbox,archives,all,none",
         "--install-seeds",
+        "--package-manager NAME",
+        "--no-system-packages",
         "--no-apt",
         "--no-rustup",
         "--no-content",
@@ -267,11 +269,72 @@ fn offline_dist_installer_supports_interactive_and_noninteractive_profiles() {
     assert!(stdout.contains("--languages"));
     assert!(stdout.contains("--targets"));
     assert!(stdout.contains("--fuzzers"));
+    assert!(stdout.contains("--package-manager"));
+    assert!(stdout.contains("--no-system-packages"));
     assert!(stdout.contains("--dry-run"));
     assert!(stdout.contains("--no-smoke"));
     assert!(stdout.contains("arrow-key checklist"));
     assert!(stdout.contains("Esc/Cancel"));
     assert!(!stdout.to_lowercase().contains("offline"));
+}
+
+#[test]
+fn offline_dist_installer_maps_rhel_dependencies_to_dnf_packages() {
+    let root = repo_root();
+    let script = root.join("scripts/install-dist.sh");
+    let bundle = temp_dir("dist-installer-rhel-dry-run");
+    create_minimal_bundle(&bundle);
+
+    let output = Command::new("bash")
+        .arg(&script)
+        .arg("--non-interactive")
+        .arg("--dry-run")
+        .arg("--package-manager")
+        .arg("dnf")
+        .arg("--no-rustup")
+        .arg("--no-content")
+        .arg("--no-symlink")
+        .arg("--no-smoke")
+        .arg("--prefix")
+        .arg(bundle.join("install"))
+        .arg("--languages")
+        .arg("all")
+        .arg("--targets")
+        .arg("native,windows,aarch64")
+        .arg("--fuzzers")
+        .arg("builtin,afl")
+        .arg("--extras")
+        .arg("build-recovery,sandbox,archives")
+        .current_dir(&bundle)
+        .output()
+        .expect("run RHEL installer dry-run");
+
+    assert_success(output.clone(), "RHEL installer dry-run");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("dnf -y makecache"), "{stdout}");
+    assert!(stdout.contains("dnf install -y"), "{stdout}");
+    for package in [
+        "gcc-c++",
+        "gcc-gnat",
+        "java-17-openjdk-devel",
+        "golang",
+        "gcc-gfortran",
+        "lua",
+        "aflplusplus",
+        "pkgconf-pkg-config",
+        "xz",
+    ] {
+        assert!(
+            stdout.contains(package),
+            "RHEL dry-run did not mention {package}: {stdout}"
+        );
+    }
+    for debian_only in ["default-jdk", "golang-go", "lua5.4", "xz-utils"] {
+        assert!(
+            !stdout.contains(debian_only),
+            "RHEL dry-run used Debian package {debian_only}: {stdout}"
+        );
+    }
 }
 
 #[test]
@@ -285,6 +348,8 @@ fn offline_dist_installer_dry_run_maps_choices_to_dependency_groups() {
         .arg(&script)
         .arg("--non-interactive")
         .arg("--dry-run")
+        .arg("--package-manager")
+        .arg("apt-get")
         .arg("--prefix")
         .arg(bundle.join("install").to_str().unwrap())
         .arg("--languages")
@@ -305,6 +370,8 @@ fn offline_dist_installer_dry_run_maps_choices_to_dependency_groups() {
             .arg(&script)
             .arg("--non-interactive")
             .arg("--dry-run")
+            .arg("--package-manager")
+            .arg("apt-get")
             .arg("--prefix")
             .arg(bundle.join("install").to_str().unwrap())
             .arg("--languages")
@@ -373,6 +440,32 @@ fn offline_dist_packager_stages_every_external_harness_runtime() {
             "packager does not stage {runtime}"
         );
     }
+}
+
+#[test]
+fn release_matrix_keeps_windows_apps_and_linux_only_shims_separate() {
+    let root = repo_root();
+    let workspace = fs::read_to_string(root.join("Cargo.toml")).unwrap();
+    let cli = fs::read_to_string(root.join("crates/cli/Cargo.toml")).unwrap();
+    let daemon = fs::read_to_string(root.join("crates/daemon/Cargo.toml")).unwrap();
+    let runtrace =
+        fs::read_to_string(root.join("crates/govfuzz_runtrace_shim/Cargo.toml")).unwrap();
+    let intercept =
+        fs::read_to_string(root.join("crates/govfuzz_cc_intercept/Cargo.toml")).unwrap();
+    let workflow = fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
+
+    assert!(workspace.contains("installers = [\"shell\", \"powershell\"]"));
+    for manifest in [&workspace, &cli, &daemon] {
+        assert!(manifest.contains("x86_64-unknown-linux-gnu"));
+        assert!(manifest.contains("x86_64-pc-windows-msvc"));
+    }
+    for manifest in [&runtrace, &intercept] {
+        assert!(manifest.contains("targets = [\"x86_64-unknown-linux-gnu\"]"));
+        assert!(!manifest.contains("x86_64-pc-windows-msvc"));
+    }
+    assert!(workflow.contains("if: runner.os == 'Linux'"));
+    assert!(workflow.contains("if: runner.os == 'Windows'"));
+    assert!(workflow.contains("scripts/check-linux-release-abi.sh"));
 }
 
 #[test]

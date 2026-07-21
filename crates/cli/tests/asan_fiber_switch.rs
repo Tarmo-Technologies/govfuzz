@@ -133,6 +133,7 @@ fn build_and_run(dir: &Path) -> (Option<i32>, String, String) {
             "ASAN_OPTIONS",
             "detect_stack_use_after_return=1:abort_on_error=0:detect_leaks=0",
         )
+        .env("DEBUGINFOD_URLS", "")
         .output()
         .expect("run fiber program");
     (

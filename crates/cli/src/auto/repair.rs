@@ -361,8 +361,8 @@ fn macro_used_as_declaration_wrapper(source: &str, name: &str) -> bool {
     let mut from = 0usize;
     while let Some(rel) = source[from..].find(&needle) {
         let start = from + rel;
-        let prev_is_ident = start > 0 && bytes[start - 1].is_ascii_alphanumeric()
-            || start > 0 && bytes[start - 1] == b'_';
+        let prev_is_ident =
+            start > 0 && (bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_');
         if prev_is_ident {
             from = start + 1;
             continue;

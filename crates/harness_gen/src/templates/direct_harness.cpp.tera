@@ -100,6 +100,16 @@
 #define GOVFUZZ_NOCOV
 #endif
 
+// Keep a value-returning target call observable even when its result is not
+// otherwise consumed. Source-local/header-only targets are visible to the
+// optimizer; a plain `(void)R` lets it delete a pure parser call entirely.
+#if defined(__GNUC__) || defined(__clang__)
+#define GOVFUZZ_KEEP_RESULT(value) \
+    __asm__ __volatile__("" : : "g"(std::addressof(value)) : "memory")
+#else
+#define GOVFUZZ_KEEP_RESULT(value) ((void)(value))
+#endif
+
 {%- for ns in using_namespaces %}
 using namespace {{ ns }};
 {%- endfor %}
@@ -119,14 +129,26 @@ using namespace {{ ns }};
 {% endif %}
 {%- endif %}
 
-// Auto-injected by govfuzz: republish fuzz input to the runtrace shim so
-// fuzz-driven mode can route the current iteration's bytes into fake fds
-// / socket peers / dlopen stubs. The symbol is a weak extern so harnesses
-// built without the shim loaded link cleanly (the call is a no-op).
+// Auto-injected by govfuzz: republish fuzz input to the Linux runtrace shim so
+// fuzz-driven mode can route the current iteration's bytes into fake fds /
+// socket peers / dlopen stubs. Windows has no preload shim and must not emit a
+// COFF weak reference: multiple weak defaults conflict under link.exe.
+#if defined(_WIN32)
+#define GOVFUZZ_PUBLISH_INPUT(data, size) ((void)0)
+#else
 extern "C" void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attribute__((weak));
+#define GOVFUZZ_PUBLISH_INPUT(data, size) do { \
+    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input((data), (size)); \
+} while (0)
+#endif
 
 {%- if passthrough_libfuzzer_entrypoint %}
-{% raw %}/* govfuzz driver for a passthrough libFuzzer entrypoint (C++).
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
+extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+    return LLVMFuzzerTestOneInput(Data, Size);
+}
+{% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
+/* govfuzz driver for a passthrough libFuzzer entrypoint (C++).
  *
  * The project already supplies `LLVMFuzzerTestOneInput`. Rather than linking
  * libFuzzer's own `main` (`-fsanitize=fuzzer`) and then mis-driving it from the
@@ -528,7 +550,7 @@ static void govfuzz_vp_open(void) {}
 #endif /* !GOVFUZZ_AFL */
 
 GOVFUZZ_NOCOV static void govfuzz_run_one_bytes(const uint8_t *data, size_t size) {
-    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(data, size);
+    GOVFUZZ_PUBLISH_INPUT(data, size);
     LLVMFuzzerTestOneInput(data, size);
 }
 static void govfuzz_run_file(const char *path) {
@@ -618,6 +640,7 @@ int main(int argc, char **argv) {
     govfuzz_run_file(argv[1]);
     return 0;
 }
+#endif /* !GOVFUZZ_EXTERNAL_DRIVER */
 {% endraw %}
 {%- else %}
 {%- for p in params %}
@@ -644,8 +667,8 @@ int main(int argc, char **argv) {
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
-GOVFUZZ_NOCOV static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
-    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(Data, Size);
+extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+    GOVFUZZ_PUBLISH_INPUT(Data, Size);
     // The body is wrapped in try/catch to swallow expected C++ exceptions from
     // rejected input — but only when exceptions are actually enabled. A project
     // whose build context disables them (basis_universal compiles with
@@ -738,7 +761,7 @@ GOVFUZZ_NOCOV static int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endif %}
     (void)Cur;
 {%- if return_type_present and not byte_stream %}
-    (void)R;
+    GOVFUZZ_KEEP_RESULT(R);
 {%- endif %}
 {%- if result_cleanup and not byte_stream %}
     {{ result_cleanup }};
@@ -824,7 +847,8 @@ int main(int argc, char **argv) {
     return 0;
 }
 #else
-{% raw %}/* govfuzz driver (default, non-AFL) for C++. No libFuzzer `main`: the built-in
+{% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
+/* govfuzz driver (default, non-AFL) for C++. No libFuzzer `main`: the built-in
  * engine drives this in one persistent process via the framed fork-server protocol
  * (#399) with a SanitizerCoverage edge-coverage + RedQueen/cmplog runtime (#385/#400).
  * The Makefile compiles it WITHOUT `-fsanitize=fuzzer` and WITH
@@ -1252,6 +1276,7 @@ int main(int argc, char **argv) {
     govfuzz_run_file(argv[1]);
     return 0;
 }
+#endif /* !GOVFUZZ_EXTERNAL_DRIVER */
 {% endraw %}
 #endif
 {%- endif %}

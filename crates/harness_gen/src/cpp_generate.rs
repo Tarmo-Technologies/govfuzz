@@ -1737,6 +1737,12 @@ mod tests {
         let result = generate_cpp_direct_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         assert!(main.contains("LLVMFuzzerTestOneInput"));
+        assert!(
+            main.contains(
+                "#if defined(_WIN32)\n#define GOVFUZZ_PUBLISH_INPUT(data, size) ((void)0)"
+            ) && main.contains("GOVFUZZ_PUBLISH_INPUT(Data, Size);"),
+            "Windows harnesses must omit the Linux-only weak runtrace hook:\n{main}"
+        );
         // A forward declaration must precede the entrypoint definition so the
         // harness compiles under projects that promote -Wmissing-prototypes to an
         // error (harfbuzz's hb.hh does exactly this).

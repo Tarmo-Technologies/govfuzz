@@ -3099,6 +3099,12 @@ mod tests {
         let result = generate_c_direct_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_c).unwrap();
         assert!(main.contains("LLVMFuzzerTestOneInput"));
+        assert!(
+            main.contains(
+                "#if defined(_WIN32)\n#define GOVFUZZ_PUBLISH_INPUT(data, size) ((void)0)"
+            ) && main.contains("GOVFUZZ_PUBLISH_INPUT(Data, Size);"),
+            "Windows harnesses must omit the Linux-only weak runtrace hook:\n{main}"
+        );
         // (const char *, size_t) gets pair-detected as a buffer/length view over
         // Data + Size: the callee is GIVEN the length and must respect it, so the
         // buffer borrows Data directly (no NUL copy). An over-read past the stated

@@ -109,7 +109,7 @@ jobs:
           cargo test --locked -p govfuzz --lib vcxproj
 
       - name: Build Windows release artifacts
-        run: cargo build --locked --release -p govfuzz -p govfuzz-daemon --target x86_64-pc-windows-msvc
+        run: cargo build --locked --release -p govfuzz -p govfuzz-daemon -p govfuzz_runtrace_shim --target x86_64-pc-windows-msvc
 
       - name: Smoke Windows executables
         shell: pwsh

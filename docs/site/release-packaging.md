@@ -45,6 +45,12 @@ paths. For installer installs, run each component installer you need; installing
 sidecar, and binary-only distribution packages carry a signed content pack that
 is verified during package creation and install.
 
+The release workflow post-processes the main Unix `govfuzz-installer.sh` so
+RHEL and CentOS 7 users see the required repository, compiler-package, and
+separate preload-shim installation commands before the installer runs. This
+keeps the generated cargo-dist installer reproducible while making its scope
+and the complete EL7 setup explicit.
+
 ## Binary-Only Distribution Package
 
 For customer or enclave installs where the build host has source but the

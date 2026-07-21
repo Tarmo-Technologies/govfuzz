@@ -23,6 +23,10 @@ The workspace defaults every package to `dist = false`; the two app packages
 and the runtrace shim opt back in. The app packages also override their
 distributed binary lists so test and legacy compatibility binaries such as
 `cli`, `daemon`, and fixture harnesses are not included in release archives.
+The CLI package explicitly includes all eleven harness-runtime trees. The CLI
+also embeds those tracked runtime sources and securely stages them on first use,
+which keeps shell/PowerShell installer deployments functional even though dist
+installers place only the executable in `CARGO_HOME/bin`.
 
 The runtrace shim package opts in with `package-libraries = ["cdylib"]` and
 `install-libraries = ["cdylib"]` so dist publishes a shim archive and installer
@@ -144,9 +148,10 @@ semantic version, such as `v0.1.0`, run the full release workflow:
 0. bump `[workspace.package].version` in `Cargo.toml` to the exact release
    version and refresh `Cargo.lock`
 1. plan artifacts with `dist plan`
-2. build platform archives and checksums
-3. generate Unix shell and Windows PowerShell installers
-4. upload artifacts to a GitHub Release
+2. build platform archives and checksums against the RHEL 7 ABI / native Windows
+3. inspect both CLI archives for every required harness runtime
+4. generate Unix shell and Windows PowerShell installers
+5. upload artifacts to a GitHub Release
 
 Run this before opening release-packaging changes or cutting a tag:
 

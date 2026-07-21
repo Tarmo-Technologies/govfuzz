@@ -49,6 +49,7 @@ mod resource_limits;
 mod rules;
 mod runner;
 mod runners;
+mod runtime_assets;
 mod sbom;
 mod scan;
 mod sloc;

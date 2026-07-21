@@ -86,6 +86,12 @@ fn release_cli_is_self_contained_for_every_harness_runtime() {
 
     assert!(workflow.contains("Validate packaged harness runtimes (Linux)"));
     assert!(workflow.contains("Validate packaged harness runtimes (Windows)"));
+    assert!(workflow.contains("archive=target/distrib/govfuzz-x86_64-unknown-linux-gnu.tar.xz"));
+    assert!(
+        workflow.contains("$archive = Get-Item target/distrib/govfuzz-x86_64-pc-windows-msvc.zip")
+    );
+    assert!(!workflow.contains("-name \"govfuzz-*.tar.xz\""));
+    assert!(!workflow.contains("-Filter \"govfuzz-*.zip\""));
 }
 
 fn read(path: impl AsRef<Path>) -> String {

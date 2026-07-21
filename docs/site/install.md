@@ -186,7 +186,7 @@ Releases include `govfuzz-x86_64-pc-windows-msvc.zip`,
 PowerShell installers. For example:
 
 ```powershell
-$Version = "v0.2.17"
+$Version = "v0.2.18"
 irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
 govfuzz.exe --version
 ```

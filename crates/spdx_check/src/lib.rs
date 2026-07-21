@@ -97,14 +97,16 @@ fn collect_auditable_files(root: &Path, dir: &Path, files: &mut Vec<PathBuf>) ->
         let file_name = file_name.to_string_lossy();
 
         if entry.file_type()?.is_dir() {
-            // `dist/` is packaged release output (a copy of the runtimes/tool),
-            // not repo source — like `target`/`govfuzz_work` it is untracked and
-            // absent from a CI checkout, so auditing it would make the manifest
-            // diverge from CI and fail the License Audit.
+            // Generated output and ignored internal design notes are not repo
+            // source. They may exist in a developer checkout but not in CI, so
+            // including them would make the checked-in manifest nondeterministic.
             if matches!(
                 file_name.as_ref(),
                 ".git" | "target" | "govfuzz_work" | "dist"
-            ) {
+            ) || path
+                .strip_prefix(root)
+                .is_ok_and(|relative| relative == Path::new("docs/superpowers"))
+            {
                 continue;
             }
             collect_auditable_files(root, &path, files)?;
@@ -318,6 +320,28 @@ mod tests {
 
         assert_eq!(manifest.files.len(), 1);
         assert_eq!(manifest.files[0].path, "src/lib.rs");
+    }
+
+    #[test]
+    fn manifest_skips_ignored_internal_design_docs() {
+        let root = test_root("manifest-internal-design-docs");
+        fs::create_dir_all(root.join("docs/site")).unwrap();
+        fs::create_dir_all(root.join("docs/superpowers/plans")).unwrap();
+        fs::write(
+            root.join("docs/site/install.md"),
+            "<!-- SPDX-License-Identifier: Apache-2.0 -->\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("docs/superpowers/plans/internal.md"),
+            "<!-- SPDX-License-Identifier: Apache-2.0 -->\n",
+        )
+        .unwrap();
+
+        let manifest = build_manifest(&root).unwrap();
+
+        assert_eq!(manifest.files.len(), 1);
+        assert_eq!(manifest.files[0].path, "docs/site/install.md");
     }
 
     fn test_root(name: &str) -> PathBuf {

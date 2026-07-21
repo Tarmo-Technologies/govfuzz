@@ -63,10 +63,20 @@
 extern int govfuzz_run_one(const uint8_t *Data, size_t Size);
 extern int LLVMFuzzerInitialize(int *argc, char ***argv) __attribute__((weak));
 
-/* Auto-injected shim hook: republish the fuzz input to the runtrace shim so
- * fuzz-driven mode can route the current iteration's bytes into fake fds /
- * sockets / dlopen stubs. Weak so a build without the shim links cleanly. */
+/* Republish the fuzz input to the runtrace shim so fuzz-driven mode can route
+ * the current iteration's bytes into fake fds / sockets / dlopen stubs. The
+ * shim is Linux-only. COFF gives separate __attribute__((weak)) references
+ * different fallback symbols in each translation unit, and link.exe rejects
+ * those defaults with LNK1227 when this driver is linked to a generated
+ * harness, so Windows must not emit the weak reference at all. */
+#if defined(_WIN32)
+#define GOVFUZZ_PUBLISH_INPUT(data, size) ((void)0)
+#else
 extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attribute__((weak));
+#define GOVFUZZ_PUBLISH_INPUT(data, size) do { \
+    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input((data), (size)); \
+} while (0)
+#endif
 
 /* The coverage/cmplog runtime functions must NOT be instrumented themselves: a
  * compare inside a trace-cmp callback would re-enter it and recurse forever, and
@@ -408,7 +418,7 @@ GOVFUZZ_NOCOV void __sanitizer_weak_hook_strcasecmp(void *pc, const char *s1, co
 }
 
 GOVFUZZ_NOCOV static void govfuzz_run_one_bytes(const uint8_t *data, size_t size) {
-    if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input(data, size);
+    GOVFUZZ_PUBLISH_INPUT(data, size);
     govfuzz_run_one(data, size);
 }
 static void govfuzz_run_file(const char *path) {

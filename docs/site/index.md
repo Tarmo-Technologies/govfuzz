@@ -10,6 +10,19 @@ source-generated harnesses and a permissively licensed core.
 
 ## Start Here
 
+- [Install](./install/) — source/release installation, per-lane toolchains,
+  Windows, offline deployment, and optional MCP/model prerequisites.
+- [CLI](./cli/) — the complete current command map and the stable operator
+  surface. Individual manual commands have narrower language scopes than the
+  sixteen-lane `auto` pipeline; their `--help` output is authoritative.
+- [Auto](./auto/) — `govfuzz auto <PATH>` sweeps a source tree in any of the
+  sixteen supported languages (including code that does not build) and produces a
+  fuzz lab plus a findings report without manual harnessing.
+- [CI](./ci/) — diff-scoped pull-request fuzzing, SARIF annotations, gates, and
+  the limits of a bounded green run.
+- [LLM Assistance](./llm/) — the current optional Codex, Claude, API,
+  local-model, and read-only MCP workflows for planning, candidate harnesses,
+  findings, code explanations, and error root-cause analysis.
 - [Comparison](./comparison/) — govfuzz measured head-to-head against the most
   popular fuzzer for each language (AFL++, libFuzzer, cargo-fuzz, Jazzer):
   harness effort, bug-finding, breadth, and a reproducible benchmark suite.
@@ -33,12 +46,11 @@ source-generated harnesses and a permissively licensed core.
   matrix with CWEs, and the honest boundary of what it deliberately declines.
 - [Architecture](./architecture/) — pipeline overview and the crates that
   make it up.
-- [CLI](./cli/) — the stable `govfuzz` operator surface.
-- [Auto](./auto/) — `govfuzz auto <PATH>` sweeps a source tree in any of the
-  sixteen supported languages (including code that does not build) and produces a
-  fuzz lab plus a findings report without manual harnessing.
 - [C and C++ Fuzzing](./c-cpp/) — C/C++ prerequisites, manual commands,
   supported API shapes, engine modes, and current limits.
+- [C#](./csharp/), [JavaScript and TypeScript](./javascript/),
+  [COBOL](./cobol/), and [Fortran](./fortran/) — lane-specific setup, coverage,
+  harness behavior, and limitations.
 - [Sanitizers](./sanitizers/) — the `--sanitizers` matrix, what the default
   build already arms, and when to add LSan/MSan/TSan.
 - [Run Modes](./run-modes/) — `--mode reporting|attacking`: how each schedules
@@ -57,11 +69,8 @@ source-generated harnesses and a permissively licensed core.
 - [Fake-CORBA](./fake-corba/) — IDL scaffolding for legacy Ada servants.
 - [Cross-Compilation](./cross-compilation/) — target toolchains, probe
   backends, qemu-user replay, and sandboxing.
-- [Daemon](./daemon/) — JSON-RPC service that powers the VS Code and GNAT
-  Studio integrations.
-- [LLM Assistance](./llm/) — evidence-grounded Codex, Claude, API, local-model,
-  and MCP workflows for planning, harnesses, findings, explanations, and
-  diagnostics.
+- [Daemon](./daemon/) — IDE JSON-RPC plus the five read-only MCP tools for
+  bounded agent assistance.
 - [Licensing](./licensing/) — policy profiles, SPDX metadata, and audits.
 - [Release Packaging](./release-packaging/) — distributed archives,
   checksums, and signed content packs.

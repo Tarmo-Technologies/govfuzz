@@ -11,14 +11,13 @@ The shim lives in `crates/govfuzz_runtrace_shim` and is Linux-only. On other
 hosts the cdylib is built empty; `govfuzz auto` falls through to build-time
 sweeping with no runtime audit.
 
-The shim is armed for the C, C++, Ada, Rust, and Go lanes natively, and for the
-interpreted Python and Perl lanes by interposing the CPython / `perl`
-interpreter process. It is **not** armed for the Java/JVM lane — which
-instruments coverage in-process with govfuzz's own ASM bytecode agent — and
-**not** under cross-compiled or emulated runs (qemu-user, wine). In those cases the runtime audit, the resource
-virtualisations, and every executable oracle described below are unavailable;
-the Java lane and emulated targets fall through to build-time sweeping with no
-runtime audit.
+The shim is armed for native C/C++/Ada/Rust/Go/COBOL/Fortran harnesses and for
+the interpreted Python/Perl/Ruby/Lua/PHP lanes by interposing their interpreter
+processes. It is **not** armed for Java/JVM, C#/.NET, or
+JavaScript/TypeScript/Node—each uses managed-runtime-specific coverage and crash
+signals—and not under cross-compiled or emulated runs (qemu-user, wine). In
+those cases the runtime audit, resource virtualisations, and shim-fed executable
+oracles described below are unavailable.
 
 ## Intercept List
 
@@ -126,9 +125,10 @@ and `empty`; `fuzz_driven` requires the same fuzz input bytes.
 ## Executable Oracles
 
 Most of these oracles consume the shim's audit stream, so they fire wherever the
-shim is armed (the C, C++, Ada, Rust, and Go lanes natively, and the Python and
-Perl lanes through the interposed interpreter); they do not fire in the Java/JVM
-lane or under cross-compiled/emulated targets, where the shim is not armed. The Ada constraint-check oracles (GF-102/103/104/105)
+shim is armed (native C/C++/Ada/Rust/Go/COBOL/Fortran and the interposed
+Python/Perl/Ruby/Lua/PHP interpreters). They do not fire for Java, C#,
+JavaScript/TypeScript, or cross-compiled/emulated targets. The Ada
+constraint-check oracles (GF-102/103/104/105)
 below are the exception — they are fed by Ada source instrumentation compiled
 into the binary, not the LD_PRELOAD shim, so they remain available on
 cross-compiled Ada targets.

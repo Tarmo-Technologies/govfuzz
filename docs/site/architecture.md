@@ -7,8 +7,9 @@ Rust, Java, Python, Perl, Go, COBOL, Fortran, C#, JavaScript, TypeScript, Ruby,
 Lua, and PHP — with a focus on the legacy and mission-critical code common in
 government systems. The product core is permissive-licensed end-to-end
 (Apache-2.0 / MIT / BSD) and never links against GPL or LGPL libraries. External
-tools — FSF GNAT, GPRbuild, clang, clang++, AFL++, LibAFL — may be invoked as
-subprocesses.
+tools — FSF GNAT, GPRbuild, clang, clang++, and AFL++ — may be invoked as
+subprocesses. Experimental adapter crates are not automatically selected by the
+CLI.
 
 ## Pipeline
 
@@ -23,10 +24,10 @@ subprocesses.
    runners. Optionally wrap execution in a sandbox.
 6. **Virtualise the runtime** via an LD_PRELOAD shim — fake missing files,
    sockets, env vars, and `dlopen` chains so the harness reaches the target
-   code. The shim and its behavioral/taint oracles run natively for
-   C / C++ / Ada / Rust / Go and are armed for the interpreted Python and
-   Perl lanes (the shim interposes the CPython / `perl` process); they are
-   not armed during Java fuzzing or under cross/emulated (qemu/wine) runs.
+   code. The shim and its behavioral/taint oracles run on native
+   C/C++/Ada/Rust/Go/COBOL/Fortran harnesses and interpose the
+   Python/Perl/Ruby/Lua/PHP interpreters. They are deliberately not armed for
+   Java, C#, JavaScript/TypeScript, or cross/emulated (qemu/wine) runs.
 7. **Normalize findings** into JSON, Markdown, SARIF, JUnit, and IDE-facing
    daemon responses.
 
@@ -39,10 +40,11 @@ binary: Python (`py_compile`), Perl (`perl -c`), Go (`go build`), COBOL
 (GnuCOBOL `cobc`), Fortran (`gfortran`), C# (`dotnet` + SharpFuzz),
 JavaScript/TypeScript (a warm Node process; TS via esbuild), and Ruby, Lua, and
 PHP under their own interpreters. Every lane drives govfuzz's own builtin engine
-over the framed fork-server protocol — no third-party fuzzer. The individual
-subcommands
-(`scan`, `list targets`, `generate-harness`, `build`, `fuzz`, `replay`,
-`minimize`, `report`) expose the same pipeline for manual use.
+over the framed fork-server protocol — no third-party fuzzer. Individual
+subcommands expose the pipeline for manual use, but their language scopes are
+not identical: `scan` and `generate-harness` are Ada/C/C++, `list targets`
+covers Ada/C/C++/Java/Rust, and `auto` is the complete sixteen-lane entry point.
+Use each command's `--help` as the exact current contract.
 
 ## Crate Boundaries
 
@@ -81,9 +83,9 @@ Build / fuzz / replay:
 - `crates/fuzz_engine` — built-in deterministic engine.
 - `crates/govfuzz_runtrace_shim` — LD_PRELOAD shim
   (`libgovfuzz_runtrace.so`) that audits and fakes the runtime
-  environment around a fuzz target. Native for C / C++ / Ada / Rust / Go and
-  armed for the interpreted Python and Perl lanes (it interposes the
-  interpreter process); not armed during Java fuzzing or under cross/emulated
+  environment around a fuzz target. Armed for native
+  C/C++/Ada/Rust/Go/COBOL/Fortran and the Python/Perl/Ruby/Lua/PHP interpreter
+  processes; not armed for Java, C#, JavaScript/TypeScript, or cross/emulated
   targets.
 - `crates/replay_min` — replay and delta-debug minimization.
 
@@ -100,9 +102,15 @@ Output and policy:
 
 IDE and orchestration:
 
-- `crates/daemon` — JSON-RPC service for editor clients.
+- `crates/daemon` — JSON-RPC service for editor clients and a separate read-only
+  MCP stdio mode for bounded deterministic evidence.
+- `crates/llm_harness_gen` — optional, provider-neutral prompt preparation,
+  Ada/C/C++ harness-candidate preflight, memory-aware capture, and bounded
+  Codex/Claude/OpenAI/Anthropic/OpenAI-compatible provider adapters. Model
+  output remains advisory and is not in the deterministic pipeline above.
 - `crates/cli` — the `govfuzz` command-line entry point. Houses the
-  `auto` module that drives the point-and-shoot sweep.
+  `auto` module that drives the point-and-shoot sweep and the optional explicit
+  `llm` command group.
 
 ## Docs Hosting Architecture
 

@@ -25,7 +25,13 @@ PAGES = [
     Page("architecture", "architecture.md", "Architecture"),
     Page("cli", "cli.md", "CLI"),
     Page("auto", "auto.md", "Auto"),
+    Page("run-modes", "run-modes.md", "Run Modes"),
+    Page("ci", "ci.md", "CI"),
+    Page("llm", "llm.md", "LLM and MCP"),
     Page("comparison", "comparison.md", "Comparison"),
+    Page("comparison-2026-07", "comparison-2026-07.md", "Comparison: July 2026"),
+    Page("libfuzzer-parity", "libfuzzer-parity.md", "libFuzzer Parity"),
+    Page("engine-parity-benchmark", "engine-parity-benchmark.md", "Engine Benchmark"),
     Page("whitepaper", "whitepaper.md", "White Paper"),
     Page("vulnerability-coverage", "vulnerability-coverage.md", "Vulnerability Coverage"),
     Page("static-cwe-coverage", "static-cwe-coverage.md", "Static CWE Coverage"),
@@ -33,11 +39,17 @@ PAGES = [
     Page("whitepaper-coverage", "whitepaper-coverage.md", "White Paper: Coverage"),
     Page("sink-oracles", "sink-oracles.md", "Sink Oracles"),
     Page("c-cpp", "c-cpp.md", "C and C++"),
+    Page("csharp", "csharp.md", "C#"),
+    Page("javascript", "javascript.md", "JavaScript and TypeScript"),
+    Page("cobol", "cobol.md", "COBOL"),
+    Page("fortran", "fortran.md", "Fortran"),
     Page("sanitizers", "sanitizers.md", "Sanitizers"),
     Page("runtime-virtualisation", "runtime-virtualisation.md", "Runtime Virtualisation"),
     Page("instrumentation", "instrumentation.md", "Instrumentation"),
     Page("fake-corba", "fake-corba.md", "Fake-CORBA"),
+    Page("fake-resource-sdk", "fake-resource-sdk.md", "Fake Resource SDK"),
     Page("cross-compilation", "cross-compilation.md", "Cross-Compilation"),
+    Page("windows", "windows.md", "Windows"),
     Page("daemon", "daemon.md", "Daemon"),
     Page("licensing", "licensing.md", "Licensing"),
     Page("release-packaging", "release-packaging.md", "Release Packaging"),
@@ -61,18 +73,80 @@ def main() -> None:
     out = Path(args.out)
     base_url = args.base_url.rstrip("/")
 
+    validate_manifest(source)
+
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True, exist_ok=True)
 
     for page in PAGES:
         markdown = (source / page.source).read_text(encoding="utf-8")
-        write_page(out, page, render_markdown(markdown), base_url)
+        write_page(out, page, render_markdown(rewrite_source_links(markdown, page)), base_url)
 
     copy_assets(source, out)
     copy_cname(source, out)
     write_sitemap(out, base_url)
     write_robots(out, base_url)
+    validate_generated_links(out)
+
+
+def validate_manifest(source: Path) -> None:
+    """Keep every operator-facing Markdown page published and uniquely routed."""
+    sources = [page.source for page in PAGES]
+    slugs = [page.slug for page in PAGES]
+    if len(sources) != len(set(sources)) or len(slugs) != len(set(slugs)):
+        raise ValueError("docs page manifest contains a duplicate source or slug")
+
+    discovered = {path.name for path in source.glob("*.md")}
+    configured = set(sources)
+    if discovered != configured:
+        omitted = ", ".join(sorted(discovered - configured)) or "none"
+        missing = ", ".join(sorted(configured - discovered)) or "none"
+        raise ValueError(
+            f"docs page manifest is incomplete (omitted: {omitted}; missing: {missing})"
+        )
+
+
+def rewrite_source_links(markdown: str, page: Page) -> str:
+    """Turn GitHub-friendly links to sibling Markdown files into site routes."""
+    routes = {item.source: item.slug for item in PAGES}
+
+    def replace(match: re.Match) -> str:
+        label, target = match.group(1), match.group(2)
+        path, marker, fragment = target.partition("#")
+        source_name = path.removeprefix("./")
+        slug = routes.get(source_name)
+        if slug is None:
+            return match.group(0)
+        if page.slug == "index":
+            route = "./" if slug == "index" else f"./{slug}/"
+        else:
+            route = "../" if slug == "index" else f"../{slug}/"
+        suffix = f"#{fragment}" if marker else ""
+        return f"[{label}]({route}{suffix})"
+
+    return re.sub(r"\[([^\]]+)\]\(([^)]+\.md(?:#[^)]+)?)\)", replace, markdown)
+
+
+def validate_generated_links(out: Path) -> None:
+    """Fail the build when a generated relative hyperlink has no local target."""
+    failures = []
+    for document in out.glob("**/*.html"):
+        body = document.read_text(encoding="utf-8")
+        for target in re.findall(r'href="([^"]+)"', body):
+            if target.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            path = target.split("#", 1)[0].split("?", 1)[0]
+            if not path:
+                continue
+            resolved = document.parent / path
+            exists = resolved.is_file() or (
+                resolved.is_dir() and (resolved / "index.html").is_file()
+            )
+            if not exists:
+                failures.append(f"{document.relative_to(out)} -> {target}")
+    if failures:
+        raise ValueError("broken generated docs links:\n  " + "\n  ".join(failures))
 
 
 def write_page(out: Path, page: Page, content: str, base_url: str) -> None:
@@ -158,6 +232,8 @@ def render_shell(page: Page, content: str, base_url: str) -> str:
       position: sticky;
       top: 18px;
       align-self: start;
+      max-height: calc(100vh - 36px);
+      overflow-y: auto;
     }}
     nav a {{
       color: var(--text);

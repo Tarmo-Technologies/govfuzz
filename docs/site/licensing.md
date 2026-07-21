@@ -27,6 +27,13 @@ external tools may run as subprocesses (they are never linked). `strict-permissi
 tools Rizin, Ghidra, and angr, and the external static analyzers gosec, Bandit,
 and semgrep. `research-lab` allows all probes.
 
+Optional LLM support adds no proprietary model SDK to the linked core. GovFuzz
+either speaks documented HTTP protocols, launches an operator-installed
+Codex/Claude executable, or exposes read-only MCP tools to a separate host.
+Provider service terms, model licenses, retention, and data-handling policy are
+operational concerns outside the workspace dependency audit; review them before
+transmitting source, logs, or findings.
+
 ## Repository Policy
 
 - Source, workflow, and docs files carry SPDX identifiers.

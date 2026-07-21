@@ -67,10 +67,10 @@ pub struct CiArgs {
     #[arg(long, default_value_t = actionability::RunMode::Reporting)]
     pub mode: actionability::RunMode,
 
-    /// Restrict the sweep to a comma-separated subset of source languages
-    /// (`ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`; common
-    /// spellings like `c++`/`rs`/`py` accepted). Forwarded to `govfuzz auto`.
-    /// Unset (default) = fuzz every language found.
+    /// Restrict the sweep to a comma-separated subset of the sixteen source
+    /// languages listed under "possible values" below (common spellings like
+    /// `c++`/`rs`/`py` are accepted). Forwarded to `govfuzz auto`. Unset
+    /// (default) = fuzz every language found.
     #[arg(
         long = "languages",
         visible_alias = "lang",

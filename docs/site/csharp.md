@@ -58,7 +58,8 @@ and exceptions declared in the **target's own namespace** are treated as the
 library's intended way of rejecting bad input — swallowed, not reported — which is
 the key to a low false-positive rate on a dynamically-fed API.
 
-Unlike the native C/C++/Ada/Rust/Go and Python/Perl lanes, the C# lane does **not**
+Unlike the native C/C++/Ada/Rust/Go/COBOL/Fortran and
+Python/Perl/Ruby/Lua/PHP lanes, the C# lane does **not**
 run under the runtime-virtualisation shim: the .NET host's own startup file I/O
 (resolving `libhostfxr.so` via `access()`→`open()`, loading assemblies) would
 otherwise trip the shim's TOCTOU/open oracles as false positives. Coverage comes

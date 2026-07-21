@@ -172,7 +172,7 @@ fn scorecard(
             "unsupported_claims": unsupported_claims(claim_roots)?,
             "allowed_claims": [
                 "government legacy software fuzzer",
-                "offline Ada, C, C++, binary, and enterprise workflow fuzzer"
+                "offline sixteen-language, binary, and enterprise workflow fuzzer"
             ],
         },
     }))

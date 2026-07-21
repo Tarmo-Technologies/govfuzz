@@ -25,11 +25,10 @@ pub struct AutoArgs {
     #[arg(long, default_value = "govfuzz_work")]
     pub work_dir: PathBuf,
 
-    /// Explicit discovery-cache file for `--reuse-discovery`, overriding the
-    /// default `<work-dir>/discovery-cache.json`. Pin it to a stable absolute
-    /// path so the cache is found regardless of the current directory or work
-    /// dir, and can live on a known-good volume. Read/written only with
-    /// `--reuse-discovery`.
+    /// Explicit discovery-cache file, overriding the default
+    /// `<work-dir>/discovery-cache.json`. Pin it to a stable absolute path so the
+    /// default-on cache is found regardless of the current directory or work dir
+    /// and can live on a known-good volume.
     #[arg(long = "discovery-cache", value_name = "PATH")]
     pub discovery_cache: Option<PathBuf>,
 
@@ -329,11 +328,11 @@ pub struct AutoArgs {
     #[arg(long = "include-dir", value_name = "NAME")]
     pub include_dir: Vec<String>,
 
-    /// Restrict the sweep to a comma-separated subset of source languages:
-    /// `ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`. Candidates in
-    /// any other language are dropped after discovery — before the build/fuzz
-    /// sweep and before `--list-targets`, so the ranked list reflects the filter
-    /// too. Common spellings are accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust,
+    /// Restrict the sweep to a comma-separated subset of the sixteen source
+    /// languages listed under "possible values" below. Candidates in any other
+    /// language are dropped after discovery — before the build/fuzz sweep and
+    /// before `--list-targets`, so the ranked list reflects the filter too.
+    /// Common spellings are accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust,
     /// `py`→python, `pl`→perl, `golang`→go); matching is case-insensitive.
     /// Unset (default) = fuzz every language govfuzz can build in the tree. The
     /// SBOM/SCA pass is unaffected — it always scans the whole tree across all
@@ -452,8 +451,9 @@ pub struct AutoArgs {
     /// sanitizer) builds each native C/C++ harness with coverage but NO
     /// `-fsanitize=`, i.e. crash-only fuzzing with zero ASan/UBSan false positives
     /// — the escape hatch for shared-memory / custom-allocator / RTOS code that
-    /// FP-storms under ASan. Inert on the Ada and cross-compiled (qemu-user / wine)
-    /// paths.
+    /// FP-storms under ASan. This matrix controls native C/C++ only; every other
+    /// language lane owns its coverage/error instrumentation, and cross-compiled
+    /// qemu-user/wine paths omit host sanitizers.
     ///
     /// To tame (rather than disable) the FP storm, export the sanitizer's own
     /// options before running — govfuzz MERGES your inherited `<SAN>_OPTIONS` and
@@ -479,7 +479,7 @@ pub struct AutoArgs {
     /// (classification `static_scan`) are merged into the unified report next to
     /// the fuzz findings, so a target that built+fuzzed still gets static coverage
     /// and files with no fuzzable subprogram are analyzed too. Same engine as the
-    /// standalone `govfuzz scan`.
+    /// standalone `govfuzz static-scan`.
     #[arg(long = "static")]
     pub static_scan: bool,
 

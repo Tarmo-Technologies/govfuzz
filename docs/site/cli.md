@@ -6,6 +6,24 @@ The govfuzz CLI is the stable operator surface for scanning, harness
 generation, instrumentation, replay, minimization, reporting, and policy
 checks.
 
+## Command map
+
+| Area | Commands |
+|---|---|
+| Whole-tree and manual pipeline | `auto`, `snippet`, `scan`, `list`, `generate-harness`, `build`, `fuzz`, `report` |
+| Build and instrumentation support | `stub`, `instrument`, `fake-corba` |
+| Corpus and crash triage | `corpus`, `minimize`, `replay`, `capsule`, `verify-poc`, `env-capsule`, `differential`, `cmplog`, `explain`, `cartography` |
+| Source-unavailable binaries | `binary` (`scan`, `adapter`, `fuzz`) |
+| Static and supply chain | `static-scan`, `sloc`, `sbom`, `license-audit`, `extract-state-machines` |
+| Rules and governance | `rules`, `policy`, `audit`, `pack`, `export` |
+| Optional assistance | `llm` (`status`, `test`, `prompt`, `assist`) |
+| CI and operations | `ci`, `runners`, `clean`, `introspect` |
+
+Run `govfuzz --help` for the live top-level inventory and `govfuzz <command>
+--help` for the exact language scope, defaults, and accepted values. In
+particular, `auto` is the sixteen-lane entry point; `scan`, `list targets`,
+`generate-harness`, and the structured LLM/MCP harness helpers are narrower.
+
 ## Common Flow
 
 ```sh
@@ -113,7 +131,8 @@ govfuzz sloc repos/* --out sloc.json  # whole corpus -> JSON with grand total
 The static scanner now emits:
 
 - A lightweight cross-file interprocedural taint trace for source-to-sink
-  vulnerabilities. Command execution is covered across **all eight languages**
+  vulnerabilities. Command execution is covered across **all eight core static
+  languages**
   (Ada/C/C++/Go/Rust/Java/Python/Perl), and the same engine also confirms path
   traversal, SQL injection, SSRF, XXE, LDAP injection, unsafe reflection,
   uncontrolled allocation size, open redirect, and log injection/log forging
@@ -139,9 +158,9 @@ The static scanner now emits:
   states from baselines/suppressions, and SARIF related locations for trace
   steps.
 
-The current engine is intentionally conservative and source-pattern driven. The
-M20 backlog still tracks deeper CFG precision, richer taint modeling, and
-larger rule packs as follow-up hardening.
+The current engine is intentionally conservative and source-pattern driven.
+Deeper CFG precision, richer taint modeling, and larger rule packs remain
+ongoing hardening work.
 
 `govfuzz binary scan <PATH>` writes `binary-inventory.json` with offline binary
 metadata for ELF, PE, Mach-O, ar archives, and raw firmware-style blobs. The
@@ -231,14 +250,12 @@ from cross-execution correlation, not per input, and capped per harness.
 These runtrace-derived findings — GF-413, GF-414, GF-415, and GF-405, together
 with the GF-304 command-injection, GF-417 insecure-temp, and GF-305
 sensitive-environment behavioral/taint oracles — are produced by the LD_PRELOAD
-runtrace shim. The shim is armed for Ada, C, C++,
-Rust, Python, Perl, and Go targets (for the interpreted Python and Perl lanes it
-interposes the interpreter process; for Go it is native), but is **not** loaded
-during Java fuzzing (LD_PRELOAD-ing it into
-the JVM would intercept the JVM's own libc activity and report false positives)
-and is **not** armed under cross-compiled or emulated (qemu/wine) runs. These
-behavioral and taint findings are therefore unavailable in the Java lane and for
-emulated targets.
+runtrace shim. It is armed for native C/C++/Ada/Rust/Go/COBOL/Fortran harnesses
+and interposes the Python/Perl/Ruby/Lua/PHP interpreter processes. It is
+deliberately **not** loaded for Java, C#, or JavaScript/TypeScript and is not
+armed under cross-compiled or emulated (qemu/wine) runs. Those configurations
+still fuzz for their documented coverage/crash/exception signals; the
+LD_PRELOAD behavioral and taint findings are the unavailable layer.
 
 ## Crash → PoC, Explanation, and One-Shot Fuzzing
 
@@ -264,9 +281,35 @@ and explain it — all offline and deterministic (no LLM):
 - `govfuzz cartography` — map which input bytes control which sink operand
   (offset/size/index) by perturbation — the exploit-primitive view of a finding.
 
+## Optional LLM and agent assistance
+
+`govfuzz llm` is an advisory sidecar, not an `auto` stage:
+
+```sh
+govfuzz llm status --json
+govfuzz llm test --provider codex
+govfuzz llm prompt --task diagnose-error --input govfuzz_work/auto/run.json
+govfuzz llm assist --provider local --model '<served-model>' \
+  --task analyze-findings --input govfuzz_work/findings/F-0001/finding.json
+```
+
+Task names are `plan-run`, `generate-harness`, `analyze-findings`,
+`explain-code`, and `diagnose-error`. `generate-harness` requires
+`--target-symbol`; its structured `--language` option is Ada/C/C++ only. The
+provider choices are cached Codex/Claude CLI sessions, explicit-model OpenAI or
+Anthropic APIs, and an explicit-model local OpenAI-compatible endpoint. API
+keys are accepted only through environment variables.
+
+For interactive agent work, `govfuzz-daemon --mcp` exposes five read-only tools
+for bounded deterministic evidence, prompt preparation, and Ada/C/C++ harness
+preflight. It does not expose shell execution or long-running/mutating pipeline
+steps. See [LLM Assistance](../llm/) for exact schemas, registration, provider
+privacy, root-cause workflows, memory controls, and the deterministic checks
+that must accept or reject model suggestions.
+
 ## Enterprise Operations
 
-M20 introduces offline governance commands for enclaves and CI systems:
+GovFuzz provides offline governance commands for enclaves and CI systems:
 
 ```sh
 govfuzz policy validate govfuzz-policy.json --out govfuzz_work/policy-summary.json
@@ -387,9 +430,9 @@ distinguish sandboxed and unsandboxed executions.
 - `--rss-limit-mb <MB>` — per-execution resident-memory ceiling for a C/C++ harness (libFuzzer `-rss_limit_mb`); an execution over budget is killed and reported as an OOM finding. `0` (default) disables it.
 - `--print-final-stats` — print a final-stats line (libFuzzer `-print_final_stats`): executions, exec/s, new vs duplicate corpus signatures, findings, elapsed time.
 - `--workers <N|auto>` — run multiple fuzz workers.
-- `--fork-server` / `--no-fork-server` — the persistent fork-server is the default for the builtin engine (one harness process kept alive and fed inputs over a framed protocol, ~38x more execs/sec while preserving coverage feedback) — except Java, whose JVM launcher owns its own in-process input loop and does not use the fork-server; every finding is replay-validated in a fresh process so a global-state artifact never escapes (#416). `--no-fork-server` runs a fresh process per input — use it for a target that intentionally carries fuzz-relevant global state across calls.
+- `--fork-server` / `--no-fork-server` — persistent framed execution is the default for the builtin engine. Native drivers and the Java, Python, Perl, Go, C#, JavaScript/TypeScript, Ruby, Lua, and PHP launchers each keep one target runtime alive and feed it inputs over the same protocol. Every finding is replay-validated in a fresh process so a global-state artifact never escapes (#416). `--no-fork-server` runs a fresh process per input — use it for a target that intentionally carries fuzz-relevant global state across calls.
 - `--cmplog-log <PATH>` — replay a runtrace audit log captured with `GOVFUZZ_CMPLOG=1`; recovered cmplog operands seed both the mutator dictionary and an offset-aware RedQueen-style splice that replaces `operand_a` with `operand_b` at the offset it appears in the current input (#400).
-- `--sanitizers <asan,msan,ubsan,tsan,lsan>` — sanitizer campaign matrix to arm.
+- `--sanitizers <asan,msan,ubsan,tsan,lsan|none>` — native C/C++ sanitizer campaign matrix; other lanes own their instrumentation.
 - `--rng-seed <N>` — deterministic RNG seed for built-in mutation.
 
 `govfuzz fuzz --engine` accepts only `builtin` (the default) and `afl++`;
@@ -445,7 +488,8 @@ JavaScript, TypeScript, Ruby, Lua, and PHP), including
 definition-bearing C/C++ headers, generates one harness per fuzzable function,
 auto-stubs missing headers and undefined symbols so previously-unbuildable code
 builds, runs a three-pass fuzz cascade against each built harness with the
-runtime virtualisation shim loaded on native targets (not Java), and writes a
+runtime virtualisation shim loaded on supported Linux targets (not
+Java/C#/JavaScript/TypeScript or cross/emulated targets), and writes a
 persistent fuzz lab plus
 `run.md`, `run.json`, and a
 `needed_for_build` ledger.
@@ -473,9 +517,9 @@ Flags:
 - Discovery cache (**on by default**) — a re-run reuses the prior discovery from `<work>/discovery-cache.json` when a **build-stable** content fingerprint of the target source (file paths + sizes + content hashes + dir-filter) is unchanged, skipping the tree-sitter re-parse + re-rank. The fingerprint depends only on the fuzzed code, not on which govfuzz build computed it, so rebuilding govfuzz does not invalidate it. A mismatch recomputes and rewrites the cache; a stale cache is never used silently.
 - `--fresh-discovery` — force a fresh discovery this run (ignore any cache), then overwrite the cache.
 - `--no-discovery-cache` — disable the discovery cache entirely (never read or write it).
-- `--resume` — resume a prior sweep over the same work-dir: reload targets that already completed (a per-target `auto/<id>/result.json` is written as each target finishes, so an interrupted run is resumable) and re-run only the rest. Reloaded targets are FULLY re-integrated into the new report (outcome buckets, repair manifest, findings, pass detail), with a `resumed` count of how many were carried over. Requires the discovery cache to hit (target source unchanged).
+- `--resume` — resume a prior sweep over the same work-dir: reload targets that already completed (a per-target `harnesses/<id>/result.json` is written as each target finishes, so an interrupted run is resumable) and re-run only the rest. Reloaded targets are FULLY re-integrated into the new report (outcome buckets, repair manifest, findings, pass detail), with a `resumed` count of how many were carried over. Requires the discovery cache to hit (target source unchanged).
 - `--reuse-discovery` — deprecated no-op (caching is now the default); accepted for back-compat.
-- `--sanitizers <asan,ubsan,msan,tsan,lsan>` — arm the named sanitizer matrix on the auto build, the same arming `govfuzz fuzz --sanitizers` does, now for the auto pipeline.
+- `--sanitizers <asan,ubsan,msan,tsan,lsan|none>` — arm the native C/C++ sanitizer matrix on the auto build; other lanes own their instrumentation.
 - `--languages <LIST>` (alias `--lang`) — restrict the sweep to a comma-separated subset of the sixteen fuzzable source languages (`ada`, `c`, `cpp`, `rust`, `java`, `python`, `perl`, `go`, `cobol`, `fortran`, `csharp`, `javascript`, `typescript`, `ruby`, `lua`, `php`). Candidates in other languages are dropped after discovery and before `--list-targets`/`--max-targets`, so the ranked list and the top-N reflect the filter. Common spellings accepted (`c++`/`cxx`/`cc`→cpp, `rs`→rust, `py`→python, `pl`→perl, `golang`→go); case-insensitive. Unset = fuzz every language found. The SBOM/SCA pass is unaffected.
 - `--target <NAME>` — exact target-name filter. Repeat to run a small named subset.
 - `--target-file <PATH>` — exact source-file filter. Accepts absolute paths or paths relative to the sweep root.
@@ -596,5 +640,5 @@ the link-license allow-list (linked code still must be Apache-2.0/MIT/BSD).
 ## Release Commands
 
 `govfuzz-daemon` is distributed beside `govfuzz` in release archives. Use the
-CLI for batch workflows and the daemon for editor integrations that need the
-same analysis through JSON-RPC.
+CLI for batch workflows, default daemon mode for editor JSON-RPC integrations,
+and `govfuzz-daemon --mcp` for the five read-only agent tools.

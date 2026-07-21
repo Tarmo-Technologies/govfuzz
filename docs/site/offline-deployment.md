@@ -33,6 +33,22 @@ optionally GNAT) to be present on the offline host — see
 [Toolchains on the offline host](#toolchains-on-the-offline-host). Those build
 the *generated harnesses*; they are separate from building GovFuzz itself.
 
+## Optional LLM assistance in an enclave
+
+The complete deterministic GovFuzz workflow needs no model and makes no network
+request. Do not configure OpenAI/Anthropic or authenticated Codex/Claude CLI
+providers on a host that must remain air-gapped. If local policy permits model
+assistance, transfer approved model weights separately and point
+`--provider local --model <id> --base-url <local-openai-compatible-url>` at an
+endpoint inside the enclave. GovFuzz's distribution does not bundle weights or
+a model server.
+
+`govfuzz-daemon --mcp` can also serve its five read-only tools locally, but the
+MCP host must itself use an enclave-approved local model; MCP transport alone
+does not make a cloud-backed host offline. Review prompts, code, logs, findings,
+and MCP transcripts as controlled data. See [LLM Assistance](./llm.md) for the
+current provider, agentic, memory, and privacy boundaries.
+
 ---
 
 ## Model A — build on a connected host, transfer binaries
@@ -44,13 +60,15 @@ This is the simplest path and the recommended default.
 Use this when you have the source on a build machine but the destination machine
 should receive only an installable package. The package does **not** include the
 GovFuzz application source tree. It does include the harness runtime support
-files that generated C/Ada/Rust/Java/Python/Perl harnesses need at compile time.
+files that generated harnesses and interpreter drivers need at build/run time.
 
 The package contains:
 
 - `tool/govfuzz`, `tool/govfuzz-daemon`, and the runtrace shim
 - `tool/c_runtime`, `tool/ada_runtime`, `tool/java_runtime`,
-  `tool/python_runtime`, `tool/perl_runtime`, and `tool/crates/rust_runtime`
+  `tool/python_runtime`, `tool/perl_runtime`, `tool/crates/rust_runtime`,
+  `tool/csharp_runtime`, `tool/js_runtime`, `tool/ruby_runtime`,
+  `tool/lua_runtime`, and `tool/php_runtime`
 - `content/packs/current/update-pack.json`, a signed content pack
 - `content/govfuzz-policy.json`, requiring the configured content-pack key
 - `smoke/c/govfuzz_smoke.c`, a tiny post-install `govfuzz auto` fixture
@@ -142,11 +160,11 @@ Releases are produced by `dist` and attached to the GitHub Release for each tag.
 Each app is a separate archive with a `.sha256` sidecar:
 
 - `govfuzz-*` — the CLI
-- `govfuzz-daemon-*` — the JSON-RPC daemon (only if you use the IDE clients)
+- `govfuzz-daemon-*` — the JSON-RPC/read-only-MCP daemon (only for IDE or MCP use)
 - `govfuzz_runtrace_shim-*` — the `LD_PRELOAD` shim `govfuzz auto` uses for
-  runtime virtualisation on Linux (native for the C/C++/Ada/Rust/Go lanes, and
-  armed for the interpreted Python and Perl lanes by interposing the interpreter
-  process; it is not armed for Java fuzzing or cross/emulated targets)
+  runtime virtualisation on Linux (native C/C++/Ada/Rust/Go/COBOL/Fortran plus
+  Python/Perl/Ruby/Lua/PHP interpreters; deliberately off for Java, C#,
+  JavaScript/TypeScript, and cross/emulated targets)
 - `govfuzz_cc_intercept-*` — the `LD_PRELOAD` shim C/C++ build recovery uses to
   capture compiler invocations made by absolute path or via `posix_spawn`
 
@@ -208,7 +226,7 @@ Transfer these three files and keep the shim next to the CLI:
 
 ```
 target/release/govfuzz
-target/release/govfuzz-daemon              # only if you use the IDE daemon
+target/release/govfuzz-daemon              # only if you use IDE JSON-RPC or MCP
 target/release/libgovfuzz_runtrace_shim.so
 ```
 
@@ -272,16 +290,31 @@ already be installed on the offline host:
 | Java | `javac`, `java` (JDK 8+), optionally `maven`/`gradle` (coverage via the bundled ASM bytecode agent) | harness build + fuzz |
 | Python | `python3` (3.12+ for `sys.monitoring` edge coverage; `sys.settrace` fallback) | harness build (`py_compile` + import smoke-test) + fuzz |
 | Perl | `perl` (per-statement edge coverage via the bundled `-d:GovfuzzCov` debugger) | harness build (`perl -c` + `require` smoke-test) + fuzz |
-| Go | `go` (compiles a native framed fork-server binary; coverage is currently black-box) | harness build + fuzz |
+| Go | `go` (`-cover -covermode=atomic` block feedback; safe black-box fallback) | harness build + fuzz |
+| COBOL | `cobc`, `clang`, `make` | GnuCOBOL-to-C harness build + coverage-guided fuzz |
+| Fortran | `gfortran`, `clang`, `make` | ASan + trace-pc/trace-cmp harness build + fuzz |
+| C# | .NET SDK plus `SharpFuzz.CommandLine` | IL instrumentation, warm-CLR harness + fuzz |
+| JavaScript | `node` | syntax check, V8 block coverage + warm-process fuzz |
+| TypeScript | `node`, `esbuild` | transpile/bundle, V8 block coverage + warm-process fuzz |
+| Ruby | Ruby 2.0+ | `TracePoint` coverage + interpreter fuzz |
+| Lua | Lua 5.3+ (`lua`/`luac`) | line-hook coverage + interpreter fuzz |
+| PHP | PHP 8.0+; `pcov` recommended | syntax check + interpreter fuzz (`pcov` coverage or black-box fallback) |
 | AFL++ engine (optional, C/C++ only) | `afl-fuzz`, `afl-clang-fast` | alternate fuzz engine for native C/C++ targets only |
 
 Stage these from your distribution's offline package mirror or a pre-downloaded
 `.deb`/`.rpm` bundle (e.g. `apt-get install --download-only` on a connected
 mirror, transfer, `dpkg -i`). Without them, `govfuzz auto` still runs discovery
 and build-recovery; Ada, C, and C++ targets then report as un-buildable, while
-Rust, Java, Python, Perl, and Go targets skip cleanly (no error, no finding —
-e.g. a Rust target when no nightly toolchain is installed, or a Go target when
-no `go` toolchain is present).
+targets in every lane whose compiler/interpreter is absent skip cleanly (no
+error and no finding), for example Rust without nightly or Go without `go`.
+
+The binary installer maps Debian/Ubuntu package names for every lane where a
+stable distribution package exists. The C# lane still requires an explicitly
+staged .NET 8 SDK and global `SharpFuzz.CommandLine` tool. TypeScript requires
+`esbuild` either on `PATH` or already present in the target project so
+`npx --no-install esbuild` succeeds. A C# harness also restores its SharpFuzz
+NuGet package; pre-populate the NuGet cache or configure an approved offline
+package source before moving into the enclave.
 
 > **License profile reminder.** GNAT and GPRbuild are GPL. GovFuzz only ever
 > invokes them as subprocesses under `--profile external-tools`; the default

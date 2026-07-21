@@ -2,8 +2,10 @@
 # govfuzz vs leading SAST tools — a 50-project measurement
 
 *How govfuzz's static scanner compares to the standard open-source SAST tool for
-each language, measured on 50 real GitHub projects across all eight languages
-govfuzz scans.*
+each language, measured on 50 real GitHub projects across the eight core
+languages in this campaign. The current static rule matrix also includes
+JavaScript/TypeScript and selected config/IaC checks; the current fuzzing
+surface is sixteen lanes.*
 
 ## TL;DR
 
@@ -234,7 +236,7 @@ all 49 trees.
   alone.
 - This measures *finding classes and volume*, not a labeled ground-truth
   precision/recall on every site — that is what the curated
-  [precision benchmark](../benchmarks) is for (govfuzz holds ≥ 0.90 precision at
+  [precision benchmark](https://github.com/Tarmo-Technologies/govfuzz/tree/main/benchmarks) is for (govfuzz holds ≥ 0.90 precision at
   full recall there).
 
 ## Reproduction

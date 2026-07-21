@@ -16,13 +16,12 @@ Those bugs execute cleanly, the fuzzer sees no signal, and it moves on.
 **govfuzz sees them.** On top of the same coverage-guided engine it runs byte-origin
 **taint** and a library of **behavioral oracles**, so it reports CWE-tagged
 findings for the dangerous *behaviors* a program performs on attacker-controlled
-input — not only the crashes. And because it auto-harnesses every function in a
-tree instead of the one a human wrote a harness for, it finds those bugs across
-the whole codebase, in eight languages including Ada — with the behavioral
-oracles arming on the four native lanes (C, C++, Ada, Rust), on the two
-interpreted lanes (Python and Perl, where the shim interposes the interpreter
-process), and natively on Go, leaving only Java caught through crashes and
-uncaught exceptions instead.
+input — not only the crashes. And because it auto-harnesses functions across a
+tree instead of the one a human wrote a harness for, it fuzzes the whole
+sixteen-language product surface. The behavioral oracles arm on native
+C/C++/Ada/Rust/Go/COBOL/Fortran harnesses and the Python/Perl/Ruby/Lua/PHP
+interpreters. Java, C#, and JavaScript/TypeScript retain their managed-runtime
+coverage and crash/exception signals without this LD_PRELOAD oracle layer.
 
 In a measured head-to-head on a library with one CWE per function, govfuzz found
 **5 of 5** vulnerability classes where libFuzzer and AFL++ — handed a harness for
@@ -75,16 +74,13 @@ access (`GF-305`/CWE-522), format string (`GF-408`/CWE-134), SSRF
 (`GF-303`/CWE-918), and more — each with a severity, a confidence, a sink
 location, and the tainted byte range as evidence.
 
-**Every lane but Java.** The `LD_PRELOAD` taint and behavioral oracles attach to
-native binaries — C, C++, Ada, and Rust — and natively to the compiled Go lane
-(whose code-coverage feedback is black-box for now, though Go panics readily).
-They also arm on the interpreted Python and Perl lanes, where the shim interposes
-the CPython / `perl` interpreter process itself. The Java lane is instrumented
-with govfuzz's own ASM bytecode coverage agent instead, so the syscall-level
-oracles are not armed there; the shim is likewise off for cross-compiled or
+**Oracle-enabled lanes.** The `LD_PRELOAD` taint and behavioral oracles attach
+to native C/C++/Ada/Rust/Go/COBOL/Fortran harnesses and interpose the
+Python/Perl/Ruby/Lua/PHP interpreters. Java, C#, and JavaScript/TypeScript use
+managed runtimes whose own startup activity would create false positives, so
+the shim is deliberately off there; it is also off for cross-compiled or
 emulated targets (qemu-user, wine). Those configurations still auto-harness and
-fuzz for crashes and uncaught exceptions — the behavioral-CWE layer is the part
-they skip.
+fuzz with their managed-runtime coverage and crash/exception signals.
 
 **Whole-tree harnessing.** A hand-written harness covers exactly one entry point.
 govfuzz discovers and harnesses *every* fuzzable function, so a bug anywhere in
@@ -142,8 +138,10 @@ its mutator is. For legacy, defense, and mission-critical software — where the
 bugs are old, the languages are mixed, and the stakes are high — that blind spot
 is the difference between a clean report and a missed CVE.
 
-govfuzz fuzzes for *behavior*, not just crashes, across the whole tree and across
-eight languages. It finds the bugs the others can't see.
+govfuzz fuzzes the whole tree across sixteen current lanes and adds runtime
+behavioral oracles on the twelve lanes named above. The measured suite on this
+page predates the eight newer lanes; its detection counts are not claims about
+those unmeasured languages.
 
 ---
 

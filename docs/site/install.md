@@ -12,8 +12,8 @@ Prerequisites:
 
 - **Rust** stable toolchain, 1.83 or newer (pinned via `rust-toolchain.toml`, so
   `rustup` selects it for you).
-- **`make`** and **`clang`/`clang++`** with libFuzzer sanitizer support
-  (`-fsanitize=fuzzer,address,undefined`) — required to build and fuzz C/C++.
+- **`make`** and **`clang`/`clang++`** with SanitizerCoverage plus ASan/UBSan
+  support — required to build and fuzz C/C++ with the built-in engine.
 
 ```sh
 git clone https://github.com/Tarmo-Technologies/govfuzz.git
@@ -50,7 +50,8 @@ sudo apt-get install -y nodejs npm                      # JavaScript / TypeScrip
 sudo apt-get install -y ruby                            # Ruby
 sudo apt-get install -y lua5.4                          # Lua
 sudo apt-get install -y php-cli                         # PHP
-# C#: install the .NET SDK (dotnet) from Microsoft's package feed; SharpFuzz is pulled per-project
+# C#: install a .NET 8 SDK, then stage the instrumentation CLI (and its NuGet package offline if needed)
+dotnet tool install --global SharpFuzz.CommandLine
 sudo apt-get install -y afl++                           # optional: AFL++ engine (C/C++ only)
 ```
 
@@ -58,6 +59,25 @@ The full per-lane matrix lives in
 [offline-deployment.md](./offline-deployment.md#toolchains-on-the-offline-host).
 For Windows-native cross-fuzzing (mingw + wine) and foreign-arch fuzzing
 (qemu-user), see [cross-compilation.md](./cross-compilation.md).
+
+### Optional LLM and agent integration
+
+No model, API key, or network connection is required for GovFuzz. Optional
+assistance needs one of the following:
+
+- the `govfuzz-daemon` release component plus an MCP-capable Codex or Claude
+  host for the recommended current-session workflow;
+- an already installed and authenticated `codex` or `claude` executable for a
+  separate ephemeral CLI-provider request;
+- an OpenAI or Anthropic API credential injected through an environment
+  variable and an explicit model id; or
+- a locally served OpenAI-compatible model endpoint.
+
+Run `govfuzz llm status --json` to inspect non-secret availability and
+`govfuzz llm test --provider <name>` to make a live connection check. The status
+command does not prove CLI authentication and does not print credential values.
+See [LLM Assistance](./llm.md) before registering MCP or transmitting source and
+findings to any provider.
 
 ## Prebuilt release binaries
 
@@ -69,7 +89,7 @@ at a time). You do **not** need every asset for every install:
 | `govfuzz-*` | Main CLI | Always |
 | `govfuzz_runtrace_shim-*` | Linux `LD_PRELOAD` runtime virtualisation shim | Full `govfuzz auto` coverage |
 | `govfuzz_cc_intercept-*` | Linux build-time compiler interception shim | C/C++ `--probe-build` / `--build-command` recovery |
-| `govfuzz-daemon-*` | JSON-RPC daemon | IDE/editor integrations only |
+| `govfuzz-daemon-*` | JSON-RPC and read-only MCP daemon | IDE/editor or MCP/agent integrations |
 | `source.tar.gz` | Release source snapshot | Rebuilding or auditing source |
 | `dist-manifest.json`, `sha256.sum`, `*.sha256` | Release metadata and integrity checks | Automation / checksum verification |
 

@@ -73,6 +73,8 @@ COV_CFLAGS ?= -O0 -g -fprofile-instr-generate -fcoverage-mapping
 # that only one compiler's output triggers still surfaces as an exit divergence.
 DIFF_CC ?= clang
 DIFF_CFLAGS ?= -O2 -g -fsanitize=address
+GOVFUZZ_DRIVER_SOURCE ?= {{ c_runtime_include }}/govfuzz_driver.c
+GOVFUZZ_DRIVER_CFLAGS ?= -O1 -g
 INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
 COMPILE_DB_FLAGS = {% for flag in compile_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
 
@@ -84,8 +86,11 @@ all: main
 # make parses as a target:prereq separator ("multiple target patterns"). In the
 # recipe the path is just an argument to the compiler, so the colon is harmless.
 # (govfuzz regenerates the harness dir per attempt, so `main` is always built.)
-main: main.c
-	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
+	$(CC) $(GOVFUZZ_DRIVER_CFLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
+
+main: main.c govfuzz_driver.o
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 afl: main_afl
 
@@ -94,23 +99,23 @@ main_afl: main.c
 
 msan: main_msan
 
-main_msan: main.c
-	$(MSAN_CC) $(MSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_msan: main.c govfuzz_driver.o
+	$(MSAN_CC) $(MSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 tsan: main_tsan
 
-main_tsan: main.c
-	$(TSAN_CC) $(TSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_tsan: main.c govfuzz_driver.o
+	$(TSAN_CC) $(TSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 cov: main_cov
 
-main_cov: main.c
-	$(COV_CC) $(COV_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_cov: main.c govfuzz_driver.o
+	$(COV_CC) $(COV_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 diff: main_diff
 
-main_diff: main.c
-	$(DIFF_CC) $(DIFF_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_diff: main.c govfuzz_driver.o
+	$(DIFF_CC) $(DIFF_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 # Build-recovery provenance (stub-artifact vs real-defect): the SAME ASan build as
 # `main`, but the injected stubs come from $(AUTO_PROV_SOURCES) — a poisoned copy in
@@ -120,8 +125,8 @@ main_diff: main.c
 # path (provably stub-independent -> confidence raised).
 prov: main_prov
 
-main_prov: main.c
-	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_PROV_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_prov: main.c govfuzz_driver.o
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_PROV_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
-	rm -f main main_afl main_msan main_tsan main_cov main_prov main_diff
+	rm -f main main_afl main_msan main_tsan main_cov main_prov main_diff govfuzz_driver.o

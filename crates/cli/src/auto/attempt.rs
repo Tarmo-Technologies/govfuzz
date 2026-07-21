@@ -3988,29 +3988,31 @@ fn try_build_c(
     // the retry removes that class of error. Every C Makefile lane includes the
     // same fragment, so AFL/MSan/TSan/coverage/differential replay stay aligned.
     let c_compat_path = work_dir.join("c_compat.mk");
-    if !is_cpp && !c_compat_path.is_file() && output_may_require_fcommon(&raw_output) {
-        if std::fs::write(&c_compat_path, "C_COMPAT_FLAGS := -fcommon\n").is_ok() {
-            let compat_output = crate::build::try_run_c_make_build_with_target(
-                work_dir,
-                harness_id,
-                extra_sources,
-                extra_includes,
-                compiler,
-                None,
-                None,
-            );
-            if compat_output.status.success() {
-                return BuildOutcome::Success;
-            }
-            let compat_raw = combined_build_output(&compat_output);
-            if !output_may_require_fcommon(&compat_raw) {
-                raw_output = compat_raw;
-                errors = build_classifier::classify(&raw_output);
-            } else {
-                // Function duplicates and accidentally repeated source files are
-                // not fixed by -fcommon; do not weaken later targets for them.
-                let _ = std::fs::remove_file(&c_compat_path);
-            }
+    if !is_cpp
+        && !c_compat_path.is_file()
+        && output_may_require_fcommon(&raw_output)
+        && std::fs::write(&c_compat_path, "C_COMPAT_FLAGS := -fcommon\n").is_ok()
+    {
+        let compat_output = crate::build::try_run_c_make_build_with_target(
+            work_dir,
+            harness_id,
+            extra_sources,
+            extra_includes,
+            compiler,
+            None,
+            None,
+        );
+        if compat_output.status.success() {
+            return BuildOutcome::Success;
+        }
+        let compat_raw = combined_build_output(&compat_output);
+        if !output_may_require_fcommon(&compat_raw) {
+            raw_output = compat_raw;
+            errors = build_classifier::classify(&raw_output);
+        } else {
+            // Function duplicates and accidentally repeated source files are
+            // not fixed by -fcommon; do not weaken later targets for them.
+            let _ = std::fs::remove_file(&c_compat_path);
         }
     }
 
@@ -5594,11 +5596,13 @@ fn ada_dir_is_foreign_platform(name: &str) -> bool {
     let host_macos = cfg!(target_os = "macos");
     let host_windows = cfg!(target_os = "windows");
     const WINDOWS: &[&str] = &["windows", "win32", "win64", "mingw", "msvc"];
+    const UNIX: &[&str] = &["unix", "posix"];
     const MACOS: &[&str] = &["macos", "darwin", "osx"];
     const BSD: &[&str] = &["freebsd", "netbsd", "openbsd", "dragonfly"];
     let foreign = |tokens: &[&str]| tokens.iter().any(|t| n.contains(t));
     // A dir is foreign if it names a platform that is not the host.
     (!host_windows && foreign(WINDOWS))
+        || (host_windows && foreign(UNIX))
         || (!host_macos && foreign(MACOS))
         || (foreign(BSD)
             && !cfg!(any(
@@ -6505,15 +6509,28 @@ mod ada_source_tests {
     use std::path::PathBuf;
 
     #[test]
-    fn foreign_platform_dirs_filtered_on_linux_host() {
-        // On the Linux CI/dev host these are foreign and would collide.
-        assert!(ada_dir_is_foreign_platform("os-windows"));
-        assert!(ada_dir_is_foreign_platform("os-win32"));
+    fn foreign_platform_dirs_follow_build_host() {
+        // Host variants stay eligible while variants for another OS are
+        // filtered before duplicate Ada units can collide.
+        assert_eq!(
+            ada_dir_is_foreign_platform("os-windows"),
+            !cfg!(target_os = "windows")
+        );
+        assert_eq!(
+            ada_dir_is_foreign_platform("os-win32"),
+            !cfg!(target_os = "windows")
+        );
         assert!(ada_dir_is_foreign_platform("os-macos64"));
         assert!(ada_dir_is_foreign_platform("os-freebsd64"));
         // Host-matching / generic dirs are kept.
-        assert!(!ada_dir_is_foreign_platform("os-linux64"));
-        assert!(!ada_dir_is_foreign_platform("os-unix"));
+        assert_eq!(
+            ada_dir_is_foreign_platform("os-linux64"),
+            !cfg!(target_os = "linux")
+        );
+        assert_eq!(
+            ada_dir_is_foreign_platform("os-unix"),
+            cfg!(target_os = "windows")
+        );
         assert!(!ada_dir_is_foreign_platform("encoders"));
         assert!(!ada_dir_is_foreign_platform("streams"));
     }

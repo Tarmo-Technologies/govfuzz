@@ -19,7 +19,8 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// clang (with the ASan runtime) is required. A missing toolchain is a skip, not
 /// a failure.
@@ -111,14 +112,34 @@ fn compile(dir: &std::path::Path, bin: &str, with_bridge: bool) -> bool {
 }
 
 fn run(dir: &std::path::Path, bin: &str) -> (Option<i32>, String) {
-    let out = Command::new(dir.join(bin))
+    // Do not let llvm-symbolizer consult a distro-configured remote debuginfod
+    // server. A network outage must not turn this local test into an unbounded
+    // CI hang. Capture stderr in a file so the child cannot fill a pipe while
+    // the timeout loop waits for it.
+    let stderr_path = dir.join(format!("{bin}.stderr"));
+    let stderr_file = std::fs::File::create(&stderr_path).expect("create stderr capture");
+    let mut child = Command::new(dir.join(bin))
         .env("ASAN_OPTIONS", "abort_on_error=0:detect_leaks=0")
-        .output()
+        .env("DEBUGINFOD_URLS", "")
+        .stdout(Stdio::null())
+        .stderr(Stdio::from(stderr_file))
+        .spawn()
         .expect("run program");
-    (
-        out.status.code(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
-    )
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let status = loop {
+        if let Some(status) = child.try_wait().expect("poll program") {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            let stderr = std::fs::read_to_string(&stderr_path).unwrap_or_default();
+            panic!("{bin} did not exit within 15 seconds; stderr:\n{stderr}");
+        }
+        thread::sleep(Duration::from_millis(25));
+    };
+    let stderr = std::fs::read_to_string(stderr_path).expect("read stderr capture");
+    (status.code(), stderr)
 }
 
 #[test]

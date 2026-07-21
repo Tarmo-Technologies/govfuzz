@@ -41,15 +41,18 @@ fn release_packaging_includes_linux_runtrace_shim() {
 }
 
 #[test]
-fn release_targets_match_supported_linux_binary_matrix() {
+fn release_targets_match_supported_cross_platform_binary_matrix() {
     let root = repo_root();
     let cargo_toml = read(root.join("Cargo.toml"));
     let docs = read(root.join("docs/release-packaging.md"));
 
-    assert!(cargo_toml.contains("targets = [\"x86_64-unknown-linux-gnu\"]"));
-    assert!(docs.contains("The generated release workflow builds this target triple"));
+    assert!(
+        cargo_toml.contains("targets = [\"x86_64-unknown-linux-gnu\", \"x86_64-pc-windows-msvc\"]")
+    );
+    assert!(docs.contains("The generated release workflow builds these target triples"));
     assert!(docs.contains("`x86_64-unknown-linux-gnu`"));
-    assert!(docs.contains("Linux-only preload packages"));
+    assert!(docs.contains("`x86_64-pc-windows-msvc`"));
+    assert!(docs.contains("preload shims remain Linux-only assets"));
 }
 
 fn read(path: impl AsRef<Path>) -> String {

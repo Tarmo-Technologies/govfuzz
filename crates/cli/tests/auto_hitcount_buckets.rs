@@ -171,6 +171,7 @@ fn standalone_footprint(
         .env("GOVFUZZ_COV_SHM", &cov)
         .env("GOVFUZZ_COV_CNT_SHM", &cnt)
         .env("ASAN_OPTIONS", "detect_leaks=0")
+        .env("DEBUGINFOD_URLS", "")
         // Defensive: never let an inherited env put the driver into framed mode.
         .env_remove("GOVFUZZ_FRAMED")
         .status()

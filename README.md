@@ -48,6 +48,17 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 See the [installation guide](docs/site/install.md) for prebuilt binaries, per-language
 toolchains, offline/air-gapped install, and Windows.
 
+### Supported release platforms
+
+Releases publish the CLI and daemon for **64-bit Windows** and **64-bit
+GNU/Linux**. The Linux artifact supports Ubuntu and **RHEL 7, 8, and 9**: it is
+built in a pinned manylinux2014 environment and CI-enforced to require no newer
+than glibc 2.17. RHEL 7 needs Software Collections LLVM 7.0 for the C/C++
+fuzzing lane because its stock Clang 3.4 lacks the required SanitizerCoverage;
+GovFuzz detects and activates that toolset automatically. See the
+[installation guide](docs/site/install.md) for Windows prerequisites and the
+RHEL support matrix.
+
 ## Resource Requirements
 
 There is no single RAM minimum because the target program, sanitizers, input-size

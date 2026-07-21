@@ -10,14 +10,18 @@ absolute-path and `posix_spawn` compiler invocations.
 
 ## Artifacts
 
-Release archives are currently built for the smoke-tested
-`x86_64-unknown-linux-gnu` target. The runtime preload libraries are Linux-only,
-so macOS, Windows, and Linux/aarch64 artifacts are intentionally not published
-until those packages are split from the portable CLI and daemon archives or gain
-native support on those targets. The preload shims are shipped as cdylibs
-through dist's library packaging settings.
+The CLI and daemon archives are built for `x86_64-unknown-linux-gnu` and
+`x86_64-pc-windows-msvc`. The GNU/Linux build runs in a pinned manylinux2014 /
+CentOS 7 container. An automated gate rejects GLIBC requirements newer than
+2.17 and missing preload-hook exports, fixing the release ABI for Ubuntu and
+RHEL 7 through RHEL 9 instead of inheriting a newer Ubuntu runner's glibc. The
+Windows build runs and is smoke-tested on Windows Server 2022. The runtime
+preload libraries are Linux-only and use package-local targets, so they remain
+separate Linux cdylib assets rather than empty Windows artifacts. macOS,
+Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
 
-The GitHub Release contains one archive and one shell installer per component:
+The GitHub Release contains platform archives, Unix shell installers, and
+PowerShell installers for the portable Windows components:
 
 | Asset | Purpose | Required for |
 |---|---|---|
@@ -111,10 +115,10 @@ release plan:
 dist host --steps=create --tag=vX.Y.Z
 ```
 
-Tag pushes matching semantic versions, such as `v0.2.10`, run the generated
-release workflow. The workflow plans artifacts, builds the Linux archive and
-checksums, generates shell installers, and uploads artifacts to the GitHub
-Release.
+Tag pushes matching semantic versions, such as `v0.2.16`, run the generated
+release workflow. The workflow plans artifacts, builds the EL7-compatible Linux
+and Windows MSVC archives and checksums, generates Unix shell and PowerShell
+installers, and uploads the verified artifacts to the GitHub Release.
 
 ## Air-Gapped Packs
 

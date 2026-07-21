@@ -93,6 +93,11 @@ On RHEL 7, the released GovFuzz binaries run against the system glibc 2.17.
 The stock Clang 3.4 cannot instrument GovFuzz harnesses, so enable the Red Hat
 Software Collections repository approved for the host and install LLVM 7.0:
 
+> The lightweight `govfuzz-installer.sh` release asset installs only the CLI.
+> It does not enable repositories, install the packages below, or install the
+> separate Linux runtime shims. Prepare the host first, then run the component
+> installers shown under [Prebuilt release binaries](#prebuilt-release-binaries).
+
 ```sh
 sudo subscription-manager repos --enable rhel-server-rhscl-7-rpms
 sudo yum install -y gcc gcc-c++ make \

@@ -59,6 +59,35 @@ GovFuzz detects and activates that toolset automatically. See the
 [installation guide](docs/site/install.md) for Windows prerequisites and the
 RHEL support matrix.
 
+#### RHEL 7 quick install
+
+The lightweight GitHub Release installer installs the GovFuzz executable only:
+it does not enable Red Hat repositories, install compiler packages, or install
+the Linux preload shims. For C/C++ fuzzing on RHEL 7, prepare the host first:
+
+```sh
+sudo subscription-manager repos --enable rhel-server-rhscl-7-rpms
+sudo yum install -y gcc gcc-c++ make \
+  llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt
+```
+
+Then install the CLI and the runtime shim. The compiler-interception shim is
+recommended for real projects that need `--probe-build` or `--build-command`
+recovery:
+
+```sh
+VERSION=v0.2.18
+BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
+
+curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz-installer.sh" | sh
+curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz_runtrace_shim-installer.sh" | sh
+curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz_cc_intercept-installer.sh" | sh
+```
+
+GovFuzz discovers and activates LLVM Toolset 7 automatically; no interactive
+`scl enable` shell is needed. Other language lanes need their corresponding
+toolchains from an organization-approved repository or offline package mirror.
+
 ## Resource Requirements
 
 There is no single RAM minimum because the target program, sanitizers, input-size

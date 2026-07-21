@@ -151,6 +151,11 @@ artifact or the same pinned build image if the loader reports
 GitHub releases ship per-component archives and shell installers (one component
 at a time). You do **not** need every asset for every install:
 
+The CLI archive carries every harness-runtime source tree. The CLI executable
+also embeds the same sources and stages a private copy automatically when it was
+installed by the shell or PowerShell installer, so prebuilt installs do not
+need a govfuzz source checkout.
+
 | Asset | Purpose | Needed when |
 |---|---|---|
 | `govfuzz-*` | Main CLI | Always |
@@ -181,7 +186,7 @@ Releases include `govfuzz-x86_64-pc-windows-msvc.zip`,
 PowerShell installers. For example:
 
 ```powershell
-$Version = "v0.2.16"
+$Version = "v0.2.17"
 irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
 govfuzz.exe --version
 ```

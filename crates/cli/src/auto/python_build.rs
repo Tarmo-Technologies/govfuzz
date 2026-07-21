@@ -59,28 +59,7 @@ fn python_version(python: &Path) -> Option<(u32, u32)> {
 /// the source tree (dev) or the installed binary (release) — mirrors
 /// `locate_build_agent_script` for the Java agent.
 fn locate_python_runtime() -> Option<PathBuf> {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("python_runtime");
-                if cand.join("govfuzz_driver.py").is_file() {
-                    return Some(cand);
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    let from_manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .map(|root| root.join("python_runtime"));
-    if let Some(p) = &from_manifest {
-        if p.join("govfuzz_driver.py").is_file() {
-            return from_manifest;
-        }
-    }
-    None
+    crate::runtime_assets::locate("python_runtime", "govfuzz_driver.py")
 }
 
 /// The single public entry point of the lane.

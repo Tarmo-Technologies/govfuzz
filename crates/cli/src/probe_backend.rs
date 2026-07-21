@@ -112,19 +112,9 @@ fn copy_runtime_file(
 }
 
 fn runtime_source_dir() -> PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        let mut dir = exe.parent().map(Path::to_path_buf);
-        for _ in 0..6 {
-            if let Some(d) = &dir {
-                let cand = d.join("ada_runtime");
-                if cand.join("adafuzz.ads").is_file() {
-                    return cand;
-                }
-                dir = d.parent().map(Path::to_path_buf);
-            }
-        }
-    }
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .join("ada_runtime")
+    crate::runtime_assets::locate("ada_runtime", "adafuzz.ads").unwrap_or_else(|| {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("ada_runtime")
+    })
 }

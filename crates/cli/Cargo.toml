@@ -12,6 +12,19 @@ default-run = "govfuzz"
 [package.metadata.dist]
 dist = true
 targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+include = [
+    "../../ada_runtime",
+    "../../c_runtime",
+    "../../csharp_runtime",
+    "../../java_runtime",
+    "../../js_runtime",
+    "../../lua_runtime",
+    "../../perl_runtime",
+    "../../php_runtime",
+    "../../python_runtime",
+    "../../ruby_runtime",
+    "../rust_runtime",
+]
 
 [package.metadata.dist.binaries]
 x86_64-unknown-linux-gnu = ["govfuzz"]
@@ -66,6 +79,7 @@ sha2.workspace = true
 static_analysis = { path = "../static_analysis" }
 stub_gen = { path = "../stub_gen" }
 target_rank = { path = "../target_rank" }
+tempfile.workspace = true
 toml.workspace = true
 type_model = { path = "../type_model" }
 which.workspace = true
@@ -91,6 +105,5 @@ path = "tests/fixtures/fake_harness.rs"
 
 [dev-dependencies]
 serde.workspace = true
-tempfile.workspace = true
 toml.workspace = true
 which.workspace = true

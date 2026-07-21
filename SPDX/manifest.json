@@ -1295,6 +1295,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/runtime_assets.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/sbom.rs",
       "license": "Apache-2.0"
     },

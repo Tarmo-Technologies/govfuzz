@@ -217,6 +217,8 @@ jobs:
   windows-build:
     name: Windows MSVC build and tests
     runs-on: windows-2022
+    env:
+      GOVFUZZ_RELEASE_VERSION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

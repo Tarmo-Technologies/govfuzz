@@ -265,8 +265,10 @@ fn ci_enforces_the_current_supported_os_matrix() {
     assert!(ci.contains("runtrace.jsonl"));
     assert!(ci.contains(r#"grep -Eq "\"built_and_fuzzed\"[[:space:]]*:[[:space:]]*1""#));
     assert!(ci.contains("scripts/ci/windows-release-smoke.ps1"));
+    assert!(ci.contains("GOVFUZZ_RELEASE_VERSION: \"1\""));
     assert!(windows_smoke.contains("Win32_OperatingSystem"));
     assert!(windows_smoke.contains("built_and_fuzzed"));
+    assert!(windows_smoke.contains("Expected '$expectedVersion', got '$actualVersion'"));
     assert!(windows_smoke.contains("GetEnvironmentVariable(\"Path\", \"Machine\")"));
     assert!(windows_smoke.contains("GetEnvironmentVariable(\"Path\", \"User\")"));
     let supported_docs = format!("{readme}\n{install}\n{windows}");

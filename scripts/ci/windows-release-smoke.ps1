@@ -11,11 +11,22 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $fixture = Join-Path $repoRoot "tests\fixtures\engine_parity\magic_byte"
 $govfuzz = Join-Path $binaryRoot "govfuzz.exe"
 $daemon = Join-Path $binaryRoot "govfuzz-daemon.exe"
+$workspaceVersion = Get-Content (Join-Path $repoRoot "Cargo.toml") |
+    Select-String '^version = "([^"]+)"' |
+    Select-Object -First 1
+if (-not $workspaceVersion) {
+    throw "Could not read the workspace package version"
+}
+$expectedVersion = "govfuzz v$($workspaceVersion.Matches[0].Groups[1].Value)"
 
 Get-CimInstance Win32_OperatingSystem |
     Select-Object Caption, Version, BuildNumber |
     Format-List
-& $govfuzz --version
+$actualVersion = (& $govfuzz --version).Trim()
+Write-Host $actualVersion
+if ($actualVersion -ne $expectedVersion) {
+    throw "Expected '$expectedVersion', got '$actualVersion'"
+}
 & $daemon --help | Out-Null
 & $govfuzz scan $fixture `
     --work-dir "$env:RUNNER_TEMP\govfuzz-windows-scan"

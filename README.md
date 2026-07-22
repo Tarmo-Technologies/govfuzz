@@ -48,6 +48,29 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 See the [installation guide](docs/site/install.md) for prebuilt binaries, per-language
 toolchains, offline/air-gapped install, and Windows.
 
+### Which release files do I need?
+
+Start with the row that matches what you are doing. An installer downloads its
+matching archive automatically, so choose the installer **or** the archive—not
+both.
+
+| What you want to do | Install or download |
+|---|---|
+| Run the CLI on Windows | `govfuzz-installer.ps1`, or `govfuzz-x86_64-pc-windows-msvc.zip` plus its `.sha256` file for a manual/offline install |
+| Run basic CLI workflows on Linux | `govfuzz-installer.sh`, or `govfuzz-x86_64-unknown-linux-gnu.tar.xz` plus its `.sha256` file |
+| Get the full Linux `govfuzz auto` runtime audit and fake-resource support | Add `govfuzz_runtrace_shim-installer.sh`, or its matching `govfuzz_runtrace_shim-*.tar.xz` archive |
+| Recover complex C/C++ builds that use `--probe-build` or `--build-command` | Add `govfuzz_cc_intercept-installer.sh`, or its matching `govfuzz_cc_intercept-*.tar.xz` archive |
+| Use the IDE, JSON-RPC, or read-only MCP service | Add the OS-appropriate `govfuzz-daemon-installer.sh` / `.ps1`, or the matching daemon archive |
+| Audit or rebuild the release source | `source.tar.gz` plus `source.tar.gz.sha256`; this is not needed to run a prebuilt release |
+| Automate or verify downloads | The archive's `*.sha256` sidecar, or `sha256.sum` for all archives; `dist-manifest.json` is machine-readable release metadata |
+
+For a normal **full Linux installation**, install the CLI plus both Linux shims:
+`govfuzz`, `govfuzz_runtrace_shim`, and `govfuzz_cc_intercept`. For a normal
+**Windows CLI installation**, install only `govfuzz`; add `govfuzz-daemon` only
+for IDE/MCP use. The two shims are Linux-only and should not be downloaded on
+Windows. See the [complete asset guide](docs/site/install.md#choose-release-assets-by-task)
+for exact commands and the effect of omitting each optional component.
+
 ### Supported release platforms
 
 Releases publish the CLI and daemon for **64-bit Windows** and **64-bit

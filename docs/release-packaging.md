@@ -123,9 +123,10 @@ The generated release workflow builds these target triples:
 Each archive has a SHA-256 checksum sidecar. The Linux binaries are built in the
 pinned manylinux2014 container for Ubuntu 22.04/24.04/26.04 LTS and RHEL 7
 through 10. Windows binaries are built and smoke-tested on Windows Server 2022,
-then the same binaries are exercised on Server 2025; Server 2019 and Windows 11
-Enterprise 25H2 are covered by the platform VM validation. PowerShell installers
-are published alongside the Unix shell installers. The runtime and
+then the same binaries are exercised on Server 2025; Server 2019, Windows 11
+Enterprise 25H2, and Windows 11 Enterprise LTSC 2024 are covered by the platform
+VM validation. PowerShell installers are published alongside the Unix shell
+installers. The runtime and
 compiler-interception preload shims remain Linux-only assets. macOS,
 Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
 

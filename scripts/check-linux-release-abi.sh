@@ -26,7 +26,7 @@ fi
 
 release_dir=${1:-target/release}
 max_glibc=${MAX_GLIBC_VERSION:-2.17}
-artifacts=(govfuzz govfuzz-daemon libgovfuzz_runtrace_shim.so)
+artifacts=(govfuzz govfuzz-daemon libgovfuzz_runtrace_shim.so libgovfuzz_cc_intercept.so)
 
 command -v objdump >/dev/null 2>&1 || {
   echo "error: objdump is required" >&2

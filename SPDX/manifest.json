@@ -15,6 +15,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": ".github/workflows/classify-ci-scope.yml",
+      "license": "Apache-2.0"
+    },
+    {
       "path": ".github/workflows/docs-site.yml",
       "license": "Apache-2.0"
     },

@@ -10,8 +10,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    uses: ./.github/workflows/classify-ci-scope.yml
+
   license-audit:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,24 +29,27 @@ jobs:
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
           toolchain: stable
-          components: clippy
 
       - name: Cache cargo-deny
+        if: needs.changes.outputs.heavy == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cargo/bin/cargo-deny
           key: cargo-deny-${{ runner.os }}-latest
 
       - name: Install cargo-deny
+        if: needs.changes.outputs.heavy == 'true'
         run: |
           if ! command -v cargo-deny >/dev/null 2>&1; then
             cargo install cargo-deny --locked
           fi
 
       - name: Run cargo deny
+        if: needs.changes.outputs.heavy == 'true'
         run: cargo deny check
 
       - name: Run govfuzz license audit
+        if: needs.changes.outputs.heavy == 'true'
         run: cargo run -p govfuzz -- license-audit --profile strict-permissive
 
       - name: Verify vendored tree-sitter-ada license checksum
@@ -54,12 +65,15 @@ jobs:
           git diff --exit-code SPDX/manifest.json
 
       - name: Test license policy
+        if: needs.changes.outputs.heavy == 'true'
         run: cargo test -p license_policy
 
       - name: Test CLI policy exit code
+        if: needs.changes.outputs.heavy == 'true'
         run: cargo test -p govfuzz strict_permissive_gnat_actions_exits_two
 
       - name: Probe gate rejects build without GOVFUZZ_PROFILE
+        if: needs.changes.outputs.heavy == 'true'
         run: |
           set +e
           cargo build -p probe_gnat_actions --features enabled 2>build.err
@@ -72,11 +86,13 @@ jobs:
           grep -q "GOVFUZZ_PROFILE=external-tools or research-lab" build.err
 
       - name: Probe gate accepts build under external-tools
+        if: needs.changes.outputs.heavy == 'true'
         env:
           GOVFUZZ_PROFILE: external-tools
         run: cargo build -p probe_gnat_actions --features enabled
 
       - name: Probe gate rejects build when profile flips back
+        if: needs.changes.outputs.heavy == 'true'
         run: |
           set +e
           cargo build -p probe_gnat_actions --features enabled 2>build.err

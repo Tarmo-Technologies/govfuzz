@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: Classify CI Scope
+
+on:
+  workflow_call:
+    outputs:
+      heavy:
+        description: Whether a path requiring heavy CI changed
+        value: ${{ jobs.classify.outputs.heavy }}
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Classify CI scope
+    runs-on: ubuntu-24.04
+    outputs:
+      heavy: ${{ steps.classify.outputs.heavy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Test path classifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(scripts/ci/should-run-heavy-ci.sh README.md CHANGELOG.md docs/site/install.md)" = false
+          test "$(scripts/ci/should-run-heavy-ci.sh scripts/docs/build-site.py docs/site/install.md)" = false
+          test "$(scripts/ci/should-run-heavy-ci.sh README.md Cargo.toml)" = true
+          test "$(scripts/ci/should-run-heavy-ci.sh .github/workflows/ci.yml)" = true
+          test "$(scripts/ci/should-run-heavy-ci.sh)" = true
+
+      - name: Classify changed paths
+        id: classify
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]] ||
+            ! git cat-file -e "${BASE_SHA}^{commit}" ||
+            ! git cat-file -e "${HEAD_SHA}^{commit}"; then
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+            echo "Unable to resolve a complete comparison; running full CI." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            mapfile -d '' changed_files < <(git diff --name-only --no-renames -z "${BASE_SHA}...${HEAD_SHA}")
+          else
+            mapfile -d '' changed_files < <(git diff --name-only --no-renames -z "${BASE_SHA}..${HEAD_SHA}")
+          fi
+
+          heavy="$(scripts/ci/should-run-heavy-ci.sh "${changed_files[@]}")"
+          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
+
+          if [[ "$heavy" == true ]]; then
+            echo "A code, build, packaging, installer, or CI path changed; running heavy CI jobs." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Only documentation or repository text/template paths changed; skipping heavy CI jobs." >> "$GITHUB_STEP_SUMMARY"
+          fi

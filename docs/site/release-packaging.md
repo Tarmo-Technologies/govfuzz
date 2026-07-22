@@ -22,8 +22,9 @@ CentOS 7 container. An automated gate rejects GLIBC requirements newer than
 22.04/24.04/26.04 LTS and RHEL 7 through RHEL 10 instead of inheriting a newer
 Ubuntu runner's glibc. Release binaries are scan/build/fuzz tested across that
 Linux matrix. The Windows build runs on Windows Server 2022 and the same binary
-is smoke-tested on Server 2025; Windows Server 2019 and Windows 11 Enterprise
-25H2 are covered by the platform VM validation. The runtime
+is smoke-tested on Server 2025; Windows Server 2019, Windows 11 Enterprise 25H2,
+and Windows 11 Enterprise LTSC 2024 are covered by the platform VM validation.
+The runtime
 preload libraries are Linux-only and use package-local targets, so they remain
 separate Linux cdylib assets rather than empty Windows artifacts. macOS,
 Linux/aarch64, and Windows-on-Arm artifacts are not currently published.

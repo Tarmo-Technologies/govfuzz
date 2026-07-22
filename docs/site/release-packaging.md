@@ -32,7 +32,27 @@ Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
 The GitHub Release contains platform archives, Unix shell installers, and
 PowerShell installers for the portable Windows components:
 
-| Asset | Purpose | Required for |
+Choose one delivery form per component: run its installer on a connected host,
+or download its archive and checksum for a manual/offline install. The installer
+already downloads the archive, so keeping both is unnecessary.
+
+| Consumer scenario | Assets to use |
+|---|---|
+| Windows terminal/CI | `govfuzz-installer.ps1`, or the `govfuzz-*.zip` and its `.sha256` sidecar—not both |
+| Linux terminal/CI, basic features | `govfuzz-installer.sh`, or the Linux `govfuzz-*.tar.xz` and sidecar—not both |
+| Linux, full `govfuzz auto` on real projects | The Linux CLI plus `govfuzz_runtrace_shim` and `govfuzz_cc_intercept`; use either all three installers or all three archives/sidecars |
+| IDE, JSON-RPC, or read-only MCP | Add the OS-appropriate `govfuzz-daemon` installer/archive to the components needed for the workload |
+| Source audit/rebuild | `source.tar.gz` and `source.tar.gz.sha256`; no binary asset is required merely to inspect source |
+| Release automation | `dist-manifest.json` plus the relevant checksum sidecars, or `sha256.sum` for the full archive set |
+
+The daemon is never required by the normal CLI. The two preload shims are
+Linux-only; Windows users should ignore them. Omitting the runtrace shim keeps
+ordinary scan/build/fuzz functionality but removes runtime audit, behavioral/
+taint oracles, and fake-resource support. Omitting the compiler-interception
+shim affects only complex C/C++ build recovery that must observe absolute-path
+or `posix_spawn` compiler launches.
+
+| Component prefix | Purpose | Required for |
 |---|---|---|
 | `govfuzz-*` | Main CLI | All CLI workflows |
 | `govfuzz_runtrace_shim-*` | Runtime virtualisation `LD_PRELOAD` shim | Full `govfuzz auto` runtime audit/fake-resource support |

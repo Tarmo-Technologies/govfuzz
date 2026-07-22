@@ -170,19 +170,32 @@ Each app is a separate archive with a `.sha256` sidecar:
 - `govfuzz_cc_intercept-*` — the `LD_PRELOAD` shim C/C++ build recovery uses to
   capture compiler invocations made by absolute path or via `posix_spawn`
 
+For the usual full Linux `govfuzz auto` deployment, transfer the CLI, runtrace
+shim, and compiler-interception shim archives plus their three sidecars. Omit
+the compiler-interception shim if complex C/C++ build recovery is out of scope.
+Transfer the daemon archive only when the offline host will serve IDE, JSON-RPC,
+or MCP clients. Do not transfer shell installers: they fetch archives from the
+network and add no value on the disconnected side.
+
 On the **connected** host:
 
 ```sh
 # Download the archives + checksums for the published Linux target.
 gh release download vX.Y.Z --repo Tarmo-Technologies/govfuzz \
-  --pattern 'govfuzz-*x86_64-unknown-linux-gnu*' \
-  --pattern 'govfuzz_runtrace_shim-*x86_64-unknown-linux-gnu*' \
-  --pattern 'govfuzz_cc_intercept-*x86_64-unknown-linux-gnu*'
+  --pattern 'govfuzz-x86_64-unknown-linux-gnu.tar.xz*' \
+  --pattern 'govfuzz_runtrace_shim-x86_64-unknown-linux-gnu.tar.xz*' \
+  --pattern 'govfuzz_cc_intercept-x86_64-unknown-linux-gnu.tar.xz*'
+
+# Only if the disconnected host will provide JSON-RPC/MCP:
+gh release download vX.Y.Z --repo Tarmo-Technologies/govfuzz \
+  --pattern 'govfuzz-daemon-x86_64-unknown-linux-gnu.tar.xz*'
 
 # Verify integrity (also re-runnable offline — the sidecar travels with the file)
-sha256sum -c govfuzz-*.tar.xz.sha256
+sha256sum -c govfuzz-x86_64-unknown-linux-gnu.tar.xz.sha256
 sha256sum -c govfuzz_runtrace_shim-*.tar.xz.sha256
 sha256sum -c govfuzz_cc_intercept-*.tar.xz.sha256
+# If downloaded:
+sha256sum -c govfuzz-daemon-x86_64-unknown-linux-gnu.tar.xz.sha256
 
 # GitHub Artifact Attestations are not published for current private releases;
 # verify checksums here and rely on signed content-pack verification during
@@ -197,11 +210,13 @@ Transfer the archives (e.g. via approved removable media), then on the
 **offline** host:
 
 ```sh
-sha256sum -c govfuzz-*.tar.xz.sha256          # re-verify after transfer
-tar xf govfuzz-*.tar.xz
+sha256sum -c govfuzz-x86_64-unknown-linux-gnu.tar.xz.sha256 # re-verify after transfer
+tar xf govfuzz-x86_64-unknown-linux-gnu.tar.xz
 tar xf govfuzz_runtrace_shim-*.tar.xz         # extract the shim *beside* the CLI dir
 tar xf govfuzz_cc_intercept-*.tar.xz          # optional, for C/C++ build recovery
-./govfuzz/govfuzz --help
+# Only if transferred for JSON-RPC/MCP:
+tar xf govfuzz-daemon-x86_64-unknown-linux-gnu.tar.xz
+./govfuzz-x86_64-unknown-linux-gnu/govfuzz --help
 ```
 
 The CLI locates the runtime shim automatically when it sits next to the binary;
@@ -212,7 +227,7 @@ export GOVFUZZ_RUNTRACE_SHIM=/opt/govfuzz/libgovfuzz_runtrace_shim.so
 export GOVFUZZ_CC_INTERCEPT=/opt/govfuzz/libgovfuzz_cc_intercept.so
 ```
 
-### A2. Build from source on a connected host, transfer the three artifacts
+### A2. Build from source on a connected host, transfer the needed components
 
 Use this when you need a tag/commit that has no published archive, or a target
 triple the release job does not build.
@@ -226,12 +241,14 @@ portable back to EL7:
 cargo build --release --workspace
 ```
 
-Transfer these three files and keep the shim next to the CLI:
+Transfer the CLI and the Linux components needed for the planned workload. Keep
+the selected shims next to the CLI:
 
 ```
 target/release/govfuzz
-target/release/govfuzz-daemon              # only if you use IDE JSON-RPC or MCP
-target/release/libgovfuzz_runtrace_shim.so
+target/release/libgovfuzz_runtrace_shim.so # recommended: runtime audit/fake resources
+target/release/libgovfuzz_cc_intercept.so  # optional: complex C/C++ build recovery
+target/release/govfuzz-daemon              # optional: IDE JSON-RPC or MCP
 ```
 
 > **Match the runtime, not just the CPU.** The runtrace shim is `LD_PRELOAD`-ed

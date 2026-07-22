@@ -51,13 +51,22 @@ toolchains, offline/air-gapped install, and Windows.
 ### Supported release platforms
 
 Releases publish the CLI and daemon for **64-bit Windows** and **64-bit
-GNU/Linux**. The Linux artifact supports Ubuntu and **RHEL 7, 8, and 9**: it is
-built in a pinned manylinux2014 environment and CI-enforced to require no newer
-than glibc 2.17. RHEL 7 needs Software Collections LLVM 7.0 for the C/C++
+GNU/Linux**. The supported and continuously exercised release matrix is:
+
+| Family | Supported versions | Validation |
+|---|---|---|
+| RHEL | 7, 8, 9, and 10 | EL7 ABI gate plus native C scan/build/fuzz runs on CentOS 7.9 and AlmaLinux 8.10, 9.8, and 10.2 |
+| Ubuntu LTS | 22.04, 24.04, and 26.04 | Native release-binary scan/build/fuzz jobs on every listed LTS |
+| Windows x64 | Windows 11 Enterprise 25H2; Windows 11 Enterprise LTSC 2024 (24H2 codebase); Windows Server 2019, Windows Server 2022, and Windows Server 2025 | Native MSVC binaries plus real C scan/build/fuzz runs |
+
+The Linux artifact is built in a pinned manylinux2014 environment and
+CI-enforced to require no newer than glibc 2.17. RHEL-compatible guests are used
+when licensed Red Hat media is unavailable; this is a compatibility claim, not
+Red Hat certification. RHEL 7 needs Software Collections LLVM 7.0 for the C/C++
 fuzzing lane because its stock Clang 3.4 lacks the required SanitizerCoverage;
 GovFuzz detects and activates that toolset automatically. See the
-[installation guide](docs/site/install.md) for Windows prerequisites and the
-RHEL support matrix.
+[installation guide](docs/site/install.md) for the full OS matrices and
+prerequisites.
 
 #### RHEL 7 quick install
 
@@ -67,7 +76,7 @@ the Linux preload shims. For C/C++ fuzzing on RHEL 7, prepare the host first:
 
 ```sh
 sudo subscription-manager repos --enable rhel-server-rhscl-7-rpms
-sudo yum install -y gcc gcc-c++ make \
+sudo yum install -y curl tar xz gcc gcc-c++ make \
   llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt
 ```
 
@@ -87,6 +96,28 @@ curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz_cc_intercept-installer.sh" 
 GovFuzz discovers and activates LLVM Toolset 7 automatically; no interactive
 `scl enable` shell is needed. Other language lanes need their corresponding
 toolchains from an organization-approved repository or offline package mirror.
+
+#### Windows 11 / Windows Server quick install
+
+The PowerShell release installers install the native x64 CLI and daemon only.
+For C/C++ fuzzing on Windows 11 Enterprise 25H2, Windows 11 Enterprise LTSC
+2024, Windows Server 2019, Windows Server 2022, or Windows Server 2025, first
+install LLVM, VS 2022 Build Tools/Windows SDK, and GNU make from
+an elevated PowerShell. One Chocolatey-based setup is:
+
+```powershell
+choco install llvm make visualstudio2022buildtools `
+  visualstudio2022-workload-vctools -y
+
+$Version = "v0.2.18"
+$Base = "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version"
+irm "$Base/govfuzz-installer.ps1" | iex
+irm "$Base/govfuzz-daemon-installer.ps1" | iex       # optional: RPC/MCP service
+```
+
+Start a new **x64 Developer PowerShell for VS 2022** after tool installation.
+See the [Windows guide](docs/site/windows.md) for `winget`/w64devkit alternatives,
+Visual Studio environment initialization, and native-Windows lane limits.
 
 ## Resource Requirements
 

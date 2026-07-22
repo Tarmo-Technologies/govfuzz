@@ -280,7 +280,34 @@ jobs:
         run: |
           dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
           python3 scripts/augment-release-installer.py target/distrib/govfuzz-installer.sh
+          python3 scripts/fix-dist-shell-installer.py \
+            target/distrib/govfuzz-installer.sh \
+            target/distrib/govfuzz-daemon-installer.sh \
+            target/distrib/govfuzz_runtrace_shim-installer.sh \
+            target/distrib/govfuzz_cc_intercept-installer.sh
+          python3 scripts/fix-dist-library-installer.py \
+            target/distrib/govfuzz_runtrace_shim-installer.sh \
+            target/distrib/govfuzz_cc_intercept-installer.sh
+          python3 scripts/fix-dist-powershell-installer.py \
+            target/distrib/govfuzz-installer.ps1 \
+            target/distrib/govfuzz-daemon-installer.ps1
           grep -Fq GOVFUZZ_RHEL7_GUIDANCE_BEGIN target/distrib/govfuzz-installer.sh
+          grep -Fq "need_cmd xz" target/distrib/govfuzz-installer.sh
+          grep -Fq "need_cmd xz" target/distrib/govfuzz-daemon-installer.sh
+          grep -Fq "need_cmd xz" target/distrib/govfuzz_runtrace_shim-installer.sh
+          grep -Fq "need_cmd xz" target/distrib/govfuzz_cc_intercept-installer.sh
+          grep -Fq "chmod +x \"\$_lib_install_temp/\$_lib_name\"" \
+            target/distrib/govfuzz_runtrace_shim-installer.sh
+          grep -Fq "chmod +x \"\$_lib_install_temp/\$_lib_name\"" \
+            target/distrib/govfuzz_cc_intercept-installer.sh
+          grep -Fq "\$ProgressPreference = \"SilentlyContinue\"" \
+            target/distrib/govfuzz-installer.ps1
+          grep -Fq "\$ProgressPreference = \"SilentlyContinue\"" \
+            target/distrib/govfuzz-daemon-installer.ps1
+          grep -Fq "Avoid console progress-buffer access" \
+            target/distrib/govfuzz-installer.ps1
+          grep -Fq "Avoid console progress-buffer access" \
+            target/distrib/govfuzz-daemon-installer.ps1
           echo "dist ran successfully"
 
           # Parse out what we just built and upload it to scratch storage

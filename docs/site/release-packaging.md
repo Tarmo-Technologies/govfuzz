@@ -18,9 +18,12 @@ so neither install style depends on a source checkout or a CI build path.
 The CLI and daemon archives are built for `x86_64-unknown-linux-gnu` and
 `x86_64-pc-windows-msvc`. The GNU/Linux build runs in a pinned manylinux2014 /
 CentOS 7 container. An automated gate rejects GLIBC requirements newer than
-2.17 and missing preload-hook exports, fixing the release ABI for Ubuntu and
-RHEL 7 through RHEL 9 instead of inheriting a newer Ubuntu runner's glibc. The
-Windows build runs and is smoke-tested on Windows Server 2022. The runtime
+2.17 and missing preload-hook exports, fixing the release ABI for Ubuntu
+22.04/24.04/26.04 LTS and RHEL 7 through RHEL 10 instead of inheriting a newer
+Ubuntu runner's glibc. Release binaries are scan/build/fuzz tested across that
+Linux matrix. The Windows build runs on Windows Server 2022 and the same binary
+is smoke-tested on Server 2025; Windows Server 2019 and Windows 11 Enterprise
+25H2 are covered by the platform VM validation. The runtime
 preload libraries are Linux-only and use package-local targets, so they remain
 separate Linux cdylib assets rather than empty Windows artifacts. macOS,
 Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
@@ -50,6 +53,17 @@ RHEL and CentOS 7 users see the required repository, compiler-package, and
 separate preload-shim installation commands before the installer runs. This
 keeps the generated cargo-dist installer reproducible while making its scope
 and the complete EL7 setup explicit.
+
+All four Unix installers are also post-processed to require `xz` before they
+download a `.tar.xz` archive. This gives minimal RHEL installations an immediate
+missing-command diagnostic instead of failing partway through extraction.
+
+It also post-processes both Linux preload-library installers to correct
+cargo-dist 0.31's temporary-directory `chmod` path. A release gate checks the
+corrected path so a shim installer cannot be published with the known failure.
+The CLI and daemon PowerShell installers are post-processed as well so
+`Expand-Archive` does not access a console progress buffer in non-interactive
+Windows OpenSSH sessions.
 
 ## Binary-Only Distribution Package
 

@@ -10,8 +10,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    uses: ./.github/workflows/classify-ci-scope.yml
+
   build-test:
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -64,6 +73,8 @@ jobs:
 
   rhel7-build:
     name: RHEL 7 compatible build
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-24.04
     env:
       RHEL7_BUILD_IMAGE: quay.io/pypa/manylinux2014_x86_64@sha256:0d25b049964b2549b83384036abdff06789a8c0b1e9ff003ec80f0d531f79e50
@@ -216,6 +227,8 @@ jobs:
 
   windows-build:
     name: Windows MSVC build and tests
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: windows-2022
     env:
       GOVFUZZ_RELEASE_VERSION: "1"

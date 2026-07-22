@@ -23,7 +23,7 @@ use the binary-only distribution flow below.
 
 | | **Model A — transfer binaries** | **Model B — transfer source, build offline** |
 |---|---|---|
-| You move | The built `govfuzz`, `govfuzz-daemon`, and runtrace shim | The repo + a vendored crate cache |
+| You move | The built `govfuzz`, `govfuzz-daemon`, runtrace shim, and compiler-interception shim | The repo + a vendored crate cache |
 | Offline host needs Rust? | **No** | **Yes** (pinned `stable` toolchain) |
 | Binary/host match | You must match OS + CPU arch + glibc | Exact, built on the host itself |
 | Best when | The offline host's OS/arch is known and matches a build host or release target | The offline host's libc/arch is unusual, hardened, or unknown |
@@ -51,7 +51,7 @@ current provider, agentic, memory, and privacy boundaries.
 
 ---
 
-## Model A — build on a connected host, transfer binaries
+## Model A — obtain or build on a connected host, transfer binaries
 
 This is the simplest path and the recommended default.
 
@@ -64,7 +64,8 @@ files that generated harnesses and interpreter drivers need at build/run time.
 
 The package contains:
 
-- `tool/govfuzz`, `tool/govfuzz-daemon`, and the runtrace shim
+- `tool/govfuzz`, `tool/govfuzz-daemon`, the runtrace shim, and the
+  compiler-interception shim
 - `tool/c_runtime`, `tool/ada_runtime`, `tool/java_runtime`,
   `tool/python_runtime`, `tool/perl_runtime`, `tool/crates/rust_runtime`,
   `tool/csharp_runtime`, `tool/js_runtime`, `tool/ruby_runtime`,
@@ -73,7 +74,8 @@ The package contains:
 - `content/govfuzz-policy.json`, requiring the configured content-pack key
 - `smoke/c/govfuzz_smoke.c`, a tiny post-install `govfuzz auto` fixture
 - `install.sh`, the interactive/update-safe installer
-- `README-DIST.md` and `RUN-GOVFUZZ.md`, the install and post-install run guides
+- `README-DIST.md`, `INSTALL.md`, and `RUN-GOVFUZZ.md`, the install choices and
+  post-install run guides
 
 The signed content pack currently carries these pack kinds:
 
@@ -156,7 +158,43 @@ toolchains through your normal offline mirror first, then run the installer with
 `--no-system-packages` and/or `--no-rustup`. The old `--no-apt` spelling remains
 as a compatibility alias.
 
-### A1. Use the published release archives (preferred)
+### A1. Use the published all-in-one bundle (preferred)
+
+The release publishes `govfuzz-dist-<version>-x86_64-unknown-linux-gnu.tar.gz`
+with its `.sha256` sidecar. It contains `install.sh`, the CLI, daemon, runtrace
+shim, compiler-interception shim, harness runtimes, signed content pack, and
+smoke fixture. No source checkout or component assembly is required.
+
+On the **connected** host:
+
+```sh
+gh release download vX.Y.Z --repo Tarmo-Technologies/govfuzz \
+  --pattern 'govfuzz-dist-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz*'
+
+sha256sum -c govfuzz-dist-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz.sha256
+```
+
+Transfer both files, then on the **offline** host:
+
+```sh
+sha256sum -c govfuzz-dist-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar xzf govfuzz-dist-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
+cd govfuzz-dist-vX.Y.Z-x86_64-unknown-linux-gnu
+
+./install.sh --non-interactive \
+  --languages all \
+  --targets native \
+  --fuzzers builtin \
+  --extras build-recovery,archives \
+  --no-system-packages \
+  --no-rustup
+```
+
+Omit `--no-system-packages` and `--no-rustup` on a connected destination when
+the installer should prepare those dependencies. The content pack is already
+inside the bundle and remains enabled unless `--no-content` is passed.
+
+### A2. Manually co-locate published component archives
 
 Releases are produced by `dist` and attached to the GitHub Release for each tag.
 Each app is a separate archive with a `.sha256` sidecar:
@@ -170,12 +208,12 @@ Each app is a separate archive with a `.sha256` sidecar:
 - `govfuzz_cc_intercept-*` — the `LD_PRELOAD` shim C/C++ build recovery uses to
   capture compiler invocations made by absolute path or via `posix_spawn`
 
-For the usual full Linux `govfuzz auto` deployment, transfer the CLI, runtrace
-shim, and compiler-interception shim archives plus their three sidecars. Omit
-the compiler-interception shim if complex C/C++ build recovery is out of scope.
-Transfer the daemon archive only when the offline host will serve IDE, JSON-RPC,
-or MCP clients. Do not transfer shell installers: they fetch archives from the
-network and add no value on the disconnected side.
+Use this path when policy or storage constraints require individually selected
+files. For the usual full Linux `govfuzz auto` deployment, transfer the CLI,
+runtrace shim, and compiler-interception shim archives plus their three
+sidecars. Transfer the daemon only for IDE, JSON-RPC, or MCP clients. Do not
+transfer the component shell installers: they fetch archives from the network
+and add no value on the disconnected side.
 
 On the **connected** host:
 
@@ -212,22 +250,36 @@ Transfer the archives (e.g. via approved removable media), then on the
 ```sh
 sha256sum -c govfuzz-x86_64-unknown-linux-gnu.tar.xz.sha256 # re-verify after transfer
 tar xf govfuzz-x86_64-unknown-linux-gnu.tar.xz
-tar xf govfuzz_runtrace_shim-*.tar.xz         # extract the shim *beside* the CLI dir
-tar xf govfuzz_cc_intercept-*.tar.xz          # optional, for C/C++ build recovery
+tar xf govfuzz_runtrace_shim-*.tar.xz
+tar xf govfuzz_cc_intercept-*.tar.xz
 # Only if transferred for JSON-RPC/MCP:
 tar xf govfuzz-daemon-x86_64-unknown-linux-gnu.tar.xz
-./govfuzz-x86_64-unknown-linux-gnu/govfuzz --help
+
+CLI_DIR=govfuzz-x86_64-unknown-linux-gnu
+install -m 0755 \
+  govfuzz_runtrace_shim-x86_64-unknown-linux-gnu/libgovfuzz_runtrace_shim.so \
+  "$CLI_DIR/"
+install -m 0755 \
+  govfuzz_cc_intercept-x86_64-unknown-linux-gnu/libgovfuzz_cc_intercept.so \
+  "$CLI_DIR/"
+
+"./$CLI_DIR/govfuzz" --help
 ```
 
-The CLI locates the runtime shim automatically when it sits next to the binary;
-otherwise point at the preload libraries explicitly:
+Co-locating both libraries beside the CLI is the reliable manual layout. The
+runtrace shim also has sibling-archive-directory discovery, but merely
+extracting the compiler-interception archive as a sibling directory is not
+enough. If policy requires separate library directories, use absolute paths:
 
 ```sh
-export GOVFUZZ_RUNTRACE_SHIM=/opt/govfuzz/libgovfuzz_runtrace_shim.so
-export GOVFUZZ_CC_INTERCEPT=/opt/govfuzz/libgovfuzz_cc_intercept.so
+export GOVFUZZ_RUNTRACE_SHIM=/absolute/path/libgovfuzz_runtrace_shim.so
+export GOVFUZZ_CC_INTERCEPT=/absolute/path/libgovfuzz_cc_intercept.so
 ```
 
-### A2. Build from source on a connected host, transfer the needed components
+Every component archive includes `INSTALL.md` with the same co-location
+commands, an optional-daemon example, and a user-local permanent prefix.
+
+### A3. Build from source on a connected host, transfer the needed components
 
 Use this when you need a tag/commit that has no published archive, or a target
 triple the release job does not build.

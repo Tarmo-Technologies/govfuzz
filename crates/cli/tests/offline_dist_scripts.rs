@@ -32,10 +32,12 @@ fn offline_dist_packager_advertises_binary_only_content_pack_flow() {
     assert!(stdout.contains("--sbom-cve-db"));
     assert!(stdout.contains("--binary-cve-db"));
     assert!(stdout.contains("--seed-dir"));
+    assert!(stdout.contains("--artifact-dir"));
     assert!(stdout.contains("dist/content-inputs/sbom-cves.json"));
     assert!(stdout.contains("dist/content-inputs/binary-cves.json"));
     assert!(stdout.contains("smoke"));
     assert!(stdout.contains("install.sh"));
+    assert!(stdout.contains("INSTALL.md"));
     assert!(stdout.contains("RUN-GOVFUZZ.md"));
     assert!(stdout.contains("does not include GovFuzz source"));
 }
@@ -118,6 +120,10 @@ fn offline_dist_readme_documents_install_options_without_source_tree_note() {
         "--targets all",
         "--fuzzers all",
         "--extras all",
+        "all-in-one Linux package",
+        "both Linux preload shims",
+        "INSTALL.md",
+        "manually co-locate",
     ] {
         assert!(
             readme.contains(expected),
@@ -440,6 +446,15 @@ fn offline_dist_packager_stages_every_external_harness_runtime() {
             "packager does not stage {runtime}"
         );
     }
+
+    assert!(
+        script.contains("libgovfuzz_cc_intercept.so"),
+        "all-in-one packager must stage the compiler-interception shim"
+    );
+    assert!(
+        script.contains("cp \"$REPO_ROOT/INSTALL.md\" \"$STAGE_ROOT/INSTALL.md\""),
+        "all-in-one package must carry the dual-path installation guide"
+    );
 }
 
 #[test]
@@ -463,9 +478,40 @@ fn release_matrix_keeps_windows_apps_and_linux_only_shims_separate() {
         assert!(manifest.contains("targets = [\"x86_64-unknown-linux-gnu\"]"));
         assert!(!manifest.contains("x86_64-pc-windows-msvc"));
     }
+    for manifest in [&cli, &daemon, &runtrace, &intercept] {
+        assert!(
+            manifest.contains("../../INSTALL.md"),
+            "every release component archive must include INSTALL.md"
+        );
+    }
     assert!(workflow.contains("if: runner.os == 'Linux'"));
     assert!(workflow.contains("if: runner.os == 'Windows'"));
     assert!(workflow.contains("scripts/check-linux-release-abi.sh"));
+    assert!(workflow.contains("scripts/package-offline-dist.sh"));
+    assert!(workflow.contains("govfuzz-dist-*.tar.gz.sha256"));
+    assert!(workflow.contains("libgovfuzz_cc_intercept.so"));
+}
+
+#[test]
+fn release_archive_install_guide_documents_both_linux_layouts() {
+    let guide = fs::read_to_string(repo_root().join("INSTALL.md")).unwrap();
+
+    for expected in [
+        "all-in-one `install.sh` bundle",
+        "./install.sh",
+        "--non-interactive",
+        "manually co-locate component archives",
+        "libgovfuzz_runtrace_shim.so",
+        "libgovfuzz_cc_intercept.so",
+        "GOVFUZZ_RUNTRACE_SHIM",
+        "GOVFUZZ_CC_INTERCEPT",
+        "govfuzz-daemon",
+    ] {
+        assert!(
+            guide.contains(expected),
+            "INSTALL.md missing {expected:?}:\n{guide}"
+        );
+    }
 }
 
 #[test]

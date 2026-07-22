@@ -113,6 +113,7 @@ jobs:
       BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
       DIST_ARGS: ${{ matrix.dist_args }}
       DIST_TAG_FLAG: ${{ needs.plan.outputs.tag-flag }}
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
       RHEL7_BUILD_IMAGE: quay.io/pypa/manylinux2014_x86_64@sha256:0d25b049964b2549b83384036abdff06789a8c0b1e9ff003ec80f0d531f79e50
     steps:
       - name: enable windows longpaths
@@ -167,6 +168,55 @@ jobs:
               scripts/check-linux-release-abi.sh "$release_dir"
             '
           echo "dist ran successfully"
+      - name: Build and exercise all-in-one Linux installer bundle
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir=target/x86_64-unknown-linux-gnu/dist
+          [[ -d "$release_dir" ]] || release_dir=target/dist
+          version="${RELEASE_TAG:-$(git describe --tags --always)}"
+          safe_version="$(printf '%s' "$version" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          bundle_name="govfuzz-dist-${safe_version}-x86_64-unknown-linux-gnu"
+
+          scripts/package-offline-dist.sh \
+            --artifact-dir "$release_dir" \
+            --out target/distrib \
+            --version "$version" \
+            --target-triple x86_64-unknown-linux-gnu
+
+          archive="target/distrib/${bundle_name}.tar.gz"
+          sidecar="${archive}.sha256"
+          test -f "$archive"
+          test -f "$sidecar"
+          (cd target/distrib && sha256sum -c "${bundle_name}.tar.gz.sha256")
+
+          verify_root="$(mktemp -d)"
+          install_root="$(mktemp -d)"
+          tar -xzf "$archive" -C "$verify_root"
+          bundle_root="$verify_root/$bundle_name"
+          test -x "$bundle_root/install.sh"
+          test -f "$bundle_root/INSTALL.md"
+          test -x "$bundle_root/tool/govfuzz"
+          test -x "$bundle_root/tool/govfuzz-daemon"
+          test -f "$bundle_root/tool/libgovfuzz_runtrace_shim.so"
+          test -f "$bundle_root/tool/libgovfuzz_cc_intercept.so"
+
+          "$bundle_root/install.sh" \
+            --non-interactive \
+            --prefix "$install_root/prefix" \
+            --bin-dir "$install_root/bin" \
+            --languages c \
+            --targets native \
+            --fuzzers builtin \
+            --extras none \
+            --no-system-packages \
+            --no-rustup \
+            --no-content \
+            --no-symlink
+          "$install_root/prefix/govfuzz" --version
+          test -f "$install_root/prefix/libgovfuzz_runtrace_shim.so"
+          test -f "$install_root/prefix/libgovfuzz_cc_intercept.so"
       - name: Build Windows artifacts
         if: runner.os == 'Windows'
         shell: bash
@@ -196,6 +246,22 @@ jobs:
             rust_runtime/Cargo.toml
           do
             grep -Fq "$marker" <<<"$entries" || { echo "missing $marker from $archive" >&2; exit 1; }
+          done
+      - name: Validate install guide in every Linux component archive
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for archive in \
+            target/distrib/govfuzz-x86_64-unknown-linux-gnu.tar.xz \
+            target/distrib/govfuzz-daemon-x86_64-unknown-linux-gnu.tar.xz \
+            target/distrib/govfuzz_runtrace_shim-x86_64-unknown-linux-gnu.tar.xz \
+            target/distrib/govfuzz_cc_intercept-x86_64-unknown-linux-gnu.tar.xz
+          do
+            tar -tf "$archive" | grep -Eq '(^|/)INSTALL\.md$' || {
+              echo "missing INSTALL.md from $archive" >&2
+              exit 1
+            }
           done
       - name: Validate packaged harness runtimes (Windows)
         if: runner.os == 'Windows'
@@ -237,6 +303,11 @@ jobs:
           # Parse out what we just built and upload it to scratch storage
           echo "paths<<EOF" >> "$GITHUB_OUTPUT"
           dist print-upload-files-from-manifest --manifest dist-manifest.json >> "$GITHUB_OUTPUT"
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            printf '%s\n' \
+              target/distrib/govfuzz-dist-*.tar.gz \
+              target/distrib/govfuzz-dist-*.tar.gz.sha256 >> "$GITHUB_OUTPUT"
+          fi
           echo "EOF" >> "$GITHUB_OUTPUT"
 
           cp dist-manifest.json "$BUILD_MANIFEST_NAME"
@@ -309,6 +380,12 @@ jobs:
           grep -Fq "Avoid console progress-buffer access" \
             target/distrib/govfuzz-daemon-installer.ps1
           echo "dist ran successfully"
+
+          for sidecar in target/distrib/govfuzz-dist-*.tar.gz.sha256; do
+            [[ -f "$sidecar" ]] || continue
+            cat "$sidecar" >> target/distrib/sha256.sum
+          done
+          LC_ALL=C sort -u -o target/distrib/sha256.sum target/distrib/sha256.sum
 
           # Parse out what we just built and upload it to scratch storage
           echo "paths<<EOF" >> "$GITHUB_OUTPUT"

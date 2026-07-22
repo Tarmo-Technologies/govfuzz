@@ -29,6 +29,15 @@ if (-not (Get-Command clang -ErrorAction SilentlyContinue)) {
 if (-not (Get-Command make -ErrorAction SilentlyContinue)) {
     choco install make --yes --no-progress
 }
+
+# Chocolatey updates the persistent machine/user PATH, but PowerShell keeps the
+# process environment it inherited. Refresh it so tools installed above are
+# immediately usable in clean OpenSSH and CI sessions.
+$env:Path = (@(
+        [Environment]::GetEnvironmentVariable("Path", "Machine")
+        [Environment]::GetEnvironmentVariable("Path", "User")
+        $env:Path
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ";"
 clang --version
 make --version
 

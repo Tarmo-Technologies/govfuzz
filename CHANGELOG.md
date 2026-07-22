@@ -12,10 +12,11 @@
   the mistakenly selected daemon archive.
 
 - **ThreadSanitizer replay reliability.** Corpus replay now gives explicit TSan
-  shadow-memory mapping failures a bounded extended retry budget and retries
-  transient unsymbolized reports, avoiding missed GF-556 findings under parallel
-  sanitizer load. The live-runtime E2E also rechecks TSan availability at the
-  point of failure instead of treating an ASLR/runtime outage as a govfuzz defect.
+  shadow-memory mapping failures a larger harness-wide bounded retry budget and
+  retries transient unsymbolized reports, avoiding missed GF-556 findings under
+  parallel sanitizer load without multiplying the bound across every corpus
+  input. The live-runtime E2E also rechecks TSan availability at the point of
+  failure instead of treating an ASLR/runtime outage as a govfuzz defect.
 
 - **Clear RHEL 7 installation prerequisites.** The README now includes a
   copy-paste EL7 quick install. The v0.2.18 Unix CLI installer detects RHEL /
@@ -23,6 +24,30 @@
   LLVM 7 packages, and links the separate runtrace and compiler-interception
   shim installers instead of leaving a fresh host with an unexplained toolchain
   failure.
+
+- **Current platform matrix.** Release compatibility now extends through RHEL
+  10 and Ubuntu 26.04 LTS, while retaining RHEL 7/8/9 and Ubuntu 22.04/24.04.
+  Native Windows coverage spans Windows 11 Enterprise 25H2, Windows 11
+  Enterprise LTSC 2024 (24H2 codebase), and Windows Server 2019/2022/2025. CI
+  exercises release binaries through scan, target discovery, native C harness
+  compilation, and fuzzing instead of checking only startup.
+
+- **Working Linux shim installers.** The v0.2.18 runtrace and compiler-
+  interception shell installer assets were repaired in place after clean-host
+  validation exposed cargo-dist 0.31 applying `chmod` to the final library path
+  before moving the library out of its temporary directory. The release
+  workflow now patches and gates both generated library installers so the
+  failure cannot recur. Every Unix installer now also checks for the `xz`
+  helper up front, and the RHEL setup commands install it explicitly; this
+  replaces an opaque extraction failure on minimal RHEL images.
+
+- **Platform installer and prerequisite diagnostics.** The v0.2.18 CLI and
+  daemon PowerShell installer assets were updated in place so `irm ... | iex`
+  also works in a non-interactive Windows Server 2019 OpenSSH session. Missing
+  Windows C/C++ tools now recommend LLVM, VS 2022 Build Tools/Windows SDK, and
+  GNU make instead of incorrectly printing an Ubuntu `apt-get` command. Linux
+  C/C++ diagnostics now distinguish the RHEL 7 LLVM Toolset, RHEL 8+ `dnf`, and
+  Ubuntu `apt-get` paths.
 
 ## 0.2.17 - 2026-07-21
 

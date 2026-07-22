@@ -35,8 +35,8 @@ Linux-only. The generated workflow publishes the CLI and daemon for
 `x86_64-unknown-linux-gnu` and `x86_64-pc-windows-msvc`, while publishing the
 two preload libraries only for Linux. The Linux target is built in a pinned
 manylinux2014 / CentOS 7 container and checked for a maximum glibc 2.17 ABI,
-covering Ubuntu and RHEL 7 through RHEL 9. The same gate verifies the runtrace
-shim's required interposition exports. For archive installs,
+covering Ubuntu 22.04/24.04/26.04 LTS and RHEL 7 through RHEL 10. The same gate
+verifies the runtrace shim's required interposition exports. For archive installs,
 extract the `govfuzz_runtrace_shim-*` archive next to the `govfuzz-*` archive
 directory, or set `GOVFUZZ_RUNTRACE_SHIM` to the library path. For installer
 installs, install both `govfuzz` and `govfuzz_runtrace_shim` so the library
@@ -50,6 +50,22 @@ repositories or install toolchains/shims; it prints the exact RHSCL LLVM 7
 packages and the separate runtrace/compiler-interception installer commands.
 The augmentation is idempotent and the release workflow rejects an installer
 that does not contain the guidance marker.
+
+`scripts/fix-dist-shell-installer.py` adds an explicit `xz` dependency check to
+all four Unix installers. Cargo-dist already checks for `tar`, but its `.tar.xz`
+archives also require the external `xz` helper on minimal RHEL installations.
+The release gate rejects any Unix installer without this check.
+
+The workflow also runs `scripts/fix-dist-library-installer.py` over both Linux
+preload-library installers. This corrects cargo-dist 0.31's temporary-directory
+`chmod` path before publication; a release gate rejects either installer if the
+fixed path is absent.
+
+`scripts/fix-dist-powershell-installer.py` makes both Windows installers usable
+from local PowerShell and non-interactive Windows OpenSSH sessions by disabling
+`Expand-Archive` console progress in the extraction scope. This avoids the
+Server 2019 `ReadConsoleOutput` access-denied failure while leaving installation
+output and errors visible.
 
 ## Binary-Only Distribution Package
 
@@ -105,9 +121,11 @@ The generated release workflow builds these target triples:
 - `x86_64-pc-windows-msvc` (`govfuzz` and `govfuzz-daemon` only)
 
 Each archive has a SHA-256 checksum sidecar. The Linux binaries are built in the
-pinned manylinux2014 container for Ubuntu and RHEL 7 through 9. Windows binaries
-are built and smoke-tested on Windows Server 2022, and their PowerShell
-installers are published alongside the Unix shell installers. The runtime and
+pinned manylinux2014 container for Ubuntu 22.04/24.04/26.04 LTS and RHEL 7
+through 10. Windows binaries are built and smoke-tested on Windows Server 2022,
+then the same binaries are exercised on Server 2025; Server 2019 and Windows 11
+Enterprise 25H2 are covered by the platform VM validation. PowerShell installers
+are published alongside the Unix shell installers. The runtime and
 compiler-interception preload shims remain Linux-only assets. macOS,
 Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
 

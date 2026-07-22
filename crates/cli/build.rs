@@ -26,6 +26,7 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", shim_src.display());
     println!("cargo:rerun-if-env-changed=PROFILE");
+    println!("cargo:rerun-if-env-changed=GOVFUZZ_RELEASE_VERSION");
     let _ = profile;
 
     // Stamp the short git commit so `bug_report` can identify exactly which
@@ -66,8 +67,12 @@ fn main() {
     // `v0.2.3` on a tag, or `v0.2.2-3-gc307502` between tags), falling back to the
     // Cargo package version for an unpacked source tarball with no git. ALWAYS
     // emitted so `env!("GOVFUZZ_VERSION_FULL")` compiles.
-    let version_full = git(&["describe", "--tags", "--always", "--dirty"])
-        .unwrap_or_else(|| env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "unknown".to_owned()));
+    let package_version = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "unknown".to_owned());
+    let version_full = if env::var_os("GOVFUZZ_RELEASE_VERSION").is_some() {
+        format!("v{package_version}")
+    } else {
+        git(&["describe", "--tags", "--always", "--dirty"]).unwrap_or(package_version)
+    };
     println!("cargo:rustc-env=GOVFUZZ_VERSION_FULL={version_full}");
 
     if shim_src.is_file() {

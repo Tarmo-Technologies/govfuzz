@@ -157,7 +157,7 @@ jobs:
                 --work-dir /tmp/govfuzz-fuzz \
                 --languages c --target parse_frame --iterations 32 --single-pass \
                 --sanitizers none --per-target-time 5 --no-discovery-cache
-              grep -Eq '"built_and_fuzzed"[[:space:]]*:[[:space:]]*1' \
+              grep -Eq "\"built_and_fuzzed\"[[:space:]]*:[[:space:]]*1" \
                 /tmp/govfuzz-fuzz/auto/run.json
               test -n "$(find /tmp/govfuzz-fuzz -name runtrace.jsonl -type f -size +0c -print -quit)"
             '

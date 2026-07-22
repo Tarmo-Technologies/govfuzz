@@ -263,6 +263,7 @@ fn ci_enforces_the_current_supported_os_matrix() {
     }
     assert!(ci.contains("govfuzz-el7-release.tar.gz"));
     assert!(ci.contains("runtrace.jsonl"));
+    assert!(ci.contains(r#"grep -Eq "\"built_and_fuzzed\"[[:space:]]*:[[:space:]]*1""#));
     assert!(ci.contains("scripts/ci/windows-release-smoke.ps1"));
     assert!(windows_smoke.contains("Win32_OperatingSystem"));
     assert!(windows_smoke.contains("built_and_fuzzed"));

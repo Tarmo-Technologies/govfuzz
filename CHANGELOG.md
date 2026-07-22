@@ -12,10 +12,11 @@
   the mistakenly selected daemon archive.
 
 - **ThreadSanitizer replay reliability.** Corpus replay now gives explicit TSan
-  shadow-memory mapping failures a bounded extended retry budget and retries
-  transient unsymbolized reports, avoiding missed GF-556 findings under parallel
-  sanitizer load. The live-runtime E2E also rechecks TSan availability at the
-  point of failure instead of treating an ASLR/runtime outage as a govfuzz defect.
+  shadow-memory mapping failures a larger harness-wide bounded retry budget and
+  retries transient unsymbolized reports, avoiding missed GF-556 findings under
+  parallel sanitizer load without multiplying the bound across every corpus
+  input. The live-runtime E2E also rechecks TSan availability at the point of
+  failure instead of treating an ASLR/runtime outage as a govfuzz defect.
 
 - **Clear RHEL 7 installation prerequisites.** The README now includes a
   copy-paste EL7 quick install. The v0.2.18 Unix CLI installer detects RHEL /

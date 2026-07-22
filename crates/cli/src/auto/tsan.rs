@@ -32,10 +32,12 @@ const MAX_INPUTS: usize = 2000;
 /// is deterministically broken.
 const TSAN_RUN_RETRIES: usize = 4;
 
-/// Extra attempts when TSan explicitly says its shadow-memory runtime could not
-/// initialize. High-entropy ASLR can make this intermittent even after a working
-/// preflight; these failures happen before target code runs and are safe to retry.
-const TSAN_MAPPING_RETRIES: usize = 16;
+/// Consecutive explicit shadow-memory initialization failures tolerated across a
+/// harness. High-entropy ASLR can make TSan fail many very fast startups in a row,
+/// even immediately before the same binary runs successfully. Keep this budget
+/// harness-wide so a permanently incompatible host cannot multiply it by every
+/// corpus input.
+const TSAN_MAPPING_FAILURE_LIMIT: usize = 256;
 
 /// Replay every C harness's corpus through its TSan build, writing a GF-556 finding
 /// per distinct data-race site. Returns the number of findings written.
@@ -82,7 +84,8 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
     };
     let mut sites: BTreeSet<(String, u64)> = BTreeSet::new();
     let mut replayed = 0usize;
-    for input in inputs.flatten() {
+    let mut consecutive_mapping_failures = 0usize;
+    'inputs: for input in inputs.flatten() {
         if replayed >= MAX_INPUTS {
             break;
         }
@@ -93,10 +96,11 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
         replayed += 1;
         // The govfuzz C driver replays a single input passed as argv[1]. A clean
         // no-race run (exit 0) is a real result. Retry an unsymbolized race report
-        // or unexplained abnormal exit a few times, and give TSan's explicit
-        // shadow-mapping initialization failure a larger retry budget because no
-        // target code ran. See TSAN_RUN_RETRIES and TSAN_MAPPING_RETRIES.
-        for attempt in 0..=TSAN_MAPPING_RETRIES {
+        // or unexplained abnormal exit a few times. Explicit shadow-mapping
+        // initialization failures do not consume that per-input retry budget;
+        // they use a larger harness-wide bound because target code never ran.
+        let mut run_retries = 0usize;
+        loop {
             let Ok(out) = crate::command_output::output_with_timeout(
                 Command::new(&bin)
                     .arg(&path)
@@ -107,27 +111,34 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
             };
             let stderr = String::from_utf8_lossy(&out.stderr);
             if stderr.contains("data race") {
+                consecutive_mapping_failures = 0;
                 if let Some(site) = first_target_frame(&stderr, hdir) {
                     sites.insert(site);
                     break;
                 }
-                if attempt >= TSAN_RUN_RETRIES {
+                if run_retries >= TSAN_RUN_RETRIES {
                     break;
                 }
+                run_retries += 1;
                 continue;
             }
             // No race report: a clean exit is a genuine no-race run (stop).
             if out.status.success() {
+                consecutive_mapping_failures = 0;
                 break;
             }
-            let retry_budget = if is_tsan_mapping_failure(&stderr) {
-                TSAN_MAPPING_RETRIES
-            } else {
-                TSAN_RUN_RETRIES
-            };
-            if attempt >= retry_budget {
+            if is_tsan_mapping_failure(&stderr) {
+                consecutive_mapping_failures += 1;
+                if consecutive_mapping_failures >= TSAN_MAPPING_FAILURE_LIMIT {
+                    break 'inputs;
+                }
+                continue;
+            }
+            consecutive_mapping_failures = 0;
+            if run_retries >= TSAN_RUN_RETRIES {
                 break;
             }
+            run_retries += 1;
         }
     }
 

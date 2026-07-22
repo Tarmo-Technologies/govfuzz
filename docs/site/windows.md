@@ -90,6 +90,15 @@ Download the `govfuzz-x86_64-pc-windows-msvc.zip` archive from the GitHub
 release and verify its `.sha256` sidecar, or use the release's PowerShell
 installer:
 
+- For normal terminal use, install only `govfuzz`. The installer downloads the
+  CLI ZIP automatically, so you do not need both files.
+- Add `govfuzz-daemon-installer.ps1` (or the daemon ZIP and sidecar) only for
+  IDE, JSON-RPC, or read-only MCP use. The CLI does not require the daemon.
+- Ignore `govfuzz_runtrace_shim-*` and `govfuzz_cc_intercept-*`; those are
+  Linux-only `LD_PRELOAD` components and have no Windows archives.
+- `source.tar.gz`, `dist-manifest.json`, and checksum files are for source audit,
+  automation, or manual verification—not additional programs to install.
+
 ```powershell
 $Version = "v0.2.18"
 irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex

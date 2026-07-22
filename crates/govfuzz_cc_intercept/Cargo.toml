@@ -14,6 +14,7 @@ package-libraries = ["cdylib"]
 install-libraries = ["cdylib"]
 installers = ["shell"]
 targets = ["x86_64-unknown-linux-gnu"]
+include = ["../../INSTALL.md"]
 
 [lib]
 crate-type = ["cdylib"]

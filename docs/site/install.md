@@ -170,8 +170,10 @@ locally on a newer distribution may not be portable to RHEL; use the published
 artifact or the same pinned build image if the loader reports
 `GLIBC_2.xx not found`.
 
-GitHub releases ship per-component archives and shell installers (one component
-at a time). You do **not** need every asset for every install.
+GitHub releases ship an all-in-one Linux bundle with `install.sh` plus the
+per-component archives and installers. Use the all-in-one bundle for a complete
+Linux installation, or use components when you deliberately want a smaller or
+manually controlled layout. You do **not** need every asset for every install.
 
 The CLI archive carries every harness-runtime source tree. The CLI executable
 also embeds the same sources and stages a private copy automatically when it was
@@ -180,20 +182,21 @@ need a govfuzz source checkout.
 
 ### Choose release assets by task
 
-An installer downloads and installs its matching archive. Use the installer for
-a connected, conventional installation; use the archive plus its `.sha256`
-sidecar for manual or offline installation. Do not download both forms of the
-same component.
+The all-in-one archive is self-contained and its bundled `install.sh` installs
+all Linux runtime components. A component installer downloads and installs only
+its matching archive. Do not download both the installer and archive for the
+same individual component.
 
 | Task | Required assets | Optional additions |
 |---|---|---|
+| Complete Linux install with one installer | `govfuzz-dist-<version>-x86_64-unknown-linux-gnu.tar.gz` and its `.sha256` sidecar; extract it and run `./install.sh` | None; the CLI, daemon, both shims, runtimes, and signed content are included |
 | Windows CLI | `govfuzz-installer.ps1`, or `govfuzz-x86_64-pc-windows-msvc.zip` and its sidecar | `govfuzz-daemon-installer.ps1` or the daemon ZIP only for IDE/JSON-RPC/MCP use |
 | Basic Linux CLI, scan, build, and fuzz | `govfuzz-installer.sh`, or `govfuzz-x86_64-unknown-linux-gnu.tar.xz` and its sidecar | Add the two Linux shims below for full runtime behavior and complex C/C++ build recovery |
 | Full Linux `govfuzz auto` | The Linux CLI plus `govfuzz_runtrace_shim-installer.sh` (or its archive and sidecar) | Add `govfuzz_cc_intercept` when testing C/C++ projects with real build systems |
 | Complex C/C++ `--probe-build` / `--build-command` recovery | Linux CLI plus `govfuzz_cc_intercept-installer.sh` (or its archive and sidecar) | Add the runtrace shim for runtime audit/fake-resource coverage too |
 | Linux IDE/JSON-RPC/MCP service | The required Linux CLI/shims for the intended workload, plus `govfuzz-daemon-installer.sh` or its archive | None |
 | Source audit or rebuild | `source.tar.gz` and `source.tar.gz.sha256` | Prebuilt runtime assets are not required unless you also want to run them |
-| Automated release processing | `dist-manifest.json`; use `sha256.sum` to verify all archives or the matching `*.sha256` file for one archive | None |
+| Automated component-release processing | `dist-manifest.json`; use `sha256.sum` to verify all archives or the matching `*.sha256` file for one archive | The GitHub Release asset list also includes the separately assembled all-in-one bundle |
 
 What each optional component changes:
 
@@ -210,11 +213,44 @@ What each optional component changes:
 - `source.tar.gz`, `dist-manifest.json`, and checksum files are not executable
   components. Do not install them into `PATH`.
 
-In short: the recommended full Linux set is the CLI plus both shims. The normal
-Windows set is the CLI alone, with the daemon added only for IDE/MCP use. Windows
-users should ignore the two Linux-only shim assets.
+In short: the recommended full Linux delivery is the all-in-one bundle. Its
+manual equivalent is the CLI plus both shims, with the daemon added only when
+needed. The normal Windows set is the CLI alone, with the daemon added only for
+IDE/MCP use. Windows users should ignore the two Linux-only shim assets.
 
-### Connected Linux installation
+### Complete Linux installation with the bundled `install.sh`
+
+```sh
+VERSION=v0.2.18
+BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
+ARCHIVE="govfuzz-dist-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+
+curl --proto '=https' --tlsv1.2 -fLO "$BASE/$ARCHIVE"
+curl --proto '=https' --tlsv1.2 -fLO "$BASE/$ARCHIVE.sha256"
+sha256sum -c "$ARCHIVE.sha256"
+tar xzf "$ARCHIVE"
+cd "${ARCHIVE%.tar.gz}"
+./install.sh
+```
+
+The interactive installer selects language toolchains, compile targets,
+fuzzers, and optional extras. It installs to `/opt/govfuzz` by default and
+creates `govfuzz` and `govfuzz-daemon` symlinks in `/usr/local/bin`.
+For automation:
+
+```sh
+./install.sh --non-interactive \
+  --languages c,cpp,rust \
+  --targets native \
+  --fuzzers builtin \
+  --extras build-recovery,archives
+```
+
+On an offline host with dependencies already staged, add
+`--no-system-packages --no-rustup`. Run `./install.sh --help` for custom
+prefixes, seeds, content-pack, symlink, and smoke-test controls.
+
+### Connected component-installer alternative
 
 ```sh
 VERSION=<latest release tag>
@@ -226,9 +262,39 @@ curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz_runtrace_shim-installer.sh"
 curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz_cc_intercept-installer.sh" | sh
 ```
 
-For archive installs, verify the `.sha256` sidecars, extract the component
-archives, and keep the shim archives beside the `govfuzz-*` directory or set
-`GOVFUZZ_RUNTRACE_SHIM` / `GOVFUZZ_CC_INTERCEPT` to the extracted library paths.
+Those three installers place `govfuzz`, `libgovfuzz_runtrace_shim.so`, and
+`libgovfuzz_cc_intercept.so` together in `$CARGO_HOME/bin` or
+`$HOME/.cargo/bin`. The daemon has its own optional installer.
+
+### Manual component-archive co-location
+
+Verify each selected archive with its sidecar, extract it, and copy both Linux
+libraries into the CLI directory:
+
+```sh
+sha256sum -c govfuzz-x86_64-unknown-linux-gnu.tar.xz.sha256
+sha256sum -c govfuzz_runtrace_shim-x86_64-unknown-linux-gnu.tar.xz.sha256
+sha256sum -c govfuzz_cc_intercept-x86_64-unknown-linux-gnu.tar.xz.sha256
+
+tar xf govfuzz-x86_64-unknown-linux-gnu.tar.xz
+tar xf govfuzz_runtrace_shim-x86_64-unknown-linux-gnu.tar.xz
+tar xf govfuzz_cc_intercept-x86_64-unknown-linux-gnu.tar.xz
+
+CLI_DIR=govfuzz-x86_64-unknown-linux-gnu
+install -m 0755 \
+  govfuzz_runtrace_shim-x86_64-unknown-linux-gnu/libgovfuzz_runtrace_shim.so \
+  "$CLI_DIR/"
+install -m 0755 \
+  govfuzz_cc_intercept-x86_64-unknown-linux-gnu/libgovfuzz_cc_intercept.so \
+  "$CLI_DIR/"
+
+"./$CLI_DIR/govfuzz" --version
+```
+
+Run in place or copy that entire co-located directory to a permanent prefix.
+If policy keeps the libraries elsewhere, set `GOVFUZZ_RUNTRACE_SHIM` and
+`GOVFUZZ_CC_INTERCEPT` to absolute paths. Every component archive includes an
+`INSTALL.md` with these commands and the optional daemon/user-local layout.
 
 ## Native Windows release or build
 

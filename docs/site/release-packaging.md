@@ -29,8 +29,9 @@ preload libraries are Linux-only and use package-local targets, so they remain
 separate Linux cdylib assets rather than empty Windows artifacts. macOS,
 Linux/aarch64, and Windows-on-Arm artifacts are not currently published.
 
-The GitHub Release contains platform archives, Unix shell installers, and
-PowerShell installers for the portable Windows components:
+The GitHub Release contains the all-in-one Linux `install.sh` bundle,
+per-component platform archives, Unix shell installers, and PowerShell
+installers for the portable Windows components:
 
 Choose one delivery form per component: run its installer on a connected host,
 or download its archive and checksum for a manual/offline install. The installer
@@ -38,6 +39,7 @@ already downloads the archive, so keeping both is unnecessary.
 
 | Consumer scenario | Assets to use |
 |---|---|
+| Linux, complete one-package install | `govfuzz-dist-<version>-x86_64-unknown-linux-gnu.tar.gz` and its sidecar; extract and run the bundled `install.sh` |
 | Windows terminal/CI | `govfuzz-installer.ps1`, or the `govfuzz-*.zip` and its `.sha256` sidecar—not both |
 | Linux terminal/CI, basic features | `govfuzz-installer.sh`, or the Linux `govfuzz-*.tar.xz` and sidecar—not both |
 | Linux, full `govfuzz auto` on real projects | The Linux CLI plus `govfuzz_runtrace_shim` and `govfuzz_cc_intercept`; use either all three installers or all three archives/sidecars |
@@ -54,6 +56,7 @@ or `posix_spawn` compiler launches.
 
 | Component prefix | Purpose | Required for |
 |---|---|---|
+| `govfuzz-dist-*` | All-in-one Linux bundle with `install.sh`, CLI, daemon, both shims, runtimes, signed content, and smoke fixture | Simplest complete Linux or air-gapped install |
 | `govfuzz-*` | Main CLI | All CLI workflows |
 | `govfuzz_runtrace_shim-*` | Runtime virtualisation `LD_PRELOAD` shim | Full `govfuzz auto` runtime audit/fake-resource support |
 | `govfuzz_cc_intercept-*` | Build-time compiler interception `LD_PRELOAD` shim | C/C++ `--probe-build` / `--build-command` recovery when builds invoke compilers by absolute path or via `posix_spawn` |
@@ -61,13 +64,16 @@ or `posix_spawn` compiler launches.
 | `source.tar.gz` | Release source snapshot | Source audit or rebuilds |
 | `dist-manifest.json`, `sha256.sum`, `*.sha256` | dist metadata and checksums | Automation and integrity verification |
 
-For archive installs, extract the `govfuzz_runtrace_shim-*` and
-`govfuzz_cc_intercept-*` archives next to the `govfuzz-*` archive directory, or
-set `GOVFUZZ_RUNTRACE_SHIM` / `GOVFUZZ_CC_INTERCEPT` to the extracted library
-paths. For installer installs, run each component installer you need; installing
+For manual component installs, copy `libgovfuzz_runtrace_shim.so` and
+`libgovfuzz_cc_intercept.so` into the extracted `govfuzz-*` CLI directory, or
+set `GOVFUZZ_RUNTRACE_SHIM` / `GOVFUZZ_CC_INTERCEPT` to absolute extracted
+paths. Only the runtrace shim has sibling-archive-directory discovery; the
+compiler-interception shim must be directly beside the CLI or explicitly
+configured. Every component archive includes `INSTALL.md` with exact commands.
+For component-installer installs, run each installer you need; installing
 `govfuzz` alone installs only the CLI. Each archive has a SHA-256 checksum
-sidecar, and binary-only distribution packages carry a signed content pack that
-is verified during package creation and install.
+sidecar, and the all-in-one distribution carries a signed content pack that is
+verified during package creation and install.
 
 The release workflow post-processes the main Unix `govfuzz-installer.sh` so
 RHEL and CentOS 7 users see the required repository, compiler-package, and
@@ -107,13 +113,14 @@ Those generated CVE DBs are valid empty defaults. Replace them with real feed
 data and rerun the same command when you need SBOM or binary-CVE matching.
 
 The script builds `cargo build --release --workspace`, stages the CLI, daemon,
-runtrace shim, harness runtime support files, a tiny `govfuzz auto` smoke
-fixture, a signed content pack, and `install.sh`, then writes
+runtrace shim, compiler-interception shim, harness runtime support files, a tiny
+`govfuzz auto` smoke fixture, a signed content pack, and `install.sh`, then writes
 `dist/govfuzz-dist-<version>-<triple>.tar.gz` plus a SHA-256 sidecar. The
 package does not include the GovFuzz application source tree; it does include
 runtime support files needed to compile generated harnesses on the destination.
-It also includes `README-DIST.md` for install options and `RUN-GOVFUZZ.md` for
-post-install operation.
+It also includes `README-DIST.md` for package context, `INSTALL.md` for both the
+installer and manual co-location choices, and `RUN-GOVFUZZ.md` for post-install
+operation.
 
 The staged runtime trees cover C/C++, Ada, Rust, Java, Python, Perl, C#,
 JavaScript/TypeScript, Ruby, Lua, and PHP. COBOL, Fortran, and Go use their
@@ -138,6 +145,12 @@ action. Non-interactive all-features install:
 The installer runs the bundled smoke fixture by default after install; pass
 `--no-smoke` only for constrained installs where the C toolchain is intentionally
 absent.
+
+The release workflow invokes the same packager with the EL7-baseline prebuilt
+release directory, verifies the archive checksum and required payload, extracts
+the bundle, runs its `install.sh` into a temporary prefix, and publishes both
+the tarball and sidecar. This keeps the one-package artifact on the same glibc
+2.17 baseline as the component archives.
 
 ## Verification
 

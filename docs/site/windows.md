@@ -7,6 +7,29 @@ the full install + run guide for native Windows. (To fuzz Windows targets *from
 Linux* without a Windows host, see the wine cross-fuzzing path in
 [cross-compilation.md](./cross-compilation.md).)
 
+## Supported Windows versions
+
+The published release supports 64-bit Windows 11 Enterprise 25H2, Windows 11
+Enterprise LTSC 2024 (the 24H2 codebase), Windows Server 2019, Windows Server
+2022, and Windows Server 2025. The compatibility floor is Windows Server 2019;
+Windows Server 2022 and Windows Server 2025 are continuously exercised by
+native CI jobs, while both Windows 11 client baselines and Windows Server 2019
+are covered by Proxmox VM validation. Windows 10 and Windows Server 2016 are not
+in the supported matrix.
+
+Microsoft lists Windows 11 26H1 only for select new-device silicon and says it
+is not a feature update for existing 24H2/25H2 devices. It also does not provide
+a general-purpose x64 Enterprise evaluation ISO for that hardware-specific
+release. GovFuzz therefore treats 25H2 as the latest broadly deployable Windows
+11 Enterprise release and states the tested versions explicitly; see
+[Microsoft's Windows 11 release information](https://learn.microsoft.com/windows/release-health/windows11-release-information).
+
+The Windows package contains native MSVC CLI and daemon executables. The
+PowerShell installer installs those executables, but it does not install target
+language toolchains. For native C/C++ scan/build/fuzz coverage, install all three
+items in the prerequisite table below: LLVM, VS Build Tools/Windows SDK, and GNU
+make.
+
 ## Prerequisites
 
 Install these (e.g. with [Chocolatey](https://chocolatey.org), `winget`, or the
@@ -68,10 +91,16 @@ release and verify its `.sha256` sidecar, or use the release's PowerShell
 installer:
 
 ```powershell
-$Version = "v0.2.16"
+$Version = "v0.2.18"
 irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
 govfuzz.exe --version
 ```
+
+The v0.2.18 PowerShell installer is also safe to run through Windows OpenSSH:
+it suppresses `Expand-Archive`'s console progress access, which otherwise fails
+in a non-interactive Server 2019 session. The installer adds
+`%USERPROFILE%\.cargo\bin` to the user `PATH`; start a new shell if the command
+is not visible immediately.
 
 The release binary does not require Rust. Alternatively, build it natively:
 

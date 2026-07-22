@@ -218,7 +218,7 @@ Use this when you need a tag/commit that has no published archive, or a target
 triple the release job does not build.
 
 On the **connected** host, build against a glibc no newer than the offline host.
-For RHEL 7 through 9, use the pinned manylinux2014 image and ABI check shown in
+For RHEL 7 through 10, use the pinned manylinux2014 image and ABI check shown in
 `.github/workflows/release.yml`; a normal build on a current Ubuntu host is not
 portable back to EL7:
 
@@ -242,7 +242,7 @@ target/release/libgovfuzz_runtrace_shim.so
 > harness runs. When in doubt, use Model B.
 
 The published Linux release is checked against a GLIBC 2.17 ceiling and is the
-preferred Model A artifact for RHEL 7, 8, and 9. The stock EL7 linker cannot
+preferred Model A artifact for RHEL 7, 8, 9, and 10. The stock EL7 linker cannot
 link the current preload shim from source, so an EL7 source rebuild should use
 the pinned manylinux2014 build image rather than stock binutils.
 

@@ -29,9 +29,9 @@ your `PATH`, or `cargo install --path crates/cli` (then also build the shims wit
 `GOVFUZZ_RUNTRACE_SHIM` / `GOVFUZZ_CC_INTERCEPT` to their paths — `cargo install`
 does not stage them beside the binary).
 
-### RHEL support matrix
+### Supported OS matrices
 
-The published GNU/Linux release target is x86_64 and supports RHEL 7, 8, and 9.
+The published GNU/Linux release target is x86_64 and supports RHEL 7, 8, 9, and 10.
 “Supported” here means that the release binaries are held to the EL7 glibc 2.17
 ABI, the installer handles the applicable `yum`/`dnf` family, and GovFuzz can
 select a compiler with the required sanitizer-coverage capabilities. It is not
@@ -40,16 +40,32 @@ a Red Hat certification claim.
 | Version | Release status | Package manager | C/C++ compiler | Validation evidence |
 |---|---|---|---|---|
 | RHEL 7 | Supported by the prebuilt x86_64 release | `yum` | Software Collections `llvm-toolset-7.0-clang`; stock Clang 3.4 is insufficient | CentOS 7.9 EL7-compatible Proxmox guest, glibc 2.17, SELinux enforcing |
-| RHEL 8 | Supported by the prebuilt x86_64 release | `dnf` | A sanitizer-coverage-capable Clang from enabled RHEL repositories | Covered by the EL7 ABI gate and RHEL-family installer tests; no separate RHEL 8 guest run in the current validation record |
-| RHEL 9 | Supported by the prebuilt x86_64 release | `dnf` | AppStream Clang/LLVM | AlmaLinux 9.8 RHEL-compatible Proxmox guest |
+| RHEL 8 | Supported by the prebuilt x86_64 release | `dnf` | AppStream Clang/LLVM | AlmaLinux 8.10 RHEL-compatible Proxmox guest, SELinux enforcing |
+| RHEL 9 | Supported by the prebuilt x86_64 release | `dnf` | AppStream Clang/LLVM | AlmaLinux 9.8 RHEL-compatible Proxmox guest, SELinux enforcing |
+| RHEL 10 | Supported by the prebuilt x86_64 release | `dnf` | AppStream Clang/LLVM | AlmaLinux 10.2 RHEL-compatible Proxmox guest, SELinux enforcing |
 
 The guest records use freely available, binary-compatible distributions because
 licensed Red Hat media was unavailable. See the
 [EL7 validation record](https://github.com/Tarmo-Technologies/govfuzz/blob/main/docs/validation/2026-07-21-rhel7-proxmox.md)
 and
 [EL9 validation record](https://github.com/Tarmo-Technologies/govfuzz/blob/main/docs/validation/2026-07-20-rhel9-proxmox.md)
+as well as the
+[current-platform validation record](https://github.com/Tarmo-Technologies/govfuzz/blob/main/docs/validation/2026-07-21-current-platform-matrix.md)
 for the exact VMs and results. Other architectures can be built from source,
 but they are not covered by this x86_64 release claim.
+
+The tested Ubuntu and Windows matrix is deliberately explicit; “latest” does
+not silently float to an untested future release:
+
+| Family | Supported x86_64 versions | Notes |
+|---|---|---|
+| Ubuntu LTS | 22.04, 24.04, 26.04 | The same EL7-baseline Linux artifact is scan/build/fuzz tested on every listed LTS. |
+| Windows client | Windows 11 Enterprise 25H2; Windows 11 Enterprise LTSC 2024 (24H2 codebase) | Native `x86_64-pc-windows-msvc` CLI and daemon; C/C++ fuzzing also needs LLVM, VS Build Tools/Windows SDK, and GNU make. |
+| Windows Server | Windows Server 2019, Windows Server 2022, Windows Server 2025 | Windows Server 2019 is the oldest supported Windows baseline; Windows Server 2022 and Windows Server 2025 are persistent CI environments. |
+
+Windows 10 and Windows Server 2016 are outside this tested support matrix. See
+[Running govfuzz on Windows](./windows.md) for setup and native-Windows feature
+limits.
 
 ### Per-language toolchains
 
@@ -77,10 +93,11 @@ dotnet tool install --global SharpFuzz.CommandLine
 sudo apt-get install -y afl++                           # optional: AFL++ engine (C/C++ only)
 ```
 
-On RHEL 8 or 9 and compatible distributions (AlmaLinux/Rocky Linux), the base
+On RHEL 8, 9, or 10 and compatible distributions (AlmaLinux/Rocky Linux), the base
 and AppStream repositories provide the core build and most language toolchains:
 
 ```sh
+sudo dnf install -y curl tar xz                         # release installer prerequisites
 sudo dnf install -y gcc gcc-c++ make clang llvm lld    # source build + C/C++ fuzzing
 sudo dnf install -y java-17-openjdk-devel maven        # Java
 sudo dnf install -y python3 perl golang                # Python / Perl / Go
@@ -100,7 +117,7 @@ Software Collections repository approved for the host and install LLVM 7.0:
 
 ```sh
 sudo subscription-manager repos --enable rhel-server-rhscl-7-rpms
-sudo yum install -y gcc gcc-c++ make \
+sudo yum install -y curl tar xz gcc gcc-c++ make \
   llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt
 ```
 
@@ -148,7 +165,7 @@ findings to any provider.
 
 GNU/Linux release artifacts are built in a pinned manylinux2014 / CentOS 7
 userspace. CI rejects an artifact that requires a symbol newer than glibc 2.17,
-so the published binaries are compatible with RHEL 7, 8, and 9. A binary built
+so the published binaries are compatible with RHEL 7, 8, 9, and 10. A binary built
 locally on a newer distribution may not be portable to RHEL; use the published
 artifact or the same pinned build image if the loader reports
 `GLIBC_2.xx not found`.

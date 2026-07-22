@@ -50,26 +50,73 @@ toolchains, offline/air-gapped install, and Windows.
 
 ### Which release files do I need?
 
-Start with the row that matches what you are doing. An installer downloads its
-matching archive automatically, so choose the installer **or** the archive—not
-both.
+Linux has two complete installation styles. The all-in-one `govfuzz-dist-*.tar.gz`
+contains `install.sh`, the CLI, daemon, both Linux shims, harness runtimes, and a
+signed content pack. The component installers/archives let you install only
+selected pieces. An individual component installer downloads its matching
+archive automatically, so choose the installer **or** that archive—not both.
 
 | What you want to do | Install or download |
 |---|---|
+| Install complete GovFuzz on Linux with one `install.sh` | `govfuzz-dist-v0.2.18-x86_64-unknown-linux-gnu.tar.gz` plus its `.sha256` file |
 | Run the CLI on Windows | `govfuzz-installer.ps1`, or `govfuzz-x86_64-pc-windows-msvc.zip` plus its `.sha256` file for a manual/offline install |
 | Run basic CLI workflows on Linux | `govfuzz-installer.sh`, or `govfuzz-x86_64-unknown-linux-gnu.tar.xz` plus its `.sha256` file |
 | Get the full Linux `govfuzz auto` runtime audit and fake-resource support | Add `govfuzz_runtrace_shim-installer.sh`, or its matching `govfuzz_runtrace_shim-*.tar.xz` archive |
 | Recover complex C/C++ builds that use `--probe-build` or `--build-command` | Add `govfuzz_cc_intercept-installer.sh`, or its matching `govfuzz_cc_intercept-*.tar.xz` archive |
 | Use the IDE, JSON-RPC, or read-only MCP service | Add the OS-appropriate `govfuzz-daemon-installer.sh` / `.ps1`, or the matching daemon archive |
 | Audit or rebuild the release source | `source.tar.gz` plus `source.tar.gz.sha256`; this is not needed to run a prebuilt release |
-| Automate or verify downloads | The archive's `*.sha256` sidecar, or `sha256.sum` for all archives; `dist-manifest.json` is machine-readable release metadata |
+| Automate or verify downloads | The archive's `*.sha256` sidecar, or `sha256.sum` for all archives; `dist-manifest.json` is machine-readable component-release metadata |
 
-For a normal **full Linux installation**, install the CLI plus both Linux shims:
-`govfuzz`, `govfuzz_runtrace_shim`, and `govfuzz_cc_intercept`. For a normal
-**Windows CLI installation**, install only `govfuzz`; add `govfuzz-daemon` only
-for IDE/MCP use. The two shims are Linux-only and should not be downloaded on
-Windows. See the [complete asset guide](docs/site/install.md#choose-release-assets-by-task)
-for exact commands and the effect of omitting each optional component.
+For a normal **full Linux installation**, use the all-in-one bundle, or manually
+co-locate `govfuzz`, `libgovfuzz_runtrace_shim.so`, and
+`libgovfuzz_cc_intercept.so`. For a normal **Windows CLI installation**, install
+only `govfuzz`; add `govfuzz-daemon` only for IDE/MCP use. The two shims are
+Linux-only and should not be downloaded on Windows. Every component archive now
+contains `INSTALL.md`; see [INSTALL.md](INSTALL.md) for exact `install.sh` and
+manual co-location commands.
+
+#### Complete Linux install with `install.sh`
+
+```sh
+VERSION=v0.2.18
+BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
+ARCHIVE="govfuzz-dist-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+
+curl --proto '=https' --tlsv1.2 -fLO "$BASE/$ARCHIVE"
+curl --proto '=https' --tlsv1.2 -fLO "$BASE/$ARCHIVE.sha256"
+sha256sum -c "$ARCHIVE.sha256"
+tar xzf "$ARCHIVE"
+cd "${ARCHIVE%.tar.gz}"
+./install.sh
+```
+
+The installer prompts for language toolchains, targets, fuzzers, and optional
+extras. Run `./install.sh --help` for non-interactive, custom-prefix, offline,
+and smoke-test controls.
+
+#### Manual Linux component co-location
+
+After verifying and extracting the three matching Linux `.tar.xz` archives,
+copy both shims beside the CLI:
+
+```sh
+CLI_DIR=govfuzz-x86_64-unknown-linux-gnu
+
+install -m 0755 \
+  govfuzz_runtrace_shim-x86_64-unknown-linux-gnu/libgovfuzz_runtrace_shim.so \
+  "$CLI_DIR/"
+install -m 0755 \
+  govfuzz_cc_intercept-x86_64-unknown-linux-gnu/libgovfuzz_cc_intercept.so \
+  "$CLI_DIR/"
+
+"./$CLI_DIR/govfuzz" --version
+```
+
+Run from that directory or copy it intact to a permanent prefix. If the shims
+must remain elsewhere, set `GOVFUZZ_RUNTRACE_SHIM` and
+`GOVFUZZ_CC_INTERCEPT` to their absolute paths. The complete download,
+checksum, optional-daemon, and user-local prefix commands are in
+[INSTALL.md](INSTALL.md).
 
 ### Supported release platforms
 
@@ -103,9 +150,9 @@ sudo yum install -y curl tar xz gcc gcc-c++ make \
   llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt
 ```
 
-Then install the CLI and the runtime shim. The compiler-interception shim is
-recommended for real projects that need `--probe-build` or `--build-command`
-recovery:
+Then use the all-in-one bundle above. It installs the CLI, daemon, both shims,
+harness runtimes, and signed content together. The separate component
+installers remain available when you deliberately want a smaller install:
 
 ```sh
 VERSION=v0.2.18

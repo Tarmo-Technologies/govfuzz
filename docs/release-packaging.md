@@ -21,11 +21,12 @@ The releasable applications are:
 
 ## Asset Selection for Release Consumers
 
-The release deliberately exposes components separately, but users should not
-install every file:
+The release provides both an all-in-one Linux bundle and separate components;
+users should choose one delivery style rather than install every file:
 
 | Consumer scenario | Assets to use |
 |---|---|
+| Complete Linux install | `govfuzz-dist-<version>-x86_64-unknown-linux-gnu.tar.gz` and its checksum; extract and run `./install.sh` |
 | Windows CLI | `govfuzz-installer.ps1`, or the Windows CLI ZIP and its checksum—not both |
 | Basic Linux CLI | `govfuzz-installer.sh`, or the Linux CLI archive and its checksum—not both |
 | Full Linux `govfuzz auto` | The CLI, runtrace shim, and compiler-interception shim; choose the three installers or the three archives/checksums |
@@ -41,7 +42,7 @@ consumer-facing decision guide and exact commands live in
 [`docs/site/install.md`](./site/install.md#choose-release-assets-by-task).
 
 The workspace defaults every package to `dist = false`; the two app packages
-and the runtrace shim opt back in. The app packages also override their
+and both Linux preload-shim packages opt back in. The app packages also override their
 distributed binary lists so test and legacy compatibility binaries such as
 `cli`, `daemon`, and fixture harnesses are not included in release archives.
 The CLI package explicitly includes all eleven harness-runtime trees. The CLI
@@ -57,12 +58,16 @@ Linux-only. The generated workflow publishes the CLI and daemon for
 two preload libraries only for Linux. The Linux target is built in a pinned
 manylinux2014 / CentOS 7 container and checked for a maximum glibc 2.17 ABI,
 covering Ubuntu 22.04/24.04/26.04 LTS and RHEL 7 through RHEL 10. The same gate
-verifies the runtrace shim's required interposition exports. For archive installs,
-extract the `govfuzz_runtrace_shim-*` archive next to the `govfuzz-*` archive
-directory, or set `GOVFUZZ_RUNTRACE_SHIM` to the library path. For installer
-installs, install both `govfuzz` and `govfuzz_runtrace_shim` so the library
-lands beside the CLI. The CLI also accepts the renamed
-`libgovfuzz_runtrace.so` produced by source builds.
+verifies the runtrace shim's required interposition exports. For manual
+component installs, copy `libgovfuzz_runtrace_shim.so` and
+`libgovfuzz_cc_intercept.so` into the extracted `govfuzz-*` CLI directory, or
+set `GOVFUZZ_RUNTRACE_SHIM` and `GOVFUZZ_CC_INTERCEPT` to absolute paths. The
+runtrace shim can also be found in a sibling dist directory; the compiler-
+interception shim cannot, so directly co-locating both is the least surprising
+layout. Every component archive includes `INSTALL.md`. For component-installer
+installs, run the CLI and each required shim installer so all files land beside
+one another. The CLI also accepts the renamed `libgovfuzz_runtrace.so` produced
+by source builds.
 
 After `dist` generates the main Unix installer, the release workflow runs
 `scripts/augment-release-installer.py`. On an EL7-family host the resulting
@@ -110,10 +115,12 @@ Those generated CVE DBs are valid empty defaults. Replace them with real feed
 data and rerun the same command when you need SBOM or binary-CVE matching.
 
 The script runs `cargo build --release --workspace`, stages the release binaries,
-the runtrace shim, harness runtime support files, a tiny `govfuzz auto` smoke
+both Linux shims, harness runtime support files, a tiny `govfuzz auto` smoke
 fixture, and a signed content pack, then produces
 `dist/govfuzz-dist-<version>-<triple>.tar.gz` plus a `.sha256` sidecar. The
 tarball includes `install.sh`, `README-DIST.md`, and `RUN-GOVFUZZ.md`.
+It also includes `INSTALL.md`, which documents both the bundled installer and
+the manual component-archive co-location layout.
 `install.sh` can install or update interactively with an arrow-key terminal
 checklist or non-interactively:
 
@@ -133,6 +140,11 @@ eight core lanes selected and offers the newer lanes as opt-ins.
 
 The installer runs the smoke fixture by default after install; use `--no-smoke`
 only when the C toolchain is intentionally absent.
+
+The generated release workflow also produces this all-in-one package from the
+same EL7-baseline binaries used by the component archives, installs it into a
+temporary prefix, runs its smoke fixture, and publishes the tarball and checksum
+as first-class release assets.
 
 ## Targets
 

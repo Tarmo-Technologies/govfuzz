@@ -4,6 +4,15 @@
 
 ## 0.2.18 - 2026-07-21
 
+- **Restored all-in-one Linux installer bundle.** The release now publishes
+  `govfuzz-dist-v0.2.18-x86_64-unknown-linux-gnu.tar.gz` with a bundled
+  `install.sh`, CLI, daemon, both Linux preload shims, harness runtimes, signed
+  content, and smoke fixture. The release workflow builds this bundle from the
+  EL7-baseline artifacts and exercises an extracted install before publication.
+  Separate component archives remain available for manual layouts; every one
+  now includes `INSTALL.md` with exact checksum, extraction, co-location,
+  optional-daemon, and environment-override commands.
+
 - **Exact CLI archive validation.** The Linux and Windows release gates now
   select the exact `govfuzz` CLI archive instead of allowing the similarly
   named daemon archive to win an order-dependent wildcard match. This release

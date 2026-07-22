@@ -11,6 +11,13 @@
   in v0.2.17; the v0.2.17 tag did not publish after its gate correctly rejected
   the mistakenly selected daemon archive.
 
+- **Task-based release asset guide.** The README, install, Windows, offline,
+  and release-packaging guides now say exactly when to use the CLI, daemon,
+  runtrace shim, compiler-interception shim, source archive, manifests, and
+  checksum files. They distinguish installer-based and manual/archive installs,
+  explain the effect of omitting optional components, and give an exact offline
+  download pattern that cannot accidentally select the similarly named daemon.
+
 - **ThreadSanitizer replay reliability.** Corpus replay now gives explicit TSan
   shadow-memory mapping failures a larger harness-wide bounded retry budget and
   retries transient unsymbolized reports, avoiding missed GF-556 findings under

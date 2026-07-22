@@ -19,6 +19,27 @@ The releasable applications are:
 - `govfuzz_cc_intercept`: the build-time compiler-interception `cdylib` used by
   C/C++ `--probe-build` / `--build-command` recovery
 
+## Asset Selection for Release Consumers
+
+The release deliberately exposes components separately, but users should not
+install every file:
+
+| Consumer scenario | Assets to use |
+|---|---|
+| Windows CLI | `govfuzz-installer.ps1`, or the Windows CLI ZIP and its checksum—not both |
+| Basic Linux CLI | `govfuzz-installer.sh`, or the Linux CLI archive and its checksum—not both |
+| Full Linux `govfuzz auto` | The CLI, runtrace shim, and compiler-interception shim; choose the three installers or the three archives/checksums |
+| IDE/JSON-RPC/MCP | Add the platform's `govfuzz-daemon` installer/archive; it is not required by the CLI |
+| Manual/offline install | Download only the matching platform archives and their `.sha256` sidecars; do not also download installers |
+| Source audit/rebuild | `source.tar.gz` and its checksum |
+| Release automation | `dist-manifest.json`, individual sidecars, and/or the aggregate `sha256.sum` |
+
+The runtrace and compiler-interception shims are Linux-only. The runtrace shim
+adds runtime audit, behavioral/taint oracles, and fake resources. The compiler-
+interception shim matters only for complex C/C++ build recovery. The detailed
+consumer-facing decision guide and exact commands live in
+[`docs/site/install.md`](./site/install.md#choose-release-assets-by-task).
+
 The workspace defaults every package to `dist = false`; the two app packages
 and the runtrace shim opt back in. The app packages also override their
 distributed binary lists so test and legacy compatibility binaries such as

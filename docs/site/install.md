@@ -171,21 +171,50 @@ artifact or the same pinned build image if the loader reports
 `GLIBC_2.xx not found`.
 
 GitHub releases ship per-component archives and shell installers (one component
-at a time). You do **not** need every asset for every install:
+at a time). You do **not** need every asset for every install.
 
 The CLI archive carries every harness-runtime source tree. The CLI executable
 also embeds the same sources and stages a private copy automatically when it was
 installed by the shell or PowerShell installer, so prebuilt installs do not
 need a govfuzz source checkout.
 
-| Asset | Purpose | Needed when |
+### Choose release assets by task
+
+An installer downloads and installs its matching archive. Use the installer for
+a connected, conventional installation; use the archive plus its `.sha256`
+sidecar for manual or offline installation. Do not download both forms of the
+same component.
+
+| Task | Required assets | Optional additions |
 |---|---|---|
-| `govfuzz-*` | Main CLI | Always |
-| `govfuzz_runtrace_shim-*` | Linux `LD_PRELOAD` runtime virtualisation shim | Full `govfuzz auto` coverage |
-| `govfuzz_cc_intercept-*` | Linux build-time compiler interception shim | C/C++ `--probe-build` / `--build-command` recovery |
-| `govfuzz-daemon-*` | JSON-RPC and read-only MCP daemon | IDE/editor or MCP/agent integrations |
-| `source.tar.gz` | Release source snapshot | Rebuilding or auditing source |
-| `dist-manifest.json`, `sha256.sum`, `*.sha256` | Release metadata and integrity checks | Automation / checksum verification |
+| Windows CLI | `govfuzz-installer.ps1`, or `govfuzz-x86_64-pc-windows-msvc.zip` and its sidecar | `govfuzz-daemon-installer.ps1` or the daemon ZIP only for IDE/JSON-RPC/MCP use |
+| Basic Linux CLI, scan, build, and fuzz | `govfuzz-installer.sh`, or `govfuzz-x86_64-unknown-linux-gnu.tar.xz` and its sidecar | Add the two Linux shims below for full runtime behavior and complex C/C++ build recovery |
+| Full Linux `govfuzz auto` | The Linux CLI plus `govfuzz_runtrace_shim-installer.sh` (or its archive and sidecar) | Add `govfuzz_cc_intercept` when testing C/C++ projects with real build systems |
+| Complex C/C++ `--probe-build` / `--build-command` recovery | Linux CLI plus `govfuzz_cc_intercept-installer.sh` (or its archive and sidecar) | Add the runtrace shim for runtime audit/fake-resource coverage too |
+| Linux IDE/JSON-RPC/MCP service | The required Linux CLI/shims for the intended workload, plus `govfuzz-daemon-installer.sh` or its archive | None |
+| Source audit or rebuild | `source.tar.gz` and `source.tar.gz.sha256` | Prebuilt runtime assets are not required unless you also want to run them |
+| Automated release processing | `dist-manifest.json`; use `sha256.sum` to verify all archives or the matching `*.sha256` file for one archive | None |
+
+What each optional component changes:
+
+- `govfuzz_runtrace_shim` is Linux-only. It enables runtime environment auditing,
+  behavioral/taint oracles, and fake files, sockets, and environment resources.
+  Without it, GovFuzz still scans, builds, and fuzzes, but warns and runs without
+  those runtime features.
+- `govfuzz_cc_intercept` is Linux-only. It lets C/C++ build recovery observe
+  compilers launched by absolute path or through `posix_spawn`. Most direct
+  harness builds do not need it; complex `--probe-build` and `--build-command`
+  workflows often do.
+- `govfuzz-daemon` provides JSON-RPC and read-only MCP. The CLI does not use or
+  require the daemon for ordinary terminal runs.
+- `source.tar.gz`, `dist-manifest.json`, and checksum files are not executable
+  components. Do not install them into `PATH`.
+
+In short: the recommended full Linux set is the CLI plus both shims. The normal
+Windows set is the CLI alone, with the daemon added only for IDE/MCP use. Windows
+users should ignore the two Linux-only shim assets.
+
+### Connected Linux installation
 
 ```sh
 VERSION=<latest release tag>

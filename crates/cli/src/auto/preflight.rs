@@ -85,67 +85,75 @@ fn requirements(
     &'static [&'static [&'static str]],
     &'static str,
 ) {
+    let (name, groups): (&'static str, &'static [&'static [&'static str]]) = match lang {
+        Lang::Ada => ("Ada", &[&["gnat", "gnatmake"], &["gprbuild"]]),
+        Lang::C => ("C", &[&["clang", "cc", "gcc"], &["make"]]),
+        Lang::Cpp => ("C++", &[&["clang++", "c++", "g++"], &["make"]]),
+        Lang::Rust => ("Rust", &[&["cargo"]]),
+        Lang::Java => ("Java", &[&["javac"], &["java"]]),
+        Lang::Python => ("Python", &[&["python3"]]),
+        Lang::Perl => ("Perl", &[&["perl"]]),
+        Lang::Go => ("Go", &[&["go"]]),
+        Lang::Cobol => ("COBOL", &[&["cobc"]]),
+        Lang::Fortran => ("Fortran", &[&["gfortran"]]),
+        Lang::CSharp => ("C#", &[&["dotnet"], &["sharpfuzz"]]),
+        Lang::Js => ("JavaScript", &[&["node"]]),
+        Lang::Ts => ("TypeScript", &[&["node"], &["esbuild"]]),
+        Lang::Ruby => ("Ruby", &[&["ruby"]]),
+        Lang::Lua => ("Lua", &[&["lua", "lua5.4", "lua5.3"]]),
+        Lang::Php => ("PHP", &[&["php"]]),
+    };
+    (name, groups, install_hint(lang, cfg!(windows)))
+}
+
+fn install_hint(lang: Lang, windows: bool) -> &'static str {
+    if windows {
+        return match lang {
+            Lang::C | Lang::Cpp => {
+                "install LLVM, VS 2022 Build Tools/Windows SDK, and GNU make (winget/Chocolatey + w64devkit)"
+            }
+            Lang::Ada => "install a Windows GNAT toolchain and GPRbuild",
+            Lang::Rust => {
+                "install rustup + a nightly toolchain (rustup toolchain install nightly)"
+            }
+            Lang::Java => "install a Windows JDK",
+            Lang::Python => "install Python 3.12+ for sys.monitoring coverage",
+            Lang::Perl => "install a Windows Perl distribution",
+            Lang::Go => "install Go for Windows",
+            Lang::Cobol => "install a Windows GnuCOBOL toolchain or use WSL/Linux",
+            Lang::Fortran => "install a Windows gfortran toolchain or use WSL/Linux",
+            Lang::CSharp => {
+                "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`"
+            }
+            Lang::Js => "install Node.js for Windows",
+            Lang::Ts => "install Node.js + esbuild (`npm i -g esbuild`)",
+            Lang::Ruby => "install Ruby 2.0+ for Windows",
+            Lang::Lua => "install Lua 5.3+ for Windows",
+            Lang::Php => "install PHP 8.0+ and the pcov extension for Windows",
+        };
+    }
     match lang {
-        Lang::Ada => (
-            "Ada",
-            &[&["gnat", "gnatmake"], &["gprbuild"]],
-            "apt-get install gnat gprbuild",
-        ),
-        Lang::C => (
-            "C",
-            &[&["clang", "cc", "gcc"], &["make"]],
-            "apt-get install clang make",
-        ),
-        Lang::Cpp => (
-            "C++",
-            &[&["clang++", "c++", "g++"], &["make"]],
-            "apt-get install clang make",
-        ),
-        Lang::Rust => (
-            "Rust",
-            &[&["cargo"]],
-            "install rustup + a nightly toolchain (rustup toolchain install nightly)",
-        ),
-        Lang::Java => (
-            "Java",
-            &[&["javac"], &["java"]],
-            "install a JDK (apt-get install default-jdk)",
-        ),
-        Lang::Python => (
-            "Python",
-            &[&["python3"]],
-            "install python3 (3.12+ for sys.monitoring coverage)",
-        ),
-        Lang::Perl => ("Perl", &[&["perl"]], "install perl"),
-        Lang::Go => ("Go", &[&["go"]], "install go"),
-        Lang::Cobol => ("COBOL", &[&["cobc"]], "apt-get install gnucobol"),
-        Lang::Fortran => ("Fortran", &[&["gfortran"]], "apt-get install gfortran"),
-        Lang::CSharp => (
-            "C#",
-            &[&["dotnet"], &["sharpfuzz"]],
-            "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`",
-        ),
-        Lang::Js => ("JavaScript", &[&["node"]], "install Node.js"),
-        Lang::Ts => (
-            "TypeScript",
-            &[&["node"], &["esbuild"]],
-            "install Node.js + esbuild (`npm i -g esbuild`)",
-        ),
-        Lang::Ruby => (
-            "Ruby",
-            &[&["ruby"]],
-            "install Ruby 2.0+ (apt-get install ruby)",
-        ),
-        Lang::Lua => (
-            "Lua",
-            &[&["lua", "lua5.4", "lua5.3"]],
-            "install Lua 5.3+ (apt-get install lua5.4)",
-        ),
-        Lang::Php => (
-            "PHP",
-            &[&["php"]],
-            "install PHP 8.0+ and the pcov extension (apt-get install php-cli php-pcov)",
-        ),
+        Lang::Ada => "install GNAT and GPRbuild with your OS package manager",
+        Lang::C | Lang::Cpp => {
+            "install clang and make (RHEL 7: LLVM Toolset 7 clang + compiler-rt; RHEL 8+: `dnf install clang llvm make`; Ubuntu: `apt-get install clang make`)"
+        }
+        Lang::Rust => "install rustup + a nightly toolchain (rustup toolchain install nightly)",
+        Lang::Java => {
+            "install a JDK (RHEL: `dnf install java-17-openjdk-devel`; Ubuntu: `apt-get install default-jdk`)"
+        }
+        Lang::Python => "install python3 (3.12+ for sys.monitoring coverage)",
+        Lang::Perl => "install perl",
+        Lang::Go => "install go",
+        Lang::Cobol => "install GnuCOBOL with your OS package manager",
+        Lang::Fortran => "install gfortran with your OS package manager",
+        Lang::CSharp => {
+            "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`"
+        }
+        Lang::Js => "install Node.js",
+        Lang::Ts => "install Node.js + esbuild (`npm i -g esbuild`)",
+        Lang::Ruby => "install Ruby 2.0+ with your OS package manager",
+        Lang::Lua => "install Lua 5.3+ with your OS package manager",
+        Lang::Php => "install PHP 8.0+ and the pcov extension with your OS package manager",
     }
 }
 
@@ -229,5 +237,25 @@ mod tests {
         assert!(text.contains("Ada") && text.contains("(3 targets): ok"));
         assert!(report.any_missing());
         assert_eq!(report.missing_lanes().count(), 1);
+    }
+
+    #[test]
+    fn windows_hints_never_recommend_apt_get() {
+        for lang in LANES {
+            let hint = install_hint(lang, true);
+            assert!(!hint.contains("apt-get"), "{lang:?}: {hint}");
+        }
+        let c = install_hint(Lang::C, true);
+        assert!(c.contains("LLVM"));
+        assert!(c.contains("VS 2022 Build Tools"));
+        assert!(c.contains("GNU make"));
+    }
+
+    #[test]
+    fn linux_c_hint_covers_rhel_and_ubuntu() {
+        let hint = install_hint(Lang::C, false);
+        assert!(hint.contains("RHEL 7"));
+        assert!(hint.contains("RHEL 8+"));
+        assert!(hint.contains("Ubuntu"));
     }
 }

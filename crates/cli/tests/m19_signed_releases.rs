@@ -122,6 +122,170 @@ fn release_workflow_augments_the_unix_installer_with_rhel7_guidance() {
 
 #[cfg(unix)]
 #[test]
+fn release_workflow_fixes_library_installer_chmod_path() {
+    let root = repo_root();
+    let workflow = read(root.join(".github/workflows/release.yml"));
+    let fixer = root.join("scripts/fix-dist-library-installer.py");
+    let fixer_text = read(&fixer);
+
+    assert!(workflow.contains("python3 scripts/fix-dist-library-installer.py"));
+    assert!(workflow.contains("govfuzz_runtrace_shim-installer.sh"));
+    assert!(workflow.contains("govfuzz_cc_intercept-installer.sh"));
+    assert!(fixer_text.contains("$_lib_install_temp/$_lib_name"));
+
+    let tmp = std::env::temp_dir().join(format!(
+        "govfuzz-library-installer-fix-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&tmp);
+    fs::create_dir_all(&tmp).expect("create installer test directory");
+    let installer = tmp.join("library-installer.sh");
+    fs::write(&installer, "chmod +x \"$_lib_install_dir/$_lib_name\"\n")
+        .expect("write generated library installer fixture");
+
+    for _ in 0..2 {
+        let status = Command::new("python3")
+            .arg(&fixer)
+            .arg(&installer)
+            .status()
+            .expect("run library installer fixer");
+        assert!(status.success());
+    }
+    let fixed = read(&installer);
+    assert!(fixed.contains("chmod +x \"$_lib_install_temp/$_lib_name\""));
+    assert!(!fixed.contains("chmod +x \"$_lib_install_dir/$_lib_name\""));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+#[cfg(unix)]
+#[test]
+fn release_workflow_makes_powershell_installers_noninteractive_safe() {
+    let root = repo_root();
+    let workflow = read(root.join(".github/workflows/release.yml"));
+    let fixer = root.join("scripts/fix-dist-powershell-installer.py");
+
+    assert!(workflow.contains("python3 scripts/fix-dist-powershell-installer.py"));
+    assert!(workflow.contains("govfuzz-installer.ps1"));
+    assert!(workflow.contains("govfuzz-daemon-installer.ps1"));
+
+    let tmp = std::env::temp_dir().join(format!(
+        "govfuzz-powershell-installer-fix-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&tmp);
+    fs::create_dir_all(&tmp).expect("create PowerShell installer test directory");
+    let installer = tmp.join("installer.ps1");
+    fs::write(
+        &installer,
+        concat!(
+            "$InformationPreference = \"Continue\"\n",
+            "      Expand-Archive -Path $dir_path -DestinationPath \"$tmp\";\n"
+        ),
+    )
+    .expect("write generated PowerShell installer fixture");
+
+    for _ in 0..2 {
+        let status = Command::new("python3")
+            .arg(&fixer)
+            .arg(&installer)
+            .status()
+            .expect("run PowerShell installer fixer");
+        assert!(status.success());
+    }
+    let fixed = read(&installer);
+    assert_eq!(fixed.matches("$ProgressPreference").count(), 2);
+    assert!(fixed.contains("$ProgressPreference = \"SilentlyContinue\""));
+    assert!(fixed.contains("Avoid console progress-buffer access"));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+#[cfg(unix)]
+#[test]
+fn release_shell_installers_check_for_xz() {
+    let root = repo_root();
+    let workflow = read(root.join(".github/workflows/release.yml"));
+    let fixer = root.join("scripts/fix-dist-shell-installer.py");
+
+    assert!(workflow.contains("python3 scripts/fix-dist-shell-installer.py"));
+    for installer in [
+        "govfuzz-installer.sh",
+        "govfuzz-daemon-installer.sh",
+        "govfuzz_runtrace_shim-installer.sh",
+        "govfuzz_cc_intercept-installer.sh",
+    ] {
+        assert!(workflow.contains(installer));
+    }
+
+    let tmp = std::env::temp_dir().join(format!(
+        "govfuzz-shell-installer-fix-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&tmp);
+    fs::create_dir_all(&tmp).expect("create shell installer test directory");
+    let installer = tmp.join("installer.sh");
+    fs::write(&installer, "    need_cmd tar\n    need_cmd grep\n")
+        .expect("write generated shell installer fixture");
+
+    for _ in 0..2 {
+        let status = Command::new("python3")
+            .arg(&fixer)
+            .arg(&installer)
+            .status()
+            .expect("run shell installer fixer");
+        assert!(status.success());
+    }
+    let fixed = read(&installer);
+    assert_eq!(fixed.matches("need_cmd xz").count(), 1);
+    assert!(fixed.contains("minimal RHEL images omit xz"));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn ci_enforces_the_current_supported_os_matrix() {
+    let root = repo_root();
+    let ci = read(root.join(".github/workflows/ci.yml"));
+    let windows_smoke = read(root.join("scripts/ci/windows-release-smoke.ps1"));
+    let readme = read(root.join("README.md"));
+    let install = read(root.join("docs/site/install.md"));
+    let windows = read(root.join("docs/site/windows.md"));
+
+    for required in [
+        "ubuntu-22.04",
+        "ubuntu-24.04",
+        "ubuntu-26.04",
+        "almalinux:8.10@sha256:",
+        "almalinux:9.8@sha256:",
+        "almalinux:10.2@sha256:",
+        "windows-2022",
+        "windows-2025",
+    ] {
+        assert!(ci.contains(required), "CI omitted {required}");
+    }
+    assert!(ci.contains("govfuzz-el7-release.tar.gz"));
+    assert!(ci.contains("runtrace.jsonl"));
+    assert!(ci.contains("scripts/ci/windows-release-smoke.ps1"));
+    assert!(windows_smoke.contains("Win32_OperatingSystem"));
+    assert!(windows_smoke.contains("built_and_fuzzed"));
+    let supported_docs = format!("{readme}\n{install}\n{windows}");
+    for required in [
+        "RHEL 10",
+        "26.04",
+        "Windows 11 Enterprise 25H2",
+        "Windows 11 Enterprise LTSC 2024",
+        "Windows Server 2019",
+        "Server 2025",
+    ] {
+        assert!(
+            supported_docs.contains(required),
+            "support documentation omitted {required}"
+        );
+    }
+    assert!(windows.contains("$Version = \"v0.2.18\""));
+    assert!(!windows.contains("$Version = \"v0.2.16\""));
+}
+
+#[cfg(unix)]
+#[test]
 fn augmented_installer_prints_actionable_rhel7_prerequisites() {
     let root = repo_root();
     let tmp = std::env::temp_dir().join(format!(
@@ -182,6 +346,7 @@ download_binary_and_run_installer "$@" || exit 1
     for expected in [
         "installs the CLI only",
         "subscription-manager repos --enable rhel-server-rhscl-7-rpms",
+        "yum install -y curl tar xz",
         "llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt",
         "govfuzz_runtrace_shim-installer.sh",
         "govfuzz_cc_intercept-installer.sh",

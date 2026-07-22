@@ -50,7 +50,7 @@ govfuzz_release_installer_rhel7_guidance() {
     else
         say "  CentOS 7 requires an organization-approved vault/archive source for SCL packages."
     fi
-    say "    sudo yum install -y gcc gcc-c++ make llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt"
+    say "    sudo yum install -y curl tar xz gcc gcc-c++ make llvm-toolset-7.0-clang llvm-toolset-7.0-compiler-rt"
 
     if [ -x /opt/rh/llvm-toolset-7.0/root/usr/bin/clang ] \
         || [ -x /opt/rh/llvm-toolset-7/root/usr/bin/clang ]; then

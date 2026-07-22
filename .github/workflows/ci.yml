@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -64,7 +64,7 @@ jobs:
 
   rhel7-build:
     name: RHEL 7 compatible build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       RHEL7_BUILD_IMAGE: quay.io/pypa/manylinux2014_x86_64@sha256:0d25b049964b2549b83384036abdff06789a8c0b1e9ff003ec80f0d531f79e50
     steps:
@@ -87,7 +87,132 @@ jobs:
               cargo test --locked -p govfuzz --test offline_dist_scripts -- --nocapture
               cargo build --locked --release --workspace
               scripts/check-linux-release-abi.sh "$CARGO_TARGET_DIR/release"
+              tar -C "$CARGO_TARGET_DIR/release" -czf /io/target/govfuzz-el7-release.tar.gz \
+                govfuzz \
+                govfuzz-daemon \
+                libgovfuzz_runtrace_shim.so \
+                libgovfuzz_cc_intercept.so
             '
+
+      - name: Upload EL7-baseline release binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: govfuzz-el7-release
+          path: target/govfuzz-el7-release.tar.gz
+          if-no-files-found: error
+
+  rhel-family-smoke:
+    name: ${{ matrix.name }} release compatibility
+    needs: rhel7-build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: RHEL 8.10 compatible
+            image: almalinux:8.10@sha256:f043b7ac550015e1ed0b5a55a420c61d178bff4357ab9663fe0fbdcf1e6e2d86
+          - name: RHEL 9.8 compatible
+            image: almalinux:9.8@sha256:28db580abb508f7ccbc0ac6d53e1d8da9d42a26c77fa3dcc26ac2726673fbe3e
+          - name: RHEL 10.2 compatible
+            image: almalinux:10.2@sha256:689dc4a86e288b3f88ced4bf14bef18cdaf5539609608ca4cebc62720740dfa2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Download EL7-baseline release binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: govfuzz-el7-release
+          path: target/platform-release
+
+      - name: Exercise release on ${{ matrix.name }}
+        env:
+          PLATFORM_IMAGE: ${{ matrix.image }}
+        run: |
+          tar -C target/platform-release -xzf target/platform-release/govfuzz-el7-release.tar.gz
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/io:ro" \
+            --volume "$GITHUB_WORKSPACE/target/platform-release:/opt/govfuzz:ro" \
+            "$PLATFORM_IMAGE" \
+            bash -lc '
+              set -euo pipefail
+              cat /etc/redhat-release
+              dnf -y install clang llvm make
+              for artifact in \
+                /opt/govfuzz/govfuzz \
+                /opt/govfuzz/govfuzz-daemon \
+                /opt/govfuzz/libgovfuzz_runtrace_shim.so \
+                /opt/govfuzz/libgovfuzz_cc_intercept.so; do
+                ldd "$artifact"
+              done | tee /tmp/govfuzz-ldd.txt
+              if grep -q "not found" /tmp/govfuzz-ldd.txt; then exit 1; fi
+              /opt/govfuzz/govfuzz --version
+              /opt/govfuzz/govfuzz-daemon --help >/dev/null
+              /opt/govfuzz/govfuzz scan /io/tests/fixtures/engine_parity/magic_byte \
+                --work-dir /tmp/govfuzz-scan
+              /opt/govfuzz/govfuzz auto /io/tests/fixtures/engine_parity/magic_byte \
+                --work-dir /tmp/govfuzz-plan \
+                --languages c --list-targets --no-discovery-cache
+              /opt/govfuzz/govfuzz auto /io/tests/fixtures/engine_parity/magic_byte \
+                --work-dir /tmp/govfuzz-fuzz \
+                --languages c --target parse_frame --iterations 32 --single-pass \
+                --sanitizers none --per-target-time 5 --no-discovery-cache
+              grep -Eq '"built_and_fuzzed"[[:space:]]*:[[:space:]]*1' \
+                /tmp/govfuzz-fuzz/auto/run.json
+              test -n "$(find /tmp/govfuzz-fuzz -name runtrace.jsonl -type f -size +0c -print -quit)"
+            '
+
+  ubuntu-release-smoke:
+    name: Ubuntu ${{ matrix.version }} release compatibility
+    needs: rhel7-build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: "22.04 LTS"
+            runner: ubuntu-22.04
+          - version: "24.04 LTS"
+            runner: ubuntu-24.04
+          - version: "26.04 LTS"
+            runner: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Download EL7-baseline release binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: govfuzz-el7-release
+          path: target/platform-release
+
+      - name: Exercise release on Ubuntu ${{ matrix.version }}
+        run: |
+          tar -C target/platform-release -xzf target/platform-release/govfuzz-el7-release.tar.gz
+          lsb_release -ds
+          clang --version
+          for artifact in \
+            target/platform-release/govfuzz \
+            target/platform-release/govfuzz-daemon \
+            target/platform-release/libgovfuzz_runtrace_shim.so \
+            target/platform-release/libgovfuzz_cc_intercept.so; do
+            ldd "$artifact"
+          done | tee target/platform-release/ldd.txt
+          if grep -q "not found" target/platform-release/ldd.txt; then exit 1; fi
+          target/platform-release/govfuzz --version
+          target/platform-release/govfuzz-daemon --help >/dev/null
+          target/platform-release/govfuzz scan tests/fixtures/engine_parity/magic_byte \
+            --work-dir "$RUNNER_TEMP/govfuzz-scan"
+          target/platform-release/govfuzz auto tests/fixtures/engine_parity/magic_byte \
+            --work-dir "$RUNNER_TEMP/govfuzz-plan" \
+            --languages c --list-targets --no-discovery-cache
+          target/platform-release/govfuzz auto tests/fixtures/engine_parity/magic_byte \
+            --work-dir "$RUNNER_TEMP/govfuzz-fuzz" \
+            --languages c --target parse_frame --iterations 32 --single-pass \
+            --sanitizers none --per-target-time 5 --no-discovery-cache
+          grep -Eq '"built_and_fuzzed"[[:space:]]*:[[:space:]]*1' \
+            "$RUNNER_TEMP/govfuzz-fuzz/auto/run.json"
+          test -n "$(find "$RUNNER_TEMP/govfuzz-fuzz" -name runtrace.jsonl -type f -size +0c -print -quit)"
 
   windows-build:
     name: Windows MSVC build and tests
@@ -111,65 +236,43 @@ jobs:
       - name: Build Windows release artifacts
         run: cargo build --locked --release -p govfuzz -p govfuzz-daemon -p govfuzz_runtrace_shim --target x86_64-pc-windows-msvc
 
-      - name: Smoke Windows executables
+      - name: Exercise Windows release binaries
+        shell: pwsh
+        run: scripts/ci/windows-release-smoke.ps1 -BinaryDir target/x86_64-pc-windows-msvc/release
+
+      - name: Stage Windows release binaries
         shell: pwsh
         run: |
-          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe --version
-          .\target\x86_64-pc-windows-msvc\release\govfuzz-daemon.exe --help
-          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe scan `
-            tests\fixtures\engine_parity\magic_byte `
-            --work-dir "$env:RUNNER_TEMP\govfuzz-windows-scan"
-          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe auto `
-            tests\fixtures\engine_parity\magic_byte `
-            --work-dir "$env:RUNNER_TEMP\govfuzz-windows-plan" `
-            --languages c --list-targets --no-discovery-cache
+          Compress-Archive -Path `
+            target\x86_64-pc-windows-msvc\release\govfuzz.exe, `
+            target\x86_64-pc-windows-msvc\release\govfuzz-daemon.exe `
+            -DestinationPath target\govfuzz-windows-release.zip
 
-      - name: Install Windows C fuzz smoke prerequisites
+      - name: Upload Windows Server 2022 release binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: govfuzz-windows-2022-release
+          path: target/govfuzz-windows-release.zip
+          if-no-files-found: error
+
+  windows-current-build:
+    name: Windows Server 2025 release compatibility
+    needs: windows-build
+    runs-on: windows-2025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Download Windows Server 2022 release binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: govfuzz-windows-2022-release
+          path: target/platform-release
+
+      - name: Extract Windows release binaries
         shell: pwsh
-        run: |
-          if (-not (Get-Command clang -ErrorAction SilentlyContinue)) {
-            choco install llvm --yes --no-progress
-          }
-          if (-not (Get-Command make -ErrorAction SilentlyContinue)) {
-            choco install make --yes --no-progress
-          }
-          clang --version
-          make --version
+        run: Expand-Archive target/platform-release/govfuzz-windows-release.zip target/platform-release/bin
 
-      - name: Run native Windows C fuzz smoke
+      - name: Exercise Windows Server 2022 binaries on Windows Server 2025
         shell: pwsh
-        run: |
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath = & $vswhere -latest -products * `
-            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-            -property installationPath
-          if (-not $vsPath) {
-            throw "Visual Studio C++ Build Tools were not found"
-          }
-          Import-Module (Join-Path $vsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
-          Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation `
-            -DevCmdArguments "-arch=x64 -host_arch=x64"
-          Get-Command link.exe | Format-List Source
-
-          $work = "$env:RUNNER_TEMP\govfuzz-windows-fuzz"
-          .\target\x86_64-pc-windows-msvc\release\govfuzz.exe auto `
-            tests\fixtures\engine_parity\magic_byte `
-            --work-dir $work `
-            --languages c `
-            --target parse_frame `
-            --iterations 32 `
-            --single-pass `
-            --sanitizers none `
-            --per-target-time 5 `
-            --no-discovery-cache `
-            --verbose
-          $report = Get-Content "$work\auto\run.json" -Raw | ConvertFrom-Json
-          if ($report.summary.built_and_fuzzed -ne 1) {
-            Get-ChildItem $work -Recurse -File |
-              Where-Object { $_.Name -in @("Makefile", "result.json", "run.json", "missing-deps.txt", "bug-report.md") } |
-              ForEach-Object {
-                Write-Host "--- $($_.FullName)"
-                Get-Content $_.FullName
-              }
-            throw "Windows smoke did not build and fuzz parse_frame: $($report.summary | ConvertTo-Json -Compress)"
-          }
+        run: scripts/ci/windows-release-smoke.ps1 -BinaryDir target/platform-release/bin

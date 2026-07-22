@@ -3327,6 +3327,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/validation/2026-07-21-current-platform-matrix.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/validation/2026-07-21-major-updates-sweep.md",
       "license": "Apache-2.0"
     },

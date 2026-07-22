@@ -284,6 +284,52 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(unix)]
+    fn recovers_after_more_than_legacy_mapping_retry_streak() {
+        let tmp =
+            std::env::temp_dir().join(format!("govfuzz-tsan-mapping-retry-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let work = tmp.join("work");
+        let hdir = work.join("harnesses").join("H-C0001");
+        let queue = work.join("corpus").join("H-C0001").join("queue");
+        std::fs::create_dir_all(&hdir).unwrap();
+        std::fs::create_dir_all(&queue).unwrap();
+        std::fs::write(queue.join("seed"), b"input").unwrap();
+        std::fs::write(hdir.join("Makefile"), "tsan:\n\tchmod +x main_tsan\n").unwrap();
+        std::fs::write(
+            hdir.join("main_tsan"),
+            "#!/bin/sh\n\
+             attempts=\"$(dirname \"$0\")/attempts\"\n\
+             count=0\n\
+             [ ! -f \"$attempts\" ] || count=$(cat \"$attempts\")\n\
+             count=$((count + 1))\n\
+             printf '%s\\n' \"$count\" > \"$attempts\"\n\
+             if [ \"$count\" -le 20 ]; then\n\
+               printf '%s\\n' 'FATAL: ThreadSanitizer: unexpected memory mapping 0x1-0x2' >&2\n\
+               exit 66\n\
+             fi\n\
+             printf '%s\\n' 'WARNING: ThreadSanitizer: data race' >&2\n\
+             printf '%s\\n' '    #0 worker /project/race.c:12:7 (main_tsan+0x1)' >&2\n\
+             exit 86\n",
+        )
+        .unwrap();
+
+        assert_eq!(run_tsan_replay(&work), 1);
+        assert_eq!(
+            std::fs::read_to_string(hdir.join("attempts"))
+                .unwrap()
+                .trim(),
+            "21"
+        );
+        let finding =
+            std::fs::read_to_string(work.join("findings/F-TSAN-0000/finding.json")).unwrap();
+        assert!(finding.contains("GF-556"));
+        assert!(finding.contains("race.c"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
     fn parses_first_target_frame_skipping_scaffolding_and_module_suffix() {
         let hdir = "/w/harnesses/H-C0001";
         // TSan frames carry a trailing `(module+0xoffset)` the parser must skip.

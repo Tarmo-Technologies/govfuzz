@@ -14,7 +14,10 @@
   per-translation-unit compile contexts for original and repair-added sources.
   Directly included C++ implementation files are de-duplicated from that object
   graph, and generated C/C++ Makefiles explicitly select the complete build as
-  their default goal.
+  their default goal. C++ standalone-header preflights now share the harness's
+  standard-library path recovery and essential defensive prelude. Ada projects
+  with obsolete runtime imports are overlaid without inheriting those imports,
+  and generic-local result types are qualified through the generated instance.
 
 - **Honest target execution and fallback evidence.** Successful campaigns now
   prove entry into the selected project endpoint rather than counting driver

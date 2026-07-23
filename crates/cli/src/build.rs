@@ -387,7 +387,19 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
         .parent()
         .unwrap_or(work_dir.as_path())
         .to_path_buf();
-    if args.source_project.is_none() {
+    // An extended project keeps all of its imports, and GPR has no way for the
+    // child project to subtract one. Do not extend a project that imports
+    // `adafuzz.gpr`: this build already supplies `adafuzz_runtime.gpr`, while a
+    // stale relative AdaFuzz import either fails at the parent's original path
+    // or creates duplicate runtime units. The instrumented source overlay still
+    // carries the target sources, and the normal import-forwarder below keeps
+    // every non-AdaFuzz dependency visible.
+    let extends_project = args
+        .source_project
+        .as_ref()
+        .filter(|project| !gpr_imports_adafuzz(project))
+        .cloned();
+    if extends_project.is_none() {
         with_clauses.extend(discover_user_gpr_with_clauses(&user_root));
     }
 
@@ -443,7 +455,7 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     };
     let spec = ProjectSpec {
         project_name: "Govfuzz_Build".to_owned(),
-        extends_project: args.source_project.clone(),
+        extends_project,
         source_roots,
         object_dir: obj_dir,
         main_adb: Some(main_file),
@@ -553,6 +565,19 @@ fn discover_user_gpr_with_clauses(root: &Path) -> Vec<PathBuf> {
         }
     }
     out
+}
+
+fn gpr_imports_adafuzz(project: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(project) else {
+        return false;
+    };
+    let with_re = regex::Regex::new(r#"with\s+"([^"]+\.gpr)"\s*;"#).expect("regex");
+    let imports_runtime = with_re.captures_iter(&text).any(|caps| {
+        Path::new(&caps[1])
+            .file_name()
+            .is_some_and(|name| name.eq_ignore_ascii_case("adafuzz.gpr"))
+    });
+    imports_runtime
 }
 
 /// Lexically collapse `.`/`..` components of `path` without touching
@@ -891,12 +916,22 @@ fn c_family_make_env(
 
 fn detect_libstdcxx_include_flags() -> Vec<String> {
     let cxx = std::env::var("CXX").unwrap_or_else(|_| "clang++".to_owned());
-    if cxx_accepts_cpp_standard_headers(&cxx, &[]) {
+    detect_cpp_stdlib_include_flags_for(&cxx, &[])
+}
+
+/// Recover C++ standard-library include paths for the exact compiler and base
+/// flags used by an independent probe. Header preflights call this too so a
+/// mixed GCC/Clang installation is judged under the same toolchain recovery as
+/// the eventual harness build.
+pub(crate) fn detect_cpp_stdlib_include_flags_for(cxx: &str, base_flags: &[String]) -> Vec<String> {
+    if cxx_accepts_cpp_standard_headers(cxx, base_flags) {
         return Vec::new();
     }
     for dirs in candidate_libstdcxx_include_sets_from_root(Path::new("/usr/include")) {
         let flags = libstdcxx_include_flags(&dirs);
-        if cxx_accepts_cpp_standard_headers(&cxx, &flags) {
+        let mut probe_flags = base_flags.to_vec();
+        probe_flags.extend(flags.iter().cloned());
+        if cxx_accepts_cpp_standard_headers(cxx, &probe_flags) {
             return flags;
         }
     }
@@ -1410,6 +1445,11 @@ mod tests {
         .unwrap();
 
         let clauses = discover_user_gpr_with_clauses(root);
+
+        assert!(
+            gpr_imports_adafuzz(&root.join("foo.gpr")),
+            "a governing project that imports adafuzz.gpr must not be extended"
+        );
 
         // Relative dep -> normalized ABSOLUTE path rooted at the gpr dir.
         let expected_dep = root.parent().unwrap().join("sub").join("dep.gpr");

@@ -12,7 +12,10 @@ discovered thousands of targets but did not successfully fuzz an endpoint.
 
 - Ada overloads are selected by exact declaration identity and receive their
   own source dependency closures. Missing-symbol repairs no longer fabricate
-  declarations that do not exist in the referenced unit.
+  declarations that do not exist in the referenced unit. Governing projects
+  with obsolete AdaFuzz runtime imports are safely overlaid instead of extended,
+  and generic-local result types are named through the generated package
+  instance just like parameters and constructors.
 - Reopened modules from multiple IDL files are merged without overwriting Ada
   bindings. Checked-in CORBA servant implementations use their concrete receiver
   types and build as direct harnesses.
@@ -24,7 +27,9 @@ discovered thousands of targets but did not successfully fuzz an endpoint.
   compiler family, standard, forced includes, safe flags, and per-file defines
   instead of compiling every source under one guessed command. Sources included
   directly by a generated C++ harness are not linked a second time, and bare
-  `make` reliably selects the complete harness build.
+  `make` reliably selects the complete harness build. Standalone-header
+  preflights use the same standard-library path recovery and defensive prelude
+  as the real harness build.
 - Ranking uses conservative harness viability so opaque, undeclared, or blocked
   parameter shapes do not crowd straightforward byte-driven endpoints out of a
   bounded top-N campaign.

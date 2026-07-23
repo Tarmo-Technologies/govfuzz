@@ -7410,6 +7410,15 @@ fn preflight_header_includes(
         flags.push("-I".to_owned());
         flags.push(include_dir.to_string_lossy().to_string());
     }
+    if cpp {
+        // The real build repairs mixed Clang/GCC installations whose clang++
+        // cannot find the installed libstdc++ headers by default. Apply the
+        // same recovery here; otherwise a self-contained project header is
+        // falsely rejected on `<string>` before harness generation starts.
+        flags.extend(crate::build::detect_cpp_stdlib_include_flags_for(
+            &compiler, &flags,
+        ));
+    }
     flags.extend([
         "-fsyntax-only".to_owned(),
         "-x".to_owned(),
@@ -7426,10 +7435,22 @@ fn preflight_header_includes(
     let Ok(mut child) = command.spawn() else {
         return HeaderPreflight::Unavailable;
     };
-    let source = includes
-        .iter()
-        .map(|include| format!("#include \"{include}\"\n"))
-        .collect::<String>();
+    let mut source = if cpp {
+        // Mirror the essential defensive prelude emitted before project
+        // headers in direct_harness.cpp.tera. Legacy header-only libraries may
+        // intentionally rely on these transitive standard declarations (for
+        // example std::numeric_limits and std::size_t), so testing the header
+        // without the prelude would reject a harness that actually compiles.
+        "#include <limits>\n#include <cstddef>\n".to_owned()
+    } else {
+        String::new()
+    };
+    source.push_str(
+        &includes
+            .iter()
+            .map(|include| format!("#include \"{include}\"\n"))
+            .collect::<String>(),
+    );
     let Some(mut stdin) = child.stdin.take() else {
         return HeaderPreflight::Unavailable;
     };
@@ -9894,11 +9915,11 @@ mod tests {
         is_harness_incompatible_flag, is_msvc_crt_model_define, is_non_library_dir,
         link_flag_from_build_token, locate_c_runtime, merge_dependency_packages_and_subprograms,
         merge_tree_c_lifecycle, numeric_token_byte_encodings, pick_c_target, pick_cpp_target,
-        push_build_compile_flag, recover_library_translation_units,
+        preflight_header_includes, push_build_compile_flag, recover_library_translation_units,
         resolve_cpp_member_access_from_headers, resolve_cpp_namespace_qualified_free_functions,
         run, select_subprogram, self_prefixed_include_roots, source_defines_main,
         source_header_visibility_flags, source_path_is_foreign_platform, CompileCommandEntry,
-        CppBuildContext, DecoderLimitArgs, GenerateHarnessArgs,
+        CppBuildContext, DecoderLimitArgs, GenerateHarnessArgs, HeaderPreflight,
         BLOCKED_BY_NON_SELF_CONTAINED_HEADER,
     };
     use ada_parser::ast::{Package, PackageId, StructuralAst as StructuralAstForMerge};
@@ -15102,6 +15123,33 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let main = fs::read_to_string(root.join("out/H-CPP-UMBRELLA/main.cpp")).unwrap();
         assert!(main.contains("#include \"legacy_api.hpp\""), "{main}");
         assert!(!main.contains("#include \"legacy_child.hpp\""), "{main}");
+    }
+
+    #[test]
+    fn cpp_header_preflight_uses_harness_prelude_and_stdlib_recovery() {
+        if std::process::Command::new("clang++")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping header preflight test: clang++ not on PATH");
+            return;
+        }
+        let root = temp_dir("cpp-header-prelude-preflight");
+        let header = root.join("legacy.hpp");
+        fs::write(
+            &header,
+            "#pragma once\n#include <string>\ninline long parse(const std::string &s) { return s.empty() ? std::numeric_limits<long>::min() : (long)std::size_t{1}; }\n",
+        )
+        .unwrap();
+
+        let result = preflight_header_includes(
+            &["legacy.hpp".to_owned()],
+            std::slice::from_ref(&root),
+            &[],
+            true,
+        );
+        assert_eq!(result, HeaderPreflight::Passed, "{result:?}");
     }
 
     #[test]

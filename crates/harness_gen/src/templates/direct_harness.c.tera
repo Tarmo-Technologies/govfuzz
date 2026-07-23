@@ -96,9 +96,17 @@ extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attr
 } while (0)
 #endif
 
+#if defined(GOVFUZZ_EXTERNAL_DRIVER)
+extern void govfuzz_target_enter(void);
+#define GOVFUZZ_TARGET_ENTER() govfuzz_target_enter()
+#else
+#define GOVFUZZ_TARGET_ENTER() ((void)0)
+#endif
+
 {%- if passthrough_libfuzzer_entrypoint %}
 extern int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+    GOVFUZZ_TARGET_ENTER();
     return LLVMFuzzerTestOneInput(Data, Size);
 }
 {% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
@@ -633,9 +641,11 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * first parameter is the streamed untrusted byte; the rest are backed once
      * above. */
     for (size_t _gf_i = 0; _gf_i < Size; ++_gf_i) {
+        GOVFUZZ_TARGET_ENTER();
         (void){{ qualified_target_name }}((Data[_gf_i]){% for p in params %}, {{ p.arg }}{% endfor %});
     }
 {%- else %}
+    GOVFUZZ_TARGET_ENTER();
     {% if return_type_present %}{{ return_type }} R = {% endif %}{{ qualified_target_name }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- if return_type_present %}
     GOVFUZZ_KEEP_RESULT(R);

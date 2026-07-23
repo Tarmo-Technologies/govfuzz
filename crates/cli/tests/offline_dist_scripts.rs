@@ -38,7 +38,11 @@ fn offline_dist_packager_advertises_binary_only_content_pack_flow() {
     assert!(stdout.contains("smoke"));
     assert!(stdout.contains("install.sh"));
     assert!(stdout.contains("INSTALL.md"));
+    assert!(stdout.contains("LICENSE"));
+    assert!(stdout.contains("README.md"));
+    assert!(stdout.contains("RELEASE_NOTES.md"));
     assert!(stdout.contains("RUN-GOVFUZZ.md"));
+    assert!(stdout.contains("govfuzz-bug-report"));
     assert!(stdout.contains("does not include GovFuzz source"));
 }
 
@@ -123,7 +127,11 @@ fn offline_dist_readme_documents_install_options_without_source_tree_note() {
         "all-in-one Linux package",
         "both Linux preload shims",
         "INSTALL.md",
+        "LICENSE",
+        "README.md",
+        "RELEASE_NOTES.md",
         "manually co-locate",
+        "govfuzz-bug-report",
     ] {
         assert!(
             readme.contains(expected),
@@ -199,6 +207,7 @@ fn offline_dist_run_guide_is_packaged_and_documents_core_workflows() {
         "/opt/govfuzz",
         "A content pack is a signed offline bundle",
         "Seeds are example input files",
+        "govfuzz-bug-report /path/to/govfuzz_work",
     ] {
         assert!(
             run_guide.contains(expected),
@@ -226,6 +235,8 @@ fn offline_auto_runbook_documents_trusted_and_forced_recovery_flows() {
         "different work directory",
         "Do not use `--install-deps`",
         "positive coverage",
+        "Compact Scrubbed Support Report",
+        "govfuzz-bug-report /results/govfuzz-real",
     ] {
         assert!(
             runbook.contains(expected),
@@ -455,6 +466,19 @@ fn offline_dist_packager_stages_every_external_harness_runtime() {
         script.contains("cp \"$REPO_ROOT/INSTALL.md\" \"$STAGE_ROOT/INSTALL.md\""),
         "all-in-one package must carry the dual-path installation guide"
     );
+    for document in ["LICENSE", "README.md", "RELEASE_NOTES.md"] {
+        assert!(
+            script.contains(&format!(
+                "cp \"$REPO_ROOT/{document}\" \"$STAGE_ROOT/{document}\""
+            )),
+            "all-in-one package must carry {document}"
+        );
+    }
+    assert!(
+        script
+            .contains("cp \"$SCRIPT_DIR/govfuzz-bug-report.sh\" \"$TOOL_DIR/govfuzz-bug-report\""),
+        "all-in-one package must stage the scrubbed support-report wrapper"
+    );
 }
 
 #[test]
@@ -489,7 +513,10 @@ fn release_matrix_keeps_windows_apps_and_linux_only_shims_separate() {
     assert!(workflow.contains("scripts/check-linux-release-abi.sh"));
     assert!(workflow.contains("scripts/package-offline-dist.sh"));
     assert!(workflow.contains("govfuzz-dist-*.tar.gz.sha256"));
+    assert!(workflow.contains("INSTALL.md LICENSE README.md RELEASE_NOTES.md"));
     assert!(workflow.contains("libgovfuzz_cc_intercept.so"));
+    assert!(cli.contains("../../scripts/govfuzz-bug-report.sh"));
+    assert!(workflow.contains("govfuzz-bug-report.sh"));
 }
 
 #[test]
@@ -506,6 +533,7 @@ fn release_archive_install_guide_documents_both_linux_layouts() {
         "GOVFUZZ_RUNTRACE_SHIM",
         "GOVFUZZ_CC_INTERCEPT",
         "govfuzz-daemon",
+        "govfuzz-bug-report",
     ] {
         assert!(
             guide.contains(expected),

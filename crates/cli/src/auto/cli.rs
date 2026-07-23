@@ -6,6 +6,7 @@
 //! `AttemptOptions` so they actually take effect inside the loop.
 
 use crate::auto::attempt::AttemptOptions;
+use crate::auto::candidate::Lang;
 use crate::auto::decl_index::DeclarationIndex;
 use crate::auto::discovery::DirFilter;
 use crate::auto::report::write_reports;
@@ -756,6 +757,12 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     for note in crate::auto::config::apply(&mut args, &path).map_err(|e| anyhow::anyhow!("{e}"))? {
         eprintln!("govfuzz auto: {note}");
     }
+    let work_state = crate::auto::work_state::prepare(&work, args.resume)
+        .with_context(|| format!("prepare generated state under {}", work.display()))?;
+    eprintln!("govfuzz auto: work-directory state: {work_state}");
+    if let Err(error) = crate::support_report::write_auto_context(&work, &args, work_state) {
+        eprintln!("warning: could not checkpoint privacy-safe support context: {error}");
+    }
 
     // A `--grammar` applies to every target this run fuzzes. Validate it up front so a
     // typo fails fast (not per-target), then publish it via GOVFUZZ_GRAMMAR: the
@@ -940,6 +947,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         args.discovery_cache.as_deref(),
         args.preprocess,
     )?;
+    if let Err(error) =
+        crate::support_report::checkpoint_discovery_cache_hit(&work, discovery_cache_hit)
+    {
+        eprintln!("warning: could not checkpoint discovery-cache decision: {error}");
+    }
     if !args.exclude_paths.is_empty() || !args.exclude.is_empty() {
         candidates.retain(|candidate| {
             !path_matches_exclusion(
@@ -952,9 +964,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     }
     if !args.targets.is_empty() {
         candidates.retain(|candidate| {
-            args.targets
-                .iter()
-                .any(|selected| target_name_filter_matches(&candidate.name, selected))
+            let case_insensitive =
+                matches!(candidate.lang, Lang::Ada | Lang::Fortran | Lang::Cobol);
+            args.targets.iter().any(|selected| {
+                target_name_filter_matches(&candidate.name, selected, case_insensitive)
+            })
         });
     }
     if !args.harness_ids.is_empty() {
@@ -1148,6 +1162,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         if !ada_dep_dirs.contains(&cached) {
             ada_dep_dirs.push(cached);
         }
+    }
+    // `build` already adds this directory as a Source_Dir.  Harness generation
+    // must analyze the same types and constructors, otherwise it rejects a
+    // CORBA parameter as undeclared before the build ever gets that far.
+    let fake_corba_dir = work.join("fake_corba");
+    if fake_corba_dir.is_dir() && !ada_dep_dirs.contains(&fake_corba_dir) {
+        ada_dep_dirs.push(fake_corba_dir);
     }
     if !ada_dep_dirs.is_empty() {
         eprintln!(
@@ -2633,16 +2654,37 @@ fn render_selected_langs(selectors: &[crate::auto::candidate::LangSelector]) -> 
         .join(", ")
 }
 
-fn target_name_filter_matches(candidate_name: &str, selected: &str) -> bool {
-    if candidate_name == selected {
+fn target_name_filter_matches(
+    candidate_name: &str,
+    selected: &str,
+    case_insensitive: bool,
+) -> bool {
+    let equal = |left: &str, right: &str| {
+        if case_insensitive {
+            left.eq_ignore_ascii_case(right)
+        } else {
+            left == right
+        }
+    };
+    if equal(candidate_name, selected) {
         return true;
     }
-    if candidate_name.starts_with(&format!("{selected}(")) {
+    // Strip the overload profile BEFORE locating the qualified leaf. Looking
+    // for the final `::` in the whole string mistakes a qualified parameter
+    // type (`Parse(const std::string&)`) for the function qualifier. Ada,
+    // Java, Python, and several other lanes use dotted qualification rather
+    // than C++'s `::`, so both separators are accepted.
+    let base = candidate_name
+        .split_once('(')
+        .map(|(head, _)| head)
+        .unwrap_or(candidate_name);
+    if equal(base, selected) {
         return true;
     }
-    candidate_name.rsplit_once("::").is_some_and(|(_, simple)| {
-        simple == selected || simple.starts_with(&format!("{selected}("))
-    })
+    let colon_leaf = base.rfind("::").map(|index| index + 2);
+    let dot_leaf = base.rfind('.').map(|index| index + 1);
+    let leaf_start = colon_leaf.into_iter().chain(dot_leaf).max().unwrap_or(0);
+    equal(&base[leaf_start..], selected)
 }
 
 fn sort_attacking_candidates(
@@ -3791,16 +3833,36 @@ mod tests {
     fn target_name_filter_matches_cpp_qualified_overload_families() {
         assert!(target_name_filter_matches(
             "tinyxml2::XMLDocument::Parse(const char *, size_t)",
-            "tinyxml2::XMLDocument::Parse"
+            "tinyxml2::XMLDocument::Parse",
+            false,
         ));
         assert!(target_name_filter_matches(
             "tinyxml2::XMLDocument::Parse(const char *, size_t)",
-            "Parse"
+            "Parse",
+            false,
         ));
-        assert!(target_name_filter_matches("parse", "parse"));
+        assert!(target_name_filter_matches("parse", "parse", false));
+        assert!(target_name_filter_matches(
+            "tinyxml2::XMLDocument::Parse(const std::string &)",
+            "Parse",
+            false,
+        ));
+        assert!(target_name_filter_matches(
+            "Bar_Impl.Compute",
+            "Compute",
+            true,
+        ));
+        assert!(target_name_filter_matches(
+            "Root.Bar_Impl.Compute(String)",
+            "Compute",
+            true,
+        ));
+        assert!(target_name_filter_matches("compute", "Compute", true));
+        assert!(!target_name_filter_matches("compute", "Compute", false));
         assert!(!target_name_filter_matches(
             "tinyxml2::XMLDocument::Parse(const char *, size_t)",
-            "Reset"
+            "Reset",
+            false,
         ));
     }
 
@@ -3918,6 +3980,7 @@ mod tests {
                     pass: Pass::Empty,
                     engine: "builtin".to_owned(),
                     executions: 127,
+                    target_entry_observed: false,
                     coverage_edges: 0,
                     elapsed_secs: 1.0,
                     executions_per_sec: 127.0,
@@ -3927,6 +3990,7 @@ mod tests {
                     pass: Pass::Rng,
                     engine: "builtin".to_owned(),
                     executions: 112,
+                    target_entry_observed: false,
                     coverage_edges: 0,
                     elapsed_secs: 1.0,
                     executions_per_sec: 112.0,
@@ -4014,6 +4078,7 @@ mod tests {
                         pass: Pass::Rng,
                         engine: "builtin".to_owned(),
                         executions: 1,
+                        target_entry_observed: false,
                         coverage_edges: 0,
                         elapsed_secs: 0.5,
                         executions_per_sec: 2.0,

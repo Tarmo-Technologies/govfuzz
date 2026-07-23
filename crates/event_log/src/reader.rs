@@ -42,6 +42,7 @@ impl<R: Read> EventReader<R> {
             EventTag::Target => Event::Target {
                 id: self.read_u32()?,
             },
+            EventTag::TargetEntry => Event::TargetEntry,
             EventTag::Handler => Event::Handler {
                 exception_name: self.read_string()?,
                 exception_message: self.read_string()?,
@@ -221,6 +222,13 @@ mod tests {
             reader.next_event().unwrap(),
             Some(Event::Target { id: 0x42 })
         );
+    }
+
+    #[test]
+    fn read_target_entry_event_has_no_identifier_payload() {
+        let mut reader = EventReader::new([EventTag::TargetEntry as u8].as_slice());
+        assert_eq!(reader.next_event().unwrap(), Some(Event::TargetEntry));
+        assert_eq!(reader.next_event().unwrap(), None);
     }
 
     #[test]

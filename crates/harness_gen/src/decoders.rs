@@ -1355,11 +1355,39 @@ fn decode_record_field(ast: &StructuralAst, ty: &str) -> String {
     if leaf.is_empty() {
         return "<>".to_owned();
     }
-    if let Some(declared) = ast.types.iter().find(|t| {
-        t.name_path
-            .last()
-            .is_some_and(|n| n.eq_ignore_ascii_case(leaf))
-    }) {
+    let declared = if ty.contains('.') {
+        let requested = ty.split('.').map(str::trim).collect::<Vec<_>>();
+        ast.types.iter().find(|candidate| {
+            let qualified = match candidate.owner {
+                ada_parser::ast::TypeOwner::Package(package_id) => ast
+                    .packages
+                    .iter()
+                    .find(|package| package.id == package_id)
+                    .map(|package| {
+                        let mut path = package.name.split('.').collect::<Vec<_>>();
+                        path.extend(candidate.name_path.iter().map(String::as_str));
+                        path
+                    })
+                    .unwrap_or_default(),
+                _ => candidate.name_path.iter().map(String::as_str).collect(),
+            };
+            qualified.len() == requested.len()
+                && qualified
+                    .iter()
+                    .zip(&requested)
+                    .all(|(left, right)| left.eq_ignore_ascii_case(right))
+        })
+    } else {
+        let mut matches = ast.types.iter().filter(|candidate| {
+            candidate
+                .name_path
+                .last()
+                .is_some_and(|name| name.eq_ignore_ascii_case(leaf))
+        });
+        let only = matches.next();
+        only.filter(|_| matches.next().is_none())
+    };
+    if let Some(declared) = declared {
         if let TypeKind::Enum(variants) = &declared.kind {
             // A real in-tree enumeration: decode an index over its literals. The
             // synthetic "__external_discrete" marker has no known cardinality.

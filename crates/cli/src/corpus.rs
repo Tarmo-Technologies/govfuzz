@@ -337,6 +337,7 @@ mod tests {
         Testcase {
             testcase_id: 1,
             target_id: 0x42,
+            target_entered: false,
             crumbs,
             handlers: Vec::new(),
             raises: Vec::new(),

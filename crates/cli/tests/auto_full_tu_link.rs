@@ -16,15 +16,15 @@
 //! failure), and is closed by adding the two definition-bearing sources recovered
 //! from the compile database.
 //!
-//! Shells the built `govfuzz` binary; gated on clang++ so a toolchain-less lane
+//! Shells the built `govfuzz` binary; gated on g++ so a toolchain-less lane
 //! skips cleanly.
 
 use std::path::Path;
 use std::process::Command;
 
-fn clangxx_available() -> bool {
-    if which::which("clang++").is_err() {
-        eprintln!("skipping auto_full_tu_link: clang++ not on PATH");
+fn gxx_available() -> bool {
+    if which::which("g++").is_err() {
+        eprintln!("skipping auto_full_tu_link: g++ not on PATH");
         return false;
     }
     true
@@ -79,9 +79,9 @@ fn write_fixture(root: &Path) {
     // A compile database listing ALL library TUs (the recovery source). NO `*.a`.
     let db = format!(
         r#"[
-  {{"directory":"{root}","file":"src/process.cpp","arguments":["clang++","-Iinclude","-c","src/process.cpp"]}},
-  {{"directory":"{root}","file":"src/helpers_a.cpp","arguments":["clang++","-Iinclude","-c","src/helpers_a.cpp"]}},
-  {{"directory":"{root}","file":"src/helpers_b.cpp","arguments":["clang++","-Iinclude","-c","src/helpers_b.cpp"]}}
+  {{"directory":"{root}","file":"src/process.cpp","arguments":["g++","-Iinclude","-c","src/process.cpp"]}},
+  {{"directory":"{root}","file":"src/helpers_a.cpp","arguments":["g++","-Iinclude","-c","src/helpers_a.cpp"]}},
+  {{"directory":"{root}","file":"src/helpers_b.cpp","arguments":["g++","-Iinclude","-c","src/helpers_b.cpp"]}}
 ]"#,
         root = root.display()
     );
@@ -90,7 +90,7 @@ fn write_fixture(root: &Path) {
 
 #[test]
 fn precise_source_repairs_close_a_multi_tu_library_without_an_archive() {
-    if !clangxx_available() {
+    if !gxx_available() {
         return;
     }
     let tmp = tempfile::Builder::new()

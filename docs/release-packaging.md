@@ -117,10 +117,17 @@ data and rerun the same command when you need SBOM or binary-CVE matching.
 The script runs `cargo build --release --workspace`, stages the release binaries,
 both Linux shims, harness runtime support files, a tiny `govfuzz auto` smoke
 fixture, and a signed content pack, then produces
-`dist/govfuzz-dist-<version>-<triple>.tar.gz` plus a `.sha256` sidecar. The
-tarball includes `install.sh`, `README-DIST.md`, and `RUN-GOVFUZZ.md`.
-It also includes `INSTALL.md`, which documents both the bundled installer and
-the manual component-archive co-location layout.
+`dist/govfuzz-dist-<version>-<triple>.tar.gz` plus a `.sha256` sidecar. Every
+tagged release must publish this full bundle; it is not an optional supplement
+to the component artifacts. The tarball includes `install.sh`,
+`govfuzz-bug-report`, `INSTALL.md`, `LICENSE`, `README.md`,
+`RELEASE_NOTES.md`, `README-DIST.md`, and `RUN-GOVFUZZ.md`. The collector creates a size-capped diagnostic summary from
+live per-target checkpoints while omitting source/corpus content and replacing
+project paths and identifiers before output.
+`INSTALL.md` documents both the bundled installer and the manual
+component-archive co-location layout. The release workflow extracts every full
+bundle and fails before publication if `install.sh` or any of the four standard
+documents is absent.
 `install.sh` can install or update interactively with an arrow-key terminal
 checklist or non-interactively:
 

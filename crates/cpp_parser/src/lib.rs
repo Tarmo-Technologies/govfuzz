@@ -65,6 +65,49 @@ pub struct CppDeclaration {
     pub line: u32,
 }
 
+/// Constructor facts for one concrete class declaration. Unlike the legacy
+/// text probes used by the CLI, these facts are collected from members of the
+/// actual class body, so a temporary expression such as `Options()` elsewhere
+/// cannot masquerade as a public constructor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CppClassInfo {
+    pub name: String,
+    pub qualified_name: String,
+    pub namespace_path: Vec<String>,
+    pub class_path: Vec<String>,
+    pub complete: bool,
+    pub is_abstract: bool,
+    pub constructors: Vec<CppConstructorInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CppConstructorInfo {
+    pub param_types: Vec<String>,
+    pub access: String,
+    pub is_deleted: bool,
+    pub callable_without_args: bool,
+    pub line: u32,
+}
+
+impl CppClassInfo {
+    /// Whether `T value;` is a valid accessibility/shape assumption. This is a
+    /// declaration-level verdict; semantic deletion caused by a member/base is
+    /// still left to the compiler and subsequent build-repair diagnostics.
+    pub fn has_public_default_constructor(&self) -> bool {
+        if !self.complete || self.is_abstract {
+            return false;
+        }
+        if self.constructors.is_empty() {
+            return true;
+        }
+        self.constructors.iter().any(|constructor| {
+            constructor.access == "public"
+                && !constructor.is_deleted
+                && constructor.callable_without_args
+        })
+    }
+}
+
 impl c_stub_gen::DeclarationView for CppDeclaration {
     fn name(&self) -> &str {
         &self.name
@@ -979,6 +1022,217 @@ pub fn parse_cpp_type_defs(source: &str) -> Result<c_parser::CTypeDefs, CppParse
     Ok(defs)
 }
 
+/// Parse namespace- and nesting-qualified class constructor facts.
+///
+/// This deliberately reports class declarations rather than arbitrary textual
+/// `T(...)` occurrences. It is used by harness planning to decide whether an
+/// opaque infrastructure parameter can safely be initialized as `T value;`.
+pub fn parse_cpp_class_info(source: &str) -> Result<Vec<CppClassInfo>, CppParseError> {
+    let source = prepare_cpp_source(source);
+    let source = source.as_str();
+    let mut parser = tree_sitter::Parser::new();
+    parser
+        .set_language(&tree_sitter_cpp::LANGUAGE.into())
+        .map_err(|_| CppParseError::Grammar)?;
+    let tree = parser.parse(source, None).ok_or(CppParseError::Parse)?;
+    let mut out = Vec::new();
+    collect_cpp_class_info(tree.root_node(), source.as_bytes(), &[], &[], &mut out);
+    Ok(out)
+}
+
+fn collect_cpp_class_info(
+    node: tree_sitter::Node<'_>,
+    source: &[u8],
+    namespace_stack: &[String],
+    class_stack: &[String],
+    out: &mut Vec<CppClassInfo>,
+) {
+    let Some(_depth_guard) = AstDepthGuard::enter() else {
+        return;
+    };
+
+    let mut next_namespaces = namespace_stack.to_vec();
+    if node.kind() == "namespace_definition" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| name.utf8_text(source).ok())
+        {
+            next_namespaces.extend(
+                name.split("::")
+                    .map(str::trim)
+                    .filter(|part| !part.is_empty())
+                    .map(str::to_owned),
+            );
+        }
+    }
+
+    let active_namespaces = if node.kind() == "namespace_definition" {
+        next_namespaces.as_slice()
+    } else {
+        namespace_stack
+    };
+    let mut next_classes = class_stack.to_vec();
+    let is_class = matches!(node.kind(), "class_specifier" | "struct_specifier");
+    if is_class {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| name.utf8_text(source).ok())
+            .map(str::trim)
+            .filter(|name| !name.is_empty() && !is_cpp_keyword(name))
+        {
+            next_classes.push(name.to_owned());
+            let body = node.child_by_field_name("body");
+            let mut constructors = Vec::new();
+            if let Some(body) = body {
+                let default_access = if node.kind() == "struct_specifier" {
+                    "public"
+                } else {
+                    "private"
+                };
+                collect_direct_constructors(body, source, name, default_access, &mut constructors);
+            }
+            let mut qualified = active_namespaces.to_vec();
+            qualified.extend(next_classes.iter().cloned());
+            out.push(CppClassInfo {
+                name: name.to_owned(),
+                qualified_name: qualified.join("::"),
+                namespace_path: active_namespaces.to_vec(),
+                class_path: next_classes.clone(),
+                complete: body.is_some(),
+                is_abstract: body.is_some_and(|body| class_body_has_pure_virtual(body, source)),
+                constructors,
+            });
+        }
+    }
+
+    let active_classes = if is_class {
+        next_classes.as_slice()
+    } else {
+        class_stack
+    };
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_cpp_class_info(child, source, active_namespaces, active_classes, out);
+    }
+}
+
+fn collect_direct_constructors(
+    body: tree_sitter::Node<'_>,
+    source: &[u8],
+    class_name: &str,
+    default_access: &str,
+    out: &mut Vec<CppConstructorInfo>,
+) {
+    let mut access = default_access;
+    let mut cursor = body.walk();
+    for child in body.children(&mut cursor) {
+        if child.kind() == "access_specifier" {
+            if let Some(next) = cpp_access_specifier(child, source) {
+                access = next;
+            }
+            continue;
+        }
+        // A nested class owns its own constructors. Do not let the recursive
+        // declarator search attribute them to this enclosing class.
+        if matches!(child.kind(), "class_specifier" | "struct_specifier") {
+            continue;
+        }
+        collect_constructor_from_member(child, source, class_name, access, out);
+    }
+}
+
+fn collect_constructor_from_member(
+    member: tree_sitter::Node<'_>,
+    source: &[u8],
+    class_name: &str,
+    access: &str,
+    out: &mut Vec<CppConstructorInfo>,
+) {
+    let Some(declarator) = find_function_declarator(member) else {
+        return;
+    };
+    let Some(name) = declarator_name_text(declarator, source) else {
+        return;
+    };
+    if name != class_name {
+        return;
+    }
+    let params = function_params(declarator, source);
+    let text = member.utf8_text(source).unwrap_or_default();
+    let compact = text
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>();
+    let callable_without_args =
+        params.is_empty() || constructor_first_param_has_default(text, class_name);
+    out.push(CppConstructorInfo {
+        param_types: params.into_iter().map(|param| param.cpp_type).collect(),
+        access: access.to_owned(),
+        is_deleted: compact.contains("=delete"),
+        callable_without_args,
+        line: member.start_position().row as u32 + 1,
+    });
+}
+
+fn constructor_first_param_has_default(text: &str, class_name: &str) -> bool {
+    let Some(name_pos) = text.find(class_name) else {
+        return false;
+    };
+    let Some(rel_open) = text[name_pos + class_name.len()..].find('(') else {
+        return false;
+    };
+    let open = name_pos + class_name.len() + rel_open;
+    let bytes = text.as_bytes();
+    let mut paren_depth = 1usize;
+    let mut angle_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut i = open + 1;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'(' => paren_depth += 1,
+            b')' => {
+                paren_depth -= 1;
+                if paren_depth == 0 {
+                    return false;
+                }
+            }
+            b'<' => angle_depth += 1,
+            b'>' => angle_depth = angle_depth.saturating_sub(1),
+            b'[' => bracket_depth += 1,
+            b']' => bracket_depth = bracket_depth.saturating_sub(1),
+            b'{' => brace_depth += 1,
+            b'}' => brace_depth = brace_depth.saturating_sub(1),
+            b',' if paren_depth == 1
+                && angle_depth == 0
+                && bracket_depth == 0
+                && brace_depth == 0 =>
+            {
+                return false
+            }
+            b'=' if paren_depth == 1
+                && angle_depth == 0
+                && bracket_depth == 0
+                && brace_depth == 0 =>
+            {
+                let previous = i.checked_sub(1).and_then(|j| bytes.get(j)).copied();
+                let next = bytes.get(i + 1).copied();
+                if previous != Some(b'=')
+                    && next != Some(b'=')
+                    && previous != Some(b'<')
+                    && previous != Some(b'>')
+                    && previous != Some(b'!')
+                {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    false
+}
+
 /// Return the (leaf) names of classes/structs in `source` that are abstract —
 /// i.e. declare at least one pure-virtual member function (`virtual ... = 0;`).
 /// An abstract class cannot be instantiated, so a method target whose receiver is
@@ -1421,11 +1675,15 @@ fn push_cpp_enum_dictionary_token(tokens: &mut Vec<String>, member: String) {
     if let Some((_, leaf)) = member.rsplit_once("::") {
         push_dictionary_token(tokens, leaf.to_owned());
     }
+    let segments = member.split("::").collect::<Vec<_>>();
+    if segments.len() > 2 {
+        push_dictionary_token(tokens, segments[segments.len() - 2..].join("::"));
+    }
     push_dictionary_token(tokens, member);
 }
 
 fn collect_type_defs(node: tree_sitter::Node<'_>, source: &[u8], defs: &mut c_parser::CTypeDefs) {
-    collect_type_defs_scoped(node, source, &[], defs);
+    collect_type_defs_scoped(node, source, &[], &[], defs);
 }
 
 /// `collect_type_defs`, threading the enclosing struct/class scope so a MEMBER
@@ -1434,13 +1692,14 @@ fn collect_type_defs(node: tree_sitter::Node<'_>, source: &[u8], defs: &mut c_pa
 /// `FlowType`) otherwise collide in the bare-name-keyed registry (first wins) and
 /// a parameter typed `GroupType::value` resolves to the WRONG members → the
 /// harness emits impossible enumerators that don't compile. Only struct/class
-/// names enter the scope (namespaces don't): a parameter is spelled with the
-/// struct scope it was written under but not its surrounding namespace, so the
-/// recorded tag must match that spelling for resolution to hit.
+/// names and namespaces enter the stored identity. The decoder registry applies
+/// the target's lexical lookup scope for unqualified spellings, while exact
+/// qualified names remain collision-free.
 fn collect_type_defs_scoped(
     node: tree_sitter::Node<'_>,
     source: &[u8],
-    scope: &[String],
+    namespace_scope: &[String],
+    class_scope: &[String],
     defs: &mut c_parser::CTypeDefs,
 ) {
     let Some(_depth_guard) = AstDepthGuard::enter() else {
@@ -1461,6 +1720,23 @@ fn collect_type_defs_scoped(
         return;
     }
 
+    let mut nested_namespace = None;
+    if node.kind() == "namespace_definition" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| name.utf8_text(source).ok())
+        {
+            let mut next = namespace_scope.to_vec();
+            next.extend(
+                name.split("::")
+                    .map(str::trim)
+                    .filter(|part| !part.is_empty())
+                    .map(str::to_owned),
+            );
+            nested_namespace = Some(next);
+        }
+    }
+    let active_namespace = nested_namespace.as_deref().unwrap_or(namespace_scope);
     let mut nested_scope = None;
     match node.kind() {
         "struct_specifier" | "class_specifier" => {
@@ -1474,15 +1750,18 @@ fn collect_type_defs_scoped(
                 if !is_cpp_keyword(&name) {
                     let body = node.child_by_field_name("body");
                     let default_public = node.kind() == "struct_specifier";
+                    let mut qualified = active_namespace.to_vec();
+                    qualified.extend(class_scope.iter().cloned());
+                    qualified.push(name.clone());
                     defs.structs.push(c_parser::CStructDef {
-                        name: name.clone(),
+                        name: qualified.join("::"),
                         fields: body
                             .map(|b| cpp_struct_fields(b, source, default_public))
                             .unwrap_or_default(),
                         line: node.start_position().row as u32 + 1,
                         complete: body.is_some(),
                     });
-                    let mut next = scope.to_vec();
+                    let mut next = class_scope.to_vec();
                     next.push(name);
                     nested_scope = Some(next);
                 }
@@ -1502,10 +1781,12 @@ fn collect_type_defs_scoped(
                     // an unscoped member enum, its enumerators) so sibling member
                     // enums named the same bare tag stay distinct: `FmtScope::value`
                     // with members `FmtScope::Local`, not `value` with `Local`.
-                    let scope_prefix = if scope.is_empty() {
+                    let mut full_scope = active_namespace.to_vec();
+                    full_scope.extend(class_scope.iter().cloned());
+                    let scope_prefix = if full_scope.is_empty() {
                         String::new()
                     } else {
-                        format!("{}::", scope.join("::"))
+                        format!("{}::", full_scope.join("::"))
                     };
                     let qualified_name = format!("{scope_prefix}{name}");
                     let members = enum_members(body, source)
@@ -1539,10 +1820,10 @@ fn collect_type_defs_scoped(
         _ => {}
     }
 
-    let active_scope = nested_scope.as_deref().unwrap_or(scope);
+    let active_scope = nested_scope.as_deref().unwrap_or(class_scope);
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_type_defs_scoped(child, source, active_scope, defs);
+        collect_type_defs_scoped(child, source, active_namespace, active_scope, defs);
     }
 }
 
@@ -2540,6 +2821,50 @@ pub fn parse_cpp_method_access(source: &str) -> std::collections::BTreeMap<Strin
     out
 }
 
+/// Fully qualified, overload-sensitive method access declarations. Keys are
+/// `namespace::Class::method(normalized parameter types)`. This is the
+/// authoritative cross-file lookup; [`parse_cpp_method_access`] is retained for
+/// backward compatibility with callers that can only identify a leaf method.
+pub fn parse_cpp_method_access_signatures(
+    source: &str,
+) -> std::collections::BTreeMap<String, String> {
+    let source = prepare_cpp_source(source);
+    let mut declarations = std::collections::BTreeMap::new();
+    let mut parser = tree_sitter::Parser::new();
+    if parser
+        .set_language(&tree_sitter_cpp::LANGUAGE.into())
+        .is_err()
+    {
+        return declarations;
+    }
+    let Some(tree) = parser.parse(source.as_str(), None) else {
+        return declarations;
+    };
+    collect_member_access_declarations(
+        tree.root_node(),
+        source.as_bytes(),
+        &[],
+        &[],
+        None,
+        &mut declarations,
+    );
+    declarations
+}
+
+/// Produce the same overload-sensitive key as
+/// [`parse_cpp_method_access_signatures`] for a parsed definition.
+pub fn cpp_function_access_signature(function: &CppFunction) -> String {
+    member_access_key(
+        &function.qualifier_path,
+        &function.name,
+        &function
+            .params
+            .iter()
+            .map(|parameter| parameter.cpp_type.clone())
+            .collect::<Vec<_>>(),
+    )
+}
+
 /// `<class>::<method>` for every static member function declared in a class or
 /// struct body. Out-of-line definitions omit the `static` keyword, so callers
 /// use this header metadata to avoid constructing an instance for a callable
@@ -2559,6 +2884,87 @@ pub fn parse_cpp_static_methods(source: &str) -> std::collections::BTreeSet<Stri
     };
     collect_static_methods(tree.root_node(), source.as_bytes(), None, &mut out);
     out
+}
+
+pub fn parse_cpp_static_method_signatures(source: &str) -> std::collections::BTreeSet<String> {
+    let source = prepare_cpp_source(source);
+    let mut out = std::collections::BTreeSet::new();
+    let mut parser = tree_sitter::Parser::new();
+    if parser
+        .set_language(&tree_sitter_cpp::LANGUAGE.into())
+        .is_err()
+    {
+        return out;
+    }
+    let Some(tree) = parser.parse(source.as_str(), None) else {
+        return out;
+    };
+    collect_static_method_signatures(tree.root_node(), source.as_bytes(), &[], &[], &mut out);
+    out
+}
+
+fn collect_static_method_signatures(
+    node: tree_sitter::Node<'_>,
+    source: &[u8],
+    namespace_stack: &[String],
+    class_stack: &[String],
+    out: &mut std::collections::BTreeSet<String>,
+) {
+    let Some(_depth_guard) = AstDepthGuard::enter() else {
+        return;
+    };
+    let mut nested_namespaces = namespace_stack.to_vec();
+    if node.kind() == "namespace_definition" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| name.utf8_text(source).ok())
+        {
+            nested_namespaces.extend(
+                name.split("::")
+                    .map(str::trim)
+                    .filter(|part| !part.is_empty())
+                    .map(str::to_owned),
+            );
+        }
+    }
+    let active_namespaces = if node.kind() == "namespace_definition" {
+        nested_namespaces.as_slice()
+    } else {
+        namespace_stack
+    };
+    let mut nested_classes = class_stack.to_vec();
+    if matches!(node.kind(), "class_specifier" | "struct_specifier") {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| name.utf8_text(source).ok())
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+        {
+            nested_classes.push(name.to_owned());
+        }
+    }
+    let active_classes = if matches!(node.kind(), "class_specifier" | "struct_specifier") {
+        nested_classes.as_slice()
+    } else {
+        class_stack
+    };
+    if node.kind() == "field_declaration" && has_static_storage(node, source) {
+        if let Some(declarator) = find_function_declarator(node) {
+            if let Some(name) = declarator_name_text(declarator, source) {
+                let mut qualifiers = active_namespaces.to_vec();
+                qualifiers.extend(active_classes.iter().cloned());
+                let params = function_params(declarator, source)
+                    .into_iter()
+                    .map(|parameter| parameter.cpp_type)
+                    .collect::<Vec<_>>();
+                out.insert(member_access_key(&qualifiers, &name, &params));
+            }
+        }
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_static_method_signatures(child, source, active_namespaces, active_classes, out);
+    }
 }
 
 fn collect_static_methods(
@@ -4104,6 +4510,55 @@ struct MappedFile {
     }
 
     #[test]
+    fn class_info_distinguishes_public_private_deleted_and_implicit_defaults() {
+        let source = r#"
+            namespace one {
+            struct Implicit { int value; };
+            class PublicDefault {
+            public:
+                PublicDefault() = default;
+            };
+            class DefaultArgument {
+            public:
+                DefaultArgument(int mode = 0);
+            };
+            class PrivateDefault { PrivateDefault(); };
+            class ProtectedDefault { protected: ProtectedDefault(); };
+            class DeletedDefault {
+            public:
+                DeletedDefault() = delete;
+            };
+            class Abstract {
+            public:
+                virtual void run() = 0;
+            };
+            }
+            namespace two { struct Implicit { Implicit(int); }; }
+            void unrelated() { one::PrivateDefault(); }
+        "#;
+        let infos = parse_cpp_class_info(source).expect("class metadata parses");
+        let find = |qualified: &str| {
+            infos
+                .iter()
+                .find(|info| info.qualified_name == qualified)
+                .unwrap_or_else(|| panic!("missing {qualified}: {infos:?}"))
+        };
+        assert!(find("one::Implicit").has_public_default_constructor());
+        assert!(find("one::PublicDefault").has_public_default_constructor());
+        assert!(find("one::DefaultArgument").has_public_default_constructor());
+        assert!(!find("one::PrivateDefault").has_public_default_constructor());
+        assert!(!find("one::ProtectedDefault").has_public_default_constructor());
+        assert!(!find("one::DeletedDefault").has_public_default_constructor());
+        assert!(!find("one::Abstract").has_public_default_constructor());
+        assert!(!find("two::Implicit").has_public_default_constructor());
+        assert_eq!(
+            infos.iter().filter(|info| info.name == "Implicit").count(),
+            2,
+            "namespace identity must not collapse same-leaf classes"
+        );
+    }
+
+    #[test]
     fn parse_cpp_declarations_preserves_const_return_qualifier() {
         let decls =
             parse_cpp_declarations("extern const std::string get_name();\n").expect("parses");
@@ -4195,6 +4650,26 @@ struct MappedFile {
         assert_eq!(
             callback.underlying,
             "int (*)(void *opaque, const char *name)"
+        );
+    }
+
+    #[test]
+    fn parse_cpp_type_defs_preserves_namespace_identity_for_same_leaf_structs() {
+        let defs = parse_cpp_type_defs(
+            "namespace one { struct Options { int first; }; }\n\
+             namespace two { struct Options { bool second; }; }\n",
+        )
+        .unwrap();
+        let names = defs
+            .structs
+            .iter()
+            .map(|definition| definition.name.as_str())
+            .collect::<Vec<_>>();
+        assert!(names.contains(&"one::Options"), "{names:?}");
+        assert!(names.contains(&"two::Options"), "{names:?}");
+        assert!(
+            !names.contains(&"Options"),
+            "bare collision leaked: {names:?}"
         );
     }
 
@@ -4530,6 +5005,39 @@ struct MappedFile {
     }
 
     #[test]
+    fn method_access_signatures_preserve_namespace_and_overload_identity() {
+        let access = parse_cpp_method_access_signatures(
+            r#"
+            namespace one {
+            class Parser {
+            public: void reset(int);
+            private: void reset(const char *);
+            };
+            }
+            namespace two {
+            class Parser { public: void reset(const char *); };
+            }
+            "#,
+        );
+        assert_eq!(
+            access.get("one::Parser::reset(int)").map(String::as_str),
+            Some("public")
+        );
+        assert_eq!(
+            access
+                .get("one::Parser::reset(const char *)")
+                .map(String::as_str),
+            Some("private")
+        );
+        assert_eq!(
+            access
+                .get("two::Parser::reset(const char *)")
+                .map(String::as_str),
+            Some("public")
+        );
+    }
+
+    #[test]
     fn parse_cpp_static_methods_reads_header_declarations() {
         let methods = parse_cpp_static_methods(
             r#"
@@ -4544,6 +5052,13 @@ struct MappedFile {
         assert!(methods.contains("Regexp::Parse"), "{methods:?}");
         assert!(methods.contains("Utility::Decode"), "{methods:?}");
         assert!(!methods.contains("Regexp::Rewrite"), "{methods:?}");
+
+        let exact = parse_cpp_static_method_signatures(
+            "namespace one { class Regexp { public: static int Parse(int); }; }\n\
+             namespace two { class Regexp { public: int Parse(int); }; }\n",
+        );
+        assert!(exact.contains("one::Regexp::Parse(int)"), "{exact:?}");
+        assert!(!exact.contains("two::Regexp::Parse(int)"), "{exact:?}");
     }
 
     /// Regression for the O(n^2) hang in `collect_type_defs` / `collect_functions`:

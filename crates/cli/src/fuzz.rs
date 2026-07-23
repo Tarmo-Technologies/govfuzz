@@ -595,6 +595,11 @@ pub(crate) struct FuzzRunSummary {
     pub(crate) sandbox: replay_min::SandboxMetadata,
     pub(crate) iterations_requested: usize,
     pub(crate) executions: usize,
+    /// True only when a language harness emitted its checkpoint immediately
+    /// before the selected project endpoint. Driver executions and driver-only
+    /// coverage do not satisfy this proof.
+    #[serde(default)]
+    pub(crate) target_entry_observed: bool,
     pub(crate) corpus_new: usize,
     pub(crate) corpus_duplicates: usize,
     /// #401: number of coverage-guided corpus inputs flushed to
@@ -687,6 +692,25 @@ fn coverage_from_env(extra_env: &[(String, String)]) -> CoverageRunSummary {
         edges,
         source: "sancov-trace-pc-guard".to_owned(),
     }
+}
+
+fn target_entry_path(extra_env: &[(String, String)]) -> Option<&Path> {
+    extra_env
+        .iter()
+        .find(|(key, _)| key == "GOVFUZZ_TARGET_ENTRY_SHM")
+        .map(|(_, value)| Path::new(value))
+}
+
+fn reset_target_entry(extra_env: &[(String, String)]) {
+    if let Some(path) = target_entry_path(extra_env) {
+        let _ = fs::write(path, [0u8]);
+    }
+}
+
+fn target_entry_from_env(extra_env: &[(String, String)]) -> bool {
+    target_entry_path(extra_env)
+        .and_then(|path| read_seed_file_prefix(path, 1).ok())
+        .is_some_and(|(bytes, _)| bytes.first().is_some_and(|byte| *byte != 0))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1991,6 +2015,7 @@ fn run_builtin_with_progress(
     mut prepared: PreparedFuzzRun,
     progress: Option<FuzzProgressFn<'_>>,
 ) -> Result<FuzzRunSummary, String> {
+    reset_target_entry(&prepared.extra_env);
     bound_seed_corpus(&mut prepared.seeds, prepared.max_len);
     let corpus_limits = corpus_limits(prepared.max_len);
     let finding_dedup_limit = max_finding_dedup_keys();
@@ -2101,6 +2126,7 @@ fn run_builtin_with_progress(
         HashSet::new()
     };
     let mut executions = 0_usize;
+    let mut target_entry_observed = false;
     // #15: count inputs the target REJECTED (assert/abort/non-zero return). If
     // EVERY executed input rejected — including the empty seed run first — the
     // harness couldn't actually fuzz (a magic/format gate with no valid seed, or a
@@ -2295,6 +2321,7 @@ fn run_builtin_with_progress(
             )?
         };
         executions += 1;
+        target_entry_observed |= run.testcases.iter().any(|testcase| testcase.target_entered);
         if run.rejected {
             rejected_count += 1;
         }
@@ -2700,6 +2727,7 @@ fn run_builtin_with_progress(
         sandbox: sandbox_metadata,
         iterations_requested: prepared.iterations,
         executions,
+        target_entry_observed: target_entry_observed || target_entry_from_env(&prepared.extra_env),
         corpus_new,
         corpus_duplicates,
         corpus_persisted,
@@ -2880,6 +2908,7 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
     use std::process::Command;
     use std::time::Instant;
 
+    reset_target_entry(&prepared.extra_env);
     let (_, cmplog_summary) = load_cmplog_for_run(prepared.cmplog_log.as_deref(), &prepared.seeds);
     let afl_fuzz = which_executable("afl-fuzz")?;
     let generated_dictionary = find_generated_dictionary(&prepared.work_dir, &prepared.harness_id);
@@ -3225,6 +3254,7 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
         sandbox: sandbox_metadata,
         iterations_requested: prepared.iterations,
         executions: afl_execs_done.map(|n| n as usize).unwrap_or(crash_count),
+        target_entry_observed: target_entry_from_env(&prepared.extra_env),
         corpus_new: crash_count,
         corpus_duplicates: 0,
         // AFL++ owns its own on-disk queue/ corpus; the built-in persistence

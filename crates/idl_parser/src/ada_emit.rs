@@ -87,10 +87,147 @@ fn merge_reopened_modules_in_scope(
             | Declaration::Const(_)
             | Declaration::Union(_)
             | Declaration::ValueType(_)
-            | Declaration::EventType(_) => merged.push(declaration.clone()),
+            | Declaration::EventType(_) => {
+                merge_named_declaration(&mut merged, declaration.clone())
+            }
         }
     }
     merged
+}
+
+/// Merge duplicate declarations introduced when several top-level IDLs include
+/// the same common file and are then emitted as one aggregate AST. Reopened
+/// modules are already combined above; this handles the declarations inside
+/// them so an included struct/interface is not rendered twice into one Ada spec.
+/// Conflicting same-name declarations keep the first shape and add only distinct
+/// compatible members, which is deterministic and avoids last-file-wins erasure.
+fn merge_named_declaration(merged: &mut Vec<Declaration>, incoming: Declaration) {
+    match incoming {
+        Declaration::Interface(mut value) => {
+            if let Some(Declaration::Interface(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::Interface(item) if item.name == value.name))
+            {
+                for inherited in value.inherits.drain(..) {
+                    if !existing.inherits.contains(&inherited) {
+                        existing.inherits.push(inherited);
+                    }
+                }
+                for member in value.members.drain(..) {
+                    if !existing.members.contains(&member) {
+                        existing.members.push(member);
+                    }
+                }
+            } else {
+                merged.push(Declaration::Interface(value));
+            }
+        }
+        Declaration::Struct(mut value) => {
+            if let Some(Declaration::Struct(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::Struct(item) if item.name == value.name))
+            {
+                for field in value.fields.drain(..) {
+                    if !existing.fields.iter().any(|item| item.name == field.name) {
+                        existing.fields.push(field);
+                    }
+                }
+            } else {
+                merged.push(Declaration::Struct(value));
+            }
+        }
+        Declaration::Exception(mut value) => {
+            if let Some(Declaration::Exception(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::Exception(item) if item.name == value.name))
+            {
+                for field in value.fields.drain(..) {
+                    if !existing.fields.iter().any(|item| item.name == field.name) {
+                        existing.fields.push(field);
+                    }
+                }
+            } else {
+                merged.push(Declaration::Exception(value));
+            }
+        }
+        Declaration::Enum(mut value) => {
+            if let Some(Declaration::Enum(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::Enum(item) if item.name == value.name))
+            {
+                for variant in value.variants.drain(..) {
+                    if !existing.variants.contains(&variant) {
+                        existing.variants.push(variant);
+                    }
+                }
+            } else {
+                merged.push(Declaration::Enum(value));
+            }
+        }
+        Declaration::Union(mut value) => {
+            if let Some(Declaration::Union(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::Union(item) if item.name == value.name))
+            {
+                for arm in value.arms.drain(..) {
+                    if !existing
+                        .arms
+                        .iter()
+                        .any(|item| item.field.name == arm.field.name)
+                    {
+                        existing.arms.push(arm);
+                    }
+                }
+            } else {
+                merged.push(Declaration::Union(value));
+            }
+        }
+        Declaration::Typedef(value) => {
+            if !merged.iter().any(
+                |declaration| matches!(declaration, Declaration::Typedef(item) if item.name == value.name),
+            ) {
+                merged.push(Declaration::Typedef(value));
+            }
+        }
+        Declaration::Const(value) => {
+            if !merged.iter().any(
+                |declaration| matches!(declaration, Declaration::Const(item) if item.name == value.name),
+            ) {
+                merged.push(Declaration::Const(value));
+            }
+        }
+        Declaration::ValueType(mut value) => {
+            if let Some(Declaration::ValueType(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::ValueType(item) if item.name == value.name))
+            {
+                for inherited in value.inherits.drain(..) {
+                    if !existing.inherits.contains(&inherited) {
+                        existing.inherits.push(inherited);
+                    }
+                }
+                existing.is_abstract |= value.is_abstract;
+            } else {
+                merged.push(Declaration::ValueType(value));
+            }
+        }
+        Declaration::EventType(mut value) => {
+            if let Some(Declaration::EventType(existing)) = merged
+                .iter_mut()
+                .find(|declaration| matches!(declaration, Declaration::EventType(item) if item.name == value.name))
+            {
+                for inherited in value.inherits.drain(..) {
+                    if !existing.inherits.contains(&inherited) {
+                        existing.inherits.push(inherited);
+                    }
+                }
+                existing.is_abstract |= value.is_abstract;
+            } else {
+                merged.push(Declaration::EventType(value));
+            }
+        }
+        value @ (Declaration::Pragma(_) | Declaration::Module(_)) => merged.push(value),
+    }
 }
 
 fn prepend_prefix_pragma(declarations: &mut Vec<Declaration>, prefix: &str) {

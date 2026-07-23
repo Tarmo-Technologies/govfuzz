@@ -214,6 +214,10 @@ pub struct TypeRegistry {
     unions: HashMap<String, c_parser::CStructDef>,
     enums: HashMap<String, c_parser::CEnumDef>,
     typedefs: HashMap<String, String>,
+    /// C++ lexical scopes, most-specific first (`ns::Class`, then `ns`). Used
+    /// only when an unqualified spelling needs to resolve a namespace-qualified
+    /// definition; empty for C and for callers without scope context.
+    cpp_lookup_scopes: Vec<String>,
     /// C++ class names known to be default-constructible (a public, non-deleted
     /// default constructor; not abstract; not a template). Carried here so the
     /// decoder layer — which only has the type string + this registry — can
@@ -262,6 +266,31 @@ impl TypeRegistry {
         self
     }
 
+    pub fn with_cpp_lookup_scopes(mut self, scopes: impl IntoIterator<Item = String>) -> Self {
+        self.cpp_lookup_scopes = scopes.into_iter().collect();
+        self
+    }
+
+    fn lookup_named<'a, T>(&'a self, map: &'a HashMap<String, T>, name: &str) -> Option<&'a T> {
+        if let Some(exact) = map.get(name) {
+            return Some(exact);
+        }
+        if !name.contains("::") {
+            for scope in &self.cpp_lookup_scopes {
+                if let Some(scoped) = map.get(&format!("{scope}::{name}")) {
+                    return Some(scoped);
+                }
+            }
+        }
+        let leaf = qualified_leaf(name).unwrap_or(name);
+        let mut matches = map
+            .iter()
+            .filter(|(key, _)| key.rsplit("::").next() == Some(leaf))
+            .map(|(_, value)| value);
+        let only = matches.next()?;
+        matches.next().is_none().then_some(only)
+    }
+
     /// Whether `name` (a bare, unqualified class spelling) was recorded as
     /// default-constructible. Empty set => always false (the C path).
     pub fn is_default_constructible_class(&self, name: &str) -> bool {
@@ -282,7 +311,7 @@ impl TypeRegistry {
             if let Some(base) = current.strip_suffix('*') {
                 return Some(base.trim().to_owned());
             }
-            let underlying = self.typedefs.get(&current)?;
+            let underlying = self.lookup_named(&self.typedefs, &current)?;
             current = normalize(underlying);
         }
         None
@@ -304,11 +333,7 @@ impl TypeRegistry {
             // parameters spell it `csv::string_view`. Mirrors `resolve_inner`'s leaf
             // fallback so the string-alias redirect and the no-public-constructor
             // gate both see through the qualified spelling (csv-parser, bug #16).
-            let underlying = self
-                .typedefs
-                .get(&current)
-                .or_else(|| qualified_leaf(&current).and_then(|leaf| self.typedefs.get(leaf)))
-                .cloned();
+            let underlying = self.lookup_named(&self.typedefs, &current).cloned();
             match underlying {
                 Some(underlying) => {
                     current = normalize(&underlying);
@@ -356,7 +381,7 @@ impl TypeRegistry {
             // (not in the registry) is left to the compiler — do not skip on it.
             if let Some(tag) = current.strip_prefix("struct ") {
                 let tag = tag.trim();
-                return match self.structs.get(tag) {
+                return match self.lookup_named(&self.structs, tag) {
                     Some(def) if def.complete => None,
                     Some(_) => Some(format!("struct {tag}")),
                     None => None,
@@ -364,7 +389,10 @@ impl TypeRegistry {
             }
             if let Some(tag) = current.strip_prefix("union ") {
                 let tag = tag.trim();
-                return match self.unions.get(tag).or_else(|| self.structs.get(tag)) {
+                return match self
+                    .lookup_named(&self.unions, tag)
+                    .or_else(|| self.lookup_named(&self.structs, tag))
+                {
                     Some(def) if def.complete => None,
                     Some(_) => Some(format!("union {tag}")),
                     None => None,
@@ -375,36 +403,19 @@ impl TypeRegistry {
                 return None;
             }
             // Bare name: a struct-by-alias, an enum, or a typedef to chase.
-            if let Some(def) = self.structs.get(&current) {
+            if let Some(def) = self.lookup_named(&self.structs, &current) {
                 return if def.complete {
                     None
                 } else {
                     Some(format!("struct {}", def.name))
                 };
             }
-            if self.enums.contains_key(&current) {
+            if self.lookup_named(&self.enums, &current).is_some() {
                 return None;
             }
-            if let Some(underlying) = self.typedefs.get(&current) {
+            if let Some(underlying) = self.lookup_named(&self.typedefs, &current) {
                 current = normalize(underlying);
                 continue;
-            }
-            // A namespace-/scope-qualified leaf (`ns::Handle`) resolves the same way.
-            if let Some(leaf) = qualified_leaf(&current) {
-                if let Some(def) = self.structs.get(leaf) {
-                    return if def.complete {
-                        None
-                    } else {
-                        Some(format!("struct {}", def.name))
-                    };
-                }
-                if self.enums.contains_key(leaf) {
-                    return None;
-                }
-                if let Some(underlying) = self.typedefs.get(leaf) {
-                    current = normalize(underlying);
-                    continue;
-                }
             }
             // Unmodeled — do not skip on ignorance.
             return None;
@@ -421,7 +432,7 @@ impl TypeRegistry {
         }
         let mut current = normalize(raw);
         for _ in 0..=MAX_RESOLVE_DEPTH {
-            let underlying = self.typedefs.get(&current)?;
+            let underlying = self.lookup_named(&self.typedefs, &current)?;
             if underlying.contains("(*") {
                 return Some(canonical_function_pointer_signature(underlying));
             }
@@ -492,25 +503,14 @@ impl TypeRegistry {
         }
 
         // Bare name: enum, struct-by-alias, or typedef chain.
-        if let Some(def) = self.enums.get(&normalized) {
+        if let Some(def) = self.lookup_named(&self.enums, &normalized) {
             return enum_shape_for_spelling(def, &normalized);
         }
-        if self.structs.contains_key(&normalized) {
+        if self.lookup_named(&self.structs, &normalized).is_some() {
             return self.struct_shape(&normalized, raw, depth);
         }
-        if let Some(underlying) = self.typedefs.get(&normalized) {
+        if let Some(underlying) = self.lookup_named(&self.typedefs, &normalized) {
             return self.resolve_inner(&underlying.clone(), depth + 1);
-        }
-        if let Some(leaf) = qualified_leaf(&normalized) {
-            if let Some(def) = self.enums.get(leaf) {
-                return enum_shape_for_spelling(def, &normalized);
-            }
-            if self.structs.contains_key(leaf) {
-                return self.struct_shape(leaf, raw, depth);
-            }
-            if let Some(underlying) = self.typedefs.get(leaf) {
-                return self.resolve_inner(&underlying.clone(), depth + 1);
-            }
         }
 
         // Only infer a project-prefixed scalar after consulting real tree
@@ -524,7 +524,7 @@ impl TypeRegistry {
     }
 
     fn struct_shape(&self, tag: &str, raw: &str, depth: usize) -> TypeShape {
-        match self.structs.get(tag) {
+        match self.lookup_named(&self.structs, tag) {
             Some(def) if def.complete => TypeShape::Struct {
                 name: def.name.clone(),
                 fields: self.fields_of(def, depth),
@@ -534,7 +534,10 @@ impl TypeRegistry {
     }
 
     fn union_shape(&self, tag: &str, raw: &str, depth: usize) -> TypeShape {
-        match self.unions.get(tag).or_else(|| self.structs.get(tag)) {
+        match self
+            .lookup_named(&self.unions, tag)
+            .or_else(|| self.lookup_named(&self.structs, tag))
+        {
             Some(def) if def.complete => TypeShape::Union {
                 name: def.name.clone(),
                 fields: self.fields_of(def, depth),
@@ -544,17 +547,9 @@ impl TypeRegistry {
     }
 
     fn enum_shape(&self, tag: &str, raw: &str) -> TypeShape {
-        match self.enums.get(tag) {
+        match self.lookup_named(&self.enums, tag) {
             Some(def) => enum_shape_for_spelling(def, tag),
-            None => {
-                let normalized = normalize(raw);
-                if let Some(leaf) = qualified_leaf(tag) {
-                    if let Some(def) = self.enums.get(leaf) {
-                        return enum_shape_for_spelling(def, &normalized);
-                    }
-                }
-                TypeShape::Opaque(normalized)
-            }
+            None => TypeShape::Opaque(normalize(raw)),
         }
     }
 
@@ -1010,6 +1005,46 @@ mod tests {
         };
         assert_eq!(fields.len(), 1);
         assert_eq!(fields[0].shape, TypeShape::Scalar(ScalarKind::Bool));
+    }
+
+    #[test]
+    fn namespace_colliding_structs_resolve_exactly_or_by_lexical_scope() {
+        let defs = c_parser::CTypeDefs {
+            structs: vec![
+                c_parser::CStructDef {
+                    name: "one::Options".to_owned(),
+                    fields: vec![c_parser::CParamDescriptor {
+                        name: "one_value".to_owned(),
+                        c_type: "int".to_owned(),
+                    }],
+                    line: 1,
+                    complete: true,
+                },
+                c_parser::CStructDef {
+                    name: "two::Options".to_owned(),
+                    fields: vec![c_parser::CParamDescriptor {
+                        name: "two_value".to_owned(),
+                        c_type: "bool".to_owned(),
+                    }],
+                    line: 2,
+                    complete: true,
+                },
+            ],
+            ..Default::default()
+        };
+        let unscoped = TypeRegistry::from_defs([&defs]);
+        assert!(matches!(unscoped.resolve("Options"), TypeShape::Opaque(_)));
+
+        let one = TypeRegistry::from_defs([&defs]).with_cpp_lookup_scopes(["one".to_owned()]);
+        let TypeShape::Struct { fields, .. } = one.resolve("Options") else {
+            panic!("lexical scope should resolve one::Options");
+        };
+        assert_eq!(fields[0].name, "one_value");
+
+        let TypeShape::Struct { fields, .. } = unscoped.resolve("two::Options") else {
+            panic!("qualified lookup should resolve exactly");
+        };
+        assert_eq!(fields[0].name, "two_value");
     }
 
     #[test]

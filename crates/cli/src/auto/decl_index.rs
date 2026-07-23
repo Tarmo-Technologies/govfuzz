@@ -432,16 +432,35 @@ impl DeclarationIndex {
         Ok(())
     }
 
-    /// Record an Ada source file under its unit key, derived from the file stem
-    /// (GNAT crunches `Keccak.Arch` to `keccak-arch`). Deduped.
+    /// Record an Ada source under every defensible unit identity. The parsed
+    /// declaration is authoritative for custom GPR naming; the GNAT basename is
+    /// retained as a fallback for compiler runtime sources the parser cannot read.
     fn record_ada_unit_path(&mut self, path: &Path) {
-        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-            return;
-        };
-        let key = ada_unit_key(strip_ada_platform_suffix(stem));
-        let paths = self.ada_unit_paths.entry(key).or_default();
-        if !paths.contains(&path.to_path_buf()) {
-            paths.push(path.to_path_buf());
+        let mut keys = Vec::new();
+        if let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) {
+            keys.push(ada_unit_key(strip_ada_platform_suffix(stem)));
+        }
+        if let Ok(source) = crate::source_text::read_source_text(path) {
+            if let Ok(ast) = ada_parser::reconcile::build_structural_ast(&source, None, path) {
+                if let Some(package) = ast.packages.first() {
+                    keys.push(ada_unit_key(&package.name));
+                } else if let Some(subprogram) = ast.subprograms.iter().find(|subprogram| {
+                    matches!(
+                        subprogram.owner,
+                        ada_parser::ast::SubprogramOwner::LibraryLevel
+                    )
+                }) {
+                    keys.push(ada_unit_key(&subprogram.name));
+                }
+            }
+        }
+        keys.sort();
+        keys.dedup();
+        for key in keys {
+            let paths = self.ada_unit_paths.entry(key).or_default();
+            if !paths.contains(&path.to_path_buf()) {
+                paths.push(path.to_path_buf());
+            }
         }
     }
 
@@ -461,6 +480,33 @@ impl DeclarationIndex {
             (is_body, p.clone())
         });
         files
+    }
+
+    /// Real spec/body files for `unit`, but only when at least one indexed spec
+    /// actually declares `symbol`. This prevents a wrong-version or shadowing
+    /// spec from being "repaired" as if merely copying that unit could add a
+    /// declaration it does not contain.
+    pub fn ada_unit_source_files_declaring_symbol(&self, unit: &str, symbol: &str) -> Vec<PathBuf> {
+        let files = self.ada_unit_source_files(unit);
+        let declaring_dirs = files
+            .iter()
+            .filter(|path| {
+                path.extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("ads"))
+                    && ada_spec_declares_symbol(path, unit, symbol)
+            })
+            .filter_map(|path| path.parent().map(Path::to_path_buf))
+            .collect::<HashSet<_>>();
+        if declaring_dirs.is_empty() {
+            return Vec::new();
+        }
+        files
+            .into_iter()
+            .filter(|path| {
+                path.parent()
+                    .is_some_and(|parent| declaring_dirs.contains(parent))
+            })
+            .collect()
     }
 
     fn build_parsed(root: &Path) -> std::io::Result<Self> {
@@ -547,6 +593,11 @@ impl DeclarationIndex {
             // ada-url) so a forward declaration in a header still counts as
             // "declared", keeping out-of-line-defined classes harnessable.
             if matches!(ext, "h" | "hpp" | "hh" | "hxx" | "hp") {
+                if let Ok(classes) = cpp_parser::parse_cpp_class_info(&source) {
+                    for class in classes {
+                        idx.cpp_header_class_names.insert(class.name);
+                    }
+                }
                 if let Ok(defs) = cpp_parser::parse_cpp_type_defs(&source) {
                     for s in &defs.structs {
                         idx.cpp_header_class_names.insert(s.name.clone());
@@ -555,6 +606,11 @@ impl DeclarationIndex {
             } else if matches!(ext, "cpp" | "cc" | "cxx" | "C")
                 && !cpp_source_uses_module_unit(&source)
             {
+                if let Ok(classes) = cpp_parser::parse_cpp_class_info(&source) {
+                    for class in classes.into_iter().filter(|class| class.complete) {
+                        idx.cpp_source_class_names.insert(class.name);
+                    }
+                }
                 if let Ok(defs) = cpp_parser::parse_cpp_type_defs(&source) {
                     for s in defs.structs.iter().filter(|s| s.complete) {
                         idx.cpp_source_class_names.insert(s.name.clone());
@@ -1840,6 +1896,61 @@ fn ada_type_ref_display_name(type_ref: &ada_parser::ast::TypeRef) -> String {
 
 fn ada_unit_key(unit: &str) -> String {
     unit.replace('-', ".").to_ascii_lowercase()
+}
+
+fn ada_spec_declares_symbol(path: &Path, unit: &str, symbol: &str) -> bool {
+    let Ok(source) = crate::source_text::read_source_text(path) else {
+        return false;
+    };
+    let Ok(ast) = ada_parser::reconcile::build_structural_ast(&source, None, path) else {
+        return false;
+    };
+    let unit_key = ada_unit_key(unit);
+    let package_ids = ast
+        .packages
+        .iter()
+        .filter(|package| ada_unit_key(&package.name) == unit_key)
+        .map(|package| package.id)
+        .collect::<HashSet<_>>();
+    if package_ids.is_empty() {
+        return false;
+    }
+    if ast.subprograms.iter().any(|subprogram| {
+        subprogram.name.eq_ignore_ascii_case(symbol)
+            && matches!(
+                subprogram.owner,
+                ada_parser::ast::SubprogramOwner::Package(id) if package_ids.contains(&id)
+            )
+            && subprogram.visibility == ada_parser::ast::Visibility::Public
+    }) {
+        return true;
+    }
+    if ast.constants.iter().any(|constant| {
+        constant.name.eq_ignore_ascii_case(symbol)
+            && matches!(
+                constant.owner,
+                ada_parser::ast::TypeOwner::Package(id) if package_ids.contains(&id)
+            )
+            && constant.visibility == ada_parser::ast::Visibility::Public
+    }) {
+        return true;
+    }
+    ast.types.iter().any(|data_type| {
+        let owned_here = matches!(
+            data_type.owner,
+            ada_parser::ast::TypeOwner::Package(id) if package_ids.contains(&id)
+        );
+        owned_here
+            && (data_type
+                .name_path
+                .last()
+                .is_some_and(|name| name.eq_ignore_ascii_case(symbol))
+                || matches!(
+                    &data_type.kind,
+                    ada_parser::ast::TypeKind::Enum(literals)
+                        if literals.iter().any(|literal| literal.eq_ignore_ascii_case(symbol))
+                ))
+    })
 }
 
 /// Strip GNAT's platform / separate-body filename suffix from a file stem so the

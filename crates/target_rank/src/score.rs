@@ -16,6 +16,11 @@ pub fn score(ast: &StructuralAst, sp: &Subprogram) -> ScoreBreakdown {
     breakdown.serializer_subprogram_name =
         -20 * heuristics::has_serializer_subprogram_name(ast, sp);
     breakdown.fuzzable_params = 5 * heuristics::count_fuzzable_params(ast, sp);
+    breakdown.harness_viability = if heuristics::has_unsupported_fuzz_input(ast, sp) {
+        -1_000
+    } else {
+        0
+    };
     breakdown.range_constrained_scalar = 5 * heuristics::has_range_constrained_scalar(ast, sp);
     breakdown.array_index_or_slice = 4 * heuristics::has_array_index_or_slice(ast, sp);
     breakdown.discriminant_or_variant = 4 * heuristics::has_discriminant_or_variant(ast, sp);
@@ -36,6 +41,7 @@ pub fn score(ast: &StructuralAst, sp: &Subprogram) -> ScoreBreakdown {
         + breakdown.parser_subprogram_name
         + breakdown.serializer_subprogram_name
         + breakdown.fuzzable_params
+        + breakdown.harness_viability
         + breakdown.range_constrained_scalar
         + breakdown.array_index_or_slice
         + breakdown.discriminant_or_variant

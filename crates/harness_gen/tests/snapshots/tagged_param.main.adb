@@ -34,6 +34,7 @@ begin
          end Decode_Obj;
          Obj : Root_Type := Decode_Obj;
       begin
+         AdaFuzz.Probe.Target_Entry;
          Handle (Obj);
       exception
          when AdaFuzz_E : others =>

@@ -13,6 +13,7 @@ package AdaFuzz.Probe is
    procedure Begin_Testcase (TC : Testcase_Id);
    procedure End_Testcase   (Result_Class : Interfaces.Unsigned_8 := 0);
    procedure Set_Target     (T : Target_Id);
+   procedure Target_Entry;
    procedure Flush;
 
    procedure Breadcrumb (Id : Crumb_Id);

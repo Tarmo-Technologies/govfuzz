@@ -20,6 +20,7 @@ package body AdaFuzz.Probe is
    Tag_Raise    : constant Unsigned_8 := 6;
    Tag_Mock     : constant Unsigned_8 := 7;
    Tag_TopLevel : constant Unsigned_8 := 8;
+   Tag_Entry    : constant Unsigned_8 := 9;
 
    Memory_Buffer_Capacity : constant := 65_536;
    subtype Memory_Buffer_Index is Natural range 0 .. Memory_Buffer_Capacity - 1;
@@ -288,6 +289,14 @@ package body AdaFuzz.Probe is
       when others =>
          null;
    end Set_Target;
+
+   procedure Target_Entry is
+   begin
+      Write_Event (Tag => Tag_Entry);
+   exception
+      when others =>
+         null;
+   end Target_Entry;
 
    procedure Flush is
    begin

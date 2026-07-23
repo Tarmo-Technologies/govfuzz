@@ -27,6 +27,7 @@ begin
          Cur : AdaFuzz.Decode.Cursor := AdaFuzz.Decode.Open (Buf'Unchecked_Access, Last);
          Color : Color := Color'Val (Color'Pos (Color'First) + AdaFuzz.Decode.Bounded_Range (Cur, 0, Color'Pos (Color'Last) - Color'Pos (Color'First)));
       begin
+         AdaFuzz.Probe.Target_Entry;
          Paint (Color);
       exception
          when AdaFuzz_E : others =>

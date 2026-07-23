@@ -114,7 +114,8 @@ data and rerun the same command when you need SBOM or binary-CVE matching.
 
 The script builds `cargo build --release --workspace`, stages the CLI, daemon,
 runtrace shim, compiler-interception shim, harness runtime support files, a tiny
-`govfuzz auto` smoke fixture, a signed content pack, and `install.sh`, then writes
+`govfuzz auto` smoke fixture, the `govfuzz-bug-report` privacy-scrubbing support
+collector, a signed content pack, and `install.sh`, then writes
 `dist/govfuzz-dist-<version>-<triple>.tar.gz` plus a SHA-256 sidecar. The
 package does not include the GovFuzz application source tree; it does include
 runtime support files needed to compile generated harnesses on the destination.
@@ -147,10 +148,11 @@ The installer runs the bundled smoke fixture by default after install; pass
 absent.
 
 The release workflow invokes the same packager with the EL7-baseline prebuilt
-release directory, verifies the archive checksum and required payload, extracts
-the bundle, runs its `install.sh` into a temporary prefix, and publishes both
-the tarball and sidecar. This keeps the one-package artifact on the same glibc
-2.17 baseline as the component archives.
+release directory for every tagged release, verifies the archive checksum and
+required payload, extracts the bundle, requires `install.sh`, `INSTALL.md`,
+`LICENSE`, `README.md`, and `RELEASE_NOTES.md`, runs the installer into a
+temporary prefix, and publishes both the tarball and sidecar. This keeps the
+one-package artifact on the same glibc 2.17 baseline as the component archives.
 
 ## Verification
 
@@ -174,7 +176,7 @@ release plan:
 dist host --steps=create --tag=vX.Y.Z
 ```
 
-Tag pushes matching semantic versions, such as `v0.2.18`, run the generated
+Tag pushes matching semantic versions, such as `v0.2.19`, run the generated
 release workflow. The workflow plans artifacts, builds the EL7-compatible Linux
 and Windows MSVC archives and checksums, verifies that every harness runtime is
 inside both CLI archives, generates Unix shell and PowerShell installers, and

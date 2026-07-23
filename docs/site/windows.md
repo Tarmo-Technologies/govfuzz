@@ -100,12 +100,12 @@ installer:
   automation, or manual verification—not additional programs to install.
 
 ```powershell
-$Version = "v0.2.18"
+$Version = "v0.2.19"
 irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
 govfuzz.exe --version
 ```
 
-The v0.2.18 PowerShell installer is also safe to run through Windows OpenSSH:
+The PowerShell installer is also safe to run through Windows OpenSSH:
 it suppresses `Expand-Archive`'s console progress access, which otherwise fails
 in a non-interactive Server 2019 session. The installer adds
 `%USERPROFILE%\.cargo\bin` to the user `PATH`; start a new shell if the command

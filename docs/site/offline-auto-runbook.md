@@ -197,6 +197,35 @@ with the evidence-preserving run.
   retained target results, compiler processes, and the OS. Use `--jobs 1` on an
   8 GiB host unless measurement demonstrates safe headroom.
 
+## Compact Scrubbed Support Report
+
+If the campaign produces no successful harnesses, run the bundled collector
+instead of copying many ad hoc command results. It works while the campaign is
+still running because each completed target has an atomic result checkpoint:
+
+```sh
+govfuzz-bug-report /results/govfuzz-real
+```
+
+The script writes and prints `govfuzz-support-report.txt`, capped at 4,000 bytes
+by default. It contains version/host/toolchain lines, outcomes by language,
+structured build-error and repair counts, checkpoint health, and a small set of
+the most frequent diagnostic shapes. It does not read or include source,
+generated harness code, or corpus inputs. Project paths, file names, targets,
+variables, types, Ada units, symbols, and macros are replaced with typed
+placeholders before the report is written.
+
+The equivalent direct CLI command is:
+
+```sh
+govfuzz bug-report /results/govfuzz-real \
+  --output govfuzz-support-report.txt \
+  --stdout
+```
+
+Send only that scrubbed text file. The raw `result.json`, `run.json`, build
+trees, and source are not required for ordinary build/harness triage.
+
 ## Acceptance Check
 
 Use `/results/govfuzz-real/auto/run.json` as the machine-readable evidence.

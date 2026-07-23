@@ -295,7 +295,15 @@ impl Preprocessor {
         match directive {
             "define" => {
                 if self.is_active() {
-                    self.define_macro(payload, line_no)?;
+                    if let Err(error) = self.define_macro(payload, line_no) {
+                        if self.recovery == RecoveryMode::Recover {
+                            return Ok(Some(warning_pragma(format!(
+                                "unsupported macro definition ignored at line {line_no}: {}",
+                                error.message
+                            ))));
+                        }
+                        return Err(error);
+                    }
                 }
                 Ok(None)
             }

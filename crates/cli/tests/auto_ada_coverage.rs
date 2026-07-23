@@ -99,6 +99,12 @@ fn ada_target_fuzzes_coverage_guided_with_bounded_corpus() {
             )
         });
     let passes = built["outcome"]["passes"].as_array().expect("passes array");
+    assert!(
+        passes
+            .iter()
+            .any(|pass| pass["target_entry_observed"].as_bool() == Some(true)),
+        "Ada event log must prove the selected endpoint was entered; passes={passes:?}"
+    );
 
     // AC1: at least one pass must report non-zero edge coverage (was 0 every pass).
     let max_edges = passes

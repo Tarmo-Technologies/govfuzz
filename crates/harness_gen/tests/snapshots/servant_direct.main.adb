@@ -28,6 +28,7 @@ begin
          Server : Bar_Impl.Servant;
          S : String := AdaFuzz.Decode.Ada_String (Cur, 0, 1024);
       begin
+         AdaFuzz.Probe.Target_Entry;
          declare
             Gf_Result : constant Integer := Bar_Impl.Compute (Server, S);
             pragma Unreferenced (Gf_Result);

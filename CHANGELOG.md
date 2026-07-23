@@ -2,6 +2,42 @@
 
 # Changelog
 
+## 0.2.19 - 2026-07-23
+
+- **Legacy Ada/C/C++ zero-fuzz remediation.** Forty-seven discovery,
+  ranking, generation, build-recovery, and execution-accounting issues found in
+  a top-500 legacy-code sweep were investigated and covered by focused and
+  end-to-end regressions. Fixes include exact Ada overload identity and
+  dependency closure, merged reopened IDL modules, checked-in CORBA servants,
+  C++ default/lifecycle construction, neutral `CORBA::Environment` handling,
+  namespace-safe type resolution, legacy header preprocessing, and exact
+  per-translation-unit compile contexts for original and repair-added sources.
+
+- **Honest target execution and fallback evidence.** Successful campaigns now
+  prove entry into the selected project endpoint rather than counting driver
+  execution alone. Generation fallback chains, repairs, terminal stages, cache
+  provenance, and stable structured failure categories survive into per-target
+  checkpoints and final reports.
+
+- **Durable and safe campaign resume.** `auto --resume` reloads atomically
+  checkpointed completed targets from an unchanged campaign and retries only
+  unfinished targets. Regenerable state is refreshed on normal reruns and
+  incompatible upgrades while corpora and findings are preserved. The README
+  now documents reboot/power-loss recovery and the target-level resume boundary.
+
+- **Compact scrubbed bug reports.** The release includes
+  `govfuzz-bug-report`, which creates one size-capped support report from a
+  running or completed auto work directory. It reports structured decision,
+  build, repair, and execution facts without source, harness or corpus content,
+  paths, filenames, or project identifiers.
+
+- **Full distribution is a permanent release artifact.** Every tagged release
+  builds, installs, smokes, and publishes the all-in-one Linux
+  `govfuzz-dist-<version>-x86_64-unknown-linux-gnu.tar.gz` with `install.sh`.
+  The bundle now always contains `INSTALL.md`, `LICENSE`, `README.md`, and
+  `RELEASE_NOTES.md`, enforced by packaging regressions and release-workflow
+  archive checks.
+
 ## 0.2.18 - 2026-07-21
 
 - **Restored all-in-one Linux installer bundle.** The release now publishes

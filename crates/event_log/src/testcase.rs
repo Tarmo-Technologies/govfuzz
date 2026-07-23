@@ -7,6 +7,10 @@ use std::io::Read;
 pub struct Testcase {
     pub testcase_id: u64,
     pub target_id: u32,
+    /// True only when decoding completed and the generated harness reached the
+    /// checkpoint immediately before its selected project endpoint.
+    #[serde(default)]
+    pub target_entered: bool,
     pub crumbs: Vec<u32>,
     pub handlers: Vec<HandlerEvent>,
     pub raises: Vec<RaiseEvent>,
@@ -57,6 +61,7 @@ impl Testcase {
         Self {
             testcase_id,
             target_id: 0,
+            target_entered: false,
             crumbs: Vec::new(),
             handlers: Vec::new(),
             raises: Vec::new(),
@@ -102,6 +107,11 @@ pub fn group_into_testcases<R: Read>(
             Event::Target { id } => {
                 if let Some(testcase) = &mut current {
                     testcase.target_id = id;
+                }
+            }
+            Event::TargetEntry => {
+                if let Some(testcase) = &mut current {
+                    testcase.target_entered = true;
                 }
             }
             Event::Handler {

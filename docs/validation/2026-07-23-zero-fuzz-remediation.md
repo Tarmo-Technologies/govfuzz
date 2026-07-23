@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Zero-fuzz Ada/C/C++ remediation ledger (2026-07-23)
 
 ## Purpose and completion rule

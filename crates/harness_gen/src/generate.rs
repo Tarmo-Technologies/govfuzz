@@ -1575,35 +1575,10 @@ fn qualify_generic_local_param_type(
     let SubprogramOwner::Package(gen_pkg_id) = &args.target_subprogram.owner else {
         return resolved_param;
     };
-    if let Some(path) = instance_qualified_name_path(&resolved_param.type_ref, *gen_pkg_id) {
+    if let Some(path) =
+        instance_qualified_name_path(args.ast, &resolved_param.type_ref, *gen_pkg_id)
+    {
         resolved_param.type_ref.name_path = path;
-    } else {
-        // Reconciliation can retain the package-qualified spelling while losing
-        // `TypeOwner::Package` on the resolved reference. Recover ownership from
-        // the declaration itself; naming `Codec.Hints` is illegal because
-        // `Codec` is an uninstantiated generic, while the local instance is a
-        // valid prefix.
-        let leaf = resolved_param
-            .type_ref
-            .name_path
-            .last()
-            .and_then(|part| part.rsplit('.').next());
-        let declared_in_generic = leaf.is_some_and(|leaf| {
-            args.ast.types.iter().any(|ty| {
-                ty.owner == TypeOwner::Package(*gen_pkg_id)
-                    && ty
-                        .name_path
-                        .last()
-                        .and_then(|part| part.rsplit('.').next())
-                        .is_some_and(|name| name.eq_ignore_ascii_case(leaf))
-            })
-        });
-        if declared_in_generic {
-            resolved_param.type_ref.name_path = vec![
-                crate::generic_instance::INSTANCE_NAME.to_owned(),
-                leaf.expect("declared generic type has a leaf").to_owned(),
-            ];
-        }
     }
     resolved_param
 }
@@ -1631,15 +1606,32 @@ fn standard_library_parent_unit(type_name: &str) -> Option<String> {
 /// (`[Govfuzz_Generic_Instance, Word]`). A type declared inside the generic must
 /// be reached through the instance, never the generic package itself ("prefix
 /// must not be a generic package"). Returns `None` for types owned elsewhere.
-fn instance_qualified_name_path(resolved: &TypeRef, gen_pkg: PackageId) -> Option<Vec<String>> {
-    if resolved.owner != TypeOwner::Package(gen_pkg) {
-        return None;
-    }
+fn instance_qualified_name_path(
+    ast: &StructuralAst,
+    resolved: &TypeRef,
+    gen_pkg: PackageId,
+) -> Option<Vec<String>> {
     let leaf = resolved
         .name_path
         .last()
         .and_then(|part| part.rsplit('.').next())
         .map(str::to_owned)?;
+    // Reconciliation can retain the package-qualified spelling while losing
+    // `TypeOwner::Package` on the resolved reference. Recover ownership from
+    // the declaration itself; naming `Codec.Hints` is illegal because `Codec`
+    // is an uninstantiated generic, while the local instance is a valid prefix.
+    let declared_in_generic = resolved.owner == TypeOwner::Package(gen_pkg)
+        || ast.types.iter().any(|ty| {
+            ty.owner == TypeOwner::Package(gen_pkg)
+                && ty
+                    .name_path
+                    .last()
+                    .and_then(|part| part.rsplit('.').next())
+                    .is_some_and(|name| name.eq_ignore_ascii_case(&leaf))
+        });
+    if !declared_in_generic {
+        return None;
+    }
     Some(vec![
         crate::generic_instance::INSTANCE_NAME.to_owned(),
         leaf,
@@ -1715,7 +1707,7 @@ fn generic_qualified_return_type_name(args: &GenerateDirectArgs<'_>, type_ref: &
     let mut resolved = resolve_type_ref(args.ast, type_ref);
     if args.generic_instance.is_some() {
         if let SubprogramOwner::Package(gen_pkg_id) = &args.target_subprogram.owner {
-            if let Some(path) = instance_qualified_name_path(&resolved, *gen_pkg_id) {
+            if let Some(path) = instance_qualified_name_path(args.ast, &resolved, *gen_pkg_id) {
                 resolved.name_path = path;
             }
         }
@@ -3572,8 +3564,10 @@ mod tests {
         // itself ("prefix must not be a generic package").
         let mut word = type_ref("Sdpcm.Generic_Spi.Word", TypeKind::Unknown);
         word.owner = TypeOwner::Package(PackageId(7));
+        let mut ast = StructuralAst::new();
+        ast.types.push(word.clone());
         assert_eq!(
-            super::instance_qualified_name_path(&word, PackageId(7)),
+            super::instance_qualified_name_path(&ast, &word, PackageId(7)),
             Some(vec![
                 "Govfuzz_Generic_Instance".to_owned(),
                 "Word".to_owned()
@@ -3584,7 +3578,7 @@ mod tests {
         let mut other = type_ref("Sdpcm.Packets.Frame_Tag", TypeKind::Unknown);
         other.owner = TypeOwner::Package(PackageId(3));
         assert_eq!(
-            super::instance_qualified_name_path(&other, PackageId(7)),
+            super::instance_qualified_name_path(&ast, &other, PackageId(7)),
             None
         );
     }

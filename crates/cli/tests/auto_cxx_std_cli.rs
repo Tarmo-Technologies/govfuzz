@@ -114,7 +114,13 @@ fn auto_cxx_std_ladder_builds_legacy_cpp_and_rejects_bogus() {
         String::from_utf8_lossy(&out.stderr)
     );
     // The ladder recorded the older standard it settled on (gnu++20/17 reject register).
-    let chosen = std::fs::read_to_string(work_ladder.join("cxx_dialect.txt")).unwrap_or_default();
+    let dialect_dir = work_ladder.join("cxx_dialects");
+    let chosen = std::fs::read_dir(&dialect_dir)
+        .ok()
+        .into_iter()
+        .flat_map(|entries| entries.filter_map(Result::ok))
+        .find_map(|entry| std::fs::read_to_string(entry.path()).ok())
+        .unwrap_or_default();
     assert!(
         chosen.trim() == "gnu++14" || chosen.trim() == "gnu++11" || chosen.trim() == "gnu++03",
         "ladder should settle on a pre-C++17 standard, got {chosen:?}"

@@ -285,7 +285,7 @@ fn ci_enforces_the_current_supported_os_matrix() {
             "support documentation omitted {required}"
         );
     }
-    assert!(windows.contains("$Version = \"v0.2.18\""));
+    assert!(windows.contains("$Version = \"v0.2.19\""));
     assert!(!windows.contains("$Version = \"v0.2.16\""));
 }
 

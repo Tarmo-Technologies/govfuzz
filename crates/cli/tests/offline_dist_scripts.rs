@@ -514,6 +514,12 @@ fn release_matrix_keeps_windows_apps_and_linux_only_shims_separate() {
     assert!(workflow.contains("scripts/package-offline-dist.sh"));
     assert!(workflow.contains("govfuzz-dist-*.tar.gz.sha256"));
     assert!(workflow.contains("INSTALL.md LICENSE README.md RELEASE_NOTES.md"));
+    assert!(workflow.contains("entries=$(tar -tf \"$archive\")"));
+    assert!(workflow.contains("grep -Eq '(^|/)INSTALL\\.md$' <<<\"$entries\""));
+    assert!(
+        !workflow.contains("tar -tf \"$archive\" | grep -Eq"),
+        "pipefail turns grep -q's successful early exit into a false tar failure"
+    );
     assert!(workflow.contains("libgovfuzz_cc_intercept.so"));
     assert!(cli.contains("../../scripts/govfuzz-bug-report.sh"));
     assert!(workflow.contains("govfuzz-bug-report.sh"));

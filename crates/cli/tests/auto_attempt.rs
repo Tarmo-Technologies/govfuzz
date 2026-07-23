@@ -2459,6 +2459,12 @@ fn attempt_builds_and_fuzzes_cpp_standard_scalar_aliases() {
     assert!(main.contains("std::uint16_t code = (std::uint16_t)gf_bounded_i32"));
     assert!(main.contains("bool enabled = (bool)(gf_u8(&Cur) & 1)"));
     assert!(main.contains("int R = gov::tune(flags, count, code, enabled);"));
+    assert!(
+        !result.harness_dir.join("build_context_objects.mk").exists(),
+        "a target included by main.cpp must not also be linked as a per-TU object"
+    );
+    let makefile = fs::read_to_string(result.harness_dir.join("Makefile")).unwrap();
+    assert!(makefile.contains(".DEFAULT_GOAL := all"));
 }
 
 #[test]

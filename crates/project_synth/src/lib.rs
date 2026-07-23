@@ -21,6 +21,7 @@ mod tests {
     fn spec_named(project_name: &str) -> ProjectSpec {
         ProjectSpec {
             project_name: project_name.to_owned(),
+            extends_project: None,
             source_roots: vec![SourceRoot {
                 path: "src_instrumented".into(),
                 language: "Ada".to_owned(),
@@ -138,6 +139,14 @@ mod tests {
         let rendered = render_project(&spec).expect("project renders");
 
         assert!(rendered.contains("with \"runtime/adafuzz.gpr\";\nwith \"harness/harness.gpr\";\n"));
+    }
+
+    #[test]
+    fn render_project_can_extend_a_governing_project() {
+        let mut spec = spec_named("Govfuzz_Build");
+        spec.extends_project = Some("/project/app.gpr".into());
+        let rendered = render_project(&spec).unwrap();
+        assert!(rendered.contains("project Govfuzz_Build extends \"/project/app.gpr\" is"));
     }
 
     #[test]

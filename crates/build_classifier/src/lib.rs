@@ -101,6 +101,16 @@ pub fn classify(stderr: &str) -> Vec<BuildErrorKind> {
     let mut hits = Vec::new();
     gcc_clang::classify_into(stderr, &mut hits);
     gnat::classify_into(stderr, &mut hits);
+    // gprbuild frequently repeats the same underlying GNAT diagnostic while
+    // compiling a dependency and again while summarizing the failed main. Counts
+    // and repair rounds must represent distinct causes, not repeated lines.
+    let mut distinct = Vec::new();
+    for hit in hits.drain(..) {
+        if !distinct.contains(&hit) {
+            distinct.push(hit);
+        }
+    }
+    hits = distinct;
     if hits.is_empty() {
         // Prefer the lines that actually name an error. A multi-unit gprbuild
         // run prints a long compile listing ("[Ada] foo.adb ...") and ends with
@@ -797,6 +807,19 @@ mod tests {
             )),
             "got {kinds:?}"
         );
+    }
+
+    #[test]
+    fn repeated_gnat_diagnostics_are_counted_once() {
+        let stderr = "x.adb:1:2: error: \"To_String\" not declared in \"Legacy\"\n\
+                      x.adb:1:2: error: \"To_String\" not declared in \"Legacy\"\n";
+        let errors = classify(stderr);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(matches!(
+            &errors[0],
+            BuildErrorKind::MissingAdaSymbol { unit, symbol }
+                if unit == "Legacy" && symbol == "To_String"
+        ));
     }
 
     #[test]

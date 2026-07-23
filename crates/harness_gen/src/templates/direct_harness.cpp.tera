@@ -124,7 +124,7 @@ using namespace {{ ns }};
    redeclaration matching the real one is legal C++. #}
 {%- if not passthrough_libfuzzer_entrypoint and not target_is_method and (not has_target_header or forward_namespace) %}
 {% if forward_namespace %}namespace {{ forward_namespace }} {
-{% endif %}{{ return_type }} {{ target_name }}({% for p in params %}{{ p.c_type }}{% if not loop.last %}, {% endif %}{% endfor %});
+{% endif %}{{ return_type }} {{ target_name }}({% for type in forward_param_types %}{{ type }}{% if not loop.last %}, {% endif %}{% endfor %});
 {% if forward_namespace %}}
 {% endif %}
 {%- endif %}
@@ -142,9 +142,20 @@ extern "C" void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __
 } while (0)
 #endif
 
+// The external native driver records a one-byte proof immediately before the
+// selected project endpoint. AFL/standalone builds currently have no shared
+// marker runtime, so they report entry as unobserved rather than fabricating it.
+#if defined(GOVFUZZ_EXTERNAL_DRIVER)
+extern "C" void govfuzz_target_enter(void);
+#define GOVFUZZ_TARGET_ENTER() govfuzz_target_enter()
+#else
+#define GOVFUZZ_TARGET_ENTER() ((void)0)
+#endif
+
 {%- if passthrough_libfuzzer_entrypoint %}
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
+    GOVFUZZ_TARGET_ENTER();
     return LLVMFuzzerTestOneInput(Data, Size);
 }
 {% raw %}#ifndef GOVFUZZ_EXTERNAL_DRIVER
@@ -687,7 +698,9 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- for p in factory.params %}
     {{ p.decl }};
 {%- endfor %}
-{%- if factory.owner_type %}
+{%- if factory.owner_type and factory.owner_method_is_static %}
+    auto _gf_receiver = {{ factory.owner_type }}::{{ factory.method }}({% for p in factory.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- elif factory.owner_type %}
     {{ factory.owner_type }} _gf_owner;
     auto _gf_receiver = _gf_owner.{{ factory.method }}({% for p in factory.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- else %}
@@ -698,6 +711,7 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     {{ return_type }} R{};
 {%- endif %}
     if (_gf_receiver) {
+        GOVFUZZ_TARGET_ENTER();
 {%- if return_type_present %}
         R = _gf_receiver->{{ target_name }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- else %}
@@ -705,12 +719,14 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endif %}
     }
 {%- else %}
+    GOVFUZZ_TARGET_ENTER();
     {% if return_type_present %}{{ return_type }} R = {% endif %}_gf_receiver.{{ target_name }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
 {%- elif receiver_class %}
 {%- if target_is_constructor %}
     // The target is itself a constructor: direct-initialize the instance from the
     // decoded parameters. Naming a constructor as a member function is illegal C++.
+    GOVFUZZ_TARGET_ENTER();
     {{ receiver_class }} _gf_receiver({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
     (void)_gf_receiver;
 {%- else %}
@@ -747,6 +763,7 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     // RAII destructors run when _gf_receiver leaves scope.
 {%- endif %}
 {%- if not target_is_constructor %}
+    GOVFUZZ_TARGET_ENTER();
     {% if return_type_present %}{{ return_type }} R = {% endif %}_gf_receiver.{{ target_name }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
 {%- elif byte_stream %}
@@ -754,9 +771,11 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * byte at a time so its stateful protocol machine is actually driven. The
      * first parameter is the streamed untrusted byte; the rest are backed once. */
     for (size_t _gf_i = 0; _gf_i < Size; ++_gf_i) {
+        GOVFUZZ_TARGET_ENTER();
         (void){{ qualified_target_name }}((Data[_gf_i]){% for p in params %}, {{ p.arg }}{% endfor %});
     }
 {%- else %}
+    GOVFUZZ_TARGET_ENTER();
     {% if return_type_present %}{{ return_type }} R = {% endif %}{{ qualified_target_name }}{{ target_template_suffix }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
     (void)Cur;

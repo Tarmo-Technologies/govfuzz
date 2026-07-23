@@ -27,6 +27,7 @@ begin
          Cur : AdaFuzz.Decode.Cursor := AdaFuzz.Decode.Open (Buf'Unchecked_Access, Last);
          R : Root_Record := Root_Record'(Count => Integer (AdaFuzz.Decode.I32 (Cur)), Name => AdaFuzz.Decode.Ada_String (Cur, 0, 64));
       begin
+         AdaFuzz.Probe.Target_Entry;
          Store (R);
       exception
          when AdaFuzz_E : others =>

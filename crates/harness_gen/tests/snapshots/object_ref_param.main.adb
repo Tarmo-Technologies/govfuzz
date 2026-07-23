@@ -35,6 +35,7 @@ begin
          end Decode_Obj;
          Obj : CORBA.Object.Ref := Decode_Obj;
       begin
+         AdaFuzz.Probe.Target_Entry;
          Obj_Client.Touch (Obj);
       exception
          when AdaFuzz_E : others =>

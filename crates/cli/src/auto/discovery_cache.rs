@@ -24,11 +24,15 @@ use target_rank::InputReachability;
 
 /// Cache format version. Bump when the on-disk shape OR the fingerprint algorithm
 /// changes incompatibly, so a stale-format file is rejected (treated as a miss)
-/// instead of mis-parsed. v2: the fingerprint hash moved from `DefaultHasher`
-/// (toolchain-unstable) to a build-stable FNV-1a, so v1 fingerprints no longer
-/// compare equal — a clean version-mismatch reject is clearer than a confusing
-/// fingerprint mismatch.
-const CACHE_VERSION: u32 = 2;
+/// instead of mis-parsed. v2 moved the fingerprint to build-stable FNV-1a. v3
+/// records the producing govfuzz build and discovery semantic version: source
+/// bytes alone do not make candidates reusable when parser/ranker logic changed.
+const CACHE_VERSION: u32 = 3;
+
+/// Bump whenever discovery/ranking semantics change without an on-disk schema
+/// change. This deliberately invalidates an otherwise byte-identical source-tree
+/// cache produced by older target-selection logic.
+pub(crate) const DISCOVERY_SEMANTIC_VERSION: u32 = 1;
 
 /// Filename written under the work dir.
 pub const CACHE_FILENAME: &str = "discovery-cache.json";
@@ -38,6 +42,11 @@ pub const CACHE_FILENAME: &str = "discovery-cache.json";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryCache {
     pub version: u32,
+    /// Exact govfuzz build that produced the candidate list. A cache made by a
+    /// different release/commit is never silently reused.
+    pub producer_version: String,
+    pub producer_commit: String,
+    pub discovery_semantic_version: u32,
     /// Source-tree fingerprint this candidate list was computed for. A load only
     /// succeeds when it equals a freshly computed fingerprint of the same root.
     pub fingerprint: String,
@@ -181,6 +190,9 @@ impl DiscoveryCache {
     pub fn build(root: &Path, fingerprint: String, candidates: &[Candidate]) -> Self {
         Self {
             version: CACHE_VERSION,
+            producer_version: crate::auto::bug_report::version().to_owned(),
+            producer_commit: crate::auto::bug_report::commit().to_owned(),
+            discovery_semantic_version: DISCOVERY_SEMANTIC_VERSION,
             fingerprint,
             root: root.to_string_lossy().into_owned(),
             candidates: candidates
@@ -243,6 +255,9 @@ pub fn load_if_valid(
     if cache.version != CACHE_VERSION {
         return None;
     }
+    if !producer_matches(&cache) {
+        return None;
+    }
     if cache.fingerprint != expected_fingerprint {
         return None;
     }
@@ -271,6 +286,23 @@ pub fn miss_reason(cache_file: &Path, root: &Path, expected_fingerprint: &str) -
             cache.version
         );
     }
+    if cache.discovery_semantic_version != DISCOVERY_SEMANTIC_VERSION {
+        return format!(
+            "discovery semantics v{} != current v{DISCOVERY_SEMANTIC_VERSION}",
+            cache.discovery_semantic_version
+        );
+    }
+    if cache.producer_version != crate::auto::bug_report::version()
+        || cache.producer_commit != crate::auto::bug_report::commit()
+    {
+        return format!(
+            "cache producer {}/{} != current {}/{}",
+            cache.producer_version,
+            cache.producer_commit,
+            crate::auto::bug_report::version(),
+            crate::auto::bug_report::commit()
+        );
+    }
     if cache.root != root.to_string_lossy() {
         return format!("cached for a different root `{}`", cache.root);
     }
@@ -281,6 +313,12 @@ pub fn miss_reason(cache_file: &Path, root: &Path, expected_fingerprint: &str) -
         );
     }
     "cache rows unparseable".to_owned()
+}
+
+fn producer_matches(cache: &DiscoveryCache) -> bool {
+    cache.discovery_semantic_version == DISCOVERY_SEMANTIC_VERSION
+        && cache.producer_version == crate::auto::bug_report::version()
+        && cache.producer_commit == crate::auto::bug_report::commit()
 }
 
 #[cfg(test)]
@@ -344,6 +382,29 @@ mod tests {
         assert!(load_if_valid(&file, Path::new("/src"), "fp-other").is_none());
         // Root mismatch → miss.
         assert!(load_if_valid(&file, Path::new("/other"), "fp-match").is_none());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_rejects_cache_from_a_different_govfuzz_producer_or_semantics() {
+        let dir =
+            std::env::temp_dir().join(format!("govfuzz-disccache-producer-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = cache_path(&dir);
+        let cands = vec![candidate("parse", Lang::C, None)];
+
+        let mut old_producer = DiscoveryCache::build(Path::new("/src"), "fp".to_owned(), &cands);
+        old_producer.producer_commit = "different-commit".to_owned();
+        write(&file, &old_producer).unwrap();
+        assert!(load_if_valid(&file, Path::new("/src"), "fp").is_none());
+        assert!(miss_reason(&file, Path::new("/src"), "fp").contains("cache producer"));
+
+        let mut old_semantics = DiscoveryCache::build(Path::new("/src"), "fp".to_owned(), &cands);
+        old_semantics.discovery_semantic_version = DISCOVERY_SEMANTIC_VERSION + 1;
+        write(&file, &old_semantics).unwrap();
+        assert!(load_if_valid(&file, Path::new("/src"), "fp").is_none());
+        assert!(miss_reason(&file, Path::new("/src"), "fp").contains("discovery semantics"));
 
         let _ = std::fs::remove_dir_all(&dir);
     }

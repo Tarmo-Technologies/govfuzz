@@ -36,6 +36,7 @@ begin
          Out_Obj : CORBA.Object.Ref := CORBA.Object.Nil;
          Inout_Obj : CORBA.Object.Ref := Decode_Inout_Obj;
       begin
+         AdaFuzz.Probe.Target_Entry;
          Obj_Client.Shuffle (Out_Obj, Inout_Obj);
       exception
          when AdaFuzz_E : others =>

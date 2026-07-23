@@ -151,6 +151,7 @@ fn group_events(events: &[Event]) -> Vec<Testcase> {
                 if let Some(open) = current.replace(Testcase {
                     testcase_id: *testcase_id,
                     target_id: 0,
+                    target_entered: false,
                     crumbs: Vec::new(),
                     handlers: Vec::new(),
                     raises: Vec::new(),
@@ -177,6 +178,11 @@ fn group_events(events: &[Event]) -> Vec<Testcase> {
             Event::Target { id } => {
                 if let Some(testcase) = &mut current {
                     testcase.target_id = *id;
+                }
+            }
+            Event::TargetEntry => {
+                if let Some(testcase) = &mut current {
+                    testcase.target_entered = true;
                 }
             }
             Event::Handler {

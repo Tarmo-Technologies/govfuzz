@@ -11,6 +11,7 @@ pub enum EventTag {
     Raise = 6,
     Mock = 7,
     TopLevel = 8,
+    TargetEntry = 9,
 }
 
 impl EventTag {
@@ -24,6 +25,7 @@ impl EventTag {
             6 => Some(Self::Raise),
             7 => Some(Self::Mock),
             8 => Some(Self::TopLevel),
+            9 => Some(Self::TargetEntry),
             _ => None,
         }
     }
@@ -43,6 +45,7 @@ pub enum Event {
     Target {
         id: u32,
     },
+    TargetEntry,
     Handler {
         exception_name: String,
         exception_message: String,
@@ -81,18 +84,19 @@ mod tests {
         assert_eq!(EventTag::try_from_byte(6), Some(EventTag::Raise));
         assert_eq!(EventTag::try_from_byte(7), Some(EventTag::Mock));
         assert_eq!(EventTag::try_from_byte(8), Some(EventTag::TopLevel));
+        assert_eq!(EventTag::try_from_byte(9), Some(EventTag::TargetEntry));
     }
 
     #[test]
     fn event_tag_try_from_byte_returns_none_for_unknown() {
         assert_eq!(EventTag::try_from_byte(0), None);
-        assert_eq!(EventTag::try_from_byte(9), None);
+        assert_eq!(EventTag::try_from_byte(10), None);
         assert_eq!(EventTag::try_from_byte(u8::MAX), None);
     }
 
     #[test]
     fn event_tag_round_trip_byte_to_enum_to_byte() {
-        for byte in 1..=8 {
+        for byte in 1..=9 {
             let tag = EventTag::try_from_byte(byte).unwrap();
             assert_eq!(tag as u8, byte);
         }
@@ -108,5 +112,6 @@ mod tests {
         assert_eq!(EventTag::Raise as u8, 6);
         assert_eq!(EventTag::Mock as u8, 7);
         assert_eq!(EventTag::TopLevel as u8, 8);
+        assert_eq!(EventTag::TargetEntry as u8, 9);
     }
 }

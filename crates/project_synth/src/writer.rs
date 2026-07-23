@@ -14,7 +14,15 @@ pub fn render_project(spec: &ProjectSpec) -> Result<String, ProjectSynthError> {
         out.push_str(&format!("with \"{}\";\n", with_clause.to_string_lossy()));
     }
     out.push('\n');
-    out.push_str(&format!("project {} is\n\n", spec.project_name));
+    if let Some(parent) = &spec.extends_project {
+        out.push_str(&format!(
+            "project {} extends \"{}\" is\n\n",
+            spec.project_name,
+            parent.to_string_lossy()
+        ));
+    } else {
+        out.push_str(&format!("project {} is\n\n", spec.project_name));
+    }
 
     // Distinct source-dir paths: a dir may appear under more than one language
     // (an Ada dependency tree that also ships C glue), but GPR wants each dir once.

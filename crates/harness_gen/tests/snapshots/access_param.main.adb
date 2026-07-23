@@ -39,6 +39,7 @@ begin
          end Decode_Node;
          Node : Node_Ptr := Decode_Node;
       begin
+         AdaFuzz.Probe.Target_Entry;
          Process (Node);
       exception
          when AdaFuzz_E : others =>

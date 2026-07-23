@@ -819,11 +819,34 @@ pub fn select_cpp_decoder_with_registry_limited(
     ) {
         return Ok(emission);
     }
+    // Prefer a visible aggregate/enum/alias shape over neutral construction: its
+    // public fields are genuine fuzz input. Default construction is only the
+    // fallback for an otherwise opaque infrastructure class.
+    let bare = cpp_registry_decode_type(cpp_type);
+    let registry_fallback = select_c_decoder_with_registry_cpp(&bare, name, registry);
+    if let Ok(emission) = registry_fallback.as_ref() {
+        return Ok(emission.clone());
+    }
+
     // #353: a class-typed argument (value or reference, not pointer) whose
     // class the caller recorded as default-constructible is default-constructed
     // and passed — no fuzz bytes consumed — so a constructor like
     // `FastCdr(const FastBuffer&)` is harnessable instead of skipped.
-    let bare = cpp_registry_decode_type(cpp_type);
+    // Legacy CORBA C++ mappings append an implementation-owned exception
+    // environment to virtually every generated operation:
+    // `CORBA::Environment &ACE_TRY_ENV`.  It is call context, not attacker
+    // input, and every supported mapping provides a public empty environment.
+    // Treat it like other default-constructible infrastructure arguments even
+    // when the ORB headers live outside the scanned source tree.
+    if bare == "CORBA::Environment" {
+        return Ok(CParamEmission {
+            support: None,
+            decl: format!("{bare} {name};"),
+            arg: name.to_owned(),
+            c_type: bare,
+            free: None,
+        });
+    }
     if !bare.contains('*') && registry.is_default_constructible_class(&bare) {
         return Ok(CParamEmission {
             support: None,
@@ -840,7 +863,7 @@ pub fn select_cpp_decoder_with_registry_limited(
     if let Some(emission) = select_cpp_output_sink_decoder(&normalized, name, registry) {
         return Ok(emission);
     }
-    select_c_decoder_with_registry_cpp(&bare, name, registry)
+    registry_fallback
 }
 
 fn cpp_registry_decode_type(cpp_type: &str) -> String {
@@ -3007,6 +3030,18 @@ mod tests {
             select_cpp_decoder_with_registry("const Unknown &", "x", &TypeRegistry::default())
                 .is_err()
         );
+    }
+
+    #[test]
+    fn select_cpp_decoder_neutralizes_legacy_corba_environment_reference() {
+        let emission = select_cpp_decoder_with_registry(
+            "CORBA::Environment &",
+            "_env",
+            &TypeRegistry::default(),
+        )
+        .expect("legacy CORBA call context is default-constructible");
+        assert_eq!(emission.decl, "CORBA::Environment _env;");
+        assert_eq!(emission.arg, "_env");
     }
 
     #[test]

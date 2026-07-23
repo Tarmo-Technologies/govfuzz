@@ -130,6 +130,7 @@ fn prepare_layout(args: &StubArgs) -> Result<StubLayout, String> {
         materialize_runtime_sources(&work_dir.join("build/stub-runtime-src"), args.probe_backend)?;
     let project_spec = ProjectSpec {
         project_name: "Govfuzz_Build".to_owned(),
+        extends_project: None,
         source_roots: vec![
             SourceRoot {
                 path: runtime_dir,

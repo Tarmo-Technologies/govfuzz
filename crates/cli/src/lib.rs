@@ -57,6 +57,7 @@ mod snippet;
 mod source_text;
 mod static_scan;
 mod stub;
+mod support_report;
 mod target_filter;
 
 #[derive(Debug, Parser)]
@@ -82,7 +83,7 @@ COMMANDS BY AREA (run `govfuzz <command> --help` for details):
   Reference     rules, list oracles
   Governance    policy, audit, pack, export
   Assistance    llm (Codex, Claude, API, local, MCP workflows)
-  Ops & CI      ci, runners, clean, introspect
+  Ops & CI      ci, runners, clean, introspect, bug-report
 
 `list` and `binary` group related subcommands (`govfuzz list targets`,
 `govfuzz binary scan`). TIP: the list is greppable — `govfuzz --help | grep -i sarif`.")]
@@ -208,6 +209,8 @@ enum Command {
     Clean(clean::CleanArgs),
     /// Compare discovered targets against a prior auto/run.json to surface coverage blockers (diagnostics)
     Introspect(introspect::IntrospectArgs),
+    /// Create a compact scrubbed support report from a running/completed auto work directory (no source or private names)
+    BugReport(support_report::SupportReportArgs),
     /// Use Codex, Claude, API, or local LLMs for evidence-grounded planning, harness help, findings, and diagnostics
     Llm(llm::LlmArgs),
 
@@ -331,6 +334,7 @@ where
         Some(Command::BinaryAdapter(args)) => binary_adapter::run(args, profile),
         Some(Command::BinaryFuzz(args)) => binary_fuzz::run(args),
         Some(Command::BinaryScan(args)) => binary_scan::run(args),
+        Some(Command::BugReport(args)) => support_report::run(args),
         Some(Command::Build(build_args)) => {
             build::activate_compatible_clang();
             build::run(build_args)

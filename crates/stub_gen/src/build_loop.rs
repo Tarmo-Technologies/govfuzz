@@ -439,6 +439,7 @@ mod tests {
     fn project_spec(root: &Path) -> ProjectSpec {
         ProjectSpec {
             project_name: "Govfuzz_Build".to_owned(),
+            extends_project: None,
             source_roots: vec![
                 SourceRoot {
                     path: root.join("src_instrumented"),

@@ -74,6 +74,9 @@ begin
 {%- endfor %}
 {%- endfor %}
 {%- if return_type_present %}
+         --  Checkpointed separately from Set_Target: decoding succeeded and
+         --  control is immediately about to cross into the selected endpoint.
+         AdaFuzz.Probe.Target_Entry;
          declare
             Gf_Result : constant {{ return_type_ada_name }} := {{ qualified_target_name }}{% if params | length > 0 %} ({% for p in params %}{{ p.name }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %};
             pragma Unreferenced (Gf_Result);
@@ -81,6 +84,7 @@ begin
             null;
          end;
 {%- else %}
+         AdaFuzz.Probe.Target_Entry;
          {{ qualified_target_name }}{% if params | length > 0 %} ({% for p in params %}{{ p.name }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %};
 {%- endif %}
 {%- for p in params %}

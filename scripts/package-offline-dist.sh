@@ -24,7 +24,9 @@ Usage: scripts/package-offline-dist.sh [options]
 
 Build a binary-only GovFuzz distribution tarball. The tarball includes
 release binaries, harness runtime support files, a signed content pack,
-install.sh, INSTALL.md, README-DIST.md, RUN-GOVFUZZ.md, and a tiny post-install smoke fixture.
+install.sh, govfuzz-bug-report, INSTALL.md, LICENSE, README.md,
+RELEASE_NOTES.md, README-DIST.md, RUN-GOVFUZZ.md, and a tiny post-install smoke
+fixture.
 It does not include GovFuzz source.
 
 Options:
@@ -317,6 +319,8 @@ if [[ -f "$SHIM_CANONICAL" ]]; then
   run cp "$SHIM_CANONICAL" "$TOOL_DIR/libgovfuzz_runtrace_shim.so"
 fi
 run cp "$CC_INTERCEPT" "$TOOL_DIR/libgovfuzz_cc_intercept.so"
+run cp "$SCRIPT_DIR/govfuzz-bug-report.sh" "$TOOL_DIR/govfuzz-bug-report"
+run chmod +x "$TOOL_DIR/govfuzz-bug-report"
 
 copy_tree "$REPO_ROOT/c_runtime" "$TOOL_DIR/c_runtime"
 copy_tree "$REPO_ROOT/ada_runtime" "$TOOL_DIR/ada_runtime"
@@ -336,6 +340,9 @@ copy_tree "$REPO_ROOT/php_runtime" "$TOOL_DIR/php_runtime"
 run cp "$SCRIPT_DIR/install-dist.sh" "$STAGE_ROOT/install.sh"
 run chmod +x "$STAGE_ROOT/install.sh"
 run cp "$REPO_ROOT/INSTALL.md" "$STAGE_ROOT/INSTALL.md"
+run cp "$REPO_ROOT/LICENSE" "$STAGE_ROOT/LICENSE"
+run cp "$REPO_ROOT/README.md" "$STAGE_ROOT/README.md"
+run cp "$REPO_ROOT/RELEASE_NOTES.md" "$STAGE_ROOT/RELEASE_NOTES.md"
 run cp "$REPO_ROOT/docs/site/offline-auto-runbook.md" "$STAGE_ROOT/AUTO-OFFLINE-RUNBOOK.md"
 run mkdir -p "$TOOL_DIR/docs"
 run cp "$REPO_ROOT/docs/site/offline-auto-runbook.md" "$TOOL_DIR/docs/AUTO-OFFLINE-RUNBOOK.md"
@@ -369,7 +376,10 @@ EOF
 
 This is the all-in-one Linux package. It contains the GovFuzz CLI and daemon,
 both Linux preload shims, harness runtime support files, a tiny post-install
-smoke fixture, and a signed content pack.
+smoke fixture, a privacy-scrubbing bug-report collector, and a signed content
+pack. `INSTALL.md`, `LICENSE`, `README.md`, and `RELEASE_NOTES.md` are included
+at the archive root as the standard installation, licensing, usage, and release
+documentation.
 
 Install or update:
 
@@ -468,6 +478,20 @@ govfuzz auto --debug <source-tree> --work-dir govfuzz_work
 Send `bug-report.md` (or one entry from it) to the maintainer — it carries the
 govfuzz version/commit, the file/target, and the backtrace needed to fix it.
 
+For build/harness failures on a running or completed campaign, create a compact
+support report instead of collecting ad hoc commands by hand:
+
+```sh
+govfuzz-bug-report /path/to/govfuzz_work
+```
+
+The collector reads structured result checkpoints, so it works before the sweep
+finishes. It includes outcome/error counts, representative diagnostic shapes,
+repair-ledger health, artifact presence, and local toolchain versions. It never
+includes source or generated harness text, and replaces paths, file names,
+targets, variables, types, Ada units, symbols, and macros before writing the
+size-capped `govfuzz-support-report.txt`.
+
 For running GovFuzz after installation, see `RUN-GOVFUZZ.md`. For the strongest
 offline Ada/C/C++ recovery commands, including known-build, unknown-build, and
 forced fallback variants, see `AUTO-OFFLINE-RUNBOOK.md`. The installer also
@@ -495,6 +519,7 @@ Useful locations:
 - `/opt/govfuzz/govfuzz-daemon` - JSON-RPC/read-only-MCP daemon for IDE and agent integrations
 - `/opt/govfuzz/libgovfuzz_runtrace.so` - LD_PRELOAD runtime shim
 - `/opt/govfuzz/libgovfuzz_cc_intercept.so` - compiler-interception shim for complex C/C++ build recovery
+- `/opt/govfuzz/govfuzz-bug-report` - compact privacy-scrubbed support-report collector
 - `/opt/govfuzz/packs/` - installed signed offline content packs
 - `/opt/govfuzz/corpora/seeds/` - bundled seeds when installed with
   `--install-seeds`
@@ -585,6 +610,18 @@ Start with:
 ```sh
 less govfuzz_work/auto/run.md
 ```
+
+To report a GovFuzz build/harness limitation without exposing project names or
+typing many one-off command results, run this while the campaign is running or
+after it completes:
+
+```sh
+govfuzz-bug-report /path/to/govfuzz_work
+```
+
+It writes and prints one size-capped `govfuzz-support-report.txt`. The report is
+derived from per-target structured checkpoints; it omits source, harnesses, and
+corpus inputs and replaces project paths and identifiers with typed placeholders.
 
 Use `auto/run.json` for CI ingestion, dashboards, and repeatable triage.
 

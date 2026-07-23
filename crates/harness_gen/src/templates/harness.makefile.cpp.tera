@@ -2,7 +2,7 @@
 # generated_harnesses/{{ harness_id }}/Makefile
 
 ifeq ($(origin CXX), default)
-CXX = clang++
+CXX = {{ cxx_compiler }}
 endif
 # Every govfuzz C++ direct harness ships its own `main` — the same persistent
 # framed fork-server driver the C path uses (#399/#398) — so we do NOT link
@@ -31,7 +31,9 @@ CXX_STD ?= {{ cxx_standard }}
 # reserved-user-defined-literal error in every C++11+ mode. It is valid legacy
 # source, and the generated harness itself needs C++11 headers, so falling back
 # to gnu++03 cannot solve it. Suppress only that compatibility diagnostic.
-CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+{% if compiler_is_gcc %}CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -fsanitize=address,undefined -fno-sanitize=alignment -fsanitize-coverage=trace-pc,trace-cmp
+{% else %}CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+{% endif %}
 # Keep unrelated methods/data in separate sections so a target does not inherit
 # undefined references from unused code co-located in the same translation unit.
 SECTION_FLAGS ?= -ffunction-sections -fdata-sections
@@ -57,8 +59,21 @@ INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} 
 BUILD_CONTEXT_PROVENANCE = {{ build_context_provenance }}
 BUILD_CONTEXT_CONFIDENCE = {{ build_context_confidence }}
 BUILD_CONTEXT_RECOVERY = {{ build_context_recovery }}
+BUILD_CONTEXT_DROPPED = {{ build_context_dropped }}
 COMPILE_DB_FLAGS = {% for flag in compile_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
 BUILD_CONTEXT_LDFLAGS = {% for flag in link_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
+-include build_context_objects.mk
+-include repair_context_objects.mk
+CONTEXT_MAIN_OBJECTS ?=
+CONTEXT_AFL_OBJECTS ?=
+CONTEXT_DIFF_OBJECTS ?=
+REPAIR_CONTEXT_MAIN_OBJECTS ?=
+REPAIR_CONTEXT_AFL_OBJECTS ?=
+REPAIR_CONTEXT_DIFF_OBJECTS ?=
+
+ifdef GOVFUZZ_CONTEXT_PREPARE_FAILED
+$(error $(GOVFUZZ_CONTEXT_PREPARE_FAILED))
+endif
 
 .PHONY: all afl diff clean
 all: main
@@ -70,18 +85,19 @@ all: main
 govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
 	$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
 
-main: main.cpp govfuzz_driver.o
-	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main: main.cpp govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS)
+	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 afl: main_afl
 
-main_afl: main.cpp
-	$(AFLPP_CXX) $(AFLPP_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_afl: main.cpp $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS)
+	$(AFLPP_CXX) $(AFLPP_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS) $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 diff: main_diff
 
-main_diff: main.cpp govfuzz_driver.o
-	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_diff: main.cpp govfuzz_driver.o $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DIFF_OBJECTS)
+	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DIFF_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
 	rm -f main main_afl main_diff govfuzz_driver.o
+	rm -rf context_objs repair_context_objs

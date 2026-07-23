@@ -1605,9 +1605,12 @@ pub fn apply_repair_with_source(
                 // synthesized project uses GNAT's default naming, so select the
                 // host variant and write it as canonical `unit.adb`, just as the
                 // initial source-staging path does.
-                let Some(dest_name) =
-                    super::attempt::ada_variant_dest_basename(&name.to_string_lossy())
-                else {
+                let source_text = crate::source_text::read_source_text(src).ok();
+                let dest_name = source_text
+                    .as_deref()
+                    .and_then(|source| super::attempt::ada_source_dest_basename(src, source))
+                    .or_else(|| super::attempt::ada_variant_dest_basename(&name.to_string_lossy()));
+                let Some(dest_name) = dest_name else {
                     continue;
                 };
                 let dest = ada_stubs_dir.join(dest_name);
@@ -2881,21 +2884,32 @@ pub(crate) fn plan_repair_forced_with_source_policy(
         BuildErrorKind::MissingAdaSymbol { unit, symbol } => {
             if unit.is_empty() {
                 None
-            } else if let Some(sources) = ada_real_source_with_spec(decl_index, unit) {
-                // The unit's real spec exists in the tree (a sibling dir) — add
-                // its source so the symbol (and the rest of the unit) resolves.
-                Some(Repair::AddAdaSource {
-                    unit: unit.clone(),
-                    sources,
-                })
             } else {
-                Some(Repair::AdaPackageStub {
-                    unit: unit.clone(),
-                    decls: vec![symbol.clone()],
-                    ops: Vec::new(),
-                    synthesize_body: !decl_index.has_ada_package_body(unit),
-                    provenance: "gnat missing Ada package symbol".to_owned(),
-                })
+                let sources = decl_index.ada_unit_source_files_declaring_symbol(unit, symbol);
+                if !sources.is_empty() {
+                    // Add a real source only when its spec actually declares the
+                    // missing symbol. A same-named but wrong-version/shadowing unit
+                    // cannot repair this diagnostic and would otherwise loop.
+                    Some(Repair::AddAdaSource {
+                        unit: unit.clone(),
+                        sources,
+                    })
+                } else if ada_real_source_with_spec(decl_index, unit).is_some() {
+                    // The unit exists, but no indexed spec declares this symbol:
+                    // retain the compiler's MissingAdaSymbol as explicit
+                    // wrong-version/incomplete-binding evidence. Fabricating a
+                    // declaration alongside a real package would be an illegal
+                    // duplicate unit and can invent the wrong type/profile.
+                    None
+                } else {
+                    Some(Repair::AdaPackageStub {
+                        unit: unit.clone(),
+                        decls: vec![symbol.clone()],
+                        ops: Vec::new(),
+                        synthesize_body: !decl_index.has_ada_package_body(unit),
+                        provenance: "gnat missing Ada package symbol".to_owned(),
+                    })
+                }
             }
         }
         BuildErrorKind::UncompilableAdaBody { source } => {
@@ -6109,6 +6123,51 @@ mod tests {
         assert!(
             repair.is_some(),
             "qualified MissingAdaSymbol should extend a generated Ada package stub"
+        );
+    }
+
+    #[test]
+    fn ada_missing_symbol_adds_only_a_spec_that_declares_it() {
+        let root = tmpdir();
+        fs::write(
+            root.join("vendor_custom_name.ads"),
+            "package Aux_Pkg is function Score return Integer; end Aux_Pkg;\n",
+        )
+        .unwrap();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repair = plan_repair(
+            &BuildErrorKind::MissingAdaSymbol {
+                unit: "Aux_Pkg".to_owned(),
+                symbol: "Score".to_owned(),
+            },
+            &idx,
+        );
+        assert!(matches!(
+            repair,
+            Some(Repair::AddAdaSource { sources, .. })
+                if sources.iter().any(|source| source.ends_with("vendor_custom_name.ads"))
+        ));
+    }
+
+    #[test]
+    fn ada_wrong_version_spec_is_not_readded_or_fabricated() {
+        let root = tmpdir();
+        fs::write(
+            root.join("vendor_custom_name.ads"),
+            "package Aux_Pkg is function Older_Api return Integer; end Aux_Pkg;\n",
+        )
+        .unwrap();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repair = plan_repair(
+            &BuildErrorKind::MissingAdaSymbol {
+                unit: "Aux_Pkg".to_owned(),
+                symbol: "Score".to_owned(),
+            },
+            &idx,
+        );
+        assert!(
+            repair.is_none(),
+            "a real but incomplete/wrong-version spec cannot gain a symbol by being copied again: {repair:?}"
         );
     }
 

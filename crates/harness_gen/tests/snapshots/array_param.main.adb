@@ -36,6 +36,7 @@ begin
          end Decode_Items;
          Items : Int_Array := Decode_Items;
       begin
+         AdaFuzz.Probe.Target_Entry;
          Load (Items);
       exception
          when AdaFuzz_E : others =>

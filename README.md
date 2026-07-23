@@ -45,6 +45,31 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 `--build-command`), fuzzes each target with a coverage-guided engine, and writes findings
 (JSON/Markdown/SARIF/JUnit/CSV) under `govfuzz_work/auto/`.
 
+### Resume an interrupted `auto` campaign
+
+`govfuzz auto` checkpoints every completed target atomically. After a process
+kill, power loss, or reboot, repeat the original command with the same source
+tree and `--work-dir`, adding `--resume`:
+
+```sh
+./target/release/govfuzz auto path/to/src \
+  --work-dir govfuzz_work \
+  --per-target-time 60 \
+  --resume
+```
+
+Use the same campaign options as the original run. Completed targets are loaded
+from `harnesses/<id>/result.json`, included in the new report, and skipped; the
+first target that did not finish is retried, followed by the remaining targets.
+Existing findings and persisted corpus data remain on disk. Resume is
+target-granular: an interrupted target restarts its attempt rather than
+continuing the exact mutation, elapsed-time budget, or in-memory fuzzer state.
+
+Resume requires an unchanged source tree, the same work directory, and a
+compatible GovFuzz build. Do not combine it with `--fresh-discovery` or
+`--no-discovery-cache`; a discovery-cache miss deliberately re-attempts all
+targets rather than trusting stale results.
+
 See the [installation guide](docs/site/install.md) for prebuilt binaries, per-language
 toolchains, offline/air-gapped install, and Windows.
 
@@ -52,13 +77,15 @@ toolchains, offline/air-gapped install, and Windows.
 
 Linux has two complete installation styles. The all-in-one `govfuzz-dist-*.tar.gz`
 contains `install.sh`, the CLI, daemon, both Linux shims, harness runtimes, and a
-signed content pack. The component installers/archives let you install only
-selected pieces. An individual component installer downloads its matching
-archive automatically, so choose the installer **or** that archive—not both.
+signed content pack. Every full bundle also contains `INSTALL.md`, `LICENSE`,
+`README.md`, and `RELEASE_NOTES.md`. The component installers/archives let you
+install only selected pieces. An individual component installer downloads its
+matching archive automatically, so choose the installer **or** that archive—not
+both.
 
 | What you want to do | Install or download |
 |---|---|
-| Install complete GovFuzz on Linux with one `install.sh` | `govfuzz-dist-v0.2.18-x86_64-unknown-linux-gnu.tar.gz` plus its `.sha256` file |
+| Install complete GovFuzz on Linux with one `install.sh` | `govfuzz-dist-v0.2.19-x86_64-unknown-linux-gnu.tar.gz` plus its `.sha256` file |
 | Run the CLI on Windows | `govfuzz-installer.ps1`, or `govfuzz-x86_64-pc-windows-msvc.zip` plus its `.sha256` file for a manual/offline install |
 | Run basic CLI workflows on Linux | `govfuzz-installer.sh`, or `govfuzz-x86_64-unknown-linux-gnu.tar.xz` plus its `.sha256` file |
 | Get the full Linux `govfuzz auto` runtime audit and fake-resource support | Add `govfuzz_runtrace_shim-installer.sh`, or its matching `govfuzz_runtrace_shim-*.tar.xz` archive |
@@ -78,7 +105,7 @@ manual co-location commands.
 #### Complete Linux install with `install.sh`
 
 ```sh
-VERSION=v0.2.18
+VERSION=v0.2.19
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 ARCHIVE="govfuzz-dist-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 
@@ -155,7 +182,7 @@ harness runtimes, and signed content together. The separate component
 installers remain available when you deliberately want a smaller install:
 
 ```sh
-VERSION=v0.2.18
+VERSION=v0.2.19
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 
 curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz-installer.sh" | sh
@@ -179,7 +206,7 @@ an elevated PowerShell. One Chocolatey-based setup is:
 choco install llvm make visualstudio2022buildtools `
   visualstudio2022-workload-vctools -y
 
-$Version = "v0.2.18"
+$Version = "v0.2.19"
 $Base = "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version"
 irm "$Base/govfuzz-installer.ps1" | iex
 irm "$Base/govfuzz-daemon-installer.ps1" | iex       # optional: RPC/MCP service

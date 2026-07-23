@@ -291,7 +291,12 @@ fn cpp_api_is_unsupported_target(f: &cpp_parser::CppFunction) -> bool {
             .is_some_and(|access| access != "public")
 }
 
-fn cpp_target_name(f: &cpp_parser::CppFunction) -> String {
+/// Stable discovery/generation identity for one parsed C++ function. This is
+/// deliberately shared with the CLI: parser records retain a leaf `name`, while
+/// ranked targets use a qualified name and append the parameter profile for an
+/// overload set. Reconstructing only part of that identity in the caller loses
+/// metadata for namespaced functions and can conflate same-line overloads.
+pub fn cpp_target_name(f: &cpp_parser::CppFunction) -> String {
     let qualified = if f.qualifier_path.is_empty() {
         f.name.clone()
     } else {

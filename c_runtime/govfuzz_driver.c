@@ -169,6 +169,22 @@ GOVFUZZ_NOCOV static void govfuzz_cov_open(void) {
     void *m = gf_map_shared(p, GOVFUZZ_COV_BITS);
     if (m) govfuzz_cov_map = (unsigned char *)m;
 }
+
+/* One-byte, cumulative proof that generated harness code crossed the boundary
+ * immediately before the selected project target.  This is deliberately
+ * separate from edge coverage: a driver/fork-server can execute and collect
+ * its own edges without ever entering the endpoint. */
+static unsigned char *govfuzz_target_map = 0;
+GOVFUZZ_NOCOV void govfuzz_target_enter(void) {
+    if (!govfuzz_target_map) {
+        const char *p = getenv("GOVFUZZ_TARGET_ENTRY_SHM");
+        if (p && *p) {
+            void *m = gf_map_shared(p, 1);
+            if (m) govfuzz_target_map = (unsigned char *)m;
+        }
+    }
+    if (govfuzz_target_map) govfuzz_target_map[0] = 1;
+}
 /* AFL-style per-exec hit-count buckets (#420): a SECOND map, GOVFUZZ_COV_CNT_SHM,
  * same size, one byte per edge; trace-pc-guard saturating-increments it so the
  * engine can bucket loop/recursion depth. No-op when unset. */
@@ -353,8 +369,7 @@ GOVFUZZ_NOCOV void __sanitizer_cov_trace_pc_guard(uint32_t *guard) {
     if (govfuzz_cov_cnt_map && govfuzz_cov_cnt_map[*guard & (GOVFUZZ_COV_BITS - 1)] != 255)
         govfuzz_cov_cnt_map[*guard & (GOVFUZZ_COV_BITS - 1)]++;
 }
-#ifdef _WIN32
-/* mingw-w64 gcc has no `trace-pc-guard`; the Windows build instruments with
+/* GCC has no `trace-pc-guard`; GCC-family builds instrument with
  * `-fsanitize-coverage=trace-pc`, which calls this guard-less hook at each edge.
  * Hash the return address into the SAME bitmap the guard path fills so the
  * engine's coverage reader stays platform-agnostic. */
@@ -366,7 +381,6 @@ GOVFUZZ_NOCOV void __sanitizer_cov_trace_pc(void) {
     if (govfuzz_cov_cnt_map && govfuzz_cov_cnt_map[h] != 255)
         govfuzz_cov_cnt_map[h]++;
 }
-#endif
 GOVFUZZ_NOCOV void __sanitizer_cov_trace_cmp1(uint8_t a, uint8_t b) { govfuzz_cmp_int(a, b, 1); govfuzz_cmpp_int(a, b, 1, __builtin_return_address(0)); }
 GOVFUZZ_NOCOV void __sanitizer_cov_trace_cmp2(uint16_t a, uint16_t b) { govfuzz_cmp_int(a, b, 2); govfuzz_cmpp_int(a, b, 2, __builtin_return_address(0)); }
 GOVFUZZ_NOCOV void __sanitizer_cov_trace_cmp4(uint32_t a, uint32_t b) { govfuzz_cmp_int(a, b, 4); govfuzz_cmpp_int(a, b, 4, __builtin_return_address(0)); }

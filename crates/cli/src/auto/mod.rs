@@ -61,3 +61,4 @@ pub mod sink_oracle;
 pub mod triage;
 pub mod tsan;
 pub mod vcs_recovery;
+pub mod work_state;

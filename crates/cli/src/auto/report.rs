@@ -9,7 +9,7 @@
 //! `harness_id`s.
 
 use crate::auto::attempt::{
-    stub_execution_summary, AttemptResult, Outcome, PassRun, StubExecution,
+    stub_execution_summary, AttemptResult, AttemptTrace, Outcome, PassRun, StubExecution,
 };
 use crate::auto::candidate::{Candidate, Lang};
 use crate::auto::repair::Repair;
@@ -134,6 +134,7 @@ struct TargetEntry<'a> {
     line: u32,
     score: i32,
     outcome: &'a Outcome,
+    attempt_trace: AttemptTrace,
     /// #417: stub-vs-real execution summary for fuzzed targets — the field that
     /// distinguishes a real fuzz from a FALSE CLEAN over empty stubs. `None`
     /// (omitted) for outcomes that never fuzzed.
@@ -178,6 +179,8 @@ struct PersistedResult {
     #[serde(default)]
     input_reachability: Option<String>,
     outcome: Outcome,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    attempt_trace: Option<AttemptTrace>,
     harness_dir: String,
 }
 
@@ -263,6 +266,7 @@ pub fn persist_target_result(work_dir: &Path, result: &AttemptResult) {
         foreign_guard: c.foreign_guard.clone(),
         input_reachability: c.input_reachability.map(|r| reach_tag(r).to_owned()),
         outcome: result.outcome.clone(),
+        attempt_trace: Some(result.attempt_trace()),
         harness_dir: result.harness_dir.to_string_lossy().into_owned(),
     };
     if let Ok(bytes) = serde_json::to_vec(&dto) {
@@ -683,6 +687,7 @@ pub fn write_reports(
             line: r.candidate.line,
             score: r.candidate.score,
             outcome: &r.outcome,
+            attempt_trace: r.attempt_trace(),
             stub_execution: r.outcome.stub_execution(),
             input_reachability: r.candidate.input_reachability,
             platform_stub: r.outcome.platform_stub(),
@@ -2758,6 +2763,14 @@ fn render_target_md_line(t: &TargetEntry<'_>) -> String {
             t.harness_id, t.name, outcome_label, passes_line
         )
     };
+    if passes_line.is_empty() {
+        line.push_str(&format!(
+            "  [stage={} repairs_attempted={} fallback={}]",
+            t.attempt_trace.terminal_stage,
+            t.attempt_trace.repairs_attempted,
+            t.attempt_trace.fallback_chain.join("->")
+        ));
+    }
     // #417: mark a false-clean target inline so the per-target row itself carries
     // the warning, not just the header block — the outcome_label already reads
     // "built+fuzzed (STUB-ONLY)" but spell out the symbol ratio here too.
@@ -3339,6 +3352,13 @@ mod tests {
         };
         persist_target_result(&work, &result);
         assert!(target_already_complete(&work, "H-C0009"));
+        let persisted: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(work.join("harnesses/H-C0009/result.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(persisted["attempt_trace"]["terminal_stage"], "build");
+        assert_eq!(persisted["attempt_trace"]["repairs_attempted"], true);
+        assert_eq!(persisted["attempt_trace"]["repair_count"], 1);
 
         // Reload reconstructs a real AttemptResult, full fidelity.
         let back = load_resumed_result(&work, "H-C0009").expect("reload");
@@ -3792,6 +3812,7 @@ mod tests {
                 pass: Pass::Empty,
                 engine: "builtin".to_owned(),
                 executions: 4123,
+                target_entry_observed: false,
                 coverage_edges: 180,
                 elapsed_secs: 4.123,
                 executions_per_sec: 1000.0,
@@ -3801,6 +3822,7 @@ mod tests {
                 pass: Pass::Rng,
                 engine: "builtin".to_owned(),
                 executions: 3811,
+                target_entry_observed: false,
                 coverage_edges: 240,
                 elapsed_secs: 1.9055,
                 executions_per_sec: 2000.0,
@@ -3810,6 +3832,7 @@ mod tests {
                 pass: Pass::FuzzDriven,
                 engine: "builtin".to_owned(),
                 executions: 2901,
+                target_entry_observed: false,
                 coverage_edges: 252,
                 elapsed_secs: 5.802,
                 executions_per_sec: 500.0,
@@ -3950,6 +3973,7 @@ mod tests {
                     pass: Pass::Rng,
                     engine: "builtin".to_owned(),
                     executions: 10,
+                    target_entry_observed: false,
                     coverage_edges: 1,
                     elapsed_secs: 1.0,
                     executions_per_sec: 10.0,
@@ -4079,6 +4103,7 @@ mod tests {
                         pass: Pass::Empty,
                         engine: "builtin".to_owned(),
                         executions: 1,
+                        target_entry_observed: false,
                         coverage_edges: 1,
                         elapsed_secs: 1.0,
                         executions_per_sec: 1.0,
@@ -4088,6 +4113,7 @@ mod tests {
                         pass: Pass::Rng,
                         engine: "builtin".to_owned(),
                         executions: 1,
+                        target_entry_observed: false,
                         coverage_edges: 1,
                         elapsed_secs: 1.0,
                         executions_per_sec: 1.0,
@@ -4284,6 +4310,7 @@ mod tests {
                 pass: Pass::FuzzDriven,
                 engine: "builtin".to_owned(),
                 executions: 8_000_000,
+                target_entry_observed: false,
                 coverage_edges: 16,
                 elapsed_secs: 10.0,
                 executions_per_sec: 800_000.0,
@@ -4311,6 +4338,7 @@ mod tests {
                 pass: Pass::FuzzDriven,
                 engine: "builtin".to_owned(),
                 executions: 1000,
+                target_entry_observed: true,
                 coverage_edges: 1400,
                 elapsed_secs: 1.0,
                 executions_per_sec: 1000.0,
@@ -4444,6 +4472,7 @@ mod tests {
                 pass: Pass::FuzzDriven,
                 engine: "builtin".to_owned(),
                 executions: 1000,
+                target_entry_observed: false,
                 coverage_edges: 4,
                 elapsed_secs: 1.0,
                 executions_per_sec: 1000.0,

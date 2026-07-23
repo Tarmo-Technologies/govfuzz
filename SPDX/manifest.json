@@ -1119,6 +1119,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/work_state.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/benchmark.rs",
       "license": "Apache-2.0"
     },
@@ -1328,6 +1332,10 @@
     },
     {
       "path": "crates/cli/src/stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/support_report.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1848,6 +1856,10 @@
     },
     {
       "path": "crates/cli/tests/windows_cross_fixture.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/zero_fuzz_acceptance.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3340,6 +3352,10 @@
     },
     {
       "path": "docs/validation/2026-07-21-rhel7-proxmox.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/validation/2026-07-23-zero-fuzz-remediation.md",
       "license": "Apache-2.0"
     },
     {

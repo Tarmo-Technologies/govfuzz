@@ -12,6 +12,9 @@
   C++ default/lifecycle construction, neutral `CORBA::Environment` handling,
   namespace-safe type resolution, legacy header preprocessing, and exact
   per-translation-unit compile contexts for original and repair-added sources.
+  Directly included C++ implementation files are de-duplicated from that object
+  graph, and generated C/C++ Makefiles explicitly select the complete build as
+  their default goal.
 
 - **Honest target execution and fallback evidence.** Successful campaigns now
   prove entry into the selected project endpoint rather than counting driver

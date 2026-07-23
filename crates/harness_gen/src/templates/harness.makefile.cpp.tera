@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # generated_harnesses/{{ harness_id }}/Makefile
 
+.DEFAULT_GOAL := all
+
 ifeq ($(origin CXX), default)
 CXX = {{ cxx_compiler }}
 endif

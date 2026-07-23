@@ -5614,8 +5614,30 @@ fn partition_per_tu_compile_contexts(
     contexts
 }
 
+fn discard_cpp_context_for_included_target(
+    contexts: &mut Vec<PerTuCompileContext>,
+    main_cpp: &Path,
+    target_source: &Path,
+) -> Result<()> {
+    if contexts.is_empty() || !is_cpp_only_translation_unit(target_source) {
+        return Ok(());
+    }
+    let Some(file_name) = target_source.file_name().and_then(|name| name.to_str()) else {
+        return Ok(());
+    };
+    let source = fs::read_to_string(main_cpp)
+        .with_context(|| format!("read generated C++ harness {}", main_cpp.display()))?;
+    let include = format!("#include \"{file_name}\"");
+    if source.lines().any(|line| line.trim() == include) {
+        let target_key = normalized_path_key(target_source);
+        contexts.retain(|context| normalized_path_key(&context.source) != target_key);
+    }
+    Ok(())
+}
+
 fn write_cpp_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext]) -> Result<()> {
     if contexts.is_empty() {
+        remove_stale_per_tu_context(output_dir, "build_context_objects.mk")?;
         return Ok(());
     }
     write_per_tu_context(
@@ -5635,6 +5657,7 @@ fn write_cpp_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext])
 
 fn write_c_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext]) -> Result<()> {
     if contexts.is_empty() {
+        remove_stale_per_tu_context(output_dir, "build_context_objects.mk")?;
         return Ok(());
     }
     write_per_tu_context(
@@ -5654,6 +5677,16 @@ fn write_c_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext]) -
         ],
         false,
     )
+}
+
+fn remove_stale_per_tu_context(output_dir: &Path, fragment_name: &str) -> Result<()> {
+    let fragment = output_dir.join(fragment_name);
+    match fs::remove_file(&fragment) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error)
+            .with_context(|| format!("remove stale per-TU context {}", fragment.display())),
+    }
 }
 
 fn write_per_tu_context(
@@ -7860,7 +7893,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             )
         })
         .or_else(|| detect_strdup_family_free(&function.return_type, &function.name));
-    let per_tu_contexts = partition_per_tu_compile_contexts(&mut target_sources);
+    let mut per_tu_contexts = partition_per_tu_compile_contexts(&mut target_sources);
     let emitted_path = if args.kind == "sequence" {
         "sequence"
     } else if factory_plan.is_some() {
@@ -7967,6 +8000,14 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             &handle_lifecycle,
         )
     }?;
+    // The C++ emitter may include a header-less implementation file directly in
+    // `main.cpp` when its exact type declaration is required (references, STL
+    // aliases, receivers, or templates). `target_sources` is moved into the
+    // emitter, which removes that source from its shared link list, but the
+    // per-TU graph was partitioned before that decision. Drop the same target
+    // here or it is defined once through the include and once through the object,
+    // producing a false multiple-definition linker failure.
+    discard_cpp_context_for_included_target(&mut per_tu_contexts, &result.main_cpp, &source_path)?;
     write_cpp_per_tu_context(&output_dir, &per_tu_contexts)?;
     write_harness_dictionary(&output_dir, &dictionary_tokens)?;
     write_generation_metadata(
@@ -15005,10 +15046,12 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let status = std::process::Command::new("make")
             .arg("-C")
             .arg(&harness)
-            .arg("main")
             .status()
             .unwrap();
-        assert!(status.success(), "per-TU flag graph must compile and link");
+        assert!(
+            status.success() && harness.join("main").is_file(),
+            "the default goal must compile and link the per-TU flag graph"
+        );
     }
 
     #[test]

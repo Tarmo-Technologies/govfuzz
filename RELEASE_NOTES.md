@@ -22,7 +22,9 @@ discovered thousands of targets but did not successfully fuzz an endpoint.
   `CORBA::Environment &` call contexts.
 - Header targets and repair-added translation units retain the applicable
   compiler family, standard, forced includes, safe flags, and per-file defines
-  instead of compiling every source under one guessed command.
+  instead of compiling every source under one guessed command. Sources included
+  directly by a generated C++ harness are not linked a second time, and bare
+  `make` reliably selects the complete harness build.
 - Ranking uses conservative harness viability so opaque, undeclared, or blocked
   parameter shapes do not crowd straightforward byte-driven endpoints out of a
   bounded top-N campaign.

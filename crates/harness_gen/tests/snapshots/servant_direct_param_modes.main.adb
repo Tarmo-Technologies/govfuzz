@@ -29,6 +29,7 @@ begin
          Out_Count : Integer := Integer'First;
          Inout_Count : Integer := Integer (AdaFuzz.Decode.I32 (Cur));
       begin
+         AdaFuzz.Probe.Target_Entry;
          Bar_Impl.Update (Server, Out_Count, Inout_Count);
       exception
          when AdaFuzz_E : others =>

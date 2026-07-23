@@ -27,6 +27,9 @@ begin
          Cur : AdaFuzz.Decode.Cursor := AdaFuzz.Decode.Open (Buf'Unchecked_Access, Last);
          S : String := AdaFuzz.Decode.Ada_String (Cur, 0, 1024);
       begin
+         --  Checkpointed separately from Set_Target: decoding succeeded and
+         --  control is immediately about to cross into the selected endpoint.
+         AdaFuzz.Probe.Target_Entry;
          declare
             Gf_Result : constant Integer := Pkg.Parse (S);
             pragma Unreferenced (Gf_Result);

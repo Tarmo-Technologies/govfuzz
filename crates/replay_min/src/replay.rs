@@ -745,6 +745,7 @@ mod tests {
         let testcase = Testcase {
             testcase_id: 1,
             target_id: 0x42,
+            target_entered: false,
             crumbs: Vec::new(),
             handlers: Vec::new(),
             raises: Vec::new(),
@@ -1254,6 +1255,7 @@ fn main() -> std::io::Result<()> {
         Testcase {
             testcase_id: 1,
             target_id: 0x42,
+            target_entered: false,
             crumbs: vec![1],
             handlers: vec![HandlerEvent {
                 sequence_index: 3,

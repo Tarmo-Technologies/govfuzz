@@ -62,16 +62,55 @@ pub fn count_handlers_in_or_below(ast: &StructuralAst, sp: &Subprogram) -> i32 {
         .count() as i32
 }
 
-pub fn count_fuzzable_params(_ast: &StructuralAst, sp: &Subprogram) -> i32 {
+pub fn count_fuzzable_params(ast: &StructuralAst, sp: &Subprogram) -> i32 {
     sp.params
         .iter()
         .filter(|param| {
             matches!(
                 param.mode,
                 ParamMode::In | ParamMode::InOut | ParamMode::AccessMode
-            )
+            ) && ada_type_is_conservatively_decodable(ast, &param.type_ref, 0)
         })
         .count() as i32
+}
+
+pub fn has_unsupported_fuzz_input(ast: &StructuralAst, sp: &Subprogram) -> bool {
+    sp.params.iter().any(|param| {
+        matches!(
+            param.mode,
+            ParamMode::In | ParamMode::InOut | ParamMode::AccessMode
+        ) && !ada_type_is_conservatively_decodable(ast, &param.type_ref, 0)
+    })
+}
+
+fn ada_type_is_conservatively_decodable(
+    ast: &StructuralAst,
+    type_ref: &TypeRef,
+    depth: usize,
+) -> bool {
+    if depth > 8 {
+        return false;
+    }
+    if type_is_untrusted_input(type_ref) {
+        return true;
+    }
+    match &type_ref.kind {
+        TypeKind::Scalar(_)
+        | TypeKind::Enum(_)
+        | TypeKind::Array { .. }
+        | TypeKind::Record(_)
+        | TypeKind::Discriminated { .. } => true,
+        TypeKind::Derived { base } | TypeKind::Access { target: base } => ast
+            .types
+            .iter()
+            .find(|candidate| candidate.id == *base)
+            .is_some_and(|base| ada_type_is_conservatively_decodable(ast, base, depth + 1)),
+        TypeKind::Tagged { is_abstract, .. } => !is_abstract,
+        TypeKind::Interface { .. }
+        | TypeKind::Private
+        | TypeKind::Generic(_)
+        | TypeKind::Unknown => false,
+    }
 }
 
 /// A subprogram that takes an untrusted-input parameter — the Ada analog of a
@@ -646,9 +685,18 @@ mod tests {
     fn count_fuzzable_params_counts_in_inout_access() {
         let ast = StructuralAst::new();
         let sp = sp_with_params(vec![
-            param(ParamMode::In, type_ref(TypeKind::Unknown)),
-            param(ParamMode::InOut, type_ref(TypeKind::Unknown)),
-            param(ParamMode::AccessMode, type_ref(TypeKind::Unknown)),
+            param(
+                ParamMode::In,
+                type_ref(TypeKind::Scalar(ScalarKind::Integer)),
+            ),
+            param(
+                ParamMode::InOut,
+                type_ref(TypeKind::Scalar(ScalarKind::Integer)),
+            ),
+            param(
+                ParamMode::AccessMode,
+                type_ref(TypeKind::Scalar(ScalarKind::Integer)),
+            ),
         ]);
 
         assert_eq!(count_fuzzable_params(&ast, &sp), 3);
@@ -657,9 +705,40 @@ mod tests {
     #[test]
     fn count_fuzzable_params_counts_default_in_mode() {
         let ast = StructuralAst::new();
-        let sp = sp_with_params(vec![param(ParamMode::In, type_ref(TypeKind::Unknown))]);
+        let sp = sp_with_params(vec![param(
+            ParamMode::In,
+            type_ref(TypeKind::Scalar(ScalarKind::Integer)),
+        )]);
 
         assert_eq!(count_fuzzable_params(&ast, &sp), 1);
+    }
+
+    #[test]
+    fn opaque_named_input_is_not_scored_as_fuzzable_and_is_penalized() {
+        let ast = StructuralAst::new();
+        let sp = sp_with_params(vec![param(ParamMode::In, type_ref(TypeKind::Unknown))]);
+
+        assert_eq!(count_fuzzable_params(&ast, &sp), 0);
+        assert!(has_unsupported_fuzz_input(&ast, &sp));
+    }
+
+    #[test]
+    fn viable_string_endpoint_outranks_many_opaque_parameters() {
+        let ast = StructuralAst::new();
+        let opaque = sp_with_params(
+            (0..20)
+                .map(|_| param(ParamMode::In, type_ref(TypeKind::Unknown)))
+                .collect(),
+        );
+        let mut string = type_ref(TypeKind::Unknown);
+        string.name_path = vec!["String".to_owned()];
+        let viable = sp_with_params(vec![param(ParamMode::In, string)]);
+
+        let opaque_score = crate::score::score(&ast, &opaque);
+        let viable_score = crate::score::score(&ast, &viable);
+        assert_eq!(opaque_score.fuzzable_params, 0);
+        assert_eq!(opaque_score.harness_viability, -1_000);
+        assert!(viable_score.total > opaque_score.total);
     }
 
     #[test]

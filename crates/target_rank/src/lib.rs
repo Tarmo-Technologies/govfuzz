@@ -13,8 +13,8 @@ pub mod rust_rank;
 pub mod score;
 
 pub use c_rank::{
-    classify_input_reachability, rank_c_targets, rank_cpp_targets, CScoreBreakdown, CTarget,
-    InputReachability,
+    classify_input_reachability, cpp_target_name, rank_c_targets, rank_cpp_targets,
+    CScoreBreakdown, CTarget, InputReachability,
 };
 pub use go_rank::{rank_go_targets, GoScoreBreakdown, GoTarget};
 pub use java_rank::{
@@ -55,6 +55,10 @@ pub struct ScoreBreakdown {
     /// the C `OutputSerializer`. Keeps a DOM `Write` from out-ranking `Parse`.
     pub serializer_subprogram_name: i32,
     pub fuzzable_params: i32,
+    /// Conservative generation-viability penalty. A signature containing a
+    /// parameter whose structural type cannot be decoded remains discoverable,
+    /// but must not displace a proven byte/scalar/aggregate endpoint under a cap.
+    pub harness_viability: i32,
     pub range_constrained_scalar: i32,
     pub array_index_or_slice: i32,
     pub discriminant_or_variant: i32,
@@ -150,6 +154,7 @@ mod tests {
             + breakdown.explicit_raises_in_or_below
             + breakdown.handlers_in_or_below
             + breakdown.fuzzable_params
+            + breakdown.harness_viability
             + breakdown.range_constrained_scalar
             + breakdown.array_index_or_slice
             + breakdown.discriminant_or_variant

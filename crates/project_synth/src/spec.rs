@@ -9,6 +9,11 @@ use crate::ProjectSynthError;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectSpec {
     pub project_name: String,
+    /// Optional governing project to extend. An overlay can replace Source_Dirs
+    /// with instrumented copies while inheriting Naming, scenario evaluation,
+    /// configuration pragmas, imports, and target-specific build packages.
+    #[serde(default)]
+    pub extends_project: Option<PathBuf>,
     pub source_roots: Vec<SourceRoot>,
     pub object_dir: PathBuf,
     pub main_adb: Option<String>,

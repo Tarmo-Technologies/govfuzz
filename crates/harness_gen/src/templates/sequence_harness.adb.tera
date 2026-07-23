@@ -52,8 +52,10 @@ begin
 {%- endif %}
                      begin
 {%- if op.return_type_present %}
+                        AdaFuzz.Probe.Target_Entry;
                         {{ op.result_name }} := {{ op.qualified_name }}{% if op.params | length > 0 %} ({% for p in op.params %}{{ p.name }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %};
 {%- else %}
+                        AdaFuzz.Probe.Target_Entry;
                         {{ op.qualified_name }}{% if op.params | length > 0 %} ({% for p in op.params %}{{ p.name }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %};
 {%- endif %}
                      exception

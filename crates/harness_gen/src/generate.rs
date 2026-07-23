@@ -1126,13 +1126,22 @@ fn build_servant_direct_context(
         )));
     }
 
-    let receiver = resolve_param_type(args.ast, receiver);
+    let resolved_receiver = resolve_param_type(args.ast, receiver);
+    // The receiver object must be declared with the operation's DECLARED type,
+    // not the end of its derivation chain. `type Servant is new
+    // PortableServer.Servant_Base ...` is a distinct Ada type; resolving it to
+    // the base and declaring `PortableServer.Servant` makes the target call
+    // ill-typed. Resolution remains useful only to recognize an alias whose
+    // declared leaf is not itself named Servant.
     let servant_type_ada_name =
-        servant_receiver_type_name(args.ast, args.target_subprogram, &receiver)?;
-    if !servant_type_ada_name
-        .split('.')
-        .next_back()
-        .is_some_and(|name| name.to_ascii_lowercase().ends_with("servant"))
+        servant_receiver_type_name(args.ast, args.target_subprogram, receiver)?;
+    let resolved_servant_type_ada_name = ada_type_name(&resolved_receiver.type_ref);
+    let is_servant_name = |name: &str| {
+        name.split('.')
+            .next_back()
+            .is_some_and(|leaf| leaf.to_ascii_lowercase().ends_with("servant"))
+    };
+    if !is_servant_name(&servant_type_ada_name) && !is_servant_name(&resolved_servant_type_ada_name)
     {
         return Err(HarnessGenError::UnsupportedParamType(format!(
             "{servant_type_ada_name} is not a servant receiver type"
@@ -1568,6 +1577,33 @@ fn qualify_generic_local_param_type(
     };
     if let Some(path) = instance_qualified_name_path(&resolved_param.type_ref, *gen_pkg_id) {
         resolved_param.type_ref.name_path = path;
+    } else {
+        // Reconciliation can retain the package-qualified spelling while losing
+        // `TypeOwner::Package` on the resolved reference. Recover ownership from
+        // the declaration itself; naming `Codec.Hints` is illegal because
+        // `Codec` is an uninstantiated generic, while the local instance is a
+        // valid prefix.
+        let leaf = resolved_param
+            .type_ref
+            .name_path
+            .last()
+            .and_then(|part| part.rsplit('.').next());
+        let declared_in_generic = leaf.is_some_and(|leaf| {
+            args.ast.types.iter().any(|ty| {
+                ty.owner == TypeOwner::Package(*gen_pkg_id)
+                    && ty
+                        .name_path
+                        .last()
+                        .and_then(|part| part.rsplit('.').next())
+                        .is_some_and(|name| name.eq_ignore_ascii_case(leaf))
+            })
+        });
+        if declared_in_generic {
+            resolved_param.type_ref.name_path = vec![
+                crate::generic_instance::INSTANCE_NAME.to_owned(),
+                leaf.expect("declared generic type has a leaf").to_owned(),
+            ];
+        }
     }
     resolved_param
 }
@@ -2807,12 +2843,7 @@ fn servant_receiver_type_name(
 }
 
 fn find_declared_type<'a>(ast: &'a StructuralAst, type_ref: &TypeRef) -> Option<&'a TypeRef> {
-    ast.types.iter().find(|declared_type| {
-        type_path_matches(
-            &qualified_type_name_path(ast, declared_type),
-            &type_ref.name_path,
-        )
-    })
+    find_type_by_visible_name(ast, &type_ref.name_path, Some(&type_ref.owner))
 }
 
 fn resolve_derived_chain<'a>(ast: &'a StructuralAst, type_ref: &'a TypeRef) -> DerivedChainEnd<'a> {
@@ -2827,14 +2858,63 @@ fn resolve_derived_chain<'a>(ast: &'a StructuralAst, type_ref: &'a TypeRef) -> D
         let Some(base_name) = derived_base_name(&current.constraints.0) else {
             return DerivedChainEnd::Resolved(current);
         };
-        match ast.types.iter().find(|candidate| {
-            type_path_matches(&qualified_type_name_path(ast, candidate), &base_name)
-        }) {
+        match find_type_by_visible_name(ast, &base_name, Some(&current.owner)) {
             Some(base) => current = base,
             None => return DerivedChainEnd::External(base_name),
         }
     }
     DerivedChainEnd::Resolved(current)
+}
+
+/// Resolve an Ada type mark without guessing across packages. A qualified mark
+/// must match exactly. An unqualified mark first resolves in its declaration
+/// owner (package/subprogram), then falls back only when the leaf is globally
+/// unique in the merged visible AST. The old unconditional first leaf match made
+/// `Left.Header_Type` win for a parameter that meant `Right.Header_Type`, with
+/// the result depending on source traversal order.
+fn find_type_by_visible_name<'a>(
+    ast: &'a StructuralAst,
+    requested: &[String],
+    preferred_owner: Option<&TypeOwner>,
+) -> Option<&'a TypeRef> {
+    let requested = split_name_path(requested);
+    if requested.is_empty() {
+        return None;
+    }
+    if requested.len() > 1 {
+        return ast.types.iter().find(|candidate| {
+            let qualified = split_name_path(&qualified_type_name_path(ast, candidate));
+            qualified.len() == requested.len()
+                && qualified
+                    .iter()
+                    .zip(&requested)
+                    .all(|(left, right)| left.eq_ignore_ascii_case(right))
+        });
+    }
+    let leaf = &requested[0];
+    if let Some(owner) = preferred_owner {
+        let mut owned = ast.types.iter().filter(|candidate| {
+            &candidate.owner == owner
+                && candidate
+                    .name_path
+                    .last()
+                    .is_some_and(|name| name.eq_ignore_ascii_case(leaf))
+        });
+        if let Some(first) = owned.next() {
+            if owned.next().is_none() {
+                return Some(first);
+            }
+            return None;
+        }
+    }
+    let mut matches = ast.types.iter().filter(|candidate| {
+        candidate
+            .name_path
+            .last()
+            .is_some_and(|name| name.eq_ignore_ascii_case(leaf))
+    });
+    let only = matches.next()?;
+    matches.next().is_none().then_some(only)
 }
 
 fn derived_base_name(constraints: &str) -> Option<Vec<String>> {
@@ -2867,26 +2947,6 @@ fn derived_base_name(constraints: &str) -> Option<Vec<String>> {
         return None;
     }
     Some(base.split('.').map(|part| part.trim().to_owned()).collect())
-}
-
-fn type_path_matches(candidate: &[String], requested: &[String]) -> bool {
-    let candidate = split_name_path(candidate);
-    let requested = split_name_path(requested);
-    if candidate.is_empty() || requested.is_empty() {
-        return false;
-    }
-
-    if candidate.len() == requested.len() {
-        return candidate
-            .iter()
-            .zip(requested.iter())
-            .all(|(left, right)| left.eq_ignore_ascii_case(right));
-    }
-
-    candidate
-        .last()
-        .zip(requested.last())
-        .is_some_and(|(left, right)| left.eq_ignore_ascii_case(right))
 }
 
 fn qualified_type_name_path(ast: &StructuralAst, type_ref: &TypeRef) -> Vec<String> {
@@ -4014,6 +4074,57 @@ mod tests {
     }
 
     #[test]
+    fn servant_direct_declares_the_concrete_derived_servant_not_its_external_base() {
+        let bar_impl = package(12, "Bar_Impl");
+        let target = subprogram(
+            43,
+            SubprogramOwner::Package(PackageId(12)),
+            "Compute",
+            vec![
+                param_with_mode("Self", "Servant", TypeKind::Unknown, ParamMode::In),
+                param_with_mode("S", "String", TypeKind::Unknown, ParamMode::In),
+            ],
+            Some(type_ref("Integer", TypeKind::Scalar(ScalarKind::Integer))),
+        );
+        let mut ast = ast_with(target.clone(), Vec::new(), vec![bar_impl]);
+        ast.types.push(TypeRef {
+            id: TypeId(91),
+            name_path: vec!["Servant".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(12)),
+            kind: TypeKind::Derived { base: TypeId(90) },
+            constraints: Constraints("PortableServer.Servant_Base".to_owned()),
+            aspects: Aspects(Vec::new()),
+        });
+        let output_dir = temp_dir("derived-servant-receiver").join("H-M12-DERIVED");
+
+        let generated = generate_servant_direct_harness(GenerateServantDirectArgs {
+            ast: &ast,
+            target_subprogram: &target,
+            harness_id: "H-M12-DERIVED".to_owned(),
+            output_dir,
+            source_path: PathBuf::from("src/bar_impl.adb"),
+            source_roots: Vec::new(),
+            project_imports: Vec::new(),
+        })
+        .unwrap();
+        let main_adb = fs::read_to_string(generated.main_adb).unwrap();
+
+        assert!(
+            main_adb.contains("Server : Bar_Impl.Servant;"),
+            "{main_adb}"
+        );
+        assert!(
+            main_adb.contains("Bar_Impl.Compute (Server, S)"),
+            "{main_adb}"
+        );
+        assert!(
+            !main_adb.contains("Server : PortableServer.Servant"),
+            "{main_adb}"
+        );
+    }
+
+    #[test]
     fn generate_with_multiple_compound_params_concatenates_setup() {
         let target = subprogram(
             1,
@@ -4454,6 +4565,63 @@ mod tests {
         let resolved = super::resolve_param_type(&ast, &unresolved);
 
         assert_eq!(resolved.type_ref.name_path, vec!["Right", "Object_Access"]);
+        assert!(matches!(resolved.type_ref.kind, TypeKind::Access { .. }));
+    }
+
+    #[test]
+    fn unqualified_type_lookup_rejects_ambiguous_cross_package_leaf() {
+        let mut ast = StructuralAst::new();
+        ast.packages = vec![package(1, "Left"), package(2, "Right")];
+        for (id, owner, kind) in [
+            (10, 1, TypeKind::Private),
+            (11, 2, TypeKind::Access { target: TypeId(9) }),
+        ] {
+            ast.types.push(TypeRef {
+                id: TypeId(id),
+                name_path: vec!["Header_Type".to_owned()],
+                visibility: Visibility::Public,
+                owner: TypeOwner::Package(PackageId(owner)),
+                kind,
+                constraints: Constraints(String::new()),
+                aspects: Aspects(Vec::new()),
+            });
+        }
+        let unresolved = param("Value", "Header_Type", TypeKind::Unknown);
+
+        let resolved = super::resolve_param_type(&ast, &unresolved);
+
+        assert!(matches!(resolved.type_ref.kind, TypeKind::Unknown));
+        assert_eq!(resolved.type_ref.name_path, vec!["Header_Type"]);
+    }
+
+    #[test]
+    fn unqualified_type_lookup_prefers_the_lexical_owner() {
+        let mut ast = StructuralAst::new();
+        ast.packages = vec![package(1, "Left"), package(2, "Right")];
+        ast.types.push(TypeRef {
+            id: TypeId(10),
+            name_path: vec!["Header_Type".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(1)),
+            kind: TypeKind::Private,
+            constraints: Constraints(String::new()),
+            aspects: Aspects(Vec::new()),
+        });
+        ast.types.push(TypeRef {
+            id: TypeId(11),
+            name_path: vec!["Header_Type".to_owned()],
+            visibility: Visibility::Public,
+            owner: TypeOwner::Package(PackageId(2)),
+            kind: TypeKind::Access { target: TypeId(9) },
+            constraints: Constraints(String::new()),
+            aspects: Aspects(Vec::new()),
+        });
+        let mut unresolved = param("Value", "Header_Type", TypeKind::Unknown);
+        unresolved.type_ref.owner = TypeOwner::Package(PackageId(2));
+
+        let resolved = super::resolve_param_type(&ast, &unresolved);
+
+        assert_eq!(resolved.type_ref.name_path, vec!["Right", "Header_Type"]);
         assert!(matches!(resolved.type_ref.kind, TypeKind::Access { .. }));
     }
 

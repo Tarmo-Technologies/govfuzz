@@ -17,6 +17,9 @@ const BUILD_CONTEXT_PROVENANCE_PREFIX: &str = "@govfuzz-build-context-provenance
 const BUILD_CONTEXT_CONFIDENCE_PREFIX: &str = "@govfuzz-build-context-confidence=";
 const BUILD_CONTEXT_RECOVERY_PREFIX: &str = "@govfuzz-build-context-recovery=";
 const BUILD_CONTEXT_LDFLAG_PREFIX: &str = "@govfuzz-build-context-ldflag=";
+const BUILD_CONTEXT_CXX_STANDARD_PREFIX: &str = "@govfuzz-build-context-cxx-standard=";
+const BUILD_CONTEXT_COMPILER_PREFIX: &str = "@govfuzz-build-context-compiler=";
+const BUILD_CONTEXT_DROPPED_PREFIX: &str = "@govfuzz-build-context-dropped=";
 
 #[derive(Debug, Clone)]
 pub struct CppParameter {
@@ -33,6 +36,9 @@ pub struct CppFactoryPlan {
     /// The qualified type of the factory owner (e.g., `"tinyxml2::XMLDocument"`),
     /// or `None` when the factory is a free function (no owner needed).
     pub owner_type: Option<String>,
+    /// `true` when the owner method is static and must be called as
+    /// `Owner::Factory(...)` without constructing an owner instance.
+    pub owner_method_is_static: bool,
     /// The factory method name (instance method) or free-function name.
     pub factory_method: String,
     /// Parameters to pass to the factory call (decoded from fuzz input).
@@ -181,6 +187,25 @@ pub fn cpp_parameter_type_supported(cpp_type: &str) -> bool {
     select_cpp_decoder(cpp_type, "_gf_probe").is_some()
 }
 
+/// Registry-aware counterpart used by lifecycle planning. Candidate selection
+/// must consult the same aliases, visible aggregates, containers, and verified
+/// default-constructible classes as final emission; otherwise valid setup
+/// methods are dropped before codegen ever gets a chance to decode them.
+pub fn cpp_parameter_type_supported_with_registry(
+    cpp_type: &str,
+    registry: &TypeRegistry,
+    limits: &CppDecoderLimits,
+) -> bool {
+    select_cpp_decoder_with_registry_limited(cpp_type, "_gf_probe", registry, limits).is_ok()
+}
+
+fn cpp_lexical_lookup_scopes(target: &CppFunction) -> Vec<String> {
+    (1..=target.qualifier_path.len())
+        .rev()
+        .map(|length| target.qualifier_path[..length].join("::"))
+        .collect()
+}
+
 /// Whether `name` is something we can legally write after `receiver.` as a member
 /// call — a plain member identifier or an `operatorX` overload. Robustness gate for
 /// the sequence/method emitter (campaign: tinyobjloader): even after attribution is
@@ -277,6 +302,10 @@ struct CppTemplateContext {
     target_template_suffix: String,
     target_name: String,
     forward_namespace: String,
+    /// Exact (template-substituted) parameter spellings from the parsed target
+    /// declaration. Decoder emissions intentionally erase references/cv details;
+    /// reusing them in a forward declaration creates a different overload.
+    forward_param_types: Vec<String>,
     target_includes: Vec<String>,
     target_includes_dirs: Vec<String>,
     target_sources: Vec<String>,
@@ -285,6 +314,9 @@ struct CppTemplateContext {
     build_context_provenance: String,
     build_context_confidence: String,
     build_context_recovery: String,
+    build_context_dropped: String,
+    cxx_compiler: String,
+    compiler_is_gcc: bool,
     c_runtime_include: String,
     params: Vec<CParamEmission>,
     return_type: String,
@@ -360,6 +392,7 @@ struct CppTemplateFactoryContext {
     /// Qualified owner type for an instance-method factory (e.g.,
     /// `"tinyxml2::XMLDocument"`); empty string for a free-function factory.
     owner_type: String,
+    owner_method_is_static: bool,
     method: String,
     params: Vec<CParamEmission>,
     receiver_is_pointer: bool,
@@ -783,7 +816,9 @@ fn build_cpp_context<'a>(
 fn build_cpp_sequence_context(
     args: &GenerateCppSequenceArgs,
 ) -> Result<CppTemplateContext, HarnessGenError> {
-    let registry = TypeRegistry::from_defs(args.type_defs.iter());
+    let registry = TypeRegistry::from_defs(args.type_defs.iter())
+        .with_cpp_lookup_scopes(cpp_lexical_lookup_scopes(&args.target))
+        .with_default_constructible_classes(args.default_constructible_classes.iter().cloned());
     let lifecycle_steps =
         build_lifecycle_step_emissions(&args.lifecycle_steps, &registry, args.decoder_limits)?;
     build_cpp_context_common(CppContextInput {
@@ -975,6 +1010,7 @@ fn build_cpp_context_common(
     validate_cpp_build_inputs(&input)?;
     let input_references_type_defs = cpp_params_reference_type_defs(&input);
     let registry = TypeRegistry::from_defs(input.type_defs.iter())
+        .with_cpp_lookup_scopes(cpp_lexical_lookup_scopes(input.target))
         .with_default_constructible_classes(input.default_constructible_classes.iter().cloned());
     // Template-function instantiation (#455 / §27.5): when the target carries a
     // resolved specialization, substitute its concrete type arguments into the
@@ -1047,6 +1083,7 @@ fn build_cpp_context_common(
         )?;
         Some(CppTemplateFactoryContext {
             owner_type: plan.owner_type.clone().unwrap_or_default(),
+            owner_method_is_static: plan.owner_method_is_static,
             method: plan.factory_method.clone(),
             params: factory_params,
             receiver_is_pointer: plan.receiver_is_pointer,
@@ -1126,6 +1163,7 @@ fn build_cpp_context_common(
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty())
+        .or_else(|| build_context.cxx_standard.clone())
         .unwrap_or_else(|| "gnu++20".to_owned());
 
     // Qualify unqualified std names in the result type too (the harness lacks
@@ -1253,12 +1291,21 @@ fn build_cpp_context_common(
     let passthrough_libfuzzer_entrypoint = input.target.name == "LLVMFuzzerTestOneInput";
     let lifecycle_step_count = lifecycle_steps.len();
 
+    let compiler_is_gcc = build_context.compiler_is_gcc();
+    let cxx_compiler = build_context
+        .compiler
+        .clone()
+        .unwrap_or_else(|| "clang++".to_owned());
     Ok(CppTemplateContext {
         harness_id: input.harness_id.to_owned(),
         qualified_target_name,
         target_template_suffix,
         target_name: input.target.name.clone(),
         forward_namespace: input.target.qualifier_path.join("::"),
+        forward_param_types: effective_params
+            .iter()
+            .map(|parameter| parameter.cpp_type.clone())
+            .collect(),
         target_includes,
         target_includes_dirs: input
             .target_includes_dirs
@@ -1277,6 +1324,9 @@ fn build_cpp_context_common(
         build_context_provenance: build_context.provenance,
         build_context_confidence: build_context.confidence,
         build_context_recovery: build_context.recovery,
+        build_context_dropped: build_context.dropped,
+        cxx_compiler,
+        compiler_is_gcc,
         c_runtime_include: crate::build_safety::make_path(input.c_runtime_include),
         params,
         return_type: if return_type_present {
@@ -1398,6 +1448,23 @@ struct CppBuildContextRender {
     provenance: String,
     confidence: String,
     recovery: String,
+    dropped: String,
+    cxx_standard: Option<String>,
+    compiler: Option<String>,
+}
+
+impl CppBuildContextRender {
+    fn compiler_is_gcc(&self) -> bool {
+        let Some(compiler) = &self.compiler else {
+            return false;
+        };
+        let leaf = Path::new(compiler)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or(compiler)
+            .to_ascii_lowercase();
+        leaf == "gcc" || leaf.starts_with("gcc-") || leaf == "g++" || leaf.starts_with("g++-")
+    }
 }
 
 /// Escape a build flag for verbatim interpolation into a Makefile recipe. A flag
@@ -1420,6 +1487,9 @@ fn split_cpp_build_context_flags(flags: &[String]) -> CppBuildContextRender {
     let mut provenance = "none".to_owned();
     let mut confidence = "none".to_owned();
     let mut recovery = "none".to_owned();
+    let mut dropped = "none".to_owned();
+    let mut cxx_standard = None;
+    let mut compiler = None;
 
     for flag in flags {
         if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_PROVENANCE_PREFIX) {
@@ -1428,8 +1498,14 @@ fn split_cpp_build_context_flags(flags: &[String]) -> CppBuildContextRender {
             confidence = value.to_owned();
         } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_RECOVERY_PREFIX) {
             recovery = value.to_owned();
+        } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_DROPPED_PREFIX) {
+            dropped = value.to_owned();
         } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_LDFLAG_PREFIX) {
             link_flags.push(escape_makefile_recipe_flag(value));
+        } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_CXX_STANDARD_PREFIX) {
+            cxx_standard = Some(value.to_owned());
+        } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_COMPILER_PREFIX) {
+            compiler = Some(value.to_owned());
         } else {
             compile_flags.push(escape_makefile_recipe_flag(flag));
         }
@@ -1441,6 +1517,9 @@ fn split_cpp_build_context_flags(flags: &[String]) -> CppBuildContextRender {
         provenance,
         confidence,
         recovery,
+        dropped,
+        cxx_standard,
+        compiler,
     }
 }
 
@@ -1547,9 +1626,23 @@ fn is_cpp_implementation_file(path: &Path) -> bool {
 fn cpp_params_reference_type_defs(input: &CppContextInput<'_>) -> bool {
     let mut names = Vec::new();
     for defs in input.type_defs {
-        names.extend(defs.structs.iter().map(|def| def.name.as_str()));
-        names.extend(defs.enums.iter().map(|def| def.name.as_str()));
-        names.extend(defs.typedefs.iter().map(|def| def.name.as_str()));
+        for name in defs
+            .structs
+            .iter()
+            .map(|def| def.name.as_str())
+            .chain(defs.enums.iter().map(|def| def.name.as_str()))
+            .chain(defs.typedefs.iter().map(|def| def.name.as_str()))
+        {
+            names.push(name);
+            // Namespace-preserving registries store `gov::Mode`, while a
+            // parameter declared inside that namespace is commonly spelled
+            // just `Mode`. This decision only controls whether the defining
+            // implementation must be included, so the leaf match is safe and
+            // avoids emitting an undeclared enum/class type.
+            if let Some(leaf) = name.rsplit("::").next().filter(|leaf| *leaf != name) {
+                names.push(leaf);
+            }
+        }
     }
     if names.is_empty() {
         return false;
@@ -4332,7 +4425,7 @@ mod tests {
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         assert!(main.contains("#include \"parser.cpp\""));
         assert!(main.contains("using namespace gov;"));
-        assert!(main.contains("Mode mode = (Mode)Mode::Fast"));
+        assert!(main.contains("Mode mode = (Mode)gov::Mode::Fast"));
         assert!(main.contains("gov::parse(mode);"));
 
         if let Some(extra_flags) = clangxx_compile_flags("cpp-ns-enum-class") {
@@ -4648,6 +4741,7 @@ mod tests {
             receiver_class_override: None,
             factory_plan: Some(CppFactoryPlan {
                 owner_type: Some("tinyxml2::XMLDocument".to_owned()),
+                owner_method_is_static: false,
                 factory_method: "NewElement".to_owned(),
                 factory_params: vec![CppParameter {
                     name: "name".to_owned(),
@@ -4736,6 +4830,7 @@ mod tests {
             receiver_class_override: None,
             factory_plan: Some(CppFactoryPlan {
                 owner_type: Some("acme::Lexer".to_owned()),
+                owner_method_is_static: false,
                 factory_method: "MakeToken".to_owned(),
                 factory_params: Vec::new(),
                 receiver_is_pointer: false,
@@ -4800,6 +4895,7 @@ mod tests {
             receiver_class_override: None,
             factory_plan: Some(CppFactoryPlan {
                 owner_type: None, // free-function factory
+                owner_method_is_static: false,
                 factory_method: "codec::create_frame".to_owned(),
                 factory_params: Vec::new(),
                 receiver_is_pointer: true,

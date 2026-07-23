@@ -2,7 +2,7 @@
 # generated_harnesses/{{ harness_id }}/Makefile
 
 ifeq ($(origin CC), default)
-CC = clang
+CC = {{ c_compiler }}
 endif
 # Every govfuzz C direct harness (generated or passthrough) ships its own
 # lightweight `main` — a persistent framed fork-server driver (#399/#398) — so we
@@ -24,7 +24,9 @@ endif
 # downcasts), and `alignment` (binary parsers read `*(uint32_t*)p` at unaligned
 # offsets). All high-signal checks (overflow, shift, OOB, null, return…) stay
 # on. -fno-sanitize= must follow -fsanitize=undefined to subtract from the group.
-CFLAGS ?= -O1 -g -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+{% if compiler_is_gcc %}CFLAGS ?= -O1 -g -fsanitize=address,undefined -fno-sanitize=alignment -fsanitize-coverage=trace-pc,trace-cmp
+{% else %}CFLAGS ?= -O1 -g -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -fsanitize-coverage=trace-pc-guard,trace-cmp
+{% endif %}
 # Isolate each function/data object so the linker can discard unrelated code in
 # a legacy amalgamation or application TU. Otherwise an isolated target inherits
 # undefined references from every unused function in the same source file.
@@ -76,7 +78,29 @@ DIFF_CFLAGS ?= -O2 -g -fsanitize=address
 GOVFUZZ_DRIVER_SOURCE ?= {{ c_runtime_include }}/govfuzz_driver.c
 GOVFUZZ_DRIVER_CFLAGS ?= -O1 -g
 INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
+BUILD_CONTEXT_PROVENANCE = {{ build_context_provenance }}
+BUILD_CONTEXT_DROPPED = {{ build_context_dropped }}
 COMPILE_DB_FLAGS = {% for flag in compile_flags %}{{ flag }}{% if not loop.last %} {% endif %}{% endfor %}
+-include build_context_objects.mk
+-include repair_context_objects.mk
+CONTEXT_MAIN_OBJECTS ?=
+CONTEXT_AFL_OBJECTS ?=
+CONTEXT_MSAN_OBJECTS ?=
+CONTEXT_TSAN_OBJECTS ?=
+CONTEXT_COV_OBJECTS ?=
+CONTEXT_DIFF_OBJECTS ?=
+CONTEXT_PROV_OBJECTS ?=
+REPAIR_CONTEXT_MAIN_OBJECTS ?=
+REPAIR_CONTEXT_AFL_OBJECTS ?=
+REPAIR_CONTEXT_MSAN_OBJECTS ?=
+REPAIR_CONTEXT_TSAN_OBJECTS ?=
+REPAIR_CONTEXT_COV_OBJECTS ?=
+REPAIR_CONTEXT_DIFF_OBJECTS ?=
+REPAIR_CONTEXT_PROV_OBJECTS ?=
+
+ifdef GOVFUZZ_CONTEXT_PREPARE_FAILED
+$(error $(GOVFUZZ_CONTEXT_PREPARE_FAILED))
+endif
 
 .PHONY: all afl msan tsan cov prov diff clean
 all: main
@@ -89,33 +113,33 @@ all: main
 govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
 	$(CC) $(GOVFUZZ_DRIVER_CFLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
 
-main: main.c govfuzz_driver.o
-	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main: main.c govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS)
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 afl: main_afl
 
-main_afl: main.c
-	$(AFLPP_CC) $(AFLPP_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_afl: main.c $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS)
+	$(AFLPP_CC) $(AFLPP_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS) $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 msan: main_msan
 
-main_msan: main.c govfuzz_driver.o
-	$(MSAN_CC) $(MSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_msan: main.c govfuzz_driver.o $(CONTEXT_MSAN_OBJECTS) $(REPAIR_CONTEXT_MSAN_OBJECTS)
+	$(MSAN_CC) $(MSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MSAN_OBJECTS) $(REPAIR_CONTEXT_MSAN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 tsan: main_tsan
 
-main_tsan: main.c govfuzz_driver.o
-	$(TSAN_CC) $(TSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_tsan: main.c govfuzz_driver.o $(CONTEXT_TSAN_OBJECTS) $(REPAIR_CONTEXT_TSAN_OBJECTS)
+	$(TSAN_CC) $(TSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_TSAN_OBJECTS) $(REPAIR_CONTEXT_TSAN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 cov: main_cov
 
-main_cov: main.c govfuzz_driver.o
-	$(COV_CC) $(COV_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_cov: main.c govfuzz_driver.o $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS)
+	$(COV_CC) $(COV_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 diff: main_diff
 
-main_diff: main.c govfuzz_driver.o
-	$(DIFF_CC) $(DIFF_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_diff: main.c govfuzz_driver.o $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DIFF_OBJECTS)
+	$(DIFF_CC) $(DIFF_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DIFF_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 # Build-recovery provenance (stub-artifact vs real-defect): the SAME ASan build as
 # `main`, but the injected stubs come from $(AUTO_PROV_SOURCES) — a poisoned copy in
@@ -125,8 +149,9 @@ main_diff: main.c govfuzz_driver.o
 # path (provably stub-independent -> confidence raised).
 prov: main_prov
 
-main_prov: main.c govfuzz_driver.o
-	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_PROV_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+main_prov: main.c govfuzz_driver.o $(CONTEXT_PROV_OBJECTS) $(REPAIR_CONTEXT_PROV_OBJECTS)
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_PROV_OBJECTS) $(REPAIR_CONTEXT_PROV_OBJECTS) $(AUTO_PROV_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
 	rm -f main main_afl main_msan main_tsan main_cov main_prov main_diff govfuzz_driver.o
+	rm -rf context_objs repair_context_objs

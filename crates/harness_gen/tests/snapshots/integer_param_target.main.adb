@@ -27,6 +27,7 @@ begin
          Cur : AdaFuzz.Decode.Cursor := AdaFuzz.Decode.Open (Buf'Unchecked_Access, Last);
          Count : Integer := Integer (AdaFuzz.Decode.I32 (Cur));
       begin
+         AdaFuzz.Probe.Target_Entry;
          Run (Count);
       exception
          when AdaFuzz_E : others =>

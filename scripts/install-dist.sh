@@ -965,6 +965,9 @@ if [[ "$NO_SYMLINK" -eq 0 ]]; then
   if [[ -f "$PREFIX/govfuzz-daemon" ]]; then
     run_with_optional_prefix "$SUDO_BIN_WORD" ln -sfn "$PREFIX/govfuzz-daemon" "$BIN_DIR/govfuzz-daemon"
   fi
+  if [[ -f "$PREFIX/govfuzz-bug-report" ]]; then
+    run_with_optional_prefix "$SUDO_BIN_WORD" ln -sfn "$PREFIX/govfuzz-bug-report" "$BIN_DIR/govfuzz-bug-report"
+  fi
 fi
 
 if [[ "$NO_CONTENT" -eq 0 && -f "$PACK_MANIFEST" ]]; then

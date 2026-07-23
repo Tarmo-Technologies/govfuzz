@@ -221,7 +221,7 @@ IDE/MCP use. Windows users should ignore the two Linux-only shim assets.
 ### Complete Linux installation with the bundled `install.sh`
 
 ```sh
-VERSION=v0.2.18
+VERSION=v0.2.19
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 ARCHIVE="govfuzz-dist-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 
@@ -303,7 +303,7 @@ Releases include `govfuzz-x86_64-pc-windows-msvc.zip`,
 PowerShell installers. For example:
 
 ```powershell
-$Version = "v0.2.18"
+$Version = "v0.2.19"
 irm "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version/govfuzz-installer.ps1" | iex
 govfuzz.exe --version
 ```

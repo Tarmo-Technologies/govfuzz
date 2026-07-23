@@ -37,6 +37,7 @@ begin
                      declare
                         X : Integer := Integer (AdaFuzz.Decode.I32 (Cur));
                      begin
+                        AdaFuzz.Probe.Target_Entry;
                         State.Push (X);
                      exception
                         when AdaFuzz_E : others =>
@@ -55,6 +56,7 @@ begin
                      begin
                      declare
                      begin
+                        AdaFuzz.Probe.Target_Entry;
                         State.Pop;
                      exception
                         when AdaFuzz_E : others =>
@@ -75,6 +77,7 @@ begin
                         R_Top : Integer;
                         pragma Unreferenced (R_Top);
                      begin
+                        AdaFuzz.Probe.Target_Entry;
                         R_Top := State.Top;
                      exception
                         when AdaFuzz_E : others =>

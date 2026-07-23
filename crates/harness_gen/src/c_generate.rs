@@ -11,8 +11,12 @@ use c_parser::CFunction;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use type_model::{ScalarKind, TypeRegistry, TypeShape};
+
+const BUILD_CONTEXT_COMPILER_PREFIX: &str = "@govfuzz-build-context-compiler=";
+const BUILD_CONTEXT_PROVENANCE_PREFIX: &str = "@govfuzz-build-context-provenance=";
+const BUILD_CONTEXT_DROPPED_PREFIX: &str = "@govfuzz-build-context-dropped=";
 
 /// Parameter metadata captured from the C source for harness emission.
 #[derive(Debug, Clone)]
@@ -185,6 +189,10 @@ struct CTemplateContext {
     target_includes_dirs: Vec<String>,
     target_sources: Vec<String>,
     compile_flags: Vec<String>,
+    build_context_provenance: String,
+    build_context_dropped: String,
+    c_compiler: String,
+    compiler_is_gcc: bool,
     c_runtime_include: String,
     emit_forward_declaration: bool,
     params: Vec<CParamEmission>,
@@ -236,6 +244,10 @@ struct CSequenceTemplateContext {
     target_includes_dirs: Vec<String>,
     target_sources: Vec<String>,
     compile_flags: Vec<String>,
+    build_context_provenance: String,
+    build_context_dropped: String,
+    c_compiler: String,
+    compiler_is_gcc: bool,
     c_runtime_include: String,
     emit_forward_declaration: bool,
     handle_type: String,
@@ -1696,6 +1708,13 @@ fn validate_c_sequence_build_inputs(args: &GenerateCSequenceArgs) -> Result<(), 
 
 fn build_c_context(args: &GenerateCDirectArgs) -> Result<CTemplateContext, HarnessGenError> {
     validate_c_build_inputs(args)?;
+    let (
+        compile_flags,
+        c_compiler,
+        compiler_is_gcc,
+        build_context_provenance,
+        build_context_dropped,
+    ) = split_c_compile_context(&args.compile_flags);
     let registry = TypeRegistry::from_defs(args.type_defs.iter());
     // A byte-stream decoder is driven one byte at a time: the first parameter is
     // the untrusted byte (the loop variable), and only parameters 2..N are
@@ -1829,7 +1848,11 @@ fn build_c_context(args: &GenerateCDirectArgs) -> Result<CTemplateContext, Harne
             .iter()
             .map(|p| crate::build_safety::make_path(p))
             .collect(),
-        compile_flags: args.compile_flags.clone(),
+        compile_flags,
+        build_context_provenance,
+        build_context_dropped,
+        c_compiler,
+        compiler_is_gcc,
         c_runtime_include: crate::build_safety::make_path(&args.c_runtime_include),
         emit_forward_declaration: !args.target_declared_in_header,
         // When the target's header is INCLUDED (not forward-declared), a callback
@@ -1903,6 +1926,13 @@ fn build_c_sequence_context(
     args: &GenerateCSequenceArgs,
 ) -> Result<CSequenceTemplateContext, HarnessGenError> {
     validate_c_sequence_build_inputs(args)?;
+    let (
+        compile_flags,
+        c_compiler,
+        compiler_is_gcc,
+        build_context_provenance,
+        build_context_dropped,
+    ) = split_c_compile_context(&args.compile_flags);
     if args.op_steps.is_empty() {
         return Err(HarnessGenError::UnsupportedParamType(
             "C sequence harness requires at least one lifecycle operation".to_owned(),
@@ -1990,7 +2020,11 @@ fn build_c_sequence_context(
             .iter()
             .map(|p| crate::build_safety::make_path(p))
             .collect(),
-        compile_flags: args.compile_flags.clone(),
+        compile_flags,
+        build_context_provenance,
+        build_context_dropped,
+        c_compiler,
+        compiler_is_gcc,
         c_runtime_include: crate::build_safety::make_path(&args.c_runtime_include),
         emit_forward_declaration: !args.target_declared_in_header,
         handle_type: emit_c_type(&args.handle_type),
@@ -2000,6 +2034,44 @@ fn build_c_sequence_context(
         op_steps,
         end_step,
     })
+}
+
+fn split_c_compile_context(flags: &[String]) -> (Vec<String>, String, bool, String, String) {
+    let mut compiler = None;
+    let mut provenance = "none".to_owned();
+    let mut dropped = "none".to_owned();
+    let compile_flags = flags
+        .iter()
+        .filter_map(|flag| {
+            if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_COMPILER_PREFIX) {
+                compiler = Some(value.to_owned());
+                None
+            } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_PROVENANCE_PREFIX) {
+                provenance = value.to_owned();
+                None
+            } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_DROPPED_PREFIX) {
+                dropped = value.to_owned();
+                None
+            } else {
+                Some(flag.clone())
+            }
+        })
+        .collect();
+    let compiler = compiler.unwrap_or_else(|| "clang".to_owned());
+    let leaf = Path::new(&compiler)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(&compiler)
+        .to_ascii_lowercase();
+    let compiler_is_gcc =
+        leaf == "gcc" || leaf.starts_with("gcc-") || leaf == "g++" || leaf.starts_with("g++-");
+    (
+        compile_flags,
+        compiler,
+        compiler_is_gcc,
+        provenance,
+        dropped,
+    )
 }
 
 fn build_c_sequence_step_emission(

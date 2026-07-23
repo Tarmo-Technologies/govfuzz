@@ -359,6 +359,10 @@ pub struct PassRun {
     #[serde(default)]
     pub engine: String,
     pub executions: usize,
+    /// Checkpoint emitted immediately before the selected project endpoint.
+    /// This is stronger than "the harness launched" or driver-only coverage.
+    #[serde(default)]
+    pub target_entry_observed: bool,
     /// Distinct instrumented edges the harness hit during this pass (#385). 0 for
     /// harnesses without a govfuzz coverage runtime (only passthrough libFuzzer
     /// driver harnesses carry one today).
@@ -597,7 +601,147 @@ pub enum Outcome {
     },
 }
 
+/// Uniform diagnostic envelope derived for every outcome. This intentionally
+/// sits alongside the backward-compatible enum fields: older consumers still
+/// read `reason`/`repairs`/`last_errors`, while support tooling no longer has to
+/// interpret their absence as JSON `null` or guess whether a repair loop ran.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AttemptTrace {
+    pub terminal_stage: String,
+    pub fallback_chain: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason_category: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminal_reason: Option<String>,
+    pub repairs_attempted: bool,
+    pub repair_count: usize,
+    pub build_error_count: usize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub build_error_categories: Vec<String>,
+}
+
 impl Outcome {
+    pub fn attempt_trace(&self) -> AttemptTrace {
+        let repair_details = |repairs: &[Repair], retries: usize| {
+            (retries > 0 || !repairs.is_empty(), repairs.len())
+        };
+        match self {
+            Outcome::BuiltAndFuzzed {
+                repairs, retries, ..
+            } => {
+                let (repairs_attempted, repair_count) = repair_details(repairs, *retries);
+                AttemptTrace {
+                    terminal_stage: "fuzz".to_owned(),
+                    fallback_chain: vec![
+                        "generated".to_owned(),
+                        "built".to_owned(),
+                        "fuzzed".to_owned(),
+                    ],
+                    reason_category: None,
+                    terminal_reason: None,
+                    repairs_attempted,
+                    repair_count,
+                    build_error_count: 0,
+                    build_error_categories: Vec::new(),
+                }
+            }
+            Outcome::Built { repairs, retries } => {
+                let (repairs_attempted, repair_count) = repair_details(repairs, *retries);
+                AttemptTrace {
+                    terminal_stage: "build".to_owned(),
+                    fallback_chain: vec!["generated".to_owned(), "built".to_owned()],
+                    reason_category: None,
+                    terminal_reason: None,
+                    repairs_attempted,
+                    repair_count,
+                    build_error_count: 0,
+                    build_error_categories: Vec::new(),
+                }
+            }
+            Outcome::FailedBuild {
+                repairs,
+                retries,
+                last_errors,
+            } => {
+                let (repairs_attempted, repair_count) = repair_details(repairs, *retries);
+                let has_sequence = last_errors.iter().any(|error| {
+                    matches!(error, BuildErrorKind::Other { tail } if tail.contains("sequence harness failed"))
+                });
+                AttemptTrace {
+                    terminal_stage: "build".to_owned(),
+                    fallback_chain: if has_sequence {
+                        vec![
+                            "sequence_build_failed".to_owned(),
+                            "direct_build_failed".to_owned(),
+                        ]
+                    } else {
+                        vec!["direct_build_failed".to_owned()]
+                    },
+                    reason_category: Some("compiler_or_linker".to_owned()),
+                    terminal_reason: None,
+                    repairs_attempted,
+                    repair_count,
+                    build_error_count: last_errors.len(),
+                    build_error_categories: build_error_categories(last_errors),
+                }
+            }
+            Outcome::UnsupportedParams { reason } => AttemptTrace {
+                terminal_stage: "generation".to_owned(),
+                fallback_chain: if reason.contains("sequence generation also failed first")
+                    || reason.contains("sequence harness build also failed first")
+                {
+                    vec![
+                        "sequence_failed".to_owned(),
+                        "direct_unsupported".to_owned(),
+                    ]
+                } else {
+                    vec!["direct_unsupported".to_owned()]
+                },
+                reason_category: Some(attempt_reason_category(reason).to_owned()),
+                terminal_reason: Some(reason.clone()),
+                repairs_attempted: false,
+                repair_count: 0,
+                build_error_count: 0,
+                build_error_categories: Vec::new(),
+            },
+            Outcome::UnrecoverableLink { repairs, missing } => AttemptTrace {
+                terminal_stage: "link".to_owned(),
+                fallback_chain: vec!["build_repair".to_owned(), "link_unrecoverable".to_owned()],
+                reason_category: Some("unresolved_link".to_owned()),
+                terminal_reason: Some(format!("{} unresolved link symbol(s)", missing.len())),
+                repairs_attempted: true,
+                repair_count: repairs.len(),
+                build_error_count: missing.len(),
+                build_error_categories: vec!["undefined_symbol".to_owned()],
+            },
+            Outcome::UnrecoverableRuntime {
+                repairs, reason, ..
+            } => AttemptTrace {
+                terminal_stage: "runtime".to_owned(),
+                fallback_chain: vec!["built".to_owned(), "runtime_unrecoverable".to_owned()],
+                reason_category: Some("runtime_safety_rail".to_owned()),
+                terminal_reason: Some(reason.clone()),
+                repairs_attempted: !repairs.is_empty(),
+                repair_count: repairs.len(),
+                build_error_count: 0,
+                build_error_categories: Vec::new(),
+            },
+            Outcome::ReportOnly { reason, .. } => AttemptTrace {
+                terminal_stage: "static_analysis".to_owned(),
+                fallback_chain: vec![
+                    "dynamic_unavailable".to_owned(),
+                    "static_analysis".to_owned(),
+                ],
+                reason_category: Some(attempt_reason_category(reason).to_owned()),
+                terminal_reason: Some(reason.clone()),
+                repairs_attempted: false,
+                repair_count: 0,
+                build_error_count: 0,
+                build_error_categories: Vec::new(),
+            },
+        }
+    }
+
     /// #417: per-target stub-vs-real execution summary derived from the repair
     /// ledger, or `None` for outcomes that never fuzzed (only `BuiltAndFuzzed`
     /// carries a fuzz result). Recomputed from `repairs` on demand — see
@@ -629,11 +773,74 @@ impl Outcome {
     }
 }
 
+fn build_error_categories(errors: &[BuildErrorKind]) -> Vec<String> {
+    let mut categories = errors
+        .iter()
+        .filter_map(|error| {
+            serde_json::to_value(error)
+                .ok()?
+                .get("kind")?
+                .as_str()
+                .map(str::to_owned)
+        })
+        .collect::<Vec<_>>();
+    categories.sort();
+    categories.dedup();
+    categories
+}
+
+fn attempt_reason_category(reason: &str) -> &'static str {
+    let lower = reason.to_ascii_lowercase();
+    if lower.contains("blocked_by_concurrency") || lower.contains("task/protected") {
+        "concurrency"
+    } else if lower.contains("blocked_by_generic") || lower.contains("generic package") {
+        "generic"
+    } else if lower.contains("private") || lower.contains("not public") {
+        "visibility"
+    } else if lower.contains("no byte-buffer decoder") || lower.contains("parameter") {
+        "decoder_or_parameter"
+    } else if lower.contains("cannot construct") || lower.contains("constructor") {
+        "construction"
+    } else if lower.contains("header") && lower.contains("translation unit") {
+        "translation_unit_context"
+    } else if lower.contains("toolchain") || lower.contains("compiler") {
+        "toolchain"
+    } else if lower.contains("legacy") || lower.contains("k&r") {
+        "legacy_dialect"
+    } else {
+        "other"
+    }
+}
+
 #[derive(Debug)]
 pub struct AttemptResult {
     pub candidate: Candidate,
     pub outcome: Outcome,
     pub harness_dir: PathBuf,
+}
+
+impl AttemptResult {
+    /// Outcome trace enriched with generation-path evidence checkpointed in the
+    /// harness directory. The outcome enum stays backward compatible, while a
+    /// successful sequence/servant fallback is no longer indistinguishable from
+    /// a first-choice direct harness in run.json and support reports.
+    pub fn attempt_trace(&self) -> AttemptTrace {
+        let mut trace = self.outcome.attempt_trace();
+        let fallback = std::fs::read_to_string(self.harness_dir.join("generation-fallback.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .and_then(|value| value.get("from")?.as_str().map(str::to_owned));
+        let stage = match fallback.as_deref() {
+            Some("sequence") => Some("sequence_generation_failed"),
+            Some("servant_direct") => Some("servant_generation_failed"),
+            _ => None,
+        };
+        if let Some(stage) = stage {
+            trace.fallback_chain.insert(0, stage.to_owned());
+            trace.fallback_chain.insert(1, "direct_fallback".to_owned());
+        }
+        trace
+    }
 }
 
 /// Resolve the per-target fuzz budget plan. `per_target_time` is the TOTAL
@@ -859,14 +1066,15 @@ pub fn attempt_with_progress(
     let result = if matches!(result.outcome, Outcome::FailedBuild { .. })
         && auto_sequence_candidate(candidate)
     {
-        let direct = run_attempt(candidate, work_dir, decl_index, options, progress, true)?;
+        let mut direct = run_attempt(candidate, work_dir, decl_index, options, progress, true)?;
         if matches!(
             direct.outcome,
             Outcome::BuiltAndFuzzed { .. } | Outcome::Built { .. }
         ) {
             return Ok(direct);
         }
-        result
+        retain_sequence_failure(&result.outcome, &mut direct.outcome);
+        direct
     } else {
         result
     };
@@ -958,6 +1166,109 @@ pub fn attempt_with_progress(
         }
     }
     Ok(result)
+}
+
+fn retain_sequence_failure(sequence: &Outcome, direct: &mut Outcome) {
+    let Outcome::FailedBuild {
+        last_errors: sequence_errors,
+        ..
+    } = sequence
+    else {
+        return;
+    };
+    let sequence_json = serde_json::to_string(sequence_errors)
+        .unwrap_or_else(|_| format!("{} classified error(s)", sequence_errors.len()));
+    match direct {
+        Outcome::FailedBuild { last_errors, .. } => {
+            last_errors.push(BuildErrorKind::Other {
+                tail: format!(
+                    "sequence harness failed before the direct fallback; sequence diagnostics: {sequence_json}"
+                ),
+            });
+        }
+        Outcome::UnsupportedParams { reason } => {
+            reason.push_str(&format!(
+                "; sequence harness build also failed first: {sequence_json}"
+            ));
+        }
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod sequence_fallback_tests {
+    use super::{retain_sequence_failure, Outcome};
+    use build_classifier::BuildErrorKind;
+
+    fn sequence_failure() -> Outcome {
+        Outcome::FailedBuild {
+            repairs: Vec::new(),
+            retries: 2,
+            last_errors: vec![BuildErrorKind::MissingType {
+                name: "SequenceOnlyType".to_owned(),
+            }],
+        }
+    }
+
+    #[test]
+    fn direct_unsupported_is_terminal_and_retains_sequence_diagnostic() {
+        let mut direct = Outcome::UnsupportedParams {
+            reason: "direct receiver cannot be initialized".to_owned(),
+        };
+        retain_sequence_failure(&sequence_failure(), &mut direct);
+        let Outcome::UnsupportedParams { reason } = direct else {
+            panic!("direct terminal outcome was replaced")
+        };
+        assert!(reason.contains("direct receiver cannot be initialized"));
+        assert!(reason.contains("sequence harness build also failed first"));
+        assert!(reason.contains("SequenceOnlyType"));
+    }
+
+    #[test]
+    fn direct_build_failure_retains_both_error_chains() {
+        let mut direct = Outcome::FailedBuild {
+            repairs: Vec::new(),
+            retries: 1,
+            last_errors: vec![BuildErrorKind::Other {
+                tail: "direct compile terminal".to_owned(),
+            }],
+        };
+        retain_sequence_failure(&sequence_failure(), &mut direct);
+        let Outcome::FailedBuild { last_errors, .. } = direct else {
+            panic!("direct terminal outcome was replaced")
+        };
+        assert!(matches!(
+            &last_errors[0],
+            BuildErrorKind::Other { tail } if tail == "direct compile terminal"
+        ));
+        assert!(matches!(
+            &last_errors[1],
+            BuildErrorKind::Other { tail }
+                if tail.contains("sequence harness failed") && tail.contains("SequenceOnlyType")
+        ));
+    }
+
+    #[test]
+    fn unsupported_trace_is_structured_and_never_implies_missing_repairs() {
+        let outcome = Outcome::UnsupportedParams {
+            reason: "C++ parameter 'value' has no byte-buffer decoder; sequence generation also failed first: constructor unavailable".to_owned(),
+        };
+        let trace = outcome.attempt_trace();
+        assert_eq!(trace.terminal_stage, "generation");
+        assert_eq!(
+            trace.reason_category.as_deref(),
+            Some("decoder_or_parameter")
+        );
+        assert!(!trace.repairs_attempted);
+        assert_eq!(trace.repair_count, 0);
+        assert_eq!(
+            trace.fallback_chain,
+            ["sequence_failed", "direct_unsupported"]
+        );
+        let json = serde_json::to_value(trace).unwrap();
+        assert_eq!(json["repairs_attempted"], false);
+        assert!(json["fallback_chain"].is_array());
+    }
 }
 
 /// When a build failed and EVERY unresolved error is a type that is undefined in
@@ -1907,6 +2218,15 @@ fn run_attempt(
         ) {
             Ok(()) => {}
             Err(reason) => {
+                if generation_error_is_report_only(&reason) {
+                    let outcome =
+                        crate::auto::report_only::emit_report_only(candidate, reason, work_dir);
+                    return Ok(AttemptResult {
+                        candidate: candidate.clone(),
+                        outcome,
+                        harness_dir,
+                    });
+                }
                 return Ok(AttemptResult {
                     candidate: candidate.clone(),
                     outcome: Outcome::UnsupportedParams { reason },
@@ -2236,6 +2556,7 @@ fn run_attempt(
                         pass: *pass,
                         engine: "builtin".to_owned(),
                         executions: summary.executions,
+                        target_entry_observed: summary.target_entry_observed,
                         coverage_edges: summary.coverage.edges,
                         // #405: the engine's own measured fuzz wall (excludes
                         // build/repair/reseed), carried up so run.json and
@@ -2357,6 +2678,7 @@ fn run_attempt(
                                     pass: crate::auto::pass::Pass::FuzzDriven,
                                     engine: "afl++".to_owned(),
                                     executions: summary.executions,
+                                    target_entry_observed: summary.target_entry_observed,
                                     coverage_edges: summary.coverage.edges,
                                     elapsed_secs: summary.elapsed_secs,
                                     executions_per_sec: summary.executions_per_sec,
@@ -3083,6 +3405,15 @@ fn run_fuzz_with_runtrace(
             "GOVFUZZ_COV_SHM".to_owned(),
             harness_dir.join("coverage.shm").display().to_string(),
         ),
+        // Independent one-byte target-entry proof. The generated C/C++
+        // harness checkpoints immediately before the selected call; Ada emits
+        // the equivalent event through AdaFuzz.Probe. Keeping this separate
+        // prevents driver-only execution/coverage from masquerading as a
+        // successfully fuzzed endpoint.
+        (
+            "GOVFUZZ_TARGET_ENTRY_SHM".to_owned(),
+            harness_dir.join("target_entry.shm").display().to_string(),
+        ),
         // AFL-style per-exec hit-count map (#420), a PARALLEL channel to the
         // presence bitmap above: the C/C++ driver runtime saturating-increments
         // each edge's per-exec count here so the engine can bucket loop/recursion
@@ -3241,9 +3572,27 @@ fn generate_harness_for(
     decoder_limits: &crate::generate_harness::DecoderLimitArgs,
     force: bool,
 ) -> std::result::Result<(), String> {
+    let fallback_path = dir.join("generation-fallback.json");
+    let _ = std::fs::remove_file(&fallback_path);
     let output_dir = dir.parent().expect("harness dir has parent").to_path_buf();
+    let prefer_servant = ada_auto_servant_candidate(c);
     let prefer_sequence = !force_direct && auto_sequence_candidate(c);
-    let res = if prefer_sequence {
+    let res = if prefer_servant {
+        crate::generate_harness::generate_for_path_with_kind(
+            &c.source_path,
+            &c.name,
+            Some(c.line),
+            &output_dir,
+            &c.harness_id,
+            "servant_direct",
+            None,
+            source_root,
+            ada_dep_dirs,
+            tree_type_defs.clone(),
+            decoder_limits.clone(),
+            force,
+        )
+    } else if prefer_sequence {
         crate::generate_harness::generate_for_path_with_kind(
             &c.source_path,
             &c.name,
@@ -3275,6 +3624,33 @@ fn generate_harness_for(
     };
     match res {
         Ok(()) => Ok(()),
+        Err(servant_error) if prefer_servant => {
+            let direct = crate::generate_harness::generate_for_path(
+                &c.source_path,
+                &c.name,
+                Some(c.line),
+                &output_dir,
+                &c.harness_id,
+                None,
+                source_root,
+                ada_dep_dirs,
+                tree_type_defs.clone(),
+                decoder_limits.clone(),
+                force,
+            );
+            match direct {
+                Ok(()) => {
+                    let _ = std::fs::write(
+                        &fallback_path,
+                        br#"{"schema_version":1,"from":"servant_direct","to":"direct"}"#,
+                    );
+                    Ok(())
+                }
+                Err(direct_error) => Err(format!(
+                    "{direct_error:#}; servant-direct generation also failed first: {servant_error:#}"
+                )),
+            }
+        }
         Err(sequence_error) if prefer_sequence => {
             let direct = crate::generate_harness::generate_for_path(
                 &c.source_path,
@@ -3289,13 +3665,133 @@ fn generate_harness_for(
                 decoder_limits.clone(),
                 force,
             );
-            direct.map_err(|direct_error| {
-                format!(
+            match direct {
+                Ok(()) => {
+                    let _ = std::fs::write(
+                        &fallback_path,
+                        br#"{"schema_version":1,"from":"sequence","to":"direct"}"#,
+                    );
+                    Ok(())
+                }
+                Err(direct_error) => Err(format!(
                     "{direct_error:#}; sequence generation also failed first: {sequence_error:#}"
-                )
-            })
+                )),
+            }
         }
         Err(error) => Err(format!("{error:#}")),
+    }
+}
+
+/// Identify a checked-in legacy Ada servant operation from the same structural
+/// evidence used by harness generation. Auto previously never selected the
+/// existing `servant_direct` lane, so a concrete `Bar_Impl.Servant` receiver was
+/// handed to the ordinary parameter decoder; derived-type resolution collapsed
+/// it to `PortableServer.Servant` and emitted an ill-typed call.
+fn ada_auto_servant_candidate(c: &Candidate) -> bool {
+    use ada_parser::ast::{SubprogramOwner, TypeKind, TypeOwner};
+
+    if c.lang != crate::auto::candidate::Lang::Ada {
+        return false;
+    }
+    let Ok(source) = crate::source_text::read_source_text(&c.source_path) else {
+        return false;
+    };
+    let Ok(ast) = ada_parser::reconcile::build_structural_ast(&source, None, &c.source_path) else {
+        return false;
+    };
+    let Some(target) = ast
+        .subprograms
+        .iter()
+        .find(|subprogram| {
+            subprogram.decl_span.start_line == c.line
+                && subprogram.name.eq_ignore_ascii_case(&c.name)
+        })
+        .or_else(|| {
+            ast.subprograms
+                .iter()
+                .find(|subprogram| subprogram.name.eq_ignore_ascii_case(&c.name))
+        })
+    else {
+        return false;
+    };
+    let SubprogramOwner::Package(package_id) = target.owner else {
+        return false;
+    };
+    let Some(receiver) = target.params.first() else {
+        return false;
+    };
+    let Some(receiver_leaf) = receiver.type_ref.name_path.last() else {
+        return false;
+    };
+    if !receiver_leaf.to_ascii_lowercase().ends_with("servant") {
+        return false;
+    }
+    let impl_package = ast
+        .packages
+        .iter()
+        .find(|package| package.id == package_id)
+        .is_some_and(|package| package.name.to_ascii_lowercase().ends_with("_impl"));
+    let declared_servant = ast.types.iter().any(|type_ref| {
+        type_ref.owner == TypeOwner::Package(package_id)
+            && type_ref
+                .name_path
+                .last()
+                .is_some_and(|name| name.eq_ignore_ascii_case(receiver_leaf))
+            && (matches!(type_ref.kind, TypeKind::Tagged { .. })
+                || type_ref
+                    .constraints
+                    .0
+                    .to_ascii_lowercase()
+                    .contains("servant"))
+    });
+    impl_package || declared_servant
+}
+
+fn generation_error_is_report_only(reason: &str) -> bool {
+    reason.contains(crate::generate_harness::BLOCKED_BY_NON_SELF_CONTAINED_HEADER)
+}
+
+#[cfg(test)]
+mod generation_outcome_tests {
+    use super::{ada_auto_servant_candidate, generation_error_is_report_only};
+    use crate::auto::candidate::{Candidate, Lang};
+
+    #[test]
+    fn non_self_contained_header_is_report_only_not_unsupported() {
+        assert!(generation_error_is_report_only(
+            "blocked_by_non_self_contained_header: legacy.hpp needs its owner TU"
+        ));
+        assert!(!generation_error_is_report_only(
+            "C++ parameter has no byte-buffer decoder"
+        ));
+    }
+
+    #[test]
+    fn checked_in_derived_servant_operation_selects_servant_direct_lane() {
+        let root = tempfile::Builder::new()
+            .prefix("govfuzz-auto-servant-detect-")
+            .tempdir()
+            .unwrap();
+        let source = root.path().join("bar_impl.ads");
+        std::fs::write(
+            &source,
+            "with PortableServer;\npackage Bar_Impl is\n   type Servant is new PortableServer.Servant_Base with null record;\n   function Compute (Self : Servant; S : String) return Integer;\nend Bar_Impl;\n",
+        )
+        .unwrap();
+        let candidate = Candidate {
+            harness_id: "H-ASERVANT".to_owned(),
+            lang: Lang::Ada,
+            source_path: source,
+            line: 4,
+            name: "compute".to_owned(),
+            score: 1,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+
+        assert!(ada_auto_servant_candidate(&candidate));
     }
 }
 
@@ -3950,19 +4446,22 @@ fn try_build_c(
     let harness_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
     let is_cpp = harness_dir.join("main.cpp").is_file();
     // C++ dialect selection: an explicit `--cxx-std` (GOVFUZZ_CXX_STD) wins; else a
-    // standard the ladder already chose for this project (cached in the work dir) is
-    // reused so the ladder runs about once per project, not per target; else the baked
-    // default, which the legacy-dialect ladder below may override on a failure.
+    // standard the ladder already proved for this exact target/build context is
+    // reused; else the baked default may be overridden on a failure. A project-wide
+    // cache lets one C++11 TU poison unrelated C++17 targets.
     let explicit_std = std::env::var("GOVFUZZ_CXX_STD")
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty());
-    let cache_path = work_dir.join("cxx_dialect.txt");
+    let cache_path = cxx_dialect_cache_path(work_dir, harness_id);
     let mut cached_std = std::fs::read_to_string(&cache_path)
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty());
     let chosen_std = explicit_std.clone().or_else(|| cached_std.clone());
+    let build_succeeded = |output: &std::process::Output| {
+        output.status.success() && harness_dir.join("main").is_file()
+    };
 
     let mut output = crate::build::try_run_c_make_build_with_target(
         work_dir,
@@ -3973,7 +4472,7 @@ fn try_build_c(
         None,
         chosen_std.as_deref(),
     );
-    if output.status.success() {
+    if build_succeeded(&output) {
         return BuildOutcome::Success;
     }
     let mut raw_output = combined_build_output(&output);
@@ -4002,7 +4501,7 @@ fn try_build_c(
             None,
             None,
         );
-        if compat_output.status.success() {
+        if build_succeeded(&compat_output) {
             return BuildOutcome::Success;
         }
         let compat_raw = combined_build_output(&compat_output);
@@ -4042,7 +4541,7 @@ fn try_build_c(
             None,
             None,
         );
-        if output.status.success() {
+        if build_succeeded(&output) {
             return BuildOutcome::Success;
         }
         raw_output = combined_build_output(&output);
@@ -4081,7 +4580,10 @@ fn try_build_c(
                 None,
                 Some(std),
             );
-            if out.status.success() {
+            if build_succeeded(&out) {
+                if let Some(parent) = cache_path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
                 let _ = std::fs::write(&cache_path, std);
                 return BuildOutcome::Success;
             }
@@ -4098,14 +4600,52 @@ fn try_build_c(
                 best = Some((std, errs));
             }
         }
-        if let Some((std, errs)) = best {
+        if let Some((_std, errs)) = best {
             if errs.len() < errors.len() {
-                let _ = std::fs::write(&cache_path, std);
+                // A failed dialect is evidence for this one invocation only. It
+                // must never be persisted: repairs can change the include graph,
+                // and a low error count is not proof of compatibility.
                 return BuildOutcome::Failed { errors: errs };
             }
         }
     }
     BuildOutcome::Failed { errors }
+}
+
+fn cxx_dialect_cache_path(work_dir: &Path, harness_id: &str) -> PathBuf {
+    use sha2::{Digest, Sha256};
+    let harness_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
+    let mut hasher = Sha256::new();
+    hasher.update(b"govfuzz-cxx-dialect-context-v2\0");
+    for name in ["Makefile", "main.cpp"] {
+        hasher.update(name.as_bytes());
+        if let Ok(bytes) = std::fs::read(harness_dir.join(name)) {
+            hasher.update(bytes);
+        }
+    }
+    let repairs = harness_dir.join("repairs");
+    if let Ok(entries) = std::fs::read_dir(&repairs) {
+        let mut files = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_file())
+            .collect::<Vec<_>>();
+        files.sort();
+        for file in files {
+            if let Some(name) = file.file_name() {
+                hasher.update(name.to_string_lossy().as_bytes());
+            }
+            if let Ok(bytes) = std::fs::read(file) {
+                hasher.update(bytes);
+            }
+        }
+    }
+    let digest = hasher.finalize();
+    let key = digest[..12]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    work_dir.join("cxx_dialects").join(format!("{key}.txt"))
 }
 
 fn output_requires_newer_cxx_standard(output: &str) -> bool {
@@ -4120,7 +4660,16 @@ fn output_may_require_fcommon(output: &str) -> bool {
 
 #[cfg(test)]
 mod cxx_dialect_output_tests {
-    use super::{output_may_require_fcommon, output_requires_newer_cxx_standard};
+    use super::{
+        cxx_dialect_cache_path, output_may_require_fcommon, output_requires_newer_cxx_standard,
+        CXX_DIALECT_LADDER,
+    };
+    use std::fs;
+
+    #[test]
+    fn dialect_ladder_never_selects_a_standard_the_driver_cannot_compile() {
+        assert_eq!(CXX_DIALECT_LADDER, ["gnu++17", "gnu++14", "gnu++11"]);
+    }
 
     #[test]
     fn raw_output_keeps_stdlib_floor_signal_among_classified_errors() {
@@ -4149,11 +4698,46 @@ mod cxx_dialect_output_tests {
             "undefined reference to `legacy_global'"
         ));
     }
+
+    #[test]
+    fn dialect_cache_is_target_and_repair_context_scoped() {
+        let temp = tempfile::tempdir().unwrap();
+        let first = temp.path().join("harnesses/H-X1");
+        let second = temp.path().join("harnesses/H-X2");
+        fs::create_dir_all(first.join("repairs")).unwrap();
+        fs::create_dir_all(&second).unwrap();
+        fs::write(first.join("Makefile"), "CXXFLAGS += -DAPI=1\n").unwrap();
+        fs::write(first.join("main.cpp"), "int main() { return 0; }\n").unwrap();
+        fs::write(second.join("Makefile"), "CXXFLAGS += -DAPI=2\n").unwrap();
+        fs::write(second.join("main.cpp"), "int main() { return 0; }\n").unwrap();
+
+        let before = cxx_dialect_cache_path(temp.path(), "H-X1");
+        let other = cxx_dialect_cache_path(temp.path(), "H-X2");
+        assert_ne!(
+            before, other,
+            "unrelated TUs must not share a dialect cache"
+        );
+        fs::write(
+            first.join("repairs/auto_cpp_includes.h"),
+            "#include <span>\n",
+        )
+        .unwrap();
+        let after = cxx_dialect_cache_path(temp.path(), "H-X1");
+        assert_ne!(
+            before, after,
+            "a repair-induced include graph change must invalidate the dialect choice"
+        );
+    }
 }
 
 /// Successively older C++ standards the dialect ladder retries after the default
 /// (gnu++20) fails — newest first, so a target builds at the newest standard it can.
-const CXX_DIALECT_LADDER: [&str; 5] = ["gnu++17", "gnu++14", "gnu++11", "gnu++03", "gnu++98"];
+// The generated driver uses C++11 library/language facilities. Advertising
+// gnu++03/98 retries was false: those rungs failed in the harness itself and the
+// "fewest errors" heuristic could cache that failure as if it were progress.
+// C++98 project code is still commonly accepted by gnu++11; genuinely
+// pre-standard code is handled by the explicit report-only dialect lane.
+const CXX_DIALECT_LADDER: [&str; 3] = ["gnu++17", "gnu++14", "gnu++11"];
 
 fn combined_build_output(output: &std::process::Output) -> String {
     format!(
@@ -4491,11 +5075,7 @@ fn try_build_ada(
     let root = source_root.unwrap_or(fallback_root);
     // Name the target's Ada unit so the build can be restricted to its
     // with-closure (#GAP-C) instead of compiling the whole swept tree.
-    let target_unit = candidate
-        .source_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .and_then(ada_unit_key_from_filename);
+    let target_unit = ada_source_unit_name(&candidate.source_path);
     if let Err(reason) = ensure_ada_src_instrumented(
         work_dir,
         root,
@@ -4518,7 +5098,8 @@ fn try_build_ada(
         };
     }
 
-    run_ada_build_once(work_dir, harness_id)
+    let source_project = crate::auto::gpr_scenario::find_project_gpr(root);
+    run_ada_build_once(work_dir, harness_id, source_project.as_deref())
 }
 
 /// The generic repair loop records selected real C definitions and generated C
@@ -4562,9 +5143,14 @@ fn stage_ada_c_repair_sources(
 /// Run the Ada build pipeline once for `harness_id` and classify the result.
 /// `BuildArgs` defaults mirror clap's value-enum defaults for the build
 /// subcommand (host_file probe, libfuzzer engine — the latter irrelevant here).
-fn run_ada_build_once(work_dir: &Path, harness_id: &str) -> BuildOutcome {
+fn run_ada_build_once(
+    work_dir: &Path,
+    harness_id: &str,
+    source_project: Option<&Path>,
+) -> BuildOutcome {
     let build_args = crate::build::BuildArgs {
         work_dir: work_dir.to_path_buf(),
+        source_project: source_project.map(Path::to_path_buf),
         harness: Some(harness_id.to_owned()),
         target: None,
         runtime: None,
@@ -4788,9 +5374,6 @@ fn ensure_ada_src_instrumented(
     closure_target_unit: Option<&str>,
 ) -> Result<(), String> {
     let dst = work_dir.join("src_instrumented");
-    if has_ada_source_files(&dst) {
-        return Ok(());
-    }
     std::fs::create_dir_all(&dst).map_err(|e| format!("create {}: {e}", dst.display()))?;
 
     // Directories the project's default GPR scenario excludes — don't instrument
@@ -4811,6 +5394,7 @@ fn ensure_ada_src_instrumented(
     // keyed by unit filename, so any residual overlap is idempotent. No .gpr -> the
     // unchanged whole-tree behaviour.
     let governing_gpr = crate::auto::gpr_scenario::find_project_gpr(source_root);
+    let preserve_project_naming = governing_gpr.is_some();
     for gpr_dir in governing_gpr
         .as_deref()
         .map(crate::auto::gpr_scenario::active_source_dirs)
@@ -4842,8 +5426,22 @@ fn ensure_ada_src_instrumented(
             ));
         }
     }
-    source_files.sort();
-    source_files.dedup();
+    // Source-root order is meaningful: the explicitly scanned root wins ties,
+    // followed by the governing project's evaluated Source_Dirs order.  Within
+    // each walk paths are sorted, and this second pass resolves units repeated
+    // across roots by declared Ada identity rather than traversal order.
+    let source_files_considered = source_files.len();
+    source_files = dedup_ada_units(source_files);
+    let duplicate_units_discarded = source_files_considered.saturating_sub(source_files.len());
+    let selected_source_variants = source_files
+        .iter()
+        .filter(|path| {
+            let Some(basename) = path.file_name().and_then(|name| name.to_str()) else {
+                return false;
+            };
+            ada_variant_dest_basename(basename).is_some_and(|canonical| canonical != basename)
+        })
+        .count();
     let dep_file_lists: Vec<Vec<PathBuf>> = dep_dirs
         .iter()
         .map(|dep_dir| {
@@ -4903,14 +5501,13 @@ fn ensure_ada_src_instrumented(
             }
         }
         if is_pure {
-            if let Some(basename) = source_path.file_name() {
-                let bn = basename.to_string_lossy();
-                if !bn.eq_ignore_ascii_case("main.adb") {
-                    if let Some(dest_name) = ada_variant_dest_basename(&bn) {
-                        let dest = dst.join(&dest_name);
-                        if std::fs::write(&dest, source.as_bytes()).is_ok() {
-                            wrote_any = true;
-                        }
+            if let Some(dest_name) =
+                ada_staged_source_basename(&source_path, &source, preserve_project_naming)
+            {
+                if !dest_name.eq_ignore_ascii_case("main.adb") {
+                    let dest = dst.join(&dest_name);
+                    if std::fs::write(&dest, source.as_bytes()).is_ok() {
+                        wrote_any = true;
                     }
                 }
             }
@@ -4940,9 +5537,6 @@ fn ensure_ada_src_instrumented(
                 continue;
             }
         };
-        let Some(basename) = source_path.file_name() else {
-            continue;
-        };
         // The generated harness is always `main.adb` (`procedure Main`), and
         // the build project (`govfuzz_build.gpr`) compiles src_instrumented +
         // generated_harnesses together. A source-tree `main.adb` (example /
@@ -4953,15 +5547,14 @@ fn ensure_ada_src_instrumented(
         // `Load_File("example.toml").Value`, raising a discriminant check on
         // the missing file). A standalone `main` is never a fuzz target, so
         // drop it.
-        let bn = basename.to_string_lossy();
-        if bn.eq_ignore_ascii_case("main.adb") {
-            continue;
-        }
-        // Strip a GNAT `__<host>` platform-variant suffix (skip a foreign one) so
-        // the file resolves under GNAT's default naming.
-        let Some(dest_name) = ada_variant_dest_basename(&bn) else {
+        let Some(dest_name) =
+            ada_staged_source_basename(&source_path, &source, preserve_project_naming)
+        else {
             continue;
         };
+        if dest_name.eq_ignore_ascii_case("main.adb") {
+            continue;
+        }
         let dest = dst.join(&dest_name);
         if let Err(e) = std::fs::write(&dest, &instrumented.rewritten_source) {
             return Err(format!("write {}: {e}", dest.display()));
@@ -4991,38 +5584,40 @@ fn ensure_ada_src_instrumented(
             if !in_closure(dep_path) {
                 continue;
             }
-            let Some(basename) = dep_path.file_name() else {
-                continue;
-            };
             // Same rule as the source-tree walk above: a dependency's own
             // `main.adb` (e.g. SweetAda's `core/main.adb`, which does
             // `BSP.Setup; Application.Run;`) must NOT land in src_instrumented,
             // or it shadows the generated harness `main.adb` and gprbuild builds
             // the *project's* main instead of the harness — surfacing as
             // `"Setup" not declared in "bsp"` and never fuzzing.
-            let bn = basename.to_string_lossy();
-            if bn.eq_ignore_ascii_case("main.adb") {
-                continue;
-            }
-            // Honor GNAT `__<host>`/`__<foreign>` platform-variant naming for
-            // dependency sources too (a dep's own per-OS unit bodies).
-            let Some(dest_name) = ada_variant_dest_basename(&bn) else {
+            let mut dependency_source = crate::source_text::read_source_text(dep_path).ok();
+            let dest_name = dependency_source
+                .as_deref()
+                .and_then(|source| ada_source_dest_basename(dep_path, source))
+                .or_else(|| {
+                    dep_path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .and_then(ada_variant_dest_basename)
+                });
+            let Some(dest_name) = dest_name else {
                 continue;
             };
+            if dest_name.eq_ignore_ascii_case("main.adb") {
+                continue;
+            }
             let dest = dst.join(&dest_name);
             if dest.exists() {
                 continue;
             }
-            if let Ok(bytes) = std::fs::read(dep_path) {
-                // Dependencies are normally copied byte-for-byte. Decode only
-                // the ASCII/UTF-8 sources that actually need the legacy GNAT
-                // runtime rewrite; every other encoding remains untouched.
-                if let Ok(mut text) = String::from_utf8(bytes.clone()) {
-                    if rewrite_legacy_gnat_calendar_c_time(&mut text) {
-                        let _ = std::fs::write(&dest, text.as_bytes());
-                        continue;
-                    }
-                }
+            if dependency_source
+                .as_mut()
+                .is_some_and(rewrite_legacy_gnat_calendar_c_time)
+            {
+                let _ = std::fs::write(&dest, dependency_source.unwrap().as_bytes());
+            } else if let Ok(bytes) = std::fs::read(dep_path) {
+                // Keep the original bytes when no textual compatibility rewrite
+                // was needed (the source reader may have decoded a legacy file).
                 let _ = std::fs::write(&dest, bytes);
             }
         }
@@ -5090,6 +5685,25 @@ fn ensure_ada_src_instrumented(
             source_root.display(),
             dst.display()
         ));
+    }
+    let staging_report = serde_json::json!({
+        "schema_version": 1,
+        "source_files_considered": source_files_considered,
+        "duplicate_units_discarded": duplicate_units_discarded,
+        "selected_source_variants": selected_source_variants,
+        "staged_ada_files": std::fs::read_dir(&dst)
+            .ok()
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|entry| entry.path().extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("ads") || ext.eq_ignore_ascii_case("adb")))
+            .count(),
+    });
+    if let Ok(bytes) = serde_json::to_vec(&staging_report) {
+        let _ = crate::auto::report::atomic_write(
+            &work_dir.join("auto/ada-staging-report.json"),
+            &bytes,
+        );
     }
     Ok(())
 }
@@ -5171,26 +5785,16 @@ fn mirror_harness_into_generated_harnesses(
             continue;
         }
         let to = dst.join(entry.file_name());
-        // Skip if already mirrored and unchanged enough for the
-        // build to read.
-        if to.is_file() {
-            continue;
-        }
-        std::fs::copy(&from, &to)
+        // The stable harness id intentionally survives a generator upgrade or a
+        // corrected overload selection. Always atomically refresh the owned build
+        // copy; keeping an existing file made the Ada build execute stale `main.adb`
+        // even though generation had produced the fixed call in `harnesses/`.
+        let bytes =
+            std::fs::read(&from).map_err(|e| format!("read harness {}: {e}", from.display()))?;
+        crate::auto::report::atomic_write(&to, &bytes)
             .map_err(|e| format!("mirror {} -> {}: {e}", from.display(), to.display()))?;
     }
     Ok(())
-}
-
-fn has_ada_source_files(dir: &Path) -> bool {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return false;
-    };
-    entries.flatten().any(|e| {
-        let name = e.file_name();
-        let s = name.to_string_lossy();
-        s.ends_with(".ads") || s.ends_with(".adb")
-    })
 }
 
 /// Recursively yield Ada source paths under `root`, skipping anything
@@ -5272,6 +5876,7 @@ fn walk_ada_sources(
             }
         }
     }
+    out.sort();
     dedup_ada_units(out)
 }
 
@@ -5421,6 +6026,75 @@ fn ada_unit_key_from_filename(basename: &str) -> Option<String> {
     Some(stem.replace('-', ".").to_ascii_lowercase())
 }
 
+/// Declared Ada compilation-unit name, independent of GNAT's default filename
+/// convention.  Project files may map an arbitrary basename to a unit; parsing
+/// the declaration lets the flattened overlay preserve that mapping by writing
+/// the source under a canonical GNAT basename.
+fn ada_declared_unit_name(source: &str, path: &Path) -> Option<String> {
+    let ast = ada_parser::reconcile::build_structural_ast(source, None, path).ok()?;
+    if let Some(package) = ast.packages.first() {
+        return Some(package.name.to_ascii_lowercase());
+    }
+    ast.subprograms
+        .iter()
+        .find(|subprogram| {
+            matches!(
+                subprogram.owner,
+                ada_parser::ast::SubprogramOwner::LibraryLevel
+            )
+        })
+        .map(|subprogram| subprogram.name.to_ascii_lowercase())
+}
+
+fn ada_source_unit_name(path: &Path) -> Option<String> {
+    crate::source_text::read_source_text(path)
+        .ok()
+        .and_then(|source| ada_declared_unit_name(&source, path))
+        .or_else(|| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .and_then(ada_unit_key_from_filename)
+        })
+}
+
+/// Destination basename for a source staged under GNAT's default naming.  A
+/// successfully parsed declaration is authoritative; the source basename is a
+/// compatibility fallback for compiler runtime units the structural parser
+/// cannot parse.  Platform variants are still screened before renaming.
+pub(super) fn ada_source_dest_basename(path: &Path, source: &str) -> Option<String> {
+    let basename = path.file_name()?.to_str()?;
+    let variant_name = ada_variant_dest_basename(basename)?;
+    let extension = path.extension()?.to_str()?;
+    if !extension.eq_ignore_ascii_case("ads") && !extension.eq_ignore_ascii_case("adb") {
+        return Some(variant_name);
+    }
+    ada_declared_unit_name(source, path)
+        .map(|name| {
+            format!(
+                "{}.{}",
+                name.replace('.', "-"),
+                extension.to_ascii_lowercase()
+            )
+        })
+        .or(Some(variant_name))
+}
+
+fn ada_staged_source_basename(
+    path: &Path,
+    source: &str,
+    preserve_project_naming: bool,
+) -> Option<String> {
+    let basename = path.file_name()?.to_str()?;
+    // Screening the variant is still necessary, but when the governing project
+    // is inherited its Naming package expects the original selected basename.
+    let _ = ada_variant_dest_basename(basename)?;
+    if preserve_project_naming {
+        Some(basename.to_owned())
+    } else {
+        ada_source_dest_basename(path, source)
+    }
+}
+
 /// Ancestor unit names of `unit` (`a.b.c` -> [`a.b`, `a`]). A child unit's
 /// closure must include its parents.
 fn ada_unit_ancestors(unit_lower: &str) -> Vec<String> {
@@ -5491,14 +6165,8 @@ fn build_ada_unit_file_map(files: &[PathBuf]) -> std::collections::BTreeMap<Stri
         // with-closure traversal can connect those units without hardcoding the
         // compiler's filename table. Keep the filename key for ordinary units and
         // for parser fallbacks.
-        if let Ok(source) = crate::source_text::read_source_text(f) {
-            if let Ok(ast) = ada_parser::reconcile::build_structural_ast(&source, None, f) {
-                keys.extend(
-                    ast.packages
-                        .iter()
-                        .map(|package| package.name.to_ascii_lowercase()),
-                );
-            }
+        if let Some(unit) = ada_source_unit_name(f) {
+            keys.push(unit);
         }
         keys.sort();
         keys.dedup();
@@ -5613,26 +6281,33 @@ fn ada_dir_is_foreign_platform(name: &str) -> bool {
         || (!host_linux && n.contains("linux") && !n.contains("clinux"))
 }
 
-/// Drop duplicate Ada compilation units (same file basename appearing in more
-/// than one source dir). gprbuild rejects a project with two files for the
-/// same unit; keep the one whose path best matches the build host (most
-/// host-platform path tokens), else the first seen.
+/// Drop duplicate Ada compilation units.  Identity comes from the declaration,
+/// not the basename, and spec/body are distinct.  Input order expresses source
+/// directory precedence; host affinity overrides it only for an explicit host
+/// platform variant.  Lexically sorted directory walks make every remaining tie
+/// deterministic.
 fn dedup_ada_units(paths: Vec<PathBuf>) -> Vec<PathBuf> {
     use std::collections::HashMap;
     let mut best: HashMap<String, PathBuf> = HashMap::new();
     let mut order: Vec<String> = Vec::new();
     for path in paths {
-        let Some(base) = path.file_name().and_then(|n| n.to_str()).map(str::to_owned) else {
+        let Some(unit) = ada_source_unit_name(&path) else {
             continue;
         };
-        match best.get(&base) {
+        let extension = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        let key = format!("{unit}:{extension}");
+        match best.get(&key) {
             None => {
-                order.push(base.clone());
-                best.insert(base, path);
+                order.push(key.clone());
+                best.insert(key, path);
             }
             Some(existing) => {
                 if ada_host_affinity(&path) > ada_host_affinity(existing) {
-                    best.insert(base, path);
+                    best.insert(key, path);
                 }
             }
         }
@@ -6398,6 +7073,7 @@ mod throughput_tests {
             pass: Pass::FuzzDriven,
             engine: "afl++".to_owned(),
             executions: 10,
+            target_entry_observed: false,
             coverage_edges: 0,
             elapsed_secs: 1.0,
             executions_per_sec: 10.0,
@@ -6412,6 +7088,7 @@ mod throughput_tests {
             pass: Pass::Rng,
             engine: "builtin".to_owned(),
             executions,
+            target_entry_observed: false,
             coverage_edges: 0,
             elapsed_secs,
             executions_per_sec: if elapsed_secs > 0.0 {
@@ -6505,7 +7182,8 @@ mod iteration_cap_tests {
 
 #[cfg(test)]
 mod ada_source_tests {
-    use super::{ada_dir_is_foreign_platform, dedup_ada_units};
+    use super::{ada_dir_is_foreign_platform, ada_source_dest_basename, dedup_ada_units};
+    use std::fs;
     use std::path::PathBuf;
 
     #[test]
@@ -6551,6 +7229,42 @@ mod ada_source_tests {
             .unwrap();
         assert!(os.to_string_lossy().contains("linux64"), "{os:?}");
     }
+
+    #[test]
+    fn declared_unit_identity_deduplicates_custom_names_deterministically() {
+        let temp = tempfile::tempdir().unwrap();
+        let first = temp.path().join("01-preferred-name.ads");
+        let duplicate = temp.path().join("02-other-name.ads");
+        let body = temp.path().join("arbitrary-body-name.adb");
+        fs::write(
+            &first,
+            "package Parent.Child is procedure Run; end Parent.Child;",
+        )
+        .unwrap();
+        fs::write(
+            &duplicate,
+            "package Parent.Child is procedure Other; end Parent.Child;",
+        )
+        .unwrap();
+        fs::write(
+            &body,
+            "package body Parent.Child is procedure Run is begin null; end Run; end Parent.Child;",
+        )
+        .unwrap();
+
+        let kept = dedup_ada_units(vec![first.clone(), duplicate, body.clone()]);
+        assert_eq!(kept, vec![first.clone(), body.clone()]);
+        let spec_source = fs::read_to_string(&first).unwrap();
+        let body_source = fs::read_to_string(&body).unwrap();
+        assert_eq!(
+            ada_source_dest_basename(&first, &spec_source).as_deref(),
+            Some("parent-child.ads")
+        );
+        assert_eq!(
+            ada_source_dest_basename(&body, &body_source).as_deref(),
+            Some("parent-child.adb")
+        );
+    }
 }
 
 #[cfg(test)]
@@ -6558,7 +7272,8 @@ mod stamp_tests {
     use super::{
         ada_subunit_parent, ada_unit_key_from_filename, ada_variant_dest_basename,
         build_ada_unit_file_map, c_file_is_simd_backend, compute_ada_build_closure,
-        ensure_ada_src_instrumented, env_injections_from_events, reset_repairs_dir,
+        ensure_ada_src_instrumented, env_injections_from_events,
+        mirror_harness_into_generated_harnesses, reset_repairs_dir,
         rewrite_legacy_gnat_calendar_c_time, stage_ada_c_repair_sources, stamp_runtime_mode,
         walk_to_common_src_root,
     };
@@ -6626,6 +7341,32 @@ mod stamp_tests {
             root.join("corpus").join("seed").exists(),
             "the persisted corpus outside repairs/ must be preserved"
         );
+    }
+
+    #[test]
+    fn ada_harness_mirror_refreshes_an_existing_stable_id() {
+        let work = tmpdir("refresh-ada-mirror");
+        let harness = work.join("harnesses/H-A-STABLE");
+        let generated = work.join("generated_harnesses/H-A-STABLE");
+        fs::create_dir_all(&harness).unwrap();
+        fs::create_dir_all(&generated).unwrap();
+        fs::write(
+            harness.join("main.adb"),
+            "procedure Main is begin New_Target; end Main;\n",
+        )
+        .unwrap();
+        fs::write(
+            generated.join("main.adb"),
+            "procedure Main is begin Old_Target; end Main;\n",
+        )
+        .unwrap();
+
+        mirror_harness_into_generated_harnesses(&work, "H-A-STABLE").unwrap();
+
+        let mirrored = fs::read_to_string(generated.join("main.adb")).unwrap();
+        assert!(mirrored.contains("New_Target"));
+        assert!(!mirrored.contains("Old_Target"));
+        fs::remove_dir_all(work).ok();
     }
 
     #[test]
@@ -6797,6 +7538,61 @@ mod stamp_tests {
             !work.join("src_instrumented/leak.adb").exists(),
             "auto should not instrument sibling sources outside the requested sweep root"
         );
+    }
+
+    #[test]
+    fn ada_instrumentation_extends_run_level_tree_for_later_target_closures() {
+        // `src_instrumented` is shared by the whole auto run.  Returning merely
+        // because the first target populated it left every later target with the
+        // first target's dependency closure, producing widespread
+        // MissingAdaSymbol failures.  Each serialized Ada attempt must extend
+        // the staged union with its own closure.
+        let root = tmpdir("ada-multi-target-closures");
+        let project = root.join("project");
+        let work = root.join("work");
+        fs::create_dir_all(&project).unwrap();
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            project.join("first.ads"),
+            "with Dep_First; package First is procedure Run; end First;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("first.adb"),
+            "package body First is procedure Run is begin Dep_First.Touch; end Run; end First;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("dep_first.ads"),
+            "package Dep_First is procedure Touch; end Dep_First;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("second.ads"),
+            "with Dep_Second; package Second is procedure Run; end Second;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("second.adb"),
+            "package body Second is procedure Run is begin Dep_Second.Touch; end Run; end Second;\n",
+        )
+        .unwrap();
+        fs::write(
+            project.join("dep_second.ads"),
+            "package Dep_Second is procedure Touch; end Dep_Second;\n",
+        )
+        .unwrap();
+
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), Some("first"))
+            .unwrap();
+        assert!(work.join("src_instrumented/dep_first.ads").is_file());
+        assert!(!work.join("src_instrumented/dep_second.ads").exists());
+
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), Some("second"))
+            .unwrap();
+        assert!(work.join("src_instrumented/dep_first.ads").is_file());
+        assert!(work.join("src_instrumented/dep_second.ads").is_file());
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]

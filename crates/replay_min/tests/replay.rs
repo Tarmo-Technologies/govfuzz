@@ -100,6 +100,7 @@ fn testcase_with_handler_lines(handler_lines: &[u32]) -> Testcase {
     Testcase {
         testcase_id: 1,
         target_id: 0x42,
+        target_entered: false,
         crumbs: vec![1],
         handlers: handler_lines
             .iter()

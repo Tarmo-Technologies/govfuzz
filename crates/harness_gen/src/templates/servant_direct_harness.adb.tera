@@ -38,6 +38,7 @@ begin
 {%- endfor %}
       begin
 {%- if return_type_present %}
+         AdaFuzz.Probe.Target_Entry;
          declare
             Gf_Result : constant {{ return_type_ada_name }} := {{ qualified_target_name }} ({% for arg in call_args %}{{ arg }}{% if not loop.last %}, {% endif %}{% endfor %});
             pragma Unreferenced (Gf_Result);
@@ -45,6 +46,7 @@ begin
             null;
          end;
 {%- else %}
+         AdaFuzz.Probe.Target_Entry;
          {{ qualified_target_name }} ({% for arg in call_args %}{{ arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
       exception

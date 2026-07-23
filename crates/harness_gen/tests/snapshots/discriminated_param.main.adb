@@ -27,6 +27,7 @@ begin
          Cur : AdaFuzz.Decode.Cursor := AdaFuzz.Decode.Open (Buf'Unchecked_Access, Last);
          R : Variant_Record := Variant_Record'(Kind => Integer (AdaFuzz.Decode.Bounded_Range (Cur, 0, 4)), others => <>);
       begin
+         AdaFuzz.Probe.Target_Entry;
          Switch (R);
       exception
          when AdaFuzz_E : others =>

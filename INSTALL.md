@@ -7,6 +7,10 @@ bundle when you want `install.sh` to install the CLI, daemon, both Linux shims,
 harness runtimes, and the signed content pack together. Use the component
 archives when you want to choose and place the files yourself.
 
+Every all-in-one bundle also carries `INSTALL.md`, `LICENSE`, `README.md`, and
+`RELEASE_NOTES.md` at its root. These are required release payloads, not optional
+source-tree documentation.
+
 Do not mix versions or target triples. The commands below use the published
 64-bit GNU/Linux artifacts.
 
@@ -24,7 +28,8 @@ cd govfuzz-dist-*-x86_64-unknown-linux-gnu
 
 The interactive installer selects language toolchains, targets, fuzzers, and
 optional extras. Its default install prefix is `/opt/govfuzz`, with `govfuzz`
-and `govfuzz-daemon` symlinks in `/usr/local/bin`.
+and `govfuzz-daemon` plus the `govfuzz-bug-report` scrubbed diagnostic collector
+symlinked in `/usr/local/bin`.
 
 For automation or an offline host whose system dependencies were staged
 separately:
@@ -91,6 +96,15 @@ BIN_DIR="${GOVFUZZ_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$PREFIX" "$BIN_DIR"
 cp -a "$CLI_DIR/." "$PREFIX/"
 ln -sfn "$PREFIX/govfuzz" "$BIN_DIR/govfuzz"
+install -m 0755 "$CLI_DIR/govfuzz-bug-report.sh" "$PREFIX/govfuzz-bug-report"
+ln -sfn "$PREFIX/govfuzz-bug-report" "$BIN_DIR/govfuzz-bug-report"
+```
+
+The wrapper runs the CLI's built-in collector. Either form works:
+
+```sh
+govfuzz-bug-report /path/to/govfuzz_work
+govfuzz bug-report /path/to/govfuzz_work --stdout
 ```
 
 To add the optional daemon, extract its archive, copy `govfuzz-daemon` into the

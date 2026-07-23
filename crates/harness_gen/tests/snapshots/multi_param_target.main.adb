@@ -30,6 +30,7 @@ begin
          F : Float := Float (AdaFuzz.Decode.F64 (Cur));
          S : String := AdaFuzz.Decode.Ada_String (Cur, 0, 1024);
       begin
+         AdaFuzz.Probe.Target_Entry;
          Pkg.Mix (I, B, F, S);
       exception
          when AdaFuzz_E : others =>

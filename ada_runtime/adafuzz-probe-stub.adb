@@ -62,6 +62,11 @@ package body AdaFuzz.Probe is
          null;
    end Set_Target;
 
+   procedure Target_Entry is
+   begin
+      null;
+   end Target_Entry;
+
    procedure Flush is
    begin
       Apply_Exit_Status;

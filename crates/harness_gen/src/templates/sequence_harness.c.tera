@@ -94,6 +94,12 @@ extern void govfuzz_shim_set_fuzz_input(const uint8_t *data, size_t size) __attr
     if (govfuzz_shim_set_fuzz_input) govfuzz_shim_set_fuzz_input((data), (size)); \
 } while (0)
 #endif
+#if defined(GOVFUZZ_EXTERNAL_DRIVER)
+extern void govfuzz_target_enter(void);
+#define GOVFUZZ_TARGET_ENTER() govfuzz_target_enter()
+#else
+#define GOVFUZZ_TARGET_ENTER() ((void)0)
+#endif
 int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     GOVFUZZ_PUBLISH_INPUT(Data, Size);
     gf_cursor Cur = gf_open(Data, Size);
@@ -129,6 +135,9 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- for p in step.params %}
             {{ p.decl }};
 {%- endfor %}
+{%- if loop.first %}
+            GOVFUZZ_TARGET_ENTER();
+{%- endif %}
             {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}(&_gf_handle{% for p in step.params %}, {{ p.arg }}{% endfor %});
 {%- if step.return_type_present %}
             GOVFUZZ_KEEP_RESULT({{ step.result_name }});

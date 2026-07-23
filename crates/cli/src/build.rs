@@ -115,6 +115,11 @@ pub struct BuildArgs {
     /// Path to govfuzz_work directory containing src_instrumented and harnesses/generated_harnesses.
     pub work_dir: PathBuf,
 
+    /// Governing Ada project whose evaluated build semantics the generated
+    /// instrumented overlay should inherit.
+    #[arg(long)]
+    pub source_project: Option<PathBuf>,
+
     /// Harness id to build. Defaults to the only harness present (errors if multiple).
     #[arg(long)]
     pub harness: Option<String>,
@@ -382,7 +387,9 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
         .parent()
         .unwrap_or(work_dir.as_path())
         .to_path_buf();
-    with_clauses.extend(discover_user_gpr_with_clauses(&user_root));
+    if args.source_project.is_none() {
+        with_clauses.extend(discover_user_gpr_with_clauses(&user_root));
+    }
 
     let project_path = build_dir.join("govfuzz_build.gpr");
     // A non-`main.adb` main (a child-subprogram harness) gets its executable
@@ -436,6 +443,7 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     };
     let spec = ProjectSpec {
         project_name: "Govfuzz_Build".to_owned(),
+        extends_project: args.source_project.clone(),
         source_roots,
         object_dir: obj_dir,
         main_adb: Some(main_file),
@@ -595,7 +603,7 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
     }
 
     let (make_target, built_name, staged_name) = match args.c_engine {
-        CEngine::Libfuzzer => (None, "main", "main"),
+        CEngine::Libfuzzer => (Some("main"), "main", "main"),
         CEngine::AflPlusPlus => (Some("afl"), "main_afl", "main_afl"),
     };
     eprintln!(
@@ -625,6 +633,12 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
                     return Some(2);
                 }
                 eprintln!("built harness binary -> {}", dest.display());
+            } else {
+                eprintln!(
+                    "make reported success but did not produce expected harness binary '{}'",
+                    built.display()
+                );
+                return Some(2);
             }
             Some(0)
         }
@@ -640,8 +654,10 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
 }
 
 /// Core of the auto C/C++ make build, parameterized on the make target. With
-/// `make_target = None` it builds the default `main`; with `Some("afl")` it builds
-/// the `main_afl` persistent-mode AFL binary. Both targets receive the SAME
+/// `make_target = None` it explicitly requests `main`; with `Some("afl")` it builds
+/// the `main_afl` persistent-mode AFL binary. Explicit `main` is load-bearing:
+/// an included per-TU object fragment can otherwise become GNU make's first/default
+/// goal, return success, and leave no harness executable. Both targets receive the SAME
 /// `AUTO_EXTRA_*` recovery env (extra sources / includes / force-includes), so the
 /// AFL build sees the identical recovered context the `main` build used.
 pub(crate) fn try_run_c_make_build_with_target(
@@ -656,9 +672,26 @@ pub(crate) fn try_run_c_make_build_with_target(
     let harness_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
     let mut cmd = std::process::Command::new("make");
     cmd.current_dir(&harness_dir);
-    if let Some(target) = make_target {
-        cmd.arg(target);
-    }
+    let is_cpp = harness_dir.join("main.cpp").is_file();
+    let prepared_extra_sources = match crate::generate_harness::prepare_repair_per_tu_context(
+        &harness_dir,
+        extra_sources,
+        is_cpp,
+    ) {
+        Ok(sources) => sources,
+        Err(error) => {
+            // Make consumes this environment variable at parse time and
+            // fails before compiling anything. Falling back to the shared
+            // target flags here would silently recreate the context-loss
+            // bug this preparation step exists to prevent.
+            cmd.env(
+                "GOVFUZZ_CONTEXT_PREPARE_FAILED",
+                format!("could not prepare exact repair TU contexts: {error:#}"),
+            );
+            extra_sources.to_vec()
+        }
+    };
+    cmd.arg(make_target.unwrap_or("main"));
     // Override the C++ standard for the legacy-dialect ladder. A make command-line
     // assignment wins over the Makefile's `CXX_STD ?=`; harmless on the C Makefile
     // (no CXX_STD variable there).
@@ -668,7 +701,7 @@ pub(crate) fn try_run_c_make_build_with_target(
     let force_includes = repair_force_includes(&harness_dir);
     apply_c_family_make_env(
         &mut cmd,
-        extra_sources,
+        &prepared_extra_sources,
         extra_includes,
         &force_includes,
         compiler,
@@ -1314,6 +1347,48 @@ mod tests {
     }
 
     #[test]
+    fn native_make_build_explicitly_requests_main_after_included_object_graph() {
+        if std::process::Command::new("make")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping explicit make goal test: make not on PATH");
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let work = temp.path();
+        let harness = work.join("harnesses/H-X");
+        fs::create_dir_all(&harness).unwrap();
+        fs::write(harness.join("main.c"), "int main(void) { return 0; }\n").unwrap();
+        fs::write(
+            harness.join("build_context_objects.mk"),
+            "context_objs:\n\tmkdir -p context_objs\n",
+        )
+        .unwrap();
+        fs::write(
+            harness.join("Makefile"),
+            "-include build_context_objects.mk\n.PHONY: all\nall: main\nmain: main.c\n\ttouch main\n",
+        )
+        .unwrap();
+
+        let output = try_run_c_make_build_with_target(work, "H-X", &[], &[], None, None, None);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            harness.join("main").is_file(),
+            "the included fragment's first target must not replace the harness goal"
+        );
+        assert!(
+            !harness.join("context_objs").exists(),
+            "make must not stop after the fragment's default-looking target"
+        );
+    }
+
+    #[test]
     fn discover_user_gpr_absolutizes_relative_imports_and_skips_bundled_adafuzz() {
         // #411: forwarded `with` clauses must be depth-independent. A
         // relative import is resolved against the source gpr's own dir
@@ -1540,6 +1615,7 @@ mod tests {
 
         let args = BuildArgs {
             work_dir: work.clone(),
+            source_project: None,
             harness: Some("H-A0001".to_owned()),
             target: None,
             runtime: None,
@@ -1555,6 +1631,97 @@ mod tests {
             project.contains(&repair_stubs.to_string_lossy().to_string()),
             "generated GPR should include auto Ada stubs dir; got:\n{project}"
         );
+    }
+
+    #[test]
+    fn ada_overlay_build_inherits_governing_project_semantics_from_external_work_dir() {
+        if std::process::Command::new("gprbuild")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_err()
+        {
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let project_root = temp.path().join("project");
+        let app = project_root.join("app");
+        let original = app.join("original");
+        let common = project_root.join("common/src");
+        fs::create_dir_all(&original).unwrap();
+        fs::create_dir_all(&common).unwrap();
+        fs::write(
+            common.join("common.ads"),
+            "package Common is X : constant Integer := 7; end Common;\n",
+        )
+        .unwrap();
+        fs::write(
+            project_root.join("common/common.gpr"),
+            "project Common is for Source_Dirs use (\"src\"); end Common;\n",
+        )
+        .unwrap();
+        let package_source =
+            "with Common; package Pkg is X : constant Integer := Common.X; end Pkg;\n";
+        fs::write(original.join("vendor_pkg.ads"), package_source).unwrap();
+        fs::write(app.join("gnat.adc"), "pragma Warnings (Off);\n").unwrap();
+        let source_project = app.join("app.gpr");
+        fs::write(
+            &source_project,
+            "with \"../common/common.gpr\";\n\
+             project App is\n\
+                type Mode_Type is (\"host\", \"other\");\n\
+                Mode : Mode_Type := external (\"MODE\", \"host\");\n\
+                for Source_Dirs use (\"original\");\n\
+                package Compiler is\n\
+                   for Local_Configuration_Pragmas use \"gnat.adc\";\n\
+                end Compiler;\n\
+                package Naming is\n\
+                   case Mode is\n\
+                      when \"host\" => for Spec (\"Pkg\") use \"vendor_pkg.ads\";\n\
+                      when others => for Spec (\"Pkg\") use \"unselected.ads\";\n\
+                   end case;\n\
+                end Naming;\n\
+                package Binder is for Default_Switches (\"Ada\") use (\"-E\"); end Binder;\n\
+                package Linker is for Default_Switches (\"Ada\") use (\"-Wl,--as-needed\"); end Linker;\n\
+             end App;\n",
+        )
+        .unwrap();
+
+        // Deliberately outside the project: parent-directory inference cannot
+        // find App.gpr, so only the explicit governing-project plumbing works.
+        let work = temp.path().join("external-work/govfuzz_work");
+        let staged = work.join("src_instrumented");
+        let harness = work.join("generated_harnesses/H-GPR-OVERLAY");
+        fs::create_dir_all(&staged).unwrap();
+        fs::create_dir_all(&harness).unwrap();
+        fs::write(staged.join("vendor_pkg.ads"), package_source).unwrap();
+        fs::write(
+            harness.join("main.adb"),
+            "with Pkg; procedure Main is X : Integer := Pkg.X; begin X := X + 1; end Main;\n",
+        )
+        .unwrap();
+        let args = BuildArgs {
+            work_dir: work,
+            source_project: Some(source_project.clone()),
+            harness: Some("H-GPR-OVERLAY".to_owned()),
+            target: None,
+            runtime: None,
+            toolchain: None,
+            probe_backend: ProbeBackend::HostFile,
+            c_engine: CEngine::Libfuzzer,
+        };
+
+        let captured = try_run_ada_build_capturing(&args).unwrap();
+        assert!(
+            captured.status_success,
+            "overlay should inherit custom Naming, scenario, config, import, binder and linker settings:\n{}\n{}",
+            captured.stdout, captured.stderr
+        );
+        let generated =
+            fs::read_to_string(args.work_dir.join("build/H-GPR-OVERLAY/govfuzz_build.gpr"))
+                .unwrap();
+        assert!(generated.contains(&format!("extends \"{}\"", source_project.display())));
     }
 
     #[test]
@@ -1589,6 +1756,7 @@ mod tests {
         // switch wiring prepare_layout toggles behind the gcc capability probe.
         let spec_with = |switches: Switches| ProjectSpec {
             project_name: "Govfuzz_Build".to_owned(),
+            extends_project: None,
             source_roots: vec![SourceRoot {
                 path: PathBuf::from("/tmp/src"),
                 language: "Ada".to_owned(),

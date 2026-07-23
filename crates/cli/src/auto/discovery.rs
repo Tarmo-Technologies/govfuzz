@@ -69,12 +69,46 @@ fn conditional_directive_count(source: &str) -> usize {
 }
 
 /// Whether a C/C++ `source` should be preprocessed before parsing under `mode`.
-fn should_preprocess(mode: PreprocessMode, source: &str) -> bool {
+fn should_preprocess(mode: PreprocessMode, source: &str, has_project_context: bool) -> bool {
     match mode {
         PreprocessMode::Always => true,
         PreprocessMode::Never => false,
-        PreprocessMode::Auto => conditional_directive_count(source) >= HEAVY_CONDITIONAL_THRESHOLD,
+        // CPP-lite cannot follow included config headers or compiler built-ins.
+        // Without an explicit per-TU project macro context it can silently choose
+        // the wrong branch, so the default keeps raw discovery/generation in the
+        // same world. `Always` remains an explicit best-effort override.
+        PreprocessMode::Auto => {
+            has_project_context
+                && conditional_directive_count(source) >= HEAVY_CONDITIONAL_THRESHOLD
+        }
     }
+}
+
+fn compile_database_preprocessor_defines(path: &Path) -> Vec<(String, String)> {
+    let flags = crate::generate_harness::compile_database_flags_for_source(path);
+    let mut defines = Vec::new();
+    let mut index = 0usize;
+    while index < flags.len() {
+        let flag = &flags[index];
+        let value = if flag == "-D" {
+            index += 1;
+            flags.get(index).map(String::as_str)
+        } else {
+            flag.strip_prefix("-D")
+        };
+        if let Some(value) = value.filter(|value| !value.is_empty()) {
+            let (name, replacement) = value
+                .split_once('=')
+                .map_or((value, "1"), |(name, replacement)| (name, replacement));
+            if !name.is_empty() {
+                defines.push((name.to_owned(), replacement.to_owned()));
+            }
+        }
+        index += 1;
+    }
+    defines.sort();
+    defines.dedup();
+    defines
 }
 
 /// Parse `source` for C functions under `mode`, returning each function with its
@@ -84,9 +118,10 @@ fn should_preprocess(mode: PreprocessMode, source: &str) -> bool {
 fn parse_c_functions_preprocessed(
     source: &str,
     mode: PreprocessMode,
+    defines: &[(String, String)],
 ) -> Result<Vec<c_parser::CFunction>, c_parser::CParseError> {
-    if should_preprocess(mode, source) {
-        let (pp, line_map) = idl_parser::preprocess_c_like_with_line_map(source, &[]);
+    if should_preprocess(mode, source, !defines.is_empty()) {
+        let (pp, line_map) = idl_parser::preprocess_c_like_with_line_map(source, defines);
         let mut fns = c_parser::parse_c_functions(&pp)?;
         for f in &mut fns {
             f.line = line_map.to_original(f.line);
@@ -121,12 +156,24 @@ fn parse_c_functions_preprocessed(
 fn parse_cpp_functions_preprocessed(
     source: &str,
     mode: PreprocessMode,
+    defines: &[(String, String)],
 ) -> Result<Vec<cpp_parser::CppFunction>, cpp_parser::CppParseError> {
-    if should_preprocess(mode, source) {
-        let (pp, line_map) = idl_parser::preprocess_c_like_with_line_map(source, &[]);
+    if should_preprocess(mode, source, !defines.is_empty()) {
+        let (pp, line_map) = idl_parser::preprocess_c_like_with_line_map(source, defines);
         let mut fns = cpp_parser::parse_cpp_functions(&pp)?;
         for f in &mut fns {
             f.line = line_map.to_original(f.line);
+        }
+        if fns.is_empty() {
+            let raw = cpp_parser::parse_cpp_functions(source)?;
+            if !raw.is_empty() {
+                eprintln!(
+                    "govfuzz auto: note: C++ preprocessing removed all {} discoverable \
+                     function(s); using the raw parse because the conditional context is incomplete",
+                    raw.len()
+                );
+                return Ok(raw);
+            }
         }
         Ok(fns)
     } else {
@@ -182,6 +229,22 @@ fn subprogram_is_instantiation(source: &str, subprogram: &ada_parser::ast::Subpr
 /// enough to sink it below every normally-ranked target (scores are small
 /// positive i32) while preserving relative order among demoted targets.
 const GENERIC_DEMOTION: i32 = 1_000_000;
+const CONCURRENCY_DEMOTION: i32 = 1_000_000;
+const KNOWN_UNBUILDABLE_SIGNATURE_DEMOTION: i32 = 1_000_000;
+
+fn ada_unit_has_concurrency(path: &Path, source: &str) -> bool {
+    if crate::generate_harness::ada_concurrency_block_summary(source).is_some() {
+        return true;
+    }
+    let sibling = match path.extension().and_then(|extension| extension.to_str()) {
+        Some(extension) if extension.eq_ignore_ascii_case("ads") => path.with_extension("adb"),
+        Some(extension) if extension.eq_ignore_ascii_case("adb") => path.with_extension("ads"),
+        _ => return false,
+    };
+    crate::source_text::read_source_text(&sibling)
+        .ok()
+        .is_some_and(|text| crate::generate_harness::ada_concurrency_block_summary(&text).is_some())
+}
 
 /// True when `subprogram`'s owning package (or any generic ancestor) is generic
 /// with at least one formal the harness generator cannot synthesize a concrete
@@ -469,18 +532,14 @@ pub fn discover_with_options(
             if !matches!(c.lang, Lang::Cpp) {
                 return true;
             }
-            // `parse_cpp_method_access` keys by `Class::method` (no namespace), but a
-            // candidate name is `[ns::]Class::method` (`tinyxml2::XMLDocument::SetError`).
-            // Match on the last two `::` segments so a private method of a NAMESPACED
-            // class is still dropped.
+            // The access index retains the complete namespace/class identity. If
+            // overloads of the same qualified method have different access, its
+            // value is deliberately `ambiguous` and discovery keeps the target;
+            // generation resolves the exact parameter signature later.
             let full = c.name.split('(').next().unwrap_or(&c.name).trim();
-            let segments: Vec<&str> = full.split("::").collect();
-            let key = if segments.len() >= 2 {
-                segments[segments.len() - 2..].join("::")
-            } else {
-                full.to_owned()
-            };
-            cpp_access.get(&key).is_none_or(|access| access == "public")
+            cpp_access
+                .get(full)
+                .is_none_or(|access| access == "public" || access == "ambiguous")
         });
     }
     // Drop fuzz-driver entry points by NAME (belt-and-suspenders to the `fuzz/`
@@ -988,8 +1047,21 @@ fn accumulate_cpp_member_access(path: &Path, out: &mut std::collections::BTreeMa
     if !matches!(detect_lang(path, &source), Some(Lang::Cpp)) {
         return;
     }
-    for (key, access) in cpp_parser::parse_cpp_method_access(&source) {
-        out.entry(key).or_insert(access);
+    for (signature, access) in cpp_parser::parse_cpp_method_access_signatures(&source) {
+        let key = signature
+            .split_once('(')
+            .map(|(qualified, _)| qualified)
+            .unwrap_or(&signature)
+            .to_owned();
+        match out.get(&key) {
+            Some(existing) if existing != &access => {
+                out.insert(key, "ambiguous".to_owned());
+            }
+            Some(_) => {}
+            None => {
+                out.insert(key, access);
+            }
+        }
     }
 }
 
@@ -1064,6 +1136,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
     // whose tree-sitter grammar hides the version signal are detected here
     // (C/C++/Python/Perl); Ada/Rust/Java/Go are left `None` until their phase.
     let dialect = file_dialect(lang, &source);
+    let preprocessor_defines = if matches!(lang, Lang::C | Lang::Cpp) {
+        compile_database_preprocessor_defines(path)
+    } else {
+        Vec::new()
+    };
     // A non-standalone C/C++ fragment header (`*-inl.h`, `*.inc.hpp`, `*.tcc`) is
     // meant to be textually included after its dependencies; a candidate generated
     // from it can only ever produce a harness that includes the fragment alone and
@@ -1093,6 +1170,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 Ok(a) => a,
                 Err(_) => return Ok(()),
             };
+            let unit_has_concurrency = ada_unit_has_concurrency(path, &source);
             for tgt in target_rank::rank_targets(&ast) {
                 let Some(subprogram) = ast.subprograms.iter().find(|s| s.id == tgt.subprogram_id)
                 else {
@@ -1133,11 +1211,13 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 // attempting-and-skipping a wall of un-instantiable generics
                 // first. It stays discoverable (a targeted `--target` run still
                 // reaches it) — only its priority drops.
-                let score = if subprogram_in_unsynthesizable_generic(&ast, subprogram, &source) {
-                    tgt.score.saturating_sub(GENERIC_DEMOTION)
-                } else {
-                    tgt.score
-                };
+                let mut score = tgt.score;
+                if subprogram_in_unsynthesizable_generic(&ast, subprogram, &source) {
+                    score = score.saturating_sub(GENERIC_DEMOTION);
+                }
+                if unit_has_concurrency {
+                    score = score.saturating_sub(CONCURRENCY_DEMOTION);
+                }
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-A", path, line, &tgt.name),
                     lang: Lang::Ada,
@@ -1174,7 +1254,9 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             let (fns, dialect) = if !knr.is_empty() {
                 (knr, Some(lang_profile::Dialect::CKAndR))
             } else {
-                let Ok(modern) = parse_c_functions_preprocessed(&source, preprocess) else {
+                let Ok(modern) =
+                    parse_c_functions_preprocessed(&source, preprocess, &preprocessor_defines)
+                else {
                     return Ok(());
                 };
                 (modern, Some(lang_profile::Dialect::C99))
@@ -1208,15 +1290,36 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
         Lang::Cpp => {
             // §27.6: parse the preprocessed text under `preprocess`, translating
             // each surviving function's line back to the ORIGINAL source.
-            let Ok(fns) = parse_cpp_functions_preprocessed(&source, preprocess) else {
+            let Ok(fns) =
+                parse_cpp_functions_preprocessed(&source, preprocess, &preprocessor_defines)
+            else {
                 return Ok(());
             };
             let fns = dedup_cpp_functions(fns);
-            let meta: HashMap<(&str, u32), &cpp_parser::CppFunction> =
-                fns.iter().map(|f| ((f.name.as_str(), f.line), f)).collect();
+            let known_blocked = crate::generate_harness::cpp_known_blocked_signatures_for_discovery(
+                path, &source, &fns,
+            );
+            let meta = fns
+                .iter()
+                .map(|function| {
+                    (
+                        (function.line, target_rank::cpp_target_name(function)),
+                        function,
+                    )
+                })
+                .collect::<HashMap<_, _>>();
             for tgt in target_rank::rank_cpp_targets(&fns) {
-                let (is_static, foreign_guard) = {
-                    let m = meta.get(&(tgt.name.as_str(), tgt.line));
+                let (is_static, foreign_guard, signature_known_blocked) = {
+                    // Ranked C++ names are qualified (`ns::Class::method`) while
+                    // `CppFunction::name` is the leaf. The old `(name,line)` map
+                    // therefore missed every qualified target and silently lost
+                    // its static/guard metadata. The source line is discovery's
+                    // stable overload identity and is the same identity passed to
+                    // generation. Keep the full ranked spelling as well as the
+                    // line because legacy one-line headers can declare several
+                    // overloads on one physical line.
+                    let identity = (tgt.line, tgt.name.clone());
+                    let m = meta.get(&identity).copied();
                     (
                         // Static *member* functions are linkable; only
                         // static free functions have internal linkage.
@@ -1224,6 +1327,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                         m.and_then(|f| f.foreign_guard.clone())
                             .or_else(|| foreign_platform_path_guard(path))
                             .or_else(|| cpp_windows_framework_guard(&source)),
+                        known_blocked.contains(&identity),
                     )
                 };
                 out.push(Candidate {
@@ -1232,7 +1336,12 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     source_path: path.to_path_buf(),
                     line: tgt.line,
                     name: tgt.name,
-                    score: tgt.score,
+                    score: if signature_known_blocked {
+                        tgt.score
+                            .saturating_sub(KNOWN_UNBUILDABLE_SIGNATURE_DEMOTION)
+                    } else {
+                        tgt.score
+                    },
                     is_static,
                     foreign_guard,
                     input_reachability: Some(tgt.input_reachability),
@@ -3428,6 +3537,76 @@ mod tests {
     }
 
     #[test]
+    fn cpp_known_unbuildable_signature_cannot_displace_viable_target() {
+        let root = tmpdir();
+        fs::write(
+            root.join("rank.cpp"),
+            "#include <string_view>\n\
+             namespace gov {\n\
+             class Secret { public: Secret() = delete; };\n\
+             int parse_secret(Secret value) { return 0; }\n\
+             int parse_bytes(std::string_view bytes) { return (int)bytes.size(); }\n\
+             }\n",
+        )
+        .unwrap();
+
+        let cands = discover(&root).unwrap();
+        let viable = cands
+            .iter()
+            .find(|candidate| candidate.name == "gov::parse_bytes")
+            .expect("byte-channel target discovered");
+        let blocked = cands
+            .iter()
+            .find(|candidate| candidate.name == "gov::parse_secret")
+            .expect("known-blocked target remains discoverable but demoted");
+        assert!(
+            viable.score > blocked.score,
+            "a capped campaign must reach the viable target first: {cands:?}"
+        );
+        assert!(
+            blocked.score <= -900_000,
+            "declared deleted-constructor parameter should carry the conservative demotion: {blocked:?}"
+        );
+        assert_eq!(
+            cands.first().map(|candidate| candidate.name.as_str()),
+            Some("gov::parse_bytes"),
+            "the first slot of even a cap=1 campaign must be viable"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn cpp_qualified_metadata_identity_survives_same_line_declarations() {
+        let root = tmpdir();
+        // Both definitions intentionally occupy one physical line. A line-only
+        // lookup chooses whichever parser record happens to appear first; the
+        // full ranked identity must preserve internal linkage independently.
+        fs::write(
+            root.join("identity.cpp"),
+            "namespace api { int parse(int x) { return x; } static int decode(int x) { return x; } }\n",
+        )
+        .unwrap();
+
+        let cands = discover(&root).unwrap();
+        let parse = cands
+            .iter()
+            .find(|candidate| candidate.name == "api::parse")
+            .expect("qualified public function discovered");
+        let decode = cands
+            .iter()
+            .find(|candidate| candidate.name == "api::decode")
+            .expect("qualified static function discovered");
+        assert!(!parse.is_static, "external function must remain external");
+        assert!(
+            decode.is_static,
+            "qualified internal-linkage metadata must not be lost"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn discovers_header_only_c_and_cpp_targets() {
         let root = tmpdir();
         fs::write(
@@ -3613,23 +3792,25 @@ mod tests {
     }
 
     #[test]
-    fn auto_preprocess_fires_only_on_heavy_conditional_files() {
-        // §27.6 Auto heuristic: a file gated by many `#if`s is preprocessed (the
-        // inactive branch is dropped) under the default mode, while a file with a
-        // lone header guard is parsed raw (zero behavior change).
+    fn auto_preprocess_requires_heavy_conditionals_and_project_context() {
+        // Default preprocessing is safe only with per-TU project macros. A lone
+        // header guard is always raw, and even a heavily conditional source stays
+        // raw when there is no compile database context.
         assert!(!should_preprocess(
             PreprocessMode::Auto,
-            "#ifndef FOO_H\n#define FOO_H\nint parse(const char *p);\n#endif\n"
+            "#ifndef FOO_H\n#define FOO_H\nint parse(const char *p);\n#endif\n",
+            true,
         ));
         let heavy = "#if A\nint a(void);\n#endif\n\
                      #if B\nint b(void);\n#endif\n\
                      #if C\nint c(void);\n#endif\n\
                      #ifdef D\nint d(void);\n#endif\n\
                      #ifdef E\nint e(void);\n#endif\n";
-        assert!(should_preprocess(PreprocessMode::Auto, heavy));
+        assert!(!should_preprocess(PreprocessMode::Auto, heavy, false));
+        assert!(should_preprocess(PreprocessMode::Auto, heavy, true));
 
-        // End-to-end under the DEFAULT `discover` (Auto): the heavy-conditional file
-        // has its inactive (undefined-macro) branches dropped.
+        // End-to-end with an exact compile command: its `-D` context selects the
+        // same active branches generation/build will use.
         let root = tmpdir();
         fs::write(
             root.join("heavy.c"),
@@ -3641,13 +3822,18 @@ mod tests {
              int scalar_parse(const char *p, int n){return p[5]+n;}\n",
         )
         .unwrap();
+        fs::write(
+            root.join("compile_commands.json"),
+            format!(
+                r#"[{{"directory":"{}","file":"heavy.c","arguments":["clang","-DHAVE_AVX2=1","-DNDEBUG=1","-c","heavy.c"]}}]"#,
+                root.display()
+            ),
+        )
+        .unwrap();
         let cands = discover(&root).unwrap();
-        // The `#ifndef NDEBUG` branch IS active (NDEBUG undefined), so dbg_parse and
-        // the unconditional scalar_parse are kept; the feature-gated + `#if 0`
-        // branches are dropped.
         assert!(cands.iter().any(|c| c.name == "scalar_parse"), "{cands:?}");
-        assert!(cands.iter().any(|c| c.name == "dbg_parse"), "{cands:?}");
-        for dropped in ["avx_parse", "sse_parse", "neon_parse", "dead_parse"] {
+        assert!(cands.iter().any(|c| c.name == "avx_parse"), "{cands:?}");
+        for dropped in ["sse_parse", "neon_parse", "dbg_parse", "dead_parse"] {
             assert!(
                 !cands.iter().any(|c| c.name == dropped),
                 "{dropped} compiled out under Auto preprocessing: {cands:?}"
@@ -3934,6 +4120,34 @@ mod tests {
     }
 
     #[test]
+    fn ada_concurrency_units_rank_below_ordinary_fuzzable_packages() {
+        let root = tmpdir();
+        fs::write(
+            root.join("ordinary.ads"),
+            "package Ordinary is procedure Parse (Data : String); end Ordinary;\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("concurrent.ads"),
+            "package Concurrent is\n  protected Guard is\n    procedure Touch;\n  end Guard;\n  procedure Parse (Data : String);\nend Concurrent;\n",
+        )
+        .unwrap();
+        let candidates = discover(&root).unwrap();
+        let ordinary = candidates
+            .iter()
+            .find(|candidate| candidate.source_path.ends_with("ordinary.ads"))
+            .expect("ordinary Ada target");
+        let concurrent = candidates
+            .iter()
+            .find(|candidate| candidate.source_path.ends_with("concurrent.ads"))
+            .expect("concurrent Ada target remains discoverable");
+        assert!(
+            ordinary.score > concurrent.score,
+            "ordinary target must run first: {candidates:?}"
+        );
+    }
+
+    #[test]
     fn skips_public_subprograms_declared_in_specs_nested_inside_a_body() {
         // `package Meth is procedure Copy_Stored; end` declared INSIDE a
         // procedure body: Copy_Stored is `Public` within that nested spec but
@@ -4196,11 +4410,21 @@ mod tests {
                       int mpack_reader_init(int x) { return x; }\n\
                       int mpack_read_u8(int x) { return x + 1; }\n\
                       #endif\n";
-        let fns = parse_c_functions_preprocessed(source, PreprocessMode::Always).unwrap();
+        let fns = parse_c_functions_preprocessed(source, PreprocessMode::Always, &[]).unwrap();
         let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
         assert!(
             names.contains(&"mpack_reader_init") && names.contains(&"mpack_read_u8"),
             "preprocessing zeroed all functions; raw fallback must recover them, got {names:?}"
+        );
+    }
+
+    #[test]
+    fn cpp_preprocess_zero_result_has_the_same_raw_safety_fallback_as_c() {
+        let source = "#if PROJECT_FEATURE\nnamespace Api { int parse(const char *p) { return p[0]; } }\n#endif\n";
+        let fns = parse_cpp_functions_preprocessed(source, PreprocessMode::Always, &[]).unwrap();
+        assert!(
+            fns.iter().any(|function| function.name == "parse"),
+            "{fns:?}"
         );
     }
 }

@@ -196,9 +196,12 @@ jobs:
           tar -xzf "$archive" -C "$verify_root"
           bundle_root="$verify_root/$bundle_name"
           test -x "$bundle_root/install.sh"
-          test -f "$bundle_root/INSTALL.md"
+          for document in INSTALL.md LICENSE README.md RELEASE_NOTES.md; do
+            test -f "$bundle_root/$document"
+          done
           test -x "$bundle_root/tool/govfuzz"
           test -x "$bundle_root/tool/govfuzz-daemon"
+          test -x "$bundle_root/tool/govfuzz-bug-report"
           test -f "$bundle_root/tool/libgovfuzz_runtrace_shim.so"
           test -f "$bundle_root/tool/libgovfuzz_cc_intercept.so"
 
@@ -215,6 +218,7 @@ jobs:
             --no-content \
             --no-symlink
           "$install_root/prefix/govfuzz" --version
+          test -x "$install_root/prefix/govfuzz-bug-report"
           test -f "$install_root/prefix/libgovfuzz_runtrace_shim.so"
           test -f "$install_root/prefix/libgovfuzz_cc_intercept.so"
       - name: Build Windows artifacts
@@ -235,6 +239,7 @@ jobs:
           for marker in \
             ada_runtime/adafuzz.ads \
             c_runtime/govfuzz_driver.c \
+            govfuzz-bug-report.sh \
             csharp_runtime/Driver.cs \
             java_runtime/build-agent.sh \
             js_runtime/govfuzz_driver.js \
@@ -275,6 +280,7 @@ jobs:
             $markers = @(
               "ada_runtime/adafuzz.ads",
               "c_runtime/govfuzz_driver.c",
+              "govfuzz-bug-report.sh",
               "csharp_runtime/Driver.cs",
               "java_runtime/build-agent.sh",
               "js_runtime/govfuzz_driver.js",

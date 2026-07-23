@@ -11,9 +11,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const BUILD_CONTEXT_PROVENANCE_PREFIX: &str = "@govfuzz-build-context-provenance=";
+const BUILD_CONTEXT_DROPPED_PREFIX: &str = "@govfuzz-build-context-dropped=";
 const BUILD_CONTEXT_CONFIDENCE_PREFIX: &str = "@govfuzz-build-context-confidence=";
 const BUILD_CONTEXT_RECOVERY_PREFIX: &str = "@govfuzz-build-context-recovery=";
 const BUILD_CONTEXT_LDFLAG_PREFIX: &str = "@govfuzz-build-context-ldflag=";
+const BUILD_CONTEXT_CXX_STANDARD_PREFIX: &str = "@govfuzz-build-context-cxx-standard=";
+const BUILD_CONTEXT_COMPILER_PREFIX: &str = "@govfuzz-build-context-compiler=";
+pub(crate) const BLOCKED_BY_NON_SELF_CONTAINED_HEADER: &str =
+    "blocked_by_non_self_contained_header:";
 
 #[derive(Debug, Clone, clap::Args, PartialEq)]
 pub struct GenerateHarnessArgs {
@@ -225,6 +230,39 @@ pub fn run(args: GenerateHarnessArgs) -> Result<()> {
     }
 }
 
+#[derive(serde::Serialize)]
+struct GenerationMetadata<'a> {
+    schema_version: u32,
+    language: &'a str,
+    requested_line_present: bool,
+    exact_line_match: bool,
+    name_fallback: bool,
+    requested_kind: &'a str,
+    emitted_path: &'a str,
+}
+
+fn write_generation_metadata(
+    output_dir: &Path,
+    language: &str,
+    requested_line: Option<u32>,
+    selected_line: u32,
+    requested_kind: &str,
+    emitted_path: &str,
+) -> Result<()> {
+    let metadata = GenerationMetadata {
+        schema_version: 1,
+        language,
+        requested_line_present: requested_line.is_some(),
+        exact_line_match: requested_line.is_some_and(|line| line == selected_line),
+        name_fallback: requested_line.is_some_and(|line| line != selected_line),
+        requested_kind,
+        emitted_path,
+    };
+    let bytes = serde_json::to_vec(&metadata)?;
+    crate::auto::report::atomic_write(&output_dir.join("generation-metadata.json"), &bytes)?;
+    Ok(())
+}
+
 /// Programmatic shim around `run()` used by `govfuzz auto`'s attempt
 /// loop. The auto loop already knows the source path, target name,
 /// output dir, and stable harness id - this wrapper saves it from
@@ -316,7 +354,7 @@ fn generate_private_child_bridge_direct(
     source_plan: &HarnessSourcePlan,
     child_unit: &str,
 ) -> Result<()> {
-    let target = select_subprogram(ast, args.target.as_deref())?;
+    let target = select_subprogram(ast, args.target.as_deref(), args.target_line)?;
     if !crate::ada_bridge::target_is_bridgeable(target) {
         bail!(
             "blocked_by_private_child: target '{}' in private child '{child_unit}' is not a plain subprogram; a bridge re-export is not applicable",
@@ -382,6 +420,14 @@ fn generate_private_child_subprogram_direct(
 
     write_project_profile_if_requested(args, &output_dir, &result.gpr, source_plan, ast)?;
     write_ada_dictionary(args, ast, &output_dir)?;
+    write_generation_metadata(
+        &output_dir,
+        "ada",
+        args.target_line,
+        target.decl_span.start_line,
+        &args.kind,
+        "private_child_direct",
+    )?;
     print_generated(&result, &output_dir);
     Ok(())
 }
@@ -391,7 +437,7 @@ fn generate_direct(
     ast: &StructuralAst,
     source_plan: &HarnessSourcePlan,
 ) -> Result<()> {
-    let target = select_subprogram(ast, args.target.as_deref())?;
+    let target = select_subprogram(ast, args.target.as_deref(), args.target_line)?;
     let (generic_instance, generic_call, generic_suppress_params) =
         resolve_generic_instance(ast, target, &args.source)?;
     let id = args
@@ -415,6 +461,14 @@ fn generate_direct(
 
     write_project_profile_if_requested(args, &output_dir, &result.gpr, source_plan, ast)?;
     write_ada_dictionary(args, ast, &output_dir)?;
+    write_generation_metadata(
+        &output_dir,
+        "ada",
+        args.target_line,
+        target.decl_span.start_line,
+        &args.kind,
+        "direct",
+    )?;
     print_generated(&result, &output_dir);
 
     Ok(())
@@ -425,7 +479,7 @@ fn generate_servant_direct(
     ast: &StructuralAst,
     source_plan: &HarnessSourcePlan,
 ) -> Result<()> {
-    let target = select_subprogram(ast, args.target.as_deref())?;
+    let target = select_subprogram(ast, args.target.as_deref(), args.target_line)?;
     ensure_target_not_in_generic_package(ast, target)?;
     let id = args
         .id
@@ -445,6 +499,14 @@ fn generate_servant_direct(
 
     write_project_profile_if_requested(args, &output_dir, &result.gpr, source_plan, ast)?;
     write_ada_dictionary(args, ast, &output_dir)?;
+    write_generation_metadata(
+        &output_dir,
+        "ada",
+        args.target_line,
+        target.decl_span.start_line,
+        &args.kind,
+        "servant_direct",
+    )?;
     print_generated(&result, &output_dir);
 
     Ok(())
@@ -473,6 +535,7 @@ fn generate_sequence(
 
     write_project_profile_if_requested(args, &output_dir, &result.gpr, source_plan, ast)?;
     write_ada_dictionary(args, ast, &output_dir)?;
+    write_generation_metadata(&output_dir, "ada", None, 0, &args.kind, "sequence")?;
     print_generated(&result, &output_dir);
 
     Ok(())
@@ -847,7 +910,7 @@ fn ada_private_child_unit(source: &str) -> Option<String> {
     None
 }
 
-fn ada_concurrency_block_summary(source: &str) -> Option<String> {
+pub(crate) fn ada_concurrency_block_summary(source: &str) -> Option<String> {
     let mut tasks = 0usize;
     let mut protected = 0usize;
     let mut entries = 0usize;
@@ -1112,13 +1175,29 @@ fn ensure_target_not_in_generic_package(ast: &StructuralAst, target: &Subprogram
 fn select_subprogram<'a>(
     ast: &'a StructuralAst,
     requested: Option<&str>,
+    target_line: Option<u32>,
 ) -> Result<&'a Subprogram> {
     match requested {
-        Some(name) => ast
-            .subprograms
-            .iter()
-            .find(|subprogram| subprogram.name.eq_ignore_ascii_case(name))
-            .ok_or_else(|| anyhow::anyhow!("subprogram '{}' not found", name)),
+        Some(name) => {
+            let mut matches = ast
+                .subprograms
+                .iter()
+                .filter(|subprogram| subprogram.name.eq_ignore_ascii_case(name))
+                .collect::<Vec<_>>();
+            matches.sort_by_key(|subprogram| subprogram.decl_span.start_line);
+            if let Some(line) = target_line {
+                if let Some(exact) = matches
+                    .iter()
+                    .find(|subprogram| subprogram.decl_span.start_line == line)
+                {
+                    return Ok(*exact);
+                }
+            }
+            matches
+                .into_iter()
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("subprogram '{}' not found", name))
+        }
         None => target_rank::rank_targets(ast)
             .into_iter()
             .next()
@@ -2452,6 +2531,15 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
             && !is_partial_impl_header(header)
             && !is_translation_unit_include(header)
     });
+    if is_c_family_header(&source_path) {
+        header_includes = standalone_header_include_plan(
+            &source_path,
+            &header_includes,
+            &target_includes_dirs,
+            &compile_flags,
+            false,
+        )?;
+    }
     // A deleted private umbrella header can hide an otherwise surviving public
     // API header from the source's include closure (libyaml's yaml_private.h ->
     // yaml.h). Recover the public declaration by name from bounded project
@@ -2523,6 +2611,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     for extra in &args.extra_sources {
         target_sources.push(absolutize(extra).unwrap_or_else(|_| extra.clone()));
     }
+    let per_tu_contexts = partition_per_tu_compile_contexts(&mut target_sources);
     // Parse the target source's own struct/enum typedefs when the harness can
     // name them: static targets (the harness `#include`s the `.c`) OR a
     // single-header target (the harness `#include`s the header itself, so a
@@ -2661,7 +2750,20 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
             },
         )
     }?;
+    write_c_per_tu_context(&output_dir, &per_tu_contexts)?;
     write_harness_dictionary(&output_dir, &dictionary_tokens)?;
+    write_generation_metadata(
+        &output_dir,
+        "c",
+        args.target_line,
+        function.line,
+        &args.kind,
+        if args.kind == "sequence" {
+            "sequence"
+        } else {
+            "direct"
+        },
+    )?;
     if generation_banner_enabled() {
         println!(
             "Generated C harness '{}' at {}",
@@ -2904,25 +3006,73 @@ fn resolve_cpp_member_access_from_headers(
             continue;
         };
         parsed += 1;
-        for (key, acc) in cpp_parser::parse_cpp_method_access(&text) {
+        for (key, acc) in cpp_parser::parse_cpp_method_access_signatures(&text) {
             access.entry(key).or_insert(acc);
         }
-        static_methods.extend(cpp_parser::parse_cpp_static_methods(&text));
+        static_methods.extend(cpp_parser::parse_cpp_static_method_signatures(&text));
         for nested in harness_project_includes(&text, include_dirs) {
             queue.push(nested);
         }
     }
     for function in functions.iter_mut() {
-        if let Some(class_name) = function.api.class_name.as_deref() {
-            let key = format!("{class_name}::{}", function.name);
+        if function.api.class_name.is_some() {
+            let access_key = cpp_parser::cpp_function_access_signature(function);
             if function.api.member_access.is_none() {
-                if let Some(acc) = access.get(&key) {
+                if let Some(acc) = access.get(&access_key) {
                     function.api.member_access = Some(acc.clone());
                 }
             }
-            if static_methods.contains(&key) {
+            if static_methods.contains(&access_key) {
                 function.is_static = true;
             }
+        }
+    }
+}
+
+/// Merge callable declarations/definitions from the resolved header and
+/// build-context source closure into the target TU's function set. Constructor
+/// and factory selection used to inspect only the file containing the selected
+/// method, so the normal legacy layout (declaration in a header, definition in a
+/// sibling `.cpp`) looked as though it had no construction path.
+///
+/// The overload-sensitive parser signature is the identity. When the same
+/// callable appears as both a declaration and definition, retain one entry and
+/// union the declaration-only facts that matter to harness safety: access,
+/// static dispatch, foreign guards, and unsupported markers.
+fn extend_cpp_functions_from_closure(
+    functions: &mut Vec<cpp_parser::CppFunction>,
+    closure_texts: &[String],
+) {
+    let mut positions = BTreeMap::<String, usize>::new();
+    for (index, function) in functions.iter().enumerate() {
+        positions
+            .entry(cpp_parser::cpp_function_access_signature(function))
+            .or_insert(index);
+    }
+    for text in closure_texts {
+        let Ok(parsed) = cpp_parser::parse_cpp_functions(text) else {
+            continue;
+        };
+        for candidate in parsed {
+            let key = cpp_parser::cpp_function_access_signature(&candidate);
+            if let Some(index) = positions.get(&key).copied() {
+                let existing = &mut functions[index];
+                if candidate.api.member_access.is_some() {
+                    existing.api.member_access = candidate.api.member_access.clone();
+                }
+                existing.is_static |= candidate.is_static;
+                if existing.foreign_guard.is_none() {
+                    existing.foreign_guard = candidate.foreign_guard.clone();
+                }
+                for unsupported in &candidate.api.unsupported {
+                    if !existing.api.unsupported.contains(unsupported) {
+                        existing.api.unsupported.push(unsupported.clone());
+                    }
+                }
+                continue;
+            }
+            positions.insert(key, functions.len());
+            functions.push(candidate);
         }
     }
 }
@@ -3053,6 +3203,29 @@ fn collect_cpp_type_defs_for_harness(
         |header_source| cpp_parser::parse_cpp_type_defs(header_source).ok(),
     );
     defs
+}
+
+/// A parsed C++ `class`/`struct` is only a field-wise decoder candidate when
+/// value-initializing it is legal without selecting a user-declared constructor.
+/// The C-shaped type registry otherwise treats every class body as an aggregate:
+/// `class Options { Options() = delete; };` becomes an empty visible struct and
+/// codegen emits `Options value{}`, moving a deterministic unsupported signature
+/// into `failed_build`. Classes with a user-declared constructor are handled by
+/// the separately verified default-constructor registry; abstract classes cannot
+/// be instantiated at all.
+fn suppress_non_aggregate_cpp_class_defs(
+    defs: &mut [c_parser::CTypeDefs],
+    class_infos: &[cpp_parser::CppClassInfo],
+) {
+    let non_aggregates = class_infos
+        .iter()
+        .filter(|info| info.is_abstract || !info.constructors.is_empty())
+        .map(|info| info.qualified_name.as_str())
+        .collect::<HashSet<_>>();
+    for unit in defs {
+        unit.structs
+            .retain(|definition| !non_aggregates.contains(definition.name.as_str()));
+    }
 }
 
 fn include_dirs_from_compile_flags(flags: &[String]) -> Vec<PathBuf> {
@@ -5096,7 +5269,7 @@ struct CompileCommandEntry {
     command: Option<String>,
 }
 
-fn compile_database_flags_for_source(source_path: &Path) -> Vec<String> {
+pub(crate) fn compile_database_flags_for_source(source_path: &Path) -> Vec<String> {
     match try_compile_database_flags_for_source(source_path) {
         Ok(flags) => flags,
         Err(error) => {
@@ -5114,8 +5287,16 @@ fn compile_database_flags_for_source(source_path: &Path) -> Vec<String> {
 /// portable standard-header capability macros are safe to infer from CMake;
 /// optional project features remain diagnostic-driven repairs.
 fn c_build_flags_for_source(source_path: &Path) -> Vec<String> {
-    let flags = compile_database_flags_for_source(source_path);
+    let mut flags = compile_database_flags_for_source(source_path);
     if !flags.is_empty() {
+        flags.push(format!(
+            "{BUILD_CONTEXT_PROVENANCE_PREFIX}{}",
+            if is_c_family_header(source_path) {
+                "associated_header_compile_database"
+            } else {
+                "exact_tu_compile_database"
+            }
+        ));
         return flags;
     }
     if let Some(cmake) = find_upward_build_file(source_path, &["CMakeLists.txt"]) {
@@ -5138,9 +5319,10 @@ fn c_build_flags_for_source(source_path: &Path) -> Vec<String> {
         for flag in cmake_config_template_host_capability_flags(source_path) {
             push_unique_string(&mut flags, flag);
         }
+        flags.push(format!("{BUILD_CONTEXT_PROVENANCE_PREFIX}cmake"));
         return flags;
     }
-    Vec::new()
+    vec![format!("{BUILD_CONTEXT_PROVENANCE_PREFIX}none")]
 }
 
 /// Materialize a small set of native host capabilities that an ancestor CMake
@@ -5379,13 +5561,232 @@ fn try_compile_database_flags_for_source(source_path: &Path) -> Result<Vec<Strin
             .with_context(|| format!("read compile database {}", db_path.display()))?;
         let entries: Vec<CompileCommandEntry> = serde_json::from_slice(&bytes)
             .with_context(|| format!("parse compile database {}", db_path.display()))?;
-        for entry in entries {
+        for entry in &entries {
             if compile_command_matches_source(&entry, source_path) {
                 return Ok(extract_compile_database_flags(&entry, source_path));
             }
         }
+        if is_c_family_header(source_path) {
+            if let Some(entry) = compile_database_entry_for_header(&entries, source_path) {
+                let owner = compile_command_source_path(entry);
+                return Ok(extract_compile_database_flags(entry, &owner));
+            }
+        }
     }
     Ok(Vec::new())
+}
+
+#[derive(Debug, Clone)]
+struct PerTuCompileContext {
+    source: PathBuf,
+    compiler: Option<String>,
+    flags: Vec<String>,
+}
+
+/// Remove sources with authoritative compile-database rows from the shared
+/// single-command source list. They are compiled separately with their own
+/// flags and linked as objects, avoiding an impossible union of mutually
+/// exclusive per-file defines/standards. Sources without exact rows stay on the
+/// established confidence-labelled fallback path.
+fn partition_per_tu_compile_contexts(
+    target_sources: &mut Vec<PathBuf>,
+) -> Vec<PerTuCompileContext> {
+    let mut contexts = Vec::new();
+    target_sources.retain(|source| {
+        let Ok(mut flags) = try_compile_database_flags_for_source(source) else {
+            return true;
+        };
+        if flags.is_empty() {
+            return true;
+        }
+        let compiler = flags
+            .iter()
+            .find_map(|flag| flag.strip_prefix(BUILD_CONTEXT_COMPILER_PREFIX))
+            .map(str::to_owned);
+        flags.retain(|flag| !flag.starts_with('@'));
+        contexts.push(PerTuCompileContext {
+            source: source.clone(),
+            compiler,
+            flags,
+        });
+        false
+    });
+    contexts
+}
+
+fn write_cpp_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext]) -> Result<()> {
+    if contexts.is_empty() {
+        return Ok(());
+    }
+    write_per_tu_context(
+        output_dir,
+        "build_context_objects.mk",
+        "CONTEXT",
+        "context_objs",
+        contexts,
+        &[
+            ("MAIN", "$(CXX)", "$(CXXFLAGS)", true),
+            ("AFL", "$(AFLPP_CXX)", "$(AFLPP_CXXFLAGS)", false),
+            ("DIFF", "$(DIFF_CXX)", "$(DIFF_CXXFLAGS)", true),
+        ],
+        true,
+    )
+}
+
+fn write_c_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext]) -> Result<()> {
+    if contexts.is_empty() {
+        return Ok(());
+    }
+    write_per_tu_context(
+        output_dir,
+        "build_context_objects.mk",
+        "CONTEXT",
+        "context_objs",
+        contexts,
+        &[
+            ("MAIN", "$(CC)", "$(CFLAGS)", true),
+            ("AFL", "$(AFLPP_CC)", "$(AFLPP_CFLAGS)", false),
+            ("MSAN", "$(MSAN_CC)", "$(MSAN_CFLAGS)", true),
+            ("TSAN", "$(TSAN_CC)", "$(TSAN_CFLAGS)", true),
+            ("COV", "$(COV_CC)", "$(COV_CFLAGS)", true),
+            ("DIFF", "$(DIFF_CC)", "$(DIFF_CFLAGS)", true),
+            ("PROV", "$(CC)", "$(CFLAGS)", true),
+        ],
+        false,
+    )
+}
+
+fn write_per_tu_context(
+    output_dir: &Path,
+    fragment_name: &str,
+    variable_prefix: &str,
+    object_dir: &str,
+    contexts: &[PerTuCompileContext],
+    variants: &[(&str, &str, &str, bool)],
+    cpp: bool,
+) -> Result<()> {
+    for context in contexts {
+        harness_gen::build_safety::ensure_build_input_safe(
+            "per-TU source path",
+            &context.source.to_string_lossy(),
+        )?;
+        if let Some(compiler) = &context.compiler {
+            harness_gen::build_safety::ensure_build_input_safe("per-TU compiler", compiler)?;
+        }
+        harness_gen::build_safety::ensure_all_build_inputs_safe(
+            "per-TU compile flag",
+            context.flags.iter().map(String::as_str),
+        )?;
+    }
+
+    let mut fragment = String::from(
+        "# Generated from exact compile_commands.json rows; do not edit.\n\
+         BUILD_CONTEXT_TU_MODE = per_translation_unit_compile_database\n\
+         .PHONY: FORCE_CONTEXT_OBJECTS\n\
+         FORCE_CONTEXT_OBJECTS:\n",
+    );
+    for (variant, _, _, _) in variants {
+        let objects = (0..contexts.len())
+            .map(|index| format!("{object_dir}/{}_{}.o", variant.to_ascii_lowercase(), index))
+            .collect::<Vec<_>>()
+            .join(" ");
+        fragment.push_str(&format!(
+            "{variable_prefix}_{variant}_OBJECTS = {objects}\n"
+        ));
+    }
+    fragment.push('\n');
+
+    for (variant, default_compiler, variant_flags, external_driver) in variants {
+        for (index, context) in contexts.iter().enumerate() {
+            let object = format!("{object_dir}/{}_{}.o", variant.to_ascii_lowercase(), index);
+            let compiler = if *variant == "MAIN" || *variant == "PROV" {
+                context.compiler.as_deref().unwrap_or(default_compiler)
+            } else {
+                default_compiler
+            };
+            let flags = context
+                .flags
+                .iter()
+                .map(|flag| flag.replace('"', "\\\""))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let compat = if cpp { "" } else { " $(C_COMPAT_FLAGS)" };
+            let driver_define = if *external_driver {
+                " -DGOVFUZZ_EXTERNAL_DRIVER"
+            } else {
+                ""
+            };
+            fragment.push_str(&format!(
+                "{object}: FORCE_CONTEXT_OBJECTS\n\t@mkdir -p {object_dir}\n\t{compiler} {variant_flags} $(SECTION_FLAGS){compat} {flags} $(INCLUDES) $(AUTO_EXTRA_INCLUDES){driver_define} -c {} -o {object}\n\n",
+                harness_gen::build_safety::make_path(&context.source)
+            ));
+        }
+    }
+    fs::write(output_dir.join(fragment_name), fragment).with_context(|| {
+        format!(
+            "write per-translation-unit build context in {}",
+            output_dir.display()
+        )
+    })
+}
+
+/// Split sources discovered by a later undefined-symbol repair into (a) exact
+/// compile-database rows, emitted as a separate object graph, and (b) sources
+/// for which only the established shared-command fallback is available.
+///
+/// Generation-time sources use `build_context_objects.mk`; repair-time sources
+/// cannot be known until the linker identifies a missing definition, so this
+/// fragment is regenerated before every make invocation. Keeping the graphs
+/// separate avoids parsing or incrementally mutating generated make syntax and
+/// guarantees that a source added in repair round N retains its own compiler,
+/// defines, include order, language dialect, packing, and ABI flags.
+pub(crate) fn prepare_repair_per_tu_context(
+    output_dir: &Path,
+    extra_sources: &[PathBuf],
+    cpp: bool,
+) -> Result<Vec<PathBuf>> {
+    let mut fallback_sources = extra_sources.to_vec();
+    let contexts = partition_per_tu_compile_contexts(&mut fallback_sources);
+    let fragment_path = output_dir.join("repair_context_objects.mk");
+    if contexts.is_empty() {
+        if fragment_path.exists() {
+            fs::remove_file(&fragment_path).with_context(|| {
+                format!(
+                    "remove stale repair translation-unit context {}",
+                    fragment_path.display()
+                )
+            })?;
+        }
+        return Ok(fallback_sources);
+    }
+
+    let variants: &[(&str, &str, &str, bool)] = if cpp {
+        &[
+            ("MAIN", "$(CXX)", "$(CXXFLAGS)", true),
+            ("AFL", "$(AFLPP_CXX)", "$(AFLPP_CXXFLAGS)", false),
+            ("DIFF", "$(DIFF_CXX)", "$(DIFF_CXXFLAGS)", true),
+        ]
+    } else {
+        &[
+            ("MAIN", "$(CC)", "$(CFLAGS)", true),
+            ("AFL", "$(AFLPP_CC)", "$(AFLPP_CFLAGS)", false),
+            ("MSAN", "$(MSAN_CC)", "$(MSAN_CFLAGS)", true),
+            ("TSAN", "$(TSAN_CC)", "$(TSAN_CFLAGS)", true),
+            ("COV", "$(COV_CC)", "$(COV_CFLAGS)", true),
+            ("DIFF", "$(DIFF_CC)", "$(DIFF_CFLAGS)", true),
+            ("PROV", "$(CC)", "$(CFLAGS)", true),
+        ]
+    };
+    write_per_tu_context(
+        output_dir,
+        "repair_context_objects.mk",
+        "REPAIR_CONTEXT",
+        "repair_context_objs",
+        &contexts,
+        variants,
+        cpp,
+    )?;
+    Ok(fallback_sources)
 }
 
 /// Out-of-source build subdirectories that build systems conventionally drop a
@@ -6104,12 +6505,73 @@ fn probe_generated_header_dirs(source_path: &Path) -> Vec<PathBuf> {
 }
 
 fn compile_command_matches_source(entry: &CompileCommandEntry, source_path: &Path) -> bool {
-    let entry_file = if entry.file.is_absolute() {
+    let entry_file = compile_command_source_path(entry);
+    normalized_path_key(&entry_file) == normalized_path_key(source_path)
+}
+
+fn compile_command_source_path(entry: &CompileCommandEntry) -> PathBuf {
+    if entry.file.is_absolute() {
         entry.file.clone()
     } else {
         entry.directory.join(&entry.file)
-    };
-    normalized_path_key(&entry_file) == normalized_path_key(source_path)
+    }
+}
+
+/// Select the translation-unit compile command that directly includes a header.
+/// Compile databases almost never contain header rows, so exact-only lookup
+/// discarded precisely the flags non-self-contained legacy headers need. Keep
+/// the association conservative (direct include evidence only), then choose the
+/// nearest TU deterministically when several entries include the same header.
+fn compile_database_entry_for_header<'a>(
+    entries: &'a [CompileCommandEntry],
+    header: &Path,
+) -> Option<&'a CompileCommandEntry> {
+    let header_key = normalized_path_key(header);
+    let mut matches = Vec::new();
+    for entry in entries {
+        let owner = compile_command_source_path(entry);
+        if !is_c_or_cpp_translation_unit(&owner) {
+            continue;
+        }
+        let Ok(source) = crate::source_text::read_source_text(&owner) else {
+            continue;
+        };
+        let flags = extract_compile_database_flags(entry, &owner);
+        let mut include_dirs = owner
+            .parent()
+            .map(Path::to_path_buf)
+            .into_iter()
+            .collect::<Vec<_>>();
+        for directory in include_dirs_from_compile_flags(&flags) {
+            if !include_dirs.contains(&directory) {
+                include_dirs.push(directory);
+            }
+        }
+        let directly_includes_header =
+            direct_project_includes(&source, &include_dirs)
+                .iter()
+                .any(|spelling| {
+                    include_dirs.iter().any(|directory| {
+                        normalized_path_key(&directory.join(spelling)) == header_key
+                    })
+                });
+        if directly_includes_header {
+            matches.push((
+                path_distance(&owner, header),
+                normalized_path_key(&owner),
+                entry,
+            ));
+        }
+    }
+    matches.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    matches.into_iter().next().map(|(_, _, entry)| entry)
+}
+
+fn path_distance(left: &Path, right: &Path) -> usize {
+    let left = left.components().collect::<Vec<_>>();
+    let right = right.components().collect::<Vec<_>>();
+    let common = left.iter().zip(&right).take_while(|(a, b)| a == b).count();
+    left.len() - common + right.len() - common
 }
 
 fn normalized_path_key(path: &Path) -> String {
@@ -6152,6 +6614,9 @@ fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Pat
         return Vec::new();
     };
     let mut flags = Vec::new();
+    if let Some(compiler) = compile_command_compiler(&args) {
+        flags.push(format!("{BUILD_CONTEXT_COMPILER_PREFIX}{compiler}"));
+    }
     let mut i = 1_usize; // skip compiler executable
     while i < args.len() {
         let arg = &args[i];
@@ -6164,7 +6629,7 @@ fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Pat
                     continue;
                 }
             }
-            "-isystem" | "-iquote" | "-idirafter" => {
+            "-isystem" | "-iquote" | "-idirafter" | "-isysroot" | "--sysroot" | "-imacros" => {
                 if let Some(value) = args.get(i + 1) {
                     flags.push(arg.clone());
                     flags.push(resolve_compile_database_path(&entry.directory, value));
@@ -6203,7 +6668,28 @@ fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Pat
                     continue;
                 }
             }
-            "-o" | "-MF" | "-MT" | "-MQ" => {
+            "--target" | "-target" => {
+                if let Some(value) = args.get(i + 1) {
+                    flags.push(arg.clone());
+                    flags.push(value.clone());
+                    i += 2;
+                    continue;
+                }
+            }
+            "-x" => {
+                if let Some(value) = args.get(i + 1).filter(|value| {
+                    matches!(
+                        value.as_str(),
+                        "c" | "c++" | "objective-c" | "objective-c++" | "assembler-with-cpp"
+                    )
+                }) {
+                    flags.push(arg.clone());
+                    flags.push(value.clone());
+                    i += 2;
+                    continue;
+                }
+            }
+            "-o" | "-MF" | "-MT" | "-MQ" | "-MJ" | "-dependency-file" => {
                 i += 2;
                 continue;
             }
@@ -6213,7 +6699,7 @@ fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Pat
                 i += 2;
                 continue;
             }
-            "-c" | "--" => {
+            "-c" | "--" | "-M" | "-MM" | "-MD" | "-MMD" | "-MP" => {
                 i += 1;
                 continue;
             }
@@ -6229,6 +6715,9 @@ fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Pat
             || arg == "-pthread"
             || arg.starts_with("--gcc-install-dir=")
             || arg.starts_with("--gcc-toolchain=")
+            || arg.starts_with("--sysroot=")
+            || arg.starts_with("--target=")
+            || compile_database_single_flag_is_safe(arg)
         {
             flags.push(arg.clone());
         } else if !arg.starts_with('-')
@@ -6243,7 +6732,109 @@ fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Pat
     // through (e.g. a future allowlisted family that happens to overlap), so the
     // single-TU harness compile never sees `-fmodules-ts` and friends.
     flags.retain(|flag| !is_harness_incompatible_flag(flag));
+    let dropped = dropped_compile_flag_families(&args);
+    if !dropped.is_empty() {
+        flags.push(format!(
+            "{BUILD_CONTEXT_DROPPED_PREFIX}{}",
+            dropped.into_iter().collect::<Vec<_>>().join(",")
+        ));
+    }
     flags
+}
+
+fn dropped_compile_flag_families(args: &[String]) -> BTreeSet<&'static str> {
+    let mut families = BTreeSet::new();
+    for arg in args.iter().skip(1) {
+        if matches!(arg.as_str(), "-o" | "-c" | "--") {
+            families.insert("output_control");
+        } else if matches!(arg.as_str(), "-M" | "-MM" | "-MD" | "-MMD" | "-MP")
+            || arg.starts_with("-MF")
+            || arg.starts_with("-MT")
+            || arg.starts_with("-MQ")
+        {
+            families.insert("dependency_output");
+        } else if is_harness_incompatible_flag(arg) {
+            families.insert("module_or_pch");
+        } else if arg.starts_with("-Wl,") || arg.starts_with("-Xlinker") {
+            families.insert("linker_only");
+        } else if arg.starts_with("-fplugin") || arg.starts_with("-fprofile-") {
+            families.insert("plugin_or_profile");
+        } else if arg.starts_with('@') {
+            families.insert("response_file");
+        }
+    }
+    families
+}
+
+fn compile_command_compiler(args: &[String]) -> Option<String> {
+    let mut index = 0;
+    while let Some(argument) = args.get(index) {
+        let leaf = Path::new(argument)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or(argument)
+            .to_ascii_lowercase();
+        if matches!(leaf.as_str(), "ccache" | "sccache" | "distcc" | "icecc") {
+            index += 1;
+            continue;
+        }
+        let recognized = leaf.contains("clang")
+            || leaf == "gcc"
+            || leaf.starts_with("gcc-")
+            || leaf == "g++"
+            || leaf.starts_with("g++-");
+        return recognized.then(|| argument.clone());
+    }
+    None
+}
+
+/// Compile-relevant single-token families that are safe and meaningful in the
+/// standalone harness. Deliberately exclude linker forwarding, compiler plugins,
+/// profile/PCH/module state, output/dependency generation, and response files.
+fn compile_database_single_flag_is_safe(flag: &str) -> bool {
+    if is_harness_incompatible_flag(flag)
+        || flag.starts_with("-fplugin")
+        || flag.starts_with("-fprofile-")
+        || flag.starts_with("-save-temps")
+        || flag.starts_with("-Wl,")
+        || flag.starts_with("-Xlinker")
+        || flag.starts_with('@')
+    {
+        return false;
+    }
+    flag.starts_with("-m")
+        || flag.starts_with("-W")
+        || flag.starts_with("-fms-")
+        || flag.starts_with("-fvisibility=")
+        || flag.starts_with("-fabi-version=")
+        || flag.starts_with("-fpack-struct=")
+        || flag.starts_with("-fno-builtin-")
+        || matches!(
+            flag,
+            "-nostdinc"
+                | "-nostdinc++"
+                | "-ansi"
+                | "-fdeclspec"
+                | "-fpermissive"
+                | "-fpack-struct"
+                | "-fshort-enums"
+                | "-funsigned-char"
+                | "-fsigned-char"
+                | "-fno-exceptions"
+                | "-fexceptions"
+                | "-fno-rtti"
+                | "-frtti"
+                | "-fno-strict-aliasing"
+                | "-fstrict-aliasing"
+                | "-fwrapv"
+                | "-fno-builtin"
+                | "-ffreestanding"
+                | "-fPIC"
+                | "-fpic"
+                | "-fcommon"
+                | "-fno-common"
+                | "-fopenmp"
+        )
 }
 
 fn compile_command_arguments(entry: &CompileCommandEntry) -> Option<Vec<String>> {
@@ -6297,24 +6888,15 @@ fn split_compile_command(command: &str) -> Vec<String> {
     args
 }
 
-/// Surface header files that share a stem with the C/C++ source (foo.c -> foo.h)
-/// or carry the same Pascal-case suffix (cJSON.c -> cJSON.h). The generated
-/// harness includes them verbatim so target-side typedefs and function-style
-/// macros (e.g. cJSON's CJSON_PUBLIC) are in scope at compile time.
+/// Surface project headers in the order the real translation unit establishes
+/// them. Source-written includes come first and retain their order; only then do
+/// we append an otherwise-missing same-stem API header (`foo.c` -> `foo.h`).
+/// Promoting that convenient same-stem guess ahead of `config.h`/an umbrella
+/// include changes the language seen by legacy headers and commonly produces
+/// misleading declarator syntax errors.
 pub(crate) fn auto_detect_c_headers(source: &Path, dir: &Path) -> Vec<String> {
     let stem = source.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     let mut headers = Vec::new();
-    let candidates = [
-        format!("{stem}.h"),
-        format!("{stem}.hpp"),
-        format!("{stem}.hh"),
-        format!("{stem}.hxx"),
-    ];
-    for candidate in &candidates {
-        if dir.join(candidate).is_file() {
-            headers.push(candidate.clone());
-        }
-    }
     if let Ok(text) = std::fs::read_to_string(source) {
         for header in quoted_local_includes(&text) {
             if !is_partial_impl_header(&header)
@@ -6324,6 +6906,17 @@ pub(crate) fn auto_detect_c_headers(source: &Path, dir: &Path) -> Vec<String> {
             {
                 headers.push(header);
             }
+        }
+    }
+    let candidates = [
+        format!("{stem}.h"),
+        format!("{stem}.hpp"),
+        format!("{stem}.hh"),
+        format!("{stem}.hxx"),
+    ];
+    for candidate in &candidates {
+        if dir.join(candidate).is_file() && !headers.contains(candidate) {
+            headers.push(candidate.clone());
         }
     }
     headers
@@ -6695,6 +7288,233 @@ pub(crate) fn header_rejects_direct_include(source: &str) -> bool {
     })
 }
 
+/// Prove that a header target can be consumed by the independent translation
+/// unit emitted for a harness. A compile database can tell us which flags an
+/// owning TU used, but those flags do not reproduce declarations or macro state
+/// established *inside* that TU before it included the header. When the direct
+/// include fails, prefer a project umbrella that includes the target in its
+/// intended context. If no such include compiles, stop before harness emission:
+/// repair-loop typedef/macro guesses cannot make an owner-TU fragment into a
+/// public standalone interface.
+fn standalone_header_include_plan(
+    target: &Path,
+    direct_includes: &[String],
+    include_dirs: &[PathBuf],
+    compile_flags: &[String],
+    cpp: bool,
+) -> Result<Vec<String>> {
+    debug_assert!(is_c_family_header(target));
+    match preflight_header_includes(direct_includes, include_dirs, compile_flags, cpp) {
+        HeaderPreflight::Passed | HeaderPreflight::Unavailable => {
+            return Ok(direct_includes.to_vec());
+        }
+        HeaderPreflight::Failed(_) => {}
+    }
+
+    for umbrella in umbrella_headers_for_target(target, include_dirs) {
+        match preflight_header_includes(
+            std::slice::from_ref(&umbrella),
+            include_dirs,
+            compile_flags,
+            cpp,
+        ) {
+            HeaderPreflight::Passed => return Ok(vec![umbrella]),
+            HeaderPreflight::Failed(_) | HeaderPreflight::Unavailable => {}
+        }
+    }
+
+    let diagnostic =
+        match preflight_header_includes(direct_includes, include_dirs, compile_flags, cpp) {
+            HeaderPreflight::Failed(diagnostic) => diagnostic,
+            HeaderPreflight::Passed | HeaderPreflight::Unavailable => {
+                "preflight unavailable".to_owned()
+            }
+        };
+    bail!(
+        "{BLOCKED_BY_NON_SELF_CONTAINED_HEADER} '{}' cannot be included by an independent {} \
+         harness translation unit under its recovered build flags, and no compiling project \
+         umbrella was found; it likely depends on declarations or macro state established by \
+         an owning source file before inclusion. Compiler preflight: {}",
+        target.display(),
+        if cpp { "C++" } else { "C" },
+        diagnostic
+    )
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum HeaderPreflight {
+    Passed,
+    Failed(String),
+    Unavailable,
+}
+
+fn preflight_header_includes(
+    includes: &[String],
+    include_dirs: &[PathBuf],
+    compile_flags: &[String],
+    cpp: bool,
+) -> HeaderPreflight {
+    let mut compiler = if cpp { "clang++" } else { "clang" }.to_owned();
+    let mut flags = Vec::new();
+    let mut index = 0;
+    while let Some(flag) = compile_flags.get(index) {
+        if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_COMPILER_PREFIX) {
+            compiler = value.to_owned();
+        } else if let Some(value) = flag.strip_prefix(BUILD_CONTEXT_CXX_STANDARD_PREFIX) {
+            flags.push(format!("-std={value}"));
+        } else if flag.starts_with('@') {
+            // Remaining @govfuzz entries are Makefile/report metadata, never
+            // compiler arguments.
+        } else if flag == "-x" {
+            // The preflight's explicit language below is authoritative.
+            index += 1;
+        } else {
+            flags.push(flag.clone());
+        }
+        index += 1;
+    }
+    for include_dir in include_dirs {
+        flags.push("-I".to_owned());
+        flags.push(include_dir.to_string_lossy().to_string());
+    }
+    flags.extend([
+        "-fsyntax-only".to_owned(),
+        "-x".to_owned(),
+        if cpp { "c++" } else { "c" }.to_owned(),
+        "-".to_owned(),
+    ]);
+
+    let mut command = std::process::Command::new(&compiler);
+    command
+        .args(&flags)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+    let Ok(mut child) = command.spawn() else {
+        return HeaderPreflight::Unavailable;
+    };
+    let source = includes
+        .iter()
+        .map(|include| format!("#include \"{include}\"\n"))
+        .collect::<String>();
+    let Some(mut stdin) = child.stdin.take() else {
+        return HeaderPreflight::Unavailable;
+    };
+    if std::io::Write::write_all(&mut stdin, source.as_bytes()).is_err() {
+        return HeaderPreflight::Unavailable;
+    }
+    drop(stdin);
+    let Ok(output) = child.wait_with_output() else {
+        return HeaderPreflight::Unavailable;
+    };
+    if output.status.success() {
+        HeaderPreflight::Passed
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let diagnostic = stderr
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .take(6)
+            .collect::<Vec<_>>()
+            .join(" | ");
+        HeaderPreflight::Failed(if diagnostic.is_empty() {
+            format!("{compiler} exited with {}", output.status)
+        } else {
+            diagnostic
+        })
+    }
+}
+
+/// Locate bounded, deterministic umbrella candidates that directly include the
+/// target header. Returning spellings relative to an actual include root means
+/// the exact string proven here is the one emitted in the harness.
+fn umbrella_headers_for_target(target: &Path, include_dirs: &[PathBuf]) -> Vec<String> {
+    fn collect(dir: &Path, depth: usize, remaining: &mut usize, out: &mut Vec<PathBuf>) {
+        if depth > 3 || *remaining == 0 {
+            return;
+        }
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        let mut entries = entries.flatten().collect::<Vec<_>>();
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
+            if *remaining == 0 {
+                return;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                if !entry.file_name().to_string_lossy().starts_with('.') {
+                    collect(&path, depth + 1, remaining, out);
+                }
+            } else if is_c_family_header(&path) {
+                *remaining -= 1;
+                out.push(path);
+            }
+        }
+    }
+
+    let target_key = normalized_path_key(target);
+    let mut matches = Vec::<(usize, String)>::new();
+    let mut seen = HashSet::new();
+    for root in include_dirs {
+        let mut candidates = Vec::new();
+        let mut remaining = 512;
+        collect(root, 0, &mut remaining, &mut candidates);
+        for candidate in candidates {
+            let candidate_key = normalized_path_key(&candidate);
+            if candidate_key == target_key || !seen.insert(candidate_key) {
+                continue;
+            }
+            let Ok(text) = crate::source_text::read_source_text(&candidate) else {
+                continue;
+            };
+            let mut resolution_dirs = candidate
+                .parent()
+                .map(Path::to_path_buf)
+                .into_iter()
+                .collect::<Vec<_>>();
+            for directory in include_dirs {
+                if !resolution_dirs.contains(directory) {
+                    resolution_dirs.push(directory.clone());
+                }
+            }
+            if !direct_project_includes(&text, &resolution_dirs)
+                .iter()
+                .any(|spelling| {
+                    resolution_dirs.iter().any(|directory| {
+                        normalized_path_key(&directory.join(spelling)) == target_key
+                    })
+                })
+            {
+                continue;
+            }
+            let Some(relative) = root
+                .canonicalize()
+                .ok()
+                .and_then(|canonical_root| {
+                    candidate.canonicalize().ok().map(|p| (canonical_root, p))
+                })
+                .and_then(|(canonical_root, candidate)| {
+                    candidate
+                        .strip_prefix(canonical_root)
+                        .ok()
+                        .map(Path::to_path_buf)
+                })
+            else {
+                continue;
+            };
+            matches.push((
+                relative.components().count(),
+                relative.to_string_lossy().replace('\\', "/"),
+            ));
+        }
+    }
+    matches.sort();
+    matches.dedup_by(|left, right| left.1 == right.1);
+    matches.into_iter().map(|(_, spelling)| spelling).collect()
+}
+
 fn quoted_local_includes(source: &str) -> Vec<String> {
     let mut includes = Vec::new();
     for line in source.lines() {
@@ -6866,6 +7686,15 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             target_includes.push(source_include);
         }
     }
+    if is_c_family_header(&source_path) {
+        target_includes = standalone_header_include_plan(
+            &source_path,
+            &target_includes,
+            &target_includes_dirs,
+            &compile_flags,
+            true,
+        )?;
+    }
     // Read the included header texts once, so `<X>_NAMESPACE_BEGIN` macros can be
     // resolved ACROSS the set (nlohmann's is defined in `abi_macros.hpp` and invoked
     // everywhere else). The macro-opened top-level namespace (`nlohmann`) is emitted
@@ -6884,6 +7713,21 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         .collect();
     let begin_macros = cpp_namespace_begin_macros(&header_texts);
     let using_namespaces = collect_cpp_using_namespaces(&header_texts, &begin_macros);
+    let mut closure_texts = collect_cpp_inheritance_texts(
+        &source_path,
+        &source,
+        &target_includes,
+        &target_includes_dirs,
+    );
+    for context_source in &target_sources {
+        if normalized_path_key(context_source) == normalized_path_key(&source_path) {
+            continue;
+        }
+        if let Ok(text) = crate::source_text::read_source_text(context_source) {
+            closure_texts.push(text);
+        }
+    }
+    extend_cpp_functions_from_closure(&mut functions, &closure_texts);
     resolve_cpp_namespace_qualified_free_functions(&mut functions, &header_texts);
     // Out-of-line member definitions in this `.cpp` have no access specifier, so
     // their `member_access` came back None; resolve it from the class declarations
@@ -6913,38 +7757,77 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
     if let Some(tree) = &args.tree_type_defs {
         type_defs.push((*tree.cpp).clone());
     }
+    let class_infos = collect_cpp_class_info_for_harness(&closure_texts);
+    suppress_non_aggregate_cpp_class_defs(&mut type_defs, &class_infos);
     // Judge the receiver's constructor against the FULL include-closure type defs:
     // a project typedef alias used in a ctor parameter (libE57Format's reader takes
     // `const ustring &filePath`, `using ustring = std::string;`) is declared in a
     // header, not the target `.cpp`, so the receiver is only seen as constructible
     // once the header's aliases are in the registry.
-    let ctor_registry = type_model::TypeRegistry::from_defs(type_defs.iter());
-    let (constructor_params, default_constructible_classes, receiver_class_override, factory_plan) =
-        if function.api.class_name.is_some() && !function.is_static {
-            // #456 / §27.4: the abstract base + its concrete subclass commonly live
-            // in headers, so resolve them across the include closure, not just the
-            // target `.cpp`.
-            let closure_texts = collect_cpp_inheritance_texts(
-                &source_path,
-                &source,
-                &target_includes,
-                &target_includes_dirs,
-            );
-            cpp_receiver_constructor_params(
-                &function,
-                &functions,
-                &source,
-                &closure_texts,
-                &ctor_registry,
-            )?
-        } else {
-            (
-                Vec::<harness_gen::cpp_generate::CppParameter>::new(),
-                Vec::<String>::new(),
-                None::<String>,
-                None::<harness_gen::cpp_generate::CppFactoryPlan>,
-            )
-        };
+    let cpp_lookup_scopes = (1..=function.qualifier_path.len())
+        .rev()
+        .map(|length| function.qualifier_path[..length].join("::"))
+        .collect::<Vec<_>>();
+    let ctor_registry = type_model::TypeRegistry::from_defs(type_defs.iter())
+        .with_cpp_lookup_scopes(cpp_lookup_scopes.clone());
+    let (
+        constructor_params,
+        _receiver_constructor_default_classes,
+        receiver_class_override,
+        factory_plan,
+    ) = if function.api.class_name.is_some() && !function.is_static {
+        // #456 / §27.4: the abstract base + its concrete subclass commonly live
+        // in headers, so resolve them across the include closure, not just the
+        // target `.cpp`.
+        cpp_receiver_constructor_params(&function, &functions, &closure_texts, &ctor_registry)?
+    } else {
+        (
+            Vec::<harness_gen::cpp_generate::CppParameter>::new(),
+            Vec::<String>::new(),
+            None::<String>,
+            None::<harness_gen::cpp_generate::CppFactoryPlan>,
+        )
+    };
+    // Register default-constructible classes used by the TARGET call as well as
+    // receiver/setup/factory calls. Previously this list was populated only from
+    // receiver-constructor arguments, so a perfectly ordinary
+    // `parse(const ns::Options &)` was rejected as an opaque Phase-C parameter.
+    // Facts come from parsed class declarations across the full include closure;
+    // private/deleted/abstract classes and same-leaf namespace ambiguities are
+    // intentionally not registered.
+    let mut parameter_types = function
+        .params
+        .iter()
+        .map(|parameter| parameter.cpp_type.clone())
+        .chain(
+            constructor_params
+                .iter()
+                .map(|parameter| parameter.cpp_type.clone()),
+        )
+        .collect::<Vec<_>>();
+    if let Some(factory) = &factory_plan {
+        parameter_types.extend(
+            factory
+                .factory_params
+                .iter()
+                .map(|parameter| parameter.cpp_type.clone()),
+        );
+    }
+    // Sequence setup candidates are filtered later, but registering a class is
+    // harmless and lets that filter use the same safe declaration-level fact.
+    if args.kind == "sequence" {
+        parameter_types.extend(
+            functions
+                .iter()
+                .flat_map(|candidate| candidate.params.iter())
+                .map(|parameter| parameter.cpp_type.clone()),
+        );
+    }
+    let default_constructible_classes = cpp_default_constructible_parameter_classes(
+        &parameter_types,
+        &function.api.namespace_path,
+        &class_infos,
+    );
     let dictionary_tokens = collect_cpp_dictionary_tokens_for_harness(
         &source_path,
         &source,
@@ -6977,6 +7860,16 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             )
         })
         .or_else(|| detect_strdup_family_free(&function.return_type, &function.name));
+    let per_tu_contexts = partition_per_tu_compile_contexts(&mut target_sources);
+    let emitted_path = if args.kind == "sequence" {
+        "sequence"
+    } else if factory_plan.is_some() {
+        "factory_receiver"
+    } else if function.api.class_name.is_some() {
+        "constructed_receiver"
+    } else {
+        "free_direct"
+    };
     let common = CppHarnessGenerationCommon {
         harness_id: id,
         output_dir: output_dir.clone(),
@@ -6994,6 +7887,27 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         type_defs,
     };
     let result = if args.kind == "sequence" {
+        let lifecycle_registry = type_model::TypeRegistry::from_defs(common.type_defs.iter())
+            .with_cpp_lookup_scopes(cpp_lookup_scopes)
+            .with_default_constructible_classes(default_constructible_classes.iter().cloned());
+        let lifecycle_steps = cpp_lifecycle_steps(
+            &function,
+            &functions,
+            &lifecycle_registry,
+            &args.decoder_limits.cpp_limits(),
+        )?;
+        if lifecycle_steps.is_empty() && constructor_params.is_empty() && factory_plan.is_none() {
+            // A target-only "sequence" is just a more fragile direct harness.
+            // In auto mode, returning an error activates generate_harness_for's
+            // direct fallback immediately instead of compiling an empty sequence
+            // first. Keep parameterized-constructor/factory sequences: their
+            // receiver setup is itself meaningful lifecycle state.
+            bail!(
+                "no callable public C++ lifecycle setup methods found for '{}::{}'",
+                function.api.class_name.as_deref().unwrap_or("<unknown>"),
+                function.name
+            );
+        }
         harness_gen::cpp_generate::generate_cpp_sequence_harness(
             harness_gen::cpp_generate::GenerateCppSequenceArgs {
                 harness_id: common.harness_id,
@@ -7010,7 +7924,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 using_namespaces: common.using_namespaces,
                 result_cleanup: common.result_cleanup,
                 constructor_params,
-                lifecycle_steps: cpp_lifecycle_steps(&function, &functions)?,
+                lifecycle_steps,
                 type_defs: common.type_defs,
                 default_constructible_classes,
                 receiver_class_override: receiver_class_override.clone(),
@@ -7053,7 +7967,16 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             &handle_lifecycle,
         )
     }?;
+    write_cpp_per_tu_context(&output_dir, &per_tu_contexts)?;
     write_harness_dictionary(&output_dir, &dictionary_tokens)?;
+    write_generation_metadata(
+        &output_dir,
+        "cpp",
+        args.target_line,
+        function.line,
+        &args.kind,
+        emitted_path,
+    )?;
     if generation_banner_enabled() {
         println!(
             "Generated C++ harness '{}' at {}",
@@ -7086,6 +8009,8 @@ struct CppHarnessGenerationCommon {
 fn cpp_lifecycle_steps(
     target: &cpp_parser::CppFunction,
     functions: &[cpp_parser::CppFunction],
+    registry: &type_model::TypeRegistry,
+    decoder_limits: &harness_gen::cpp_generate::CppDecoderLimits,
 ) -> Result<Vec<harness_gen::cpp_generate::CppLifecycleStep>> {
     let Some(class_name) = target.api.class_name.as_deref() else {
         bail!("C++ --kind sequence requires a class method target");
@@ -7147,7 +8072,13 @@ fn cpp_lifecycle_steps(
         if let Some(unsupported) = function
             .params
             .iter()
-            .find(|param| !harness_gen::cpp_generate::cpp_parameter_type_supported(&param.cpp_type))
+            .find(|param| {
+                !harness_gen::cpp_generate::cpp_parameter_type_supported_with_registry(
+                    &param.cpp_type,
+                    registry,
+                    decoder_limits,
+                )
+            })
             .map(|param| param.cpp_type.clone())
         {
             eprintln!(
@@ -7172,48 +8103,185 @@ fn cpp_lifecycle_steps(
             break;
         }
     }
-    if steps.is_empty() {
-        eprintln!(
-            "warning: generated C++ lifecycle harness for '{}::{}' without setup methods",
-            class_name, target.name
-        );
-    }
     Ok(steps)
 }
 
-/// The bare class spelling a constructor argument decodes to — `const ns::Foo &`
-/// -> `ns::Foo` — matching `harness_gen`'s `cpp_registry_decode_type`. Pointers
-/// are returned unchanged (default-construction does not apply to them).
-fn cpp_arg_class_name(cpp_type: &str) -> String {
-    let normalized = cpp_type.split_whitespace().collect::<Vec<_>>().join(" ");
-    if normalized.contains('*') {
-        return normalized;
+fn collect_cpp_class_info_for_harness(texts: &[String]) -> Vec<cpp_parser::CppClassInfo> {
+    let mut by_qualified = std::collections::BTreeMap::<String, cpp_parser::CppClassInfo>::new();
+    for text in texts {
+        for info in cpp_parser::parse_cpp_class_info(text).unwrap_or_default() {
+            match by_qualified.get(&info.qualified_name) {
+                Some(existing) if existing.complete || !info.complete => {}
+                _ => {
+                    by_qualified.insert(info.qualified_name.clone(), info);
+                }
+            }
+        }
     }
-    normalized
-        .trim_start_matches("const ")
-        .trim()
-        .trim_end_matches('&')
-        .trim()
-        .to_owned()
+    by_qualified.into_values().collect()
 }
 
-/// Whether a class-typed constructor argument can be default-constructed and
-/// passed (#353): a non-pointer, non-template class with a parse-time default
-/// constructor that isn't abstract. Templates fall out via the `<` guard and
-/// the name not matching a `class Foo` declaration.
-fn cpp_arg_is_default_constructible_class(cpp_type: &str, source: &str) -> bool {
-    if cpp_type.contains('*') {
-        return false;
+/// Extract the class spelling the decoder must initialize. References and
+/// output pointers both use a live default-constructed object; templates and
+/// function pointers are handled by dedicated decoders and are not class facts.
+fn cpp_parameter_class_spelling(cpp_type: &str) -> Option<String> {
+    let mut spelling = cpp_type.split_whitespace().collect::<Vec<_>>().join(" ");
+    if spelling.contains('<') || spelling.contains('(') || spelling.contains('[') {
+        return None;
     }
-    let decoded = cpp_arg_class_name(cpp_type);
-    if decoded.is_empty() || decoded.contains('<') {
-        return false;
+    loop {
+        let before = spelling.clone();
+        spelling = spelling
+            .trim()
+            .trim_start_matches("const ")
+            .trim_start_matches("volatile ")
+            .trim_start_matches("class ")
+            .trim_start_matches("struct ")
+            .trim_end_matches(" const")
+            .trim_end_matches(" volatile")
+            .trim_end_matches('&')
+            .trim_end_matches('*')
+            .trim()
+            .to_owned();
+        if spelling == before {
+            break;
+        }
     }
-    let unqualified = decoded.rsplit("::").next().unwrap_or(&decoded);
-    source_declares_default_constructor(source, unqualified)
-        && !cpp_parser::parse_cpp_abstract_classes(source)
-            .unwrap_or_default()
-            .contains(unqualified)
+    let spelling = spelling.trim_start_matches("::").trim().to_owned();
+    (!spelling.is_empty()
+        && spelling.split("::").all(|segment| {
+            let mut chars = segment.chars();
+            chars
+                .next()
+                .is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_')
+                && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        }))
+    .then_some(spelling)
+}
+
+pub(crate) fn cpp_default_constructible_parameter_classes(
+    parameter_types: &[String],
+    target_namespace: &[String],
+    class_infos: &[cpp_parser::CppClassInfo],
+) -> Vec<String> {
+    let mut registered = std::collections::BTreeSet::new();
+    for parameter_type in parameter_types {
+        let Some(spelling) = cpp_parameter_class_spelling(parameter_type) else {
+            continue;
+        };
+        let leaf = spelling.rsplit("::").next().unwrap_or(&spelling);
+        let resolved = if spelling.contains("::") {
+            class_infos
+                .iter()
+                .find(|info| info.qualified_name == spelling)
+        } else {
+            let in_target_namespace = if target_namespace.is_empty() {
+                spelling.clone()
+            } else {
+                format!("{}::{spelling}", target_namespace.join("::"))
+            };
+            class_infos
+                .iter()
+                .find(|info| info.qualified_name == in_target_namespace)
+                .or_else(|| {
+                    let mut leaf_matches = class_infos.iter().filter(|info| info.name == leaf);
+                    let only = leaf_matches.next()?;
+                    leaf_matches.next().is_none().then_some(only)
+                })
+        };
+        if resolved.is_some_and(cpp_parser::CppClassInfo::has_public_default_constructor) {
+            // Store the spelling that appears in the signature: the decoder's
+            // registry lookup is performed after cv/ref/pointer stripping.
+            registered.insert(spelling);
+        }
+    }
+    registered.into_iter().collect()
+}
+
+/// Known-unbuildable C++ signatures for discovery ranking. This uses the same
+/// local include/type/default-constructor context as generation, but only returns
+/// a negative verdict when the type is actually declared (or is an explicitly
+/// unsupported function/template shape). Missing external include context stays
+/// "unknown" and is not demoted.
+pub(crate) fn cpp_known_blocked_signatures_for_discovery(
+    source_path: &Path,
+    source: &str,
+    functions: &[cpp_parser::CppFunction],
+) -> std::collections::HashSet<(u32, String)> {
+    let target_dir = source_path.parent().unwrap_or_else(|| Path::new("."));
+    let mut include_dirs = vec![target_dir.to_path_buf()];
+    for include in auto_detect_project_includes(source_path) {
+        if !include_dirs.contains(&include) {
+            include_dirs.push(include);
+        }
+    }
+    let mut target_includes = auto_detect_c_headers(source_path, target_dir);
+    for include in harness_project_includes(source, &include_dirs) {
+        if !target_includes.contains(&include) {
+            target_includes.push(include);
+        }
+    }
+    let mut type_defs =
+        collect_cpp_type_defs_for_harness(source_path, source, &target_includes, &include_dirs);
+    let closure_texts =
+        collect_cpp_inheritance_texts(source_path, source, &target_includes, &include_dirs);
+    let class_infos = collect_cpp_class_info_for_harness(&closure_texts);
+    suppress_non_aggregate_cpp_class_defs(&mut type_defs, &class_infos);
+    let mut blocked = std::collections::HashSet::new();
+    for function in functions {
+        let parameter_types = function
+            .params
+            .iter()
+            .map(|parameter| parameter.cpp_type.clone())
+            .collect::<Vec<_>>();
+        let defaults = cpp_default_constructible_parameter_classes(
+            &parameter_types,
+            &function.api.namespace_path,
+            &class_infos,
+        );
+        let scopes = (1..=function.qualifier_path.len())
+            .rev()
+            .map(|length| function.qualifier_path[..length].join("::"))
+            .collect::<Vec<_>>();
+        let registry = type_model::TypeRegistry::from_defs(type_defs.iter())
+            .with_cpp_lookup_scopes(scopes)
+            .with_default_constructible_classes(defaults);
+        let known_blocked = function.params.iter().any(|parameter| {
+            if harness_gen::cpp_generate::cpp_parameter_type_supported_with_registry(
+                &parameter.cpp_type,
+                &registry,
+                &Default::default(),
+            ) {
+                return false;
+            }
+            if parameter.cpp_type.contains("(*") || parameter.cpp_type.contains('<') {
+                return true;
+            }
+            let Some(spelling) = cpp_parameter_class_spelling(&parameter.cpp_type) else {
+                return false;
+            };
+            let leaf = spelling.rsplit("::").next().unwrap_or(&spelling);
+            let scoped = if function.api.namespace_path.is_empty() {
+                spelling.clone()
+            } else {
+                format!("{}::{spelling}", function.api.namespace_path.join("::"))
+            };
+            class_infos.iter().any(|info| {
+                info.qualified_name == spelling
+                    || info.qualified_name == scoped
+                    || (class_infos
+                        .iter()
+                        .filter(|other| other.name == leaf)
+                        .count()
+                        == 1
+                        && info.name == leaf)
+            })
+        });
+        if known_blocked {
+            blocked.insert((function.line, target_rank::cpp_target_name(function)));
+        }
+    }
+    blocked
 }
 
 /// Returns `(constructor params, default-constructible class spellings)`. The
@@ -7229,10 +8297,16 @@ fn cpp_arg_is_default_constructible_class(cpp_type: &str, source: &str) -> bool 
 fn cpp_ctor_param_supported(
     param_type: &str,
     registry: &type_model::TypeRegistry,
-    source: &str,
+    namespace_path: &[String],
+    class_infos: &[cpp_parser::CppClassInfo],
 ) -> bool {
     if harness_gen::cpp_generate::cpp_parameter_type_supported(param_type)
-        || cpp_arg_is_default_constructible_class(param_type, source)
+        || !cpp_default_constructible_parameter_classes(
+            &[param_type.to_owned()],
+            namespace_path,
+            class_infos,
+        )
+        .is_empty()
     {
         return true;
     }
@@ -7270,7 +8344,6 @@ type CppReceiverPlan = (
 fn cpp_receiver_constructor_params(
     target: &cpp_parser::CppFunction,
     functions: &[cpp_parser::CppFunction],
-    source: &str,
     closure_texts: &[String],
     registry: &type_model::TypeRegistry,
 ) -> Result<CppReceiverPlan> {
@@ -7278,6 +8351,14 @@ fn cpp_receiver_constructor_params(
         bail!("C++ --kind sequence requires a class method target");
     };
     let qualified_class = qualified_cpp_class_name(target, class_name);
+    let class_infos = collect_cpp_class_info_for_harness(closure_texts);
+    let receiver_default_constructible = cpp_default_constructible_parameter_classes(
+        std::slice::from_ref(&qualified_class),
+        &target.api.namespace_path,
+        &class_infos,
+    )
+    .iter()
+    .any(|registered| registered == &qualified_class);
 
     // An abstract receiver (a class with a pure-virtual member) cannot be
     // instantiated directly. #456: substitute a concrete subclass we can
@@ -7305,7 +8386,14 @@ fn cpp_receiver_constructor_params(
         // ARGS — resolve that ctor (like the base's) and construct it with decoded
         // arguments: `Subclass _gf_receiver(args); _gf_receiver.method(..)`.
         if let Some((subclass, ctor_params, default_constructible_classes)) =
-            resolve_subclass_with_ctor(class_name, functions, closure_texts, registry, source)
+            resolve_subclass_with_ctor(
+                class_name,
+                functions,
+                closure_texts,
+                registry,
+                &target.api.namespace_path,
+                &class_infos,
+            )
         {
             return Ok((
                 ctor_params,
@@ -7320,7 +8408,7 @@ fn cpp_receiver_constructor_params(
         // by-value `Base` return is impossible to instantiate, so any such match is
         // spurious); the factory path then null-guards and calls through `->`.
         if let Some(factory) =
-            find_cpp_factory_for_class(class_name, functions, closure_texts, registry, source)
+            find_cpp_factory_for_class(class_name, functions, closure_texts, registry, &class_infos)
         {
             if factory.receiver_is_pointer {
                 return Ok((Vec::new(), Vec::new(), None, Some(factory)));
@@ -7342,13 +8430,25 @@ fn cpp_receiver_constructor_params(
     let mut constructors = declared_constructors
         .iter()
         .copied()
-        .filter(|constructor| {
-            constructor
-                .api
-                .member_access
-                .as_deref()
-                .is_none_or(|access| access == "public")
-        })
+        .filter(
+            |constructor| match constructor.api.member_access.as_deref() {
+                Some("public") => true,
+                Some(_) => false,
+                None => class_infos.iter().any(|info| {
+                    (info.qualified_name == qualified_class || info.name == class_name)
+                        && info.constructors.iter().any(|declared| {
+                            declared.access == "public"
+                                && !declared.is_deleted
+                                && declared.param_types
+                                    == constructor
+                                        .params
+                                        .iter()
+                                        .map(|parameter| parameter.cpp_type.clone())
+                                        .collect::<Vec<_>>()
+                        })
+                }),
+            },
+        )
         .collect::<Vec<_>>();
     constructors.sort_by_key(|constructor| (constructor.params.len(), constructor.line));
     // Prefer default construction (`T obj;`) whenever the class is no-arg
@@ -7361,7 +8461,7 @@ fn cpp_receiver_constructor_params(
     if constructors
         .iter()
         .any(|constructor| constructor.params.is_empty())
-        || source_declares_default_constructor(source, class_name)
+        || receiver_default_constructible
     {
         return Ok((Vec::new(), Vec::new(), None, None));
     }
@@ -7375,7 +8475,7 @@ fn cpp_receiver_constructor_params(
         // `XMLElement` has no public ctor but is created via
         // `XMLDocument::NewElement`). The check scans the whole include closure,
         // since ctors usually live in headers the target only `#include`s.
-        if cpp_class_is_default_constructible(class_name, functions, closure_texts) {
+        if receiver_default_constructible {
             return Ok((Vec::new(), Vec::new(), None, None));
         }
         // Fall through to factory search below.
@@ -7385,17 +8485,24 @@ fn cpp_receiver_constructor_params(
         // default-construct and pass.
         if let Some(constructor) = constructors.iter().find(|constructor| {
             !constructor.api.is_template
-                && constructor
+                && constructor.params.iter().all(|param| {
+                    cpp_ctor_param_supported(
+                        &param.cpp_type,
+                        registry,
+                        &target.api.namespace_path,
+                        &class_infos,
+                    )
+                })
+        }) {
+            let default_constructible_classes = cpp_default_constructible_parameter_classes(
+                &constructor
                     .params
                     .iter()
-                    .all(|param| cpp_ctor_param_supported(&param.cpp_type, registry, source))
-        }) {
-            let default_constructible_classes = constructor
-                .params
-                .iter()
-                .filter(|param| cpp_arg_is_default_constructible_class(&param.cpp_type, source))
-                .map(|param| cpp_arg_class_name(&param.cpp_type))
-                .collect::<Vec<_>>();
+                    .map(|param| param.cpp_type.clone())
+                    .collect::<Vec<_>>(),
+                &target.api.namespace_path,
+                &class_infos,
+            );
             return Ok((
                 constructor
                     .params
@@ -7421,7 +8528,7 @@ fn cpp_receiver_constructor_params(
     // The factory's owner is stack-allocated so `_gf_owner` outlives the
     // call to the target method; the receiver's memory remains valid.
     if let Some(factory) =
-        find_cpp_factory_for_class(class_name, functions, closure_texts, registry, source)
+        find_cpp_factory_for_class(class_name, functions, closure_texts, registry, &class_infos)
     {
         return Ok((Vec::new(), Vec::new(), None, Some(factory)));
     }
@@ -7456,7 +8563,7 @@ fn find_cpp_factory_for_class(
     functions: &[cpp_parser::CppFunction],
     closure_texts: &[String],
     registry: &type_model::TypeRegistry,
-    source: &str,
+    class_infos: &[cpp_parser::CppClassInfo],
 ) -> Option<harness_gen::cpp_generate::CppFactoryPlan> {
     let is_factory_return = |return_type: &str| -> bool {
         let rt = return_type.trim();
@@ -7495,12 +8602,6 @@ fn find_cpp_factory_for_class(
             || (lower.starts_with("get") && lower.contains("instance"))
     };
 
-    let params_decodable = |params: &[cpp_parser::CppParamDescriptor]| -> bool {
-        params
-            .iter()
-            .all(|p| cpp_ctor_param_supported(&p.cpp_type, registry, source))
-    };
-
     let mut candidates: Vec<&cpp_parser::CppFunction> = functions
         .iter()
         .filter(|f| {
@@ -7514,7 +8615,14 @@ fn find_cpp_factory_for_class(
                     .as_deref()
                     .is_none_or(|a| a == "public")
                 && is_factory_return(&f.return_type)
-                && params_decodable(&f.params)
+                && f.params.iter().all(|parameter| {
+                    cpp_ctor_param_supported(
+                        &parameter.cpp_type,
+                        registry,
+                        &f.api.namespace_path,
+                        class_infos,
+                    )
+                })
         })
         .collect();
 
@@ -7527,15 +8635,20 @@ fn find_cpp_factory_for_class(
     for factory_fn in candidates {
         let owner_class = factory_fn.api.class_name.as_deref();
 
-        // Skip if the factory lives on the class we're trying to construct
-        // (would still need a receiver to call it).
-        if owner_class == Some(class_name) {
+        // An INSTANCE factory on the class being constructed is circular. A
+        // static `C::Create()` is precisely the construction path we want and
+        // requires no receiver.
+        if owner_class == Some(class_name) && !factory_fn.is_static {
             continue;
         }
 
         // For an instance-method factory, the owner must be default-constructible.
+        // A static owner method is called with `Owner::Factory` and has no such
+        // requirement.
         if let Some(owner) = owner_class {
-            if !cpp_class_is_default_constructible(owner, functions, closure_texts) {
+            if !factory_fn.is_static
+                && !cpp_class_is_default_constructible(owner, functions, closure_texts)
+            {
                 continue;
             }
         }
@@ -7551,6 +8664,7 @@ fn find_cpp_factory_for_class(
 
         return Some(harness_gen::cpp_generate::CppFactoryPlan {
             owner_type,
+            owner_method_is_static: factory_fn.is_static,
             factory_method: factory_fn.name.clone(),
             factory_params: factory_fn
                 .params
@@ -7608,7 +8722,8 @@ fn resolve_subclass_with_ctor(
     functions: &[cpp_parser::CppFunction],
     texts: &[String],
     registry: &type_model::TypeRegistry,
-    source: &str,
+    namespace_path: &[String],
+    class_infos: &[cpp_parser::CppClassInfo],
 ) -> Option<(
     String,
     Vec<harness_gen::cpp_generate::CppParameter>,
@@ -7645,16 +8760,19 @@ fn resolve_subclass_with_ctor(
         ctors.sort_by_key(|c| (c.params.len(), c.line));
         if let Some(ctor) = ctors.iter().find(|c| {
             !c.params.is_empty()
-                && c.params
-                    .iter()
-                    .all(|p| cpp_ctor_param_supported(&p.cpp_type, registry, source))
+                && c.params.iter().all(|p| {
+                    cpp_ctor_param_supported(&p.cpp_type, registry, namespace_path, class_infos)
+                })
         }) {
-            let default_constructible_classes = ctor
-                .params
-                .iter()
-                .filter(|p| cpp_arg_is_default_constructible_class(&p.cpp_type, source))
-                .map(|p| cpp_arg_class_name(&p.cpp_type))
-                .collect::<Vec<_>>();
+            let default_constructible_classes = cpp_default_constructible_parameter_classes(
+                &ctor
+                    .params
+                    .iter()
+                    .map(|parameter| parameter.cpp_type.clone())
+                    .collect::<Vec<_>>(),
+                namespace_path,
+                class_infos,
+            );
             let ctor_params = ctor
                 .params
                 .iter()
@@ -7677,59 +8795,19 @@ fn resolve_subclass_with_ctor(
 /// not mistaken for implicitly default-constructible.
 fn cpp_class_is_default_constructible(
     class: &str,
-    functions: &[cpp_parser::CppFunction],
+    _functions: &[cpp_parser::CppFunction],
     texts: &[String],
 ) -> bool {
-    let declared: Vec<&cpp_parser::CppFunction> = functions
-        .iter()
-        .filter(|f| f.api.is_constructor && f.api.class_name.as_deref() == Some(class))
-        .collect();
-    let public_empty_ctor = declared.iter().any(|c| {
-        c.params.is_empty()
-            && c.api
-                .member_access
-                .as_deref()
-                .is_none_or(|access| access == "public")
-    });
-    if public_empty_ctor
-        || texts
-            .iter()
-            .any(|t| source_declares_default_constructor(t, class))
-    {
-        return true;
+    let infos = collect_cpp_class_info_for_harness(texts);
+    if let Some(exact) = infos.iter().find(|info| info.qualified_name == class) {
+        return exact.has_public_default_constructor();
     }
-    if texts
-        .iter()
-        .any(|t| source_deletes_constructor_without_default(t, class))
-    {
+    let leaf = class.rsplit("::").next().unwrap_or(class);
+    let mut matches = infos.iter().filter(|info| info.name == leaf);
+    let Some(only) = matches.next() else {
         return false;
-    }
-    // Implicit default only when NO constructor is declared anywhere in the closure.
-    declared.is_empty()
-        && !texts
-            .iter()
-            .any(|t| text_declares_any_constructor(t, class))
-}
-
-/// Whether `source` declares any constructor for `class_name` (a `ClassName(`
-/// member declaration). A conservative signal for the implicit-default guard: a
-/// false positive only skips a subclass (safe), never emits an uncompilable
-/// receiver.
-fn text_declares_any_constructor(source: &str, class_name: &str) -> bool {
-    let normalized = normalize_cpp_signature_text(source);
-    let needle = format!("{class_name}(");
-    let mut from = 0;
-    while let Some(pos) = normalized[from..].find(&needle) {
-        let abs = from + pos;
-        // A `~ClassName(` destructor is NOT a constructor — virtually every class
-        // has one, so matching it would wrongly mark the class non-default-
-        // constructible (a false skip of the receiver).
-        if !preceded_by_destructor_tilde(&normalized, abs) {
-            return true;
-        }
-        from = abs + needle.len();
-    }
-    false
+    };
+    matches.next().is_none() && only.has_public_default_constructor()
 }
 
 /// The target `.cpp` source text plus every header in its include closure
@@ -7788,85 +8866,6 @@ fn qualified_cpp_class_name(target: &cpp_parser::CppFunction, class_name: &str) 
     }
 }
 
-fn source_deletes_constructor_without_default(source: &str, class_name: &str) -> bool {
-    if source_declares_default_constructor(source, class_name) {
-        return false;
-    }
-    let normalized = normalize_cpp_signature_text(source);
-    let deleted_default = format!("{class_name}()=delete");
-    let deleted_copy_const = format!("{class_name}(const{class_name}&)=delete");
-    let deleted_copy_mut = format!("{class_name}({class_name}&)=delete");
-    normalized.contains(&deleted_default)
-        || normalized.contains(&deleted_copy_const)
-        || normalized.contains(&deleted_copy_mut)
-}
-
-fn source_declares_default_constructor(source: &str, class_name: &str) -> bool {
-    let normalized = normalize_cpp_signature_text(source);
-    // A constructor whose parameters are all defaulted is no-arg constructible.
-    // In C++ once a parameter has a default every later one must too, so a
-    // default on the *first* parameter implies the whole list is optional
-    // (`Value(ValueType type = nullValue)` -> callable as `Value()`).
-    let needle = format!("{class_name}(");
-    let mut from = 0;
-    while let Some(pos) = normalized[from..].find(&needle) {
-        let abs = from + pos;
-        let open = abs + needle.len();
-        // Skip a DESTRUCTOR (`~ClassName(`): the needle `ClassName(` is a substring
-        // of `~ClassName(`, and the destructor's empty `()` would otherwise read as a
-        // no-arg constructor (tinyxml2's `~XMLElement()` made every XMLElement method
-        // believe the class was default-constructible and emit `XMLElement r;`).
-        if !preceded_by_destructor_tilde(&normalized, abs) {
-            // Extract the balanced parameter list.
-            let bytes = normalized.as_bytes();
-            let mut depth = 1usize;
-            let mut i = open;
-            while i < bytes.len() && depth > 0 {
-                match bytes[i] {
-                    b'(' | b'<' => depth += 1,
-                    b')' | b'>' => depth -= 1,
-                    _ => {}
-                }
-                i += 1;
-            }
-            if depth == 0 {
-                let params = &normalized[open..i - 1];
-                // Empty params => a no-arg constructor, whatever follows the `)`
-                // (a body `{`, an `: init-list`, a `;` declaration, `=default`, or a
-                // `ClassName()` temporary — all imply the class is constructible).
-                // tinyxml2's `StrPair() : _flags(0) {}` was missed by a `(){` check
-                // because the init-list `:` sits between `)` and `{`.
-                if params.is_empty() {
-                    return true;
-                }
-                // All-params-defaulted: the first top-level parameter has a `=`
-                // default (C++ requires every later one to as well), so it is
-                // no-arg callable (`Value(ValueType type = nullValue)`).
-                let first = params.split(',').next().unwrap_or("");
-                if first.contains('=') {
-                    return true;
-                }
-            }
-        }
-        from = open;
-    }
-    false
-}
-
-/// True when the `ClassName(` token at `abs` is actually a destructor (`~ClassName(`).
-fn preceded_by_destructor_tilde(normalized: &str, abs: usize) -> bool {
-    abs.checked_sub(1)
-        .and_then(|i| normalized.as_bytes().get(i))
-        .is_some_and(|byte| *byte == b'~')
-}
-
-fn normalize_cpp_signature_text(source: &str) -> String {
-    source
-        .chars()
-        .filter(|ch| !ch.is_whitespace())
-        .collect::<String>()
-}
-
 #[derive(Debug, Clone)]
 struct CppBuildContext {
     provenance: String,
@@ -7891,6 +8890,23 @@ impl CppBuildContext {
 
     fn encoded_flags(&self) -> Vec<String> {
         let mut flags = self.compile_flags.clone();
+        // A recovered `-std=` must control the Makefile's single CXX_STD knob,
+        // not remain later in COMPILE_DB_FLAGS where it overrides every dialect
+        // ladder retry. Last one wins, matching compiler command-line semantics.
+        let recovered_standard = flags
+            .iter()
+            .filter_map(|flag| flag.strip_prefix("-std="))
+            .filter(|standard| standard.contains("++"))
+            .last()
+            .map(str::to_owned);
+        flags.retain(|flag| {
+            !flag
+                .strip_prefix("-std=")
+                .is_some_and(|standard| standard.contains("++"))
+        });
+        if let Some(standard) = recovered_standard {
+            flags.push(format!("{BUILD_CONTEXT_CXX_STANDARD_PREFIX}{standard}"));
+        }
         flags.push(format!(
             "{BUILD_CONTEXT_PROVENANCE_PREFIX}{}",
             self.provenance
@@ -7928,7 +8944,11 @@ fn cpp_build_context_for_source(source_path: &Path) -> CppBuildContext {
                 .map(|cmake| infer_cmake_build_context(source_path, &cmake).extra_sources)
                 .unwrap_or_default();
             return CppBuildContext {
-                provenance: "compile_commands".to_owned(),
+                provenance: if is_c_family_header(source_path) {
+                    "associated_header_compile_database".to_owned()
+                } else {
+                    "exact_tu_compile_database".to_owned()
+                },
                 confidence: "high".to_owned(),
                 compile_flags: flags,
                 link_flags: Vec::new(),
@@ -8825,7 +9845,7 @@ mod tests {
         c_constructor_drive_plan, c_direct_lifecycle_table, c_signature_needs_project_header,
         c_va_list_variadic_wrapper, cmake_define_enables_std_module,
         collect_c_type_defs_for_harness, collect_cpp_using_namespaces, compile_database_candidates,
-        compute_default_id, cpp_arg_class_name, cpp_arg_is_default_constructible_class,
+        compute_default_id, cpp_default_constructible_parameter_classes,
         cpp_namespace_begin_macros, detect_strdup_family_free, detect_top_level_namespaces_in_text,
         extract_compile_database_flags, find_project_header_declaring_target, generate_for_path,
         infer_cmake_build_context, infer_cmake_c_build_context, is_c_lifecycle_end,
@@ -8835,9 +9855,10 @@ mod tests {
         merge_tree_c_lifecycle, numeric_token_byte_encodings, pick_c_target, pick_cpp_target,
         push_build_compile_flag, recover_library_translation_units,
         resolve_cpp_member_access_from_headers, resolve_cpp_namespace_qualified_free_functions,
-        run, self_prefixed_include_roots, source_defines_main, source_header_visibility_flags,
-        source_path_is_foreign_platform, CompileCommandEntry, DecoderLimitArgs,
-        GenerateHarnessArgs,
+        run, select_subprogram, self_prefixed_include_roots, source_defines_main,
+        source_header_visibility_flags, source_path_is_foreign_platform, CompileCommandEntry,
+        CppBuildContext, DecoderLimitArgs, GenerateHarnessArgs,
+        BLOCKED_BY_NON_SELF_CONTAINED_HEADER,
     };
     use ada_parser::ast::{Package, PackageId, StructuralAst as StructuralAstForMerge};
     use ada_parser::ast::{
@@ -8966,6 +9987,56 @@ mod tests {
         assert!(parse.api.is_method);
         assert!(parse.is_static);
         assert_eq!(parse.api.member_access.as_deref(), Some("public"));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn header_member_access_resolution_is_namespace_and_overload_exact() {
+        let root = temp_dir("cpp-member-access-signature");
+        let source_path = root.join("parse.cc");
+        fs::write(
+            &source_path,
+            "void one::Parser::reset(int) {}\n\
+             void one::Parser::reset(const char *) {}\n\
+             void two::Parser::reset(const char *) {}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("parser.h"),
+            "namespace one { class Parser { public: void reset(int); private: void reset(const char *); }; }\n\
+             namespace two { class Parser { public: void reset(const char *); }; }\n",
+        )
+        .unwrap();
+        let source = fs::read_to_string(&source_path).unwrap();
+        let mut functions = cpp_parser::parse_cpp_functions(&source).unwrap();
+
+        resolve_cpp_member_access_from_headers(
+            &mut functions,
+            &source_path,
+            &["parser.h".to_owned()],
+            std::slice::from_ref(&root),
+        );
+
+        let access = |namespace: &str, parameter: &str| {
+            functions
+                .iter()
+                .find(|function| {
+                    function.qualifier_path.first().map(String::as_str) == Some(namespace)
+                        && function.params[0].cpp_type == parameter
+                })
+                .and_then(|function| function.api.member_access.as_deref())
+        };
+        assert_eq!(access("one", "int"), Some("public"), "{functions:#?}");
+        assert_eq!(
+            access("one", "const char *"),
+            Some("private"),
+            "{functions:#?}"
+        );
+        assert_eq!(
+            access("two", "const char *"),
+            Some("public"),
+            "{functions:#?}"
+        );
         let _ = fs::remove_dir_all(root);
     }
 
@@ -9187,6 +10258,64 @@ mod tests {
                 && db_flags.iter().any(|f| f == "/proj/include"),
             "compile-relevant flags must survive: {db_flags:?}"
         );
+    }
+
+    #[test]
+    fn compile_database_preserves_compiler_abi_and_extension_context() {
+        let entry = CompileCommandEntry {
+            directory: PathBuf::from("/project/build"),
+            file: PathBuf::from("../src/legacy.cpp"),
+            arguments: Some(
+                [
+                    "/opt/toolchain/bin/g++-12",
+                    "-fms-extensions",
+                    "-fpermissive",
+                    "-fpack-struct=1",
+                    "-fshort-enums",
+                    "-mms-bitfields",
+                    "--sysroot",
+                    "/opt/sysroot",
+                    "--target=x86_64-linux-gnu",
+                    "-include",
+                    "../include/config.h",
+                    "-fplugin=/tmp/execute.so",
+                    "-fmodules-ts",
+                    "-MJ",
+                    "deps.json",
+                    "-c",
+                    "../src/legacy.cpp",
+                ]
+                .iter()
+                .map(|value| value.to_string())
+                .collect(),
+            ),
+            command: None,
+        };
+        let flags = extract_compile_database_flags(&entry, Path::new("/project/src/legacy.cpp"));
+        for expected in [
+            "@govfuzz-build-context-compiler=/opt/toolchain/bin/g++-12",
+            "-fms-extensions",
+            "-fpermissive",
+            "-fpack-struct=1",
+            "-fshort-enums",
+            "-mms-bitfields",
+            "--sysroot",
+            "/opt/sysroot",
+            "--target=x86_64-linux-gnu",
+            "-include",
+            "/project/include/config.h",
+        ] {
+            assert!(
+                flags.iter().any(|flag| flag == expected),
+                "missing {expected}: {flags:?}"
+            );
+        }
+        assert!(!flags.iter().any(|flag| {
+            flag.starts_with("-fplugin")
+                || flag == "-fmodules-ts"
+                || flag == "-MJ"
+                || flag.ends_with("deps.json")
+        }));
     }
 
     #[test]
@@ -9886,60 +11015,6 @@ inline namespace v12 {
         );
 
         let _ = fs::remove_dir_all(&root);
-    }
-
-    #[test]
-    fn default_constructor_detected_including_all_defaulted_params() {
-        use super::source_declares_default_constructor;
-        // Explicit no-arg forms.
-        assert!(source_declares_default_constructor(
-            "class V { V() {} };",
-            "V"
-        ));
-        assert!(source_declares_default_constructor("V() = default;", "V"));
-        // No-arg-callable via a defaulted parameter (jsoncpp `Value`).
-        assert!(source_declares_default_constructor(
-            "Value(ValueType type = nullValue);",
-            "Value"
-        ));
-        // A required parameter is NOT no-arg constructible.
-        assert!(!source_declares_default_constructor(
-            "Widget(int width);",
-            "Widget"
-        ));
-        // A DESTRUCTOR (`~T()`) is not a constructor — its empty `()` must not be
-        // read as a no-arg ctor (tinyxml2's `~XMLElement()` made every XMLElement
-        // method think the class was default-constructible).
-        assert!(!source_declares_default_constructor(
-            "class T { T(Doc* d); ~T(); };",
-            "T"
-        ));
-        // A default ctor with an INITIALIZER LIST is still no-arg (tinyxml2 StrPair).
-        assert!(source_declares_default_constructor(
-            "StrPair() : _flags(0), _start(0) {}",
-            "StrPair"
-        ));
-        // A bare declaration (no body) of a no-arg ctor counts too.
-        assert!(source_declares_default_constructor(
-            "class T { T(); };",
-            "T"
-        ));
-    }
-
-    #[test]
-    fn text_declares_any_constructor_ignores_destructors() {
-        use super::text_declares_any_constructor;
-        // Only a destructor => NO user-declared constructor (implicitly default-
-        // constructible); must not be mistaken for one.
-        assert!(!text_declares_any_constructor(
-            "class T { public: ~T(); int f(); };",
-            "T"
-        ));
-        // A real constructor IS detected (tinyxml2 XMLElement(XMLDocument*)).
-        assert!(text_declares_any_constructor(
-            "class T { T(Doc* d); ~T(); };",
-            "T"
-        ));
     }
 
     #[test]
@@ -10790,12 +11865,14 @@ class BufferReader : public Reader { \
         let functions = cpp_parser::parse_cpp_functions(src).unwrap();
         let defs: Vec<c_parser::CTypeDefs> = vec![];
         let registry = type_model::TypeRegistry::from_defs(defs.iter());
+        let class_infos = cpp_parser::parse_cpp_class_info(src).unwrap();
         let plan = super::resolve_subclass_with_ctor(
             "Reader",
             &functions,
             &[src.to_owned()],
             &registry,
-            src,
+            &[],
+            &class_infos,
         )
         .expect("a ctor-arg subclass resolves");
         assert_eq!(plan.0, "BufferReader");
@@ -10820,12 +11897,13 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let functions = cpp_parser::parse_cpp_functions(src).unwrap();
         let defs: Vec<c_parser::CTypeDefs> = vec![];
         let registry = type_model::TypeRegistry::from_defs(defs.iter());
+        let class_infos = cpp_parser::parse_cpp_class_info(src).unwrap();
         let factory = super::find_cpp_factory_for_class(
             "Codec",
             &functions,
             &[src.to_owned()],
             &registry,
-            src,
+            &class_infos,
         )
         .expect("a free-function factory resolves");
         assert_eq!(factory.factory_method, "make_codec");
@@ -11247,6 +12325,28 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         assert!(
             !headers.contains(&"stddef.h".to_owned()),
             "system includes should not be converted to quoted project headers: {headers:?}"
+        );
+    }
+
+    #[test]
+    fn auto_detect_c_headers_preserves_config_before_same_stem_api() {
+        let root = temp_dir("source-header-order");
+        let source = root.join("legacy.cpp");
+        fs::write(
+            &source,
+            "#include \"config.h\"\n#include \"legacy.hpp\"\nint parse() { return 0; }\n",
+        )
+        .unwrap();
+        fs::write(root.join("config.h"), "#define LEGACY_API public\n").unwrap();
+        fs::write(
+            root.join("legacy.hpp"),
+            "#ifndef LEGACY_API\n#error config must precede API\n#endif\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            auto_detect_c_headers(&source, &root),
+            vec!["config.h".to_owned(), "legacy.hpp".to_owned()]
         );
     }
 
@@ -12273,6 +13373,36 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         }
     }
 
+    #[test]
+    fn ada_target_line_selects_the_exact_duplicate_named_subprogram() {
+        let mut first = subprogram(1, "Decode");
+        first.decl_span = Span::new(0, 1, 10, 1);
+        let mut second = subprogram(2, "Decode");
+        second.decl_span = Span::new(2, 3, 40, 1);
+        let ast = StructuralAstForMerge {
+            subprograms: vec![first, second],
+            ..StructuralAstForMerge::default()
+        };
+
+        let selected = select_subprogram(&ast, Some("decode"), Some(40)).unwrap();
+        assert_eq!(selected.id, SubprogramId(2));
+    }
+
+    #[test]
+    fn ada_stale_target_line_falls_back_deterministically_to_first_declaration() {
+        let mut later = subprogram(2, "Decode");
+        later.decl_span = Span::new(2, 3, 40, 1);
+        let mut earlier = subprogram(1, "Decode");
+        earlier.decl_span = Span::new(0, 1, 10, 1);
+        let ast = StructuralAstForMerge {
+            subprograms: vec![later, earlier],
+            ..StructuralAstForMerge::default()
+        };
+
+        let selected = select_subprogram(&ast, Some("Decode"), Some(99)).unwrap();
+        assert_eq!(selected.id, SubprogramId(1));
+    }
+
     fn temp_dir(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -13180,7 +14310,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         fs::write(
             root.join("compile_commands.json"),
             format!(
-                r#"[{{"directory":"{}","file":"{}","arguments":["cc","-I","../include","-DLEGACY_MODE=1","-std=gnu11","-c","{}"]}}]"#,
+                r#"[{{"directory":"{}","file":"{}","arguments":["gcc","-I","../include","-DLEGACY_MODE=1","-std=gnu11","-c","{}"]}}]"#,
                 src.display(),
                 source.display(),
                 source.display()
@@ -13209,10 +14339,25 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         .unwrap();
 
         let makefile = fs::read_to_string(root.join("out/H-CDB-C/Makefile")).unwrap();
+        assert!(makefile.contains("CC = gcc"));
+        assert!(makefile.contains("-fsanitize-coverage=trace-pc,trace-cmp"));
         assert!(makefile.contains("COMPILE_DB_FLAGS ="));
         assert!(makefile.contains(&format!("-I {}", include.display())));
         assert!(makefile.contains("-DLEGACY_MODE=1"));
         assert!(makefile.contains("-std=gnu11"));
+        if std::process::Command::new("gcc")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+        {
+            let status = std::process::Command::new("make")
+                .arg("-C")
+                .arg(root.join("out/H-CDB-C"))
+                .arg("main")
+                .status()
+                .unwrap();
+            assert!(status.success(), "native GCC C harness must link");
+        }
     }
 
     #[test]
@@ -13652,11 +14797,318 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         .unwrap();
 
         let makefile = fs::read_to_string(root.join("out/H-CDB-CPP/Makefile")).unwrap();
+        assert!(makefile.contains("CXX = clang++"));
         assert!(makefile.contains("COMPILE_DB_FLAGS ="));
         assert!(makefile.contains(&format!("-isystem {}", third_party.display())));
         assert!(makefile.contains("-DCPP_LEGACY=1"));
-        assert!(makefile.contains("-std=gnu++20"));
+        assert!(makefile.contains("CXX_STD ?= gnu++20"));
+        let recovered_flags = makefile
+            .lines()
+            .find(|line| line.starts_with("COMPILE_DB_FLAGS ="))
+            .unwrap();
+        assert!(
+            !recovered_flags.contains("-std="),
+            "recovered standard must not override CXX_STD retries: {recovered_flags}"
+        );
         assert!(makefile.contains("--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13"));
+    }
+
+    #[test]
+    fn cpp_build_context_extracts_last_standard_into_single_control() {
+        let context = CppBuildContext {
+            provenance: "test".to_owned(),
+            confidence: "high".to_owned(),
+            compile_flags: vec![
+                "-std=gnu++17".to_owned(),
+                "-DKEEP=1".to_owned(),
+                "-std=c++14".to_owned(),
+            ],
+            link_flags: Vec::new(),
+            extra_sources: Vec::new(),
+            recovery: Vec::new(),
+        };
+        let encoded = context.encoded_flags();
+        assert!(encoded.contains(&"-DKEEP=1".to_owned()));
+        assert!(encoded.contains(&"@govfuzz-build-context-cxx-standard=c++14".to_owned()));
+        assert!(!encoded.iter().any(|flag| flag.starts_with("-std=")));
+    }
+
+    #[test]
+    fn cpp_header_inherits_directly_including_translation_unit_command() {
+        let root = temp_dir("compile-db-header-owner");
+        let src = root.join("src");
+        let include = root.join("include");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&include).unwrap();
+        let header = include.join("legacy.hpp");
+        let forced = include.join("forced.hpp");
+        let owner = src.join("owner.cpp");
+        fs::write(&forced, "#define FORCED_VALUE 7\n").unwrap();
+        fs::write(
+            &header,
+            "#ifndef OWNER_FEATURE\n#error owner feature missing\n#endif\n#ifndef FORCED_VALUE\n#error forced include missing\n#endif\ninline int parse_legacy(const char *text) { return text ? FORCED_VALUE : 0; }\n",
+        )
+        .unwrap();
+        fs::write(&owner, "#include <legacy.hpp>\n").unwrap();
+        fs::write(
+            root.join("compile_commands.json"),
+            format!(
+                r#"[{{"directory":"{}","file":"{}","arguments":["g++","-I","../include","-DOWNER_FEATURE=1","-include","../include/forced.hpp","-std=gnu++17","-c","{}"]}}]"#,
+                src.display(),
+                owner.display(),
+                owner.display()
+            ),
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: header.clone(),
+            target: Some("parse_legacy".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-X-HEADER-OWNER".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let makefile = fs::read_to_string(root.join("out/H-X-HEADER-OWNER/Makefile")).unwrap();
+        assert!(makefile.contains("CXX = g++"));
+        assert!(makefile.contains("-fsanitize-coverage=trace-pc,trace-cmp"));
+        assert!(makefile.contains(&format!("-I {}", include.display())));
+        assert!(makefile.contains("-DOWNER_FEATURE=1"));
+        assert!(makefile.contains(&format!("-include {}", forced.display())));
+        assert!(makefile.contains("CXX_STD ?= gnu++17"));
+
+        if std::process::Command::new("g++")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+        {
+            let make_status = std::process::Command::new("make")
+                .arg("-C")
+                .arg(root.join("out/H-X-HEADER-OWNER"))
+                .arg("main")
+                .status()
+                .unwrap();
+            assert!(
+                make_status.success(),
+                "native GCC-family C++ harness must link with trace-pc"
+            );
+            let status = std::process::Command::new("g++")
+                .arg("-std=gnu++17")
+                .arg("-DOWNER_FEATURE=1")
+                .arg("-include")
+                .arg(&forced)
+                .arg("-I")
+                .arg(&include)
+                .arg("-DGOVFUZZ_EXTERNAL_DRIVER")
+                .arg("-I")
+                .arg(locate_c_runtime())
+                .arg("-c")
+                .arg(root.join("out/H-X-HEADER-OWNER/main.cpp"))
+                .arg("-o")
+                .arg(root.join("header-owner.o"))
+                .status()
+                .unwrap();
+            assert!(status.success(), "associated header command must compile");
+        }
+    }
+
+    #[test]
+    fn cpp_build_compiles_each_translation_unit_with_its_own_database_flags() {
+        if std::process::Command::new("g++")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping per-TU context test: g++ not on PATH");
+            return;
+        }
+        let root = temp_dir("cpp-per-tu-build-context");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        let header = src.join("api.hpp");
+        let support = src.join("support.cpp");
+        let parser = src.join("parser.cpp");
+        fs::write(
+            &header,
+            "#pragma once\nint support_value(void);\nint parse_packet(const char *data);\n",
+        )
+        .unwrap();
+        fs::write(
+            &support,
+            "#include \"api.hpp\"\n#ifndef MODE_SUPPORT\n#error support TU lost its private define\n#endif\n#ifdef MODE_PARSER\n#error parser-only define leaked into support TU\n#endif\nint support_value(void) { return 7; }\n",
+        )
+        .unwrap();
+        fs::write(
+            &parser,
+            "#include \"api.hpp\"\n#ifndef MODE_PARSER\n#error parser TU lost its private define\n#endif\n#ifdef MODE_SUPPORT\n#error support-only define leaked into parser TU\n#endif\nint parse_packet(const char *data) { return data ? support_value() : 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("CMakeLists.txt"),
+            "cmake_minimum_required(VERSION 3.10)\nproject(per_tu CXX)\nadd_library(per_tu src/parser.cpp src/support.cpp)\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("compile_commands.json"),
+            format!(
+                r#"[
+{{"directory":"{}","file":"{}","arguments":["g++","-I",".","-DMODE_PARSER=1","-std=c++14","-c","{}"]}},
+{{"directory":"{}","file":"{}","arguments":["g++","-I",".","-DMODE_SUPPORT=1","-std=c++17","-c","{}"]}}
+]"#,
+                src.display(),
+                parser.display(),
+                parser.display(),
+                src.display(),
+                support.display(),
+                support.display()
+            ),
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: parser,
+            target: Some("parse_packet".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CPP-PER-TU".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let harness = root.join("out/H-CPP-PER-TU");
+        let fragment = fs::read_to_string(harness.join("build_context_objects.mk")).unwrap();
+        assert!(fragment.contains("BUILD_CONTEXT_TU_MODE = per_translation_unit"));
+        assert!(fragment.contains("-DMODE_PARSER=1"), "{fragment}");
+        assert!(fragment.contains("-DMODE_SUPPORT=1"), "{fragment}");
+        let status = std::process::Command::new("make")
+            .arg("-C")
+            .arg(&harness)
+            .arg("main")
+            .status()
+            .unwrap();
+        assert!(status.success(), "per-TU flag graph must compile and link");
+    }
+
+    #[test]
+    fn cpp_header_preflight_selects_a_compiling_umbrella() {
+        if std::process::Command::new("clang++")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping header preflight test: clang++ not on PATH");
+            return;
+        }
+        let root = temp_dir("cpp-header-umbrella-preflight");
+        let include = root.join("include");
+        fs::create_dir_all(&include).unwrap();
+        let child = include.join("legacy_child.hpp");
+        fs::write(
+            &child,
+            "#ifndef LEGACY_UMBRELLA_ACTIVE\n#error include legacy_api.hpp instead of this internal header directly\n#endif\ninline int parse_legacy(const char *p) { return p ? 1 : 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            include.join("legacy_api.hpp"),
+            "#pragma once\n#define LEGACY_UMBRELLA_ACTIVE 1\n#include \"legacy_child.hpp\"\n",
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: child,
+            target: Some("parse_legacy".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CPP-UMBRELLA".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let main = fs::read_to_string(root.join("out/H-CPP-UMBRELLA/main.cpp")).unwrap();
+        assert!(main.contains("#include \"legacy_api.hpp\""), "{main}");
+        assert!(!main.contains("#include \"legacy_child.hpp\""), "{main}");
+    }
+
+    #[test]
+    fn owner_translation_unit_only_header_is_rejected_before_harness_build() {
+        if std::process::Command::new("clang++")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping header preflight test: clang++ not on PATH");
+            return;
+        }
+        let root = temp_dir("cpp-header-owner-only-preflight");
+        let header = root.join("owner_fragment.hpp");
+        fs::write(
+            &header,
+            "inline int parse_owner_fragment(void) { return (int)sizeof(OwnerEstablishedType); }\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("owner.cpp"),
+            "struct OwnerEstablishedType { int value; };\n#include \"owner_fragment.hpp\"\n",
+        )
+        .unwrap();
+
+        let error = run(GenerateHarnessArgs {
+            source: header,
+            target: Some("parse_owner_fragment".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CPP-OWNER-ONLY".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap_err()
+        .to_string();
+        assert!(
+            error.contains(BLOCKED_BY_NON_SELF_CONTAINED_HEADER),
+            "{error}"
+        );
+        assert!(!root.join("out/H-CPP-OWNER-ONLY/main.cpp").exists());
     }
 
     #[test]
@@ -13714,7 +15166,8 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         assert!(makefile.contains("BUILD_CONTEXT_CONFIDENCE = medium"));
         assert!(makefile.contains(&format!("-I {}", include.display())));
         assert!(makefile.contains("-DLEGACY_MODE=1"));
-        assert!(makefile.contains("-std=c++20"));
+        assert!(makefile.contains("CXX_STD ?= c++20"));
+        assert!(!makefile.contains("COMPILE_DB_FLAGS = -std="));
         assert!(makefile.contains(support.to_str().unwrap()));
         assert!(makefile.contains("BUILD_CONTEXT_LDFLAGS = -lz -pthread"));
     }
@@ -14253,7 +15706,8 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         assert!(makefile.contains("BUILD_CONTEXT_CONFIDENCE = low"));
         assert!(makefile.contains(&format!("-I {}", include.display())));
         assert!(makefile.contains("-DMAKE_MODE=1"));
-        assert!(makefile.contains("-std=gnu++17"));
+        assert!(makefile.contains("CXX_STD ?= gnu++17"));
+        assert!(!makefile.contains("COMPILE_DB_FLAGS = -std="));
         assert!(makefile.contains(helper.to_str().unwrap()));
         assert!(makefile.contains("BUILD_CONTEXT_LDFLAGS = -lm"));
     }
@@ -14566,29 +16020,216 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
-    fn class_typed_ctor_arg_default_constructibility_detection() {
-        // #353: a class with a public default ctor, used as a ctor argument, is
-        // default-constructible; an abstract one or a template instantiation is not.
-        let src = "class FastBuffer { public: FastBuffer(){} };\n\
-                   class Abstract { public: virtual void f() = 0; };\n";
-        assert!(cpp_arg_is_default_constructible_class(
-            "const FastBuffer &",
-            src
-        ));
-        assert!(cpp_arg_is_default_constructible_class("FastBuffer", src));
-        // Pointer args, abstract classes, unknown classes, and templates: no.
-        assert!(!cpp_arg_is_default_constructible_class("FastBuffer *", src));
-        assert!(!cpp_arg_is_default_constructible_class(
-            "const Abstract &",
-            src
-        ));
-        assert!(!cpp_arg_is_default_constructible_class(
-            "const Unknown &",
-            src
-        ));
-        assert!(!cpp_arg_is_default_constructible_class("Holder<int>", src));
-        // The decoded bare spelling drops const/& but keeps namespace.
-        assert_eq!(cpp_arg_class_name("const ns::Foo &"), "ns::Foo");
+    fn target_parameter_class_registration_is_qualified_and_access_safe() {
+        let infos = cpp_parser::parse_cpp_class_info(
+            r#"
+            namespace good {
+            struct Options { int mode; };
+            class Private { Private() = default; };
+            class Deleted { public: Deleted() = delete; };
+            class Abstract { public: virtual void run() = 0; };
+            }
+            namespace other { struct Options { Options(int); }; }
+            "#,
+        )
+        .unwrap();
+        let types = vec![
+            "const good::Options &".to_owned(),
+            "good::Options *".to_owned(),
+            "const good::Private &".to_owned(),
+            "good::Deleted".to_owned(),
+            "good::Abstract &".to_owned(),
+            "Options".to_owned(),
+        ];
+        let registered = cpp_default_constructible_parameter_classes(&types, &[], &infos);
+        assert_eq!(registered, vec!["good::Options".to_owned()]);
+    }
+
+    #[test]
+    fn cpp_user_constructed_parameter_classes_fail_during_generation_not_build() {
+        for (case, declaration) in [
+            ("deleted", "class Blocked { public: Blocked() = delete; };"),
+            (
+                "private",
+                "class Blocked { private: Blocked() = default; };",
+            ),
+            (
+                "parameter-only",
+                "class Blocked { public: explicit Blocked(int); };",
+            ),
+            (
+                "abstract",
+                "class Blocked { public: virtual void apply() = 0; };",
+            ),
+        ] {
+            let temp = temp_dir(&format!("cpp-blocked-target-param-{case}"));
+            let source = temp.join("parser.cpp");
+            fs::write(
+                &source,
+                format!(
+                    "namespace gov {{ {declaration} int parse(Blocked value) {{ return 0; }} }}\n"
+                ),
+            )
+            .unwrap();
+
+            let error = run(GenerateHarnessArgs {
+                source: source.clone(),
+                target: Some("parse".to_owned()),
+                target_line: None,
+                output: temp.join("out"),
+                id: Some(format!("H-X-BLOCKED-{case}")),
+                kind: "direct".to_owned(),
+                source_roots: Vec::new(),
+                project: None,
+                source_trees: Vec::new(),
+                extra_sources: Vec::new(),
+                extra_includes: Vec::new(),
+                cleanup: None,
+                template_instantiate: Vec::new(),
+                tree_type_defs: None,
+                decoder_limits: Default::default(),
+                force: false,
+            })
+            .expect_err("non-synthesizable class parameter must stop before build");
+            assert!(
+                error.to_string().contains("no byte-buffer decoder"),
+                "{case}: unexpected error: {error:#}"
+            );
+            assert!(
+                !temp
+                    .join(format!("out/H-X-BLOCKED-{case}/main.cpp"))
+                    .exists(),
+                "{case}: an unsupported signature must not leave a build candidate"
+            );
+        }
+    }
+
+    #[test]
+    fn cpp_explicit_public_default_parameter_uses_verified_neutral_construction() {
+        let temp = temp_dir("cpp-explicit-default-target-param");
+        let source = temp.join("parser.cpp");
+        fs::write(
+            &source,
+            "namespace gov { class Options { public: Options() = default; int mode = 0; }; int parse(const Options &value) { return value.mode; } }\n",
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: source.clone(),
+            target: Some("parse".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-X-EXPLICIT-DEFAULT".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let main = fs::read_to_string(temp.join("out/H-X-EXPLICIT-DEFAULT/main.cpp")).unwrap();
+        assert!(main.contains("Options value;"), "{main}");
+        assert!(!main.contains("value.mode ="), "{main}");
+        if std::process::Command::new("g++")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+        {
+            let status = std::process::Command::new("g++")
+                .arg("-std=gnu++20")
+                .arg("-DGOVFUZZ_EXTERNAL_DRIVER")
+                .arg("-I")
+                .arg(locate_c_runtime())
+                .arg("-iquote")
+                .arg(&temp)
+                .arg("-c")
+                .arg(temp.join("out/H-X-EXPLICIT-DEFAULT/main.cpp"))
+                .arg("-o")
+                .arg(temp.join("explicit-default.o"))
+                .status()
+                .unwrap();
+            assert!(status.success(), "verified public default must compile");
+        }
+    }
+
+    #[test]
+    fn generate_cpp_direct_harness_default_constructs_target_class_parameter() {
+        let temp = temp_dir("cpp-target-default-class-param");
+        let source = temp.join("parser.cpp");
+        fs::write(
+            &source,
+            r#"
+            #include <string_view>
+            namespace other { struct Options { bool wrong_field; }; }
+            namespace gov {
+            struct Options { int mode = 0; };
+            int parse(std::string_view input, const Options &options) {
+                return (int)input.size() + options.mode;
+            }
+            }
+            "#,
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: source.clone(),
+            target: Some("parse".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-X-TARGET-DEFAULT".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let main = fs::read_to_string(temp.join("out/H-X-TARGET-DEFAULT/main.cpp")).unwrap();
+        assert!(main.contains("Options options{};"), "{main}");
+        assert!(main.contains("options.mode = gf_i32(&Cur)"), "{main}");
+        assert!(
+            main.contains("int parse(std::string_view, const Options &);"),
+            "the forward declaration must preserve cv/ref exactly:\n{main}"
+        );
+        assert!(main.contains("gov::parse(input, options)"), "{main}");
+
+        // A generation-only assertion missed the old bug because both overloads
+        // looked plausible as text. Compile the produced TU when a system GNU C++
+        // compiler is present; this specifically proves the call is unambiguous.
+        if std::process::Command::new("g++")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+        {
+            let status = std::process::Command::new("g++")
+                .arg("-std=gnu++20")
+                .arg("-DGOVFUZZ_EXTERNAL_DRIVER")
+                .arg("-I")
+                .arg(locate_c_runtime())
+                .arg("-iquote")
+                .arg(&temp)
+                .arg("-c")
+                .arg(temp.join("out/H-X-TARGET-DEFAULT/main.cpp"))
+                .arg("-o")
+                .arg(temp.join("target-default.o"))
+                .status()
+                .unwrap();
+            assert!(status.success(), "generated C++ harness must compile");
+        }
     }
 
     #[test]
@@ -14849,10 +16490,14 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let source = temp.join("Hashes.h");
         fs::write(
             &source,
-            "inline void MurmurHash1_test(const void *key) { MurmurHash1(key); }\n",
+            "void MurmurHash1(const void *key);\ninline void MurmurHash1_test(const void *key) { MurmurHash1(key); }\n",
         )
         .unwrap();
-        fs::write(temp.join("Hashes.cpp"), "#include \"Hashes.h\"\n").unwrap();
+        fs::write(
+            temp.join("Hashes.cpp"),
+            "#include \"Hashes.h\"\nvoid MurmurHash1(const void *) {}\n",
+        )
+        .unwrap();
 
         run(GenerateHarnessArgs {
             source,
@@ -14887,6 +16532,18 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
              namespace acme { inline int parse_header_cpp(std::string_view input) { \
                  return (int)input.size(); \
              } }\n",
+        )
+        .unwrap();
+        let owner = temp.join("parser.cpp");
+        fs::write(&owner, "#include \"parser.hpp\"\n").unwrap();
+        fs::write(
+            temp.join("compile_commands.json"),
+            serde_json::to_vec_pretty(&serde_json::json!([{
+                "directory": temp,
+                "file": owner,
+                "arguments": ["g++", "-std=gnu++17", "-c", owner]
+            }]))
+            .unwrap(),
         )
         .unwrap();
 
@@ -15195,8 +16852,8 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let main = fs::read_to_string(temp.join("out/H-X-SRC-ENUM/main.cpp")).unwrap();
         assert!(main.contains("#include \"parser.cpp\""));
         assert!(main.contains("using namespace gov;"));
-        assert!(main.contains("Mode mode = (Mode)Mode::Fast"));
-        assert!(main.contains("case 1: mode = (Mode)Mode::Safe; break"));
+        assert!(main.contains("Mode mode = (Mode)gov::Mode::Fast"));
+        assert!(main.contains("case 1: mode = (Mode)gov::Mode::Safe; break"));
         assert!(main.contains("gov::parse(mode);"));
     }
 
@@ -15261,6 +16918,81 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn generate_cpp_sequence_keeps_registry_decodable_setup_method() {
+        let temp = temp_dir("cpp-lifecycle-registry-param");
+        let source = temp.join("parser.cpp");
+        fs::write(
+            &source,
+            r#"
+            #include <string_view>
+            namespace gov {
+            struct Options { int mode = 0; };
+            class Parser {
+            public:
+                Parser() = default;
+                void configure(const Options &options) { mode_ = options.mode; }
+                int parse(std::string_view input) { return (int)input.size() + mode_; }
+            private:
+                int mode_ = 0;
+            };
+            }
+            "#,
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: source.clone(),
+            target: Some("parse".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-X-LIFECYCLE-REGISTRY".to_owned()),
+            kind: "sequence".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let main = fs::read_to_string(temp.join("out/H-X-LIFECYCLE-REGISTRY/main.cpp")).unwrap();
+        assert!(main.contains("Options _gf_step0_options{};"), "{main}");
+        assert!(
+            main.contains("_gf_step0_options.mode = gf_i32(&Cur)"),
+            "{main}"
+        );
+        assert!(
+            main.contains("_gf_receiver.configure(_gf_step0_options)"),
+            "{main}"
+        );
+        if std::process::Command::new("g++")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+        {
+            let status = std::process::Command::new("g++")
+                .arg("-std=gnu++20")
+                .arg("-DGOVFUZZ_EXTERNAL_DRIVER")
+                .arg("-I")
+                .arg(locate_c_runtime())
+                .arg("-iquote")
+                .arg(&temp)
+                .arg("-c")
+                .arg(temp.join("out/H-X-LIFECYCLE-REGISTRY/main.cpp"))
+                .arg("-o")
+                .arg(temp.join("lifecycle-registry.o"))
+                .status()
+                .unwrap();
+            assert!(status.success(), "generated sequence harness must compile");
+        }
+    }
+
+    #[test]
     fn generate_cpp_sequence_harness_excludes_private_lifecycle_methods() {
         let temp = temp_dir("cpp-lifecycle-private-method");
         let source = temp.join("parser.cpp");
@@ -15308,6 +17040,48 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             !main.contains("_gf_receiver.reset("),
             "private methods are not externally callable and must be skipped:\n{main}"
         );
+    }
+
+    #[test]
+    fn cpp_sequence_without_callable_setup_falls_back_instead_of_emitting_empty_sequence() {
+        let temp = temp_dir("cpp-lifecycle-empty");
+        let source = temp.join("parser.cpp");
+        fs::write(
+            &source,
+            r#"
+            #include <string_view>
+            class Parser {
+            public:
+                int parse(std::string_view input) { return (int)input.size(); }
+            private:
+                void reset() {}
+            };
+            "#,
+        )
+        .unwrap();
+
+        let error = run(GenerateHarnessArgs {
+            source,
+            target: Some("parse".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-X-EMPTY".to_owned()),
+            kind: "sequence".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .expect_err("an empty lifecycle must route auto to the direct fallback");
+        assert!(error
+            .to_string()
+            .contains("no callable public C++ lifecycle setup methods"));
     }
 
     #[test]
@@ -15402,6 +17176,52 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn generate_cpp_harness_does_not_treat_deleted_ctor_or_temporary_as_constructible() {
+        let temp = temp_dir("cpp-deleted-default-constructor");
+        let source = temp.join("parser.cpp");
+        fs::write(
+            &source,
+            r#"
+            #include <string_view>
+            namespace gov {
+            class Parser {
+            public:
+                Parser() = delete;
+                int parse(std::string_view input) { return (int)input.size(); }
+            };
+            void decoy() { (void)Parser(); }
+            }
+            "#,
+        )
+        .unwrap();
+
+        let error = run(GenerateHarnessArgs {
+            source,
+            target: Some("parse".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-X-DELETED-CTOR".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("cannot construct"), "{error}");
+        assert!(
+            !temp.join("out/H-X-DELETED-CTOR/main.cpp").exists(),
+            "an uncompilable deleted-constructor receiver must not be emitted"
+        );
+    }
+
+    #[test]
     fn generate_cpp_harness_skips_abstract_receiver_class() {
         // capnp's `ClientHook::isBrand` has an abstract receiver (pure-virtual
         // members). It must be an honest skip, not `ClientHook _gf_receiver;`
@@ -15449,7 +17269,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
-    fn generate_cpp_sequence_harness_blocks_unsupported_constructor_with_wrapper_guidance() {
+    fn generate_cpp_sequence_harness_constructs_receiver_from_defaultable_ctor_dependency() {
         let temp = temp_dir("cpp-lifecycle-factory-only");
         let source = temp.join("parser.cpp");
         fs::write(
@@ -15468,7 +17288,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         )
         .unwrap();
 
-        let error = run(GenerateHarnessArgs {
+        run(GenerateHarnessArgs {
             source,
             target: Some("parse".to_owned()),
             target_line: None,
@@ -15486,11 +17306,13 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             decoder_limits: Default::default(),
             force: false,
         })
-        .unwrap_err();
-        let message = error.to_string();
-        assert!(message.contains("cannot construct"));
-        assert!(message.contains("wrapper"));
-        assert!(message.contains("factory"));
+        .unwrap();
+        let main = fs::read_to_string(temp.join("out/H-X-BLOCKED/main.cpp")).unwrap();
+        assert!(main.contains("Dependency _gf_ctor_dependency{};"), "{main}");
+        assert!(
+            main.contains("gov::Parser _gf_receiver(_gf_ctor_dependency);"),
+            "{main}"
+        );
     }
 
     // ── Factory-receiver pipeline tests ───────────────────────────────────
@@ -15572,6 +17394,100 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             owner_pos < guard_pos,
             "owner must be declared before the null guard to outlive the call:\n{main}"
         );
+    }
+
+    #[test]
+    fn cpp_receiver_uses_header_declared_static_factory_defined_in_sibling_tu() {
+        let temp = temp_dir("cpp-static-factory-sibling");
+        let source_dir = temp.join("src");
+        fs::create_dir_all(&source_dir).unwrap();
+        let header = source_dir.join("widget.hpp");
+        let target = source_dir.join("widget_parse.cpp");
+        let factory = source_dir.join("widget_factory.cpp");
+        fs::write(
+            &header,
+            "#pragma once\nclass Widget {\n  Widget();\npublic:\n  static Widget *Create(int seed);\n  int Parse(const char *text);\n};\n",
+        )
+        .unwrap();
+        fs::write(
+            &target,
+            "#include \"widget.hpp\"\nint Widget::Parse(const char *text) { return text ? 1 : 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            &factory,
+            "#include \"widget.hpp\"\nWidget::Widget() {}\nWidget *Widget::Create(int) { return new Widget(); }\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.join("CMakeLists.txt"),
+            "cmake_minimum_required(VERSION 3.10)\nproject(widget CXX)\nadd_library(widget src/widget_parse.cpp src/widget_factory.cpp)\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.join("compile_commands.json"),
+            serde_json::to_vec_pretty(&serde_json::json!([
+                {
+                    "directory": source_dir,
+                    "file": target,
+                    "arguments": ["g++", "-std=gnu++17", "-c", target]
+                },
+                {
+                    "directory": source_dir,
+                    "file": factory,
+                    "arguments": ["g++", "-std=gnu++17", "-c", factory]
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source: target,
+            target: Some("Widget::Parse".to_owned()),
+            target_line: None,
+            output: temp.join("out"),
+            id: Some("H-CPP-STATIC-FACTORY".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .unwrap();
+
+        let harness = temp.join("out/H-CPP-STATIC-FACTORY");
+        let main = fs::read_to_string(harness.join("main.cpp")).unwrap();
+        assert!(
+            main.contains("auto _gf_receiver = Widget::Create("),
+            "{main}"
+        );
+        assert!(!main.contains("Widget _gf_owner"), "{main}");
+        let build_context = fs::read_to_string(harness.join("build_context_objects.mk")).unwrap();
+        assert!(
+            build_context.contains(factory.to_str().unwrap()),
+            "sibling factory definition must be linked: {build_context}"
+        );
+
+        if std::process::Command::new("make")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+        {
+            let status = std::process::Command::new("make")
+                .arg("-C")
+                .arg(&harness)
+                .arg("main")
+                .status()
+                .unwrap();
+            assert!(status.success(), "factory closure harness must build");
+        }
     }
 
     /// When the class is default-constructible, the factory path must NOT be

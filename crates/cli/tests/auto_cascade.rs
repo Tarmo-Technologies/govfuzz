@@ -56,6 +56,13 @@ fn three_pass_cascade_records_each_pass() {
     let passes = built["outcome"]["passes"].as_array().expect("passes array");
     let names: Vec<&str> = passes.iter().filter_map(|p| p["pass"].as_str()).collect();
     assert_eq!(names, vec!["empty", "rng", "fuzz_driven"]);
+    assert!(
+        passes.iter().any(|pass| {
+            pass["target_entry_observed"].as_bool() == Some(true)
+                && pass["executions"].as_u64().unwrap_or(0) > 0
+        }),
+        "driver executions must include an independent selected-target entry proof: {built}"
+    );
 
     assert!(
         built["outcome"]["executions_per_sec"].as_f64().is_some(),

@@ -474,6 +474,58 @@ mod tests {
     }
 
     #[test]
+    fn all_caps_typedef_in_type_position_is_a_type_not_a_macro() {
+        // #96: legacy C libraries use ALL_CAPS TYPEDEF names. Expat's `SCANNER` is a
+        // typedef in a project header; "unknown type name 'SCANNER'" must produce a
+        // type/header repair, NOT a define-empty macro (which corrupts the decl).
+        // Covers Clang + GCC phrasings (identical text), C and C++.
+        for stderr in [
+            "xmlparse.c:120:5: error: unknown type name 'SCANNER'\n",
+            "expat.cpp:9:1: error: unknown type name 'BUFFER'\n",
+            "s.c:1:1: error: unknown type name 'HASHTABLE'\n",
+        ] {
+            let kinds = classify(stderr);
+            assert!(
+                kinds
+                    .iter()
+                    .any(|k| matches!(k, BuildErrorKind::MissingType { .. })),
+                "uppercase typedef in type position must be MissingType: {stderr:?} -> {kinds:?}"
+            );
+            assert!(
+                !kinds
+                    .iter()
+                    .any(|k| matches!(k, BuildErrorKind::MissingMacro { .. })),
+                "must NOT be a macro: {stderr:?} -> {kinds:?}"
+            );
+        }
+        // Declaration DECORATOR macros stay macros (a decl-spec word or leading _).
+        for name in ["JSON_INLINE", "WINAPI", "MYLIB_EXPORT", "__EXPORT"] {
+            let kinds = classify(&format!("h.h:1:1: error: unknown type name '{name}'\n"));
+            assert!(
+                kinds.iter().any(|k| matches!(
+                    k,
+                    BuildErrorKind::MissingMacro { name: n, .. } if n == name
+                )),
+                "decorator {name} must stay a macro: {kinds:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn type_position_classification_is_stable_across_rounds() {
+        // #96 oscillation guard: the SAME diagnostic always yields the SAME kind, so
+        // a successful type-header repair cannot be undone by a later round
+        // reclassifying the same symbol as a macro.
+        let stderr = "p.c:1:1: error: unknown type name 'SCANNER'\n";
+        let first = classify(stderr);
+        let second = classify(stderr);
+        assert_eq!(format!("{first:?}"), format!("{second:?}"));
+        assert!(first
+            .iter()
+            .any(|k| matches!(k, BuildErrorKind::MissingType { name } if name == "SCANNER")));
+    }
+
+    #[test]
     fn lowercase_undeclared_identifier_is_not_a_macro() {
         // A real undeclared symbol must not be faked as a macro #define.
         let stderr = "x.c:4:5: error: use of undeclared identifier 'helper_fn'\n";

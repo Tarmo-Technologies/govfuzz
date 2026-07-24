@@ -217,6 +217,7 @@ fn auto_args_from_ci(args: &CiArgs, scoped_files: &[PathBuf]) -> AutoArgs {
         campaign_time: args.campaign_time,
         min_target_time: args.min_target_time,
         max_targets: None,
+        max_attempts: None,
         max_repair_rounds: crate::auto::attempt::DEFAULT_MAX_REPAIR_ROUNDS,
         passes: None,
         single_pass: false,

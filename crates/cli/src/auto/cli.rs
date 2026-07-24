@@ -125,14 +125,23 @@ pub struct AutoArgs {
     )]
     pub min_target_time: Option<u64>,
 
-    /// Keep only the top-N highest-scored targets after discovery + ranking, before
-    /// the build/fuzz sweep. On a huge tree (140k+ discovered targets) this caps the
-    /// sweep to the best candidates instead of grinding all of them. `--dry-run`
-    /// prints only this bounded plan; `--list-targets` still prints the FULL ranked
-    /// list. The kept count vs. total is logged (never a silent truncation). Unset
-    /// (default) = attempt every discovered target.
+    /// #94: cap on the number of targets that reach the FUZZ phase (successful
+    /// builds), NOT on candidates inspected. The sweep attempts ranked candidates
+    /// in order and stops once N of them fuzz; unsupported params and build
+    /// failures never consume the cap, so lower-ranked viable endpoints are
+    /// backfilled instead of being starved by a nonviable prefix. Stops at the cap,
+    /// the `--campaign-time` deadline, or candidate exhaustion. Unset (default) =
+    /// fuzz every viable target. Use `--max-attempts` to also bound inspection.
     #[arg(long = "max-targets", value_name = "N")]
     pub max_targets: Option<usize>,
+
+    /// #94: hard ceiling on the number of ranked candidates INSPECTED (built/
+    /// attempted), independent of how many fuzz. Bounds a huge legacy tree where
+    /// most candidates are nonviable so `--max-targets` backfill can't grind the
+    /// whole tree. Unset (default) = inspect as many as needed to reach the
+    /// `--max-targets` success cap (or all of them).
+    #[arg(long = "max-attempts", value_name = "N")]
+    pub max_attempts: Option<usize>,
 
     /// Cap on build-fail -> repair -> retry rounds per target (default 16). Each
     /// round only runs when the previous one applied a NEW repair (the no-progress
@@ -1059,16 +1068,21 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         crate::auto::report::write_dependency_checkpoint(&path, &work, &dependency_seed, &[])?;
 
     // --dry-run: show the plan (toolchains + ranked targets + build-recovery note) and
-    // exit without building or fuzzing, so a long run can be validated first. Honor
-    // --max-targets here just as the real sweep does: emitting hundreds of thousands
-    // of unselected candidates can itself consume substantial terminal/log storage
-    // on a large tree. --list-targets below intentionally remains the full-list mode.
+    // exit without building or fuzzing, so a long run can be validated first.
+    // #94: the preview is bounded by --max-attempts (the actual inspection cap), NOT
+    // --max-targets — that is a runtime SUCCESS cap and viability is unknown at plan
+    // time, so the dry-run cannot know which of these will actually fuzz.
     if args.dry_run {
-        let planned_count = capped_target_count(candidates.len(), args.max_targets);
+        let planned_count = capped_target_count(candidates.len(), args.max_attempts);
         if planned_count < candidates.len() {
             eprintln!(
-                "govfuzz auto: --max-targets {planned_count}: showing the top {planned_count} of {} ranked target(s) in the dry-run plan",
+                "govfuzz auto: --max-attempts {planned_count}: showing the top {planned_count} of {} ranked candidate(s) in the dry-run plan",
                 candidates.len()
+            );
+        }
+        if let Some(cap) = args.max_targets {
+            eprintln!(
+                "govfuzz auto: --max-targets {cap}: the sweep will stop after {cap} of these reach the fuzz phase; which candidates are viable is unknown until build time (nonviable ones are backfilled)"
             );
         }
         let planned_candidates = &candidates[..planned_count];
@@ -1363,26 +1377,26 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // split cap, so the report can surface how many targets the cap dropped from
     // the sweep instead of silently reporting only the swept count.
     let discovered_total = candidates.len();
-    // --max-targets <N>: keep only the top-N highest-scored candidates before the
-    // build/fuzz sweep (candidates are already rank-sorted; the attacking-mode
-    // re-sort above is the last sort, so the kept set is the highest-scored).
-    // `--list-targets` already returned the FULL ranked list above; this only
-    // bounds what gets built/fuzzed, and the kept count is logged — never a silent
-    // truncation.
-    if let Some(cap) = args.max_targets {
-        let keep = capped_target_count(candidates.len(), Some(cap));
-        if candidates.len() > keep {
+    // #94: `--max-targets` is a cap on SUCCESSFUL fuzzes, not a pre-truncation of
+    // candidates. Do NOT drop lower-ranked candidates here — the sweep attempts
+    // them in rank order and stops once `success_cap` targets fuzz, so a nonviable
+    // top prefix (unsupported params / build failures) no longer starves the viable
+    // endpoints below it. `--max-attempts` is the only pre-sweep truncation: a hard
+    // ceiling on candidates INSPECTED so backfill can't grind a whole legacy tree.
+    let success_cap = args.max_targets;
+    if let Some(cap) = args.max_attempts {
+        if candidates.len() > cap {
             eprintln!(
-                "govfuzz auto: --max-targets {cap}: keeping the top {keep} of {} ranked target(s) for the sweep",
+                "govfuzz auto: --max-attempts {cap}: inspecting at most {cap} of {} ranked candidate(s)",
                 candidates.len()
             );
-            candidates.truncate(keep);
-        } else {
-            eprintln!(
-                "govfuzz auto: --max-targets {cap}: only {} target(s) discovered; keeping all",
-                candidates.len()
-            );
+            candidates.truncate(cap);
         }
+    }
+    if let Some(cap) = success_cap {
+        eprintln!(
+            "govfuzz auto: --max-targets {cap}: stopping after {cap} target(s) reach the fuzz phase (backfilling past nonviable candidates)"
+        );
     }
 
     // --campaign-time + --min-target-time: SPLIT mode. Divide the campaign fuzz
@@ -1447,6 +1461,18 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         );
     }
     let resumed = resumed_results.len();
+    // #94: a resumed target that already fuzzed counts toward the success cap (so a
+    // resumed run doesn't re-fuzz past the cap), while a resumed unsupported/failed
+    // result does NOT block backfill of fresh candidates below it.
+    let resumed_successes = resumed_results
+        .iter()
+        .filter(|r| {
+            matches!(
+                r.outcome,
+                crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
+            )
+        })
+        .count();
     // Recovered prior results are already durable individually. Fold them into
     // the new run's manifest before any remaining target starts.
     if !resumed_results.is_empty() {
@@ -1514,11 +1540,23 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         // --jobs 1 (default): the historical serial sweep, byte-identical when no
         // --campaign-time is set (the deadline check is a no-op while None).
         let mut results = Vec::new();
+        // #94: count targets that reach the fuzz phase; stop once `success_cap` do,
+        // seeded with resumed successes so a resumed run honours the same cap.
+        let mut fuzz_successes = resumed_successes;
         for (i, candidate) in candidates.into_iter().enumerate() {
             if let Some(deadline) = campaign_deadline {
                 if std::time::Instant::now() >= deadline {
                     eprintln!(
                         "govfuzz auto: --campaign-time reached; stopping after {} of {total} target(s)",
+                        results.len()
+                    );
+                    break;
+                }
+            }
+            if let Some(cap) = success_cap {
+                if fuzz_successes >= cap {
+                    eprintln!(
+                        "govfuzz auto: --max-targets {cap} reached; stopping after {} attempt(s) ({fuzz_successes} fuzzed)",
                         results.len()
                     );
                     break;
@@ -1594,6 +1632,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                     result.candidate.harness_id
                 )
             })?;
+            // #94: only a target that reached the fuzz phase counts toward the cap.
+            if matches!(
+                result.outcome,
+                crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
+            ) {
+                fuzz_successes += 1;
+            }
             results.push(result);
         }
         results
@@ -1607,6 +1652,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             &options,
             args.verbose,
             campaign_deadline,
+            success_cap,
+            resumed_successes,
             &path,
             &dependency_checkpoint,
         )?
@@ -2118,6 +2165,11 @@ fn run_parallel_sweep(
     options: &AttemptOptions,
     verbose: bool,
     campaign_deadline: Option<std::time::Instant>,
+    // #94: cap on targets that reach the fuzz phase; workers stop handing out new
+    // candidates once it is reached (in-flight ones finish). `initial_successes`
+    // seeds it with resumed successes.
+    success_cap: Option<usize>,
+    initial_successes: usize,
     source_root: &Path,
     checkpoint_base: &crate::auto::dep_manifest::DependencyManifest,
 ) -> Result<Vec<crate::auto::attempt::AttemptResult>> {
@@ -2135,6 +2187,12 @@ fn run_parallel_sweep(
     let cursor = AtomicUsize::new(0);
     let reached = AtomicUsize::new(0);
     let stopped = AtomicBool::new(false);
+    // #94: targets that reached the fuzz phase (seeded with resumed successes). Once
+    // it reaches `success_cap`, workers stop handing out new candidates; the up-to
+    // `jobs-1` in-flight attempts still finish, so a parallel run can fuzz a few
+    // more than the cap — the rank-earliest `success_cap` successes are the same
+    // set the serial sweep selects.
+    let success_count = AtomicUsize::new(initial_successes);
     let stderr_lock = Mutex::new(());
     let dependency_checkpoint = Mutex::new(checkpoint_base.clone());
     // Ada's build pipeline stages the target closure under the run-level
@@ -2241,6 +2299,22 @@ fn run_parallel_sweep(
                     }
                 }
                 reached.fetch_add(1, Ordering::SeqCst);
+                // #94: count fuzz-phase successes; once the cap is hit, stop handing
+                // out new candidates (in-flight workers still finish).
+                if matches!(
+                    &result,
+                    Ok(r) if matches!(
+                        r.outcome,
+                        crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
+                    )
+                ) {
+                    let fuzzed = success_count.fetch_add(1, Ordering::SeqCst) + 1;
+                    if let Some(cap) = success_cap {
+                        if fuzzed >= cap {
+                            stopped.store(true, Ordering::SeqCst);
+                        }
+                    }
+                }
                 slots.lock().unwrap()[i] = Some(result);
             });
         }
@@ -2249,7 +2323,7 @@ fn run_parallel_sweep(
     let done = reached.load(Ordering::SeqCst);
     if done < n {
         eprintln!(
-            "govfuzz auto: --campaign-time reached; stopped after {done} of {total} target(s)"
+            "govfuzz auto: stopped after {done} of {total} candidate(s) — --max-targets success cap or --campaign-time deadline reached"
         );
     }
 

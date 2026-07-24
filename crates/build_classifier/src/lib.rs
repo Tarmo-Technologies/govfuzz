@@ -210,6 +210,38 @@ fn tail_is_codegen(tail: &str) -> bool {
         || lower.contains("cannot find value")
         || lower.contains("no method named")
         || lower.contains("no function or associated item named")
+        // #105: a SYNTAX error located in the GENERATED driver (main.c / main.cpp)
+        // — a malformed extracted declaration or a bad constructor selection govfuzz
+        // emitted — is a govfuzz codegen defect, not a missing dependency and not a
+        // generic target-build failure. Gate the broad syntax phrasings on the
+        // generated file name so a genuine syntax error in the project's own source
+        // stays a distinct target error.
+        || (tail_mentions_generated_harness_file(&lower) && tail_names_generated_syntax_error(&lower))
+}
+
+/// #105: whether a diagnostic tail is located in the GENERATED harness driver.
+/// govfuzz always names it `main.c` / `main.cpp`, so an error whose location is
+/// that file is govfuzz's own emitted code, not the project's source.
+fn tail_mentions_generated_harness_file(lower: &str) -> bool {
+    lower.contains("main.c:") || lower.contains("main.cpp:")
+}
+
+/// #105: C/C++ front-end phrasings for a malformed DECLARATION or a bad
+/// constructor selection — the shapes govfuzz's harness emitter can produce when
+/// it reproduces an extracted parameter declaration or picks a constructor. Only
+/// meaningful when the location is the generated driver (see caller).
+fn tail_names_generated_syntax_error(lower: &str) -> bool {
+    lower.contains("expected parameter declarator")
+        || lower.contains("expected member name")
+        || lower.contains("expected function body")
+        || lower.contains("expected ')'")
+        || lower.contains("expected ';'")
+        || lower.contains("expected expression")
+        || lower.contains("expected unqualified-id")
+        || lower.contains("no matching constructor")
+        || lower.contains("no matching function for call")
+        || lower.contains("too few arguments")
+        || lower.contains("too many arguments")
 }
 
 #[cfg(test)]
@@ -231,6 +263,35 @@ mod tests {
             tail: "internal compiler error: out of memory".to_owned(),
         };
         assert!(!is_codegen_error(&dep));
+    }
+
+    #[test]
+    fn generated_harness_syntax_error_is_a_codegen_error_not_a_target_failure() {
+        // #105: a malformed extracted declaration or a bad constructor selection in
+        // the GENERATED driver (main.c / main.cpp) is a govfuzz codegen defect —
+        // categorized distinctly, never a missing dependency or a generic target
+        // build failure.
+        for tail in [
+            "main.c:42:18: error: expected parameter declarator",
+            "main.cpp:70:5: error: expected member name or ';' after declaration specifiers",
+            "main.cpp:88:3: error: no matching constructor for initialization of 'Foo'",
+            "main.c:12:9: error: expected ')'",
+        ] {
+            assert!(
+                is_codegen_error(&BuildErrorKind::Other {
+                    tail: tail.to_owned()
+                }),
+                "generated-driver syntax error must be a codegen error: {tail}"
+            );
+        }
+        // The SAME phrasing in the PROJECT's own source is a distinct TARGET error,
+        // not a govfuzz codegen defect — the generated-file gate keeps them apart.
+        assert!(
+            !is_codegen_error(&BuildErrorKind::Other {
+                tail: "src/parser.c:42:18: error: expected parameter declarator".to_owned()
+            }),
+            "a syntax error in the project's own source must stay a distinct target error"
+        );
     }
 
     #[test]

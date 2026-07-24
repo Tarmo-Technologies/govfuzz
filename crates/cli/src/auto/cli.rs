@@ -3285,9 +3285,10 @@ fn summarize_repairs(repairs: &[crate::auto::repair::Repair]) -> Option<String> 
             StubDeclared { .. } | StubBlind { .. } => symbols += 1,
             AddSource { .. } | AddAdaSource { .. } => sources += 1,
             EnvVarInjection { .. } => envs += 1,
-            AdaPackageStub { .. } | AdaPackageBodyStub { .. } | OverrideAdaBodyStub { .. } => {
-                ada += 1
-            }
+            AdaPackageStub { .. }
+            | AdaPackageBodyStub { .. }
+            | OverrideAdaBodyStub { .. }
+            | StubGprImport { .. } => ada += 1,
             PlatformStub { .. } | Win32Pack => platforms += 1,
         }
     }

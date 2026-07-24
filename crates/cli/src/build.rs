@@ -481,6 +481,28 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     write_project(&spec, &project_path)
         .map_err(|error| format!("write project '{}': {error}", project_path.display()))?;
 
+    // Force-fuzz: copy any synthesized stub `.gpr` for a missing external `with`ed
+    // project (repairs/gpr_stubs/*.gpr) NEXT TO govfuzz_build.gpr, so gprbuild
+    // resolves the import from the root project's directory and the project LOADS.
+    // The repair loop then stubs the packages the code actually uses from it.
+    // Copied every round because prepare_layout owns the build dir.
+    let gpr_stubs_dir = crate::auto::layout::harness_dir(&work_dir, &harness_id)
+        .join("repairs")
+        .join(crate::auto::repair::AUTO_GPR_STUBS_DIR);
+    if let Ok(entries) = fs::read_dir(&gpr_stubs_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("gpr"))
+            {
+                if let Some(name) = path.file_name() {
+                    let _ = fs::copy(&path, build_dir.join(name));
+                }
+            }
+        }
+    }
+
     // Drop / refresh the coverage sentinel to match what we actually emitted, so a
     // rebuild on a toolchain that lost trace-pc support doesn't leave a stale flag.
     let sentinel = build_dir.join(ADA_COV_SENTINEL);

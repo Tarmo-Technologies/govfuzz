@@ -22,6 +22,12 @@ pub const AUTO_CPP_INCLUDES_FILE: &str = "auto_cpp_includes.h";
 /// `#define`s for build-config macros the project's build system would inject.
 pub const AUTO_DEFINES_FILE: &str = "auto_defines.h";
 pub const AUTO_ADA_STUBS_DIR: &str = "ada_stubs";
+/// Directory (under a target's `repairs/`) holding synthesized stub `.gpr`
+/// project files for missing external `with`ed GPR imports (force-fuzz only).
+/// `prepare_layout` copies these next to the generated `govfuzz_build.gpr` so
+/// gprbuild resolves the import and the project LOADS — after which the normal
+/// missing-Ada-unit stubbing handles the referenced packages' used subset.
+pub const AUTO_GPR_STUBS_DIR: &str = "gpr_stubs";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -159,6 +165,18 @@ pub enum Repair {
         unit: String,
         sources: Vec<PathBuf>,
     },
+    /// Force-fuzz only: synthesize a minimal, empty stub `.gpr` for a missing
+    /// external `with`ed project (`with "gnatcoll";` -> a `gnatcoll` the offline
+    /// box doesn't have). GNAT fails at project LOAD when the imported `.gpr` is
+    /// absent, before any unit compiles — so the normal missing-symbol/unit
+    /// stubbing never engages. The empty stub project satisfies the import so the
+    /// project loads; the packages the code actually `with`s from it are then
+    /// stubbed (used subset) by the existing `MissingAdaWith` -> `AdaPackageStub`
+    /// path. The stub declares no sources, so it never collides with the harness
+    /// project's own units.
+    StubGprImport {
+        project: String,
+    },
     /// Marker: this target was built STUB-ISOLATED for a foreign OS platform it
     /// can't be cross-compiled/emulated on — the platform guard macro was defined
     /// and fake platform headers/types were supplied so the foreign branch
@@ -212,6 +230,7 @@ impl RepairManifest {
                 key == format!("ada-override:{}", source.display())
             }
             Repair::AddAdaSource { unit, .. } => key == format!("ada-src:{unit}"),
+            Repair::StubGprImport { project } => key == format!("gpr-stub:{project}"),
             Repair::PlatformStub { platform } => key == format!("platform-stub:{platform}"),
             Repair::Win32Pack => key == "win32-pack",
         })
@@ -230,6 +249,42 @@ pub struct ApplyOutcome {
 /// the unit's *spec* to compile against, so a body-only unit (no spec in the
 /// tree) must fall through to the spec-synthesizing stub rather than have its
 /// body added (which wouldn't satisfy the `with`).
+/// The stub project stem for a missing GPR import path. GNAT resolves
+/// `with "gnatcoll";` to a `gnatcoll.gpr` on the project path, so the stem must
+/// match the imported name (extension stripped). Sanitized to a valid GPR/Ada
+/// identifier — real `with` names already are, so this is a no-op for them.
+fn gpr_import_stub_name(path: &str) -> String {
+    let stem = std::path::Path::new(path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(path);
+    let mut out: String = stem
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '_' {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if !out.chars().next().is_some_and(|c| c.is_ascii_alphabetic()) {
+        out.insert_str(0, "gpr_");
+    }
+    out
+}
+
+/// A GPR/Ada project identifier for a stub project name. GPR names are
+/// case-insensitive; capitalize the first character for the conventional form.
+/// `stem` is already a valid identifier (see [`gpr_import_stub_name`]).
+fn ada_project_identifier(stem: &str) -> String {
+    let mut chars = stem.chars();
+    match chars.next() {
+        Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
+        None => "Gpr_Stub".to_owned(),
+    }
+}
+
 fn ada_real_source_with_spec(
     decl_index: &crate::auto::decl_index::DeclarationIndex,
     unit: &str,
@@ -1651,6 +1706,29 @@ pub fn apply_repair_with_source(
                 extra_includes: vec![],
             })
         }
+        Repair::StubGprImport { project } => {
+            // Write a minimal, EMPTY stub project so gprbuild resolves the missing
+            // external `with "<project>";` and the project LOADS. `prepare_layout`
+            // copies these next to govfuzz_build.gpr each round so the import is on
+            // the project search path. The stub declares NO sources — the packages
+            // the code references from it are stubbed into the Ada stub source dir
+            // by the normal MissingAdaWith path, and a source dir can't belong to
+            // two projects. Not an extra_source (it's a project file, not a unit).
+            let gpr_dir = repairs_dir.join(AUTO_GPR_STUBS_DIR);
+            std::fs::create_dir_all(&gpr_dir)?;
+            let name = ada_project_identifier(project);
+            std::fs::write(
+                gpr_dir.join(format!("{project}.gpr")),
+                format!(
+                    "--  Synthesized stub for a missing external GPR import (--force).\n\
+                     abstract project {name} is\n   for Source_Dirs use ();\nend {name};\n"
+                ),
+            )?;
+            Ok(ApplyOutcome {
+                extra_sources: vec![],
+                extra_includes: vec![],
+            })
+        }
         Repair::AdaPackageBodyStub { unit, ops, .. } => {
             let need = stub_gen::StubNeed {
                 unit_name: unit.clone(),
@@ -2837,7 +2915,20 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 })
             }
         }
-        BuildErrorKind::MissingSharedLib { .. } | BuildErrorKind::MissingGprImport { .. } => None,
+        BuildErrorKind::MissingSharedLib { .. } => None,
+        BuildErrorKind::MissingGprImport { path } => {
+            // A missing external `with`ed GPR fails at project LOAD, before any
+            // unit compiles. Without `--force` this is an honest missing dependency
+            // (reported in the missing-deps manifest, resolvable with `--ada-deps`).
+            // Under `--force` the point is to make progress anyway: synthesize an
+            // empty stub project so the import resolves and the project loads —
+            // then the referenced packages get stubbed by the normal
+            // MissingAdaWith path. Only propose once per project.
+            let project = gpr_import_stub_name(path);
+            let key = format!("gpr-stub:{project}");
+            (force && !project.is_empty() && !attempted.already_attempted(&key))
+                .then_some(Repair::StubGprImport { project })
+        }
         BuildErrorKind::Other { tail } => {
             calling_convention_macro_from_error(tail).and_then(|name| {
                 let key = format!("macro:{name}");
@@ -6247,6 +6338,48 @@ mod tests {
         assert!(
             repair.is_none(),
             "a real but incomplete/wrong-version spec cannot gain a symbol by being copied again: {repair:?}"
+        );
+    }
+
+    #[test]
+    fn missing_external_gpr_import_is_stubbed_only_under_force() {
+        let root = tmpdir();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let manifest = RepairManifest::default();
+        let err = BuildErrorKind::MissingGprImport {
+            path: "gnatcoll".to_owned(),
+        };
+        // Without --force: an honest missing dependency — no repair (it surfaces in
+        // the missing-deps manifest and is resolvable with --ada-deps).
+        assert!(
+            plan_repair_forced_with_source_policy(&err, &idx, &manifest, false, true).is_none(),
+            "non-force must not fabricate a stub project"
+        );
+        // Under --force: synthesize a stub project so gprbuild can LOAD the build.
+        assert!(
+            matches!(
+                plan_repair_forced_with_source_policy(&err, &idx, &manifest, true, true),
+                Some(Repair::StubGprImport { project }) if project == "gnatcoll"
+            ),
+            "force must synthesize a stub GPR for the missing import"
+        );
+        // A pathful / `.gpr`-suffixed import reduces to the project stem.
+        let err2 = BuildErrorKind::MissingGprImport {
+            path: "vendor/si_units.gpr".to_owned(),
+        };
+        assert!(matches!(
+            plan_repair_forced_with_source_policy(&err2, &idx, &manifest, true, true),
+            Some(Repair::StubGprImport { project }) if project == "si_units"
+        ));
+        // Once attempted it is not re-proposed (avoids a stub-rewrite loop).
+        let attempted = RepairManifest {
+            repairs: vec![Repair::StubGprImport {
+                project: "gnatcoll".to_owned(),
+            }],
+        };
+        assert!(
+            plan_repair_forced_with_source_policy(&err, &idx, &attempted, true, true).is_none(),
+            "an already-stubbed import must not be re-proposed"
         );
     }
 

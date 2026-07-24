@@ -197,6 +197,23 @@ impl CompilerAdapter {
         let start = Instant::now();
         let mut command = Command::new(bin);
         command.arg("-P").arg(project);
+        // Put the root project's OWN directory on gprbuild's project search path,
+        // so a `.gpr` written next to it resolves a `with` regardless of the
+        // process CWD. This is where govfuzz drops a synthesized stub project for a
+        // missing external `with`ed import under --force (see build.rs / repair.rs
+        // StubGprImport); without it the stub is only found when gprbuild happens
+        // to run from that directory. Prepend to any inherited GPR_PROJECT_PATH so
+        // real dependency paths still resolve.
+        if let Some(project_dir) = project.parent() {
+            let mut search_path = project_dir.as_os_str().to_os_string();
+            if let Some(inherited) = std::env::var_os("GPR_PROJECT_PATH") {
+                if !inherited.is_empty() {
+                    search_path.push(":");
+                    search_path.push(inherited);
+                }
+            }
+            command.env("GPR_PROJECT_PATH", search_path);
+        }
         if mode == BuildMode::CheckOnly {
             command.args(["-c", "-cargs", "-gnatc"]);
         }

@@ -3011,7 +3011,17 @@ fn run_attempt(
                     .iter()
                     .filter_map(|e| match e {
                         BuildErrorKind::MissingSharedLib { name } => Some(name.clone()),
-                        BuildErrorKind::MissingGprImport { path } => Some(path.clone()),
+                        // Under --force a missing external `with`ed GPR is NOT
+                        // terminal: the repair loop below synthesizes an empty stub
+                        // project (StubGprImport) so gprbuild loads the project, and
+                        // the packages the code references from it get stubbed by
+                        // the normal MissingAdaWith path. Let it fall through to the
+                        // repair loop instead of short-circuiting to unrecoverable.
+                        // Without --force it stays an honest unrecoverable missing
+                        // dependency (surfaced in the missing-deps manifest).
+                        BuildErrorKind::MissingGprImport { path } if !options.force => {
+                            Some(path.clone())
+                        }
                         _ => None,
                     })
                     .collect();
@@ -3412,6 +3422,7 @@ fn repair_key(repair: &Repair) -> String {
         Repair::AdaPackageBodyStub { unit, .. } => format!("ada-body:{unit}"),
         Repair::OverrideAdaBodyStub { source, .. } => format!("ada-override:{}", source.display()),
         Repair::AddAdaSource { unit, .. } => format!("ada-src:{unit}"),
+        Repair::StubGprImport { project } => format!("gpr-stub:{project}"),
         Repair::PlatformStub { platform } => format!("platform-stub:{platform}"),
         Repair::Win32Pack => "win32-pack".to_owned(),
     }
@@ -3548,6 +3559,7 @@ fn repair_replaces_candidate_target(repair: &Repair, candidate: &Candidate) -> b
         | Repair::AdaPackageStub { .. }
         | Repair::AdaPackageBodyStub { .. }
         | Repair::AddAdaSource { .. }
+        | Repair::StubGprImport { .. }
         | Repair::PlatformStub { .. }
         | Repair::Win32Pack => false,
     }

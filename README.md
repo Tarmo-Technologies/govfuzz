@@ -49,9 +49,19 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 
 `govfuzz auto` checkpoints every completed target atomically. After a process
 kill, power loss, or reboot, repeat the original command with the same source
-tree and `--work-dir`, adding `--resume`:
+tree and `--work-dir`, adding `--resume`. A full stop → reboot → resume cycle:
 
 ```sh
+# 1. Start a long campaign, persisting to a fixed work directory.
+./target/release/govfuzz auto path/to/src \
+  --work-dir govfuzz_work \
+  --per-target-time 60
+
+# 2. Stop it at any time (Ctrl-C, a scheduled shutdown, or power loss). Every
+#    already-completed target is durable in govfuzz_work/harnesses/<id>/.
+
+# 3. After the reboot, rerun the SAME command against the SAME --work-dir with
+#    --resume: completed targets are skipped and the sweep continues.
 ./target/release/govfuzz auto path/to/src \
   --work-dir govfuzz_work \
   --per-target-time 60 \

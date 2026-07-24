@@ -195,6 +195,9 @@ jobs:
           install_root="$(mktemp -d)"
           tar -xzf "$archive" -C "$verify_root"
           bundle_root="$verify_root/$bundle_name"
+          # #106: the full distribution archive is mandatory for every release and
+          # MUST ship install.sh + these documents at its root. `set -euo pipefail`
+          # makes a missing file fail the job, blocking the release.
           test -x "$bundle_root/install.sh"
           for document in INSTALL.md LICENSE README.md RELEASE_NOTES.md; do
             test -f "$bundle_root/$document"

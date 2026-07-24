@@ -882,6 +882,12 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                             | TypeKind::Derived { .. }
                             | TypeKind::Record(_)
                             | TypeKind::Access { .. }
+                            // `Unknown` is the kind of a type from a MISSING external
+                            // library (a `--force` stub target, not in the project
+                            // AST). Its stub is a definite handle, so a bare object is
+                            // valid; the source's context clauses (copied below) make
+                            // it visible.
+                            | TypeKind::Unknown
                     );
                 let bare_declarable = force_bare_ok
                     || match param.mode {
@@ -1034,6 +1040,22 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
     // generic instantiation, emit the stub bodies + the `is new ...` line, call
     // through the instance, and `use` the formal types' parent package.
     let mut use_units = Vec::new();
+    // Force-fuzz: reproduce the source's package `use` clauses so a bare-declared
+    // parameter of an UNQUALIFIED external-stub type (`Object : JSON_Value`, made
+    // visible in the source by `use GNATCOLL.JSON`) resolves in the harness too.
+    if args.force {
+        for use_clause in args.ast.units.iter().flat_map(|unit| unit.uses.iter()) {
+            if !matches!(use_clause.kind, ada_parser::ast::UseKind::Use) {
+                continue; // only plain package `use` (not `use type`)
+            }
+            for name in &use_clause.names {
+                let normalized = ada_dotted_name(name);
+                if !is_template_provided_with(&normalized) && !use_units.contains(&normalized) {
+                    use_units.push(normalized);
+                }
+            }
+        }
+    }
     let (generic_stub_decls, generic_instantiation, qualified_target_name) =
         if let Some(instance) = &args.generic_instance {
             for with in &instance.extra_withs {

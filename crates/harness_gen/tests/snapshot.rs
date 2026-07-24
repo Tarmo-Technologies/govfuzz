@@ -126,6 +126,7 @@ fn generate_main(ast: &StructuralAst, target: &Subprogram, name: &str) -> PathBu
         generic_call: None,
         generic_suppress_params: false,
         child_harness_unit: None,
+        force: false,
     })
     .unwrap()
     .main_adb

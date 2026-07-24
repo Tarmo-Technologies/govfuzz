@@ -385,7 +385,16 @@ fn classify_formal(formal: &str) -> Option<Formal> {
     if type_part.contains(":=") {
         return Some(Formal::ObjectWithDefault);
     }
+    // A formal object may carry an explicit mode (`Columns : in Positive`,
+    // `State : in out T`); strip it so the type name resolves.
     let type_name = normalize_ws(type_part);
+    let type_name = type_name
+        .strip_prefix("in out ")
+        .or_else(|| type_name.strip_prefix("in "))
+        .or_else(|| type_name.strip_prefix("out "))
+        .unwrap_or(&type_name)
+        .trim()
+        .to_owned();
     let value = object_value(&type_name)?;
     Some(Formal::Object { name, value })
 }
@@ -582,6 +591,25 @@ end LZMA.Encoding;
             body.contains("function Stub_More_Bytes return Boolean is")
                 && body.contains("Stub_More_Bytes_Budget := Stub_More_Bytes_Budget - 1;"),
             "More_Bytes (a nullary Boolean predicate) must be budget-bounded so the read loop terminates: {body}"
+        );
+    }
+
+    #[test]
+    fn formal_object_with_explicit_mode_resolves_its_type() {
+        // `Columns : in Positive` (mode-qualified formal object) must instantiate,
+        // not `blocked_by_generic` on an "unparsable formal".
+        let src = "\
+generic
+  Columns : in Positive;
+  with procedure Write (S : String);
+package Tables is
+end Tables;
+";
+        let inst = synthesize(src, &package_unit("Tables", "App")).expect("synthesizable");
+        assert!(
+            inst.instantiation.contains("Columns => Positive'First"),
+            "mode-qualified object formal resolved: {}",
+            inst.instantiation
         );
     }
 

@@ -546,6 +546,38 @@ pub enum Outcome {
         /// loaded (audit-disabled mode).
         runtrace_events: Vec<crate::auto::runtrace::RuntraceEvent>,
     },
+    /// #95: the harness BUILT and ran fuzz passes, but NO entry-instrumented
+    /// pass observed the target-entry checkpoint (`PassRun::target_entry_observed`).
+    /// The process executed only generated decoding, blind stubs, or bailed out
+    /// before reaching the selected project endpoint — so it must NOT be counted
+    /// as a fuzz success even though it ran normally. This outcome is emitted only
+    /// for lanes that actually instrument target entry (C/C++/Ada — the templates
+    /// inject `GOVFUZZ_TARGET_ENTER`/`AdaFuzz.Probe.Target_Entry`); interpreted and
+    /// managed lanes have no entry probe, so their absence of proof is "not
+    /// instrumented", never "not entered", and they keep `built_and_fuzzed`.
+    /// All pass metrics + runtrace evidence are preserved for diagnosis.
+    BuiltNotEntered {
+        repairs: Vec<Repair>,
+        retries: usize,
+        /// Per-pass executions + findings, exactly as a `BuiltAndFuzzed` would
+        /// carry them — the passes ran, they just never entered the target.
+        passes: Vec<PassRun>,
+        #[serde(default)]
+        per_pass_budget_secs: u64,
+        #[serde(default)]
+        total_wall_budget_secs: u64,
+        #[serde(default)]
+        executions_per_sec: f64,
+        runtrace_events: Vec<crate::auto::runtrace::RuntraceEvent>,
+        /// Stable sub-category naming WHY the target was never entered:
+        /// `"stub_only"` (every external symbol was a blind stub, so only empty
+        /// bodies ran), `"no_execution"` (built but no fuzz iteration executed),
+        /// or `"decode_or_bailout"` (inputs ran but were decode-rejected or the
+        /// harness bailed before the endpoint). Never vague.
+        entry_miss: String,
+        /// Human-readable reason, named for the report + support bundle.
+        reason: String,
+    },
     Built {
         repairs: Vec<Repair>,
         retries: usize,
@@ -639,6 +671,29 @@ impl Outcome {
                     ],
                     reason_category: None,
                     terminal_reason: None,
+                    repairs_attempted,
+                    repair_count,
+                    build_error_count: 0,
+                    build_error_categories: Vec::new(),
+                }
+            }
+            Outcome::BuiltNotEntered {
+                repairs,
+                retries,
+                entry_miss,
+                reason,
+                ..
+            } => {
+                let (repairs_attempted, repair_count) = repair_details(repairs, *retries);
+                AttemptTrace {
+                    terminal_stage: "target_not_reached".to_owned(),
+                    fallback_chain: vec![
+                        "generated".to_owned(),
+                        "built".to_owned(),
+                        "ran".to_owned(),
+                    ],
+                    reason_category: Some(entry_miss.clone()),
+                    terminal_reason: Some(reason.clone()),
                     repairs_attempted,
                     repair_count,
                     build_error_count: 0,
@@ -748,7 +803,12 @@ impl Outcome {
     /// [`stub_execution_summary`].
     pub fn stub_execution(&self) -> Option<StubExecution> {
         match self {
-            Outcome::BuiltAndFuzzed { repairs, .. } => Some(stub_execution_summary(repairs)),
+            // #95: `BuiltNotEntered` also carries the repair ledger, so a
+            // stub-only harness that never entered the target still reports its
+            // blind-stub profile (that IS why entry was `stub_only`).
+            Outcome::BuiltAndFuzzed { repairs, .. } | Outcome::BuiltNotEntered { repairs, .. } => {
+                Some(stub_execution_summary(repairs))
+            }
             _ => None,
         }
     }
@@ -760,6 +820,7 @@ impl Outcome {
     pub fn platform_stub(&self) -> Option<String> {
         let repairs = match self {
             Outcome::BuiltAndFuzzed { repairs, .. }
+            | Outcome::BuiltNotEntered { repairs, .. }
             | Outcome::Built { repairs, .. }
             | Outcome::FailedBuild { repairs, .. }
             | Outcome::UnrecoverableLink { repairs, .. }
@@ -941,6 +1002,70 @@ fn write_source_dictionary(
 /// runtimes; Ada=gprbuild, Rust=cargo-fuzz, Java=Jazzer have no AFL path). If
 /// filtering would leave nothing (e.g. `--engine afl++` on an Ada target), fall
 /// back to the builtin engine so the target is never silently left unfuzzed.
+/// #95: true when govfuzz's harness for this language injects a target-entry
+/// probe that fires immediately before the selected project endpoint — C/C++
+/// (`GOVFUZZ_TARGET_ENTER`, compiled into `main` via `-DGOVFUZZ_EXTERNAL_DRIVER`)
+/// and Ada (`AdaFuzz.Probe.Target_Entry`, emitted unconditionally by the `.adb`
+/// templates). Interpreted and managed lanes (Rust/Go/Java/Python/Perl/Ruby/Lua/
+/// PHP/JS/C#/COBOL/Fortran) speak the framed protocol for coverage but do NOT
+/// emit a target-entry event, so their `target_entry_observed` is always false;
+/// the #95 success invariant must NOT be applied to them, because absence of
+/// proof there is "not instrumented", not "not entered".
+pub(crate) fn harness_emits_target_entry_proof(lang: crate::auto::candidate::Lang) -> bool {
+    use crate::auto::candidate::Lang;
+    matches!(lang, Lang::C | Lang::Cpp | Lang::Ada)
+}
+
+/// #95: decide whether a built+fuzzed cascade must be DEMOTED to
+/// `built_not_entered` because it never entered the target, returning the stable
+/// `(entry_miss, reason)` pair, or `None` when the run is a legitimate
+/// `built_and_fuzzed`.
+///
+/// Returns `None` (no demotion) when the lane does not instrument target entry
+/// (interpreted/managed lanes have no entry probe, so absence of proof is "not
+/// instrumented", not "not entered"), when no entry-instrumented (builtin-engine)
+/// pass ran so entry could not be proven either way (e.g. an afl-only native
+/// cascade), or when at least one pass DID observe target entry. Otherwise the
+/// target was genuinely never entered and the sub-reason names why.
+pub(crate) fn entry_miss_classification(
+    lang: crate::auto::candidate::Lang,
+    pass_runs: &[PassRun],
+    stub_only: bool,
+) -> Option<(String, String)> {
+    if !harness_emits_target_entry_proof(lang) {
+        return None;
+    }
+    let entry_instrumented_pass_ran = pass_runs.iter().any(|p| p.engine == "builtin");
+    let any_target_entry = pass_runs.iter().any(|p| p.target_entry_observed);
+    if !entry_instrumented_pass_ran || any_target_entry {
+        return None;
+    }
+    let total_execs: usize = pass_runs.iter().map(|p| p.executions).sum();
+    Some(if stub_only {
+        (
+            "stub_only".to_owned(),
+            format!(
+                "harness executed {total_execs} time(s) but every external symbol was a blind \
+                 stub — only empty stub bodies ran and the real target was never entered"
+            ),
+        )
+    } else if total_execs == 0 {
+        (
+            "no_execution".to_owned(),
+            "harness built but no fuzz iteration executed, so the target was never entered"
+                .to_owned(),
+        )
+    } else {
+        (
+            "decode_or_bailout".to_owned(),
+            format!(
+                "harness executed {total_execs} time(s) but no pass reached the target-entry \
+                 checkpoint — inputs were decode-rejected or the harness bailed before the endpoint"
+            ),
+        )
+    })
+}
+
 pub(crate) fn applicable_engines(
     lang: crate::auto::candidate::Lang,
     requested: &[FuzzEngine],
@@ -1069,7 +1194,9 @@ pub fn attempt_with_progress(
         let mut direct = run_attempt(candidate, work_dir, decl_index, options, progress, true)?;
         if matches!(
             direct.outcome,
-            Outcome::BuiltAndFuzzed { .. } | Outcome::Built { .. }
+            Outcome::BuiltAndFuzzed { .. }
+                | Outcome::Built { .. }
+                | Outcome::BuiltNotEntered { .. }
         ) {
             return Ok(direct);
         }
@@ -2744,6 +2871,41 @@ fn run_attempt(
                          REDUCED-FIDELITY and need confirmation on the real platform",
                         candidate.harness_id, stub.platform, stub.platform, findings,
                     );
+                }
+                // #95: target entry is a fuzz-SUCCESS invariant. C/C++/Ada
+                // harnesses inject a target-entry probe (`GOVFUZZ_TARGET_ENTER` /
+                // `AdaFuzz.Probe.Target_Entry`) that fires immediately before the
+                // selected project endpoint, so a genuine fuzz of the library hits
+                // it. If an entry-instrumented (builtin-engine) pass ran but NO
+                // pass ever observed entry, the process executed only generated
+                // decoding, blind stubs, or bailed out before the endpoint — record
+                // `built_not_entered` (NOT `built_and_fuzzed`) so a stub-only or
+                // decode-rejected run can never be counted as fuzzed. Interpreted
+                // and managed lanes have no entry probe, so this is a no-op for them
+                // (see `entry_miss_classification`).
+                if let Some((entry_miss, reason)) =
+                    entry_miss_classification(candidate.lang, &pass_runs, stub_exec.stub_only)
+                {
+                    eprintln!(
+                        "govfuzz auto: {}: built but the target was NEVER entered ({entry_miss}) \
+                         — recording built_not_entered, NOT a fuzz success ({reason})",
+                        candidate.harness_id
+                    );
+                    return Ok(AttemptResult {
+                        candidate: candidate_with_ipc_reachability(candidate, ipc_channel_observed),
+                        outcome: Outcome::BuiltNotEntered {
+                            repairs: manifest.repairs.clone(),
+                            retries: retry,
+                            passes: pass_runs,
+                            per_pass_budget_secs: per_pass_budget.as_secs(),
+                            total_wall_budget_secs: total_wall_budget.as_secs(),
+                            executions_per_sec,
+                            runtrace_events: events,
+                            entry_miss,
+                            reason,
+                        },
+                        harness_dir,
+                    });
                 }
                 return Ok(AttemptResult {
                     // Upgrade reachability to ipc_channel_reachable when this run
@@ -7064,7 +7226,10 @@ mod stub_execution_tests {
 
 #[cfg(test)]
 mod throughput_tests {
-    use super::{aggregate_executions_per_sec, PassRun};
+    use super::{
+        aggregate_executions_per_sec, entry_miss_classification, harness_emits_target_entry_proof,
+        Outcome, PassRun,
+    };
     use crate::auto::pass::Pass;
 
     #[test]
@@ -7098,6 +7263,127 @@ mod throughput_tests {
             },
             findings: vec![],
         }
+    }
+
+    fn pass_entered(executions: usize) -> PassRun {
+        let mut p = pass(executions, 1.0);
+        p.target_entry_observed = true;
+        p
+    }
+
+    // #95 -------------------------------------------------------------------
+    #[test]
+    fn entry_miss_native_no_entry_is_demoted_with_named_reason() {
+        use crate::auto::candidate::Lang;
+        // A C cascade whose builtin pass ran (execs > 0) but never observed the
+        // target-entry checkpoint must be classified as built_not_entered, not a
+        // fuzz success. This is the core #95 invariant.
+        let passes = vec![pass(500, 1.0)];
+        let miss = entry_miss_classification(Lang::C, &passes, false)
+            .expect("native no-entry cascade must be demoted");
+        assert_eq!(miss.0, "decode_or_bailout");
+        assert!(
+            miss.1
+                .contains("no pass reached the target-entry checkpoint"),
+            "{}",
+            miss.1
+        );
+    }
+
+    #[test]
+    fn entry_miss_native_with_entry_stays_a_fuzz_success() {
+        use crate::auto::candidate::Lang;
+        // At least one pass observed entry -> genuine built_and_fuzzed, no demotion.
+        for lang in [Lang::C, Lang::Cpp, Lang::Ada] {
+            assert!(
+                entry_miss_classification(lang, &[pass(10, 1.0), pass_entered(490)], false)
+                    .is_none(),
+                "{lang:?} with an observed entry must NOT be demoted"
+            );
+        }
+    }
+
+    #[test]
+    fn entry_miss_stub_only_and_no_execution_are_named_distinctly() {
+        use crate::auto::candidate::Lang;
+        // stub-only: every external symbol was a blind stub.
+        let (kind, reason) = entry_miss_classification(Lang::Cpp, &[pass(10, 1.0)], true).unwrap();
+        assert_eq!(kind, "stub_only");
+        assert!(reason.contains("blind stub"), "{reason}");
+        // no execution: built but no iteration ran.
+        let (kind, _) = entry_miss_classification(Lang::Ada, &[pass(0, 0.0)], false).unwrap();
+        assert_eq!(kind, "no_execution");
+    }
+
+    #[test]
+    fn entry_miss_never_demotes_interpreted_or_managed_lanes() {
+        use crate::auto::candidate::Lang;
+        // CRITICAL #95 guard: interpreted/managed lanes have NO target-entry probe,
+        // so their `target_entry_observed` is always false. They must NEVER be
+        // demoted — doing so would regress every Ruby/Python/JS/Go/... success to
+        // built_not_entered. `harness_emits_target_entry_proof` gates this.
+        let passes = vec![pass(1000, 1.0)];
+        for lang in [
+            Lang::Rust,
+            Lang::Java,
+            Lang::Python,
+            Lang::Perl,
+            Lang::Go,
+            Lang::Cobol,
+            Lang::Fortran,
+            Lang::CSharp,
+            Lang::Js,
+            Lang::Ts,
+            Lang::Ruby,
+            Lang::Lua,
+            Lang::Php,
+        ] {
+            assert!(
+                entry_miss_classification(lang, &passes, false).is_none(),
+                "{lang:?} is not entry-instrumented and must not be demoted"
+            );
+            assert!(
+                entry_miss_classification(lang, &passes, true).is_none(),
+                "{lang:?} stub-only run must still not be demoted (no entry probe)"
+            );
+            assert!(!harness_emits_target_entry_proof(lang), "{lang:?}");
+        }
+        for lang in [Lang::C, Lang::Cpp, Lang::Ada] {
+            assert!(harness_emits_target_entry_proof(lang), "{lang:?}");
+        }
+    }
+
+    #[test]
+    fn entry_miss_afl_only_native_cascade_is_not_demoted() {
+        use crate::auto::candidate::Lang;
+        // Only an afl pass ran (main_afl has no external-driver probe), so entry
+        // could never be proven. Don't demote on absence of proof it can't emit.
+        let mut afl = pass(1000, 1.0);
+        afl.engine = "afl++".to_owned();
+        assert!(entry_miss_classification(Lang::C, &[afl], false).is_none());
+    }
+
+    #[test]
+    fn built_not_entered_serializes_with_stable_tag_and_round_trips() {
+        let outcome = Outcome::BuiltNotEntered {
+            repairs: vec![],
+            retries: 0,
+            passes: vec![pass(5, 0.5)],
+            per_pass_budget_secs: 30,
+            total_wall_budget_secs: 60,
+            executions_per_sec: 10.0,
+            runtrace_events: vec![],
+            entry_miss: "decode_or_bailout".to_owned(),
+            reason: "no entry".to_owned(),
+        };
+        let json = serde_json::to_string(&outcome).unwrap();
+        assert!(json.contains("\"outcome\":\"built_not_entered\""), "{json}");
+        let back: Outcome = serde_json::from_str(&json).unwrap();
+        assert!(matches!(back, Outcome::BuiltNotEntered { .. }));
+        let trace = outcome.attempt_trace();
+        assert_eq!(trace.terminal_stage, "target_not_reached");
+        assert_eq!(trace.reason_category.as_deref(), Some("decode_or_bailout"));
+        assert_eq!(trace.terminal_reason.as_deref(), Some("no entry"));
     }
 
     #[test]

@@ -2240,6 +2240,12 @@ struct AutoSummary {
     /// terminal summary so the run's headline count isn't misread.
     fuzzed_stub_only: usize,
     built: usize,
+    /// #95: targets that built and ran fuzz passes but whose entry-instrumented
+    /// (C/C++/Ada) harness never observed the target-entry checkpoint — the run
+    /// exercised only decoding/blind stubs or bailed out, so it is NOT counted as
+    /// `built_and_fuzzed`. Surfaced distinctly so a stub-only/decode-rejected run
+    /// can never inflate the fuzz-success headline.
+    built_not_entered: usize,
     skipped: usize,
     failed_build: usize,
     link_errors: usize,
@@ -2278,12 +2284,20 @@ impl AutoSummary {
         use crate::auto::candidate::Lang;
         use std::collections::BTreeSet;
 
-        let is_built =
-            |o: &crate::auto::attempt::Outcome| matches!(o, Built { .. } | BuiltAndFuzzed { .. });
+        // #95: `BuiltNotEntered` genuinely produced a build (like `Built`), so it
+        // counts as built for the per-language build tally; it is NOT a fuzz
+        // success (tracked separately as `built_not_entered`).
+        let is_built = |o: &crate::auto::attempt::Outcome| {
+            matches!(
+                o,
+                Built { .. } | BuiltAndFuzzed { .. } | BuiltNotEntered { .. }
+            )
+        };
 
         let mut built_and_fuzzed = 0;
         let mut fuzzed_stub_only = 0;
         let mut built = 0;
+        let mut built_not_entered = 0;
         let mut skipped = 0;
         let mut failed_build = 0;
         let mut link_errors = 0;
@@ -2318,6 +2332,19 @@ impl AutoSummary {
                         .max(passes.iter().map(|p| p.coverage_edges).max().unwrap_or(0));
                 }
                 Built { .. } => built += 1,
+                BuiltNotEntered { passes, .. } => {
+                    built_not_entered += 1;
+                    // The passes ran and produced real throughput/coverage — count
+                    // them so exec/coverage totals stay honest — but do NOT fold
+                    // their findings into the fuzz-success headline: a crash without
+                    // target entry is a decode/stub artifact, not a target finding
+                    // (it stays in the per-target report + findings dir with its
+                    // reachability caveat).
+                    executions += passes.iter().map(|p| p.executions).sum::<usize>();
+                    total_elapsed_secs += passes.iter().map(|p| p.elapsed_secs).sum::<f64>();
+                    coverage_edges = coverage_edges
+                        .max(passes.iter().map(|p| p.coverage_edges).max().unwrap_or(0));
+                }
                 UnsupportedParams { .. } => skipped += 1,
                 FailedBuild { .. } => failed_build += 1,
                 UnrecoverableLink { .. } => link_errors += 1,
@@ -2368,6 +2395,7 @@ impl AutoSummary {
             built_and_fuzzed,
             fuzzed_stub_only,
             built,
+            built_not_entered,
             skipped,
             failed_build,
             link_errors,
@@ -2406,6 +2434,11 @@ impl AutoSummary {
         };
         if self.built > 0 {
             outcomes.push(format!("{} built", self.built));
+        }
+        // #95: built + ran but never entered the target — surfaced distinctly so
+        // it is never read as a fuzz success.
+        if self.built_not_entered > 0 {
+            outcomes.push(format!("{} built, NOT entered", self.built_not_entered));
         }
         if self.skipped > 0 {
             outcomes.push(format!("{} skipped", self.skipped));
@@ -2745,6 +2778,13 @@ pub(crate) fn outcome_label(o: &crate::auto::attempt::Outcome) -> &'static str {
             "built+fuzzed (STUB-ONLY)"
         }
         BuiltAndFuzzed { .. } => "built+fuzzed",
+        // #95: built + ran fuzz passes, but the target-entry probe never fired —
+        // NOT a fuzz success. Named by sub-reason so the progress line is honest.
+        BuiltNotEntered { entry_miss, .. } => match entry_miss.as_str() {
+            "stub_only" => "built, NOT entered (stub-only)",
+            "no_execution" => "built, NOT entered (no execution)",
+            _ => "built, NOT entered (target not reached)",
+        },
         FailedBuild { .. } => "failed_build",
         // A deliberate skip, not a missing feature or a bad input: auto
         // could not synthesise a fuzz harness for this function's
@@ -2781,6 +2821,21 @@ fn verbose_detail(outcome: &crate::auto::attempt::Outcome) -> Vec<String> {
         Built { repairs, .. } => {
             if let Some(summary) = summarize_repairs(repairs) {
                 lines.push(format!("repairs: {summary}"));
+            }
+        }
+        BuiltNotEntered {
+            repairs,
+            passes,
+            reason,
+            ..
+        } => {
+            lines.push(format!("target NOT entered: {reason}"));
+            if let Some(summary) = summarize_repairs(repairs) {
+                lines.push(format!("repairs: {summary}"));
+            }
+            let passes = summarize_passes(passes);
+            if !passes.is_empty() {
+                lines.push(passes);
             }
         }
         FailedBuild { last_errors, .. } => {
@@ -4130,6 +4185,69 @@ mod tests {
     }
 
     #[test]
+    fn built_not_entered_is_counted_separately_never_as_fuzzed() {
+        use crate::auto::attempt::{AttemptResult, Outcome, PassRun};
+        use crate::auto::candidate::{Candidate, Lang};
+        use crate::auto::pass::Pass;
+        let result = AttemptResult {
+            candidate: Candidate {
+                harness_id: "H".to_owned(),
+                lang: Lang::C,
+                source_path: PathBuf::from("/s/a.c"),
+                line: 1,
+                name: "f".to_owned(),
+                score: 0,
+                is_static: false,
+                foreign_guard: None,
+                input_reachability: None,
+                dialect: None,
+            },
+            outcome: Outcome::BuiltNotEntered {
+                repairs: vec![],
+                retries: 0,
+                passes: vec![PassRun {
+                    pass: Pass::Rng,
+                    engine: "builtin".to_owned(),
+                    executions: 100,
+                    target_entry_observed: false,
+                    coverage_edges: 3,
+                    elapsed_secs: 0.5,
+                    executions_per_sec: 200.0,
+                    // A crash produced WITHOUT target entry — a decode/stub
+                    // artifact, not a target finding.
+                    findings: vec!["F-9".to_owned()],
+                }],
+                per_pass_budget_secs: 60,
+                total_wall_budget_secs: 60,
+                executions_per_sec: 200.0,
+                runtrace_events: vec![],
+                entry_miss: "decode_or_bailout".to_owned(),
+                reason: "never entered".to_owned(),
+            },
+            harness_dir: PathBuf::from("/h"),
+        };
+        let summary = AutoSummary::collect(
+            Path::new("/s"),
+            Path::new("/w"),
+            actionability::RunMode::Reporting,
+            std::time::Duration::from_secs(1),
+            std::slice::from_ref(&result),
+            0,
+            0,
+        );
+        assert_eq!(summary.built_and_fuzzed, 0, "must NEVER count as fuzzed");
+        assert_eq!(summary.built_not_entered, 1);
+        // Real measurements (throughput/coverage) are still counted ...
+        assert_eq!(summary.executions, 100);
+        assert_eq!(summary.coverage_edges, 3);
+        // ... but a not-entered crash never inflates the finding headline.
+        assert_eq!(summary.findings, 0);
+        let rendered = summary.render();
+        assert!(rendered.contains("built, NOT entered"), "{rendered}");
+        assert!(rendered.contains("0 built+fuzzed"), "{rendered}");
+    }
+
+    #[test]
     fn render_lists_stats_and_output_locations() {
         let summary = AutoSummary {
             source: PathBuf::from("/src"),
@@ -4142,6 +4260,7 @@ mod tests {
             built_and_fuzzed: 12,
             fuzzed_stub_only: 0,
             built: 0,
+            built_not_entered: 0,
             skipped: 171,
             failed_build: 8,
             link_errors: 0,
@@ -4193,6 +4312,7 @@ mod tests {
             built_and_fuzzed: 0,
             fuzzed_stub_only: 0,
             built: 0,
+            built_not_entered: 0,
             skipped: 5,
             failed_build: 0,
             link_errors: 0,
@@ -4228,6 +4348,7 @@ mod tests {
             built_and_fuzzed: 20,
             fuzzed_stub_only: 0,
             built: 0,
+            built_not_entered: 0,
             skipped: 0,
             failed_build: 0,
             link_errors: 0,

@@ -2482,6 +2482,17 @@ fn run_builtin_with_progress(
                 {
                     continue;
                 }
+                // Force-fuzz: a `raise` from a synthesized offline-unbuildable stub
+                // body (a placeholder, not the real code) carries a marker message.
+                // The target merely reached the stub — not a genuine defect — so it
+                // must not be reported as a finding.
+                if handler
+                    .as_ref()
+                    .exception_message
+                    .contains(crate::auto::ada_body_stub::STUB_RAISE_MARKER)
+                {
+                    continue;
+                }
                 let signature = compute_signature(testcase, handler.as_ref());
                 if new_signatures.remove(&signature) {
                     // Safety net for the persistent fork-server: a fault could be

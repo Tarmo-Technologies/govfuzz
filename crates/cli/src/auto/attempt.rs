@@ -3315,16 +3315,25 @@ fn run_attempt(
                 // AdaPackageStub) and refines from this build's raw output — the
                 // type-mismatch rounds classify as `Other` (no per-error repair),
                 // so this is what drives them and keeps the loop converging.
-                if options.force
-                    && matches!(candidate.lang, crate::auto::candidate::Lang::Ada)
-                    && refine_ada_external_stubs(
+                if options.force && matches!(candidate.lang, crate::auto::candidate::Lang::Ada) {
+                    // First try reconstructing missing external library stubs; only
+                    // when that is exhausted (short-circuit) fall back to dropping
+                    // the offline-unbuildable bodies of non-target project units.
+                    let progressed = refine_ada_external_stubs(
                         work_dir,
                         &candidate.harness_id,
                         &repairs_dir,
                         &errors,
-                    )
-                {
-                    applied_any = true;
+                    ) || stub_out_unbuildable_bodies(
+                        work_dir,
+                        &candidate.harness_id,
+                        &repairs_dir,
+                        &candidate.source_path,
+                        &candidate.name,
+                    );
+                    if progressed {
+                        applied_any = true;
+                    }
                 }
                 if !applied_any {
                     // GAP #9: the build is stuck solely because the candidate's own
@@ -5380,6 +5389,9 @@ fn try_build_ada(
     // Name the target's Ada unit so the build can be restricted to its
     // with-closure (#GAP-C) instead of compiling the whole swept tree.
     let target_unit = ada_source_unit_name(&candidate.source_path);
+    let excluded_bodies = load_excluded_bodies(
+        &crate::auto::layout::harness_dir(work_dir, harness_id).join("repairs"),
+    );
     if let Err(reason) = ensure_ada_src_instrumented(
         work_dir,
         root,
@@ -5387,11 +5399,15 @@ fn try_build_ada(
         dir_filter,
         target_unit.as_deref(),
         governing_gpr.as_deref(),
+        &excluded_bodies,
     ) {
         return BuildOutcome::Failed {
             errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
         };
     }
+    // Force-fuzz: overlay synthesized stub bodies onto the freshly-staged sources
+    // so they shadow the extended project's offline-unbuildable originals.
+    apply_stub_bodies(work_dir, harness_id);
     if let Err(reason) = mirror_harness_into_generated_harnesses(work_dir, harness_id) {
         return BuildOutcome::Failed {
             errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
@@ -5548,6 +5564,151 @@ fn refine_ada_external_stubs(
     let _ = model.render(&ada_stubs_dir);
     let _ = model.save(&model_path);
     seeded || refined
+}
+
+/// File under a target's `repairs/` holding the unit stems whose real Ada body is
+/// offline-unbuildable and replaced by a synthesized stub body.
+pub(crate) const ADA_EXCLUDED_BODIES: &str = "ada_excluded_bodies.json";
+
+/// Directory under a target's `repairs/` holding the synthesized stub bodies
+/// (`<stem>.adb`) that shadow offline-unbuildable project bodies.
+pub(crate) const ADA_STUB_BODIES_DIR: &str = "ada_stub_bodies";
+
+/// Copy every synthesized stub body into `src_instrumented`, overwriting the
+/// staged real body so it shadows the extended project's original source.
+fn apply_stub_bodies(work_dir: &Path, harness_id: &str) {
+    let stub_dir = crate::auto::layout::harness_dir(work_dir, harness_id)
+        .join("repairs")
+        .join(ADA_STUB_BODIES_DIR);
+    let Ok(entries) = std::fs::read_dir(&stub_dir) else {
+        return;
+    };
+    let dst = work_dir.join("src_instrumented");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("adb"))
+        {
+            if let Some(name) = path.file_name() {
+                let _ = std::fs::copy(&path, dst.join(name));
+            }
+        }
+    }
+}
+
+/// True when `path` is an Ada body (`.adb`) whose lowercased file stem is in the
+/// body stub-out exclusion set.
+fn is_excluded_ada_body(path: &Path, excluded: &std::collections::BTreeSet<String>) -> bool {
+    if excluded.is_empty() {
+        return false;
+    }
+    let is_body = path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("adb"));
+    is_body
+        && path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .is_some_and(|stem| excluded.contains(&stem.to_ascii_lowercase()))
+}
+
+/// Load the persisted body stub-out exclusion set for a harness.
+fn load_excluded_bodies(repairs_dir: &Path) -> std::collections::BTreeSet<String> {
+    std::fs::read_to_string(repairs_dir.join(ADA_EXCLUDED_BODIES))
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_default()
+}
+
+/// Force-fuzz last resort: when external-library stubbing can no longer make the
+/// build progress, replace the offline-unbuildable BODY of any project unit that
+/// still has residual errors (and is not the fuzz target's own unit) with a
+/// synthesized `raise Program_Error` body from its spec. This drops the body's
+/// problematic `with`s (missing-generic instantiations, dot-calls on stubbed
+/// types) that are dragged into the build but not on the target's call path.
+/// Returns whether a new body was stubbed (so the repair loop retries).
+fn stub_out_unbuildable_bodies(
+    work_dir: &Path,
+    harness_id: &str,
+    repairs_dir: &Path,
+    target_source: &Path,
+    target_name: &str,
+) -> bool {
+    let log_path = crate::auto::layout::harness_dir(work_dir, harness_id)
+        .join("repairs")
+        .join(ADA_BUILD_OUTPUT_LOG);
+    let Ok(log) = std::fs::read_to_string(&log_path) else {
+        return false;
+    };
+    // Body file stems that appear in an `error:` locus.
+    let mut failing: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for line in log.lines() {
+        if !line.contains(": error:") {
+            continue;
+        }
+        let Some(first) = line.split(':').next() else {
+            continue;
+        };
+        let base = first.trim().rsplit('/').next().unwrap_or(first.trim());
+        if let Some(stem) = base.strip_suffix(".adb") {
+            failing.insert(stem.to_ascii_lowercase());
+        }
+    }
+    if failing.is_empty() {
+        return false;
+    }
+    let target_stem = target_source
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(str::to_ascii_lowercase);
+    let target_lc = target_name.to_ascii_lowercase();
+    let src_dir = work_dir.join("src_instrumented");
+    // Persist stub bodies in their own dir; they are copied INTO src_instrumented
+    // after staging so they shadow the extended project's original source (the
+    // govfuzz build extends the user .gpr, so merely deleting the staged copy
+    // would un-shadow the real, unbuildable body).
+    let stub_bodies_dir = crate::auto::layout::harness_dir(work_dir, harness_id)
+        .join("repairs")
+        .join(ADA_STUB_BODIES_DIR);
+    let mut excluded = load_excluded_bodies(repairs_dir);
+    let mut changed = false;
+    for stem in &failing {
+        if stem == "main" || excluded.contains(stem) {
+            continue;
+        }
+        // Synthesize the trivial body from the unit's (compilable) spec.
+        let spec_path = src_dir.join(format!("{stem}.ads"));
+        let Ok(spec) = std::fs::read_to_string(&spec_path) else {
+            continue; // no spec staged (bodyless main / subunit) — can't stub
+        };
+        let Some(stub) = crate::auto::ada_body_stub::synth_stub_body(&spec, &spec_path) else {
+            continue;
+        };
+        // Never replace the fuzz target's OWN body with a raise: if this is the
+        // target's unit AND the stub would (re)implement the target subprogram,
+        // its real body is on the call path — leave it (a spec-level expression
+        // function target is NOT in `implemented`, so its unit stays stubbable).
+        if Some(stem) == target_stem.as_ref() && stub.implemented.contains(&target_lc) {
+            continue;
+        }
+        if std::fs::create_dir_all(&stub_bodies_dir).is_err() {
+            continue;
+        }
+        if std::fs::write(stub_bodies_dir.join(format!("{stem}.adb")), &stub.text).is_ok() {
+            // Shadow the extended original immediately for this round too.
+            let _ = std::fs::write(src_dir.join(format!("{stem}.adb")), &stub.text);
+            excluded.insert(stem.clone());
+            changed = true;
+        }
+    }
+    if changed {
+        let _ = std::fs::write(
+            repairs_dir.join(ADA_EXCLUDED_BODIES),
+            serde_json::to_string_pretty(&excluded).unwrap_or_default(),
+        );
+    }
+    changed
 }
 
 /// Read every `.ads`/`.adb` source text directly under `dir` (non-recursive: the
@@ -5769,9 +5930,21 @@ fn ensure_ada_src_instrumented(
     // ownership). `None` falls back to the legacy first-`.gpr`-near-source-root
     // selection, so existing call sites are byte-identical.
     governing_gpr_override: Option<&Path>,
+    // Force-fuzz: unit stems (`spat`, `spat-preconditions`) whose real body is
+    // offline-unbuildable and replaced by a synthesized stub body in the harness
+    // stub dir. Their `.adb` is NOT staged here (the stub provides it); the `.ads`
+    // still is.
+    excluded_body_stems: &std::collections::BTreeSet<String>,
 ) -> Result<(), String> {
     let dst = work_dir.join("src_instrumented");
     std::fs::create_dir_all(&dst).map_err(|e| format!("create {}: {e}", dst.display()))?;
+
+    // Force-fuzz body stub-out: drop any previously-staged real body of an
+    // excluded unit up front, so a stale copy from an earlier round (or another
+    // harness sharing this dir) can't shadow the synthesized stub body.
+    for stem in excluded_body_stems {
+        let _ = std::fs::remove_file(dst.join(format!("{stem}.adb")));
+    }
 
     // #91: use the SAME governing project the build will use — the operator
     // override / target-source owner if one was resolved, else the legacy
@@ -5874,6 +6047,11 @@ fn ensure_ada_src_instrumented(
     let mut wrote_any = false;
     for source_path in &source_files {
         if !in_closure(source_path) {
+            continue;
+        }
+        // Force-fuzz body stub-out: don't stage the real body of a unit whose body
+        // is offline-unbuildable — the harness stub dir supplies a trivial body.
+        if is_excluded_ada_body(source_path, excluded_body_stems) {
             continue;
         }
         let source_path = source_path.clone();
@@ -8059,7 +8237,16 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
 
         assert!(work.join("src_instrumented/target.adb").is_file());
         assert!(
@@ -8118,6 +8305,7 @@ mod stamp_tests {
             &Default::default(),
             Some("first"),
             None,
+            &std::collections::BTreeSet::new(),
         )
         .unwrap();
         assert!(work.join("src_instrumented/dep_first.ads").is_file());
@@ -8130,6 +8318,7 @@ mod stamp_tests {
             &Default::default(),
             Some("second"),
             None,
+            &std::collections::BTreeSet::new(),
         )
         .unwrap();
         assert!(work.join("src_instrumented/dep_first.ads").is_file());
@@ -8160,7 +8349,16 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
 
         assert!(
             work.join("src_instrumented/lib.adb").is_file(),
@@ -8205,6 +8403,7 @@ mod stamp_tests {
             &Default::default(),
             None,
             None,
+            &std::collections::BTreeSet::new(),
         )
         .unwrap();
 
@@ -8258,6 +8457,7 @@ mod stamp_tests {
             &Default::default(),
             Some("widget"),
             None,
+            &std::collections::BTreeSet::new(),
         )
         .unwrap();
 
@@ -8315,7 +8515,16 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
 
         let body = fs::read_to_string(work.join("src_instrumented/crc16.adb")).unwrap();
         assert!(
@@ -8378,6 +8587,7 @@ mod stamp_tests {
             &Default::default(),
             None,
             None,
+            &std::collections::BTreeSet::new(),
         )
         .unwrap();
 
@@ -8410,6 +8620,7 @@ mod stamp_tests {
             &Default::default(),
             None,
             None,
+            &std::collections::BTreeSet::new(),
         )
         .unwrap();
 
@@ -8464,7 +8675,16 @@ mod stamp_tests {
         .unwrap();
         fs::write(fixtures.join("foo.c"), "int foo(void){return 0;}\n").unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
 
         let si = work.join("src_instrumented");
         assert!(
@@ -8494,7 +8714,16 @@ mod stamp_tests {
         lib_unit(&project.join("testsuite"), "Kept");
 
         let keep_testsuite = crate::auto::discovery::DirFilter::new(&[], &["testsuite".into()]);
-        ensure_ada_src_instrumented(&work, &project, &[], &keep_testsuite, None, None).unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &keep_testsuite,
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
 
         assert!(
             work.join("src_instrumented/kept.adb").is_file(),
@@ -8551,7 +8780,16 @@ mod stamp_tests {
             fs::write(project.join(format!("plat__{variant}.adb")), body).unwrap();
         }
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            None,
+            None,
+            &Default::default(),
+        )
+        .unwrap();
 
         let si = work.join("src_instrumented");
         // The host variant is written under the canonical (suffix-stripped) name.

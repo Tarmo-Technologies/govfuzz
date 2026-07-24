@@ -3,6 +3,7 @@
 //! `govfuzz auto` — point-and-shoot sweep over Ada/C/C++ source trees
 //! that auto-stubs missing dependencies and fuzzes everything it can.
 
+pub mod ada_external_stub;
 pub mod alire_config;
 pub mod attempt;
 pub mod attestation;

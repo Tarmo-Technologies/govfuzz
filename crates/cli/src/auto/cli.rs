@@ -933,7 +933,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // Auto-generate CORBA/IDL scaffolding from any `.idl` files in the tree so an
     // Ada CORBA project's harnesses build without a manual `fake-corba` step.
     // govfuzz's own IDL parser — executes no project code — so it runs by default.
-    let idl_mapped = crate::fake_corba::auto_generate_from_tree(&path, &work);
+    let idl_mapped = crate::fake_corba::auto_generate_from_tree(&path, &work, args.force);
     if idl_mapped > 0 {
         eprintln!(
             "govfuzz auto: generated CORBA scaffolding from {idl_mapped} in-tree .idl file(s)"

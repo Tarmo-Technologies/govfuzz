@@ -301,8 +301,24 @@ pub fn write_generated_files(
 }
 
 pub fn generate_fake_corba(source_dir: &Path, output_dir: &Path) -> io::Result<FakeCorbaOutput> {
+    generate_fake_corba_with(source_dir, output_dir, false)
+}
+
+/// Like [`generate_fake_corba`], but `skip_user_exceptions` drops the
+/// heuristically-inferred `Pkg.Exception` application-library packages from the
+/// plan. Under `--force`, those missing external packages are owned by the Ada
+/// external-stub model (which reconstructs their full used API, not just a lone
+/// exception), so emitting a competing flat stub here would duplicate the unit.
+pub fn generate_fake_corba_with(
+    source_dir: &Path,
+    output_dir: &Path,
+    skip_user_exceptions: bool,
+) -> io::Result<FakeCorbaOutput> {
     let report = detect_source_tree(source_dir)?;
-    let plan = plan_from_report(&report);
+    let mut plan = plan_from_report(&report);
+    if skip_user_exceptions {
+        plan.user_exceptions.clear();
+    }
     let files = render_plan(&plan);
     let written_files = write_generated_files(output_dir, &files)?;
 

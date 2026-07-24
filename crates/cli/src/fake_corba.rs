@@ -117,7 +117,7 @@ pub fn run(args: FakeCorbaArgs) -> i32 {
 /// govfuzz's own IDL parser — it executes no project code — so it runs by default
 /// when `.idl` files are present. Returns the number of `.idl` files mapped.
 /// Best-effort: a per-file parse failure is logged and skipped.
-pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path) -> usize {
+pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path, force: bool) -> usize {
     let idls = find_idl_files(source_root);
     // Legacy deliveries often contain only checked-in Ada servant/stub output;
     // the original IDL is no longer shipped.  The base fake-CORBA surface is
@@ -135,8 +135,11 @@ pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path) -> usize {
     if std::fs::create_dir_all(&output_dir).is_err() {
         return 0;
     }
-    // Base fake-CORBA packages from CORBA usage detected in the tree.
-    if let Err(error) = ::fake_corba::generate_fake_corba(source_root, &output_dir) {
+    // Base fake-CORBA packages from CORBA usage detected in the tree. Under
+    // --force the Ada external-stub model owns missing application-library
+    // packages (reconstructing their full used API), so skip fake-corba's flat
+    // `Pkg.Exception` guesses to avoid a duplicate/conflicting unit definition.
+    if let Err(error) = ::fake_corba::generate_fake_corba_with(source_root, &output_dir, force) {
         eprintln!("govfuzz auto: fake-corba base generation: {error}");
     }
     // Resolve cross-directory `#include "other.idl"` against EVERY directory that
@@ -794,7 +797,7 @@ mod tests {
         let work = root.join("work");
         fs::create_dir_all(&work).unwrap();
 
-        let mapped = auto_generate_from_tree(&root, &work);
+        let mapped = auto_generate_from_tree(&root, &work, false);
         assert_eq!(mapped, 1, "only the real .idl is mapped (.git skipped)");
         let out = work.join("fake_corba");
         assert!(out.join("bank.ads").is_file(), "module package generated");
@@ -805,7 +808,7 @@ mod tests {
         // No .idl anywhere -> no work, returns 0.
         let empty = temp_dir("idl-none");
         fs::create_dir_all(empty.join("a")).unwrap();
-        assert_eq!(auto_generate_from_tree(&empty, &empty.join("w")), 0);
+        assert_eq!(auto_generate_from_tree(&empty, &empty.join("w"), false), 0);
         let _ = fs::remove_dir_all(&root);
         let _ = fs::remove_dir_all(&empty);
     }
@@ -823,7 +826,7 @@ mod tests {
         .unwrap();
         let work = root.join("work");
 
-        assert_eq!(auto_generate_from_tree(&root, &work), 0);
+        assert_eq!(auto_generate_from_tree(&root, &work, false), 0);
         let out = work.join("fake_corba");
         assert!(out.join("corba.ads").is_file());
         let object = fs::read_to_string(out.join("corba-object.ads")).unwrap();
@@ -846,7 +849,7 @@ mod tests {
         .unwrap();
         let work = root.join("work");
 
-        assert_eq!(auto_generate_from_tree(&root, &work), 1);
+        assert_eq!(auto_generate_from_tree(&root, &work, false), 1);
         let out = work.join("fake_corba");
         assert!(
             !out.join("bank.ads").exists(),
@@ -900,7 +903,7 @@ mod tests {
         let work = root.join("work");
         fs::create_dir_all(&work).unwrap();
 
-        let mapped = auto_generate_from_tree(&root, &work);
+        let mapped = auto_generate_from_tree(&root, &work, false);
         assert_eq!(mapped, 2, "both .idl files map");
         let out = work.join("fake_corba");
         // The common types package is generated (mapped from its own file), and the
@@ -934,7 +937,7 @@ mod tests {
         )
         .unwrap();
         let work = root.join("work");
-        assert_eq!(auto_generate_from_tree(&root, &work), 1);
+        assert_eq!(auto_generate_from_tree(&root, &work, false), 1);
         let out = work.join("fake_corba");
         assert!(out.join("active.ads").is_file());
         assert!(!out.join("wrong.ads").is_file());
@@ -955,7 +958,7 @@ mod tests {
         )
         .unwrap();
         let work = root.join("work");
-        assert_eq!(auto_generate_from_tree(&root, &work), 1);
+        assert_eq!(auto_generate_from_tree(&root, &work, false), 1);
         let out = work.join("fake_corba");
         assert!(out.join("visible.ads").is_file());
         let report: serde_json::Value =
@@ -986,7 +989,7 @@ mod tests {
         )
         .unwrap();
         let work = root.join("work");
-        assert_eq!(auto_generate_from_tree(&root, &work), 1);
+        assert_eq!(auto_generate_from_tree(&root, &work, false), 1);
         let report: serde_json::Value = serde_json::from_slice(
             &fs::read(work.join("fake_corba/idl_recovery_report.json")).unwrap(),
         )
@@ -1020,8 +1023,8 @@ mod tests {
 
         let work_a = root.join("work-a");
         let work_b = root.join("work-b");
-        assert_eq!(auto_generate_from_tree(&root, &work_a), 3);
-        assert_eq!(auto_generate_from_tree(&root, &work_b), 3);
+        assert_eq!(auto_generate_from_tree(&root, &work_a, false), 3);
+        assert_eq!(auto_generate_from_tree(&root, &work_b, false), 3);
         let spec_a = fs::read_to_string(work_a.join("fake_corba/shared.ads")).unwrap();
         let spec_b = fs::read_to_string(work_b.join("fake_corba/shared.ads")).unwrap();
         assert_eq!(spec_a, spec_b, "aggregate emission must be deterministic");

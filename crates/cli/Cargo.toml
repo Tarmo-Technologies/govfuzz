@@ -38,6 +38,7 @@ x86_64-pc-windows-msvc = ["govfuzz"]
 [dependencies]
 actionability = { path = "../actionability" }
 ada_parser = { path = "../ada_parser" }
+tree-sitter.workspace = true
 ada_state_machine = { path = "../ada_state_machine" }
 anyhow.workspace = true
 binary_analysis = { path = "../binary_analysis" }

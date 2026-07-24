@@ -3309,6 +3309,23 @@ fn run_attempt(
                         }
                     }
                 }
+                // Force-fuzz: reconstruct a COMPILABLE stub of the used subset of
+                // each missing external Ada library. Runs after the per-error
+                // repairs (so its full-profile stubs supersede any empty
+                // AdaPackageStub) and refines from this build's raw output — the
+                // type-mismatch rounds classify as `Other` (no per-error repair),
+                // so this is what drives them and keeps the loop converging.
+                if options.force
+                    && matches!(candidate.lang, crate::auto::candidate::Lang::Ada)
+                    && refine_ada_external_stubs(
+                        work_dir,
+                        &candidate.harness_id,
+                        &repairs_dir,
+                        &errors,
+                    )
+                {
+                    applied_any = true;
+                }
                 if !applied_any {
                     // GAP #9: the build is stuck solely because the candidate's own
                     // target symbol is undefined and re-adding its (already-compiled)
@@ -5446,21 +5463,109 @@ fn run_ada_build_once(
         probe_backend: crate::probe_backend::ProbeBackend::HostFile,
         c_engine: crate::build::CEngine::Libfuzzer,
     };
+    // Persist the raw combined output so the force-fuzz external-stub refiner
+    // (which needs GNAT's `expected/found` type pairs, not just the classified
+    // errors) can read it in the repair loop.
+    let persist_raw = |raw: &str| {
+        let log = crate::auto::layout::harness_dir(work_dir, harness_id)
+            .join("repairs")
+            .join(ADA_BUILD_OUTPUT_LOG);
+        if let Some(parent) = log.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(&log, raw);
+    };
     match crate::build::try_run_ada_build_capturing(&build_args) {
         Ok(captured) => {
+            let combined = format!("{}\n{}", captured.stderr, captured.stdout);
+            persist_raw(&combined);
             if captured.status_success {
                 BuildOutcome::Success
             } else {
-                let combined = format!("{}\n{}", captured.stderr, captured.stdout);
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(&combined),
                 }
             }
         }
-        Err(reason) => BuildOutcome::Failed {
-            errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
-        },
+        Err(reason) => {
+            persist_raw(&reason);
+            BuildOutcome::Failed {
+                errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
+            }
+        }
     }
+}
+
+/// File under a target's `repairs/` holding the last Ada build's raw combined
+/// output, read by the force-fuzz external-stub refiner.
+pub(crate) const ADA_BUILD_OUTPUT_LOG: &str = "ada_build_output.log";
+
+/// Force-fuzz: reconstruct a COMPILABLE stub of the used subset of each missing
+/// external Ada library so the target's own body compiles and the target reaches
+/// `built_and_fuzzed`. Seeds each external package's API shape from the client
+/// source (tree-sitter) and refines parameter/return types from GNAT's
+/// `expected/found` oracle in the last build output. Renders into the shared Ada
+/// stub source dir (already on the build path). Returns whether the model
+/// advanced this round (so the repair loop retries).
+fn refine_ada_external_stubs(
+    work_dir: &Path,
+    harness_id: &str,
+    repairs_dir: &Path,
+    errors: &[BuildErrorKind],
+) -> bool {
+    use crate::auto::ada_external_stub::ExternalStubModel;
+    let model_path = repairs_dir.join("ada_external_model.json");
+    let mut model = ExternalStubModel::load(&model_path);
+    // Packages needing stubs: every `with`ed unit absent from the tree (from a
+    // stubbed library), plus any already being modeled.
+    let mut packages: std::collections::BTreeSet<String> =
+        model.stubbed_packages().map(str::to_owned).collect();
+    for err in errors {
+        if let BuildErrorKind::MissingAdaWith { unit } = err {
+            packages.insert(unit.clone());
+        }
+    }
+    if packages.is_empty() {
+        return false;
+    }
+    // Seed from the instrumented Ada closure (the code that USES the library).
+    let sources = read_ada_source_texts(&work_dir.join("src_instrumented"));
+    let seeded = model.seed_from_sources(&sources, &packages);
+    // Refine the profile types from GNAT's expected/found pairs.
+    let raw = std::fs::read_to_string(
+        crate::auto::layout::harness_dir(work_dir, harness_id)
+            .join("repairs")
+            .join(ADA_BUILD_OUTPUT_LOG),
+    )
+    .unwrap_or_default();
+    let refined = model.refine_from_build_output(&raw);
+    if model.is_empty() {
+        return false;
+    }
+    // Render every round (idempotent) so the stubs exist for the next build; the
+    // stub source dir is already on the build's Source_Dirs.
+    let ada_stubs_dir = repairs_dir.join(crate::auto::repair::AUTO_ADA_STUBS_DIR);
+    let _ = model.render(&ada_stubs_dir);
+    let _ = model.save(&model_path);
+    seeded || refined
+}
+
+/// Read every `.ads`/`.adb` source text directly under `dir` (non-recursive: the
+/// instrumented overlay is flat).
+fn read_ada_source_texts(dir: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            path.extension()
+                .is_some_and(|e| matches!(e.to_str(), Some("ads") | Some("adb")))
+                .then(|| std::fs::read_to_string(&path).ok())
+                .flatten()
+        })
+        .collect()
 }
 
 /// True if the Ada source declares its unit `Pure` or `Preelaborate` — either

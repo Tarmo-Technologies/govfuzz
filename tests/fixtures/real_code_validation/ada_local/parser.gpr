@@ -1,0 +1,5 @@
+--  SPDX-License-Identifier: Apache-2.0
+project Parser is
+   for Source_Dirs use ("src");
+   for Object_Dir use "obj";
+end Parser;

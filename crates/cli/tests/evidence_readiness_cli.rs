@@ -35,7 +35,7 @@ fn real_code_matrix_reports_language_coverage_and_offline_subset_metadata() {
     assert_eq!(value["bounded_subset"]["ci_ready"], true);
     assert_eq!(
         value["summary"]["language_coverage"]["ada"]["repositories"],
-        2
+        3
     );
     assert_eq!(
         value["summary"]["language_coverage"]["c"]["repositories"],
@@ -75,7 +75,9 @@ fn real_code_matrix_reports_language_coverage_and_offline_subset_metadata() {
         .collect::<BTreeSet<_>>();
     assert!(subset.contains("cjson"));
     assert!(subset.contains("tinyxml2"));
-    assert!(subset.contains("adayaml"));
+    // #104: the bounded offline subset uses the hermetic ada_local endpoint (real
+    // Ada target entry provable without Alire), not the network-only adayaml repo.
+    assert!(subset.contains("ada_local"));
 }
 
 #[test]

@@ -16,6 +16,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MANIFEST = REPO_ROOT / "tests/fixtures/real_code_validation/manifest.toml"
+MANIFEST_DIR = DEFAULT_MANIFEST.parent
 DEFAULT_WORKSPACE = Path(os.environ.get("GOVFUZZ_REAL_CODE_WORKSPACE", "/tmp/govfuzz-real-code-validation"))
 
 
@@ -60,6 +61,7 @@ def matrix_summary(manifest: dict[str, Any], selected: set[str] | None = None) -
             "target_discovery": 0,
             "harness_build": 0,
             "instrumentation": 0,
+            "target_entry": 0,
             "broken_build_recovery": 0,
             "known_gaps": 0,
             "toolchain_gaps": 0,
@@ -123,6 +125,8 @@ def check_expected_outcome(kind: str) -> str | None:
         return "harness_build"
     if kind == "instrument":
         return "instrumentation"
+    if kind == "auto_target_entry":
+        return "target_entry"
     return None
 
 
@@ -185,6 +189,14 @@ def add_readiness_gate(result: dict[str, Any]) -> None:
         reasons.append("bounded offline subset is not configured")
     if summary.get("failed", 0):
         reasons.append("one or more executed matrix entries failed")
+    # #104: an EXECUTED run must PROVE at least one real target entry per language.
+    # Skipped for a dry-run (which validates the contract only, so it never observed
+    # entry) — detected by the absence of the executed target_entry_by_language map.
+    entry_by_language = summary.get("target_entry_by_language")
+    if entry_by_language is not None:
+        for language in languages:
+            if not entry_by_language.get(language, False):
+                reasons.append(f"missing {language} target-entry proof")
 
     result["readiness_gate"] = {
         "status": "pass" if not reasons else "fail",
@@ -194,6 +206,7 @@ def add_readiness_gate(result: dict[str, Any]) -> None:
             "minimum_checks": 6,
             "minimum_scenarios": 3,
             "requires_broken_build_by_language": True,
+            "requires_target_entry_by_language": True,
             "requires_bounded_subset": True,
         },
     }
@@ -206,7 +219,7 @@ def dry_run(manifest: dict[str, Any], selected: set[str] | None = None) -> dict[
             {
                 "id": repo["id"],
                 "language": repo["language"],
-                "rev": repo["rev"],
+                "rev": repo.get("rev", "local"),
                 "checks": [check["kind"] for check in repo.get("checks", [])],
                 "scenarios": [
                     {
@@ -248,6 +261,18 @@ def govfuzz_cmd(args: list[str]) -> list[str]:
 
 def ensure_repo(repo: dict[str, Any], workspace: Path, offline: bool) -> Path:
     repo_dir = workspace / "repos" / repo["id"]
+    # #104: a hermetic local fixture (checked into the tree) — copied into the
+    # workspace so builds/instrumentation are isolated. Needs no network, so it is
+    # the offline subset that proves target entry in normal CI.
+    if repo.get("local_path"):
+        source = (MANIFEST_DIR / repo["local_path"]).resolve()
+        if not source.is_dir():
+            raise RuntimeError(f"{repo['id']}: local_path {source} is not a directory")
+        if repo_dir.exists():
+            shutil.rmtree(repo_dir)
+        repo_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, repo_dir)
+        return repo_dir
     if repo_dir.exists():
         current = run(["git", "-C", str(repo_dir), "rev-parse", "HEAD"]).stdout.strip()
         if current == repo["rev"]:
@@ -381,6 +406,58 @@ def check_generate_harness_gpr(repo: dict[str, Any], repo_dir: Path, check: dict
     return {"kind": "generate_harness_gpr", "status": "passed"}
 
 
+def check_auto_target_entry(repo: dict[str, Any], repo_dir: Path, check: dict[str, Any], workspace: Path) -> dict[str, Any]:
+    # #104: run `govfuzz auto` end-to-end on a real target and PROVE it entered the
+    # selected project endpoint (a genuine build + fuzz, not a dry-run). For Ada we
+    # deliberately do NOT pass --project, so this exercises automatic governing-GPR
+    # selection (#91). A `--per-target-time` bounds the fuzz.
+    work_dir = workspace / "results" / repo["id"] / check["harness_id"]
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+    scan_root = repo_dir / check.get("path", ".")
+    cmd = [
+        "auto",
+        str(scan_root),
+        "--work-dir",
+        str(work_dir),
+        "--per-target-time",
+        str(check.get("per_target_time", 2)),
+        "--single-pass",
+        "--target",
+        check["target"],
+    ]
+    # A control that must fuzz cleanly never passes --project; the manifest sets
+    # `no_project = false` only to opt a check OUT (never needed today).
+    if check.get("project"):
+        cmd.extend(["--project", str(repo_dir / check["project"])])
+    run(govfuzz_cmd(cmd), allow_failure=True)
+    run_path = work_dir / "auto" / "run.json"
+    if not run_path.is_file():
+        raise RuntimeError(f"{repo['id']}: auto produced no run.json for {check['target']}")
+    run_json = json.loads(run_path.read_text())
+    targets = run_json.get("targets", [])
+    entered = False
+    for target in targets:
+        outcome = target.get("outcome", {})
+        if outcome.get("outcome") == "built_and_fuzzed":
+            for pass_run in outcome.get("passes", []):
+                if pass_run.get("target_entry_observed"):
+                    entered = True
+    if not entered:
+        names = [target.get("name") for target in targets]
+        raise RuntimeError(
+            f"{repo['id']}: no observed target entry for {check['target']!r}; "
+            f"targets={names}"
+        )
+    return {
+        "kind": "auto_target_entry",
+        "status": "passed",
+        "target": check["target"],
+        "target_entry_observed": True,
+        "language": repo["language"],
+    }
+
+
 def run_check(repo: dict[str, Any], repo_dir: Path, check: dict[str, Any], workspace: Path) -> dict[str, Any]:
     kind = check["kind"]
     if kind == "list_targets":
@@ -393,6 +470,8 @@ def run_check(repo: dict[str, Any], repo_dir: Path, check: dict[str, Any], works
         return check_instrument(repo, repo_dir, check, workspace)
     if kind == "generate_harness_gpr":
         return check_generate_harness_gpr(repo, repo_dir, check, workspace)
+    if kind == "auto_target_entry":
+        return check_auto_target_entry(repo, repo_dir, check, workspace)
     raise RuntimeError(f"{repo['id']}: unsupported check kind {kind}")
 
 
@@ -405,6 +484,15 @@ def copy_repo_for_scenario(repo_dir: Path, scenario_dir: Path) -> None:
 def scenario_auto_missing_file(repo: dict[str, Any], repo_dir: Path, scenario: dict[str, Any], workspace: Path, default_time: int) -> dict[str, Any]:
     scenario_dir = workspace / "scenarios" / repo["id"] / scenario["id"]
     copy_repo_for_scenario(repo_dir, scenario_dir)
+    # #104: a cmake project's compile database carries the ORIGINAL source dir as an
+    # `-I`, so removing a header from the copy alone is defeated (the harness build
+    # still finds it in the original tree). Re-run the prepare step on the copy FIRST
+    # (while the header is still present, so cmake configures) so its compile database
+    # points at the copy; removing the header afterwards then genuinely breaks the
+    # copy's build and exercises the real recovery path.
+    if scenario.get("reprepare"):
+        shutil.rmtree(scenario_dir / "build", ignore_errors=True)
+        prepare_repo(repo, scenario_dir)
     for rel in scenario.get("remove_files", []):
         path = scenario_dir / rel
         if not path.is_file():
@@ -430,6 +518,26 @@ def scenario_auto_missing_file(repo: dict[str, Any], repo_dir: Path, scenario: d
         entries = needed.get(bucket, [])
         if not any(entry.get("name") == locator for entry in entries):
             raise RuntimeError(f"{repo['id']}:{scenario['id']}: expected {locator!r} in needed_for_build.{bucket}")
+    # #104: assert the intended CATEGORIZED outcome for the broken build. A missing
+    # C++ public header degrades the target to `report_only` because a return/param
+    # type becomes undefined — a different, equally-valid recovery than the C
+    # header-synthesis path — so the control asserts that outcome + reason.
+    expect_outcome = scenario.get("expect_outcome")
+    if expect_outcome:
+        targets = run_json.get("targets", [])
+        needle = scenario.get("expect_reason_contains", "")
+        matched = [
+            t
+            for t in targets
+            if t.get("outcome", {}).get("outcome") == expect_outcome
+            and needle in t.get("outcome", {}).get("reason", "")
+        ]
+        if not matched:
+            outcomes = [(t.get("name"), t.get("outcome", {}).get("outcome")) for t in targets]
+            raise RuntimeError(
+                f"{repo['id']}:{scenario['id']}: expected a {expect_outcome!r} target whose reason "
+                f"contains {needle!r}; got {outcomes}"
+            )
     return {
         "id": scenario["id"],
         "kind": "auto_missing_file",
@@ -449,50 +557,101 @@ def run_scenario(repo: dict[str, Any], repo_dir: Path, scenario: dict[str, Any],
     raise RuntimeError(f"{repo['id']}:{scenario['id']}: unsupported scenario kind {kind}")
 
 
+def _tool_version(command: list[str]) -> str | None:
+    try:
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    text = (proc.stdout or proc.stderr).strip()
+    return text.splitlines()[0].strip() if text else None
+
+
+def record_toolchain_versions() -> dict[str, str]:
+    # #104: record the exact host toolchain versions so a passing gate is
+    # reproducible and host-toolchain gaps are attributable, not silent.
+    probes = {
+        "govfuzz": govfuzz_cmd(["--version"]),
+        "gnatmake": ["gnatmake", "--version"],
+        "gcc": ["gcc", "--version"],
+        "clang": ["clang", "--version"],
+        "clang++": ["clang++", "--version"],
+        "cmake": ["cmake", "--version"],
+        "python": [sys.executable, "--version"],
+    }
+    versions: dict[str, str] = {}
+    for name, command in probes.items():
+        version = _tool_version(command)
+        if version:
+            versions[name] = version
+    return versions
+
+
 def execute(manifest: dict[str, Any], workspace: Path, offline: bool, selected: set[str] | None) -> dict[str, Any]:
     workspace.mkdir(parents=True, exist_ok=True)
     default_time = int(manifest.get("settings", {}).get("per_target_time", 2))
     result: dict[str, Any] = result_envelope(manifest, selected)
     result.update({
         "summary": {"repositories": 0, "checks": 0, "scenarios": 0, "passed": 0, "failed": 0, "known_gaps": 0, "toolchain_gaps": 0},
+        "toolchain_versions": record_toolchain_versions(),
         "repositories": [],
     })
     for key, value in matrix_summary(manifest, selected).items():
         if key not in {"repositories", "checks", "scenarios"}:
             result["summary"][key] = value
+    # #104: prove genuine target entry per language across the run.
+    result["summary"]["target_entry_by_language"] = {"ada": False, "c": False, "cpp": False}
     for repo in matrix_repos(manifest, selected):
         repo_result: dict[str, Any] = {"id": repo["id"], "language": repo["language"], "checks": [], "scenarios": []}
         result["summary"]["repositories"] += 1
+        repo_failed = False
         try:
             repo_dir = ensure_repo(repo, workspace, offline)
             repo_result["path"] = str(repo_dir)
             repo_result["prepare"] = prepare_repo(repo, repo_dir)
-            for check in repo.get("checks", []):
-                check_result = run_check(repo, repo_dir, check, workspace)
-                repo_result["checks"].append(check_result)
-                result["summary"]["checks"] += 1
-                if check_result["status"] == "known_gap":
-                    result["summary"]["known_gaps"] += 1
-                elif check_result["status"] == "toolchain_gap":
-                    result["summary"]["toolchain_gaps"] += 1
-                else:
-                    result["summary"]["passed"] += 1
-            for scenario in repo.get("scenarios", []):
-                scenario_result = run_scenario(repo, repo_dir, scenario, workspace, default_time)
-                repo_result["scenarios"].append(scenario_result)
-                result["summary"]["scenarios"] += 1
-                if scenario_result["status"] == "known_gap":
-                    result["summary"]["known_gaps"] += 1
-                elif scenario_result["status"] == "toolchain_gap":
-                    result["summary"]["toolchain_gaps"] += 1
-                else:
-                    result["summary"]["passed"] += 1
-        except Exception as exc:  # noqa: BLE001 - script reports all validation failures as JSON.
+        except Exception as exc:  # noqa: BLE001 - report materialization failures as JSON.
             repo_result["status"] = "failed"
             repo_result["error"] = str(exc)
             result["summary"]["failed"] += 1
-        else:
-            repo_result["status"] = "passed"
+            result["repositories"].append(repo_result)
+            continue
+        # #104: each check and scenario runs INDEPENDENTLY — one failure records a
+        # failed entry and the matrix continues, so every declared check/scenario
+        # appears in the final report even after an earlier failure.
+        for check in repo.get("checks", []):
+            result["summary"]["checks"] += 1
+            try:
+                check_result = run_check(repo, repo_dir, check, workspace)
+            except Exception as exc:  # noqa: BLE001
+                repo_failed = True
+                result["summary"]["failed"] += 1
+                repo_result["checks"].append({"kind": check.get("kind"), "status": "failed", "error": str(exc)})
+                continue
+            repo_result["checks"].append(check_result)
+            if check_result["status"] == "known_gap":
+                result["summary"]["known_gaps"] += 1
+            elif check_result["status"] == "toolchain_gap":
+                result["summary"]["toolchain_gaps"] += 1
+            else:
+                result["summary"]["passed"] += 1
+            if check_result.get("target_entry_observed"):
+                result["summary"]["target_entry_by_language"][repo["language"]] = True
+        for scenario in repo.get("scenarios", []):
+            result["summary"]["scenarios"] += 1
+            try:
+                scenario_result = run_scenario(repo, repo_dir, scenario, workspace, default_time)
+            except Exception as exc:  # noqa: BLE001
+                repo_failed = True
+                result["summary"]["failed"] += 1
+                repo_result["scenarios"].append({"id": scenario.get("id"), "kind": scenario.get("kind"), "status": "failed", "error": str(exc)})
+                continue
+            repo_result["scenarios"].append(scenario_result)
+            if scenario_result["status"] == "known_gap":
+                result["summary"]["known_gaps"] += 1
+            elif scenario_result["status"] == "toolchain_gap":
+                result["summary"]["toolchain_gaps"] += 1
+            else:
+                result["summary"]["passed"] += 1
+        repo_result["status"] = "failed" if repo_failed else "passed"
         result["repositories"].append(repo_result)
     add_readiness_gate(result)
     return result

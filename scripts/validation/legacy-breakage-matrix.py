@@ -591,7 +591,9 @@ def run_scenario(
             else contextlib.nullcontext()
         )
         with lock:
-            if settings.get("control_first", False):
+            # #104: the in-scope gate always scores a control-success rate, so
+            # controls run by default; a manifest must opt OUT explicitly.
+            if settings.get("control_first", True):
                 control_work = workspace / "scenarios" / scenario["id"] / "control-work"
                 control_log = workspace / "scenarios" / scenario["id"] / "control.log"
                 result["control"] = execute_scenario_run(
@@ -764,6 +766,28 @@ def summarize(
         bucket["success_rate"] = bucket["passed"] / bucket["total"]
     for bucket in by_mutation.values():
         bucket["success_rate"] = bucket["passed"] / bucket["total"]
+    # #104: the gate scores an in-scope control-success rate, so controls MUST have
+    # run. If in-scope scenarios exist but not one control was attempted, the gate is
+    # being scored against an unexecuted metric — fail loudly rather than let a
+    # regression ship because `control_first` was silently omitted.
+    gate_reasons: list[str] = []
+    if in_scope and not controls:
+        gate_reasons.append(
+            "in-scope scenarios exist but no controls were executed; enable "
+            "control_first so the control-success gate is not skipped"
+        )
+    if not in_scope:
+        gate_reasons.append("no in-scope scenarios to evaluate")
+    if in_scope and in_scope_control_rate < threshold:
+        gate_reasons.append(
+            f"in-scope control success {in_scope_control_rate:.1%} below "
+            f"required {threshold:.1%}"
+        )
+    if in_scope and in_scope_recovery_rate < threshold:
+        gate_reasons.append(
+            f"in-scope recovery success {in_scope_recovery_rate:.1%} below "
+            f"required {threshold:.1%}"
+        )
     return {
         "repositories": len({scenario["repository_id"] for scenario in scenarios}),
         "total": total,
@@ -813,13 +837,8 @@ def summarize(
         "outcomes": outcome_breakdown(scenarios),
         "convergence": convergence_metrics(scenarios, configured_cap),
         "combined_convergence": convergence_metrics(controls + scenarios, configured_cap),
-        "gate": (
-            "pass"
-            if in_scope
-            and in_scope_control_rate >= threshold
-            and in_scope_recovery_rate >= threshold
-            else "fail"
-        ),
+        "gate": "pass" if not gate_reasons else "fail",
+        "gate_reasons": gate_reasons,
     }
 
 
@@ -828,7 +847,12 @@ def render_markdown(result: dict[str, Any]) -> str:
     lines = [
         "# Legacy Broken-Project Fuzz Matrix",
         "",
-        f"- Gate: **{summary['gate']}**",
+        f"- Gate: **{summary['gate']}**"
+        + (
+            f" — {'; '.join(summary['gate_reasons'])}"
+            if summary.get("gate_reasons")
+            else ""
+        ),
         f"- Repositories: {summary['repositories']}",
         f"- Raw damaged-project recovery: {summary['passed']} / {summary['total']} "
         f"({summary['success_rate']:.1%})",

@@ -838,21 +838,28 @@ pub fn select_cpp_decoder_with_registry_limited(
     // input, and every supported mapping provides a public empty environment.
     // Treat it like other default-constructible infrastructure arguments even
     // when the ORB headers live outside the scanned source tree.
-    if bare == "CORBA::Environment" {
+    // #99: canonicalize the class spelling so EVERY equivalent spelling of the same
+    // type takes the same decoder path — `CORBA::Environment &`, `const
+    // CORBA::Environment&`, `::CORBA::Environment`, `CORBA::Environment const &`,
+    // and `class CORBA::Environment` all resolve to `CORBA::Environment`. Without
+    // this a leading `::`, an east-const, a `volatile`, or an elaborated keyword
+    // wrongly rejected the parameter as opaque.
+    let canonical = canonical_class_spelling(&bare);
+    if canonical == "CORBA::Environment" {
         return Ok(CParamEmission {
             support: None,
-            decl: format!("{bare} {name};"),
+            decl: format!("{canonical} {name};"),
             arg: name.to_owned(),
-            c_type: bare,
+            c_type: canonical,
             free: None,
         });
     }
-    if !bare.contains('*') && registry.is_default_constructible_class(&bare) {
+    if !canonical.contains('*') && registry.is_default_constructible_class(&canonical) {
         return Ok(CParamEmission {
             support: None,
-            decl: format!("{bare} {name};"),
+            decl: format!("{canonical} {name};"),
             arg: name.to_owned(),
-            c_type: bare.clone(),
+            c_type: canonical,
             free: None,
         });
     }
@@ -864,6 +871,48 @@ pub fn select_cpp_decoder_with_registry_limited(
         return Ok(emission);
     }
     registry_fallback
+}
+
+/// #99: canonicalize a class-type spelling to a stable key so equivalent spellings
+/// take the same decoder path. Strips a leading `::`, leading/trailing
+/// `const`/`volatile` qualifiers, and an elaborated `class`/`struct`/`enum`/`union`/
+/// `typename` keyword. Whitespace is already collapsed by the caller.
+pub(crate) fn canonical_class_spelling(bare: &str) -> String {
+    let mut s = bare.trim();
+    // Elaborated type specifier (`class Foo`, `struct Foo`, `typename Foo`).
+    for keyword in ["class ", "struct ", "enum ", "union ", "typename "] {
+        if let Some(rest) = s.strip_prefix(keyword) {
+            s = rest.trim();
+            break;
+        }
+    }
+    // Leading cv-qualifiers (west-const, possibly repeated / with volatile).
+    loop {
+        let trimmed = s.trim_start();
+        if let Some(rest) = trimmed.strip_prefix("const ") {
+            s = rest;
+        } else if let Some(rest) = trimmed.strip_prefix("volatile ") {
+            s = rest;
+        } else {
+            s = trimmed;
+            break;
+        }
+    }
+    // Trailing cv-qualifiers (east-const: `Foo const`).
+    let mut owned = s.trim().to_owned();
+    loop {
+        let trimmed = owned.trim_end();
+        if let Some(rest) = trimmed.strip_suffix(" const") {
+            owned = rest.to_owned();
+        } else if let Some(rest) = trimmed.strip_suffix(" volatile") {
+            owned = rest.to_owned();
+        } else {
+            owned = trimmed.to_owned();
+            break;
+        }
+    }
+    // Leading `::` global-namespace qualifier.
+    owned.trim_start_matches("::").trim().to_owned()
 }
 
 fn cpp_registry_decode_type(cpp_type: &str) -> String {
@@ -2511,6 +2560,49 @@ mod tests {
             err.is_err(),
             "a C++ function-pointer param must be a clean skip, got: {err:?}"
         );
+    }
+
+    #[test]
+    fn canonical_class_spelling_normalizes_equivalent_spellings() {
+        // #99: leading `::`, west/east const, volatile, and elaborated keywords all
+        // canonicalize to the same class key.
+        for spelling in [
+            "CORBA::Environment",
+            "const CORBA::Environment",
+            "CORBA::Environment const",
+            "::CORBA::Environment",
+            "class CORBA::Environment",
+            "  volatile   CORBA::Environment  ",
+            "typename CORBA::Environment",
+        ] {
+            assert_eq!(
+                canonical_class_spelling(spelling),
+                "CORBA::Environment",
+                "spelling {spelling:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn corba_environment_spellings_take_the_same_decoder_path() {
+        // #99: every equivalent spelling of the CORBA exception-environment context
+        // parameter resolves to the SAME default-constructed emission (it is call
+        // context, not fuzz input), instead of a leading `::` / const / elaborated
+        // spelling being wrongly rejected as an opaque unsupported param.
+        let reg = TypeRegistry::default();
+        for spelling in [
+            "CORBA::Environment &",
+            "const CORBA::Environment &",
+            "::CORBA::Environment &",
+            "CORBA::Environment const &",
+            "class CORBA::Environment &",
+        ] {
+            let e = select_cpp_decoder_with_registry(spelling, "env", &reg).unwrap_or_else(|err| {
+                panic!("CORBA::Environment must decode for {spelling:?}: {err:?}")
+            });
+            assert_eq!(e.decl, "CORBA::Environment env;", "spelling {spelling:?}");
+            assert_eq!(e.c_type, "CORBA::Environment", "spelling {spelling:?}");
+        }
     }
 
     #[test]

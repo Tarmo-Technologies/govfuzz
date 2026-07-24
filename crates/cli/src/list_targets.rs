@@ -142,8 +142,20 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
                 }
             }
             SourceLanguage::C => {
-                let functions = c_parser::parse_c_functions(&source)
+                let mut functions = c_parser::parse_c_functions(&source)
                     .with_context(|| format!("scan C source {}", path.display()))?;
+                // #11 (offline-legacy audit): tree-sitter parses an old-style K&R
+                // definition as a ZERO-parameter function, hiding its real
+                // `(char*, int)` signature — so the listing disagrees with the
+                // K&R-aware `auto` discovery about the same legacy function. Recover
+                // the true K&R signatures and prefer them, matching discovery.
+                let knr = c_parser::parse_knr_functions(&source);
+                if !knr.is_empty() {
+                    let knr_names: std::collections::HashSet<String> =
+                        knr.iter().map(|function| function.name.clone()).collect();
+                    functions.retain(|function| !knr_names.contains(&function.name));
+                    functions.splice(0..0, knr);
+                }
                 warn_if_parser_recovered(&path, functions.is_empty(), || {
                     c_parser::count_parse_errors(&source)
                 });

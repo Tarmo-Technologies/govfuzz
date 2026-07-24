@@ -64,19 +64,25 @@ struct OpStub {
 
 /// How to declare a referenced stub type. Default is a numeric derived type (a
 /// handle threaded through calls); refined to a String subtype when the compiler
-/// reports a string literal against it.
+/// reports a string literal against it, or to an enumeration when it is used as
+/// an array index / with `use all type` and its literals are referenced.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum TypeForm {
     #[default]
     Numeric,
     StringLike,
+    Enumeration,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct TypeStub {
     name: String,
     form: TypeForm,
+    /// Enumeration literals (only when `form == Enumeration`); insertion order is
+    /// preserved so the declared positions are stable across rounds.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    literals: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,6 +105,12 @@ pub struct ExternalStubModel {
     /// name resolves the exact parameter/return.
     placeholders: BTreeMap<String, PlaceholderSlot>,
     next_placeholder: u32,
+    /// Client unit stem (e.g. `spat-preconditions`) -> the stubbed enumeration
+    /// type keys (`Pkg\u{1}typekey`) it makes visible via `use [all] type`. Lets
+    /// an `"X" is undefined` error in that unit attribute X as a literal of the
+    /// enum it uses.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    enum_use_sites: BTreeMap<String, BTreeSet<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -154,6 +166,79 @@ impl ExternalStubModel {
         for source in sources {
             for usage in scan_ada_usages(source, packages) {
                 changed |= self.apply_usage(usage);
+            }
+        }
+        changed |= self.seed_enum_use_clauses(sources, packages);
+        changed
+    }
+
+    /// Detect `use [all] type Pkg.T` clauses: they make `T`'s enumeration literals
+    /// directly visible, so `T` (in a stubbed `Pkg`) is an enumeration. Records the
+    /// referencing unit -> enum type so a later `"X" is undefined` error in it
+    /// attributes `X` as one of `T`'s literals. Two passes over `sources`: the first
+    /// marks qualified `Pkg.T` enums, the second resolves unqualified `use all type
+    /// T` by leaf name against those (a client often re-exports the enum as its own
+    /// subtype and uses it unqualified).
+    fn seed_enum_use_clauses(&mut self, sources: &[String], packages: &BTreeSet<String>) -> bool {
+        let mut changed = false;
+        let known = |m: &Self, package: &str| {
+            packages.iter().any(|p| p.eq_ignore_ascii_case(package))
+                || m.packages.keys().any(|p| p.eq_ignore_ascii_case(package))
+        };
+        // Pass 1: qualified clauses mark the enum type in its package.
+        for source in sources {
+            for qualified in use_all_type_targets(source) {
+                let Some((package, entity)) = qualified.rsplit_once('.') else {
+                    continue;
+                };
+                if !known(self, package) {
+                    continue;
+                }
+                let pkg = self.packages.entry(package.to_owned()).or_default();
+                let ty = pkg
+                    .types
+                    .entry(entity.to_ascii_lowercase())
+                    .or_insert_with(|| TypeStub {
+                        name: entity.to_owned(),
+                        form: TypeForm::Enumeration,
+                        literals: Vec::new(),
+                    });
+                if ty.form != TypeForm::Enumeration {
+                    ty.form = TypeForm::Enumeration;
+                    changed = true;
+                }
+            }
+        }
+        // Leaf name -> (package, key) for every enum type now known.
+        let enum_by_leaf: BTreeMap<String, (String, String)> = self
+            .packages
+            .iter()
+            .flat_map(|(pkg, stub)| {
+                stub.types
+                    .iter()
+                    .filter(|(_, t)| t.form == TypeForm::Enumeration)
+                    .map(move |(key, t)| (t.name.to_ascii_lowercase(), (pkg.clone(), key.clone())))
+            })
+            .collect();
+        // Pass 2: record each unit's enum use-sites (qualified or leaf-resolved).
+        for source in sources {
+            let Some(stem) = unit_stem_of_source(source) else {
+                continue;
+            };
+            for target in use_all_type_targets(source) {
+                let leaf = target
+                    .rsplit('.')
+                    .next()
+                    .unwrap_or(&target)
+                    .to_ascii_lowercase();
+                if let Some((package, key)) = enum_by_leaf.get(&leaf) {
+                    let site_key = format!("{package}\u{1}{key}");
+                    changed |= self
+                        .enum_use_sites
+                        .entry(stem.clone())
+                        .or_default()
+                        .insert(site_key);
+                }
             }
         }
         changed
@@ -223,6 +308,7 @@ impl ExternalStubModel {
                         e.insert(TypeStub {
                             name: usage.entity,
                             form: TypeForm::default(),
+                            literals: Vec::new(),
                         });
                         true
                     }
@@ -307,6 +393,36 @@ impl ExternalStubModel {
             if let Some(ph) = parse_quoted_after(line, "operator for type \"") {
                 if placeholder_of(&ph).is_some() {
                     changed |= self.resolve_from_pair(&ph, "Integer");
+                }
+            }
+        }
+        // 4) `"X" is undefined` in a unit that `use [all] type`s exactly one
+        //    stubbed enumeration -> X is one of that enum's literals. This is how a
+        //    kind-discriminant enum (`JSON_Value_Type`, whose `JSON_Int_Type` ...
+        //    literals the client references) gets its literal set.
+        for line in &lines {
+            let Some(ident) = undefined_identifier(line) else {
+                continue;
+            };
+            let Some(stem) = error_unit_stem(line) else {
+                continue;
+            };
+            let Some(sites) = self.enum_use_sites.get(&stem) else {
+                continue;
+            };
+            if sites.len() != 1 {
+                continue; // ambiguous: multiple enums in scope
+            }
+            let key = sites.iter().next().unwrap().clone();
+            let Some((package, type_key)) = key.split_once('\u{1}') else {
+                continue;
+            };
+            if let Some(pkg) = self.packages.get_mut(package) {
+                if let Some(ty) = pkg.types.get_mut(type_key) {
+                    if ty.form == TypeForm::Enumeration && !ty.literals.contains(&ident) {
+                        ty.literals.push(ident);
+                        changed = true;
+                    }
                 }
             }
         }
@@ -473,11 +589,20 @@ impl ExternalStubModel {
         // reports a string literal against it. Never a placeholder name.
         for ty in stub.types.values() {
             match ty.form {
-                TypeForm::Numeric => {
-                    out.push_str(&format!("   type {} is new Integer;\n", ty.name))
-                }
+                // An enumeration with known literals (a kind-discriminant type used
+                // as an array index / with `use all type`). Empty literal set can't
+                // form a legal enum, so fall back to the numeric form until the
+                // literals are learned from the build oracle.
+                TypeForm::Enumeration if !ty.literals.is_empty() => out.push_str(&format!(
+                    "   type {} is ({});\n",
+                    ty.name,
+                    ty.literals.join(", ")
+                )),
                 TypeForm::StringLike => {
                     out.push_str(&format!("   subtype {} is String;\n", ty.name))
+                }
+                TypeForm::Numeric | TypeForm::Enumeration => {
+                    out.push_str(&format!("   type {} is new Integer;\n", ty.name))
                 }
             }
         }
@@ -849,6 +974,26 @@ fn parse_type_note(line: &str, keyword: &str) -> Option<String> {
     parse_quoted_after(line, &needle)
 }
 
+/// The identifier in a GNAT `error: "X" is undefined` diagnostic.
+fn undefined_identifier(line: &str) -> Option<String> {
+    if !line.contains("is undefined") {
+        return None;
+    }
+    let ident = parse_quoted_after(line, "error: \"")?;
+    (!ident.is_empty() && ident.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'))
+        .then_some(ident)
+}
+
+/// The GNAT file stem in a diagnostic's leading `file.ads:line:col:` locus.
+fn error_unit_stem(line: &str) -> Option<String> {
+    let first = line.split(':').next()?.trim();
+    let base = first.rsplit('/').next().unwrap_or(first);
+    let stem = base
+        .strip_suffix(".ads")
+        .or_else(|| base.strip_suffix(".adb"))?;
+    Some(stem.to_ascii_lowercase())
+}
+
 /// Extract the first double-quoted token following `prefix` in `line`.
 fn parse_quoted_after(line: &str, prefix: &str) -> Option<String> {
     let start = line.find(prefix)? + prefix.len();
@@ -887,12 +1032,107 @@ fn ada_unit_stem(unit: &str) -> String {
         .collect()
 }
 
+/// The GNAT file stem of the compilation unit a source declares, e.g. a source
+/// with `package body SPAT.Preconditions` -> `spat-preconditions`. Used to match
+/// a build error's filename back to the unit that produced it.
+fn unit_stem_of_source(source: &str) -> Option<String> {
+    for raw in source.lines() {
+        let line = strip_ada_comment(raw).trim();
+        let low = line.to_ascii_lowercase();
+        let rest = low
+            .strip_prefix("package body ")
+            .or_else(|| low.strip_prefix("package "))
+            .or_else(|| low.strip_prefix("private package "));
+        if let Some(rest) = rest {
+            // Original-case unit name at the same offset.
+            let start = line.len() - rest.len();
+            let name: String = line[start..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '.')
+                .collect();
+            if !name.is_empty() {
+                return Some(ada_unit_stem(&name));
+            }
+        }
+    }
+    None
+}
+
+/// Qualified type names named in `use [all] type <T>;` clauses (one per match).
+fn use_all_type_targets(source: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for raw in source.lines() {
+        let line = strip_ada_comment(raw);
+        let low = line.to_ascii_lowercase();
+        // Accept `use type`, `use all type`, and a leading `for ... use` is not a
+        // clause we care about (that has no `type` keyword after `use`).
+        let Some(pos) = low.find("use ") else {
+            continue;
+        };
+        let after = line[pos + 4..].trim_start();
+        let after_low = after.to_ascii_lowercase();
+        let after = after_low
+            .strip_prefix("all type ")
+            .map(|_| &after[9..])
+            .or_else(|| after_low.strip_prefix("type ").map(|_| &after[5..]));
+        let Some(after) = after else { continue };
+        let name: String = after
+            .trim_start()
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '.')
+            .collect();
+        if !name.is_empty() {
+            out.push(name);
+        }
+    }
+    out
+}
+
+/// Drop a trailing `--` Ada line comment.
+fn strip_ada_comment(line: &str) -> &str {
+    match line.find("--") {
+        Some(i) => &line[..i],
+        None => line,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn pkgset(names: &[&str]) -> BTreeSet<String> {
         names.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn use_all_type_plus_undefined_literals_infer_an_enumeration() {
+        // A kind-discriminant enum: the client `use all type`s it and references
+        // its literals; the stub starts numeric, then GNAT's `"X" is undefined`
+        // errors supply the literal set so it becomes a real enumeration (fixing
+        // the `array (T)` packed-index overflow too).
+        let unit = "with GNATCOLL.JSON;\n\
+                    package body Spat.Preconditions is\n\
+                    use all type GNATCOLL.JSON.JSON_Value_Type;\n\
+                    procedure Go is\n   begin\n null; end Go;\n\
+                    end Spat.Preconditions;\n";
+        let mut model = ExternalStubModel::default();
+        assert!(model.seed_from_sources(&[unit.to_owned()], &pkgset(&["GNATCOLL.JSON"])));
+        // Marked as an enumeration, but no literals yet -> renders numeric.
+        let spec0 = model.render_spec("GNATCOLL.JSON", &model.packages["GNATCOLL.JSON"]);
+        assert!(
+            spec0.contains("type JSON_Value_Type is new Integer"),
+            "no literals yet -> numeric fallback: {spec0}"
+        );
+
+        // GNAT reports the referenced literals as undefined in that unit.
+        let out = "spat-preconditions.ads:21:09: error: \"JSON_Int_Type\" is undefined\n\
+                   spat-preconditions.ads:22:09: error: \"JSON_Float_Type\" is undefined (more references follow)\n";
+        assert!(model.refine_from_build_output(out));
+        let spec1 = model.render_spec("GNATCOLL.JSON", &model.packages["GNATCOLL.JSON"]);
+        assert!(
+            spec1.contains("type JSON_Value_Type is (JSON_Int_Type, JSON_Float_Type)"),
+            "literals form the enumeration: {spec1}"
+        );
     }
 
     #[test]

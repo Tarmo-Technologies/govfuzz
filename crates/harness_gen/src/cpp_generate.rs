@@ -77,6 +77,11 @@ pub struct GenerateCppDirectArgs {
     /// class-typed constructor argument can be default-constructed and passed
     /// rather than skipping the whole constructor (#353).
     pub default_constructible_classes: Vec<String>,
+    /// #99: declaration-aware construction recipes for opaque class PARAMETERS
+    /// that are not default-constructible but can be built via a public factory or
+    /// parameterized constructor resolved from the owning header. Keyed by
+    /// canonical class spelling. Empty when every parameter is directly decodable.
+    pub parameter_constructions: Vec<(String, type_model::ClassConstruction)>,
     /// When the method's declaring class is ABSTRACT, the concrete subclass to
     /// build the receiver from instead (`MemoryReader` for an abstract `Reader`),
     /// so `<override> _gf_receiver; _gf_receiver.method(..)` calls the virtual
@@ -124,6 +129,8 @@ pub struct GenerateCppSequenceArgs {
     pub type_defs: Vec<c_parser::CTypeDefs>,
     /// See `GenerateCppDirectArgs::default_constructible_classes` (#353).
     pub default_constructible_classes: Vec<String>,
+    /// See `GenerateCppDirectArgs::parameter_constructions` (#99).
+    pub parameter_constructions: Vec<(String, type_model::ClassConstruction)>,
     /// See `GenerateCppDirectArgs::receiver_class_override` (#456).
     pub receiver_class_override: Option<String>,
     /// See `GenerateCppDirectArgs::factory_plan`.
@@ -804,6 +811,7 @@ fn build_cpp_context<'a>(
         constructor_params: &args.constructor_params,
         type_defs: &args.type_defs,
         default_constructible_classes: &args.default_constructible_classes,
+        parameter_constructions: &args.parameter_constructions,
         receiver_class_override: args.receiver_class_override.as_deref(),
         lifecycle_steps: Vec::new(),
         handle_lifecycle,
@@ -837,6 +845,7 @@ fn build_cpp_sequence_context(
         constructor_params: &args.constructor_params,
         type_defs: &args.type_defs,
         default_constructible_classes: &args.default_constructible_classes,
+        parameter_constructions: &args.parameter_constructions,
         receiver_class_override: args.receiver_class_override.as_deref(),
         lifecycle_steps,
         handle_lifecycle: &[],
@@ -863,6 +872,9 @@ struct CppContextInput<'a> {
     constructor_params: &'a [CppParameter],
     type_defs: &'a [c_parser::CTypeDefs],
     default_constructible_classes: &'a [String],
+    /// #99: construction recipes for opaque class parameters, keyed by canonical
+    /// class spelling.
+    parameter_constructions: &'a [(String, type_model::ClassConstruction)],
     receiver_class_override: Option<&'a str>,
     lifecycle_steps: Vec<CppLifecycleStepEmission>,
     /// Init/delete FREE-function lifecycles for opaque-handle parameters (an
@@ -1011,7 +1023,8 @@ fn build_cpp_context_common(
     let input_references_type_defs = cpp_params_reference_type_defs(&input);
     let registry = TypeRegistry::from_defs(input.type_defs.iter())
         .with_cpp_lookup_scopes(cpp_lexical_lookup_scopes(input.target))
-        .with_default_constructible_classes(input.default_constructible_classes.iter().cloned());
+        .with_default_constructible_classes(input.default_constructible_classes.iter().cloned())
+        .with_class_constructions(input.parameter_constructions.iter().cloned());
     // Template-function instantiation (#455 / §27.5): when the target carries a
     // resolved specialization, substitute its concrete type arguments into the
     // parameter / return types BEFORE decoding (so `const std::vector<T> &`
@@ -1823,6 +1836,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -1923,6 +1937,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -1974,6 +1989,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2047,6 +2063,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2101,6 +2118,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2221,6 +2239,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2295,6 +2314,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2343,6 +2363,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2388,6 +2409,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2430,6 +2452,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2492,6 +2515,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2541,6 +2565,7 @@ mod tests {
             lifecycle_steps: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2586,6 +2611,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: Some("e57::MemoryReader".to_owned()),
             factory_plan: None,
         };
@@ -2624,6 +2650,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2690,6 +2717,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2728,6 +2756,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2763,6 +2792,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2805,6 +2835,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2843,6 +2874,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2886,6 +2918,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2932,6 +2965,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -2995,6 +3029,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3051,6 +3086,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3091,6 +3127,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3156,6 +3193,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3200,6 +3238,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3236,6 +3275,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3276,6 +3316,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3314,6 +3355,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3351,6 +3393,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3440,6 +3483,7 @@ mod tests {
                 constructor_params: Vec::new(),
                 type_defs: Vec::new(),
                 default_constructible_classes: Vec::new(),
+                parameter_constructions: Vec::new(),
                 receiver_class_override: None,
                 factory_plan: None,
             };
@@ -3496,6 +3540,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3552,6 +3597,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3595,6 +3641,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3632,6 +3679,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3671,6 +3719,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3709,6 +3758,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3760,6 +3810,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3812,6 +3863,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3865,6 +3917,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3918,6 +3971,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -3971,6 +4025,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4026,6 +4081,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4081,6 +4137,7 @@ mod tests {
             }],
 
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4131,6 +4188,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4169,6 +4227,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4207,6 +4266,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4245,6 +4305,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4285,6 +4346,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4351,6 +4413,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: vec![cpp_parser::parse_cpp_type_defs(header_text).unwrap()],
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4417,6 +4480,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: vec![cpp_parser::parse_cpp_type_defs(source_text).unwrap()],
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4482,6 +4546,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: vec![cpp_parser::parse_cpp_type_defs(source_text).unwrap()],
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4539,6 +4604,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4577,6 +4643,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4647,6 +4714,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -4738,6 +4806,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: Some(CppFactoryPlan {
                 owner_type: Some("tinyxml2::XMLDocument".to_owned()),
@@ -4827,6 +4896,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: Some(CppFactoryPlan {
                 owner_type: Some("acme::Lexer".to_owned()),
@@ -4892,6 +4962,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: Some(CppFactoryPlan {
                 owner_type: None, // free-function factory
@@ -4955,6 +5026,7 @@ mod tests {
             constructor_params: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -5063,6 +5135,7 @@ mod tests {
             ],
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };
@@ -5118,6 +5191,7 @@ mod tests {
             lifecycle_steps: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
             receiver_class_override: None,
             factory_plan: None,
         };

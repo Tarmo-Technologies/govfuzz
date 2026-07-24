@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 {%- for header in target_includes %}
-{%- if header is ending_with(".c") or header is ending_with(".cc") or header is ending_with(".cpp") or header is ending_with(".cxx") or header is ending_with(".cu") %}
+{%- if header is ending_with(pat=".c") or header is ending_with(pat=".cc") or header is ending_with(pat=".cpp") or header is ending_with(pat=".cxx") or header is ending_with(pat=".cu") %}
 /* Whole translation-unit include (reaches the TU's static/internal functions).
  * Rename any `main` it defines so it can't collide with the harness driver's own
  * `main` — an example/REPL TU (tinyexpr's repl.c, *example*.c, benchmark.c) ships

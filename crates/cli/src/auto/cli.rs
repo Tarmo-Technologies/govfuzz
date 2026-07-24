@@ -1429,14 +1429,39 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         _ => false,
     };
 
-    // `--resume`: when discovery hit the cache (target source unchanged), the
-    // per-target results from a prior sweep over this work-dir are still valid, so
-    // RELOAD targets that already completed (so they are fully re-integrated into
-    // this run's report — outcome buckets, repair bags, findings, pass detail)
-    // and re-run only the rest. Gated on the cache hit: if the source changed,
-    // prior results may be stale, so re-attempt everything.
+    // #101: build-context identity, distinct from the source identity the
+    // discovery cache tracks. Editing a GPR, compile_commands.json, an IDL, or a
+    // harness-affecting option (selected project, decoder limits, stubbing policy,
+    // engines/passes, sanitizer mode) changes how targets BUILD, so prior completed
+    // results must be re-attempted even when the source (and discovery cache) is
+    // unchanged. The prior run's fingerprint is read here; the current one is
+    // written back below for the next --resume. Old work dirs without the file are
+    // conservatively treated as changed (re-attempt).
+    let build_knobs = format!(
+        "project={:?}|no_stubs={}|force={}|sanitizers={:?}|decoder_limits={:?}|passes={}|engines={:?}",
+        options.project,
+        options.no_stubs,
+        options.force,
+        options.sanitizers,
+        options.decoder_limits,
+        options.passes.len(),
+        options.engines,
+    );
+    let current_build_fp = crate::auto::discovery::build_context_fingerprint(&path, &build_knobs);
+    let build_ctx_file = crate::auto::layout::reports_dir(&work).join("build-context.fingerprint");
+    let prior_build_fp = std::fs::read_to_string(&build_ctx_file)
+        .ok()
+        .map(|text| text.trim().to_owned());
+    let build_context_unchanged = prior_build_fp.as_deref() == Some(current_build_fp.as_str());
+
+    // `--resume`: when discovery hit the cache (target source unchanged) AND the
+    // build context is unchanged, the per-target results from a prior sweep over
+    // this work-dir are still valid, so RELOAD targets that already completed (so
+    // they are fully re-integrated into this run's report — outcome buckets, repair
+    // bags, findings, pass detail) and re-run only the rest. If the source or the
+    // build context changed, prior results may be stale, so re-attempt everything.
     let mut resumed_results: Vec<crate::auto::attempt::AttemptResult> = Vec::new();
-    if args.resume && discovery_cache_hit {
+    if args.resume && discovery_cache_hit && build_context_unchanged {
         candidates.retain(|c| {
             match crate::auto::report::load_resumed_result(&work, &c.harness_id) {
                 Some(prior) => {
@@ -1455,11 +1480,19 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 candidates.len()
             );
         }
+    } else if args.resume && discovery_cache_hit && !build_context_unchanged {
+        eprintln!(
+            "govfuzz auto: --resume: build context changed (GPR / compile_commands.json / IDL / config / options); re-attempting all targets to avoid stale results"
+        );
     } else if args.resume {
         eprintln!(
             "govfuzz auto: --resume: target source changed (discovery cache miss); re-attempting all targets to avoid stale results"
         );
     }
+    // #101: record this run's build-context fingerprint so the next --resume can
+    // tell whether the build context changed.
+    let _ = std::fs::create_dir_all(crate::auto::layout::reports_dir(&work));
+    let _ = crate::auto::report::atomic_write(&build_ctx_file, current_build_fp.as_bytes());
     let resumed = resumed_results.len();
     // #94: a resumed target that already fuzzed counts toward the success cap (so a
     // resumed run doesn't re-fuzz past the cap), while a resumed unsupported/failed

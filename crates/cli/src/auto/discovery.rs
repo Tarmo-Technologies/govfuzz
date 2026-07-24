@@ -633,6 +633,92 @@ pub fn source_fingerprint(root: &Path, filter: &DirFilter) -> String {
     format!("{:016x}", hasher.finish())
 }
 
+/// #101: fingerprint the BUILD context — the files and options that change how a
+/// target is BUILT, distinct from the source identity that [`source_fingerprint`]
+/// covers. Editing a GPR, compile_commands.json, an IDL, or a harness-affecting
+/// option changes this digest even when the targetable source (and the discovery
+/// cache) is unchanged, so `--resume` re-attempts completed targets rather than
+/// serving stale results. `knobs` folds in the selected project + decoder limits +
+/// stubbing policy + engines/passes + sanitizer mode + harness flags. Documentation
+/// (README, etc.) and excluded build artifacts are ignored (not build files).
+pub fn build_context_fingerprint(root: &Path, knobs: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    // (relative-path, content-hash) for every build-context file under `root`.
+    let mut files: Vec<(String, u64)> = Vec::new();
+    collect_build_context_files(root, root, 0, &mut files);
+    files.sort();
+
+    let mut hasher = StableHasher::new();
+    "build_files".hash(&mut hasher);
+    files.len().hash(&mut hasher);
+    for (rel, content) in &files {
+        rel.hash(&mut hasher);
+        content.hash(&mut hasher);
+    }
+    // Effective build options: changing any of these changes the build even when
+    // no file changed, so they must change the fingerprint too.
+    "knobs".hash(&mut hasher);
+    knobs.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+/// Whether `path` is a build-context file: a compile database, GNAT project, or
+/// IDL — the inputs that change how govfuzz recovers a build.
+fn is_build_context_file(path: &Path) -> bool {
+    if path.file_name().and_then(|n| n.to_str()) == Some("compile_commands.json") {
+        return true;
+    }
+    matches!(
+        path.extension()
+            .and_then(|e| e.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some("gpr") | Some("idl")
+    )
+}
+
+/// Bounded recursive collector for [`build_context_fingerprint`]: hashes each
+/// build-context file's content. Skips VCS, the govfuzz work dir, and common
+/// build-output dirs so the digest stays bounded and stable.
+fn collect_build_context_files(
+    base: &Path,
+    dir: &Path,
+    depth: usize,
+    out: &mut Vec<(String, u64)>,
+) {
+    use std::hash::{Hash, Hasher};
+    if depth > 12 {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if matches!(
+                name,
+                ".git" | ".hg" | ".svn" | "govfuzz_work" | "target" | "node_modules"
+            ) {
+                continue;
+            }
+            collect_build_context_files(base, &path, depth + 1, out);
+        } else if is_build_context_file(&path) {
+            if let Ok(bytes) = std::fs::read(&path) {
+                let rel = path
+                    .strip_prefix(base)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .into_owned();
+                let mut content = StableHasher::new();
+                bytes.hash(&mut content);
+                out.push((rel, content.finish()));
+            }
+        }
+    }
+}
+
 /// Recursive helper for [`source_fingerprint`]: mirrors [`walk`]'s directory
 /// pruning but records (path, len, content-hash) instead of parsing. An
 /// unreadable file is recorded as zeros so a permissions hiccup degrades to a
@@ -2842,6 +2928,57 @@ mod tests {
             fp3,
             source_fingerprint(&root, &excl),
             "dir-filter change changes fingerprint"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_context_fingerprint_tracks_build_files_and_knobs_not_docs() {
+        // #101: the build-context fingerprint busts on a GPR / compile_commands.json
+        // / IDL / option change (so --resume re-attempts affected results), but NOT
+        // on a README edit (docs never invalidate the build context).
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SEQ: AtomicU64 = AtomicU64::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "govfuzz-bctx-{}-{}",
+            std::process::id(),
+            SEQ.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("proj.gpr"), "project P is\nend P;\n").unwrap();
+        fs::write(root.join("README.md"), "hello\n").unwrap();
+
+        let fp0 = build_context_fingerprint(&root, "knobs-a");
+        assert_eq!(fp0, build_context_fingerprint(&root, "knobs-a"), "stable");
+
+        // Editing README (not a build file) does NOT change the build context.
+        fs::write(root.join("README.md"), "changed docs\n").unwrap();
+        assert_eq!(
+            fp0,
+            build_context_fingerprint(&root, "knobs-a"),
+            "documentation must not invalidate the build context"
+        );
+
+        // Editing the GPR changes it.
+        fs::write(
+            root.join("proj.gpr"),
+            "project P is\n  for Main use ();\nend P;\n",
+        )
+        .unwrap();
+        let fp1 = build_context_fingerprint(&root, "knobs-a");
+        assert_ne!(fp0, fp1, "editing a GPR must change the build context");
+
+        // Adding a compile database changes it.
+        fs::write(root.join("compile_commands.json"), "[]\n").unwrap();
+        let fp2 = build_context_fingerprint(&root, "knobs-a");
+        assert_ne!(fp1, fp2, "a new compile_commands.json must change it");
+
+        // Changing a harness-affecting option (knobs) changes it with no file edit.
+        assert_ne!(
+            fp2,
+            build_context_fingerprint(&root, "knobs-b"),
+            "changing options must change the build context"
         );
 
         let _ = fs::remove_dir_all(&root);

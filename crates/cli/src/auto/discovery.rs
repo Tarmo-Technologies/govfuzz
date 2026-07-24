@@ -579,9 +579,56 @@ pub fn discover_with_options(
         out.retain(|c| !is_libfuzzer_test_one_input(&c.name));
     }
     dedup_amalgamated_single_header(&mut out);
+    dedup_ada_spec_body_candidates(&mut out);
     apply_entrypoint_callgraph(&mut out);
     out.sort_by(|a, b| b.score.cmp(&a.score).then_with(|| a.name.cmp(&b.name)));
     Ok(out)
+}
+
+/// #92: collapse Ada candidates for the SAME subprogram of the SAME unit that were
+/// discovered from BOTH a spec (`.ads`) and a body (`.adb`) in DIFFERENT
+/// directories (a spec under `src/interface`, its body under `src/implementation`).
+/// The per-file discovery gate only suppresses a body whose spec is a SAME-DIR
+/// sibling, so a split spec/body layout otherwise yields two candidates for one
+/// logical target. Keep the public SPEC candidate — it is the externally callable
+/// declaration a separately compiled harness `with`s — so discovery and the build
+/// share one deterministic unit closure. Ada unit identity is approximated by the
+/// GNAT on-disk convention (filename stem, dashes = child-unit dots), which is
+/// what `with`/source lookup already relies on.
+fn dedup_ada_spec_body_candidates(candidates: &mut Vec<Candidate>) {
+    use std::collections::HashSet;
+    fn ada_unit(candidate: &Candidate) -> Option<String> {
+        if candidate.lang != Lang::Ada {
+            return None;
+        }
+        let stem = candidate.source_path.file_stem()?.to_str()?;
+        Some(stem.to_ascii_lowercase().replace('-', "."))
+    }
+    fn is_spec(candidate: &Candidate) -> bool {
+        candidate
+            .source_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("ads"))
+    }
+    // (unit, subprogram) pairs that already have a SPEC-derived candidate.
+    let spec_keys: HashSet<(String, String)> = candidates
+        .iter()
+        .filter(|c| is_spec(c))
+        .filter_map(|c| Some((ada_unit(c)?, c.name.to_ascii_lowercase())))
+        .collect();
+    if spec_keys.is_empty() {
+        return;
+    }
+    candidates.retain(|c| {
+        if c.lang != Lang::Ada || is_spec(c) {
+            return true;
+        }
+        match ada_unit(c) {
+            Some(unit) => !spec_keys.contains(&(unit, c.name.to_ascii_lowercase())),
+            None => true,
+        }
+    });
 }
 
 /// A deterministic fingerprint of the discovery-relevant source state under
@@ -2982,6 +3029,53 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ada_spec_body_split_across_dirs_yields_one_candidate() {
+        // #92: a spec under src/interface and its body under src/implementation
+        // both name `Parse`. Discovery must keep ONE candidate — the public spec —
+        // not two. A body-only subprogram (no spec) is retained.
+        let mk = |dir: &str, ext: &str, name: &str| Candidate {
+            harness_id: format!("H-{name}-{ext}"),
+            lang: Lang::Ada,
+            source_path: PathBuf::from(format!("/proj/{dir}/parser.{ext}")),
+            line: 1,
+            name: name.to_owned(),
+            score: 10,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        let mut candidates = vec![
+            mk("src/interface", "ads", "Parse"),
+            mk("src/implementation", "adb", "Parse"),
+            mk("src/implementation", "adb", "Body_Only"),
+        ];
+        dedup_ada_spec_body_candidates(&mut candidates);
+        assert_eq!(
+            candidates.len(),
+            2,
+            "spec+body Parse collapses to one: {candidates:?}"
+        );
+        assert!(
+            candidates
+                .iter()
+                .any(|c| c.name == "Parse" && c.source_path.to_string_lossy().contains("interface")),
+            "the public spec candidate is kept"
+        );
+        assert!(
+            !candidates
+                .iter()
+                .any(|c| c.name == "Parse"
+                    && c.source_path.to_string_lossy().contains("implementation")),
+            "the redundant body candidate is dropped"
+        );
+        assert!(
+            candidates.iter().any(|c| c.name == "Body_Only"),
+            "a body-only subprogram (no spec) is retained"
+        );
     }
 
     #[test]

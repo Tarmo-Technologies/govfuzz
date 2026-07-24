@@ -226,6 +226,98 @@ pub fn snapshot() -> Vec<InternalIssue> {
     ISSUES.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
+/// #102: record that a source file was DROPPED from discovery because a
+/// read/decode/parse stage failed, as a structured, privacy-scrubbed diagnostic.
+/// Deduplicated by (language, stage, error class) — `record` collapses identical
+/// summaries — so thousands of identical failures on a large tree become one row
+/// with an occurrence count. The sweep continues; this only makes the otherwise
+/// silent missing coverage durable and visible. `stage` is "read"|"decode"|"parse".
+pub fn record_discovery_diagnostic(language: &str, stage: &str, path: &Path, error: &str) {
+    record(InternalIssue {
+        category: IssueCategory::DiscoveryDiagnostic,
+        summary: discovery_diagnostic_summary(language, stage, path, error),
+        context: IssueContext {
+            phase: "discovery".to_owned(),
+            file: Some(discovery_file_token(path)),
+            target: None,
+            language: Some(language.to_owned()),
+        },
+        detail: Some(scrub_discovery_error(error)),
+        backtrace: None,
+        occurrences: 1,
+    });
+}
+
+/// #102: the dedup KEY for a discovery drop — `(language, stage, error class)`.
+/// `record` collapses identical summaries, so this is what groups thousands of
+/// identical failures into one row. The `error` only picks the class; it is never
+/// echoed into the summary (that would defeat dedup and could leak identifiers).
+pub(crate) fn discovery_diagnostic_summary(
+    language: &str,
+    stage: &str,
+    _path: &Path,
+    error: &str,
+) -> String {
+    let category = classify_discovery_error(stage, error);
+    format!("{language} {stage}: {category}")
+}
+
+/// #102: a stable, path-free token for a source file — FNV-1a of its path, hex.
+/// The same path yields the same token across runs (so a maintainer can tell two
+/// diagnostics apart) while never leaking the real path, directory, or filename.
+pub(crate) fn discovery_file_token(path: &Path) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in path.to_string_lossy().as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("file-{hash:016x}")
+}
+
+/// #102: name the failure class for a dropped file from its stage + error text.
+pub(crate) fn classify_discovery_error(stage: &str, error: &str) -> &'static str {
+    let lower = error.to_ascii_lowercase();
+    if stage == "read" {
+        if lower.contains("utf-8") || lower.contains("utf8") || lower.contains("encoding") {
+            "invalid_encoding"
+        } else {
+            "read_error"
+        }
+    } else if lower.contains("incomplete")
+        || lower.contains("unexpected end")
+        || lower.contains("eof")
+    {
+        "incomplete_parse"
+    } else {
+        "syntax_error"
+    }
+}
+
+/// #102: bound + scrub a reader/parser error for the report — keep the actionable
+/// SIGNAL (e.g. "expected identifier", a line/column) but remove absolute paths
+/// and cap the length so no source, path, or unbounded compiler output leaks.
+pub(crate) fn scrub_discovery_error(error: &str) -> String {
+    const MAX_CHARS: usize = 200;
+    // Replace anything that looks like an absolute/rooted path with a placeholder.
+    let mut scrubbed = String::with_capacity(error.len());
+    for token in error.split_whitespace() {
+        let looks_like_path =
+            token.contains('/') || (token.len() > 2 && token.as_bytes()[1] == b':');
+        scrubbed.push_str(if looks_like_path { "<path>" } else { token });
+        scrubbed.push(' ');
+    }
+    let trimmed = scrubbed.trim();
+    // Keep the LAST MAX_CHARS chars (parser signal is usually at the tail),
+    // truncating on a char boundary so we never split a UTF-8 sequence.
+    let count = trimmed.chars().count();
+    if count <= MAX_CHARS {
+        trimmed.to_owned()
+    } else {
+        let tail: String = trimmed.chars().skip(count - MAX_CHARS).collect();
+        format!("…{tail}")
+    }
+}
+
 fn panic_message(payload: &(dyn Any + Send)) -> String {
     if let Some(s) = payload.downcast_ref::<&str>() {
         (*s).to_owned()
@@ -281,6 +373,12 @@ pub enum IssueCategory {
     /// gap: the run never exercised the real endpoint). The reason names the
     /// sub-category (stub-only / no-execution / decode-or-bailout).
     TargetNotReached,
+    /// #102: a source file was DROPPED from discovery because a read/decode/parse
+    /// stage failed. Without this, a parser regression on a large legacy tree looks
+    /// exactly like a project with no fuzzable endpoints. The summary names the
+    /// language + stage + failure class; the detail carries a bounded, scrubbed
+    /// error tail (no source, no absolute paths, no identifiers).
+    DiscoveryDiagnostic,
 }
 
 /// One boiled-down govfuzz defect, deduplicated across the run.
@@ -368,7 +466,8 @@ fn issue_rank(issue: &InternalIssue) -> u8 {
         IssueCategory::UnsupportedType => 2,
         IssueCategory::FailedBuild => 3,
         IssueCategory::TargetNotReached => 4,
-        IssueCategory::ReportOnly => 5,
+        IssueCategory::DiscoveryDiagnostic => 5,
+        IssueCategory::ReportOnly => 6,
     }
 }
 
@@ -380,6 +479,7 @@ fn category_label(category: IssueCategory) -> &'static str {
         IssueCategory::UnsupportedType => "unsupported-type",
         IssueCategory::FailedBuild => "failed-build",
         IssueCategory::TargetNotReached => "target-not-reached",
+        IssueCategory::DiscoveryDiagnostic => "discovery-drop",
         IssueCategory::ReportOnly => "static-only",
     }
 }
@@ -553,6 +653,86 @@ mod tests {
 
     fn reset_issues() {
         ISSUES.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    }
+
+    // #102 -----------------------------------------------------------------
+    #[test]
+    fn discovery_file_token_is_deterministic_and_path_free() {
+        let p = std::path::Path::new("/home/secret-user/proj/SuperSecret.cpp");
+        let a = discovery_file_token(p);
+        let b = discovery_file_token(p);
+        assert_eq!(a, b, "same path -> same token");
+        assert_ne!(a, discovery_file_token(std::path::Path::new("/other.cpp")));
+        // never leaks the real path/name/user.
+        assert!(!a.contains("secret-user"));
+        assert!(!a.contains("SuperSecret"));
+        assert!(!a.contains('/'));
+        assert!(a.starts_with("file-"));
+    }
+
+    #[test]
+    fn scrub_discovery_error_strips_paths_keeps_signal_and_bounds() {
+        let raw = "parse error in /home/joe/project/lib/foo.cpp: expected identifier before ')'";
+        let out = scrub_discovery_error(raw);
+        assert!(!out.contains("/home/joe"), "{out}");
+        // the actionable parser signal survives.
+        assert!(out.contains("expected identifier"), "{out}");
+        // bounded: a huge error is capped.
+        let huge = "x ".repeat(1000);
+        assert!(scrub_discovery_error(&huge).chars().count() <= 201);
+    }
+
+    #[test]
+    fn classify_discovery_error_names_the_failure_class() {
+        assert_eq!(
+            classify_discovery_error("read", "stream did not contain valid UTF-8"),
+            "invalid_encoding"
+        );
+        assert_eq!(
+            classify_discovery_error("read", "permission denied"),
+            "read_error"
+        );
+        assert_eq!(
+            classify_discovery_error("parse", "unexpected end of input"),
+            "incomplete_parse"
+        );
+        assert_eq!(
+            classify_discovery_error("parse", "expected ';'"),
+            "syntax_error"
+        );
+    }
+
+    #[test]
+    fn discovery_diagnostic_summary_groups_by_lang_stage_and_class() {
+        // The dedup KEY is `record`'s (category, summary) pair, so verify the
+        // summary a discovery drop produces is exactly (language, stage, error
+        // class): two files in the same class share a summary (so `record` collapses
+        // them to one row with occurrences++), a different language/class is a
+        // separate row, and the raw error text never leaks in. (Recording into the
+        // process-global ledger is exercised end-to-end by the `auto_deep_source`
+        // integration test, which runs in its own binary and so cannot contaminate
+        // the shared lib-test global.)
+        let a = std::path::Path::new("/proj/a.cpp");
+        let b = std::path::Path::new("/proj/b.cpp");
+        assert_eq!(
+            discovery_diagnostic_summary("cpp", "parse", a, "expected ';' at 42"),
+            "cpp parse: syntax_error"
+        );
+        assert_eq!(
+            discovery_diagnostic_summary("cpp", "parse", a, "expected ';' at 42"),
+            discovery_diagnostic_summary("cpp", "parse", b, "expected ')' at 7"),
+            "same class -> identical summary -> record() dedups the two files"
+        );
+        assert_ne!(
+            discovery_diagnostic_summary("ada", "parse", a, "expected identifier"),
+            discovery_diagnostic_summary("cpp", "parse", a, "expected identifier"),
+            "a different language is a separate row"
+        );
+        assert!(
+            !discovery_diagnostic_summary("cpp", "parse", a, "SECRET_TOKEN_XYZ")
+                .contains("SECRET_TOKEN_XYZ"),
+            "the raw error text must never leak into the dedup key"
+        );
     }
 
     #[test]

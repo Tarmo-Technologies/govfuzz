@@ -3814,6 +3814,30 @@ fn apply_fuzz_child_env_overrides(extra_env: &mut Vec<(String, String)>) {
     if !extra_env.iter().any(|(k, _)| k == "DEBUGINFOD_URLS") {
         extra_env.push(("DEBUGINFOD_URLS".to_owned(), String::new()));
     }
+    // The default C/C++ harness is built with `-fsanitize=address,undefined`, but
+    // UBSan defaults to print-and-CONTINUE with exit 0, and the crash path only
+    // inspects a sanitizer report on a NON-success exit — so on the default
+    // `auto` run (SanitizerSelection::Default, whose runtime_set() is empty) every
+    // UBSan-class fault (signed overflow, out-of-bounds index, shift error, null
+    // deref, ...) is printed and then SILENTLY MISSED. Arm the runtime options so
+    // a sanitizer report becomes a detectable abort, matching the AFL child env.
+    // The operator's own inherited `<SAN>_OPTIONS` (suppressions / FP-killers) are
+    // merged first so they still win; an explicit value already threaded through
+    // `--sanitizers` / `--env` is in `extra_env` and left untouched (so an
+    // explicit selection or MSan/TSan build is not overridden here). ASan already
+    // aborts by default; arming it too is belt-and-suspenders and harmless for
+    // non-sanitized (interpreted-lane) children, which ignore the vars.
+    for key in ["ASAN_OPTIONS", "UBSAN_OPTIONS"] {
+        if !extra_env.iter().any(|(k, _)| k == key) {
+            extra_env.push((
+                key.to_owned(),
+                multicore_fuzz::merge_sanitizer_options(
+                    std::env::var(key).ok().as_deref(),
+                    "abort_on_error=1:halt_on_error=1",
+                ),
+            ));
+        }
+    }
 }
 
 fn sanitizer_summary(
@@ -4232,9 +4256,26 @@ fn parse_afl_dictionary_line(line: &str) -> Result<Option<Vec<u8>>, String> {
 
 /// Write one framed input (`u32` little-endian length + bytes) to the harness
 /// stdin, matching `AdaFuzz.Input.Load_From_Stdin`'s framing.
+/// The framed fork-server harness reads at most this many bytes of a frame into
+/// its fixed input buffer. All runtimes use a 1 MiB buffer (direct_harness.{c,cpp}
+/// .tera, c_runtime/govfuzz_driver.c, ada_runtime/adafuzz-input.adb).
+pub(crate) const FRAMED_INPUT_CAP: usize = 1 << 20;
+
+/// Write one `{u32 LE length}{length bytes}` frame to the child's stdin.
+///
+/// The declared length is CLAMPED to the harness's fixed input buffer
+/// ([`FRAMED_INPUT_CAP`]). Sending a larger frame desyncs the protocol: the
+/// harness reads only the first `cap` bytes and leaves the tail in the pipe, so
+/// the next frame's length prefix is read from the middle of this input —
+/// yielding garbage lengths (nonsense coverage for the whole window) or a huge
+/// garbage length that makes the harness block forever waiting for bytes the
+/// engine never sends (fork-server deadlock until the 30 s run timeout). The
+/// harness only ever consumes the first `cap` bytes anyway, so clamping here
+/// keeps the stream aligned with no loss of tested input.
 fn write_input_frame(stdin: &mut impl std::io::Write, input: &[u8]) -> std::io::Result<()> {
-    stdin.write_all(&(input.len() as u32).to_le_bytes())?;
-    stdin.write_all(input)
+    let capped = input.len().min(FRAMED_INPUT_CAP);
+    stdin.write_all(&(capped as u32).to_le_bytes())?;
+    stdin.write_all(&input[..capped])
 }
 
 /// The directory of the `GOVFUZZ_RUNTRACE_LOG` path in `extra_env`, if set, so
@@ -5818,6 +5859,41 @@ mod parse_sanitizer_args_tests {
 }
 
 #[cfg(test)]
+mod framed_input_tests {
+    use super::{write_input_frame, FRAMED_INPUT_CAP};
+
+    #[test]
+    fn frame_is_clamped_to_the_harness_buffer_so_the_protocol_stays_aligned() {
+        // A > 1 MiB input must be sent as a cap-sized frame: declared length ==
+        // bytes written == FRAMED_INPUT_CAP, so the harness reads the whole frame
+        // and the next frame's length prefix is not misread from a leftover tail.
+        let big = vec![0xABu8; FRAMED_INPUT_CAP + 4096];
+        let mut out: Vec<u8> = Vec::new();
+        write_input_frame(&mut out, &big).unwrap();
+        let declared = u32::from_le_bytes([out[0], out[1], out[2], out[3]]) as usize;
+        assert_eq!(
+            declared, FRAMED_INPUT_CAP,
+            "declared length must be clamped"
+        );
+        assert_eq!(
+            out.len(),
+            4 + FRAMED_INPUT_CAP,
+            "exactly cap bytes follow the length prefix — no orphaned tail"
+        );
+    }
+
+    #[test]
+    fn a_normal_input_is_framed_verbatim() {
+        let input = b"hello world";
+        let mut out: Vec<u8> = Vec::new();
+        write_input_frame(&mut out, input).unwrap();
+        let declared = u32::from_le_bytes([out[0], out[1], out[2], out[3]]) as usize;
+        assert_eq!(declared, input.len());
+        assert_eq!(&out[4..], input);
+    }
+}
+
+#[cfg(test)]
 mod fuzz_child_env_tests {
     use super::apply_fuzz_child_env_overrides;
 
@@ -5842,6 +5918,37 @@ mod fuzz_child_env_tests {
         let hits: Vec<_> = env.iter().filter(|(k, _)| k == "DEBUGINFOD_URLS").collect();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].1, "https://example/");
+    }
+
+    #[test]
+    fn arms_ubsan_halt_on_error_for_the_default_builtin_child() {
+        // The default C/C++ harness is ASan+UBSan-built but UBSan is print-and-
+        // continue; without arming halt_on_error every UBSan-class fault exits 0
+        // and is silently missed. Every builtin child must get the halt options.
+        let mut env: Vec<(String, String)> = Vec::new();
+        apply_fuzz_child_env_overrides(&mut env);
+        for key in ["ASAN_OPTIONS", "UBSAN_OPTIONS"] {
+            let value = env
+                .iter()
+                .find(|(k, _)| k == key)
+                .unwrap_or_else(|| panic!("{key} must be armed"));
+            assert!(
+                value.1.contains("halt_on_error=1") && value.1.contains("abort_on_error=1"),
+                "{key} must halt+abort on a sanitizer report: {}",
+                value.1
+            );
+        }
+    }
+
+    #[test]
+    fn does_not_override_an_explicit_sanitizer_selection() {
+        // When `--sanitizers` / `--env` already threaded a value into the child
+        // env (e.g. an MSan/TSan build or operator suppressions), leave it alone.
+        let mut env = vec![("UBSAN_OPTIONS".to_owned(), "print_stacktrace=1".to_owned())];
+        apply_fuzz_child_env_overrides(&mut env);
+        let hits: Vec<_> = env.iter().filter(|(k, _)| k == "UBSAN_OPTIONS").collect();
+        assert_eq!(hits.len(), 1, "no duplicate UBSAN_OPTIONS");
+        assert_eq!(hits[0].1, "print_stacktrace=1", "explicit value preserved");
     }
 }
 

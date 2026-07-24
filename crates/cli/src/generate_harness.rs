@@ -6642,10 +6642,94 @@ fn is_harness_incompatible_flag(flag: &str) -> bool {
         || flag.starts_with("-fpch-")
 }
 
+/// Tokenize a GCC/Clang `@response-file`: whitespace-separated arguments, with
+/// single/double quoting to group whitespace and a backslash to escape the next
+/// character. Newlines are whitespace. Covers the common subset a build system
+/// emits (`-I/abs/path`, `-DFOO=bar`, one per line or space-separated).
+fn tokenize_response_file(contents: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut cur = String::new();
+    let mut in_token = false;
+    let mut quote: Option<char> = None;
+    let mut chars = contents.chars();
+    while let Some(c) = chars.next() {
+        match quote {
+            Some(q) => {
+                if c == q {
+                    quote = None;
+                } else if c == '\\' {
+                    if let Some(next) = chars.next() {
+                        cur.push(next);
+                    }
+                } else {
+                    cur.push(c);
+                }
+            }
+            None => {
+                if c == '\'' || c == '"' {
+                    quote = Some(c);
+                    in_token = true;
+                } else if c == '\\' {
+                    if let Some(next) = chars.next() {
+                        cur.push(next);
+                        in_token = true;
+                    }
+                } else if c.is_whitespace() {
+                    if in_token {
+                        tokens.push(std::mem::take(&mut cur));
+                        in_token = false;
+                    }
+                } else {
+                    cur.push(c);
+                    in_token = true;
+                }
+            }
+        }
+    }
+    if in_token || !cur.is_empty() {
+        tokens.push(cur);
+    }
+    tokens
+}
+
+/// Expand `@response-file` arguments (offline-legacy audit / #93 AC5) into their
+/// tokens so the `-I`/`-D`/`-isystem` context a build system spilled into a
+/// response file is not silently dropped — which otherwise fails the offline
+/// harness build with missing-header errors. A response file's own `@nested`
+/// references resolve relative to that file's directory (GCC behavior). An
+/// unreadable file (or one nested too deep) keeps the literal `@arg`, so it is
+/// still recorded as a dropped `response_file` family — no silent loss, no
+/// regression versus the previous behavior.
+fn expand_response_files(args: &[String], base_dir: &Path, depth: usize) -> Vec<String> {
+    const MAX_RESPONSE_FILE_DEPTH: usize = 8;
+    let mut out = Vec::with_capacity(args.len());
+    for arg in args {
+        match arg.strip_prefix('@') {
+            Some(rel) if depth < MAX_RESPONSE_FILE_DEPTH && !rel.is_empty() => {
+                let path = base_dir.join(rel);
+                match std::fs::read_to_string(&path) {
+                    Ok(contents) => {
+                        let nested_base = path.parent().unwrap_or(base_dir);
+                        out.extend(expand_response_files(
+                            &tokenize_response_file(&contents),
+                            nested_base,
+                            depth + 1,
+                        ));
+                    }
+                    Err(_) => out.push(arg.clone()),
+                }
+            }
+            _ => out.push(arg.clone()),
+        }
+    }
+    out
+}
+
 fn extract_compile_database_flags(entry: &CompileCommandEntry, source_path: &Path) -> Vec<String> {
-    let Some(args) = compile_command_arguments(entry) else {
+    let Some(raw_args) = compile_command_arguments(entry) else {
         return Vec::new();
     };
+    let args = expand_response_files(&raw_args, &entry.directory, 0);
     let mut flags = Vec::new();
     if let Some(compiler) = compile_command_compiler(&args) {
         flags.push(format!("{BUILD_CONTEXT_COMPILER_PREFIX}{compiler}"));
@@ -10379,6 +10463,61 @@ mod tests {
             "{db_flags:?}"
         );
         assert!(db_flags.contains(&"-DFOO=1".to_owned()), "{db_flags:?}");
+    }
+
+    #[test]
+    fn response_file_args_are_expanded_not_dropped() {
+        // Offline-legacy audit / #93 AC5: a `@flags.rsp` argument must have its
+        // `-I`/`-D` context expanded into the harness flags, not silently dropped
+        // (which fails the offline build with missing-header errors).
+        let dir = temp_dir("response-file-expand");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(dir.join("include")).unwrap();
+        std::fs::write(
+            dir.join("flags.rsp"),
+            "-Iinclude\n-DFROM_RSP=1\n\"-DWITH SPACE=x\"\n@nested.rsp\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("nested.rsp"), "-DNESTED=2\n").unwrap();
+        let entry = CompileCommandEntry {
+            directory: dir.clone(),
+            file: dir.join("t.c"),
+            arguments: Some(
+                ["clang", "@flags.rsp", "-DINLINE=3", "-c", "t.c"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            ),
+            command: None,
+        };
+        let flags = extract_compile_database_flags(&entry, &dir.join("t.c"));
+        assert!(
+            flags.contains(&"-DFROM_RSP=1".to_owned()),
+            "response-file define expanded: {flags:?}"
+        );
+        assert!(
+            flags.contains(&"-DNESTED=2".to_owned()),
+            "nested response-file define expanded: {flags:?}"
+        );
+        assert!(
+            flags.contains(&"-DWITH SPACE=x".to_owned()),
+            "quoted response-file token preserved: {flags:?}"
+        );
+        assert!(flags.contains(&"-DINLINE=3".to_owned()), "{flags:?}");
+        // The -I path was resolved against the compile dir and included.
+        assert!(
+            flags.iter().any(|f| f == "-I") && flags.iter().any(|f| f.ends_with("include")),
+            "response-file include path expanded + resolved: {flags:?}"
+        );
+        // A dropped-families marker must NOT record response_file (it was expanded).
+        assert!(
+            !flags
+                .iter()
+                .any(|f| f.starts_with(super::BUILD_CONTEXT_DROPPED_PREFIX)
+                    && f.contains("response_file")),
+            "an expanded response file must not be recorded as dropped: {flags:?}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

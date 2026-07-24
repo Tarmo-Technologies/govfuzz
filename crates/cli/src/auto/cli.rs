@@ -1009,6 +1009,26 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         });
     }
     eprintln!("  discovered {} candidate(s)", candidates.len());
+    // #102: if any files were dropped during discovery (read/decode/parse
+    // failures), say so on the console — bounded and grouped — so a parser
+    // regression on a large tree is visible immediately, not just in run.json.
+    {
+        let drops: Vec<_> = crate::auto::bug_report::snapshot()
+            .into_iter()
+            .filter(|i| i.category == crate::auto::bug_report::IssueCategory::DiscoveryDiagnostic)
+            .collect();
+        if !drops.is_empty() {
+            let total: usize = drops.iter().map(|i| i.occurrences).sum();
+            eprintln!(
+                "  discovery: {total} file(s) dropped across {} read/parse failure class(es) \
+                 (see run.md Discovery Diagnostics)",
+                drops.len()
+            );
+            for i in drops.iter().take(5) {
+                eprintln!("    - {} ({} file(s))", i.summary, i.occurrences);
+            }
+        }
+    }
 
     // Toolchain preflight: which lanes are present and whether their toolchains exist,
     // so a missing one is an explicit banner (not a silent skip that reads like a pass).

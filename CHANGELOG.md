@@ -2,6 +2,44 @@
 
 # Changelog
 
+## 0.2.20 - 2026-07-24
+
+- **More real legacy Ada/C/C++ targets reach the fuzzer.** A focused audit of
+  the offline Ada/C/C++ fuzzing path fixed a set of defects, each of which
+  silently prevented a class of real targets from being fuzzed:
+  - Library-, aggregate-, and abstract-governed Ada projects now build. The
+    synthesized build project no longer *extends* a library project (which GNAT
+    rejects without `Library_Dir`, and which can't carry the harness main) or an
+    aggregate (which can't be extended) — it builds a standalone project over the
+    instrumented source overlay instead. Validated in a 20-project sweep against
+    real library-project repos (AdaYaml, Ada-Crypto-Library, ada-toml).
+  - GCC-instrumented C/C++ harnesses now record coverage. The coverage/cmplog
+    shared-memory maps are opened unconditionally in the driver, not only on the
+    clang `trace-pc-guard` path — a GCC (`trace-pc`) build previously left them
+    NULL and fuzzed blind.
+  - The framed fork-server no longer desyncs or deadlocks on inputs larger than
+    the harness's 1 MiB buffer: the engine clamps each frame to that buffer.
+  - UBSan-class faults (signed overflow, out-of-bounds index, shift, null deref)
+    are detected on the default run — the builtin fuzz child now arms
+    `UBSAN_OPTIONS`/`ASAN_OPTIONS` halt-on-error, matching the AFL path.
+  - A translation unit that mixes old-style K&R and ANSI-prototyped functions
+    keeps its ANSI parsers (the real targets), which were previously dropped;
+    `list`/`scan` recover the correct K&R signatures too.
+  - C++ rvalue-reference parameters (`T&&`) are moved into the call instead of
+    being passed as an uncompilable lvalue.
+  - `@response-file` compile-database arguments are expanded, preserving the
+    `-I`/`-D` context they carried instead of dropping it.
+
+- **Honest fuzz outcomes.** An `--engine afl++` run that executed zero inputs is
+  recorded as built, not fuzzed. A native target that was entered and executed
+  but produced zero coverage edges is flagged as having fuzzed blind. A legacy
+  C++ target whose older-dialect build ties the default's error count now adopts
+  the repairable older-dialect errors and converges instead of failing outright.
+
+- **Dependencies.** Upgraded the Tera template engine to 2.x (with the
+  corresponding harness-template syntax update) and refreshed the Cargo
+  minor/patch set and pinned GitHub Actions.
+
 ## 0.2.19 - 2026-07-23
 
 - **Legacy Ada/C/C++ zero-fuzz remediation.** Forty-seven discovery,

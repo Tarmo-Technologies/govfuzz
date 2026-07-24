@@ -39,6 +39,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": ".github/workflows/real-code-validation.yml",
+      "license": "Apache-2.0"
+    },
+    {
       "path": ".github/workflows/release.yml",
       "license": "MIT or Apache-2.0"
     },
@@ -1463,6 +1467,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_cpp_destructor_repair.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_cpp_external_class.rs",
       "license": "Apache-2.0"
     },
@@ -1472,6 +1480,10 @@
     },
     {
       "path": "crates/cli/tests/auto_cpp_pimpl_incomplete.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cpp_private_overload.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1555,11 +1567,19 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_legacy_audit_fixes.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_lua_lane.rs",
       "license": "Apache-2.0"
     },
     {
       "path": "crates/cli/tests/auto_max_len_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_max_targets_backfill.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1588,6 +1608,10 @@
     },
     {
       "path": "crates/cli/tests/auto_replay_mode.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_resume_build_context.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1639,6 +1663,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_werror_compile_db.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_win32_scalars.rs",
       "license": "Apache-2.0"
     },
@@ -1656,6 +1684,10 @@
     },
     {
       "path": "crates/cli/tests/binary_scan_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/bug_report_bundle.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1820,6 +1852,10 @@
     },
     {
       "path": "crates/cli/tests/redqueen_cmplog.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/release_bundle_manifest.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3239,6 +3275,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/site/release-checklist.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/site/release-packaging.md",
       "license": "Apache-2.0"
     },
@@ -3720,6 +3760,34 @@
     },
     {
       "path": "tests/fixtures/legacy_breakage_validation/manifest.toml",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/parser.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/src/dep_parser.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/src/dep_parser.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/src/simple_parser.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/src/simple_parser.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/src/vendor_lib.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/real_code_validation/ada_local/src/vendor_lib.ads",
       "license": "Apache-2.0"
     },
     {

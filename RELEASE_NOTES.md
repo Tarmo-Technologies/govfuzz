@@ -56,8 +56,27 @@ govfuzz auto /path/to/project \
 
 Completed targets are loaded from atomic checkpoints and skipped. An active
 target that did not finish is retried before the campaign continues. Resume is
-target-granular; it does not restore the exact in-memory mutation state from the
-interrupted fuzz pass.
+target-granular; only atomically completed `harnesses/<id>/result.json` markers
+are reused, and an in-progress target is retried from scratch rather than
+continued mid-fuzz — it does not restore the exact in-memory mutation state from
+the interrupted fuzz pass.
+
+### Resume guarantees
+
+Completed results are reused only when BOTH identities are unchanged:
+
+- **Source identity** — the content of every targetable source file plus the
+  directory filter. A change is a discovery-cache miss and re-attempts all
+  targets.
+- **Build context** — the content of every `compile_commands.json`, GNAT project
+  (`.gpr`), and IDL (`.idl`) under the tree, plus the harness-affecting options
+  (the selected `--project`, decoder limits, stubbing policy, engines/passes, and
+  sanitizer mode). Any change re-attempts affected targets even when the source
+  is unchanged.
+
+Documentation edits invalidate neither identity. A work directory written by a
+GovFuzz that predates the build-context fingerprint is treated conservatively as
+changed and re-attempted. A compatible GovFuzz build is required.
 
 ## Privacy-safe support report
 

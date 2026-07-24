@@ -466,15 +466,21 @@ static int govfuzz_read_n(int fd, void *buf, size_t n) {
 int main(int argc, char **argv) {
     if (LLVMFuzzerInitialize) LLVMFuzzerInitialize(&argc, &argv);
 #ifdef _WIN32
-    /* On Windows the trace-pc path has no guard-init to open the maps, so open
-     * them here; and install the crash handler that makes a fault a detectable
-     * exit under wine. */
+    /* Install the crash handler that makes a fault a detectable exit under wine. */
     govfuzz_win_install_crash_handler();
+#endif
+    /* GCC-family builds (and Windows) instrument with `-fsanitize-coverage=trace-pc`,
+     * which — unlike clang's `trace-pc-guard` — has NO guard-init callback to open
+     * the coverage/cmplog SHM maps. Open them here for every platform. The opens are
+     * idempotent (`if (govfuzz_cov_map) return;`), so this is a no-op on the clang
+     * path where `__sanitizer_cov_trace_pc_guard_init` already opened them before
+     * main(). Without this, a GCC-built harness leaves the maps NULL and every
+     * `__sanitizer_cov_trace_pc` edge callback early-returns — the whole run
+     * silently degrades to black-box (zero-coverage) fuzzing. */
     govfuzz_cov_open();
     govfuzz_cov_cnt_open();
     govfuzz_cmpp_open();
     govfuzz_cmp_open();
-#endif
     govfuzz_vp_open();
     /* Persistent fork-server framed protocol (GOVFUZZ_FRAMED=1): write a ready
      * byte, then loop reading {u32 LE length, bytes} and replying one sync byte

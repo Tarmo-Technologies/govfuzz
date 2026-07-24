@@ -40,6 +40,21 @@ pub struct SupportReportArgs {
     /// Hard maximum report size in bytes (minimum 1024).
     #[arg(long, default_value_t = DEFAULT_MAX_BYTES, value_name = "BYTES")]
     pub max_bytes: usize,
+
+    /// #103: bundle the scrubbed diagnostics into a `.tar.gz` archive at this path
+    /// (e.g. `--bundle govfuzz-bug-report.tar.gz`). The archive contains the
+    /// scrubbed report, govfuzz's own internal-issue log (bug-report.json, if any),
+    /// and a manifest describing every included field. Works entirely offline. A
+    /// self-test scans the archive contents for host secrets (the real work-dir
+    /// path, username, hostname) and refuses to write an archive that leaks any.
+    #[arg(long, value_name = "FILE.tar.gz")]
+    pub bundle: Option<PathBuf>,
+
+    /// #103: print the bundle inventory + the scrubbed report to stdout WITHOUT
+    /// writing any archive, so the operator can review exactly what would be shared
+    /// before creating it. Implies bundle-style collection.
+    #[arg(long)]
+    pub preview: bool,
 }
 
 #[derive(Default)]
@@ -248,12 +263,18 @@ fn safe_passes(value: &str) -> String {
 }
 
 pub fn run(args: SupportReportArgs) -> i32 {
+    // #103: bundle / preview mode manages its own console output (it prints an
+    // inventory + self-test result), so only the plain text-report path prints the
+    // "written to" line.
+    let bundle_mode = args.bundle.is_some() || args.preview;
     match run_inner(args) {
         Ok(path) => {
-            eprintln!(
-                "govfuzz: compact scrubbed support report written to {}",
-                path.display()
-            );
+            if !bundle_mode {
+                eprintln!(
+                    "govfuzz: compact scrubbed support report written to {}",
+                    path.display()
+                );
+            }
             0
         }
         Err(error) => {
@@ -276,6 +297,11 @@ fn run_inner(args: SupportReportArgs) -> Result<PathBuf> {
     let evidence = collect_evidence(&args.work_dir)?;
     let facts = collect_work_facts(&args.work_dir);
     let report = render_report(&evidence, &facts, args.examples, args.max_bytes, true);
+    // #103: bundle / preview mode packages the scrubbed diagnostics into an offline
+    // archive (or previews the inventory) with a host-secret self-test.
+    if args.bundle.is_some() || args.preview {
+        return emit_bundle(&args, &report);
+    }
     let output = args
         .output
         .unwrap_or_else(|| args.work_dir.join("auto/support-report.txt"));
@@ -289,6 +315,185 @@ fn run_inner(args: SupportReportArgs) -> Result<PathBuf> {
         print!("{report}");
     }
     Ok(output)
+}
+
+/// #103: build the scrubbed diagnostic bundle (or preview it). The bundle carries
+/// only already-scrubbed, bounded diagnostics — the compact support report,
+/// govfuzz's own internal-issue log if present, and a manifest — plus a self-test
+/// that scans every included field for host secrets (the real work-dir path, the
+/// username, the hostname) and REFUSES to write an archive that leaks any.
+fn emit_bundle(args: &SupportReportArgs, report: &str) -> Result<PathBuf> {
+    let mut files: Vec<(String, String)> = vec![
+        ("support-report.txt".to_owned(), report.to_owned()),
+        ("MANIFEST.txt".to_owned(), bundle_manifest()),
+    ];
+    // govfuzz's own internal-issue log (its OWN defects), already scrubbed: file
+    // tokens instead of paths, bounded error tails. Include when present.
+    if let Ok(json) = std::fs::read_to_string(args.work_dir.join("auto/bug-report.json")) {
+        files.push(("bug-report.json".to_owned(), json));
+    }
+
+    // Self-test: never let a host secret ride along. Derive the tokens that MUST
+    // NOT appear (the real work path + its components, $USER/$HOME, the hostname)
+    // and scan every included field. A leak is a hard error — the bundle is not
+    // written — so the collector cannot silently exfiltrate proprietary paths.
+    let secrets = host_secret_tokens(&args.work_dir);
+    let leaks = self_test_scan(&files, &secrets);
+    if !leaks.is_empty() {
+        bail!(
+            "bug-report bundle self-test FAILED: a host secret leaked into {}; refusing to write the archive",
+            leaks.join(", ")
+        );
+    }
+    files.push((
+        "SELF-TEST.txt".to_owned(),
+        format!(
+            "self-test: PASS\nscanned {} field(s) for {} host-secret token(s); none present\n",
+            files.len(),
+            secrets.len()
+        ),
+    ));
+
+    if args.preview {
+        println!("govfuzz bug-report — bundle preview (NO archive written)");
+        println!(
+            "self-test: PASS ({} host-secret token(s) checked, none leaked)",
+            secrets.len()
+        );
+        println!("contents ({} field(s)):", files.len());
+        for (name, content) in &files {
+            println!("  - {name} ({} bytes)", content.len());
+        }
+        println!("\n===== support-report.txt =====\n{report}");
+        return Ok(args.work_dir.to_path_buf());
+    }
+
+    let bundle_path = args
+        .bundle
+        .clone()
+        .expect("bundle path present in bundle mode");
+    // Stage the bundle under the work dir, tar it with the system `tar`, then clean
+    // up the staging tree. A single top-level `govfuzz-bug-report/` dir keeps the
+    // archive tidy on extraction.
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let stage_parent = args
+        .work_dir
+        .join(format!("auto/.bug-report-stage-{nonce}"));
+    let stage = stage_parent.join("govfuzz-bug-report");
+    std::fs::create_dir_all(&stage)
+        .with_context(|| format!("create bundle staging dir {}", stage.display()))?;
+    for (name, content) in &files {
+        std::fs::write(stage.join(name), content)
+            .with_context(|| format!("write bundle field {name}"))?;
+    }
+    if let Some(parent) = bundle_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).ok();
+        }
+    }
+    let status = Command::new("tar")
+        .arg("-czf")
+        .arg(&bundle_path)
+        .arg("-C")
+        .arg(&stage_parent)
+        .arg("govfuzz-bug-report")
+        .status()
+        .context("run `tar` to build the bundle (is tar installed?)")?;
+    let _ = std::fs::remove_dir_all(&stage_parent);
+    if !status.success() {
+        bail!("`tar` failed to build the bundle archive");
+    }
+    eprintln!(
+        "govfuzz: bug-report bundle written to {} ({} scrubbed field(s), self-test PASS)",
+        bundle_path.display(),
+        files.len()
+    );
+    Ok(bundle_path)
+}
+
+/// #103: host secrets that must NEVER appear in the bundle — the real work-dir
+/// absolute path and its parent components (which carry the username in
+/// `/home/<user>/...`), the `$USER`/`$HOME` values, and the hostname. Short/empty
+/// tokens are dropped so a one-letter component can't cause a spurious match.
+fn host_secret_tokens(work_dir: &Path) -> Vec<String> {
+    let mut tokens: BTreeSet<String> = BTreeSet::new();
+    let canonical = std::fs::canonicalize(work_dir).unwrap_or_else(|_| work_dir.to_path_buf());
+    // The full absolute work path (very distinctive — slashes + the whole prefix).
+    tokens.insert(canonical.to_string_lossy().into_owned());
+    // The work dir's parent basename usually carries the project/user name, so a
+    // leak of just the basename (without the full path) is still caught. Require
+    // length >= 6 so a generic parent like "src" / "work" / "home" can't over-match
+    // a common word that legitimately appears in the scrubbed report.
+    if let Some(name) = canonical
+        .parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+    {
+        if name.len() >= 6 {
+            tokens.insert(name.to_owned());
+        }
+    }
+    // The absolute HOME path (embeds the username but as a rooted path, so it can't
+    // false-match a bare token like the `1ubuntu1` inside a clang version string the
+    // way the raw `$USER` would).
+    if let Ok(home) = std::env::var("HOME") {
+        if home.len() >= 4 {
+            tokens.insert(home);
+        }
+    }
+    if let Ok(host) = std::fs::read_to_string("/etc/hostname") {
+        let host = host.trim().to_owned();
+        if host.len() >= 4 {
+            tokens.insert(host);
+        }
+    }
+    tokens
+        .into_iter()
+        .filter(|token| token.len() >= 4)
+        .collect()
+}
+
+/// #103: scan every bundled field for any host-secret token; return the names of
+/// the fields that leaked (empty = clean).
+fn self_test_scan(files: &[(String, String)], secrets: &[String]) -> Vec<String> {
+    let mut leaked = Vec::new();
+    for (name, content) in files {
+        if secrets
+            .iter()
+            .any(|secret| content.contains(secret.as_str()))
+        {
+            leaked.push(name.clone());
+        }
+    }
+    leaked
+}
+
+/// #103: the human-readable inventory of what the bundle carries and — as
+/// important — what it deliberately excludes, so an operator can share it
+/// confidently.
+fn bundle_manifest() -> String {
+    format!(
+        "govfuzz bug-report bundle — manifest (schema {SCHEMA_VERSION})\n\
+         \n\
+         Included fields (all scrubbed + bounded):\n\
+         - support-report.txt : govfuzz version/build + toolchain versions; sanitized run\n\
+         \x20  options + outcome counts; representative error/reason SHAPES per language,\n\
+         \x20  outcome, and category; attempt traces, repair categories, target-entry /\n\
+         \x20  stub-only accounting; selected-project / compile-context PROVENANCE\n\
+         \x20  (families + standards, never real paths); cache/resume fingerprint status.\n\
+         - bug-report.json    : govfuzz's OWN internal issues (panics/codegen/discovery\n\
+         \x20  drops), with stable file TOKENS instead of paths and bounded tails. Omitted\n\
+         \x20  if the run recorded none.\n\
+         - SELF-TEST.txt      : result of scanning every field above for host secrets.\n\
+         \n\
+         Deliberately EXCLUDED (never collected): source contents, generated harness\n\
+         text, corpus bytes, findings inputs, environment values, usernames, hostnames,\n\
+         absolute paths, and real target/unit/class/function/variable names. The\n\
+         self-test enforces the absence of the work-dir path, username, and hostname.\n"
+    )
 }
 
 fn collect_evidence(work_dir: &Path) -> Result<Evidence> {

@@ -276,6 +276,11 @@ pub enum IssueCategory {
     /// scan (e.g. types from an external SDK/framework not in the tree). The reason
     /// names what was missing.
     ReportOnly,
+    /// #95: the harness built and ran fuzz passes but never entered the target —
+    /// only generated decoding, blind stubs, or a runtime bailout ran (a coverage
+    /// gap: the run never exercised the real endpoint). The reason names the
+    /// sub-category (stub-only / no-execution / decode-or-bailout).
+    TargetNotReached,
 }
 
 /// One boiled-down govfuzz defect, deduplicated across the run.
@@ -362,7 +367,8 @@ fn issue_rank(issue: &InternalIssue) -> u8 {
         IssueCategory::CodegenDefect => 1,
         IssueCategory::UnsupportedType => 2,
         IssueCategory::FailedBuild => 3,
-        IssueCategory::ReportOnly => 4,
+        IssueCategory::TargetNotReached => 4,
+        IssueCategory::ReportOnly => 5,
     }
 }
 
@@ -373,6 +379,7 @@ fn category_label(category: IssueCategory) -> &'static str {
         IssueCategory::CodegenDefect => "codegen-bug",
         IssueCategory::UnsupportedType => "unsupported-type",
         IssueCategory::FailedBuild => "failed-build",
+        IssueCategory::TargetNotReached => "target-not-reached",
         IssueCategory::ReportOnly => "static-only",
     }
 }

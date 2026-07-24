@@ -2877,6 +2877,7 @@ fn attempt_dispatches_ada_candidate_to_gprbuild() {
         }
         Outcome::Built { .. }
         | Outcome::BuiltAndFuzzed { .. }
+        | Outcome::BuiltNotEntered { .. }
         | Outcome::FailedBuild { .. }
         | Outcome::UnrecoverableLink { .. }
         | Outcome::UnrecoverableRuntime { .. }

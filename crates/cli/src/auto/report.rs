@@ -64,6 +64,13 @@ struct Summary {
     /// isn't read as N confirmed campaigns. 0 (omitted) for a non-force run.
     #[serde(skip_serializing_if = "is_zero")]
     forced: usize,
+    /// #95: targets whose C/C++/Ada harness built and ran fuzz passes but never
+    /// observed the target-entry checkpoint — the run exercised only decoding or
+    /// blind stubs, so it is NOT a fuzz success (`built_and_fuzzed`). Surfaced
+    /// distinctly so it can never inflate the fuzz-success headline. 0 (omitted)
+    /// when every built target genuinely entered.
+    #[serde(skip_serializing_if = "is_zero")]
+    built_not_entered: usize,
     failed_build: usize,
     unsupported_params: usize,
     unrecoverable_link: usize,
@@ -536,6 +543,39 @@ pub fn write_reports(
                     &mut bag_dlopen,
                 );
             }
+            // #95: built + ran fuzz passes but the entry-instrumented harness
+            // never observed target entry. It genuinely built (so it counts as
+            // `built`), but it is NOT `built_and_fuzzed` and its passes' findings
+            // do NOT count toward the headline (a crash without target entry is a
+            // decode/stub artifact). Repairs + runtrace evidence are still
+            // aggregated for the manifest.
+            Outcome::BuiltNotEntered {
+                repairs,
+                runtrace_events,
+                ..
+            } => {
+                summary.built += 1;
+                summary.built_not_entered += 1;
+                aggregate_repairs(
+                    repairs,
+                    &id,
+                    &mut bag_headers,
+                    &mut bag_types,
+                    &mut bag_declared,
+                    &mut bag_blind,
+                    &mut bag_ada_stub_units,
+                    &mut bag_ada_stub_symbols,
+                    &mut bag_macros,
+                );
+                aggregate_runtrace(
+                    runtrace_events,
+                    &id,
+                    &mut bag_env,
+                    &mut bag_files,
+                    &mut bag_endpoints,
+                    &mut bag_dlopen,
+                );
+            }
             Outcome::FailedBuild {
                 repairs,
                 last_errors,
@@ -817,6 +857,14 @@ pub fn write_reports(
                 IssueCategory::FailedBuild,
                 strip_target_prefix(reason),
                 context("runtime"),
+            )),
+            // #95: built + ran but the target was never entered — a coverage gap,
+            // surfaced distinctly so a maintainer can tell it apart from a build
+            // failure or an unsupported type.
+            crate::auto::attempt::Outcome::BuiltNotEntered { reason, .. } => Some((
+                IssueCategory::TargetNotReached,
+                strip_target_prefix(reason),
+                context("fuzz-entry"),
             )),
             _ => None,
         };
@@ -1897,6 +1945,7 @@ fn add_checkpoint_result(
     let id = result.candidate.harness_id.clone();
     let repairs: &[Repair] = match &result.outcome {
         Outcome::BuiltAndFuzzed { repairs, .. }
+        | Outcome::BuiltNotEntered { repairs, .. }
         | Outcome::Built { repairs, .. }
         | Outcome::FailedBuild { repairs, .. }
         | Outcome::UnrecoverableLink { repairs, .. }
@@ -2087,6 +2136,9 @@ fn add_checkpoint_result(
             }
         }
         Outcome::BuiltAndFuzzed {
+            runtrace_events, ..
+        }
+        | Outcome::BuiltNotEntered {
             runtrace_events, ..
         }
         | Outcome::UnrecoverableRuntime {
@@ -2747,13 +2799,14 @@ fn render_md(r: &RunJson<'_>) -> String {
 /// outcome; the machine `run.json` `outcome` tag is unaffected.
 fn render_target_md_line(t: &TargetEntry<'_>) -> String {
     let outcome_label = crate::auto::cli::outcome_label(t.outcome);
-    let (passes_line, finding_count) = if let Outcome::BuiltAndFuzzed { passes, .. } = t.outcome {
-        (
+    // #95: `BuiltNotEntered` carries the same pass metrics as `BuiltAndFuzzed`
+    // (it ran, it just never entered the target), so show them too.
+    let (passes_line, finding_count) = match t.outcome {
+        Outcome::BuiltAndFuzzed { passes, .. } | Outcome::BuiltNotEntered { passes, .. } => (
             passes_summary(passes),
             passes.iter().map(|p| p.findings.len()).sum::<usize>(),
-        )
-    } else {
-        (String::new(), 0)
+        ),
+        _ => (String::new(), 0),
     };
     let mut line = if passes_line.is_empty() {
         format!("{} {} {}", t.harness_id, t.name, outcome_label)

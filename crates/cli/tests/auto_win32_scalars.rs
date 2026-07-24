@@ -27,6 +27,7 @@ fn fixture_dir() -> PathBuf {
 
 fn options(src_root: &std::path::Path) -> AttemptOptions {
     AttemptOptions {
+        project: None,
         decoder_limits: Default::default(),
         force: false,
         engines: vec![FuzzEngine::Builtin],

@@ -42,6 +42,15 @@ pub struct AutoArgs {
     #[arg(long = "config", value_name = "PATH")]
     pub config: Option<PathBuf>,
 
+    /// #91: operator override for the governing Ada project (`.gpr`). By default
+    /// `auto` selects the project that OWNS each target's source (the non-aggregate
+    /// component whose active Source_Dirs contain it); pass this to force a specific
+    /// project when a multi-project layout is ambiguous. The same project is used
+    /// for generation analysis, source staging, scenario exclusions, and the build.
+    /// Errors if the path is missing.
+    #[arg(long = "project", value_name = "PATH")]
+    pub project: Option<PathBuf>,
+
     /// Path to a JSON grammar describing the target's input format for structure-aware
     /// generation (a Nautilus-style grammar mutator), applied to every fuzzed target.
     /// Each rule maps a non-terminal to production strings where `{NAME}` references
@@ -1302,6 +1311,26 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
              falling back to the builtin engine for this run"
         );
     }
+    // #91: an explicit `--project` must exist and be a `.gpr`; a missing or wrong
+    // override is a loud error, never a silent fall-through to auto-selection.
+    if let Some(project) = args.project.as_deref() {
+        if !project.is_file() {
+            anyhow::bail!(
+                "--project {}: no such project file (expected an existing .gpr)",
+                project.display()
+            );
+        }
+        if !project
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("gpr"))
+        {
+            anyhow::bail!(
+                "--project {}: not a GNAT project file (expected a .gpr)",
+                project.display()
+            );
+        }
+    }
+
     let mut options = AttemptOptions {
         per_target_time: std::time::Duration::from_secs(args.per_target_time),
         total_time: args.total_time.map(std::time::Duration::from_secs),
@@ -1309,6 +1338,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         no_stubs: args.no_stubs,
         passes,
         source_root: Some(path.clone()),
+        project: args.project.clone(),
         ada_dep_dirs,
         mode: args.mode,
         user_seeds,

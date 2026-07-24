@@ -47,6 +47,130 @@ pub fn find_project_gpr(root: &Path) -> Option<PathBuf> {
     None
 }
 
+/// #91: select the GPR that GOVERNS `candidate_source` — the non-aggregate
+/// component project whose active `Source_Dirs` actually contain the candidate —
+/// rather than the alphabetically-first `.gpr` near the root. Multi-project Ada
+/// repos routinely mix library, test, tool, aggregate, and abstract-umbrella
+/// projects; picking the wrong one gives the harness the wrong source closure or
+/// a project GNAT cannot extend (an aggregate). Aggregates are never selected;
+/// abstract and Main/test/tool projects are ranked last. Selection is fully
+/// deterministic (sorted enumeration + a total-order tie-break). Falls back to the
+/// legacy [`find_project_gpr`] when no project owns the candidate (a gprless source
+/// tree, or a project the evaluator cannot read).
+pub fn select_governing_gpr(candidate_source: &Path, search_root: &Path) -> Option<PathBuf> {
+    let canon_src = candidate_source.canonicalize().ok();
+    // (is_abstract, is_main_or_test, path) for every project that OWNS the source.
+    let mut owners: Vec<(bool, bool, PathBuf)> = Vec::new();
+    for gpr in enumerate_gprs(search_root) {
+        let Ok(text) = std::fs::read_to_string(&gpr) else {
+            continue;
+        };
+        let stripped = strip_comments(&text);
+        if gpr_declares_aggregate(&stripped) {
+            // An aggregate bundles sub-projects and cannot be a build/extension
+            // base — never own the candidate through it.
+            continue;
+        }
+        let owns = match &canon_src {
+            Some(src) => active_source_dirs(&gpr)
+                .iter()
+                .any(|dir| src.starts_with(dir)),
+            None => false,
+        };
+        if !owns {
+            continue;
+        }
+        owners.push((
+            gpr_declares_abstract(&stripped),
+            gpr_is_main_or_test(&stripped, &gpr),
+            gpr,
+        ));
+    }
+    // Prefer a concrete library component: non-abstract, non-Main/test, then the
+    // deepest (most specific) project path, then lexicographic — all deterministic
+    // so repeated runs select byte-identically.
+    owners.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then(a.1.cmp(&b.1))
+            .then(b.2.components().count().cmp(&a.2.components().count()))
+            .then(a.2.cmp(&b.2))
+    });
+    owners
+        .into_iter()
+        .next()
+        .map(|(_, _, path)| path)
+        .or_else(|| find_project_gpr(search_root))
+}
+
+/// #91: enumerate every `*.gpr` under `root` and up to 8 parents, deduplicated
+/// and sorted, so governing-project selection is deterministic.
+fn enumerate_gprs(root: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    let mut dir = Some(root.to_path_buf());
+    for _ in 0..8 {
+        let Some(current) = dir else { break };
+        if let Ok(entries) = std::fs::read_dir(&current) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path
+                    .extension()
+                    .is_some_and(|x| x.eq_ignore_ascii_case("gpr"))
+                    && !out.contains(&path)
+                {
+                    out.push(path);
+                }
+            }
+        }
+        dir = current.parent().map(Path::to_path_buf);
+    }
+    out.sort();
+    out
+}
+
+/// Whitespace-normalized, lower-cased view of comment-stripped GPR text, for the
+/// project-qualifier checks below (GPR keywords are case-insensitive and the
+/// whitespace between them varies).
+fn gpr_normalized(text: &str) -> String {
+    text.to_ascii_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// #91: whether the GPR declares an AGGREGATE project (`aggregate project Foo is`,
+/// or `aggregate library project`). An aggregate cannot be a build/extension base.
+fn gpr_declares_aggregate(text: &str) -> bool {
+    let n = gpr_normalized(text);
+    n.contains("aggregate project") || n.contains("aggregate library project")
+}
+
+/// #91: whether the GPR declares an ABSTRACT project — an umbrella with no
+/// sources of its own that should not be extended to build the harness.
+fn gpr_declares_abstract(text: &str) -> bool {
+    let n = gpr_normalized(text);
+    n.contains("abstract project") || n.contains("abstract library project")
+}
+
+/// #91: whether the GPR builds an executable / test / tool — it has a `for Main
+/// use (...)` (an executable, typically a test runner or CLI driver) or a project
+/// file name that reads as a test/tool/example. Such a project imports its library
+/// rather than owning it, so it is ranked below a real library component.
+fn gpr_is_main_or_test(text: &str, gpr_path: &Path) -> bool {
+    if gpr_normalized(text).contains("for main use") {
+        return true;
+    }
+    let stem = gpr_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    [
+        "test", "tests", "tool", "tools", "example", "examples", "demo",
+    ]
+    .iter()
+    .any(|k| stem.contains(k))
+}
+
 /// Directories referenced only by non-default scenario branches of `gpr_path`
 /// (canonicalised, absolute). A dir also referenced by the default configuration
 /// is never excluded. Returns empty when the file can't be read or has no
@@ -631,6 +755,87 @@ mod tests {
         assert!(
             !excluded.contains("generic"),
             "shared dir kept: {excluded:?}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    // #91 -------------------------------------------------------------------
+    #[test]
+    fn owning_library_is_selected_over_an_alphabetically_earlier_test_gpr() {
+        let root = tmp("owner-vs-test");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::create_dir_all(root.join("tests")).unwrap();
+        let target = root.join("src/parser.adb");
+        std::fs::write(&target, "package body Parser is end Parser;\n").unwrap();
+        std::fs::write(
+            root.join("tests/run_tests.adb"),
+            "procedure Run_Tests is begin null; end;\n",
+        )
+        .unwrap();
+        // `a_tests.gpr` sorts BEFORE `lib.gpr` and is a test executable; it does not
+        // own src/. `lib.gpr` owns the candidate. The owner must win.
+        std::fs::write(
+            root.join("a_tests.gpr"),
+            "project A_Tests is\n  for Source_Dirs use (\"tests\");\n  for Main use (\"run_tests.adb\");\nend A_Tests;\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("lib.gpr"),
+            "library project Lib is\n  for Source_Dirs use (\"src\");\nend Lib;\n",
+        )
+        .unwrap();
+        let selected = select_governing_gpr(&target, &root).expect("a governing gpr");
+        assert_eq!(
+            selected.file_name().unwrap().to_string_lossy(),
+            "lib.gpr",
+            "the owning library, not the alphabetically-earlier test project"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn component_is_selected_and_the_aggregate_is_never_chosen() {
+        let root = tmp("aggregate-vs-component");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        let target = root.join("src/engine.adb");
+        std::fs::write(&target, "package body Engine is end Engine;\n").unwrap();
+        // An aggregate umbrella (sorts first) plus the real component that owns src/.
+        std::fs::write(
+            root.join("all.gpr"),
+            "aggregate project All is\n  for Project_Files use (\"component.gpr\");\nend All;\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("component.gpr"),
+            "library project Component is\n  for Source_Dirs use (\"src\");\nend Component;\n",
+        )
+        .unwrap();
+        let selected = select_governing_gpr(&target, &root).expect("a governing gpr");
+        assert_eq!(
+            selected.file_name().unwrap().to_string_lossy(),
+            "component.gpr",
+            "the component that owns the source, never the aggregate"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn falls_back_to_find_project_gpr_when_no_project_owns_the_source() {
+        let root = tmp("no-owner-fallback");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        let target = root.join("src/orphan.adb");
+        std::fs::write(&target, "package body Orphan is end Orphan;\n").unwrap();
+        // A project whose Source_Dirs do NOT include src/ — nothing owns the target.
+        std::fs::write(
+            root.join("other.gpr"),
+            "project Other is\n  for Source_Dirs use (\"elsewhere\");\nend Other;\n",
+        )
+        .unwrap();
+        // No owner -> deterministic fallback to the legacy first-gpr selection.
+        assert_eq!(
+            select_governing_gpr(&target, &root),
+            find_project_gpr(&root),
+            "with no owning project, fall back to the legacy selection"
         );
         let _ = std::fs::remove_dir_all(&root);
     }

@@ -141,6 +141,11 @@ pub struct AttemptOptions {
     /// preparation uses this to avoid scanning sibling directories
     /// when the work dir lives beside the source tree.
     pub source_root: Option<PathBuf>,
+    /// #91: operator override for the governing Ada project (`auto --project PATH`).
+    /// When set, this exact `.gpr` is used for generation analysis, source staging,
+    /// scenario exclusions, and the final build — bypassing automatic target-source
+    /// ownership selection. `None` = select the governing project automatically.
+    pub project: Option<PathBuf>,
     /// Extra local directories of dependency source for the Ada build path
     /// (vendored / air-gapped crates, plus auto-detected local Alire caches).
     /// Read from disk only — never fetched — so offline use is unaffected.
@@ -244,6 +249,7 @@ impl Default for AttemptOptions {
             no_stubs: false,
             passes: crate::auto::pass::Pass::ALL.to_vec(),
             source_root: None,
+            project: None,
             ada_dep_dirs: Vec::new(),
             mode: actionability::RunMode::Reporting,
             user_seeds: Vec::new(),
@@ -2482,6 +2488,7 @@ fn run_attempt(
             cross_compiler.as_ref(),
             &options.sanitizers,
             &options.dir_filter,
+            options.project.as_deref(),
         ) {
             BuildOutcome::Success => {
                 // Drive a cascade of fuzz passes against the freshly
@@ -4370,6 +4377,7 @@ fn try_build(
     cross_compiler: Option<&crate::build::CFamilyCompilerOverride>,
     sanitizers: &multicore_fuzz::SanitizerSelection,
     dir_filter: &crate::auto::discovery::DirFilter,
+    project_override: Option<&Path>,
 ) -> BuildOutcome {
     use crate::auto::candidate::Lang;
     let work_dir = dir
@@ -4397,6 +4405,7 @@ fn try_build(
             source_root,
             ada_dep_dirs,
             dir_filter,
+            project_override,
         ),
         // The Rust lane builds its harness in `run_attempt` Step 0a (the
         // sancov+ASan staticlib clang-linked with the C driver to
@@ -5212,6 +5221,42 @@ fn qemu_user_args(target: &CrossTarget) -> Vec<String> {
     }
 }
 
+/// #91: resolve the governing Ada project for a candidate. An operator
+/// `--project` override wins outright; otherwise select the project that OWNS the
+/// candidate's source (see [`crate::auto::gpr_scenario::select_governing_gpr`]),
+/// which itself falls back to the legacy first-`.gpr` selection when nothing owns
+/// it. `None` only when there is no project at all (a gprless source tree).
+fn resolve_governing_gpr(
+    candidate_source: &Path,
+    source_root: &Path,
+    project_override: Option<&Path>,
+) -> Option<PathBuf> {
+    if let Some(explicit) = project_override {
+        return Some(explicit.to_path_buf());
+    }
+    crate::auto::gpr_scenario::select_governing_gpr(candidate_source, source_root)
+}
+
+#[cfg(test)]
+mod project_override_tests {
+    use super::resolve_governing_gpr;
+    use std::path::Path;
+
+    #[test]
+    fn explicit_project_override_wins_over_auto_selection() {
+        // #91: `--project` is an unambiguous operator override — it is returned
+        // verbatim regardless of which project would own the candidate's source.
+        let chosen = Path::new("/repo/chosen.gpr");
+        let got = resolve_governing_gpr(
+            Path::new("/repo/src/parser.adb"),
+            Path::new("/repo"),
+            Some(chosen),
+        );
+        assert_eq!(got.as_deref(), Some(chosen));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn try_build_ada(
     work_dir: &Path,
     harness_id: &str,
@@ -5220,6 +5265,7 @@ fn try_build_ada(
     source_root: Option<&Path>,
     ada_dep_dirs: &[PathBuf],
     dir_filter: &crate::auto::discovery::DirFilter,
+    project_override: Option<&Path>,
 ) -> BuildOutcome {
     // The Ada build pipeline (prepare_layout in crate::build) requires
     // two preconditions auto doesn't otherwise satisfy:
@@ -5235,6 +5281,11 @@ fn try_build_ada(
         .parent()
         .unwrap_or(&candidate.source_path);
     let root = source_root.unwrap_or(fallback_root);
+    // #91: resolve the governing project ONCE (operator --project override, else
+    // target-source ownership selection) and use it for BOTH source staging /
+    // scenario exclusions and the final build, so a multi-project layout can't
+    // stage against one project and build against another.
+    let governing_gpr = resolve_governing_gpr(&candidate.source_path, root, project_override);
     // Name the target's Ada unit so the build can be restricted to its
     // with-closure (#GAP-C) instead of compiling the whole swept tree.
     let target_unit = ada_source_unit_name(&candidate.source_path);
@@ -5244,6 +5295,7 @@ fn try_build_ada(
         ada_dep_dirs,
         dir_filter,
         target_unit.as_deref(),
+        governing_gpr.as_deref(),
     ) {
         return BuildOutcome::Failed {
             errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
@@ -5260,8 +5312,8 @@ fn try_build_ada(
         };
     }
 
-    let source_project = crate::auto::gpr_scenario::find_project_gpr(root);
-    run_ada_build_once(work_dir, harness_id, source_project.as_deref())
+    // #91: build against the SAME governing project used for staging/exclusions.
+    run_ada_build_once(work_dir, harness_id, governing_gpr.as_deref())
 }
 
 /// The generic repair loop records selected real C definitions and generated C
@@ -5534,14 +5586,26 @@ fn ensure_ada_src_instrumented(
     dep_dirs: &[PathBuf],
     dir_filter: &crate::auto::discovery::DirFilter,
     closure_target_unit: Option<&str>,
+    // #91: the pre-resolved governing project (operator override / target-source
+    // ownership). `None` falls back to the legacy first-`.gpr`-near-source-root
+    // selection, so existing call sites are byte-identical.
+    governing_gpr_override: Option<&Path>,
 ) -> Result<(), String> {
     let dst = work_dir.join("src_instrumented");
     std::fs::create_dir_all(&dst).map_err(|e| format!("create {}: {e}", dst.display()))?;
 
+    // #91: use the SAME governing project the build will use — the operator
+    // override / target-source owner if one was resolved, else the legacy
+    // first-`.gpr` selection near the source root.
+    let governing_gpr = governing_gpr_override
+        .map(Path::to_path_buf)
+        .or_else(|| crate::auto::gpr_scenario::find_project_gpr(source_root));
+
     // Directories the project's default GPR scenario excludes — don't instrument
     // sources gprbuild wouldn't compile under the default configuration.
-    let source_excluded = crate::auto::gpr_scenario::find_project_gpr(source_root)
-        .map(|gpr| crate::auto::gpr_scenario::scenario_excluded_dirs(&gpr))
+    let source_excluded = governing_gpr
+        .as_deref()
+        .map(crate::auto::gpr_scenario::scenario_excluded_dirs)
         .unwrap_or_default();
 
     // Collect the candidate Ada sources up front so we can (optionally) restrict
@@ -5555,7 +5619,6 @@ fn ensure_ada_src_instrumented(
     // (source_root is usually a subdir of a listed Source_Dir); instrumentation is
     // keyed by unit filename, so any residual overlap is idempotent. No .gpr -> the
     // unchanged whole-tree behaviour.
-    let governing_gpr = crate::auto::gpr_scenario::find_project_gpr(source_root);
     let preserve_project_naming = governing_gpr.is_some();
     for gpr_dir in governing_gpr
         .as_deref()
@@ -7817,7 +7880,7 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None).unwrap();
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
 
         assert!(work.join("src_instrumented/target.adb").is_file());
         assert!(
@@ -7869,13 +7932,27 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), Some("first"))
-            .unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            Some("first"),
+            None,
+        )
+        .unwrap();
         assert!(work.join("src_instrumented/dep_first.ads").is_file());
         assert!(!work.join("src_instrumented/dep_second.ads").exists());
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), Some("second"))
-            .unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            Some("second"),
+            None,
+        )
+        .unwrap();
         assert!(work.join("src_instrumented/dep_first.ads").is_file());
         assert!(work.join("src_instrumented/dep_second.ads").is_file());
         fs::remove_dir_all(&root).ok();
@@ -7904,7 +7981,7 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None).unwrap();
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
 
         assert!(
             work.join("src_instrumented/lib.adb").is_file(),
@@ -7947,6 +8024,7 @@ mod stamp_tests {
             &project,
             std::slice::from_ref(&dep),
             &Default::default(),
+            None,
             None,
         )
         .unwrap();
@@ -7994,8 +8072,15 @@ mod stamp_tests {
         .unwrap();
         fs::write(project.join("widget.h"), "int needed_native(void);\n").unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), Some("widget"))
-            .unwrap();
+        ensure_ada_src_instrumented(
+            &work,
+            &project,
+            &[],
+            &Default::default(),
+            Some("widget"),
+            None,
+        )
+        .unwrap();
 
         let staged = work.join("src_instrumented");
         assert!(staged.join("needed.c").is_file());
@@ -8051,7 +8136,7 @@ mod stamp_tests {
         )
         .unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None).unwrap();
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
 
         let body = fs::read_to_string(work.join("src_instrumented/crc16.adb")).unwrap();
         assert!(
@@ -8113,6 +8198,7 @@ mod stamp_tests {
             std::slice::from_ref(&dep),
             &Default::default(),
             None,
+            None,
         )
         .unwrap();
 
@@ -8143,6 +8229,7 @@ mod stamp_tests {
             &project,
             std::slice::from_ref(&dep),
             &Default::default(),
+            None,
             None,
         )
         .unwrap();
@@ -8198,7 +8285,7 @@ mod stamp_tests {
         .unwrap();
         fs::write(fixtures.join("foo.c"), "int foo(void){return 0;}\n").unwrap();
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None).unwrap();
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
 
         let si = work.join("src_instrumented");
         assert!(
@@ -8228,7 +8315,7 @@ mod stamp_tests {
         lib_unit(&project.join("testsuite"), "Kept");
 
         let keep_testsuite = crate::auto::discovery::DirFilter::new(&[], &["testsuite".into()]);
-        ensure_ada_src_instrumented(&work, &project, &[], &keep_testsuite, None).unwrap();
+        ensure_ada_src_instrumented(&work, &project, &[], &keep_testsuite, None, None).unwrap();
 
         assert!(
             work.join("src_instrumented/kept.adb").is_file(),
@@ -8285,7 +8372,7 @@ mod stamp_tests {
             fs::write(project.join(format!("plat__{variant}.adb")), body).unwrap();
         }
 
-        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None).unwrap();
+        ensure_ada_src_instrumented(&work, &project, &[], &Default::default(), None, None).unwrap();
 
         let si = work.join("src_instrumented");
         // The host variant is written under the canonical (suffix-stripped) name.

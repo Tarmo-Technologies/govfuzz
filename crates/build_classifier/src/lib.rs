@@ -862,6 +862,43 @@ mod tests {
     }
 
     #[test]
+    fn ada_reserved_words_and_literals_are_never_missing_symbols() {
+        // #100: GNAT reporting a reserved word / boolean-null literal as undefined
+        // (or "not declared in P") is a visibility/syntax error, not a missing
+        // callable — never propose a stub, which cannot recover a valid program and
+        // only buries the real diagnostic.
+        for sym in [
+            "False", "True", "null", "Null", "return", "package", "TYPE", "Range",
+        ] {
+            let undefined = format!("main.adb:9:12: error: \"{sym}\" is undefined\n");
+            let kinds = classify(&undefined);
+            assert!(
+                !kinds
+                    .iter()
+                    .any(|k| matches!(k, BuildErrorKind::MissingAdaSymbol { .. })),
+                "{sym} must not be a MissingAdaSymbol (undefined): {kinds:?}"
+            );
+            let not_decl = format!("main.adb:9:12: error: \"{sym}\" not declared in \"Pkg\"\n");
+            let kinds = classify(&not_decl);
+            assert!(
+                !kinds
+                    .iter()
+                    .any(|k| matches!(k, BuildErrorKind::MissingAdaSymbol { .. })),
+                "{sym} must not be a MissingAdaSymbol (not declared in): {kinds:?}"
+            );
+        }
+        // A real user symbol still classifies as a MissingAdaSymbol.
+        let kinds = classify("main.adb:9:12: error: \"To_String\" is undefined\n");
+        assert!(
+            kinds.iter().any(|k| matches!(
+                k,
+                BuildErrorKind::MissingAdaSymbol { symbol, .. } if symbol == "To_String"
+            )),
+            "a real undefined symbol must still classify: {kinds:?}"
+        );
+    }
+
+    #[test]
     fn repeated_gnat_diagnostics_are_counted_once() {
         let stderr = "x.adb:1:2: error: \"To_String\" not declared in \"Legacy\"\n\
                       x.adb:1:2: error: \"To_String\" not declared in \"Legacy\"\n";

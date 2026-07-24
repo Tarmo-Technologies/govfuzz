@@ -4,6 +4,99 @@ use crate::BuildErrorKind;
 use regex::Regex;
 use std::sync::OnceLock;
 
+/// #100: whether `symbol` is an Ada reserved word or a standard literal
+/// (`True`/`False`/`null`) — a token that can never be a missing user-defined
+/// callable symbol, so it must never become a `MissingAdaSymbol` stub proposal.
+/// Ada identifiers are case-insensitive, so the comparison is lower-cased.
+fn is_ada_reserved_or_literal(symbol: &str) -> bool {
+    // A dotted selected name (`Object.Ref`) is not a bare literal — only reject a
+    // simple name here; selected names are resolved by the repair planner.
+    if symbol.contains('.') {
+        return false;
+    }
+    const RESERVED: &[&str] = &[
+        // Standard boolean/access literals (enumeration literals + the null keyword).
+        "true",
+        "false",
+        "null", //
+        // Ada 2012 reserved words.
+        "abort",
+        "abs",
+        "abstract",
+        "accept",
+        "access",
+        "aliased",
+        "all",
+        "and",
+        "array",
+        "at",
+        "begin",
+        "body",
+        "case",
+        "constant",
+        "declare",
+        "delay",
+        "delta",
+        "digits",
+        "do",
+        "else",
+        "elsif",
+        "end",
+        "entry",
+        "exception",
+        "exit",
+        "for",
+        "function",
+        "generic",
+        "goto",
+        "if",
+        "in",
+        "interface",
+        "is",
+        "limited",
+        "loop",
+        "mod",
+        "new",
+        "not",
+        "of",
+        "or",
+        "others",
+        "out",
+        "overriding",
+        "package",
+        "pragma",
+        "private",
+        "procedure",
+        "protected",
+        "raise",
+        "range",
+        "record",
+        "rem",
+        "renames",
+        "requeue",
+        "return",
+        "reverse",
+        "select",
+        "separate",
+        "some",
+        "subtype",
+        "synchronized",
+        "tagged",
+        "task",
+        "terminate",
+        "then",
+        "type",
+        "until",
+        "use",
+        "when",
+        "while",
+        "with",
+        "xor",
+    ];
+    let lower = symbol.to_ascii_lowercase();
+    RESERVED.contains(&lower.as_str())
+}
+
 pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
     for line in stderr.lines() {
         if let Some(caps) = file_not_found().captures(line) {
@@ -20,6 +113,14 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
             continue;
         }
         if let Some(caps) = is_undefined().captures(line) {
+            // #100: never treat an Ada reserved word or standard literal
+            // (True/False/null, keywords, operators) as a missing CALLABLE symbol.
+            // GNAT reporting one as "undefined" signals a visibility/syntax error,
+            // not a symbol to stub — a stub cannot recover a valid program and only
+            // buries the real diagnostic. Leave the raw line for the Other tail.
+            if is_ada_reserved_or_literal(&caps[1]) {
+                continue;
+            }
             // Best-effort: GNAT doesn't always print the unit context.
             // Use empty string and let the auto loop disambiguate via
             // the harness's own package.
@@ -30,6 +131,11 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
             continue;
         }
         if let Some(caps) = not_declared_in().captures(line) {
+            // #100: same rejection — a reserved word/literal "not declared in P" is
+            // never a missing symbol; do not propose a stub for it.
+            if is_ada_reserved_or_literal(&caps[1]) {
+                continue;
+            }
             hits.push(BuildErrorKind::MissingAdaSymbol {
                 unit: caps[2].to_owned(),
                 symbol: caps[1].to_owned(),

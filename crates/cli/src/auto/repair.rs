@@ -1469,6 +1469,28 @@ pub fn apply_repair_with_source(
                     extra_sources: vec![cpp_stubs_path],
                     extra_includes: vec![],
                 })
+            } else if let Some((qualified_class, simple_class)) = cpp_destructor_class(symbol) {
+                // #97: a declared-but-undefined C++ destructor — emit ONE source-level
+                // definition into auto_stubs.cpp, with the class's header so the class
+                // is complete. This provides the missing complete/base/deleting
+                // Itanium variants from a single definition without a duplicate ABI
+                // body. (Reached only when plan_repair confirmed the class header is
+                // known and no in-tree definition exists.)
+                let mut body = String::new();
+                if let Some(header) = decl_index.lookup_cpp_stub_header(symbol) {
+                    let header = header
+                        .to_string_lossy()
+                        .replace('\\', "\\\\")
+                        .replace('"', "\\\"");
+                    body.push_str(&format!("#include \"{header}\"\n"));
+                }
+                body.push_str(&format!("{qualified_class}::~{simple_class}() {{}}\n"));
+                let cpp_stubs_path = repairs_dir.join(AUTO_STUBS_CPP_FILE);
+                append_stub(&cpp_stubs_path, &types_path, &body)?;
+                Ok(ApplyOutcome {
+                    extra_sources: vec![cpp_stubs_path],
+                    extra_includes: vec![],
+                })
             } else {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
@@ -2770,13 +2792,28 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                     provenance: format!("declared at line {}", decl.line),
                 })
             } else if cpp_symbol_is_destructor(name) {
-                // An out-of-line virtual destructor is commonly the class's key
-                // function. Defining even a weak fallback in auto_stubs.cpp emits
-                // vtable/typeinfo objects that become duplicate strong symbols
-                // once a later repair adds the real source (LevelDB Comparator
-                // and Env classes). Leave it unresolved until source recovery;
-                // if no real definition exists, fail honestly.
-                None
+                // #97: a declared-but-undefined C++ destructor. The AddSource path
+                // above already failed to find an in-tree definition, so no other TU
+                // provides it — emit ONE source-level definition `Ns::Class::~Class()
+                // {}` when the class's header is known (needed to make the class
+                // complete). There is then no duplicate ABI body and no duplicate
+                // vtable: exactly one TU (ours) defines the destructor and, if the
+                // destructor is the class key function, its vtable — verified that
+                // both non-virtual and virtual destructor stubs link cleanly. Without
+                // the header we cannot make the class complete, so keep the honest
+                // failure. The stub goes through the normal StubDeclared path, so
+                // `--no-stubs` suppresses it exactly like every other stub.
+                if cpp_destructor_class(name).is_some()
+                    && decl_index.lookup_cpp_stub_header(name).is_some()
+                {
+                    Some(Repair::StubDeclared {
+                        symbol: name.clone(),
+                        return_type: String::new(),
+                        provenance: "destructor stub (declared, no in-tree definition)".to_owned(),
+                    })
+                } else {
+                    None
+                }
             } else if let Some(decl) = decl_index.lookup_cpp(name) {
                 // A C++ declaration: its stub must be a C++ definition in a .cpp
                 // file (qualified names, references, overloads), not C++ text in
@@ -2951,6 +2988,22 @@ fn cpp_symbol_is_destructor(symbol: &str) -> bool {
         .next()
         .and_then(|name| name.rsplit("::").next())
         .is_some_and(|member| member.starts_with('~'))
+}
+
+/// #97: split a demangled destructor symbol into (fully-qualified class, simple
+/// class name) so a source-level definition can be emitted. Handles namespaced,
+/// noexcept, and abi-tagged spellings by trimming to the name up to the first `(`
+/// and dropping any trailing qualifiers. `tinyxml2::StrPair::~StrPair()` ->
+/// (`tinyxml2::StrPair`, `StrPair`); `~Foo()` (no enclosing scope) -> None.
+fn cpp_destructor_class(symbol: &str) -> Option<(String, String)> {
+    let name = symbol.split('(').next()?.trim();
+    // The member is the segment after the last `::` and starts with `~`.
+    let (scope, member) = name.rsplit_once("::")?;
+    let simple = member.strip_prefix('~')?.trim();
+    if simple.is_empty() || scope.trim().is_empty() {
+        return None;
+    }
+    Some((scope.trim().to_owned(), simple.to_owned()))
 }
 
 /// Resolve a build-error source path (which GNAT may print relative, e.g.
@@ -4904,7 +4957,14 @@ mod tests {
     }
 
     #[test]
-    fn cpp_destructor_is_not_stubbed_after_source_recovery_misses() {
+    fn cpp_destructor_is_stubbed_when_the_class_header_is_known() {
+        // #97: a declared-but-undefined destructor with no in-tree definition is now
+        // repaired with a single source-level `Ns::Class::~Class() {}`. The
+        // AddSource path already failed to find a real definition, so exactly one TU
+        // (the stub) defines the destructor and — if it is the key function — its
+        // vtable, so there is no duplicate ABI body or vtable (verified: both
+        // non-virtual and virtual destructor stubs link cleanly). Requires the
+        // class header so the class is complete.
         let root = tmpdir();
         fs::write(
             root.join("api.hh"),
@@ -4920,9 +4980,28 @@ mod tests {
             &idx,
         );
         assert!(
-            repair.is_none(),
-            "a destructor fallback would emit colliding vtable/RTTI: {repair:?}"
+            matches!(
+                &repair,
+                Some(Repair::StubDeclared { symbol, .. })
+                    if symbol == "leveldb::Comparator::~Comparator()"
+            ),
+            "a declared destructor with a known header is now stubbed: {repair:?}"
         );
+    }
+
+    #[test]
+    fn cpp_destructor_class_splits_qualified_and_simple_name() {
+        // #97: destructor symbol -> (fully-qualified class, simple class).
+        assert_eq!(
+            cpp_destructor_class("tinyxml2::StrPair::~StrPair()"),
+            Some(("tinyxml2::StrPair".to_owned(), "StrPair".to_owned()))
+        );
+        assert_eq!(
+            cpp_destructor_class("Foo::~Foo()"),
+            Some(("Foo".to_owned(), "Foo".to_owned()))
+        );
+        // A bare `~Foo()` with no enclosing scope can't be defined -> None.
+        assert_eq!(cpp_destructor_class("~Foo()"), None);
     }
 
     #[test]

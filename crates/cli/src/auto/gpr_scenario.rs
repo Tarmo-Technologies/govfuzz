@@ -39,6 +39,19 @@ pub fn find_project_gpr(root: &Path) -> Option<PathBuf> {
                 .collect();
             if !gprs.is_empty() {
                 gprs.sort();
+                // #7: prefer a concrete, buildable project. An aggregate cannot be
+                // extended and has no Source_Dirs of its own (so the instrumented
+                // overlay would find no sources), and an abstract project has no
+                // sources — so if a real component GPR sits alongside them, pick it.
+                // Fall back to the alphabetically-first GPR only when every
+                // candidate is aggregate/abstract.
+                if let Some(concrete) = gprs.iter().find(|gpr| {
+                    std::fs::read_to_string(gpr)
+                        .map(|text| !gpr_declares_aggregate(&text) && !gpr_declares_abstract(&text))
+                        .unwrap_or(false)
+                }) {
+                    return Some(concrete.clone());
+                }
                 return gprs.into_iter().next();
             }
         }
@@ -149,6 +162,36 @@ fn gpr_declares_aggregate(text: &str) -> bool {
 fn gpr_declares_abstract(text: &str) -> bool {
     let n = gpr_normalized(text);
     n.contains("abstract project") || n.contains("abstract library project")
+}
+
+/// Offline-legacy audit #1: whether the GPR declares a LIBRARY project. GNAT
+/// rejects `project X extends "lib.gpr"` on a library project unless X declares
+/// `Library_Dir` — and a library project can't carry the harness `Main` anyway —
+/// so a library project is not a valid base for the synthesized extending build.
+fn gpr_declares_library(text: &str) -> bool {
+    let n = gpr_normalized(text);
+    // `library project Foo is`. (`aggregate library project` is handled by
+    // gpr_declares_aggregate; matching "library project" here too is harmless —
+    // both mean "not extendable".) The `for library_dir` / `for library_name`
+    // attributes are the ones GNAT's diagnostic keys on, so honor them as a
+    // fallback for oddly-formatted headers.
+    n.contains("library project") || n.contains("for library_dir") || n.contains("for library_name")
+}
+
+/// Offline-legacy audit #1/#7: whether `gpr_path` can be safely EXTENDED to build
+/// the harness. Library, aggregate, and abstract projects cannot be: extending a
+/// library project requires the child to declare `Library_Dir` (and it still
+/// can't hold the harness `Main`); an aggregate project cannot be extended at
+/// all; an abstract project has no sources. For any of these the harness is built
+/// as a STANDALONE project over the instrumented source overlay — which already
+/// carries the governing project's `Source_Dirs`
+/// ([`ensure_ada_src_instrumented`]) — instead of extending. An unreadable GPR is
+/// treated as non-extendable (conservative: the standalone path still builds).
+pub(crate) fn gpr_is_extendable_base(gpr_path: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(gpr_path) else {
+        return false;
+    };
+    !gpr_declares_library(&text) && !gpr_declares_aggregate(&text) && !gpr_declares_abstract(&text)
 }
 
 /// #91: whether the GPR builds an executable / test / tool — it has a `for Main
@@ -836,6 +879,70 @@ mod tests {
             select_governing_gpr(&target, &root),
             find_project_gpr(&root),
             "with no owning project, fall back to the legacy selection"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    // Offline-legacy audit #1/#7 -------------------------------------------
+    #[test]
+    fn library_aggregate_abstract_projects_are_not_extendable_bases() {
+        let root = tmp("extendable-base");
+        std::fs::create_dir_all(&root).unwrap();
+        let cases = [
+            (
+                "lib.gpr",
+                "library project Lib is\n  for Library_Name use \"x\";\nend Lib;\n",
+                false,
+            ),
+            (
+                "agg.gpr",
+                "aggregate project Agg is\n  for Project_Files use ();\nend Agg;\n",
+                false,
+            ),
+            ("abs.gpr", "abstract project Abs is\nend Abs;\n", false),
+            (
+                "app.gpr",
+                "project App is\n  for Source_Dirs use (\"src\");\nend App;\n",
+                true,
+            ),
+        ];
+        for (name, text, extendable) in cases {
+            let path = root.join(name);
+            std::fs::write(&path, text).unwrap();
+            assert_eq!(
+                gpr_is_extendable_base(&path),
+                extendable,
+                "{name} extendable should be {extendable}"
+            );
+        }
+        // An unreadable path is conservatively non-extendable.
+        assert!(!gpr_is_extendable_base(&root.join("does-not-exist.gpr")));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn find_project_gpr_prefers_a_concrete_project_over_an_aggregate() {
+        let root = tmp("find-concrete");
+        std::fs::create_dir_all(&root).unwrap();
+        // `all.gpr` sorts before `zcomponent.gpr` but is an aggregate.
+        std::fs::write(
+            root.join("all.gpr"),
+            "aggregate project All is\n  for Project_Files use (\"zcomponent.gpr\");\nend All;\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("zcomponent.gpr"),
+            "project Zcomponent is\n  for Source_Dirs use (\"src\");\nend Zcomponent;\n",
+        )
+        .unwrap();
+        assert_eq!(
+            find_project_gpr(&root)
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_string_lossy(),
+            "zcomponent.gpr",
+            "a concrete project must be chosen over the alphabetically-first aggregate"
         );
         let _ = std::fs::remove_dir_all(&root);
     }

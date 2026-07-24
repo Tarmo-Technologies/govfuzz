@@ -394,10 +394,19 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     // or creates duplicate runtime units. The instrumented source overlay still
     // carries the target sources, and the normal import-forwarder below keeps
     // every non-AdaFuzz dependency visible.
+    // Offline-legacy audit #1/#7: never EXTEND a library, aggregate, or abstract
+    // project. GNAT rejects extending a library project without `Library_Dir`
+    // (and it can't hold the harness `Main`), an aggregate can't be extended at
+    // all, and an abstract project has no sources — each aborts the whole build,
+    // so an entire class of real Alire/GNAT library repos never fuzzes. The
+    // instrumented source overlay already carries the governing project's
+    // Source_Dirs, so those cases build as a standalone project with the user's
+    // dependency imports forwarded below.
     let extends_project = args
         .source_project
         .as_ref()
         .filter(|project| !gpr_imports_adafuzz(project))
+        .filter(|project| crate::auto::gpr_scenario::gpr_is_extendable_base(project))
         .cloned();
     if extends_project.is_none() {
         with_clauses.extend(discover_user_gpr_with_clauses(&user_root));

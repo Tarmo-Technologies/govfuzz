@@ -38,6 +38,12 @@ pub struct GenerateDirectArgs<'a> {
     /// target whose signature uses parent-private types (which a public bridge
     /// cannot re-export) becomes fuzzable. The build picks this file as Main.
     pub child_harness_unit: Option<String>,
+    /// Force-fuzz (`auto --force`): best-effort parameter driving. A parameter
+    /// whose type the decoders reject (an opaque private / non-abstract tagged /
+    /// derived / class-wide handle) is DECLARED bare and default-initialized
+    /// instead of failing `unsupported_params`, so more targets reach a runnable
+    /// harness. Fuzzable scalar/string parameters still receive real fuzz bytes.
+    pub force: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -851,32 +857,79 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                             .last()
                             .is_some_and(|leaf| leaf.eq_ignore_ascii_case("instance"))
                 };
-                let bare_declarable = match param.mode {
-                    ParamMode::Out => receiver_kind_ok || generic_instance,
-                    // A tagged declaration performs its language-defined default
-                    // initialization; an access type has the defined null default.
-                    ParamMode::In | ParamMode::InOut => {
-                        matches!(resolved_param.type_ref.kind, TypeKind::Access { .. })
-                            || matches!(
-                                resolved_param.type_ref.kind,
-                                TypeKind::Tagged {
-                                    is_abstract: false,
-                                    ..
-                                }
-                            ) && find_declared_type(args.ast, &resolved_param.type_ref).is_some()
-                            || (matches!(resolved_param.type_ref.kind, TypeKind::Private)
-                                && is_constructor_like_name(&args.target_subprogram.name))
-                            || generic_instance
-                    }
-                    _ => false,
-                };
+                // Force-fuzz best-effort: default-initialize any DEFINITE opaque
+                // handle (private / non-abstract tagged / derived / record /
+                // access) rather than fail `unsupported_params`. GNAT
+                // default-initializes a definite object of these kinds, giving a
+                // valid (if neutral) actual; the fuzzable scalar/string parameters
+                // of the same target still receive real fuzz bytes. Class-wide and
+                // (potentially unconstrained) discriminated/array types are handled
+                // by the dedicated paths above / excluded, as declaring a bare
+                // object of an indefinite subtype is illegal.
+                let force_bare_ok = args.force
+                    && matches!(
+                        param.mode,
+                        ParamMode::In | ParamMode::InOut | ParamMode::Out
+                    )
+                    && stream_init::class_wide_root(&resolved_param.type_ref.name_path).is_none()
+                    && matches!(
+                        resolved_param.type_ref.kind,
+                        TypeKind::Private
+                            | TypeKind::Tagged {
+                                is_abstract: false,
+                                ..
+                            }
+                            | TypeKind::Derived { .. }
+                            | TypeKind::Record(_)
+                            | TypeKind::Access { .. }
+                    );
+                let bare_declarable = force_bare_ok
+                    || match param.mode {
+                        ParamMode::Out => receiver_kind_ok || generic_instance,
+                        // A tagged declaration performs its language-defined default
+                        // initialization; an access type has the defined null default.
+                        ParamMode::In | ParamMode::InOut => {
+                            matches!(resolved_param.type_ref.kind, TypeKind::Access { .. })
+                                || matches!(
+                                    resolved_param.type_ref.kind,
+                                    TypeKind::Tagged {
+                                        is_abstract: false,
+                                        ..
+                                    }
+                                ) && find_declared_type(args.ast, &resolved_param.type_ref)
+                                    .is_some()
+                                || (matches!(resolved_param.type_ref.kind, TypeKind::Private)
+                                    && is_constructor_like_name(&args.target_subprogram.name))
+                                || generic_instance
+                        }
+                        _ => false,
+                    };
                 if bare_declarable {
+                    // A force-bare-declared handle is declared in the public
+                    // `main.adb` harness, where a single-name type owned by another
+                    // package is not directly visible — qualify it (`Pkg.T`) and
+                    // `with` its unit. (Non-force cases keep the existing spelling:
+                    // they run in a private child that already sees the type.)
+                    let local_type = if force_bare_ok {
+                        let qualified = ada_path(&qualified_type_name_path(
+                            args.ast,
+                            &resolved_param.type_ref,
+                        ));
+                        if let Some(with) = param_type_unit_with(
+                            args.ast,
+                            &qualified.split('.').map(str::to_owned).collect::<Vec<_>>(),
+                        ) {
+                            if !is_template_provided_with(&with) && !stream_withs.contains(&with) {
+                                stream_withs.push(with);
+                            }
+                        }
+                        qualified
+                    } else {
+                        ada_type_name(&resolved_param.type_ref)
+                    };
                     params.push(ParamContext {
                         name,
-                        ada_type_name: aliased_local_type(
-                            param,
-                            ada_type_name(&resolved_param.type_ref),
-                        ),
+                        ada_type_name: aliased_local_type(param, local_type),
                         decoder_expr: String::new(),
                         setup_lines: Vec::new(),
                         needs_initializer: false,
@@ -948,6 +1001,31 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                     .any(|w| w.eq_ignore_ascii_case(&unit))
             {
                 target_unit_withs.push(unit);
+            }
+        }
+    }
+    // Force-fuzz: a qualified PROJECT type (`Spat.Timing_Item.T`) used by a
+    // bare-declared parameter or the return declaration needs its owning unit
+    // `with`ed in the public harness.
+    if args.force {
+        for type_name in params
+            .iter()
+            .map(|p| p.ada_type_name.as_str())
+            .chain(std::iter::once(return_type_ada_name.as_str()))
+        {
+            let parts: Vec<String> = type_name
+                .trim_start_matches("aliased ")
+                .split('.')
+                .map(str::to_owned)
+                .collect();
+            if let Some(unit) = param_type_unit_with(args.ast, &parts) {
+                if !is_template_provided_with(&unit)
+                    && !target_unit_withs
+                        .iter()
+                        .any(|w| w.eq_ignore_ascii_case(&unit))
+                {
+                    target_unit_withs.push(unit);
+                }
             }
         }
     }
@@ -1711,6 +1789,12 @@ fn generic_qualified_return_type_name(args: &GenerateDirectArgs<'_>, type_ref: &
                 resolved.name_path = path;
             }
         }
+    }
+    // Force-fuzz emits into the public `main.adb`, where a single-name return type
+    // owned by a package is not directly visible; qualify it (`Pkg.T`). The unit is
+    // the target's own (already `with`ed) or added to the harness `with`s below.
+    if args.force {
+        return ada_path(&qualified_type_name_path(args.ast, &resolved));
     }
     ada_type_name(&resolved)
 }
@@ -3714,7 +3798,59 @@ mod tests {
             generic_call: None,
             generic_suppress_params: false,
             child_harness_unit: None,
+            force: false,
         })
+    }
+
+    fn generate_for_forced(
+        ast: &StructuralAst,
+        target: &Subprogram,
+        output_dir: &Path,
+    ) -> Result<super::GeneratedFiles, HarnessGenError> {
+        generate_direct_harness(GenerateDirectArgs {
+            ast,
+            target_subprogram: target,
+            harness_id: "H-0042".to_owned(),
+            output_dir: output_dir.to_path_buf(),
+            source_path: PathBuf::from("src/pkg.adb"),
+            source_roots: Vec::new(),
+            project_imports: Vec::new(),
+            generic_instance: None,
+            generic_call: None,
+            generic_suppress_params: false,
+            child_harness_unit: None,
+            force: true,
+        })
+    }
+
+    #[test]
+    fn force_bare_declares_an_opaque_private_param_otherwise_unsupported() {
+        // The same opaque private handle that fails `unsupported_params` without
+        // --force is best-effort DECLARED bare (default-initialized) under it, so
+        // the target reaches a runnable harness.
+        let target = subprogram(
+            1,
+            SubprogramOwner::LibraryLevel,
+            "Run",
+            vec![param("H", "Opaque_Handle", TypeKind::Private)],
+            None,
+        );
+        let ast = ast_with(target.clone(), Vec::new(), Vec::new());
+
+        let out_no = temp_dir("force-opaque-no").join("H-0042");
+        assert!(matches!(
+            generate_for(&ast, &target, &out_no).unwrap_err(),
+            HarnessGenError::UnsupportedParamType(_)
+        ));
+
+        let out_yes = temp_dir("force-opaque-yes").join("H-0042");
+        let files =
+            generate_for_forced(&ast, &target, &out_yes).expect("force generates a harness");
+        let body = std::fs::read_to_string(&files.main_adb).expect("read main.adb");
+        assert!(
+            body.contains("H : Opaque_Handle"),
+            "opaque handle bare-declared under force: {body}"
+        );
     }
 
     #[test]
@@ -5148,6 +5284,7 @@ mod tests {
             generic_call: None,
             generic_suppress_params: false,
             child_harness_unit: None,
+            force: false,
         })
         .unwrap();
         let gpr = fs::read_to_string(&generated.gpr).unwrap();

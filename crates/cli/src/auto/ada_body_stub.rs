@@ -15,6 +15,17 @@
 //! implementation. The stub compiles (no return value to construct, and it copies
 //! only the spec's context clauses — dropping the body's problematic `with`s), and
 //! since the fuzz target never calls those subprograms the raise never fires.
+//!
+//! Dialect note: a *function* body uses an Ada 2012 raise EXPRESSION
+//! (`return raise ...`), which has any type, so no return value must be
+//! constructed for limited / class-wide / indefinite return types. govfuzz always
+//! compiles the harness build with `-gnat2022` (see `crate::build`'s
+//! `detect_ada_standard`, which is hardcoded to the maximally-buildable standard),
+//! so this is always valid here — legacy Ada 83/95 projects fall back to
+//! report-only static analysis and are never built, so a stub body is never
+//! synthesized for them. If govfuzz ever gains a pre-2012 Ada *build* path, the
+//! function form would need the portable idiom instead (`raise Program_Error;`
+//! followed by an unreachable recursive `return F (...)`, valid since Ada 83).
 
 use std::path::Path;
 

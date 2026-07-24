@@ -416,6 +416,7 @@ fn generate_private_child_subprogram_direct(
         generic_call: None,
         generic_suppress_params: false,
         child_harness_unit: Some(harness_unit),
+        force: args.force,
     })?;
 
     write_project_profile_if_requested(args, &output_dir, &result.gpr, source_plan, ast)?;
@@ -457,6 +458,7 @@ fn generate_direct(
         generic_call,
         generic_suppress_params,
         child_harness_unit: None,
+        force: args.force,
     })?;
 
     write_project_profile_if_requested(args, &output_dir, &result.gpr, source_plan, ast)?;

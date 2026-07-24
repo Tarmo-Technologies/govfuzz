@@ -129,6 +129,16 @@ using namespace {{ ns }};
 {% endif %}
 {%- endif %}
 
+// #93: forward-declare govfuzz's own generated entry points before their
+// definitions, so a recovered compile database's `-Wmissing-declarations`/
+// `-Wmissing-prototypes` policy (often with `-Werror`), which govfuzz applies to
+// this generated translation unit too, does not fail the harness build. The
+// project's own sources still receive the full recovered warning policy.
+extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size);
+{%- if not passthrough_libfuzzer_entrypoint %}
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
+{%- endif %}
+
 // Auto-injected by govfuzz: republish fuzz input to the Linux runtrace shim so
 // fuzz-driven mode can route the current iteration's bytes into fake fds /
 // socket peers / dlopen stubs. Windows has no preload shim and must not emit a

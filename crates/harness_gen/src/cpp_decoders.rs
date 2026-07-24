@@ -211,6 +211,16 @@ pub(crate) fn select_cpp_decoder_limited(
     name: &str,
     limits: &CppDecoderLimits,
 ) -> Option<CParamEmission> {
+    // An rvalue-reference `T&&` must be moved into the call (the reference-strip
+    // below removes both `&` and `&&`, so it would otherwise be passed as a plain
+    // lvalue that cannot bind to `T&&`). Decode the referent as an lvalue ref
+    // (named local), then `std::move` it. See the registry decoder for detail.
+    if let Some(base) = cpp_type.trim_end().strip_suffix("&&") {
+        let lvalue_ref = format!("{} &", base.trim_end());
+        let mut emission = select_cpp_decoder_limited(&lvalue_ref, name, limits)?;
+        emission.arg = format!("std::move({})", emission.arg);
+        return Some(emission);
+    }
     let qualified = qualify_std_type_names(cpp_type);
     // Strip a top-level `const`/`volatile` from a BY-VALUE parameter so `const
     // bool` decodes exactly like `bool` (see [`strip_byvalue_top_level_cv`]).
@@ -633,6 +643,20 @@ pub fn select_cpp_decoder_with_registry_limited(
             "C++ parameter '{name}' is a function/array pointer ('{cpp_type}'); the C++ lane has \
              no trampoline synthesis for it — skip the target"
         )));
+    }
+    // An rvalue-reference parameter `T&&` must be MOVED into the call. The
+    // reference normalization below uses `trim_end_matches('&')`, which strips
+    // BOTH `&` and `&&`, so a `T&&` sink would decode like a by-value `T` and be
+    // passed as a plain lvalue local — which C++ forbids binding to an rvalue
+    // reference ("cannot bind rvalue reference of type 'T&&' to lvalue"). Re-enter
+    // with a single `&` so the referent decodes to a named local, then `std::move`
+    // that local into the call.
+    if let Some(base) = cpp_type.trim_end().strip_suffix("&&") {
+        let lvalue_ref = format!("{} &", base.trim_end());
+        let mut emission =
+            select_cpp_decoder_with_registry_limited(&lvalue_ref, name, registry, limits)?;
+        emission.arg = format!("std::move({})", emission.arg);
+        return Ok(emission);
     }
     if let Some(emission) = select_cpp_decoder_limited(cpp_type, name, limits) {
         return Ok(emission);
@@ -2744,6 +2768,35 @@ mod tests {
         // The recipe is found THROUGH the alias; the object is spelled with the
         // alias name (guaranteed in scope), which constructs the same class.
         assert!(e.decl.contains("WAlias w(w_gfa0)"), "{}", e.decl);
+    }
+
+    #[test]
+    fn rvalue_reference_parameters_are_moved_into_the_call() {
+        // A `T&&` sink must be passed with std::move(local), or an lvalue local
+        // cannot bind to the rvalue reference and the harness fails to compile.
+        for ty in ["std::string &&", "int&&", "std::vector<int> &&"] {
+            let e = select_cpp_decoder(ty, "x")
+                .unwrap_or_else(|| panic!("rvalue-ref {ty:?} must decode"));
+            assert_eq!(e.arg, "std::move(x)", "rvalue-ref {ty:?} must be moved");
+        }
+        // Registry path (opaque class with a #99 ctor recipe) also moves.
+        let reg = TypeRegistry::default().with_class_constructions([(
+            "Widget".to_owned(),
+            type_model::ClassConstruction::Constructor {
+                param_types: vec!["int".to_owned()],
+            },
+        )]);
+        let e = select_cpp_decoder_with_registry("Widget&&", "w", &reg)
+            .expect("rvalue-ref opaque-ctor param must decode");
+        assert_eq!(e.arg, "std::move(w)");
+        assert!(
+            e.decl.contains("Widget w("),
+            "still constructed via recipe: {}",
+            e.decl
+        );
+        // A plain lvalue reference is NOT moved.
+        let lref = select_cpp_decoder("std::string &", "y").expect("lvalue ref decodes");
+        assert_eq!(lref.arg, "y", "lvalue ref must not be moved");
     }
 
     #[test]

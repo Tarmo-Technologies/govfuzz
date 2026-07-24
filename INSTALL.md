@@ -105,7 +105,19 @@ The wrapper runs the CLI's built-in collector. Either form works:
 ```sh
 govfuzz-bug-report /path/to/govfuzz_work
 govfuzz bug-report /path/to/govfuzz_work --stdout
+
+# Bundle the scrubbed diagnostics into an offline archive to share with a
+# maintainer. `--preview` first shows exactly what would be included:
+govfuzz bug-report /path/to/govfuzz_work --preview
+govfuzz bug-report /path/to/govfuzz_work --bundle govfuzz-bug-report.tar.gz
 ```
+
+The bundle works entirely offline. It carries only scrubbed, bounded
+diagnostics — the compact support report, govfuzz's own internal-issue log if
+any, and a manifest describing every field — and never source, corpus, findings
+inputs, environment values, usernames, hostnames, or absolute paths. A built-in
+self-test scans every field for the work-dir path, username, and hostname and
+refuses to write an archive that leaks any.
 
 To add the optional daemon, extract its archive, copy `govfuzz-daemon` into the
 same prefix, and create a matching symlink:

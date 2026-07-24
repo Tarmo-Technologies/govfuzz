@@ -16,18 +16,43 @@
 //! only the spec's context clauses — dropping the body's problematic `with`s), and
 //! since the fuzz target never calls those subprograms the raise never fires.
 //!
-//! Dialect note: a *function* body uses an Ada 2012 raise EXPRESSION
-//! (`return raise ...`), which has any type, so no return value must be
-//! constructed for limited / class-wide / indefinite return types. govfuzz always
-//! compiles the harness build with `-gnat2022` (see `crate::build`'s
-//! `detect_ada_standard`, which is hardcoded to the maximally-buildable standard),
-//! so this is always valid here — legacy Ada 83/95 projects fall back to
-//! report-only static analysis and are never built, so a stub body is never
-//! synthesized for them. If govfuzz ever gains a pre-2012 Ada *build* path, the
-//! function form would need the portable idiom instead (`raise Program_Error;`
-//! followed by an unreachable recursive `return F (...)`, valid since Ada 83).
+//! Dialect note: the body is synthesized under the SAME `-gnatXXXX` the build
+//! settled on (the legacy-dialect ladder in `crate::auto::attempt` may drop below
+//! Ada 2012). For a function, Ada 2012+ uses a raise EXPRESSION (`return raise
+//! ...`, any type, so no return value must be constructed for limited /
+//! class-wide / indefinite returns); older standards raise then fall into an
+//! UNREACHABLE recursive `return` (valid since Ada 83). The suppress-marker
+//! message requires Ada 2005+. See [`stub_raise_body`].
 
 use std::path::Path;
+
+use ada_parser::ast::AdaStandard;
+
+/// The raise statement(s) for a synthesized stub subprogram body, valid under
+/// `standard`. A procedure always uses a plain `raise`. A function needs a
+/// syntactic `return`: Ada 2012+ uses a raise EXPRESSION (`return raise ...`, any
+/// type, no value constructed); older standards raise then fall into an
+/// UNREACHABLE recursive `return` (valid since Ada 83). The suppress-marker
+/// message requires Ada 2005+.
+fn stub_raise_body(
+    is_function: bool,
+    recursive_call: Option<&str>,
+    standard: AdaStandard,
+) -> String {
+    let marker = if standard >= AdaStandard::Ada2005 {
+        format!(" with \"{STUB_RAISE_MARKER}\"")
+    } else {
+        String::new()
+    };
+    if !is_function {
+        return format!("      raise Program_Error{marker};\n");
+    }
+    if standard >= AdaStandard::Ada2012 {
+        return format!("      return raise Program_Error{marker};\n");
+    }
+    let call = recursive_call.unwrap_or("raise Program_Error");
+    format!("      raise Program_Error{marker};\n      return {call};\n")
+}
 
 /// Ada `Exception_Message` a synthesized stub body raises with, so the crash
 /// oracle can recognize (and suppress) a fault that is merely a fuzz target
@@ -42,9 +67,10 @@ pub struct StubBody {
     pub implemented: std::collections::BTreeSet<String>,
 }
 
-/// Synthesize a trivial package body from a package SPEC source. Returns `None`
-/// if the spec has no package unit or declares nothing requiring a body.
-pub fn synth_stub_body(spec_source: &str, path: &Path) -> Option<StubBody> {
+/// Synthesize a trivial package body from a package SPEC source, valid under the
+/// build's `standard`. Returns `None` if the spec has no package unit or declares
+/// nothing requiring a body.
+pub fn synth_stub_body(spec_source: &str, path: &Path, standard: AdaStandard) -> Option<StubBody> {
     let ast = ada_parser::reconcile::build_structural_ast(spec_source, None, path).ok()?;
     let package_name = spec_package_name(spec_source)?;
 
@@ -73,27 +99,32 @@ pub fn synth_stub_body(spec_source: &str, path: &Path) -> Option<StubBody> {
             continue;
         }
         let profile = strip_aspects(decl.trim_end_matches(';').trim_end());
-        // A function needs a syntactic `return`; an Ada 2012 raise EXPRESSION
-        // (`return raise ...`) has any type, so no return value must be built. The
-        // marker message lets the crash oracle suppress a target that happens to
-        // call one of these stub bodies (a synthesized artifact, not a real fault).
-        let stmt = if sp.return_type.is_some() {
-            format!("      return raise Program_Error with \"{STUB_RAISE_MARKER}\";\n")
-        } else {
-            format!("      raise Program_Error with \"{STUB_RAISE_MARKER}\";\n")
-        };
-        let stmt = stmt.as_str();
+        // For a pre-2012 function the raise-expression form is unavailable, so an
+        // unreachable recursive call supplies the mandatory `return`; build it from
+        // the parsed formal names.
+        let recursive = sp.return_type.is_some().then(|| {
+            let actuals: Vec<&str> = sp.params.iter().map(|p| p.name.as_str()).collect();
+            if actuals.is_empty() {
+                sp.name.clone()
+            } else {
+                format!("{} ({})", sp.name, actuals.join(", "))
+            }
+        });
         bodies.push_str("   ");
         bodies.push_str(profile);
         bodies.push_str(" is\n   begin\n");
-        bodies.push_str(stmt);
+        bodies.push_str(&stub_raise_body(
+            sp.return_type.is_some(),
+            recursive.as_deref(),
+            standard,
+        ));
         bodies.push_str("   end;\n");
         implemented.insert(sp.name.to_ascii_lowercase());
     }
     // Operator functions (`function "<" (...) return ...`) are not surfaced by the
     // structural parser; scan the spec text for their declarations so the stub
     // body completes them too (otherwise: `missing body for "<"`).
-    let (op_bodies, op_names) = synth_operator_bodies(spec_source);
+    let (op_bodies, op_names) = synth_operator_bodies(spec_source, standard);
     bodies.push_str(&op_bodies);
     implemented.extend(op_names);
 
@@ -179,7 +210,10 @@ fn spec_package_name(spec_source: &str) -> Option<String> {
 /// (`function "<" (...) return T;`). Returns the raise-bodies plus the lowercased
 /// operator names (with quotes) it implemented. Skips operator expression
 /// functions / renamings (which already carry a completion).
-fn synth_operator_bodies(spec_source: &str) -> (String, std::collections::BTreeSet<String>) {
+fn synth_operator_bodies(
+    spec_source: &str,
+    standard: AdaStandard,
+) -> (String, std::collections::BTreeSet<String>) {
     let stripped: String = spec_source
         .lines()
         .map(|l| match l.find("--") {
@@ -218,16 +252,58 @@ fn synth_operator_bodies(spec_source: &str) -> (String, std::collections::BTreeS
             continue;
         }
         let profile = strip_aspects(decl);
+        // Operators are always functions; a pre-2012 recursive `return` reuses the
+        // operator applied to its own formals (`"<" (Left, Right)`).
+        let recursive = operator_recursive_call(profile);
         out.push_str("   ");
         out.push_str(profile);
-        out.push_str(&format!(
-            " is\n   begin\n      return raise Program_Error with \"{STUB_RAISE_MARKER}\";\n   end;\n"
-        ));
+        out.push_str(" is\n   begin\n");
+        out.push_str(&stub_raise_body(true, recursive.as_deref(), standard));
+        out.push_str("   end;\n");
         if let Some(op) = decl.split('"').nth(1) {
             names.insert(format!("\"{}\"", op.to_ascii_lowercase()));
         }
     }
     (out, names)
+}
+
+/// Build the unreachable recursive call for a pre-2012 operator stub body:
+/// `"<" (Left, Right)` from `function "<" (Left, Right : in T) return Boolean`.
+fn operator_recursive_call(profile: &str) -> Option<String> {
+    let op = format!("\"{}\"", profile.split('"').nth(1)?);
+    let open = profile.find('(')?;
+    let bytes = profile.as_bytes();
+    let mut depth: i32 = 0;
+    let mut close = None;
+    for (i, &b) in bytes[open..].iter().enumerate() {
+        match b {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    close = Some(open + i);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let params = &profile[open + 1..close?];
+    let mut actuals = Vec::new();
+    for group in params.split(';') {
+        let names_part = group.split(':').next().unwrap_or("");
+        for name in names_part.split(',') {
+            let n = name.trim();
+            if !n.is_empty() {
+                actuals.push(n.to_owned());
+            }
+        }
+    }
+    if actuals.is_empty() {
+        Some(op)
+    } else {
+        Some(format!("{op} ({})", actuals.join(", ")))
+    }
 }
 
 /// Strip a subprogram declaration's aspect specification (`... with Pre => ...`,
@@ -282,7 +358,8 @@ mod tests {
                     function Ren (S : String) return String renames Image;\n\
                     function Expr (X : Integer) return Integer is (X + 1);\n\
                     end SPAT;\n";
-        let stub = synth_stub_body(spec, Path::new("spat.ads")).expect("body");
+        let stub =
+            synth_stub_body(spec, Path::new("spat.ads"), AdaStandard::Ada2022).expect("body");
         let body = &stub.text;
         assert!(body.contains("package body SPAT is"), "{body}");
         assert!(
@@ -319,5 +396,41 @@ mod tests {
         assert!(stub.implemented.contains("image"), "{:?}", stub.implemented);
         assert!(stub.implemented.contains("go"), "{:?}", stub.implemented);
         assert!(!stub.implemented.contains("expr"), "{:?}", stub.implemented);
+    }
+
+    #[test]
+    fn pre_2012_function_uses_recursive_return_not_a_raise_expression() {
+        // Under Ada 95 (no raise expression, no exception message) a function stub
+        // raises then falls into an UNREACHABLE recursive `return`, and an operator
+        // recurses on its own formals. Procedures stay a plain raise.
+        let spec = "package P is\n\
+                    function Image (Value : Duration) return String;\n\
+                    procedure Go (X : Integer);\n\
+                    function \"<\" (Left : T; Right : T) return Boolean;\n\
+                    end P;\n";
+        let stub = synth_stub_body(spec, Path::new("p.ads"), AdaStandard::Ada95).expect("body");
+        let body = &stub.text;
+        assert!(
+            !body.contains("return raise Program_Error"),
+            "no raise expression pre-2012: {body}"
+        );
+        assert!(
+            !body.contains(" with \""),
+            "no exception message pre-2005: {body}"
+        );
+        // Parser-sourced names are lowercased (Ada is case-insensitive, so the
+        // recursive call still resolves); operator formals keep their spelling.
+        assert!(
+            body.contains("raise Program_Error;\n      return image (value);"),
+            "function recursive return: {body}"
+        );
+        assert!(
+            body.contains("raise Program_Error;\n      return \"<\" (Left, Right);"),
+            "operator recursive return: {body}"
+        );
+        assert!(
+            body.contains("procedure Go (X : Integer) is\n   begin\n      raise Program_Error;\n"),
+            "procedure plain raise: {body}"
+        );
     }
 }

@@ -5491,25 +5491,74 @@ fn run_ada_build_once(
         }
         let _ = std::fs::write(&log, raw);
     };
-    match crate::build::try_run_ada_build_capturing(&build_args) {
+    // One build under whatever `-gnatXXXX` the dialect cache currently selects
+    // (Ada 2022 by default); returns the classified outcome + raw output.
+    let one_build = || match crate::build::try_run_ada_build_capturing(&build_args) {
         Ok(captured) => {
             let combined = format!("{}\n{}", captured.stderr, captured.stdout);
-            persist_raw(&combined);
-            if captured.status_success {
+            let outcome = if captured.status_success {
                 BuildOutcome::Success
             } else {
                 BuildOutcome::Failed {
                     errors: build_classifier::classify(&combined),
                 }
-            }
+            };
+            (outcome, combined)
         }
-        Err(reason) => {
-            persist_raw(&reason);
+        Err(reason) => (
             BuildOutcome::Failed {
-                errors: vec![build_classifier::BuildErrorKind::Other { tail: reason }],
+                errors: vec![build_classifier::BuildErrorKind::Other {
+                    tail: reason.clone(),
+                }],
+            },
+            reason,
+        ),
+    };
+
+    let (outcome, raw) = one_build();
+    persist_raw(&raw);
+    // Legacy-dialect ladder: -gnat2022 rejects some pre-2012 Ada (a now-reserved
+    // word used as an identifier — `interface`/`overriding`/...; a removed
+    // feature). On such a failure, and only when no dialect is cached yet, retry
+    // under successively older standards; the first that BUILDS is cached for the
+    // rest of the project (and for any synthesized stub bodies). Mirrors the C++
+    // ladder. A pure external/link failure is never a dialect problem, so require
+    // an actual dialect diagnostic before laddering.
+    let build_dir = work_dir.join("build").join(harness_id);
+    let cache_path = crate::build::ada_dialect_cache_path(&build_dir);
+    if matches!(outcome, BuildOutcome::Failed { .. })
+        && !cache_path.exists()
+        && output_has_ada_dialect_error(&raw)
+    {
+        for switch in ["-gnat12", "-gnat05", "-gnat95"] {
+            let _ = std::fs::write(&cache_path, switch);
+            let (retry, retry_raw) = one_build();
+            persist_raw(&retry_raw);
+            if matches!(retry, BuildOutcome::Success) {
+                return retry; // cache kept: the whole project builds under `switch`
             }
         }
+        // None of the older standards built; drop back to the default.
+        let _ = std::fs::remove_file(&cache_path);
+        persist_raw(&raw);
     }
+    outcome
+}
+
+/// True when GNAT output shows a DIALECT rejection an OLDER `-gnatXXXX` would
+/// accept: a now-reserved word used as an identifier, or a construct flagged as a
+/// newer-standard feature/extension. gprbuild reports only the FIRST error per
+/// file, so a reserved word in a declaration surfaces just as `"function" or
+/// "procedure" expected` (GNAT parses `overriding`/`interface` as a keyword) —
+/// that form is included too.
+fn output_has_ada_dialect_error(raw: &str) -> bool {
+    raw.lines().any(|line| {
+        line.contains("cannot be used as identifier")
+            || line.contains("reserved word")
+            || line.contains("\"function\" or \"procedure\" expected")
+            || (line.contains(" is an Ada ")
+                && (line.contains(" feature") || line.contains(" extension")))
+    })
 }
 
 /// File under a target's `repairs/` holding the last Ada build's raw combined
@@ -5671,6 +5720,10 @@ fn stub_out_unbuildable_bodies(
     let stub_bodies_dir = crate::auto::layout::harness_dir(work_dir, harness_id)
         .join("repairs")
         .join(ADA_STUB_BODIES_DIR);
+    // Synthesize under the SAME standard the build settled on (the dialect ladder
+    // may have dropped below Ada 2012, where the raise-expression form is illegal).
+    let standard = crate::build::read_ada_dialect_cache(&work_dir.join("build").join(harness_id))
+        .unwrap_or(ada_parser::ast::AdaStandard::Ada2022);
     let mut excluded = load_excluded_bodies(repairs_dir);
     let mut changed = false;
     for stem in &failing {
@@ -5682,7 +5735,8 @@ fn stub_out_unbuildable_bodies(
         let Ok(spec) = std::fs::read_to_string(&spec_path) else {
             continue; // no spec staged (bodyless main / subunit) — can't stub
         };
-        let Some(stub) = crate::auto::ada_body_stub::synth_stub_body(&spec, &spec_path) else {
+        let Some(stub) = crate::auto::ada_body_stub::synth_stub_body(&spec, &spec_path, standard)
+        else {
             continue;
         };
         // Never replace the fuzz target's OWN body with a raise: if this is the

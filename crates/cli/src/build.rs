@@ -322,8 +322,8 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
         )
     })?;
 
-    let ada_standard = detect_ada_standard(&source_dir)?;
     let build_dir = work_dir.join("build").join(&harness_id);
+    let ada_standard = detect_ada_standard(&source_dir, &build_dir)?;
     let obj_dir = build_dir.join("obj");
     fs::create_dir_all(&obj_dir)
         .map_err(|error| format!("create build directory '{}': {error}", obj_dir.display()))?;
@@ -1363,8 +1363,35 @@ fn harness_roots(work_dir: &Path) -> [PathBuf; 2] {
 /// safe, maximally-buildable choice — squarely govfuzz's "fuzz code that doesn't
 /// cleanly build" thesis. (The `@` form is not a token the standard-probe
 /// recognises, so per-source detection cannot reliably pick 2022 here anyway.)
-fn detect_ada_standard(_source_dir: &Path) -> Result<AdaStandard, String> {
-    Ok(AdaStandard::Ada2022)
+fn detect_ada_standard(_source_dir: &Path, build_dir: &Path) -> Result<AdaStandard, String> {
+    // The legacy-dialect ladder (see `crate::auto::attempt`) writes the standard it
+    // found buildable to this cache; honor it so the whole build (and any
+    // synthesized stub bodies) compiles under the SAME `-gnatXXXX`. Absent a cache,
+    // Ada 2022 is the maximally-buildable default.
+    Ok(read_ada_dialect_cache(build_dir).unwrap_or(AdaStandard::Ada2022))
+}
+
+/// Path of the per-harness Ada dialect cache written by the legacy-dialect ladder.
+pub(crate) fn ada_dialect_cache_path(build_dir: &Path) -> PathBuf {
+    build_dir.join("ada_dialect")
+}
+
+/// Read a cached Ada standard (a `-gnatXXXX` token) for this build, if any.
+pub(crate) fn read_ada_dialect_cache(build_dir: &Path) -> Option<AdaStandard> {
+    let raw = fs::read_to_string(ada_dialect_cache_path(build_dir)).ok()?;
+    ada_standard_from_switch(raw.trim())
+}
+
+/// Map a `-gnatXXXX` dialect switch to its [`AdaStandard`].
+pub(crate) fn ada_standard_from_switch(switch: &str) -> Option<AdaStandard> {
+    match switch {
+        "-gnat83" => Some(AdaStandard::Ada83),
+        "-gnat95" => Some(AdaStandard::Ada95),
+        "-gnat05" | "-gnat2005" => Some(AdaStandard::Ada2005),
+        "-gnat12" | "-gnat2012" => Some(AdaStandard::Ada2012),
+        "-gnat2022" => Some(AdaStandard::Ada2022),
+        _ => None,
+    }
 }
 
 fn path_string(path: &Path) -> String {

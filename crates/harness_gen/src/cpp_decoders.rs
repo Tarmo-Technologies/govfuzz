@@ -863,6 +863,60 @@ pub fn select_cpp_decoder_with_registry_limited(
             free: None,
         });
     }
+    // #99: an opaque class parameter that is NOT default-constructible but that the
+    // caller resolved a public factory or parameterized constructor for (from the
+    // owning header/include closure) is built via a genuine lifecycle construction
+    // instead of being rejected. The recipe is only registered for the target's
+    // DIRECT opaque-class parameters, so a constructor's argument types are always
+    // directly decodable — the recursive arg decode below terminates immediately.
+    if !canonical.contains('*') {
+        // Resolve a project alias (`using WAlias = Widget;`) to its underlying
+        // class so an aliased spelling finds the recipe registered for the real
+        // class. A non-alias resolves to itself.
+        let construction_key = registry
+            .alias_target_spelling(&canonical)
+            .map(|target| canonical_class_spelling(&target))
+            .unwrap_or_else(|| canonical.clone());
+        if let Some(construction) = registry.class_construction(&construction_key) {
+            match construction {
+                type_model::ClassConstruction::Expression(expr) => {
+                    return Ok(CParamEmission {
+                        support: None,
+                        // The template renders `<decl>;`, so the assignment omits its
+                        // own trailing semicolon.
+                        decl: format!("{canonical} {name} = {expr}"),
+                        arg: name.to_owned(),
+                        c_type: canonical,
+                        free: None,
+                    });
+                }
+                type_model::ClassConstruction::Constructor { param_types } => {
+                    let mut statements = Vec::with_capacity(param_types.len() + 1);
+                    let mut arg_exprs = Vec::with_capacity(param_types.len());
+                    for (index, param_type) in param_types.iter().enumerate() {
+                        let arg_name = format!("{name}_gfa{index}");
+                        let arg_emission = select_cpp_decoder_with_registry_limited(
+                            param_type, &arg_name, registry, limits,
+                        )?;
+                        statements.push(arg_emission.decl);
+                        arg_exprs.push(arg_emission.arg);
+                    }
+                    // Direct-initialization (`T name(args)`) so an `explicit`
+                    // constructor is still callable. Each argument decode already
+                    // carries its own statement; the final construction omits its
+                    // trailing semicolon for the template.
+                    statements.push(format!("{canonical} {name}({})", arg_exprs.join(", ")));
+                    return Ok(CParamEmission {
+                        support: None,
+                        decl: statements.join(";\n    "),
+                        arg: name.to_owned(),
+                        c_type: canonical,
+                        free: None,
+                    });
+                }
+            }
+        }
+    }
     // #24: a `T *` output-sink whose default-constructible pointee (std::string,
     // std container, default-constructible class) is stack-allocated and passed by
     // address, instead of skipping the target as "opaque … Phase C" (tinyobjloader
@@ -913,6 +967,21 @@ pub(crate) fn canonical_class_spelling(bare: &str) -> String {
     }
     // Leading `::` global-namespace qualifier.
     owned.trim_start_matches("::").trim().to_owned()
+}
+
+/// #99: the exact canonical registry key the parameter decoder uses to look up a
+/// [`type_model::ClassConstruction`] recipe for a by-value or reference class
+/// parameter. Mirrors the decoder's own
+/// `canonical_class_spelling(cpp_registry_decode_type(cpp_type))`, so a recipe the
+/// caller registers under this key is found during emission. Returns `None` for a
+/// pointer parameter (never constructed by value) or an empty spelling.
+pub fn cpp_parameter_class_key(cpp_type: &str) -> Option<String> {
+    let bare = cpp_registry_decode_type(cpp_type);
+    if bare.contains('*') {
+        return None;
+    }
+    let key = canonical_class_spelling(&bare);
+    (!key.is_empty()).then_some(key)
 }
 
 fn cpp_registry_decode_type(cpp_type: &str) -> String {
@@ -2603,6 +2672,78 @@ mod tests {
             assert_eq!(e.decl, "CORBA::Environment env;", "spelling {spelling:?}");
             assert_eq!(e.c_type, "CORBA::Environment", "spelling {spelling:?}");
         }
+    }
+
+    #[test]
+    fn class_construction_recipes_emit_factory_and_constructor_for_opaque_params() {
+        // #99: an opaque class parameter with a registered construction recipe is
+        // built via that factory/constructor instead of being rejected. Every
+        // equivalent spelling (ref, const value, elaborated) finds the recipe, and
+        // the constructor argument is decoded from fuzz bytes.
+        let reg = TypeRegistry::default().with_class_constructions([
+            (
+                "Gadget".to_owned(),
+                type_model::ClassConstruction::Expression("gov::Gadget::make()".to_owned()),
+            ),
+            (
+                "Widget".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["int".to_owned()],
+                },
+            ),
+        ]);
+
+        for spelling in ["const Gadget &", "Gadget", "class Gadget &"] {
+            let e = select_cpp_decoder_with_registry(spelling, "g", &reg)
+                .unwrap_or_else(|err| panic!("factory recipe must decode {spelling:?}: {err:?}"));
+            assert_eq!(
+                e.decl, "Gadget g = gov::Gadget::make()",
+                "spelling {spelling:?}"
+            );
+            assert_eq!(e.arg, "g", "spelling {spelling:?}");
+        }
+
+        let ctor = select_cpp_decoder_with_registry("const Widget &", "w", &reg)
+            .expect("constructor recipe must decode");
+        assert!(
+            ctor.decl.contains("int w_gfa0 = gf_i32(&Cur)"),
+            "ctor arg must be decoded: {}",
+            ctor.decl
+        );
+        assert!(
+            ctor.decl.contains("Widget w(w_gfa0)"),
+            "ctor must direct-initialize: {}",
+            ctor.decl
+        );
+        assert_eq!(ctor.arg, "w");
+
+        // A class with NO registered recipe stays opaque (unsupported).
+        assert!(select_cpp_decoder_with_registry("const Opaque &", "o", &reg).is_err());
+    }
+
+    #[test]
+    fn class_construction_recipe_resolves_through_a_project_alias() {
+        // #99: a `using WAlias = Widget;` alias finds the recipe registered for the
+        // underlying class, so the aliased parameter is still constructed.
+        let defs = c_parser::CTypeDefs {
+            typedefs: vec![c_parser::CTypedefDef {
+                name: "WAlias".to_owned(),
+                underlying: "Widget".to_owned(),
+                line: 1,
+            }],
+            ..Default::default()
+        };
+        let reg = TypeRegistry::from_defs([&defs]).with_class_constructions([(
+            "Widget".to_owned(),
+            type_model::ClassConstruction::Constructor {
+                param_types: vec!["int".to_owned()],
+            },
+        )]);
+        let e = select_cpp_decoder_with_registry("const WAlias &", "w", &reg)
+            .expect("aliased constructor recipe must decode");
+        // The recipe is found THROUGH the alias; the object is spelled with the
+        // alias name (guaranteed in scope), which constructs the same class.
+        assert!(e.decl.contains("WAlias w(w_gfa0)"), "{}", e.decl);
     }
 
     #[test]

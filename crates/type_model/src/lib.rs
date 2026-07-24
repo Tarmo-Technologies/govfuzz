@@ -207,6 +207,24 @@ pub enum TypeShape {
     Opaque(String),
 }
 
+/// #99: how to construct a live instance of an opaque C++ class parameter that is
+/// NOT default-constructible, resolved from the owning header/include closure. The
+/// decoder carries these recipes so it can emit a genuine lifecycle construction
+/// (`T name = Owner::create();` / `T name(arg0, arg1);`) instead of rejecting the
+/// parameter as unsupported. Populated only for the target's direct opaque-class
+/// parameters, so a recipe's constructor arguments are always directly decodable —
+/// the recursive arg decode terminates without hitting another recipe.
+#[derive(Debug, Clone)]
+pub enum ClassConstruction {
+    /// A self-contained construction expression that yields the class BY VALUE,
+    /// e.g. a public static factory `"Owner::create()"`. Emitted as
+    /// `T name = <expr>;`.
+    Expression(String),
+    /// A public parameterized constructor whose argument types are all directly
+    /// byte-decodable. Emitted as `T name(<decoded args>);`.
+    Constructor { param_types: Vec<String> },
+}
+
 /// Per-translation-unit type registry.
 #[derive(Debug, Default)]
 pub struct TypeRegistry {
@@ -224,6 +242,11 @@ pub struct TypeRegistry {
     /// emit a default-constructed value for a class-typed argument instead of
     /// failing (#353). Populated by the caller for the C++ path; empty for C.
     default_constructible_classes: HashSet<String>,
+    /// C++ class names (canonical spelling) that are NOT default-constructible but
+    /// CAN be built via a resolved public factory or parameterized constructor
+    /// (#99). Keyed by `canonical_class_spelling`. Empty for C and for targets
+    /// whose parameters are all directly decodable.
+    class_constructions: HashMap<String, ClassConstruction>,
 }
 
 /// Hard cap on typedef-chase hops and struct nesting so resolution is
@@ -269,6 +292,22 @@ impl TypeRegistry {
     pub fn with_cpp_lookup_scopes(mut self, scopes: impl IntoIterator<Item = String>) -> Self {
         self.cpp_lookup_scopes = scopes.into_iter().collect();
         self
+    }
+
+    /// Attach declaration-aware construction recipes for opaque C++ class
+    /// parameters (#99). Keyed by canonical class spelling.
+    pub fn with_class_constructions(
+        mut self,
+        recipes: impl IntoIterator<Item = (String, ClassConstruction)>,
+    ) -> Self {
+        self.class_constructions = recipes.into_iter().collect();
+        self
+    }
+
+    /// The construction recipe for an opaque class parameter, if one was resolved
+    /// from the owning header (#99). `name` is a canonical class spelling.
+    pub fn class_construction(&self, name: &str) -> Option<&ClassConstruction> {
+        self.class_constructions.get(name)
     }
 
     fn lookup_named<'a, T>(&'a self, map: &'a HashMap<String, T>, name: &str) -> Option<&'a T> {

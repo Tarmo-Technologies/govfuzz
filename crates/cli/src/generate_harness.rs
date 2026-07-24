@@ -7882,6 +7882,21 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         &function.api.namespace_path,
         &class_infos,
     );
+    // #99: resolve construction recipes for opaque class parameters that are not
+    // default-constructible but can be built via a public factory or parameterized
+    // constructor from the include closure. Computed before `type_defs` is moved
+    // into `common`, against the same registry the emitter uses (minus recipes).
+    let param_construction_registry = type_model::TypeRegistry::from_defs(type_defs.iter())
+        .with_cpp_lookup_scopes(cpp_lookup_scopes.clone())
+        .with_default_constructible_classes(default_constructible_classes.iter().cloned());
+    let parameter_constructions = resolve_cpp_parameter_constructions(
+        &function,
+        &functions,
+        &closure_texts,
+        &class_infos,
+        &param_construction_registry,
+        &args.decoder_limits.cpp_limits(),
+    );
     let dictionary_tokens = collect_cpp_dictionary_tokens_for_harness(
         &source_path,
         &source,
@@ -7981,6 +7996,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 lifecycle_steps,
                 type_defs: common.type_defs,
                 default_constructible_classes,
+                parameter_constructions,
                 receiver_class_override: receiver_class_override.clone(),
                 factory_plan: factory_plan.clone(),
                 decoder_limits: args.decoder_limits.cpp_limits(),
@@ -8013,6 +8029,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 constructor_params,
                 type_defs: common.type_defs,
                 default_constructible_classes,
+                parameter_constructions,
                 receiver_class_override: receiver_class_override.clone(),
                 factory_plan,
                 decoder_limits: args.decoder_limits.cpp_limits(),
@@ -8305,9 +8322,28 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
             .rev()
             .map(|length| function.qualifier_path[..length].join("::"))
             .collect::<Vec<_>>();
+        // #99: the preflight must use the SAME declaration-aware construction
+        // recipes as generation, or an opaque parameter that generation can build
+        // via a resolved factory/constructor (use_baz/use_bar) would be wrongly
+        // pre-demoted as "known blocked" while a genuinely opaque one is correctly
+        // flagged. Resolve the recipes against the identical closure/type context
+        // (a base registry without recipes), then re-key the probe registry WITH
+        // them so the preflight verdict matches generation.
+        let base_registry = type_model::TypeRegistry::from_defs(type_defs.iter())
+            .with_cpp_lookup_scopes(scopes.clone())
+            .with_default_constructible_classes(defaults.clone());
+        let recipes = resolve_cpp_parameter_constructions(
+            function,
+            functions,
+            &closure_texts,
+            &class_infos,
+            &base_registry,
+            &Default::default(),
+        );
         let registry = type_model::TypeRegistry::from_defs(type_defs.iter())
             .with_cpp_lookup_scopes(scopes)
-            .with_default_constructible_classes(defaults);
+            .with_default_constructible_classes(defaults)
+            .with_class_constructions(recipes);
         let known_blocked = function.params.iter().any(|parameter| {
             if harness_gen::cpp_generate::cpp_parameter_type_supported_with_registry(
                 &parameter.cpp_type,
@@ -8604,6 +8640,132 @@ fn cpp_receiver_constructor_params(
         target.name,
         target.name
     )
+}
+
+/// #99: resolve declaration-aware construction recipes for the target's opaque
+/// class PARAMETERS. A parameter whose type is a by-value/reference class that is
+/// NOT default-constructible and has no byte-buffer decoder is normally rejected
+/// as `unsupported_params`. When the owning header/include closure declares a
+/// public parameterized constructor (all arguments directly decodable) or a public
+/// static by-value factory, build a recipe so the decoder emits a genuine
+/// lifecycle construction for that parameter instead of skipping the target.
+///
+/// Recipes are only produced for the target's DIRECT parameters, so a
+/// constructor's own arguments are always directly decodable — the decoder's
+/// recursive argument decode never re-enters a construction recipe. A genuinely
+/// opaque by-value type (no public constructor or factory) yields no recipe and
+/// keeps its existing precise unsupported reason.
+/// `registry` must mirror what the emitter builds MINUS the recipes (default
+/// constructible classes + lookup scopes, no `class_constructions`), so a
+/// parameter that is already decodable (visible aggregate, alias, default-
+/// constructible class, scalar/string) keeps its existing path and is never given
+/// a recipe.
+fn resolve_cpp_parameter_constructions(
+    function: &cpp_parser::CppFunction,
+    functions: &[cpp_parser::CppFunction],
+    closure_texts: &[String],
+    class_infos: &[cpp_parser::CppClassInfo],
+    registry: &type_model::TypeRegistry,
+    limits: &harness_gen::cpp_decoders::CppDecoderLimits,
+) -> Vec<(String, type_model::ClassConstruction)> {
+    let namespace_path = function.api.namespace_path.as_slice();
+    let mut recipes: Vec<(String, type_model::ClassConstruction)> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for param in &function.params {
+        let Some(mut key) = harness_gen::cpp_decoders::cpp_parameter_class_key(&param.cpp_type)
+        else {
+            continue;
+        };
+        // Resolve a project alias to the underlying class so the recipe is keyed
+        // exactly as the decoder will look it up (mirrors the decoder's own alias
+        // resolution).
+        if let Some(target) = registry.alias_target_spelling(&key) {
+            if let Some(resolved) = harness_gen::cpp_decoders::cpp_parameter_class_key(&target) {
+                key = resolved;
+            }
+        }
+        if !seen.insert(key.clone()) {
+            continue;
+        }
+        if registry.is_default_constructible_class(&key) {
+            continue;
+        }
+        if harness_gen::cpp_generate::cpp_parameter_type_supported_with_registry(
+            &param.cpp_type,
+            registry,
+            limits,
+        ) {
+            continue;
+        }
+        // 1) A public, non-deleted parameterized constructor whose arguments are
+        //    all directly decodable (verified by the same check the receiver path
+        //    uses). Prefer the fewest arguments for a deterministic, small decode.
+        if let Some(construction) =
+            resolve_cpp_parameter_ctor_recipe(&key, class_infos, registry, namespace_path)
+        {
+            recipes.push((key, construction));
+            continue;
+        }
+        // 2) A public STATIC by-value factory resolved from the include closure
+        //    (`Owner::create()`), yielding a self-contained construction expression.
+        let leaf = key.rsplit("::").next().unwrap_or(&key);
+        if let Some(factory) =
+            find_cpp_factory_for_class(leaf, functions, closure_texts, registry, class_infos)
+        {
+            if !factory.receiver_is_pointer
+                && factory.owner_method_is_static
+                && factory.factory_params.is_empty()
+            {
+                if let Some(owner) = factory.owner_type.as_deref() {
+                    recipes.push((
+                        key,
+                        type_model::ClassConstruction::Expression(format!(
+                            "{owner}::{}()",
+                            factory.factory_method
+                        )),
+                    ));
+                    continue;
+                }
+            }
+        }
+        // Otherwise the type is genuinely opaque: no recipe, existing precise
+        // "no byte-buffer decoder / no synthesizable constructor" reason stands.
+    }
+    recipes
+}
+
+/// A public, non-deleted, non-templated parameterized constructor of `key` whose
+/// argument types are all directly decodable (never themselves needing
+/// construction), if one is declared in the parsed class info. Prefers the fewest
+/// arguments. `key` is a canonical class spelling.
+fn resolve_cpp_parameter_ctor_recipe(
+    key: &str,
+    class_infos: &[cpp_parser::CppClassInfo],
+    registry: &type_model::TypeRegistry,
+    namespace_path: &[String],
+) -> Option<type_model::ClassConstruction> {
+    let leaf = key.rsplit("::").next().unwrap_or(key);
+    let mut candidates: Vec<&Vec<String>> = class_infos
+        .iter()
+        .filter(|info| info.qualified_name == key || info.name == leaf)
+        .flat_map(|info| info.constructors.iter())
+        .filter(|constructor| {
+            constructor.access == "public"
+                && !constructor.is_deleted
+                // A no-arg ctor is the default-constructible path, not this one.
+                && !constructor.param_types.is_empty()
+                && constructor.param_types.iter().all(|param_type| {
+                    cpp_ctor_param_supported(param_type, registry, namespace_path, class_infos)
+                })
+        })
+        .map(|constructor| &constructor.param_types)
+        .collect();
+    candidates.sort_by_key(|param_types| param_types.len());
+    candidates
+        .first()
+        .map(|param_types| type_model::ClassConstruction::Constructor {
+            param_types: (*param_types).clone(),
+        })
 }
 
 /// Search `functions` (which already includes header-resolved methods) for a
@@ -16138,15 +16300,17 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
 
     #[test]
     fn cpp_user_constructed_parameter_classes_fail_during_generation_not_build() {
+        // #99: a class with a public parameterized constructor (`explicit
+        // Blocked(int)`) is NO LONGER blocked — it is built via that constructor
+        // (see `cpp_opaque_parameter_built_via_resolved_constructor_and_factory`).
+        // These four remain genuinely unsynthesizable: a deleted or private
+        // constructor, and an abstract class have no public way to construct a
+        // value; each must stop before build with a precise reason.
         for (case, declaration) in [
             ("deleted", "class Blocked { public: Blocked() = delete; };"),
             (
                 "private",
                 "class Blocked { private: Blocked() = default; };",
-            ),
-            (
-                "parameter-only",
-                "class Blocked { public: explicit Blocked(int); };",
             ),
             (
                 "abstract",
@@ -16248,6 +16412,121 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
                 .unwrap();
             assert!(status.success(), "verified public default must compile");
         }
+    }
+
+    /// #99: an opaque class parameter that is not default-constructible is built
+    /// via a public parameterized constructor or a public static factory resolved
+    /// from the declarations — across const-qualified values, references, aliases,
+    /// and nested namespaces — while a genuinely opaque (incomplete/undeclared)
+    /// type keeps its precise unsupported reason and leaves no build candidate.
+    #[test]
+    fn cpp_opaque_parameter_built_via_resolved_constructor_and_factory() {
+        fn gen(tag: &str, source_text: &str, target: &str) -> anyhow::Result<String> {
+            let temp = temp_dir(&format!("cpp-p99-{tag}"));
+            let source = temp.join("parser.cpp");
+            fs::write(&source, source_text).unwrap();
+            run(GenerateHarnessArgs {
+                source: source.clone(),
+                target: Some(target.to_owned()),
+                target_line: None,
+                output: temp.join("out"),
+                id: Some(format!("H-X-P99-{tag}")),
+                kind: "direct".to_owned(),
+                source_roots: Vec::new(),
+                project: None,
+                source_trees: Vec::new(),
+                extra_sources: Vec::new(),
+                extra_includes: Vec::new(),
+                cleanup: None,
+                template_instantiate: Vec::new(),
+                tree_type_defs: None,
+                decoder_limits: Default::default(),
+                force: false,
+            })?;
+            Ok(fs::read_to_string(temp.join(format!("out/H-X-P99-{tag}/main.cpp"))).unwrap())
+        }
+
+        // 1) Public parameterized constructor, passed by const reference: the
+        //    argument is decoded and the object direct-initialized.
+        let ctor_ref = gen(
+            "ctor-ref",
+            "namespace gov { class Widget { public: explicit Widget(int); int poke() const; };\n\
+             int use(const Widget& w) { return w.poke(); } }\n",
+            "use",
+        )
+        .expect("parameterized-ctor parameter must generate");
+        assert!(
+            ctor_ref.contains("Widget w("),
+            "const-ref ctor construction missing:\n{ctor_ref}"
+        );
+
+        // 2) Same class, const-qualified BY VALUE — the equivalent spelling takes
+        //    the same construction path.
+        let ctor_value = gen(
+            "ctor-value",
+            "namespace gov { class Widget { public: explicit Widget(int); int poke() const; };\n\
+             int consume(const Widget w) { return w.poke(); } }\n",
+            "consume",
+        )
+        .expect("const-by-value ctor parameter must generate");
+        assert!(
+            ctor_value.contains("Widget w("),
+            "const-by-value ctor construction missing:\n{ctor_value}"
+        );
+
+        // 3) Public static by-value factory, no public default constructor.
+        let factory = gen(
+            "factory",
+            "namespace gov { class Gadget { Gadget() {} public: static Gadget make() { return Gadget(); } int poke() const { return 1; } };\n\
+             int use(const Gadget& g) { return g.poke(); } }\n",
+            "use",
+        )
+        .expect("factory parameter must generate");
+        assert!(
+            factory.contains("Gadget g = ") && factory.contains("make()"),
+            "static-factory construction missing:\n{factory}"
+        );
+
+        // 4) A project alias of a constructible class resolves to the underlying
+        //    class and takes the same construction path.
+        let alias = gen(
+            "alias",
+            "namespace gov { class Widget { public: explicit Widget(int); int poke() const; };\n\
+             using WAlias = Widget;\n\
+             int use(const WAlias& w) { return w.poke(); } }\n",
+            "use",
+        )
+        .expect("aliased constructible parameter must generate");
+        assert!(
+            alias.contains("Widget w(") || alias.contains("WAlias w("),
+            "aliased ctor construction missing:\n{alias}"
+        );
+
+        // 5) A nested namespace qualification is resolved.
+        let nested = gen(
+            "nested-ns",
+            "namespace a { namespace b { class Thing { public: explicit Thing(int); int poke() const; }; } }\n\
+             int use(const a::b::Thing& t) { return t.poke(); }\n",
+            "use",
+        )
+        .expect("nested-namespace ctor parameter must generate");
+        assert!(
+            nested.contains("Thing t("),
+            "nested-namespace ctor construction missing:\n{nested}"
+        );
+
+        // 6) An incomplete/undeclared type is genuinely opaque: no recipe, a
+        //    precise unsupported reason, and no build candidate left behind.
+        let incomplete = gen(
+            "incomplete",
+            "class Never;\nint use(const Never& n) { (void)&n; return 0; }\n",
+            "use",
+        );
+        let error = incomplete.expect_err("an incomplete type must remain unsupported");
+        assert!(
+            error.to_string().contains("no byte-buffer decoder"),
+            "incomplete type must report a precise reason: {error:#}"
+        );
     }
 
     #[test]

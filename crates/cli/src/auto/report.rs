@@ -2114,6 +2114,19 @@ fn add_checkpoint_result(
                 RequirementBasis::Observed,
                 Some("the target built with GovFuzz's platform stub".to_owned()),
             ),
+            Repair::StubGprImport { project } => manifest.push_merge_detailed(
+                DepKind::AdaUnit,
+                format!("external Ada library project '{project}'"),
+                vec![id.clone()],
+                true,
+                Some(format!(
+                    "supply the real '{project}' library source (e.g. `alr get {project}` on a connected host, then pass its directory with --ada-deps) for a high-fidelity fuzz"
+                )),
+                RequirementBasis::Observed,
+                Some(format!(
+                    "the external `with \"{project}\";` project was absent; under --force GovFuzz synthesized an empty stub project so the build could load and the referenced packages were stubbed — findings are reduced-fidelity"
+                )),
+            ),
             Repair::HeaderForward { .. }
             | Repair::AddIncludeDir { .. }
             | Repair::IncludeTypeHeader { .. }
@@ -2557,6 +2570,7 @@ fn aggregate_repairs(
             // not a synthesised artifact the maintainer must ship.
             Repair::AddIncludeDir { .. } => {}
             Repair::AddAdaSource { .. } => {}
+            Repair::StubGprImport { .. } => {}
             // Layer-C env-var injections are aggregated separately by
             // the runtrace-event aggregator (Batch B5 / Task 12). No-op
             // here to keep the existing four-bag signature stable.

@@ -160,10 +160,16 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
             continue;
         }
         if let Some(caps) = cannot_find_gpr().captures(line) {
-            hits.push(BuildErrorKind::MissingGprImport {
-                path: caps[1].to_owned(),
-            });
-            continue;
+            // Either flavour matched — take whichever group captured the name.
+            let path = caps
+                .get(1)
+                .or_else(|| caps.get(2))
+                .map(|m| m.as_str().to_owned())
+                .unwrap_or_default();
+            if !path.is_empty() {
+                hits.push(BuildErrorKind::MissingGprImport { path });
+                continue;
+            }
         }
         if let Some(caps) = uncompilable_asm().captures(line) {
             // `<file>.adb:NN: Error: no such instruction: ...` — the assembler
@@ -244,13 +250,17 @@ fn cannot_generate_code() -> &'static Regex {
 }
 
 fn cannot_find_gpr() -> &'static Regex {
-    // gprbuild emits the missing-import error in two flavours:
+    // gprbuild emits the missing-import error in several flavours; the imported
+    // name may or may not carry the `.gpr` extension depending on how the `with`
+    // clause spelled it:
     //   demo.gpr:5:09: cannot find "gnatcoll.gpr"
     //   govfuzz_build.gpr:3:06: imported project file "missing.gpr" not found
-    // Match either with a single regex.
+    //   spat.gpr:1:06: imported project file "gnatcoll" not found   (no extension)
+    // Group 1 = the `cannot find "<x>.gpr"` name; group 2 = the
+    // `imported project file "<x>" not found` name (extension optional).
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(r#"(?:cannot find|imported project file) "(.+?\.gpr)"(?: not found)?"#)
+        Regex::new(r#"(?:cannot find "(.+?\.gpr)")|(?:imported project file "([^"]+?)" not found)"#)
             .expect("regex")
     })
 }

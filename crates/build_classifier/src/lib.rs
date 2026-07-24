@@ -1030,4 +1030,21 @@ mod tests {
             "got {kinds:?}"
         );
     }
+
+    #[test]
+    fn missing_gpr_import_without_extension() {
+        // GNAT reports a missing `with "gnatcoll";` (no `.gpr` in the clause) as
+        // `imported project file "gnatcoll" not found` — the name carries no
+        // extension. Must still classify as MissingGprImport (not Other).
+        let stderr = "spat.gpr:1:06: imported project file \"gnatcoll\" not found\n\
+                      gprbuild: \"govfuzz_build.gpr\" processing failed\n";
+        let kinds = classify(stderr);
+        assert!(
+            kinds.iter().any(|k| matches!(
+                k,
+                BuildErrorKind::MissingGprImport { path } if path == "gnatcoll"
+            )),
+            "extension-less missing GPR import must classify: got {kinds:?}"
+        );
+    }
 }

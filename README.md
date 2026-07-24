@@ -62,13 +62,29 @@ Use the same campaign options as the original run. Completed targets are loaded
 from `harnesses/<id>/result.json`, included in the new report, and skipped; the
 first target that did not finish is retried, followed by the remaining targets.
 Existing findings and persisted corpus data remain on disk. Resume is
-target-granular: an interrupted target restarts its attempt rather than
-continuing the exact mutation, elapsed-time budget, or in-memory fuzzer state.
+target-granular: only atomically completed result markers are reused, and an
+interrupted target restarts its attempt rather than continuing the exact
+mutation, elapsed-time budget, or in-memory fuzzer state.
 
-Resume requires an unchanged source tree, the same work directory, and a
-compatible GovFuzz build. Do not combine it with `--fresh-discovery` or
+**What a resume reuses, and what invalidates it.** Completed results are reused
+only when BOTH identities are unchanged:
+
+- **Source identity** — the content of every targetable source file plus the
+  directory filter (the discovery cache). Editing, adding, or removing source, or
+  changing the filter, is a discovery-cache miss and re-attempts all targets.
+- **Build context** — the content of every `compile_commands.json`, GNAT project
+  (`.gpr`), and IDL (`.idl`) under the tree, plus the harness-affecting options
+  (the selected `--project`, decoder limits, stubbing policy, engines/passes, and
+  sanitizer mode). If any of these change, the prior results were built under a
+  different context and are re-attempted.
+
+Editing documentation (README, comments in non-source files) changes neither
+identity and does not invalidate a resume. A work directory written by an older
+GovFuzz that predates the build-context fingerprint is treated conservatively as
+changed and re-attempted. Do not combine `--resume` with `--fresh-discovery` or
 `--no-discovery-cache`; a discovery-cache miss deliberately re-attempts all
-targets rather than trusting stale results.
+targets rather than trusting stale results, and a compatible GovFuzz build is
+required.
 
 See the [installation guide](docs/site/install.md) for prebuilt binaries, per-language
 toolchains, offline/air-gapped install, and Windows.

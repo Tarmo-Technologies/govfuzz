@@ -46,6 +46,7 @@ fn toolchains_ready(prefix: &str) -> bool {
 
 fn options(source_root: &Path) -> AttemptOptions {
     AttemptOptions {
+        project: None,
         decoder_limits: Default::default(),
         force: false,
         per_target_time: Duration::from_secs(2),

@@ -204,6 +204,7 @@ fn auto_args_from_ci(args: &CiArgs, scoped_files: &[PathBuf]) -> AutoArgs {
         work_dir: args.work_dir.clone(),
         discovery_cache: None,
         config: None,
+        project: None,
         grammar_file: None,
         max_len: "auto".to_owned(),
         timeout: None,

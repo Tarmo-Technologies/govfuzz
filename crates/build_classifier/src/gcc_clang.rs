@@ -36,11 +36,14 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
             continue;
         }
         if let Some(caps) = unknown_type().captures(line) {
-            // An ALL-CAPS name in type position is not a real type — it's a
-            // build-config qualifier macro (inline/export/api decorator like
-            // jansson's `JSON_INLINE`, expanding to `inline` or nothing). A
-            // `void *` typedef would corrupt the declaration; define it empty.
-            if is_macro_like(&caps[1]) {
+            // #96: "unknown type name 'X'" puts X in TYPE position. An ALL_CAPS X is
+            // a legacy uppercase TYPEDEF (Expat's `SCANNER`) by default, needing a
+            // type/header repair — NOT a `void *` (which corrupts the declaration)
+            // and NOT a macro. Only a declaration DECORATOR (jansson's `JSON_INLINE`
+            // expanding to `inline`/nothing, `__EXPORT`, `WINAPI`) is defined empty
+            // as a macro. Classifying deterministically here also stops the repair
+            // kind from oscillating between type and macro across rounds.
+            if is_type_position_decorator_macro(&caps[1]) {
                 hits.push(BuildErrorKind::MissingMacro {
                     name: caps[1].to_owned(),
                     as_value: false,
@@ -197,7 +200,16 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
                     .map(|(_, source)| source.strip_prefix(' ').unwrap_or(source))
                     .unwrap_or(rendered_line);
                 if let Some(name) = identifier_at_column(source_line, column) {
-                    if is_macro_like(name) {
+                    // #96: a declaration decorator, OR a CALL-LIKE/function-like
+                    // macro (the name is immediately followed by `(`, e.g. libyaml's
+                    // `SHIM(yaml_char_t **b_end)`), becomes an empty macro. A plain
+                    // uppercase TYPEDEF in this position is left for the type/header
+                    // repair path (never define-empty'd).
+                    let call_like = is_macro_like(name)
+                        && source_line
+                            .get(column - 1 + name.len()..)
+                            .is_some_and(|rest| rest.starts_with('('));
+                    if is_type_position_decorator_macro(name) || call_like {
                         hits.push(BuildErrorKind::MissingMacro {
                             name: name.to_owned(),
                             as_value: false,
@@ -315,6 +327,62 @@ fn is_macro_like(name: &str) -> bool {
             .chars()
             .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
         && name.chars().any(|c| c.is_ascii_uppercase())
+}
+
+/// #96: within a TYPE-position diagnostic ("unknown type name 'X'" / "type
+/// specifier missing"), decide whether an ALL_CAPS `X` is a declaration DECORATOR
+/// macro (`JSON_INLINE`, `__EXPORT`, `WINAPI` — it expands to a qualifier and must
+/// be defined EMPTY) versus a legacy uppercase TYPEDEF (Expat's `SCANNER`,
+/// `XML_Bool` — a real type needing a type/header repair).
+///
+/// The compiler already told us `X` is in TYPE position, so an unknown `X` there is
+/// a typedef by DEFAULT; blindly calling every ALL_CAPS type-position name a macro
+/// corrupts the declaration and oscillates the repair kind across rounds (a
+/// type-header repair one round, a macro the next). Only decorator-SHAPED names —
+/// reserved-identifier macros (leading `_`) or names carrying a decl-spec /
+/// calling-convention / attribute word — route to a macro here.
+fn is_type_position_decorator_macro(name: &str) -> bool {
+    if !is_macro_like(name) {
+        // A lower/mixed-case name in type position (`widget_t`, `_MyType`) is a
+        // real type, never a macro.
+        return false;
+    }
+    // Reserved-identifier macros (`__EXPORT`, `__BEGIN_DECLS`, `__WEAK`) are
+    // pervasive linkage/visibility decorators in embedded C/C++ HALs (PX4/NuttX).
+    if name.starts_with('_') {
+        return true;
+    }
+    // A decl-spec / calling-convention / attribute word anywhere in the name marks
+    // it as a decorator that expands to a qualifier, not the type itself.
+    const DECORATOR_WORDS: &[&str] = &[
+        "INLINE",
+        "FORCEINLINE",
+        "NOINLINE",
+        "EXPORT",
+        "IMPORT",
+        "EXTERN",
+        "DLLEXPORT",
+        "DLLIMPORT",
+        "DECLSPEC",
+        "VISIBILITY",
+        "CDECL",
+        "STDCALL",
+        "FASTCALL",
+        "THISCALL",
+        "WINAPI",
+        "APIENTRY",
+        "CALLBACK",
+        "PASCAL",
+        "ATTRIBUTE",
+        "DEPRECATED",
+        "NORETURN",
+        "NODISCARD",
+        "NOEXCEPT",
+        "NOTHROW",
+        "RESTRICT",
+        "DECLS",
+    ];
+    name.split('_').any(|word| DECORATOR_WORDS.contains(&word))
 }
 
 fn undeclared_macro() -> &'static Regex {

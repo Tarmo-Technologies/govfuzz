@@ -2914,6 +2914,59 @@ fn run_attempt(
                         harness_dir,
                     });
                 }
+                // A "fuzzed" outcome must reflect ACTUAL execution. An engine that
+                // recorded a pass but ran ZERO iterations never exercised the target
+                // — e.g. an exclusive `--engine afl++` run where afl-fuzz aborted
+                // before executing any input. The #95 entry invariant above only
+                // fires for entry-instrumented builtin passes, so an afl-only
+                // cascade with 0 executions would otherwise be reported as a fuzz
+                // success. Downgrade to Built (compiled, but no fuzz signal).
+                let total_executions: usize = pass_runs.iter().map(|p| p.executions).sum();
+                if total_executions == 0 {
+                    eprintln!(
+                        "govfuzz auto: {}: built but no fuzz iteration executed (0 executions) — \
+                         recording built, NOT built_and_fuzzed",
+                        candidate.harness_id
+                    );
+                    return Ok(AttemptResult {
+                        candidate: candidate.clone(),
+                        outcome: Outcome::Built {
+                            repairs: manifest.repairs.clone(),
+                            retries: retry,
+                        },
+                        harness_dir,
+                    });
+                }
+                // Honest-reporting (offline-legacy audit): a native entry-proof
+                // lane (C/C++/Ada) that a builtin pass ENTERED and executed but
+                // whose builtin passes recorded ZERO coverage edges was fuzzed
+                // BLIND — the coverage instrumentation produced no signal, so
+                // mutation had nothing to steer on. This is not a failure (the
+                // target really ran, and a crash would still be caught), so the
+                // outcome stays built_and_fuzzed; but say so loudly instead of
+                // letting a zero-edge run read as a genuine coverage-guided
+                // campaign. (After the GCC trace-pc SHM fix, zero edges on an
+                // entered target means instrumentation is genuinely inert.)
+                if harness_emits_target_entry_proof(candidate.lang) {
+                    let builtin_entered_execed = pass_runs.iter().any(|p| {
+                        p.engine == "builtin" && p.executions > 0 && p.target_entry_observed
+                    });
+                    let peak_builtin_edges = pass_runs
+                        .iter()
+                        .filter(|p| p.engine == "builtin")
+                        .map(|p| p.coverage_edges)
+                        .max()
+                        .unwrap_or(0);
+                    if builtin_entered_execed && peak_builtin_edges == 0 {
+                        eprintln!(
+                            "govfuzz auto: WARNING: {} entered and executed the target but recorded \
+                             ZERO coverage edges — coverage instrumentation is inert, so this run \
+                             fuzzed BLIND (no coverage-guided mutation). Findings are still valid, \
+                             but absence of findings does NOT reflect coverage-guided depth.",
+                            candidate.harness_id
+                        );
+                    }
+                }
                 return Ok(AttemptResult {
                     // Upgrade reachability to ipc_channel_reachable when this run
                     // drove the target through a virtualized IPC channel, so the
@@ -4772,10 +4825,19 @@ fn try_build_c(
             }
         }
         if let Some((_std, errs)) = best {
-            if errs.len() < errors.len() {
-                // A failed dialect is evidence for this one invocation only. It
-                // must never be persisted: repairs can change the include graph,
-                // and a low error count is not proof of compatibility.
+            // Adopt the fewest-errors dialect for the repair loop even on a TIE
+            // (`<=`, offline-legacy audit #10). A legacy TU commonly swaps
+            // gnu++20's UNREPAIRABLE dialect rejection (a removed-syntax `Other`)
+            // for an equal count of REPAIRABLE errors under an older rung (a
+            // missing type the loop can stub). With strict `<` the tie kept the
+            // default's dialect error, which the planner can't act on, so the
+            // target failed immediately and never fuzzed. Returning the older
+            // rung's errors lets the loop stub the missing type; the ladder
+            // re-runs next round and BUILDS under that older std once the stub is
+            // in place — so convergence needs no persisted (and possibly wrong)
+            // failed dialect. Gated behind !is_pure_link_failure above, so a pure
+            // link failure never mis-selects a pre-C++11 std (auto_full_tu_link).
+            if errs.len() <= errors.len() {
                 return BuildOutcome::Failed { errors: errs };
             }
         }

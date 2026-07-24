@@ -527,13 +527,26 @@ pub fn discover_with_options(
     // when no C++ candidates exist.
     if out.iter().any(|c| matches!(c.lang, Lang::Cpp)) {
         let mut cpp_access = std::collections::BTreeMap::new();
-        collect_cpp_member_access(root, filter, &mut cpp_access);
+        let mut cpp_sig_access = std::collections::BTreeMap::new();
+        collect_cpp_member_access(root, filter, &mut cpp_access, &mut cpp_sig_access);
         out.retain(|c| {
             if !matches!(c.lang, Lang::Cpp) {
                 return true;
             }
-            // The access index retains the complete namespace/class identity. If
-            // overloads of the same qualified method have different access, its
+            // #98: exact-signature access first. When the candidate's full signature
+            // (`Class::method(normalized params)`) resolves to a non-public overload,
+            // drop it — targeting a private overload that has a public sibling is a
+            // guaranteed build failure ("is a private member"). This fires ONLY on a
+            // confirmed private/protected exact-signature match; any format mismatch
+            // (lookup miss) falls through to the by-name check below, so it can only
+            // improve, never over-filter.
+            if let Some(access) = cpp_sig_access.get(&c.name) {
+                if access == "private" || access == "protected" {
+                    return false;
+                }
+            }
+            // The by-name access index retains the complete namespace/class identity.
+            // If overloads of the same qualified method have different access, its
             // value is deliberately `ambiguous` and discovery keeps the target;
             // generation resolves the exact parameter signature later.
             let full = c.name.split('(').next().unwrap_or(&c.name).trim();
@@ -1147,9 +1160,14 @@ fn collect_cpp_member_access(
     dir: &Path,
     filter: &DirFilter,
     out: &mut std::collections::BTreeMap<String, String>,
+    // #98: exact-signature access, keyed by the SAME `member_access_key`
+    // (`Class::method(normalized params)`) the candidate name uses, so overloads of
+    // one name are not collapsed and a private overload with a public sibling is
+    // distinguished instead of both being marked "ambiguous".
+    by_signature: &mut std::collections::BTreeMap<String, String>,
 ) {
     if dir.is_file() {
-        accumulate_cpp_member_access(dir, out);
+        accumulate_cpp_member_access(dir, out, by_signature);
         return;
     }
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -1162,15 +1180,19 @@ fn collect_cpp_member_access(
         };
         if ft.is_dir() {
             if !is_excluded_dir(&path, filter) {
-                collect_cpp_member_access(&path, filter, out);
+                collect_cpp_member_access(&path, filter, out, by_signature);
             }
         } else if ft.is_file() {
-            accumulate_cpp_member_access(&path, out);
+            accumulate_cpp_member_access(&path, out, by_signature);
         }
     }
 }
 
-fn accumulate_cpp_member_access(path: &Path, out: &mut std::collections::BTreeMap<String, String>) {
+fn accumulate_cpp_member_access(
+    path: &Path,
+    out: &mut std::collections::BTreeMap<String, String>,
+    by_signature: &mut std::collections::BTreeMap<String, String>,
+) {
     if !has_targetable_extension(path) {
         return;
     }
@@ -1181,6 +1203,19 @@ fn accumulate_cpp_member_access(path: &Path, out: &mut std::collections::BTreeMa
         return;
     }
     for (signature, access) in cpp_parser::parse_cpp_method_access_signatures(&source) {
+        // #98: the exact overload signature (raw key) resolves to its own access,
+        // so a private zero-arg overload stays distinct from a public buffer
+        // overload of the same name. A genuine cross-file conflict on the exact same
+        // signature is marked ambiguous (kept) like the by-name map.
+        match by_signature.get(&signature) {
+            Some(existing) if existing != &access => {
+                by_signature.insert(signature.clone(), "ambiguous".to_owned());
+            }
+            Some(_) => {}
+            None => {
+                by_signature.insert(signature.clone(), access.clone());
+            }
+        }
         let key = signature
             .split_once('(')
             .map(|(qualified, _)| qualified)

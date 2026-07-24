@@ -2,7 +2,10 @@
 
 [settings]
 per_target_time = 2
-bounded_subset = ["cjson", "tinyxml2", "adayaml", "ada_util"]
+# #104: `ada_local` is the hermetic, dependency-free Ada endpoint that proves real
+# Ada target entry offline in normal CI (the pinned real Ada repos need Alire and
+# are the scheduled/network job).
+bounded_subset = ["cjson", "tinyxml2", "ada_local"]
 
 [[repositories]]
 id = "cjson"
@@ -36,6 +39,13 @@ expect_makefile_contains = [
   "-std=c89",
   "-DCJSON_API_VISIBILITY",
 ]
+
+# #104: end-to-end auto that must BUILD and ENTER the real C endpoint (control).
+[[repositories.checks]]
+kind = "auto_target_entry"
+target = "cJSON_ParseWithLength"
+harness_id = "H-REAL-CJSON-ENTRY"
+per_target_time = 3
 
 [[repositories.scenarios]]
 id = "cjson_missing_public_header"
@@ -74,22 +84,34 @@ target = "tinyxml2::XMLDocument::Parse"
 harness_id = "H-REAL-TINYXML2"
 expect_makefile_contains = [
   "COMPILE_DB_FLAGS =",
-  "BUILD_CONTEXT_PROVENANCE = compile_commands",
+  # #104: the current exact TU provenance value (was the stale `compile_commands`).
+  "BUILD_CONTEXT_PROVENANCE = exact_tu_compile_database",
   "BUILD_CONTEXT_CONFIDENCE = high",
   "-D_FILE_OFFSET_BITS=64",
 ]
 
+# #104: end-to-end auto that must BUILD and ENTER the real C++ endpoint (control).
+[[repositories.checks]]
+kind = "auto_target_entry"
+target = "tinyxml2::XMLDocument::Parse"
+harness_id = "H-REAL-TINYXML2-ENTRY"
+per_target_time = 3
+
 [[repositories.scenarios]]
 id = "tinyxml2_missing_public_header"
 kind = "auto_missing_file"
-description = "Remove tinyxml2.h from a real tinyxml2 checkout and assert auto reports the missing public API header."
+description = "Remove tinyxml2.h from a real tinyxml2 checkout and assert auto categorizes the resulting undefined-type target as report-only (statically analyzed, not fuzzed)."
 remove_files = ["tinyxml2.h"]
+# #104: regenerate the compile database on the copy so the removed header is not
+# still resolved through the original tree's `-I` (a cmake project).
+reprepare = true
 targets = ["tinyxml2::XMLDocument::Parse"]
 per_target_time = 2
-
-[[repositories.scenarios.expect_needed]]
-bucket = "synthesized_headers"
-locator = "tinyxml2.h"
+# #104: a missing C++ public header makes the target's return type undefined, so
+# the categorized recovery is a report-only degradation (not C-style header
+# synthesis). Assert that intended outcome + reason.
+expect_outcome = "report_only"
+expect_reason_contains = "undefined in the scanned tree"
 
 [[repositories]]
 id = "adayaml"
@@ -148,3 +170,43 @@ expect_stderr_contains = "To_Duration_64"
 id = "ada_util_gnat13_calendar_conversions_gap"
 kind = "toolchain_gap"
 description = "ada-util's pinned Util.Dates body selects GCC 15 Ada.Calendar.Conversions APIs by default; the validation host uses GNAT 13."
+
+# #104: hermetic, dependency-free Ada endpoint (checked into the tree) that auto
+# BUILDS and ENTERS with NO --project — proving real Ada target entry offline in
+# normal CI while exercising automatic governing-GPR selection (#91). The pinned
+# real Ada repos (adayaml/ada_util) above remain the scheduled/network evidence.
+[[repositories]]
+id = "ada_local"
+local_path = "ada_local"
+language = "ada"
+license = "Apache-2.0"
+
+[[repositories.checks]]
+kind = "list_targets"
+path = "."
+top = 10
+min_targets = 1
+
+[[repositories.checks]]
+kind = "auto_target_entry"
+target = "Parse"
+harness_id = "H-LOCAL-ADA-ENTRY"
+per_target_time = 3
+
+# #104: hermetic Ada broken-build evidence. `Dep_Parser.Check` withs `Vendor_Lib`;
+# removing that unit's source reproduces the real failure mode of legacy Ada
+# projects whose Alire/GPR dependencies can't be resolved offline. auto must
+# categorize this as a failed build that NAMES the unresolved unit (not crash,
+# not silently pass) — the Ada counterpart to the C/C++ missing-header scenarios.
+[[repositories.scenarios]]
+id = "ada_local_missing_dependency"
+kind = "auto_missing_file"
+description = "Remove the in-tree Vendor_Lib dependency and assert auto categorizes the dependent Ada target as a failed build naming the unresolved unit."
+remove_files = ["src/vendor_lib.ads", "src/vendor_lib.adb"]
+targets = ["Check"]
+per_target_time = 2
+expect_outcome = "failed_build"
+
+[[repositories.scenarios.expect_needed]]
+bucket = "missing_ada_units"
+locator = "vendor_lib.Score"

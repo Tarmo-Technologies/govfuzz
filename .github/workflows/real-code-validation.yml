@@ -1,0 +1,131 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# #104: turn the pinned real-project matrix into an executable gate.
+#
+#  - `offline-gate` runs on every push/PR: it materializes NOTHING from the
+#    network and proves a real Ada build-and-target-entry offline against the
+#    hermetic `ada_local` fixture (plus the manifest contract). It is the
+#    always-on subset the acceptance criteria require in normal CI.
+#  - `network-gate` runs on a schedule / on demand: it clones the pinned C, C++,
+#    and Ada repositories, runs bounded build-and-enter-target checks end to end,
+#    and FAILS if the readiness gate is not `pass` (or was skipped), so a
+#    regression that yields no fuzz successes cannot ship silently.
+
+name: Real-Code Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-code-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-gate:
+    name: Offline target-entry gate (hermetic)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+
+      - name: Install Ada + C/C++ toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gprbuild gnat-13 clang cmake
+
+      # Exercises the manifest contract plus the hermetic ada_local end-to-end
+      # run (real gnatmake build + observed AdaFuzz target entry, no --project,
+      # so automatic governing-GPR selection is covered). With GNAT present the
+      # offline entry test does not skip — a stale expectation fails loudly here.
+      - name: Real-code manifest + offline Ada target-entry gate
+        run: cargo test -p govfuzz --test real_code_validation -- --nocapture
+
+  network-gate:
+    name: Pinned network materialization gate
+    # Cloning the pinned repositories needs network egress, so this is the
+    # scheduled / on-demand companion to the always-on offline gate.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: stable
+
+      - name: Install Ada + C/C++ toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gprbuild gnat-13 clang cmake
+
+      - name: Build govfuzz
+        run: cargo build -p govfuzz
+
+      - name: Run bounded real-code matrix (network materialization)
+        env:
+          GOVFUZZ_BIN: ${{ github.workspace }}/target/debug/govfuzz
+        run: |
+          python3 scripts/validation/real-code-matrix.py \
+            --repo cjson --repo tinyxml2 --repo ada_local \
+            --workspace "${RUNNER_TEMP}/real-code" \
+            --json-out "${RUNNER_TEMP}/real-code.json" \
+            --markdown-out "${RUNNER_TEMP}/real-code.md"
+
+      - name: Enforce readiness gate (fail on regression or skipped gate)
+        run: |
+          python3 - "${RUNNER_TEMP}/real-code.json" <<'PY'
+          import json
+          import sys
+
+          result = json.load(open(sys.argv[1]))
+          gate = result.get("readiness_gate", {})
+          summary = result.get("summary", {})
+          entry = summary.get("target_entry_by_language")
+
+          problems = []
+          if gate.get("status") != "pass":
+              problems.append(f"readiness gate not pass: {gate.get('failed_reasons')}")
+          # A skipped gate must fail loudly: an executed run always records the
+          # per-language target-entry map, so its absence means the gate was skipped.
+          if entry is None:
+              problems.append("target-entry gate was skipped (no executed entry map)")
+          else:
+              for language in ("ada", "c", "cpp"):
+                  if not entry.get(language):
+                      problems.append(f"no proven {language} target entry")
+
+          if problems:
+              print("REAL-CODE GATE FAILED:")
+              for problem in problems:
+                  print(f"  - {problem}")
+              sys.exit(1)
+          print("real-code readiness gate: pass")
+          print("toolchain:", json.dumps(result.get("toolchain_versions", {}), indent=2))
+          PY
+
+      - name: Upload evidence report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: real-code-evidence
+          path: |
+            ${{ runner.temp }}/real-code.json
+            ${{ runner.temp }}/real-code.md
+          if-no-files-found: ignore

@@ -1094,6 +1094,39 @@ fn walk(
 /// file is recorded in the bug report and skipped, instead of aborting the whole
 /// discovery walk (a single malformed input used to kill the run). A normal parse
 /// ERROR still propagates via `?`.
+/// #102: record that `path` was dropped from discovery because `stage` (read /
+/// decode / parse) failed, then return `Ok(())` so the sweep continues. The file
+/// contributes no targets, but the failure is now durable in the run's diagnostics
+/// instead of looking exactly like "this file has no fuzzable endpoints" — the
+/// difference between a project with nothing to fuzz and a parser regression on a
+/// large legacy tree.
+fn record_discovery_drop(path: &Path, language: &str, stage: &str, error: &str) -> Result<()> {
+    crate::auto::bug_report::record_discovery_diagnostic(language, stage, path, error);
+    Ok(())
+}
+
+/// #102: coarse language hint from a file's extension for the READ stage, which
+/// runs before `detect_lang` — so a file we cannot even read still records the
+/// most likely lane rather than an opaque "unknown".
+fn discovery_lang_hint(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase)
+        .as_deref()
+    {
+        Some("ads" | "adb" | "ada") => "ada",
+        Some("c" | "h") => "c",
+        Some("cc" | "cpp" | "cxx" | "hpp" | "hh" | "hxx") => "cpp",
+        Some("rs") => "rust",
+        Some("java") => "java",
+        Some("py") => "python",
+        Some("pl" | "pm") => "perl",
+        Some("go") => "go",
+        _ => "source",
+    }
+}
+
 fn discover_file_guarded(
     path: &Path,
     out: &mut Vec<Candidate>,
@@ -1127,7 +1160,16 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
     // files would silently hide real fuzzable subprograms from the sweep.
     let source = match crate::source_text::read_source_text(path) {
         Ok(s) => s,
-        Err(_) => return Ok(()),
+        // #102: a file we can't read/decode is dropped, but record it so a
+        // permissions/encoding regression on a legacy tree is visible.
+        Err(error) => {
+            return record_discovery_drop(
+                path,
+                discovery_lang_hint(path),
+                "read",
+                &error.to_string(),
+            )
+        }
     };
     let Some(lang) = detect_lang(path, &source) else {
         return Ok(());
@@ -1168,7 +1210,10 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             let body_has_sibling_spec = !is_spec_file && path.with_extension("ads").is_file();
             let ast = match ada_parser::reconcile::build_structural_ast(&source, None, path) {
                 Ok(a) => a,
-                Err(_) => return Ok(()),
+                // #102: malformed Ada drops silently otherwise — record it.
+                Err(error) => {
+                    return record_discovery_drop(path, "ada", "parse", &format!("{error:?}"))
+                }
             };
             let unit_has_concurrency = ada_unit_has_concurrency(path, &source);
             for tgt in target_rank::rank_targets(&ast) {
@@ -1254,10 +1299,16 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             let (fns, dialect) = if !knr.is_empty() {
                 (knr, Some(lang_profile::Dialect::CKAndR))
             } else {
-                let Ok(modern) =
-                    parse_c_functions_preprocessed(&source, preprocess, &preprocessor_defines)
-                else {
-                    return Ok(());
+                let modern = match parse_c_functions_preprocessed(
+                    &source,
+                    preprocess,
+                    &preprocessor_defines,
+                ) {
+                    Ok(modern) => modern,
+                    // #102: record a malformed C translation unit instead of dropping it.
+                    Err(error) => {
+                        return record_discovery_drop(path, "c", "parse", &format!("{error:?}"))
+                    }
                 };
                 (modern, Some(lang_profile::Dialect::C99))
             };
@@ -1290,10 +1341,16 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
         Lang::Cpp => {
             // §27.6: parse the preprocessed text under `preprocess`, translating
             // each surviving function's line back to the ORIGINAL source.
-            let Ok(fns) =
-                parse_cpp_functions_preprocessed(&source, preprocess, &preprocessor_defines)
-            else {
-                return Ok(());
+            let fns = match parse_cpp_functions_preprocessed(
+                &source,
+                preprocess,
+                &preprocessor_defines,
+            ) {
+                Ok(fns) => fns,
+                // #102: record a malformed C++ translation unit instead of dropping it.
+                Err(error) => {
+                    return record_discovery_drop(path, "cpp", "parse", &format!("{error:?}"))
+                }
             };
             let fns = dedup_cpp_functions(fns);
             let known_blocked = crate::generate_harness::cpp_known_blocked_signatures_for_discovery(
@@ -1354,8 +1411,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // and carries `is_static` / `foreign_guard` / reachability through,
             // so the discovery arm is a thin map (no re-parse). The attempt loop
             // pre-skips these cleanly until the harness/build/engine lane (M1.2).
-            let Ok(fns) = rust_parser::parse_rust_functions(&source) else {
-                return Ok(());
+            let fns = match rust_parser::parse_rust_functions(&source) {
+                Ok(fns) => fns,
+                Err(error) => {
+                    return record_discovery_drop(path, "rust", "parse", &format!("{error:?}"))
+                }
             };
             for tgt in target_rank::rank_rust_targets(&fns) {
                 out.push(Candidate {
@@ -1378,8 +1438,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // `is_static`/reachability through so the discovery arm is a thin map.
             // The attempt loop pre-skips these cleanly until the build/agent/engine
             // lane (M2.1b-d) lands. Java has no `#[cfg]`-style guard -> None.
-            let Ok(methods) = java_parser::parse_java_methods(&source) else {
-                return Ok(());
+            let methods = match java_parser::parse_java_methods(&source) {
+                Ok(methods) => methods,
+                Err(error) => {
+                    return record_discovery_drop(path, "java", "parse", &format!("{error:?}"))
+                }
             };
             for tgt in target_rank::rank_java_targets(&methods) {
                 out.push(Candidate {
@@ -1410,7 +1473,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             } else {
                 match python_parser::parse_python_functions(&source) {
                     Ok(f) => f,
-                    Err(_) => return Ok(()),
+                    Err(error) => {
+                        return record_discovery_drop(
+                            path,
+                            "python",
+                            "parse",
+                            &format!("{error:?}"),
+                        )
+                    }
                 }
             };
             for tgt in target_rank::rank_python_targets(&functions) {
@@ -1432,8 +1502,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // M3.2: discover + rank Perl subs. The ranker drops private/special subs,
             // prefers parse/decode names, and carries is_static (function vs OO method)
             // + reachability. Perl has no platform guard -> None.
-            let Ok(subs) = perl_parser::parse_perl_subs(&source) else {
-                return Ok(());
+            let subs = match perl_parser::parse_perl_subs(&source) {
+                Ok(subs) => subs,
+                Err(error) => {
+                    return record_discovery_drop(path, "perl", "parse", &format!("{error:?}"))
+                }
             };
             for tgt in target_rank::rank_perl_targets(&subs) {
                 out.push(Candidate {
@@ -1462,8 +1535,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             {
                 return Ok(());
             }
-            let Ok(functions) = go_parser::parse_go_functions(&source) else {
-                return Ok(());
+            let functions = match go_parser::parse_go_functions(&source) {
+                Ok(functions) => functions,
+                Err(error) => {
+                    return record_discovery_drop(path, "go", "parse", &format!("{error:?}"))
+                }
             };
             for tgt in target_rank::rank_go_targets(&functions) {
                 out.push(Candidate {

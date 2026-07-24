@@ -87,6 +87,57 @@ struct Summary {
     /// walked into it". 0 (omitted) when nothing was confirmed.
     #[serde(skip_serializing_if = "is_zero")]
     fuzz_confirmed: usize,
+    /// #102: source files DROPPED from discovery because a read/decode/parse
+    /// stage failed, grouped by (language, stage, error class). Empty when every
+    /// scanned file was read + parsed. Makes a parser regression on a large legacy
+    /// tree visible instead of indistinguishable from "no fuzzable endpoints".
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    discovery_diagnostics: Vec<DiscoveryDiagnosticRow>,
+}
+
+/// #102: one grouped discovery-drop row for `run.json` — a (language, stage,
+/// error class) with the number of files it hit and one bounded, scrubbed sample
+/// of the error tail. No paths, filenames, source, or identifiers.
+#[derive(Debug, Clone, Serialize)]
+struct DiscoveryDiagnosticRow {
+    language: String,
+    stage: String,
+    category: String,
+    files: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sample: Option<String>,
+}
+
+/// #102: collect + group the discovery-drop diagnostics recorded during the sweep
+/// into deterministic `run.json` rows. Reads the shared bug-report snapshot (the
+/// same source `bug-report.json` uses), keeps only `DiscoveryDiagnostic` issues,
+/// and sorts by (language, stage, category) so repeated runs are byte-identical.
+fn collect_discovery_diagnostics() -> Vec<DiscoveryDiagnosticRow> {
+    let mut rows: Vec<DiscoveryDiagnosticRow> = crate::auto::bug_report::snapshot()
+        .into_iter()
+        .filter(|issue| {
+            issue.category == crate::auto::bug_report::IssueCategory::DiscoveryDiagnostic
+        })
+        .map(|issue| {
+            // `summary` is "<language> <stage>: <category>".
+            let (lhs, category) = issue
+                .summary
+                .split_once(": ")
+                .unwrap_or((issue.summary.as_str(), ""));
+            let (language, stage) = lhs.split_once(' ').unwrap_or((lhs, ""));
+            DiscoveryDiagnosticRow {
+                language: language.to_owned(),
+                stage: stage.to_owned(),
+                category: category.to_owned(),
+                files: issue.occurrences,
+                sample: issue.detail.clone(),
+            }
+        })
+        .collect();
+    rows.sort_by(|a, b| {
+        (&a.language, &a.stage, &a.category).cmp(&(&b.language, &b.stage, &b.category))
+    });
+    rows
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -701,6 +752,9 @@ pub fn write_reports(
     // #484: how many of those static findings a fuzz/oracle hit confirmed (read
     // from disk so a `--resume` reload reports the same number the join set).
     summary.fuzz_confirmed = crate::auto::confirm::count_fuzz_confirmed(work_dir);
+    // #102: surface any files dropped from discovery (read/decode/parse failures)
+    // so a parser regression is visible in run.json, not just bug-report.json.
+    summary.discovery_diagnostics = collect_discovery_diagnostics();
 
     needed.synthesized_headers = drain_bag(bag_headers);
     needed.synthesized_types = drain_bag(bag_types);
@@ -2605,6 +2659,28 @@ fn render_md(r: &RunJson<'_>) -> String {
     let _ = writeln!(s, "Mode: {}", r.mode.as_str());
     let _ = writeln!(s);
     let _ = writeln!(s, "Discovered: {}", r.summary.discovered);
+    // #102: a run with zero candidates but parser failures must say WHY, so a
+    // parser regression on a large tree is never read as an unexplained clean no-op.
+    if r.summary.discovered == 0 && !r.summary.discovery_diagnostics.is_empty() {
+        let dropped: usize = r
+            .summary
+            .discovery_diagnostics
+            .iter()
+            .map(|d| d.files)
+            .sum();
+        let langs: std::collections::BTreeSet<&str> = r
+            .summary
+            .discovery_diagnostics
+            .iter()
+            .map(|d| d.language.as_str())
+            .collect();
+        let _ = writeln!(
+            s,
+            "  No targets discovered. Reason: {dropped} file(s) failed to read/parse ({}). \
+             See the Discovery Diagnostics section.",
+            langs.into_iter().collect::<Vec<_>>().join(", ")
+        );
+    }
     if r.summary.dropped_by_cap > 0 {
         let _ = writeln!(
             s,
@@ -2626,6 +2702,36 @@ fn render_md(r: &RunJson<'_>) -> String {
         r.summary.unrecoverable_runtime
     );
     let _ = writeln!(s, "Findings:   {}", r.summary.findings);
+    // #102: durable, grouped discovery-drop diagnostics (read/decode/parse
+    // failures). Each row is one (language, stage, class) with the file count and
+    // one bounded, scrubbed sample — no paths, filenames, source, or identifiers.
+    if !r.summary.discovery_diagnostics.is_empty() {
+        let total: usize = r
+            .summary
+            .discovery_diagnostics
+            .iter()
+            .map(|d| d.files)
+            .sum();
+        let _ = writeln!(s);
+        let _ = writeln!(
+            s,
+            "## Discovery Diagnostics — {total} file(s) dropped (read/parse failures)"
+        );
+        for d in &r.summary.discovery_diagnostics {
+            let _ = writeln!(
+                s,
+                "  - {} {} {} — {} file(s){}",
+                d.language,
+                d.stage,
+                d.category,
+                d.files,
+                d.sample
+                    .as_deref()
+                    .map(|s| format!(": {s}"))
+                    .unwrap_or_default()
+            );
+        }
+    }
     // force-fuzz Phase 2: a forced sweep that fuzzed synthesized stubs must not read
     // as N confirmed campaigns — surface the forced-and-stub-heavy count distinctly,
     // right next to the fuzzed total, and note the findings are floored to Low.

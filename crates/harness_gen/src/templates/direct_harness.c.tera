@@ -83,6 +83,18 @@
 extern {{ return_type }} {{ qualified_target_name }}({% for p in params %}{{ p.c_type }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
 
+{#- #93: forward-declare govfuzz's own generated entry points BEFORE their
+    definitions. A recovered compile database can carry `-Wmissing-prototypes`
+    (often with `-Werror`), which govfuzz applies to this generated translation
+    unit too; without a prior prototype the non-static `govfuzz_run_one` /
+    `LLVMFuzzerTestOneInput` would fail the build. Emitting the prototype fixes the
+    generated code WITHOUT weakening the warning policy on the project's own
+    sources. #}
+int govfuzz_run_one(const uint8_t *Data, size_t Size);
+{%- if not passthrough_libfuzzer_entrypoint %}
+int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
+{%- endif %}
+
 /* Auto-injected by govfuzz: republish fuzz input to the Linux runtrace shim so
  * fuzz-driven mode can route the current iteration's bytes into fake fds /
  * socket peers / dlopen stubs. Windows has no preload shim and must not emit a

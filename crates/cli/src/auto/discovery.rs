@@ -1465,7 +1465,31 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // file because of a K&R false positive.
             let knr = c_parser::parse_knr_functions(&source);
             let (fns, dialect) = if !knr.is_empty() {
-                (knr, Some(lang_profile::Dialect::CKAndR))
+                // #5 (offline-legacy audit): a transitional 1990s TU commonly MIXES
+                // a few old-style K&R helpers with ANSI-prototyped public parsers
+                // (the real fuzz targets). The K&R extractor only returns old-style
+                // definitions, so using it ALONE silently drops every ANSI function
+                // in the file. Merge instead: keep each K&R function's
+                // decl-block-derived signature (the modern parser sees old-style
+                // defs as zero-param), and add the modern parser's functions that
+                // the K&R parser did not recognize (by name). The dialect stays K&R
+                // — the whole TU must build under a K&R-tolerant std because an
+                // old-style definition is an error under C99+.
+                let mut merged = knr;
+                let knr_names: std::collections::HashSet<String> = merged
+                    .iter()
+                    .map(|function| function.name.clone())
+                    .collect();
+                if let Ok(modern) =
+                    parse_c_functions_preprocessed(&source, preprocess, &preprocessor_defines)
+                {
+                    for function in modern {
+                        if !knr_names.contains(&function.name) {
+                            merged.push(function);
+                        }
+                    }
+                }
+                (merged, Some(lang_profile::Dialect::CKAndR))
             } else {
                 let modern = match parse_c_functions_preprocessed(
                     &source,

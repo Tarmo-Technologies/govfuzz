@@ -924,6 +924,39 @@ fn plan_pass_budget(
     (total / pass_count.max(1), total)
 }
 
+/// The wall budget for the pass about to run, given what the cascade has left and
+/// how the passes before it actually behaved.
+///
+/// An even split spends the same wall clock on every pass, but the passes are not
+/// equally useful and do not consume what they are given. `empty` feeds ONE
+/// input, so a third of the target's time is time it cannot use; `rng` is a
+/// smoke test over random bytes. `fuzz_driven` is the coverage-guided pass —
+/// the one that actually explores — and it runs LAST, so whatever the earlier
+/// passes leave unused should reach it rather than expire.
+///
+/// So: divide the time that REMAINS by the passes that remain. A pass that
+/// returns early hands its remainder forward automatically, and the cheap
+/// leading passes are additionally capped, since giving `empty` a full share is
+/// giving it time it provably cannot spend.
+fn adaptive_pass_budget(
+    pass: crate::auto::pass::Pass,
+    remaining_total: Duration,
+    remaining_passes: usize,
+) -> Duration {
+    use crate::auto::pass::Pass;
+    let even_share = remaining_total / (remaining_passes.max(1) as u32);
+    match pass {
+        // One input. It needs long enough to run and report, not a share of the
+        // campaign; the cap is generous next to what it can use.
+        Pass::Empty => even_share.min(Duration::from_secs(2)),
+        // Random bytes with no feedback: useful as a shakeout, but it cannot
+        // build on what it finds, so it should not hold coverage-guided time.
+        Pass::Rng => even_share.min(remaining_total / 4),
+        // The pass that explores. It gets everything still unspent.
+        Pass::FuzzDriven => remaining_total,
+    }
+}
+
 /// The leaf class name that owns a C++ method, given its qualified candidate name
 /// (`json11::JsonParser::expect(int)` -> `JsonParser`). The owner is the
 /// second-to-last `::` segment of the name's signature-free prefix. Returns `None`
@@ -2618,6 +2651,19 @@ fn run_attempt(
                     // #402: this pass's wall budget. With a shared campaign
                     // deadline, give the pass the smaller of its equal share and
                     // the time left, and stop the cascade once the total is spent.
+                    // What this target has left of its own budget, after the
+                    // passes that already ran. An even up-front split gives the
+                    // cheap leading passes time they cannot use and expires it;
+                    // re-planning each pass hands it to the one that explores.
+                    let target_remaining = total_wall_budget.saturating_sub(fuzz_started.elapsed());
+                    if target_remaining.is_zero() && pass_idx > 0 {
+                        break;
+                    }
+                    let planned = adaptive_pass_budget(
+                        *pass,
+                        target_remaining,
+                        builtin_passes.len().saturating_sub(pass_idx),
+                    );
                     let time_budget = match campaign_deadline {
                         Some(deadline) => {
                             let remaining =
@@ -2625,9 +2671,9 @@ fn run_attempt(
                             if remaining.is_zero() {
                                 break;
                             }
-                            Some(remaining.min(per_pass_budget))
+                            Some(remaining.min(planned))
                         }
-                        None => Some(per_pass_budget),
+                        None => Some(planned),
                     };
                     let pass_label = pass.as_str();
                     progress.update(&ProgressUpdate {
@@ -10241,5 +10287,89 @@ mod eject_unbuildable_added_source_tests {
             Some(PathBuf::from("/proj/src/a.c"))
         );
         assert_eq!(sources, vec![PathBuf::from("/proj/src/b.c")]);
+    }
+}
+
+#[cfg(test)]
+mod adaptive_pass_budget_tests {
+    //! The fuzz cascade used to split a target's wall clock evenly across its
+    //! passes. The passes are not equally useful and do not consume what they are
+    //! given: `empty` feeds one input, `rng` cannot build on what it finds, and
+    //! `fuzz_driven` — the coverage-guided pass that actually explores — runs
+    //! last, so an even split expired time the explorer could have used.
+    use super::*;
+    use crate::auto::pass::Pass;
+
+    const TOTAL: Duration = Duration::from_secs(60);
+
+    #[test]
+    fn the_empty_pass_takes_only_what_one_input_needs() {
+        let budget = adaptive_pass_budget(Pass::Empty, TOTAL, 3);
+        assert!(
+            budget <= Duration::from_secs(2),
+            "one input does not need a third of the campaign: {budget:?}"
+        );
+    }
+
+    #[test]
+    fn the_exploring_pass_receives_everything_still_unspent() {
+        // Whatever the earlier passes did not use reaches the last pass, rather
+        // than expiring with the target.
+        let left = Duration::from_secs(55);
+        assert_eq!(adaptive_pass_budget(Pass::FuzzDriven, left, 1), left);
+    }
+
+    #[test]
+    fn the_explorer_gets_more_than_an_even_share_would_have_given_it() {
+        let even_share = TOTAL / 3;
+        // `empty` and `rng` have run cheaply, so most of the budget survives.
+        let left = Duration::from_secs(50);
+        let adaptive = adaptive_pass_budget(Pass::FuzzDriven, left, 1);
+        assert!(
+            adaptive > even_share,
+            "the whole point is that unused time reaches the explorer: \
+             {adaptive:?} vs {even_share:?}"
+        );
+    }
+
+    #[test]
+    fn the_random_pass_never_holds_most_of_the_budget() {
+        let budget = adaptive_pass_budget(Pass::Rng, TOTAL, 2);
+        assert!(
+            budget <= TOTAL / 4,
+            "a feedback-free pass must not crowd out the coverage-guided one: \
+             {budget:?}"
+        );
+    }
+
+    #[test]
+    fn no_pass_is_given_more_than_the_target_has_left() {
+        // The absolute per-target cap is what stops a runaway target; a pass
+        // budget must never exceed the time actually remaining.
+        for pass in [Pass::Empty, Pass::Rng, Pass::FuzzDriven] {
+            let left = Duration::from_millis(300);
+            assert!(
+                adaptive_pass_budget(pass, left, 3) <= left,
+                "{pass:?} over-committed the remaining budget"
+            );
+        }
+    }
+
+    #[test]
+    fn an_exhausted_budget_yields_nothing_to_any_pass() {
+        for pass in [Pass::Empty, Pass::Rng, Pass::FuzzDriven] {
+            assert_eq!(
+                adaptive_pass_budget(pass, Duration::ZERO, 3),
+                Duration::ZERO,
+                "{pass:?} must not resurrect a spent budget"
+            );
+        }
+    }
+
+    #[test]
+    fn a_single_pass_run_gives_that_pass_the_whole_budget() {
+        // `--passes fuzz` is a documented triage mode; it must not be throttled
+        // by a share intended to leave room for passes that are not running.
+        assert_eq!(adaptive_pass_budget(Pass::FuzzDriven, TOTAL, 1), TOTAL);
     }
 }

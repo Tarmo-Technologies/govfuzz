@@ -451,6 +451,7 @@ mod tests {
                 },
             ],
             object_dir: root.join("obj"),
+            exec_dir: None,
             main_adb: Some("main.adb".to_owned()),
             ada_standard: AdaStandard::Ada2012,
             target: None,

@@ -12,7 +12,11 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 const WORK_STATE_SCHEMA_VERSION: u32 = 1;
-pub(crate) const GENERATED_STATE_SEMANTIC_VERSION: u32 = 1;
+/// Bumped to 2: the force-fuzz Ada external-stub model, its rendered sources, and
+/// the Ada object directory moved from per-target `repairs/` to run scope, so a
+/// work dir produced by an earlier binary holds them in places this one no longer
+/// reads.
+pub(crate) const GENERATED_STATE_SEMANTIC_VERSION: u32 = 2;
 const STATE_FILE: &str = "auto/work-state.json";
 
 const REGENERABLE_DIRECTORIES: &[&str] = &[
@@ -27,9 +31,23 @@ const REGENERABLE_DIRECTORIES: &[&str] = &[
     "afl_out",
     "afl_qemu_out",
     "cxx_dialects",
+    // Run-level force-fuzz Ada state: the reconstructed external-library stub
+    // sources and the object directory every harness shares. Both are carried
+    // ACROSS targets within a run (that is the point — the project's closure and
+    // its stub set are project properties, not per-target ones), so they need
+    // refreshing at run scope like any other generated artifact.
+    crate::build::SHARED_ADA_STUBS_DIR,
+    crate::build::SHARED_ADA_OBJ_DIR,
 ];
 
-const REGENERABLE_FILES: &[&str] = &["c_compat.mk", "cxx_dialect.txt"];
+const REGENERABLE_FILES: &[&str] = &[
+    "c_compat.mk",
+    "cxx_dialect.txt",
+    crate::auto::attempt::ADA_EXTERNAL_MODEL,
+    // Cached "this closure cannot be built" verdicts. Regenerable by definition,
+    // and a stale one would suppress a cascade that a new binary might win.
+    crate::auto::closure_memo::MEMO_FILE,
+];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct WorkStateCheckpoint {

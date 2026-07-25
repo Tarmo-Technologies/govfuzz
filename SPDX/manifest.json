@@ -887,6 +887,22 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/ada_body_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/ada_client_symbols.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/ada_external_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/ada_generic_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/alire_config.rs",
       "license": "Apache-2.0"
     },
@@ -896,6 +912,10 @@
     },
     {
       "path": "crates/cli/src/auto/attestation.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/blocker_histogram.rs",
       "license": "Apache-2.0"
     },
     {
@@ -916,6 +936,10 @@
     },
     {
       "path": "crates/cli/src/auto/cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/closure_memo.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1383,6 +1407,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_ada_dialect_ladder.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_ada_generic_ctor.rs",
       "license": "Apache-2.0"
     },
@@ -1415,6 +1443,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_blocker_histogram.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_build_command.rs",
       "license": "Apache-2.0"
     },
@@ -1443,7 +1475,15 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_c_syntax_check_round.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_cascade.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_closure_failure_memo.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1500,6 +1540,30 @@
     },
     {
       "path": "crates/cli/tests/auto_exec_taint_confirm.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_ada_alias_param.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_ada_body_stubout.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_ada_external_param.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_ada_external_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_ada_generic_stub.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_ada_opaque_param.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1708,6 +1772,10 @@
     },
     {
       "path": "crates/cli/tests/ci_changed_since.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/cli_no_compiler.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3519,6 +3587,18 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "tests/fixtures/ada_dialect_ladder/app.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_dialect_ladder/src/legacy.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/ada_dialect_ladder/src/legacy.ads",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "tests/fixtures/ada_generic_private_ctor/value_pkg.adb",
       "license": "Apache-2.0"
     },
@@ -3724,6 +3804,94 @@
     },
     {
       "path": "tests/fixtures/engine_parity/redqueen_int/redqueen_int.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_alias_param/aliasapp.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_alias_param/src/aliasapp-check.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_alias_param/src/aliasapp-check.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_alias_param/src/aliasapp.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_body_stubout/app.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_body_stubout/src/app-util.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_body_stubout/src/app-util.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_body_stubout/src/app.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_body_stubout/src/app.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_external_lib/bigapp.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_external_lib/src/bigapp.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_external_lib/src/bigapp.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_external_param/app.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_external_param/src/app.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_external_param/src/app.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_generic_lib/genapp.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_generic_lib/src/genapp-options.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_generic_lib/src/genapp.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_generic_lib/src/genapp.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_opaque_param/app.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_opaque_param/src/app.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_opaque_param/src/app.ads",
       "license": "Apache-2.0"
     },
     {

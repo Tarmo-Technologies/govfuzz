@@ -167,13 +167,16 @@ pub struct AutoArgs {
     #[arg(long = "single-pass")]
     pub single_pass: bool,
 
-    /// Number of candidates to build+fuzz CONCURRENTLY (default 1 = serial, exactly
-    /// today's behavior). With N>1, up to N targets' build+fuzz run in parallel via a
-    /// bounded worker pool. MEMORY: each concurrent fuzz uses up to `--rss-limit-mb`
-    /// of RAM, so effective peak memory is roughly `jobs x rss-limit-mb` — size it to
-    /// the host (a too-high value OOM-kills, e.g. inside a cgroup MemoryMax slice).
+    /// Number of candidates to build+fuzz CONCURRENTLY. Defaults to half the
+    /// host's parallelism (capped, minimum 1); pass `--jobs 1` for the historical
+    /// serial sweep. Up to N targets' build+fuzz run in parallel via a bounded
+    /// worker pool. MEMORY: each concurrent fuzz uses up to `--rss-limit-mb` of
+    /// RAM, so effective peak memory is roughly `jobs x rss-limit-mb` — size it to
+    /// the host (a too-high value OOM-kills, e.g. inside a cgroup MemoryMax slice),
+    /// which is why the default is half the cores rather than all of them.
     /// Results are aggregated deterministically regardless of completion order.
-    #[arg(long = "jobs", short = 'j', default_value_t = 1, value_name = "N")]
+    /// Ada targets build serially regardless: they share the staged source tree.
+    #[arg(long = "jobs", short = 'j', default_value_t = default_auto_jobs(), value_name = "N")]
     pub jobs: usize,
 
     /// DEPRECATED no-op: discovery caching is now ON BY DEFAULT (this flag is
@@ -1274,9 +1277,10 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let jobs = args.jobs.max(1);
     if jobs > 1 {
         eprintln!(
-            "govfuzz auto: running up to {jobs} candidate(s) concurrently (--jobs {jobs}); \
-             child RSS allowance = jobs x rss-limit-mb = {} MB, plus parent/index/build/report \
-             overhead — size the total to the host",
+            "govfuzz auto: running up to {jobs} candidate(s) concurrently (--jobs {jobs}, \
+             default: half the host's cores); child RSS allowance = jobs x rss-limit-mb = {} MB, \
+             plus parent/index/build/report overhead — size the total to the host, or pass \
+             `--jobs 1` for a serial sweep",
             jobs.saturating_mul(args.rss_limit_mb)
         );
         if candidates
@@ -1934,6 +1938,27 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             "warning: could not write {}: {error}",
             summary_path.display()
         );
+    }
+
+    // Why each non-fuzzed target stopped, grouped per language and ordered by
+    // how many targets share the cause. The counts are the whole point: the top
+    // row is the next lever worth building, and re-running after building it is
+    // how that lever gets judged. Diagnostic only — nothing above depends on it.
+    let blockers = crate::auto::blocker_histogram::BlockerHistogram::from_results(&results);
+    if !blockers.is_empty() {
+        eprint!("{}", blockers.render());
+        let blockers_path = work.join("auto").join("blockers.json");
+        match serde_json::to_vec_pretty(&blockers.to_json()) {
+            Ok(bytes) => {
+                if let Err(error) = std::fs::write(&blockers_path, &bytes) {
+                    eprintln!(
+                        "warning: could not write {}: {error}",
+                        blockers_path.display()
+                    );
+                }
+            }
+            Err(error) => eprintln!("warning: could not serialize residual blockers: {error}"),
+        }
     }
 
     // End-of-run UX: the most severe findings (what matters, with a reproduce command)
@@ -2763,6 +2788,26 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
 /// the dry-run plan and the real sweep cannot disagree about the cap.
 fn capped_target_count(total: usize, max_targets: Option<usize>) -> usize {
     max_targets.map_or(total, |cap| total.min(cap))
+}
+
+/// Default candidate concurrency: half the host's parallelism, at least 1.
+///
+/// Half rather than all, because each concurrent fuzz is allowed up to
+/// `--rss-limit-mb` and the peak is roughly `jobs x rss-limit-mb` — a default
+/// that saturates the cores would OOM inside a constrained cgroup. Capped so a
+/// very large host does not silently pick a job count whose memory footprint
+/// nobody sized for. `GOVFUZZ_DEFAULT_JOBS` overrides.
+pub(crate) fn default_auto_jobs() -> usize {
+    const MAX_DEFAULT_JOBS: usize = 8;
+    if let Some(raw) = std::env::var_os("GOVFUZZ_DEFAULT_JOBS") {
+        if let Some(jobs) = raw.to_str().and_then(|value| value.trim().parse().ok()) {
+            if jobs > 0 {
+                return jobs;
+            }
+        }
+    }
+    let cores = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
+    (cores / 2).clamp(1, MAX_DEFAULT_JOBS)
 }
 
 pub(crate) fn default_auto_rss_limit_mb() -> usize {
@@ -3630,6 +3675,21 @@ mod tests {
     }
 
     #[test]
+    fn the_default_job_count_stays_within_the_documented_bounds() {
+        let jobs = default_auto_jobs();
+        assert!(jobs >= 1, "must attempt at least one candidate");
+        let cores = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
+        assert!(
+            jobs <= cores.max(1),
+            "never more concurrent fuzzers than the host has cores: {jobs} > {cores}"
+        );
+        assert!(
+            jobs <= 8,
+            "peak memory is jobs x rss-limit-mb, so the default is capped: {jobs}"
+        );
+    }
+
+    #[test]
     fn scaling_flags_parse_with_expected_defaults_and_values() {
         use clap::Parser as _;
         #[derive(clap::Parser)]
@@ -3637,9 +3697,17 @@ mod tests {
             #[command(flatten)]
             auto: AutoArgs,
         }
-        // Defaults: serial, all repair rounds, no caps, no reuse.
+        // Defaults: host-sized concurrency, all repair rounds, no caps, no reuse.
         let def = TestCli::try_parse_from(["govfuzz", "tree"]).expect("parses");
-        assert_eq!(def.auto.jobs, 1);
+        assert_eq!(
+            def.auto.jobs,
+            default_auto_jobs(),
+            "the default follows the host rather than pinning one core"
+        );
+        assert!(def.auto.jobs >= 1, "a zero job count would attempt nothing");
+        // Explicitly asking for the historical serial sweep still works.
+        let serial = TestCli::try_parse_from(["govfuzz", "tree", "--jobs", "1"]).expect("parses");
+        assert_eq!(serial.auto.jobs, 1);
         assert_eq!(
             def.auto.max_repair_rounds,
             crate::auto::attempt::DEFAULT_MAX_REPAIR_ROUNDS

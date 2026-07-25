@@ -150,6 +150,7 @@ fn prepare_layout(args: &StubArgs) -> Result<StubLayout, String> {
             },
         ],
         object_dir: obj_dir,
+        exec_dir: None,
         main_adb: Some("main.adb".to_owned()),
         ada_standard,
         target: args.target.clone(),

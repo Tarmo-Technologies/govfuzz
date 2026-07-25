@@ -104,7 +104,7 @@ ifdef GOVFUZZ_CONTEXT_PREPARE_FAILED
 $(error $(GOVFUZZ_CONTEXT_PREPARE_FAILED))
 endif
 
-.PHONY: all afl msan tsan cov prov diff clean
+.PHONY: all afl msan tsan cov prov diff syntaxcheck clean
 all: main
 
 # Target sources stay OUT of the prerequisites and live only in the recipe: an
@@ -117,6 +117,17 @@ govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
 
 main: main.c govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS)
 	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+
+# Semantic check only: the same translation units under the same flags as
+# `main`, minus code generation and the link. The repair loop reads compiler
+# diagnostics, and a round that is going to fail has nothing to learn from the
+# object code it would emit. Prebuilt objects are deliberately absent from both
+# the prerequisites and the recipe: nothing is linked here, and passing an `.o`
+# to `-fsyntax-only` is an error. Undefined symbols therefore cannot surface in
+# this mode — they are found by the real build, which still runs before any
+# target is called successful.
+syntaxcheck: main.c
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -fsyntax-only main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES)
 
 afl: main_afl
 

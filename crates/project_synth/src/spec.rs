@@ -16,6 +16,14 @@ pub struct ProjectSpec {
     pub extends_project: Option<PathBuf>,
     pub source_roots: Vec<SourceRoot>,
     pub object_dir: PathBuf,
+    /// Where the linked executable lands, when it must NOT sit beside the objects.
+    /// A sweep shares one `Object_Dir` across every harness of a project so the
+    /// project's own closure compiles once instead of once per target; each
+    /// harness still needs its own executable, since a later target's link would
+    /// otherwise overwrite the binary an earlier finding has to replay against.
+    /// `None` leaves GNAT's default (the executable sits in `Object_Dir`).
+    #[serde(default)]
+    pub exec_dir: Option<PathBuf>,
     pub main_adb: Option<String>,
     pub ada_standard: AdaStandard,
     pub target: Option<String>,

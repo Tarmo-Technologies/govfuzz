@@ -2543,10 +2543,23 @@ pub(crate) fn plan_repair_forced_with_source_policy(
     | BuildErrorKind::IncompleteType { name }
     | BuildErrorKind::MissingMacro { name, .. } = error
     {
-        if crate::auto::cross_target::is_win32_known_name(name)
-            && !attempted.already_attempted("win32-pack")
-        {
-            return Some(Repair::Win32Pack);
+        if crate::auto::cross_target::is_win32_known_name(name) {
+            if !attempted.already_attempted("win32-pack") {
+                return Some(Repair::Win32Pack);
+            }
+            // The pack OWNS these names, and it defines them with their real
+            // underlying types (`PUCHAR` is `UCHAR *`, `DWORD` is `unsigned
+            // long`). Falling through to the generic placeholder would append a
+            // `typedef void *PUCHAR;` to a header that already includes the
+            // pack's `windows.h` — "typedef redefinition with different types",
+            // which fails the build outright rather than deferring a problem.
+            //
+            // This is reachable whenever one round reports several Win32 names:
+            // the first plans the pack, and every later one in the same round
+            // sees it as already attempted. Declining is correct — a wrong
+            // definition is worse than none, and the pack's force-include is what
+            // actually resolves the name.
+            return None;
         }
     }
     match error {
@@ -3934,6 +3947,31 @@ mod tests {
             plan_repair_with_attempts(&bool_type, &idx, &attempted),
             Some(Repair::Win32Pack)
         ));
+    }
+
+    #[test]
+    fn a_win32_name_never_falls_through_to_a_void_pointer_placeholder() {
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&tmpdir()).unwrap();
+        let attempted = RepairManifest {
+            repairs: vec![Repair::Win32Pack],
+        };
+        // The pack defines these with their real underlying types (`PUCHAR` is
+        // `UCHAR *`, `DWORD` is `unsigned long`). A generic `typedef void *X`
+        // appended next to the pack's own `windows.h` is a redefinition with a
+        // DIFFERENT type, which fails the build outright — strictly worse than
+        // planning nothing. This bit whenever one round reported several Win32
+        // names: the first planned the pack, the rest fell through.
+        for name in ["PUCHAR", "DWORD", "BOOL", "LPVOID"] {
+            let error = BuildErrorKind::MissingType {
+                name: name.to_owned(),
+            };
+            let planned = plan_repair_with_attempts(&error, &idx, &attempted);
+            assert!(
+                planned.is_none(),
+                "{name} is owned by the Win32 pack; no placeholder may be \
+                 synthesized for it, but got {planned:?}"
+            );
+        }
     }
 
     #[test]

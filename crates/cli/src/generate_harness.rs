@@ -8480,6 +8480,101 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
 /// `cpp_parameter_type_supported` can't see through the alias, so the receiver was
 /// wrongly judged unconstructible. (The actual ctor-arg decoding already resolves
 /// the alias via `select_cpp_decoder_with_registry`; this aligns the gate with it.)
+/// Record the class-typed arguments a chosen recipe still needs, so the producer
+/// graph knows what to resolve next.
+///
+/// Only `Constructor` recipes have unresolved needs: an `Expression` is
+/// self-contained by construction.
+fn note_recipe_dependencies(
+    construction: &type_model::ClassConstruction,
+    registry: &type_model::TypeRegistry,
+    wanted: &mut Vec<String>,
+) {
+    let type_model::ClassConstruction::Constructor { param_types } = construction else {
+        return;
+    };
+    for param_type in param_types {
+        let Some(mut key) = harness_gen::cpp_decoders::cpp_parameter_class_key(param_type) else {
+            continue;
+        };
+        if let Some(target) = registry.alias_target_spelling(&key) {
+            if let Some(resolved) = harness_gen::cpp_decoders::cpp_parameter_class_key(&target) {
+                key = resolved;
+            }
+        }
+        wanted.push(key);
+    }
+}
+
+/// Record the class-typed arguments of every public constructor of `key`,
+/// whether or not one was accepted.
+///
+/// This is what lets the producer graph move at all. A constructor is refused
+/// when a single argument is unobtainable, so if dependencies were only noted
+/// from ACCEPTED recipes, the very type standing in the way would never be
+/// asked about and `Parser(Config)` could never become buildable no matter how
+/// buildable a `Config` is.
+fn note_candidate_dependencies(
+    key: &str,
+    class_infos: &[cpp_parser::CppClassInfo],
+    registry: &type_model::TypeRegistry,
+    wanted: &mut Vec<String>,
+) {
+    let leaf = key.rsplit("::").next().unwrap_or(key);
+    for info in class_infos
+        .iter()
+        .filter(|info| info.qualified_name == key || info.name == leaf)
+    {
+        for constructor in &info.constructors {
+            if constructor.access != "public" || constructor.is_deleted {
+                continue;
+            }
+            for param_type in &constructor.param_types {
+                let Some(mut dependency) =
+                    harness_gen::cpp_decoders::cpp_parameter_class_key(param_type)
+                else {
+                    continue;
+                };
+                if let Some(target) = registry.alias_target_spelling(&dependency) {
+                    if let Some(resolved) =
+                        harness_gen::cpp_decoders::cpp_parameter_class_key(&target)
+                    {
+                        dependency = resolved;
+                    }
+                }
+                // A constructor taking its own class is a copy constructor; it
+                // produces nothing new and would make the graph chase itself.
+                if dependency != key && dependency != leaf {
+                    wanted.push(dependency);
+                }
+            }
+        }
+    }
+}
+
+/// Whether a constructor argument can be OBTAINED — decoded from bytes directly,
+/// or produced by a recipe already resolved for its own type.
+///
+/// `producible` carries the class keys that already have a recipe. It is what
+/// turns a one-level check into a producer graph: `Parser(Config)` is buildable
+/// once `Config` is, even though a `Config` is not decodable from bytes. The
+/// decoder already recurses through `TypeRegistry::class_construction`; what was
+/// missing was populating a recipe for anything but the target's direct
+/// parameters, so the recursion had nothing to find.
+fn cpp_ctor_param_obtainable(
+    param_type: &str,
+    registry: &type_model::TypeRegistry,
+    namespace_path: &[String],
+    class_infos: &[cpp_parser::CppClassInfo],
+    producible: &std::collections::HashSet<String>,
+) -> bool {
+    if cpp_ctor_param_supported(param_type, registry, namespace_path, class_infos) {
+        return true;
+    }
+    harness_gen::cpp_decoders::cpp_parameter_class_key(param_type)
+        .is_some_and(|key| producible.contains(&key))
+}
+
 fn cpp_ctor_param_supported(
     param_type: &str,
     registry: &type_model::TypeRegistry,
@@ -8760,6 +8855,17 @@ fn resolve_cpp_parameter_constructions(
     let namespace_path = function.api.namespace_path.as_slice();
     let mut recipes: Vec<(String, type_model::ClassConstruction)> = Vec::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // Types that can be OBTAINED: everything a recipe has been resolved for.
+    // Grown by the fixed-point pass below, which is what makes this a producer
+    // graph rather than a one-level lookup.
+    let mut producible: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // The class keys still owed a recipe because some chosen constructor takes
+    // one as an argument.
+    let mut wanted: Vec<String> = Vec::new();
+    // Direct parameters that no strategy could build on the first pass. A
+    // constructor is refused when ONE argument is unobtainable, so these are
+    // exactly the ones worth re-offering once the graph has grown.
+    let mut refused: Vec<String> = Vec::new();
     for param in &function.params {
         let Some(mut key) = harness_gen::cpp_decoders::cpp_parameter_class_key(&param.cpp_type)
         else {
@@ -8789,9 +8895,15 @@ fn resolve_cpp_parameter_constructions(
         // 1) A public, non-deleted parameterized constructor whose arguments are
         //    all directly decodable (verified by the same check the receiver path
         //    uses). Prefer the fewest arguments for a deterministic, small decode.
-        if let Some(construction) =
-            resolve_cpp_parameter_ctor_recipe(&key, class_infos, registry, namespace_path)
-        {
+        if let Some(construction) = resolve_cpp_parameter_ctor_recipe(
+            &key,
+            class_infos,
+            registry,
+            namespace_path,
+            &producible,
+        ) {
+            note_recipe_dependencies(&construction, registry, &mut wanted);
+            producible.insert(key.clone());
             recipes.push((key, construction));
             continue;
         }
@@ -8833,8 +8945,71 @@ fn resolve_cpp_parameter_constructions(
             ));
             continue;
         }
-        // Otherwise the type is genuinely opaque: no recipe, existing precise
-        // "no byte-buffer decoder / no synthesizable constructor" reason stands.
+        // No recipe yet. It may still become buildable once the producer graph
+        // below resolves whatever its constructors wanted, so record those needs
+        // and re-offer it rather than concluding it is opaque here.
+        note_candidate_dependencies(&key, class_infos, registry, &mut wanted);
+        refused.push(key);
+    }
+    // Producer graph. A recipe chosen above may itself take a class-typed
+    // argument that is not decodable from bytes; the decoder already recurses
+    // through the registry looking for a recipe, but nothing ever populated one
+    // beyond the target's DIRECT parameters, so the recursion had nothing to
+    // find and the whole constructor was rejected one level up.
+    //
+    // Resolve what those arguments need, then re-offer the parameters that were
+    // refused — a constructor rejected because one argument was unobtainable
+    // becomes viable the moment that argument is producible. Repeat to a fixed
+    // point, bounded: the graph is cyclic (`A(B)`, `B(A)`), so depth is what
+    // guarantees termination rather than any property of the project.
+    const MAX_PRODUCER_DEPTH: usize = 3;
+    for _ in 0..MAX_PRODUCER_DEPTH {
+        let mut pending: Vec<String> = std::mem::take(&mut wanted);
+        pending.append(&mut std::mem::take(&mut refused));
+        pending.retain(|key| !producible.contains(key));
+        pending.dedup();
+        let mut progressed = false;
+        for key in pending {
+            if producible.contains(&key) {
+                continue;
+            }
+            if registry.is_default_constructible_class(&key) {
+                producible.insert(key);
+                continue;
+            }
+            if let Some(construction) = resolve_cpp_parameter_ctor_recipe(
+                &key,
+                class_infos,
+                registry,
+                namespace_path,
+                &producible,
+            ) {
+                note_recipe_dependencies(&construction, registry, &mut wanted);
+                producible.insert(key.clone());
+                recipes.push((key, construction));
+                progressed = true;
+                continue;
+            }
+            if let Some(expression) = mined
+                .get(&key)
+                .or_else(|| mined.get(key.rsplit("::").next().unwrap_or(&key)))
+            {
+                producible.insert(key.clone());
+                recipes.push((
+                    key,
+                    type_model::ClassConstruction::Expression(expression.clone()),
+                ));
+                progressed = true;
+                continue;
+            }
+            note_candidate_dependencies(&key, class_infos, registry, &mut wanted);
+            refused.push(key);
+        }
+        // Nothing new became producible, so another round would ask the same
+        // questions and get the same answers.
+        if !progressed {
+            break;
+        }
     }
     recipes
 }
@@ -8848,6 +9023,7 @@ fn resolve_cpp_parameter_ctor_recipe(
     class_infos: &[cpp_parser::CppClassInfo],
     registry: &type_model::TypeRegistry,
     namespace_path: &[String],
+    producible: &std::collections::HashSet<String>,
 ) -> Option<type_model::ClassConstruction> {
     let leaf = key.rsplit("::").next().unwrap_or(key);
     let mut candidates: Vec<&Vec<String>> = class_infos
@@ -8860,7 +9036,13 @@ fn resolve_cpp_parameter_ctor_recipe(
                 // A no-arg ctor is the default-constructible path, not this one.
                 && !constructor.param_types.is_empty()
                 && constructor.param_types.iter().all(|param_type| {
-                    cpp_ctor_param_supported(param_type, registry, namespace_path, class_infos)
+                    cpp_ctor_param_obtainable(
+                        param_type,
+                        registry,
+                        namespace_path,
+                        class_infos,
+                        producible,
+                    )
                 })
         })
         .map(|constructor| &constructor.param_types)

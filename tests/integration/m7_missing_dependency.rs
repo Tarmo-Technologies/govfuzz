@@ -47,6 +47,7 @@ fn missing_dependency_fixture_passes_when_gnat_available() {
             },
         ],
         object_dir: work_dir.join("build/obj"),
+        exec_dir: None,
         main_adb: Some("src.adb".to_owned()),
         ada_standard: AdaStandard::Ada95,
         target: None,

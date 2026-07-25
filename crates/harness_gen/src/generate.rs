@@ -917,8 +917,9 @@ fn build_context(args: &GenerateDirectArgs<'_>) -> Result<TemplateContext, Harne
                     // `with` its unit. (Non-force cases keep the existing spelling:
                     // they run in a private child that already sees the type.)
                     let local_type = if force_bare_ok {
-                        let qualified = ada_path(&qualified_type_name_path(
+                        let qualified = ada_path(&declarable_type_path(
                             args.ast,
+                            &param.type_ref,
                             &resolved_param.type_ref,
                         ));
                         if let Some(with) = param_type_unit_with(
@@ -1816,9 +1817,58 @@ fn generic_qualified_return_type_name(args: &GenerateDirectArgs<'_>, type_ref: &
     // owned by a package is not directly visible; qualify it (`Pkg.T`). The unit is
     // the target's own (already `with`ed) or added to the harness `with`s below.
     if args.force {
-        return ada_path(&qualified_type_name_path(args.ast, &resolved));
+        let path = qualified_type_name_path(args.ast, &resolved);
+        return ada_path(&qualify_bare_by_target_package(
+            args.ast,
+            args.target_subprogram,
+            path,
+        ));
     }
     ada_type_name(&resolved)
+}
+
+/// Qualify a still-bare type name by the TARGET's own package.
+///
+/// A profile that names a type with no prefix (`function Create return T`) resolves
+/// inside its own package, so a standalone harness must say `Spat.Flow_Item.T`. This
+/// is the fallback for when the type's own declaration could not be located — which
+/// happens exactly when the name is ambiguous across units, and spat declares a `T`
+/// in several. There an unqualified name is not merely invisible but ambiguous, so
+/// leaving it bare cannot compile either way.
+///
+/// Only applied when that package really does declare the name: a PREDEFINED type
+/// (`Boolean`, `Natural`) is visible everywhere and belongs to no package, and
+/// qualifying it yields `"Boolean" not declared in "Flow_Item"`.
+fn qualify_bare_by_target_package(
+    ast: &StructuralAst,
+    target: &Subprogram,
+    path: Vec<String>,
+) -> Vec<String> {
+    if split_name_path(&path).len() != 1 {
+        return path;
+    }
+    let SubprogramOwner::Package(package_id) = target.owner else {
+        return path;
+    };
+    // Does this package really declare the name? A private type contributes TWO
+    // entries (the partial and the full view), so match by ownership directly rather
+    // than through the by-name lookup, which treats that pair as ambiguous.
+    let owned_here = ast.types.iter().any(|candidate| {
+        candidate.owner == TypeOwner::Package(package_id)
+            && candidate.name_path.last().is_some_and(|name| {
+                path.last()
+                    .is_some_and(|leaf| name.eq_ignore_ascii_case(leaf))
+            })
+    });
+    if !owned_here {
+        return path;
+    }
+    let Some(full) = package_full_name(ast, package_id) else {
+        return path;
+    };
+    let mut qualified: Vec<String> = full.split('.').map(str::to_owned).collect();
+    qualified.extend(path);
+    qualified
 }
 
 fn resolve_param_type(ast: &StructuralAst, param: &Parameter) -> Parameter {
@@ -2829,6 +2879,21 @@ fn external_base_scalar_kind(name_path: &[String]) -> Option<ScalarKind> {
     }
 }
 
+/// True when an external base name lives in a PREDEFINED hierarchy — the language
+/// runtime (`Standard`, `System`, `Ada`, `Interfaces`, `GNAT`). Those are always
+/// visible (or with-able by any harness) and are the names the type-recognition
+/// fallbacks match on, so rewriting a subtype chain onto them is safe and useful. A
+/// third-party library's name is neither.
+fn is_predefined_hierarchy(name_path: &[String]) -> bool {
+    let parts = split_name_path(name_path);
+    parts.first().is_some_and(|root| {
+        matches!(
+            root.to_ascii_lowercase().as_str(),
+            "standard" | "system" | "ada" | "interfaces" | "gnat"
+        )
+    })
+}
+
 fn external_base_is_discrete(name_path: &[String]) -> bool {
     let dotted = name_path.join(".").to_ascii_lowercase();
     matches!(
@@ -2878,7 +2943,7 @@ fn resolve_type_ref(ast: &StructuralAst, type_ref: &TypeRef) -> TypeRef {
                     // before the distinctive Standard name is considered.
                     resolved_type.name_path = external_name;
                     resolved_type.kind = TypeKind::Unknown;
-                } else {
+                } else if is_predefined_hierarchy(&external_name) {
                     // Chain bottomed out at a name we don't have an AST for
                     // (e.g. `subtype Byte_Access is Voidp;` where Voidp is
                     // `subtype Voidp is System.Address;`). Rewrite to the
@@ -2886,6 +2951,13 @@ fn resolve_type_ref(ast: &StructuralAst, type_ref: &TypeRef) -> TypeRef {
                     // last_type_name_is fallbacks can recognise it.
                     resolved_type.name_path = external_name;
                 }
+                // Otherwise the base is a THIRD-PARTY library type the name-based
+                // fallbacks know nothing about, so rewriting buys no recognition —
+                // and it would cost visibility: the harness has no `with` for a unit
+                // outside the project, so naming the parameter by that base fails
+                // (`"GNATCOLL" is not visible`). Keep the in-project spelling of the
+                // alias the project declared, which IS reachable. Only the name is
+                // kept; `kind` still comes from the chain, so decoding is unaffected.
             }
             DerivedChainEnd::None => {}
         }
@@ -3049,7 +3121,7 @@ fn derived_base_name(constraints: &str) -> Option<Vec<String>> {
 
 fn qualified_type_name_path(ast: &StructuralAst, type_ref: &TypeRef) -> Vec<String> {
     if type_ref.name_path.len() != 1 {
-        return type_ref.name_path.clone();
+        return expand_partial_package_prefix(ast, &type_ref.name_path);
     }
 
     match &type_ref.owner {
@@ -3199,6 +3271,77 @@ fn package_full_name(ast: &StructuralAst, package_id: PackageId) -> Option<Strin
 /// parent link still resolves to its with-able root (`BZip2.CRC.X` -> `BZip2`).
 /// Returns `None` for an unqualified/external type or a private package that a
 /// root harness cannot legally `with`.
+/// Expand a PARTIALLY qualified type path to the full unit name.
+///
+/// Source inside `SPAT.Flow_Item` may write `Entity.Tree.T`, which resolves there
+/// because the enclosing `SPAT` scope is open. The generated harness is a standalone
+/// library-level procedure with no such scope, so it must name the type in full
+/// (`SPAT.Entity.Tree.T`); otherwise GNAT reports `"Entity" is not visible` even
+/// though the unit IS `with`ed.
+///
+/// Idempotent for an already-full path (it matches itself), and left untouched when
+/// the prefix matches no package or several — expanding on a guess would be worse
+/// than the status quo.
+fn expand_partial_package_prefix(ast: &StructuralAst, name_path: &[String]) -> Vec<String> {
+    let parts = split_name_path(name_path);
+    if parts.len() < 2 {
+        return name_path.to_vec();
+    }
+    let (prefix, leaf) = parts.split_at(parts.len() - 1);
+    let dotted = prefix.join(".").to_ascii_lowercase();
+    let suffix = format!(".{dotted}");
+    let mut candidates: Vec<String> = ast
+        .packages
+        .iter()
+        .filter_map(|package| {
+            let full = package_full_name(ast, package.id).unwrap_or_else(|| package.name.clone());
+            let lowered = full.to_ascii_lowercase();
+            (lowered == dotted || lowered.ends_with(&suffix)).then_some(full)
+        })
+        .collect();
+    candidates.sort();
+    candidates.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    let [full] = candidates.as_slice() else {
+        return name_path.to_vec();
+    };
+    let mut expanded: Vec<String> = full.split('.').map(str::to_owned).collect();
+    expanded.extend(leaf.iter().cloned());
+    expanded
+}
+
+/// The spelling to DECLARE an opaque handle by in the public `main.adb` harness.
+///
+/// [`resolve_type_ref`] rewrites a subtype's path to its EXTERNAL base so that
+/// name-based recognition works — `subtype JSON_Value is GNATCOLL.JSON.JSON_Value`
+/// resolves to `GNATCOLL.JSON.JSON_Value`. That base names a unit OUTSIDE the
+/// project, which the harness has no `with` for, so declaring the object by it fails
+/// with `"GNATCOLL" is not visible`.
+///
+/// When the project itself declares the type (as spat does, re-exporting the library
+/// type as its own subtype), the in-project spelling is the right one: it is already
+/// visible through the unit the harness `with`s to reach the target, so it needs no
+/// new context clause. The external base is kept only when the project offers no
+/// reachable name for the type.
+fn declarable_type_path(
+    ast: &StructuralAst,
+    declared: &TypeRef,
+    resolved: &TypeRef,
+) -> Vec<String> {
+    let resolved_path = qualified_type_name_path(ast, resolved);
+    if param_type_unit_with(ast, &resolved_path).is_some() {
+        return resolved_path;
+    }
+    // The resolved path is unreachable. Fall back to the type as the SOURCE named it,
+    // qualified by the project package that declares it.
+    if let Some(in_project) = find_declared_type(ast, declared) {
+        let alias_path = qualified_type_name_path(ast, in_project);
+        if param_type_unit_with(ast, &alias_path).is_some() {
+            return alias_path;
+        }
+    }
+    resolved_path
+}
+
 fn param_type_unit_with(ast: &StructuralAst, name_path: &[String]) -> Option<String> {
     let parts = split_name_path(name_path);
     if parts.len() < 2 {
@@ -5802,6 +5945,103 @@ mod tests {
         // No discard-stream package for a custom root.
         assert!(!output_dir.join("gf_sink_streams.ads").exists());
         assert!(!main_adb.contains("Gf_Sink_Streams"));
+    }
+
+    #[test]
+    fn a_bare_result_type_is_qualified_only_when_the_target_package_declares_it() {
+        use super::qualify_bare_by_target_package;
+        let mut ast = StructuralAst::new();
+        ast.packages.push(package(7, "Spat.Flow_Item"));
+        // A PRIVATE type contributes two views, both owned by the package — the pair
+        // must not be mistaken for an ambiguity.
+        for _ in 0..2 {
+            let mut own = type_ref("T", TypeKind::Private);
+            own.owner = TypeOwner::Package(PackageId(7));
+            ast.types.push(own);
+        }
+        let target = subprogram(
+            1,
+            SubprogramOwner::Package(PackageId(7)),
+            "Create",
+            Vec::new(),
+            None,
+        );
+
+        // Declared here -> qualify, because a bare `T` in a standalone harness is
+        // ambiguous across the units that each declare one.
+        assert_eq!(
+            qualify_bare_by_target_package(&ast, &target, vec!["T".to_owned()]),
+            vec!["Spat".to_owned(), "Flow_Item".to_owned(), "T".to_owned()]
+        );
+        // A PREDEFINED type belongs to no package: qualifying it would produce
+        // `"Boolean" not declared in "Flow_Item"`.
+        assert_eq!(
+            qualify_bare_by_target_package(&ast, &target, vec!["Boolean".to_owned()]),
+            vec!["Boolean".to_owned()]
+        );
+        // An already-qualified path is left alone.
+        assert_eq!(
+            qualify_bare_by_target_package(&ast, &target, vec!["Other".to_owned(), "T".to_owned()]),
+            vec!["Other".to_owned(), "T".to_owned()]
+        );
+    }
+
+    #[test]
+    fn a_partially_qualified_type_path_expands_to_the_full_unit_name() {
+        use super::expand_partial_package_prefix;
+        let mut ast = StructuralAst::new();
+        // Child compilation units, each keyed by its full dotted name (as the Ada
+        // discovery pass records them).
+        ast.packages.push(package(1, "SPAT"));
+        ast.packages.push(package(2, "SPAT.Entity"));
+        ast.packages.push(package(3, "SPAT.Entity.Tree"));
+
+        // Source inside `SPAT.Flow_Item` writes `Entity.Tree.Cursor`; a standalone
+        // harness has no enclosing SPAT scope, so it must be named in full.
+        assert_eq!(
+            expand_partial_package_prefix(
+                &ast,
+                &["Entity".to_owned(), "Tree".to_owned(), "Cursor".to_owned()]
+            ),
+            vec![
+                "SPAT".to_owned(),
+                "Entity".to_owned(),
+                "Tree".to_owned(),
+                "Cursor".to_owned()
+            ]
+        );
+        // Idempotent: an already-full path matches itself and is unchanged.
+        assert_eq!(
+            expand_partial_package_prefix(
+                &ast,
+                &[
+                    "SPAT".to_owned(),
+                    "Entity".to_owned(),
+                    "Tree".to_owned(),
+                    "Cursor".to_owned()
+                ]
+            ),
+            vec![
+                "SPAT".to_owned(),
+                "Entity".to_owned(),
+                "Tree".to_owned(),
+                "Cursor".to_owned()
+            ]
+        );
+        // An unknown prefix is left alone rather than guessed at.
+        assert_eq!(
+            expand_partial_package_prefix(
+                &ast,
+                &["Vendorx".to_owned(), "Doc".to_owned(), "Handle".to_owned()]
+            ),
+            vec!["Vendorx".to_owned(), "Doc".to_owned(), "Handle".to_owned()]
+        );
+        // Ambiguity is left alone too: two units end with `.tree`.
+        ast.packages.push(package(4, "Other.Tree"));
+        assert_eq!(
+            expand_partial_package_prefix(&ast, &["Tree".to_owned(), "T".to_owned()]),
+            vec!["Tree".to_owned(), "T".to_owned()]
+        );
     }
 
     #[test]

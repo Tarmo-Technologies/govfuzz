@@ -153,7 +153,16 @@ mod tests {
         let _result = adapter.build(&project).expect("build runs");
 
         let argv = std::fs::read_to_string(log_path).expect("argv log is readable");
-        assert_eq!(argv, format!("-P\n{}\n", project.display()));
+        let args: Vec<&str> = argv.lines().collect();
+        assert_eq!(args[0], "-P");
+        assert_eq!(args[1], project.display().to_string());
+        // gprbuild compiles one unit at a time unless told otherwise; the count
+        // is derived from the host, so assert its shape rather than its value.
+        assert!(
+            args[2].starts_with("-j") && args[2][2..].parse::<usize>().is_ok(),
+            "the build must ask for parallel compilation: {args:?}"
+        );
+        assert_eq!(args.len(), 3, "a full build carries nothing else: {args:?}");
     }
 
     #[test]
@@ -170,10 +179,18 @@ mod tests {
         let _result = adapter.check(&project).expect("check runs");
 
         let argv = std::fs::read_to_string(log_path).expect("argv log is readable");
-        assert_eq!(
-            argv,
-            format!("-P\n{}\n-c\n-cargs\n-gnatc\n", project.display())
-        );
+        let args: Vec<&str> = argv.lines().collect();
+        assert_eq!(args[0], "-P");
+        assert_eq!(args[1], project.display().to_string());
+        assert!(args[2].starts_with("-j"), "{args:?}");
+        assert_eq!(args[3], "-c", "check must not bind or link: {args:?}");
+        // Scoped to Ada deliberately. A bare `-cargs` reaches every language in
+        // the project, and govfuzz's build project declares C for the coverage
+        // callback — cc1 parses `-gnatc` as `-g natc` and fails the whole
+        // compilation phase.
+        assert_eq!(args[4], "-cargs:Ada", "{args:?}");
+        assert_eq!(args[5], "-gnatc", "{args:?}");
+        assert_eq!(args.len(), 6, "{args:?}");
     }
 
     #[test]

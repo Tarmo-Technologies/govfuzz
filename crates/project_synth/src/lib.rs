@@ -27,6 +27,7 @@ mod tests {
                 language: "Ada".to_owned(),
             }],
             object_dir: "obj".into(),
+            exec_dir: None,
             main_adb: Some("main.adb".to_owned()),
             ada_standard: AdaStandard::Ada2012,
             target: None,

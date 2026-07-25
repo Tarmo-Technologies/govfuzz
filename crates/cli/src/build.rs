@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use ada_parser::ast::AdaStandard;
-use compiler_adapter::{probe_compiler, CompilerAdapter, ToolchainConfig};
+use compiler_adapter::{probe_compiler, BuildMode, CompilerAdapter, ToolchainConfig};
 use project_synth::{write_project, ProjectSpec, SourceRoot, Switches};
 use std::collections::BTreeMap;
 use std::fs;
@@ -327,6 +327,19 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     let obj_dir = build_dir.join("obj");
     fs::create_dir_all(&obj_dir)
         .map_err(|error| format!("create build directory '{}': {error}", obj_dir.display()))?;
+    // Every harness in a sweep compiles the SAME project closure — only the main
+    // and the stub set differ — so a per-harness object directory made a project
+    // with N targets compile its units N times. Share one object directory across
+    // the run and let gprbuild's own staleness check decide what to redo; the
+    // executable stays in the per-harness `obj/` (via `Exec_Dir`) so a later
+    // target's link cannot overwrite a binary an earlier finding replays against.
+    let shared_obj_dir = work_dir.join(SHARED_ADA_OBJ_DIR);
+    fs::create_dir_all(&shared_obj_dir).map_err(|error| {
+        format!(
+            "create shared object directory '{}': {error}",
+            shared_obj_dir.display()
+        )
+    })?;
 
     let mut source_roots = vec![
         SourceRoot {
@@ -358,6 +371,13 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     if auto_repair_stubs_dir.is_dir() {
         source_roots.push(SourceRoot {
             path: auto_repair_stubs_dir,
+            language: "Ada".to_owned(),
+        });
+    }
+    let external_stubs_dir = work_dir.join(SHARED_ADA_STUBS_DIR);
+    if external_stubs_dir.is_dir() {
+        source_roots.push(SourceRoot {
+            path: external_stubs_dir,
             language: "Ada".to_owned(),
         });
     }
@@ -466,7 +486,8 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
         project_name: "Govfuzz_Build".to_owned(),
         extends_project,
         source_roots,
-        object_dir: obj_dir,
+        object_dir: shared_obj_dir,
+        exec_dir: Some(obj_dir),
         main_adb: Some(main_file),
         ada_standard,
         target: args.target.clone(),
@@ -1128,13 +1149,27 @@ pub(crate) struct CapturedBuild {
 /// stdout/stderr instead of printing to the process streams so the
 /// classifier can see GNAT diagnostics.
 pub(crate) fn try_run_ada_build_capturing(args: &BuildArgs) -> Result<CapturedBuild, String> {
+    run_ada_project(args, BuildMode::Full)
+}
+
+/// Semantic-only counterpart of [`try_run_ada_build_capturing`]: compiles no code
+/// and links nothing, but reports every diagnostic the repair loop reads. A repair
+/// round that is going to fail costs only this, and the expensive full build runs
+/// once the closure is semantically clean.
+pub(crate) fn try_run_ada_check_capturing(args: &BuildArgs) -> Result<CapturedBuild, String> {
+    run_ada_project(args, BuildMode::CheckOnly)
+}
+
+fn run_ada_project(args: &BuildArgs, mode: BuildMode) -> Result<CapturedBuild, String> {
     let layout = prepare_layout(args)?;
     let adapter = CompilerAdapter::discover_for(toolchain_config(args))
         .map_err(|error| format!("{error}"))?;
     probe_compiler(&adapter).map_err(|error| format!("{error}"))?;
-    let result = adapter
-        .build(&layout.project_path)
-        .map_err(|error| format!("{error}"))?;
+    let result = match mode {
+        BuildMode::Full => adapter.build(&layout.project_path),
+        BuildMode::CheckOnly => adapter.check(&layout.project_path),
+    }
+    .map_err(|error| format!("{error}"))?;
     Ok(CapturedBuild {
         status_success: result.exit_code == 0,
         stdout: result.stdout,
@@ -1370,6 +1405,20 @@ fn detect_ada_standard(_source_dir: &Path, build_dir: &Path) -> Result<AdaStanda
     // Ada 2022 is the maximally-buildable default.
     Ok(read_ada_dialect_cache(build_dir).unwrap_or(AdaStandard::Ada2022))
 }
+
+/// Run-level object directory shared by every Ada harness of a sweep, so the
+/// project's own closure is compiled once rather than once per target. Ada
+/// attempts are serialized within a sweep (they share the staged source layout),
+/// so no two gprbuild runs write here at the same time.
+pub(crate) const SHARED_ADA_OBJ_DIR: &str = "ada_obj";
+
+/// Run-level source directory holding the reconstructed external-library stubs.
+/// Project-scoped for the same reason the model behind it is: the stub set is a
+/// property of the project. Keeping it at a stable path also means the compiled
+/// stub objects survive in [`SHARED_ADA_OBJ_DIR`] from one target to the next —
+/// a per-target path would make gprbuild recompile every stub, and everything
+/// depending on it, for each harness.
+pub(crate) const SHARED_ADA_STUBS_DIR: &str = "ada_external_stubs";
 
 /// Path of the per-harness Ada dialect cache written by the legacy-dialect ladder.
 pub(crate) fn ada_dialect_cache_path(build_dir: &Path) -> PathBuf {
@@ -1860,6 +1909,7 @@ mod tests {
                 language: "Ada".to_owned(),
             }],
             object_dir: PathBuf::from("/tmp/obj"),
+            exec_dir: None,
             main_adb: Some("main.adb".to_owned()),
             ada_standard: AdaStandard::Ada2012,
             target: None,

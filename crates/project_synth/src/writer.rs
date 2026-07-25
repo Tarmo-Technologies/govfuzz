@@ -58,6 +58,12 @@ pub fn render_project(spec: &ProjectSpec) -> Result<String, ProjectSynthError> {
         "   for Object_Dir use \"{}\";\n",
         spec.object_dir.to_string_lossy()
     ));
+    if let Some(exec_dir) = &spec.exec_dir {
+        out.push_str(&format!(
+            "   for Exec_Dir use \"{}\";\n",
+            exec_dir.to_string_lossy()
+        ));
+    }
     if let Some(main_adb) = &spec.main_adb {
         out.push_str(&format!("   for Main use (\"{main_adb}\");\n"));
     }

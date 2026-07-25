@@ -4,15 +4,19 @@
 //! that auto-stubs missing dependencies and fuzzes everything it can.
 
 pub mod ada_body_stub;
+pub mod ada_client_symbols;
 pub mod ada_external_stub;
+pub mod ada_generic_stub;
 pub mod alire_config;
 pub mod attempt;
 pub mod attestation;
+pub mod blocker_histogram;
 pub mod bug_report;
 pub mod build_probe;
 pub mod candidate;
 pub mod capability;
 pub mod cli;
+pub mod closure_memo;
 pub mod cobol;
 pub mod cobol_build;
 pub mod cobol_oracle;

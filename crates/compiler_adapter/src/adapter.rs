@@ -214,8 +214,24 @@ impl CompilerAdapter {
             }
             command.env("GPR_PROJECT_PATH", search_path);
         }
+        // gprbuild compiles ONE unit at a time unless told otherwise, so a project
+        // with a large closure (the repair loop rebuilds it every round) was
+        // serialising work the host can do in parallel. Ada candidates already
+        // build serially within a sweep — the staged source layout is shared — so
+        // handing the whole machine to a single gprbuild does not oversubscribe it.
+        command.arg(format!("-j{}", build_job_count()));
         if mode == BuildMode::CheckOnly {
-            command.args(["-c", "-cargs", "-gnatc"]);
+            // `-c` stops before bind/link and `-gnatc` stops before code
+            // generation: GNAT still reports every semantic diagnostic the repair
+            // loop reads (`expected/found`, `is undefined`, missing units), which
+            // is all a round that is going to fail can tell us.
+            //
+            // The switch MUST be scoped to Ada. A bare `-cargs` applies to every
+            // language in the project, and govfuzz's build project declares C
+            // alongside Ada for the coverage callback and any C glue the target
+            // binds to — cc1 reads `-gnatc` as `-g natc` and fails the whole
+            // compilation phase with "unrecognized debug output level".
+            command.args(["-c", "-cargs:Ada", "-gnatc"]);
         }
 
         let output = command.output()?;
@@ -240,6 +256,22 @@ impl CompilerAdapter {
             Err(CompilerError::NoCompilerFound)
         }
     }
+}
+
+/// How many compilations gprbuild may run at once (`-jN`). Defaults to the host's
+/// parallelism; `GOVFUZZ_BUILD_JOBS` overrides it for a cgroup-constrained host or
+/// a caller that is already running builds concurrently. `0` is gprbuild's own
+/// "use every core", so an unparsable or zero value is simply passed through as
+/// the host count rather than silently serialising.
+pub(crate) fn build_job_count() -> usize {
+    if let Some(raw) = std::env::var_os("GOVFUZZ_BUILD_JOBS") {
+        if let Some(count) = raw.to_str().and_then(|value| value.trim().parse().ok()) {
+            if count > 0 {
+                return count;
+            }
+        }
+    }
+    std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
 }
 
 fn tool_name(prefix: Option<&str>, tool: &str) -> String {
@@ -324,13 +356,17 @@ exit 1
         write_executable(
             dir,
             "gprbuild",
+            // `-gnatc` must reach the Ada compiler ONLY: a bare `-cargs` applies
+            // to every language in the project, and cc1 reads `-gnatc` as
+            // `-g natc`. The job count is host-derived, so it is matched by shape.
             r#"#!/bin/sh
-if [ "$#" -eq 5 ] &&
+if [ "$#" -eq 6 ] &&
    [ "$1" = "-P" ] &&
    [ "$2" = "proj.gpr" ] &&
-   [ "$3" = "-c" ] &&
-   [ "$4" = "-cargs" ] &&
-   [ "$5" = "-gnatc" ]; then
+   [ "${3#-j}" != "$3" ] &&
+   [ "$4" = "-c" ] &&
+   [ "$5" = "-cargs:Ada" ] &&
+   [ "$6" = "-gnatc" ]; then
   exit 0
 fi
 

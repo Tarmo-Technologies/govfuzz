@@ -1186,14 +1186,42 @@ pub fn attempt_with_progress(
     // far more often — and keep it if it builds.
     let no_stubs = options.no_stubs;
     let force = options.force;
-    let result = run_attempt(
-        candidate,
-        work_dir,
-        decl_index,
-        options.clone(),
-        progress,
-        false,
-    )?;
+    // A sibling target in this same source already drove the repair cascade to
+    // exhaustion and could not build. Nothing about THIS target changes the
+    // closure, and the project-level repair state has not moved since (the memo
+    // is discarded outright when it does), so re-running the cascade would spend
+    // a full round budget reaching the identical verdict.
+    let mut memo = crate::auto::closure_memo::ClosureMemo::load(work_dir, force);
+    let memoized = memo
+        .terminal_failure_for(&candidate.source_path)
+        .map(|entry| Outcome::FailedBuild {
+            repairs: Vec::new(),
+            retries: entry.rounds,
+            last_errors: entry.errors.clone(),
+        });
+    // A memo hit substitutes for the CASCADE, not for everything downstream. The
+    // outcome still flows through the degradation below, so a target that hits
+    // the memo reports exactly what its sibling reported — the memo changes what
+    // work is done, never what is said about it.
+    let result = match memoized {
+        Some(outcome) => {
+            let harness_dir = crate::auto::layout::harness_dir(work_dir, &candidate.harness_id);
+            std::fs::create_dir_all(&harness_dir)?;
+            AttemptResult {
+                candidate: candidate.clone(),
+                outcome,
+                harness_dir,
+            }
+        }
+        None => run_attempt(
+            candidate,
+            work_dir,
+            decl_index,
+            options.clone(),
+            progress,
+            false,
+        )?,
+    };
     let result = if matches!(result.outcome, Outcome::FailedBuild { .. })
         && auto_sequence_candidate(candidate)
     {
@@ -1211,6 +1239,19 @@ pub fn attempt_with_progress(
     } else {
         result
     };
+    // Remember an exhausted cascade so the next target in this source inherits
+    // the verdict instead of rediscovering it. Only failures that describe the
+    // CLOSURE are recorded; the memo declines anything naming the generated
+    // harness, which is particular to this one target.
+    if let Outcome::FailedBuild {
+        last_errors,
+        retries,
+        ..
+    } = &result.outcome
+    {
+        memo.record(&candidate.source_path, last_errors, *retries);
+        memo.save(work_dir);
+    }
     // Graceful degradation: a build that failed ONLY because it references types
     // undefined in the scanned tree — an external SDK/framework the offline lab
     // cannot supply (MFC `CString`/`CWnd`, a vendor CORBA type, a platform SDK
@@ -2476,8 +2517,15 @@ fn run_attempt(
     // repair never makes progress, so once the only proposals a round can offer are
     // already-refused or already-applied the loop stops cleanly instead of spinning.
     let mut refused_repairs: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // Set once a semantic check has reported a failure that stopped this target
+    // dead; from then on every round is a full build, because for this target the
+    // check has demonstrably said something the compiler would not.
+    let mut distrust_semantic_check = false;
     for retry in 0..=max_repair_rounds {
         progress.update(&ProgressUpdate::phase(Phase::Build { retry }));
+        // Round 0 always builds outright, so a target that compiles as-is never
+        // pays for a check it did not need.
+        let round = if distrust_semantic_check { 0 } else { retry };
         match try_build(
             candidate,
             &harness_dir,
@@ -2489,6 +2537,7 @@ fn run_attempt(
             &options.sanitizers,
             &options.dir_filter,
             options.project.as_deref(),
+            round,
         ) {
             BuildOutcome::Success => {
                 // Drive a cascade of fuzz passes against the freshly
@@ -3334,6 +3383,34 @@ fn run_attempt(
                     if progressed {
                         applied_any = true;
                     }
+                }
+                // Ada repair rounds after the first are driven by a SEMANTIC CHECK
+                // rather than a full build. That is sound for finding work to do,
+                // but `-gnatc` is not simply a cheaper build: GNAT enforces some
+                // rules there that a code-generating compile never applies (a
+                // private object in a preelaborated unit, for one). So a check can
+                // report an error no real build would, and if that lands on the
+                // round we give up, a target that actually compiles is written off
+                // as unbuildable — a silent loss of coverage, the worst way to be
+                // wrong.
+                //
+                // Before concluding, stop trusting the check for THIS target and
+                // let the loop take one more round as a full build. It costs a
+                // build only on a round the target was already being abandoned on,
+                // so the savings are untouched, and once check and build are known
+                // to disagree here the check is not consulted for this target again.
+                if !applied_any
+                    && retry > 0
+                    && !distrust_semantic_check
+                    && matches!(
+                        candidate.lang,
+                        crate::auto::candidate::Lang::Ada
+                            | crate::auto::candidate::Lang::C
+                            | crate::auto::candidate::Lang::Cpp
+                    )
+                {
+                    distrust_semantic_check = true;
+                    continue;
                 }
                 if !applied_any {
                     // GAP #9: the build is stuck solely because the candidate's own
@@ -4469,6 +4546,7 @@ fn try_build(
     sanitizers: &multicore_fuzz::SanitizerSelection,
     dir_filter: &crate::auto::discovery::DirFilter,
     project_override: Option<&Path>,
+    round: usize,
 ) -> BuildOutcome {
     use crate::auto::candidate::Lang;
     let work_dir = dir
@@ -4487,6 +4565,7 @@ fn try_build(
             extra_includes,
             cross_compiler,
             sanitizers,
+            round,
         ),
         Lang::Ada => try_build_ada(
             work_dir,
@@ -4497,6 +4576,7 @@ fn try_build(
             ada_dep_dirs,
             dir_filter,
             project_override,
+            round,
         ),
         // The Rust lane builds its harness in `run_attempt` Step 0a (the
         // sancov+ASan staticlib clang-linked with the C driver to
@@ -4682,6 +4762,7 @@ fn try_build_c(
     extra_includes: &[PathBuf],
     cross_compiler: Option<&crate::build::CFamilyCompilerOverride>,
     sanitizers: &multicore_fuzz::SanitizerSelection,
+    round: usize,
 ) -> BuildOutcome {
     use multicore_fuzz::SanitizerSelection;
     // `auto --sanitizers` arms an explicit `-fsanitize=` set for the native build.
@@ -4725,6 +4806,34 @@ fn try_build_c(
         output.status.success() && harness_dir.join("main").is_file()
     };
 
+    // From the first repair round on, ask the compiler to parse and analyse
+    // without generating code or linking. Most rounds fail, and a failing round
+    // only ever yields diagnostics — so the object code and the link are work
+    // thrown away. Round 0 skips this: a target that compiles as-is is the common
+    // case and should not pay for a check to learn what the build would say.
+    //
+    // A clean check is NOT success. Undefined symbols cannot appear in this mode
+    // (nothing is linked), so the real build always runs before a target is
+    // called built, and the dialect ladder and -fcommon retry below stay on the
+    // real build where their evidence lives.
+    if round > 0 {
+        let check = crate::build::try_run_c_make_build_with_target(
+            work_dir,
+            harness_id,
+            extra_sources,
+            extra_includes,
+            compiler,
+            Some("syntaxcheck"),
+            chosen_std.as_deref(),
+        );
+        if !check.status.success() {
+            let raw = combined_build_output(&check);
+            let errors = build_classifier::classify(&raw);
+            if !errors.is_empty() {
+                return BuildOutcome::Failed { errors };
+            }
+        }
+    }
     let mut output = crate::build::try_run_c_make_build_with_target(
         work_dir,
         harness_id,
@@ -5366,6 +5475,7 @@ fn try_build_ada(
     ada_dep_dirs: &[PathBuf],
     dir_filter: &crate::auto::discovery::DirFilter,
     project_override: Option<&Path>,
+    round: usize,
 ) -> BuildOutcome {
     // The Ada build pipeline (prepare_layout in crate::build) requires
     // two preconditions auto doesn't otherwise satisfy:
@@ -5420,7 +5530,7 @@ fn try_build_ada(
     }
 
     // #91: build against the SAME governing project used for staging/exclusions.
-    run_ada_build_once(work_dir, harness_id, governing_gpr.as_deref())
+    run_ada_build_once(work_dir, harness_id, governing_gpr.as_deref(), round)
 }
 
 /// The generic repair loop records selected real C definitions and generated C
@@ -5468,6 +5578,7 @@ fn run_ada_build_once(
     work_dir: &Path,
     harness_id: &str,
     source_project: Option<&Path>,
+    round: usize,
 ) -> BuildOutcome {
     let build_args = crate::build::BuildArgs {
         work_dir: work_dir.to_path_buf(),
@@ -5491,28 +5602,57 @@ fn run_ada_build_once(
         }
         let _ = std::fs::write(&log, raw);
     };
-    // One build under whatever `-gnatXXXX` the dialect cache currently selects
-    // (Ada 2022 by default); returns the classified outcome + raw output.
-    let one_build = || match crate::build::try_run_ada_build_capturing(&build_args) {
-        Ok(captured) => {
-            let combined = format!("{}\n{}", captured.stderr, captured.stdout);
-            let outcome = if captured.status_success {
-                BuildOutcome::Success
-            } else {
-                BuildOutcome::Failed {
-                    errors: build_classifier::classify(&combined),
-                }
-            };
-            (outcome, combined)
-        }
-        Err(reason) => (
+    let classify_captured = |captured: crate::build::CapturedBuild| {
+        let combined = format!("{}\n{}", captured.stderr, captured.stdout);
+        let outcome = if captured.status_success {
+            BuildOutcome::Success
+        } else {
+            BuildOutcome::Failed {
+                errors: build_classifier::classify(&combined),
+            }
+        };
+        (outcome, combined)
+    };
+    let as_failure = |reason: String| {
+        (
             BuildOutcome::Failed {
                 errors: vec![build_classifier::BuildErrorKind::Other {
                     tail: reason.clone(),
                 }],
             },
             reason,
-        ),
+        )
+    };
+    // One build under whatever `-gnatXXXX` the dialect cache currently selects
+    // (Ada 2022 by default); returns the classified outcome + raw output.
+    //
+    // From the FIRST REPAIR ROUND ON, a semantic check runs first. The repair loop
+    // only ever consumes GNAT's diagnostics, so once a target is known to need
+    // repair, paying for code generation, binding and linking before knowing
+    // whether the closure even resolves is waste that multiplies by the round cap.
+    // When the check is clean the full build still runs — it is the only thing
+    // that produces the executable, and link errors surface nowhere else — so a
+    // SUCCESS always means a real linked harness.
+    //
+    // Round 0 goes straight to the full build. A target that compiles as-is is the
+    // common case on a healthy project, and it should not pay for a check pass to
+    // learn what the build itself would have told it. This matters more with the
+    // shared object directory: once the project's closure is compiled, a later
+    // target's full build is little more than its own main plus the link, and a
+    // check pass in front of that would be nearly pure overhead.
+    let one_build = || {
+        let checked = round > 0;
+        if checked {
+            match crate::build::try_run_ada_check_capturing(&build_args) {
+                Ok(captured) if !captured.status_success => return classify_captured(captured),
+                Ok(_) => {}
+                Err(reason) => return as_failure(reason),
+            }
+        }
+        match crate::build::try_run_ada_build_capturing(&build_args) {
+            Ok(captured) => classify_captured(captured),
+            Err(reason) => as_failure(reason),
+        }
     };
 
     let (outcome, raw) = one_build();
@@ -5565,6 +5705,24 @@ fn output_has_ada_dialect_error(raw: &str) -> bool {
 /// output, read by the force-fuzz external-stub refiner.
 pub(crate) const ADA_BUILD_OUTPUT_LOG: &str = "ada_build_output.log";
 
+/// The reconstructed external-library model, held at WORK-DIR (project) scope
+/// rather than under a target's `repairs/`.
+///
+/// Which libraries are missing, and what the project's code calls in them, is a
+/// property of the PROJECT — every target in a sweep faces the same missing
+/// GNATColl. Rebuilding the model per target meant each one re-derived an
+/// identical stub set from scratch, paying a full repair cascade of gprbuild
+/// rounds to relearn what the previous target already knew. Persisting it here
+/// lets the first target converge and every later one start from the converged
+/// stub set. The model only ever ADDS entities and resolves placeholders against
+/// GNAT's oracle for the real library API, so carrying it forward is monotone;
+/// a target needing more of the library keeps refining on top.
+pub(crate) const ADA_EXTERNAL_MODEL: &str = "ada_external_model.json";
+
+/// Marker under a target's `repairs/` recording that the project-scope external
+/// stub model has been rendered for THIS target at least once.
+pub(crate) const ADA_EXTERNAL_RENDERED: &str = "ada_external_rendered";
+
 /// Force-fuzz: reconstruct a COMPILABLE stub of the used subset of each missing
 /// external Ada library so the target's own body compiles and the target reaches
 /// `built_and_fuzzed`. Seeds each external package's API shape from the client
@@ -5579,7 +5737,7 @@ fn refine_ada_external_stubs(
     errors: &[BuildErrorKind],
 ) -> bool {
     use crate::auto::ada_external_stub::ExternalStubModel;
-    let model_path = repairs_dir.join("ada_external_model.json");
+    let model_path = work_dir.join(ADA_EXTERNAL_MODEL);
     let mut model = ExternalStubModel::load(&model_path);
     // Packages needing stubs: every `with`ed unit absent from the tree (from a
     // stubbed library), plus any already being modeled.
@@ -5594,8 +5752,11 @@ fn refine_ada_external_stubs(
         return false;
     }
     // Seed from the instrumented Ada closure (the code that USES the library).
+    // Skipped outright when neither the sources nor the package set moved since
+    // the last round — seeding parses every staged file, and re-parsing an
+    // unchanged tree can only reach the same conclusion.
     let sources = read_ada_source_texts(&work_dir.join("src_instrumented"));
-    let seeded = model.seed_from_sources(&sources, &packages);
+    let seeded = model.seed_from_sources_if_changed(&sources, &packages);
     // Refine the profile types from GNAT's expected/found pairs.
     let raw = std::fs::read_to_string(
         crate::auto::layout::harness_dir(work_dir, harness_id)
@@ -5604,15 +5765,43 @@ fn refine_ada_external_stubs(
     )
     .unwrap_or_default();
     let refined = model.refine_from_build_output(&raw);
+    // Entities a client CHILD unit of a stubbed package names without qualification
+    // (it sees its parent's declarations directly), which the qualified-reference
+    // scan above cannot see.
+    let adopted = model.refine_child_unit_undefined(&raw, &sources);
     if model.is_empty() {
         return false;
     }
-    // Render every round (idempotent) so the stubs exist for the next build; the
-    // stub source dir is already on the build's Source_Dirs.
-    let ada_stubs_dir = repairs_dir.join(crate::auto::repair::AUTO_ADA_STUBS_DIR);
-    let _ = model.render(&ada_stubs_dir);
+    // Render every round so the stubs exist for the next build. The render dir is
+    // run-level, matching the model: a stable path is what lets the compiled stub
+    // objects survive from one target to the next in the shared object dir.
+    //
+    // The older per-error `AdaPackageStub` repair writes signature-only stubs for
+    // the same units into the target's own `repairs/ada_stubs`. Both dirs are on
+    // Source_Dirs, and GNAT rejects a unit declared twice, so a package the model
+    // owns is removed from the per-target dir — which is also the "full profile
+    // supersedes the empty stub" rule that used to happen by overwriting in place.
+    let external_dir = work_dir.join(crate::build::SHARED_ADA_STUBS_DIR);
+    let per_target_dir = repairs_dir.join(crate::auto::repair::AUTO_ADA_STUBS_DIR);
+    // A target that INHERITS a converged model learns nothing new here
+    // (`seeded`/`refined`/`adopted` are all false) yet has just materialised the
+    // whole stub set for the first time. That is real progress, and reporting
+    // `false` would drop the loop through to body stub-out with the stubs never
+    // built. It counts ONCE per target: "the render changed a file" is not usable
+    // as a standing signal, because the per-error stub repair keeps rewriting the
+    // same units while a unit is still missing, and the two would take turns
+    // overwriting each other for as many rounds as the cap allows.
+    let first_render_marker = repairs_dir.join(ADA_EXTERNAL_RENDERED);
+    let first_render = !first_render_marker.exists();
+    let _ = model.render(&external_dir);
+    for package in model.stubbed_packages() {
+        let stem = crate::auto::ada_external_stub::ada_unit_stem(package);
+        let _ = std::fs::remove_file(per_target_dir.join(format!("{stem}.ads")));
+        let _ = std::fs::remove_file(per_target_dir.join(format!("{stem}.adb")));
+    }
+    let _ = std::fs::write(&first_render_marker, "");
     let _ = model.save(&model_path);
-    seeded || refined
+    seeded || refined || adopted || first_render
 }
 
 /// File under a target's `repairs/` holding the unit stems whose real Ada body is

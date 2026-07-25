@@ -75,6 +75,10 @@ pub fn synth_stub_body(spec_source: &str, path: &Path, standard: AdaStandard) ->
     let package_name = spec_package_name(spec_source)?;
 
     let mut bodies = String::new();
+    // Subprograms declared inside a NESTED package need their bodies nested in the
+    // same package body (`package body Parse_Option_With_Default is ... end;`).
+    // Keyed by the nested package's name, in first-seen order.
+    let mut nested_bodies: Vec<(String, String)> = Vec::new();
     let mut implemented = std::collections::BTreeSet::new();
     for sp in &ast.subprograms {
         // A completion already exists (expression function / the parser found an
@@ -110,15 +114,40 @@ pub fn synth_stub_body(spec_source: &str, path: &Path, standard: AdaStandard) ->
                 format!("{} ({})", sp.name, actuals.join(", "))
             }
         });
-        bodies.push_str("   ");
-        bodies.push_str(profile);
-        bodies.push_str(" is\n   begin\n");
-        bodies.push_str(&stub_raise_body(
-            sp.return_type.is_some(),
-            recursive.as_deref(),
-            standard,
-        ));
-        bodies.push_str("   end;\n");
+        // Which nested package (if any) declares it. Anything deeper than one level
+        // of nesting is not modeled; emitting a partially-correct body would leave a
+        // `missing body` behind and poison every target sharing this unit, so refuse
+        // outright and leave the original body in place.
+        let nesting = nested_owner_chain(&ast, sp, &package_name)?;
+        let (indent, sink) = match nesting.first() {
+            None => ("   ", &mut bodies),
+            Some(nested) => {
+                if nested_bodies.iter().all(|(name, _)| name != nested) {
+                    nested_bodies.push((nested.clone(), String::new()));
+                }
+                let entry = nested_bodies
+                    .iter_mut()
+                    .find(|(name, _)| name == nested)
+                    .map(|(_, text)| text)?;
+                ("      ", entry)
+            }
+        };
+        sink.push_str(indent);
+        sink.push_str(profile);
+        sink.push_str(" is\n");
+        sink.push_str(indent);
+        sink.push_str("begin\n");
+        let raise = stub_raise_body(sp.return_type.is_some(), recursive.as_deref(), standard);
+        for line in raise.lines() {
+            // `stub_raise_body` indents for a top-level body; re-indent relative to
+            // this body's own nesting, one step deeper than its profile.
+            sink.push_str(indent);
+            sink.push_str("   ");
+            sink.push_str(line.trim_start());
+            sink.push('\n');
+        }
+        sink.push_str(indent);
+        sink.push_str("end;\n");
         implemented.insert(sp.name.to_ascii_lowercase());
     }
     // Operator functions (`function "<" (...) return ...`) are not surfaced by the
@@ -128,7 +157,7 @@ pub fn synth_stub_body(spec_source: &str, path: &Path, standard: AdaStandard) ->
     bodies.push_str(&op_bodies);
     implemented.extend(op_names);
 
-    if bodies.is_empty() {
+    if bodies.is_empty() && nested_bodies.is_empty() {
         return None;
     }
 
@@ -141,6 +170,14 @@ pub fn synth_stub_body(spec_source: &str, path: &Path, standard: AdaStandard) ->
     }
     out.push_str(&format!("package body {package_name} is\n"));
     out.push_str(&bodies);
+    for (nested, text) in &nested_bodies {
+        // The parser lowercases unit names; emit the spec's own spelling so the
+        // generated body reads like the source it completes.
+        let nested = spec_spelling(spec_source, nested);
+        out.push_str(&format!("   package body {nested} is\n"));
+        out.push_str(text);
+        out.push_str(&format!("   end {nested};\n"));
+    }
     out.push_str(&format!("end {package_name};\n"));
     Some(StubBody {
         text: out,
@@ -168,6 +205,12 @@ fn context_clauses(spec_source: &str) -> Vec<String> {
             .or_else(|| low.strip_prefix("private with "))
         {
             out.push(format!("with {}", t[t.len() - rest.len()..].trim_start()));
+        } else if is_generic_formal_with(&low) {
+            // A GENERIC FORMAL subprogram/package declaration also begins with
+            // `with` (`with function Convert (Arg : String) return Arg_Type is <>;`)
+            // but belongs to a generic's formal part, not to the context clauses.
+            // Copying it produces `reserved word "function" cannot be used as
+            // identifier` and kills the whole build.
         } else if low.starts_with("with ") {
             out.push(t.to_owned());
         } else if low.starts_with("use type ") || low.starts_with("use all type ") {
@@ -177,6 +220,75 @@ fn context_clauses(spec_source: &str) -> Vec<String> {
         }
     }
     out
+}
+
+/// The chain of NESTED package names (outermost first) between the unit being
+/// stubbed and the subprogram's own package. Empty when the subprogram belongs to the
+/// unit itself.
+///
+/// `None` means "do not stub this unit": the subprogram is nested deeper than one
+/// level, which this synthesizer does not model, and a body missing one completion is
+/// worse than no stub at all — it fails for every target sharing the unit.
+fn nested_owner_chain(
+    ast: &ada_parser::ast::StructuralAst,
+    sp: &ada_parser::ast::Subprogram,
+    unit_name: &str,
+) -> Option<Vec<String>> {
+    use ada_parser::ast::SubprogramOwner;
+    let SubprogramOwner::Package(mut current) = sp.owner else {
+        return Some(Vec::new());
+    };
+    let mut chain = Vec::new();
+    loop {
+        let package = ast.packages.iter().find(|p| p.id == current)?;
+        if package.name.eq_ignore_ascii_case(unit_name)
+            || unit_name
+                .rsplit('.')
+                .next()
+                .is_some_and(|leaf| package.name.eq_ignore_ascii_case(leaf))
+        {
+            chain.reverse();
+            return (chain.len() <= 1).then_some(chain);
+        }
+        chain.push(package.name.clone());
+        match package.parent {
+            Some(parent) => current = parent,
+            // Reached a top-level package that is not the unit: treat as un-nested.
+            None => {
+                chain.pop();
+                chain.reverse();
+                return (chain.len() <= 1).then_some(chain);
+            }
+        }
+    }
+}
+
+/// The spelling `name` has in `spec_source`, matched case-insensitively; `name`
+/// itself when the spec does not contain it.
+fn spec_spelling(spec_source: &str, name: &str) -> String {
+    let needle = name.to_ascii_lowercase();
+    let haystack = spec_source.to_ascii_lowercase();
+    let mut from = 0;
+    while let Some(at) = haystack[from..].find(&needle) {
+        let start = from + at;
+        let end = start + needle.len();
+        let boundary = |c: Option<char>| !c.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_');
+        if boundary(haystack[..start].chars().next_back())
+            && boundary(haystack[end..].chars().next())
+        {
+            return spec_source[start..end].to_owned();
+        }
+        from = end;
+    }
+    name.to_owned()
+}
+
+/// True when a `with …` line is a generic FORMAL declaration (RM 12.6 formal
+/// subprogram, RM 12.7 formal package) rather than a context clause.
+fn is_generic_formal_with(lowercased: &str) -> bool {
+    ["with function ", "with procedure ", "with package "]
+        .iter()
+        .any(|form| lowercased.starts_with(form))
 }
 
 /// The fully-qualified name from a spec's `package <Name> is` declaration.
@@ -396,6 +508,59 @@ mod tests {
         assert!(stub.implemented.contains("image"), "{:?}", stub.implemented);
         assert!(stub.implemented.contains("go"), "{:?}", stub.implemented);
         assert!(!stub.implemented.contains("expr"), "{:?}", stub.implemented);
+    }
+
+    #[test]
+    fn a_generic_formal_is_not_copied_as_a_context_clause() {
+        // spat's vendored `GNATCOLL.Opt_Parse.Extension` declares a nested GENERIC
+        // package whose formal part contains `with function Convert ...`. Copying that
+        // line into the body's context clauses draws `reserved word "function" cannot
+        // be used as identifier` — and because the body is written into the shared
+        // instrumented tree, it breaks EVERY target whose closure includes the unit.
+        let spec = "with GNATCOLL.Opt_Parse;\n\
+                    package GNATCOLL.Opt_Parse.Extension is\n\
+                    generic\n\
+                       Parser : in out Argument_Parser;\n\
+                       type Arg_Type is private;\n\
+                       with function Convert (Arg : String) return Arg_Type is <>;\n\
+                    package Parse_Option_With_Default is\n\
+                       function Get (Args : Parsed_Arguments) return Arg_Type;\n\
+                    end Parse_Option_With_Default;\n\
+                    end GNATCOLL.Opt_Parse.Extension;\n";
+        let stub = synth_stub_body(
+            spec,
+            Path::new("gnatcoll-opt_parse-extension.ads"),
+            AdaStandard::Ada2022,
+        )
+        .expect("body");
+        assert!(
+            !stub.text.contains("with function"),
+            "a generic formal is not a context clause:\n{}",
+            stub.text
+        );
+        assert!(
+            stub.text.contains("with GNATCOLL.Opt_Parse;"),
+            "the real context clause is kept:\n{}",
+            stub.text
+        );
+        // And the subprogram belongs to the NESTED generic package, so its body must
+        // be nested too — a top-level one completes nothing.
+        assert!(
+            stub.text
+                .contains("package body Parse_Option_With_Default is"),
+            "nested generic package body:\n{}",
+            stub.text
+        );
+        let nested_at = stub
+            .text
+            .find("package body Parse_Option_With_Default")
+            .expect("nested body");
+        let get_at = stub.text.find("function Get").expect("Get body");
+        assert!(
+            nested_at < get_at,
+            "Get is inside the nested body:\n{}",
+            stub.text
+        );
     }
 
     #[test]

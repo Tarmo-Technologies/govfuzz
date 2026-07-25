@@ -7982,6 +7982,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         &class_infos,
         &param_construction_registry,
         &args.decoder_limits.cpp_limits(),
+        &crate::auto::recipe_mining::for_source(&source_path),
     );
     let dictionary_tokens = collect_cpp_dictionary_tokens_for_harness(
         &source_path,
@@ -8425,6 +8426,7 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
             &class_infos,
             &base_registry,
             &Default::default(),
+            &crate::auto::recipe_mining::for_source(source_path),
         );
         let registry = type_model::TypeRegistry::from_defs(type_defs.iter())
             .with_cpp_lookup_scopes(scopes)
@@ -8753,6 +8755,7 @@ fn resolve_cpp_parameter_constructions(
     class_infos: &[cpp_parser::CppClassInfo],
     registry: &type_model::TypeRegistry,
     limits: &harness_gen::cpp_decoders::CppDecoderLimits,
+    mined: &crate::auto::recipe_mining::MinedRecipes,
 ) -> Vec<(String, type_model::ClassConstruction)> {
     let namespace_path = function.api.namespace_path.as_slice();
     let mut recipes: Vec<(String, type_model::ClassConstruction)> = Vec::new();
@@ -8813,6 +8816,22 @@ fn resolve_cpp_parameter_constructions(
                     continue;
                 }
             }
+        }
+        // 3) A construction the PROJECT ITSELF wrote down, in the directories
+        //    discovery skips as targets. A test or example is where somebody has
+        //    already worked out how to build this object; only literal-only
+        //    expressions are mined, so what is lifted out compiles on its own.
+        //    Last, so a declared constructor or factory always wins over an
+        //    observed usage.
+        if let Some(expression) = mined
+            .get(&key)
+            .or_else(|| mined.get(key.rsplit("::").next().unwrap_or(&key)))
+        {
+            recipes.push((
+                key,
+                type_model::ClassConstruction::Expression(expression.clone()),
+            ));
+            continue;
         }
         // Otherwise the type is genuinely opaque: no recipe, existing precise
         // "no byte-buffer decoder / no synthesizable constructor" reason stands.

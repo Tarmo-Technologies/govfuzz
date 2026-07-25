@@ -2733,6 +2733,17 @@ pub(crate) fn plan_repair_forced_with_source_policy(
             // is just the unexpanded linkage/visibility macro sitting in type
             // position (PX4/NuttX `__EXPORT int f(...)`), so the veto must not
             // block defining it empty.
+            // Never `#define` a name the tree DEFINES AS A FUNCTION. The macro
+            // rewrites that function's own definition — `int apply_config(Config
+            // cfg, ...)` becomes `int (0)(Config cfg, ...)`, which fails to parse
+            // — so the repair breaks the very code it was meant to unblock, and
+            // the target can never build no matter what else is fixed. The
+            // all-caps heuristic already vetoes tree types and namespaces for the
+            // same reason; a function is the remaining case, and it is the one
+            // that catches the target's own symbol.
+            if decl_index.defines_function(name) && !is_reserved_identifier(name) {
+                return None;
+            }
             if decl_index.cpp_defines_type_or_namespace(name) && !is_reserved_identifier(name) {
                 None
             } else if is_synthesized_type_report_noise(name) {

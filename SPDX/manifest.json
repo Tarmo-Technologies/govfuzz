@@ -1095,6 +1095,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/recipe_mining.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/repair.rs",
       "license": "Apache-2.0"
     },
@@ -1524,6 +1528,10 @@
     },
     {
       "path": "crates/cli/tests/auto_cpp_harness_gaps.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_cpp_mined_recipe.rs",
       "license": "Apache-2.0"
     },
     {

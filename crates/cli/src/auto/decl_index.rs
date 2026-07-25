@@ -885,6 +885,16 @@ impl DeclarationIndex {
         self.cpp_type_names.contains(name)
     }
 
+    /// Whether the tree DEFINES a function of this name, in either language.
+    ///
+    /// Used to veto `#define`-ing it: a macro rewrites the function's own
+    /// definition (`int f(T x)` becomes `int (0)(T x)`), so the repair destroys
+    /// the code it was meant to unblock — including, in the worst case, the
+    /// target itself.
+    pub fn defines_function(&self, name: &str) -> bool {
+        self.c_definitions.contains_key(name) || self.cpp_definitions.contains_key(name)
+    }
+
     /// Resolve a `#include` spelling (bare `cfe_error.h` or sub-pathed
     /// `osal/common_types.h`) to an include-root directory in the tree such that
     /// `root/spelling` is a real header. Used to repair a `MissingHeader` by

@@ -47,6 +47,8 @@ const REGENERABLE_FILES: &[&str] = &[
     // Cached "this closure cannot be built" verdicts. Regenerable by definition,
     // and a stale one would suppress a cascade that a new binary might win.
     crate::auto::closure_memo::MEMO_FILE,
+    // The run-level Ada dialect the legacy ladder settled on.
+    "ada_dialect",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -170,6 +170,24 @@ impl ClientSymbols {
     }
 
     /// Classify an instantiation actual's source text.
+    /// The overload set declared for `name`, by simple or qualified spelling.
+    ///
+    /// A callback passed as `X'Access` is resolved through this: the stub needs
+    /// the profile of the client's own `X` to declare an access-to-subprogram
+    /// type the actual will conform to.
+    pub(crate) fn profiles_for(&self, name: &str) -> Option<&[SubProfile]> {
+        let lower = name.trim().to_ascii_lowercase();
+        let leaf = lower.rsplit('.').next().unwrap_or(&lower).to_owned();
+        self.subprograms
+            .get(&lower)
+            .or_else(|| {
+                self.leaf_lookup_allowed(&lower)
+                    .then(|| self.subprograms.get(&leaf))
+                    .flatten()
+            })
+            .map(Vec::as_slice)
+    }
+
     pub(crate) fn classify(&self, actual: &str) -> ActualKind {
         let text = actual.trim();
         if let Some(literal) = literal_type(text) {

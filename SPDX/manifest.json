@@ -1559,6 +1559,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_force_ada_callback_param.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_force_ada_external_param.rs",
       "license": "Apache-2.0"
     },
@@ -3848,6 +3852,18 @@
     },
     {
       "path": "tests/fixtures/force_fuzz/ada_body_stubout/src/app.ads",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_callback_lib/cbapp.gpr",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_callback_lib/src/cbapp.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/force_fuzz/ada_callback_lib/src/cbapp.ads",
       "license": "Apache-2.0"
     },
     {

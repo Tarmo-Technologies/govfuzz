@@ -5985,6 +5985,10 @@ fn refine_ada_external_stubs(
     // (it sees its parent's declarations directly), which the qualified-reference
     // scan above cannot see.
     let adopted = model.refine_child_unit_undefined(&raw, &sources);
+    // A parameter satisfied with `X'Access` needs a named access-to-subprogram
+    // type carrying X's profile. Declined when the profile names a type the stub
+    // cannot declare, which is where the boundary actually is.
+    let callbacks = model.refine_access_to_subprogram(&raw, &sources);
     if model.is_empty() {
         return false;
     }
@@ -6017,7 +6021,7 @@ fn refine_ada_external_stubs(
     }
     let _ = std::fs::write(&first_render_marker, "");
     let _ = model.save(&model_path);
-    seeded || refined || adopted || first_render
+    seeded || refined || adopted || callbacks || first_render
 }
 
 /// File under a target's `repairs/` holding the unit stems whose real Ada body is

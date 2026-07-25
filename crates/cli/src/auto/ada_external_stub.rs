@@ -1500,6 +1500,115 @@ impl ExternalStubModel {
 
     /// Given an `expected`/`found` type pair, if exactly one names a placeholder,
     /// resolve that placeholder's slot to the OTHER (real) type.
+    /// Resolve a parameter that a call site satisfies with `X'Access` — a
+    /// callback — by declaring an access-to-subprogram type with `X`'s profile.
+    ///
+    /// GNAT reports the actual as `found type access to procedure "X"`, which
+    /// names the client subprogram but not its profile; that comes from the
+    /// client's own declaration of `X`.
+    ///
+    /// The recorded boundary here claimed such a profile is always written in
+    /// CLIENT types the stub cannot name without a circular unit dependency.
+    /// Reading a real case showed otherwise: a library's callback is written in
+    /// the LIBRARY's types, which this model declares itself. So the profile is
+    /// synthesized when every type in it is one the stub can name — a type it
+    /// already stubs, or a predefined one — and declined otherwise, which is
+    /// where the boundary genuinely is.
+    pub fn refine_access_to_subprogram(&mut self, stderr: &str, sources: &[String]) -> bool {
+        let symbols = crate::auto::ada_client_symbols::ClientSymbols::from_sources(sources);
+        let lines: Vec<&str> = stderr.lines().collect();
+        let mut changed = false;
+        // GNAT prints the pair on CONSECUTIVE lines — `expected type "X"` then
+        // `found type access to procedure "Y"` — never on one, so the placeholder
+        // is read from the preceding line.
+        for window in lines.windows(2) {
+            let Some((kind, name)) = parse_access_to_subprogram_note(window[1]) else {
+                continue;
+            };
+            let Some(expected) = parse_type_note(window[0], "expected") else {
+                continue;
+            };
+            let Some(ph) = placeholder_of(&expected) else {
+                continue;
+            };
+            let Some(slot) = self.placeholders.get(&ph).cloned() else {
+                continue;
+            };
+            let Some(profile) = symbols
+                .profiles_for(&name)
+                .and_then(|profiles| profiles.first())
+                .cloned()
+            else {
+                continue;
+            };
+            let Some(rendered) = self.render_access_profile(&slot.package, kind, &profile) else {
+                // A profile naming a type this stub cannot declare is the real
+                // boundary; leave the slot alone rather than emit something that
+                // does not conform to the actual.
+                continue;
+            };
+            // An ANONYMOUS access parameter, not a named library-level access
+            // type. Ada's accessibility rule rejects `X'Access` when X is nested
+            // more deeply than the access type — and a callback is very often a
+            // subprogram declared inside the very body making the call, which is
+            // exactly the case that motivated this. An anonymous access parameter
+            // takes its accessibility from the parameter, so a nested subprogram
+            // is legal; it is also how the real libraries declare these.
+            changed |= self.resolve_from_pair(&expected, &format!("access {rendered}"));
+        }
+        changed
+    }
+
+    /// The `access procedure (...)` / `access function (...) return T` spelling
+    /// for a client profile, or `None` when it names a type this stub cannot.
+    fn render_access_profile(
+        &self,
+        package: &str,
+        kind: AccessSubprogramKind,
+        profile: &crate::auto::ada_client_symbols::SubProfile,
+    ) -> Option<String> {
+        let nameable = |ty: &str| -> Option<String> {
+            let spelling = normalize_ada_type(ty);
+            let leaf = spelling.rsplit('.').next().unwrap_or(&spelling);
+            if is_predefined_ada_type(leaf) {
+                return Some(leaf.to_owned());
+            }
+            // A type this model already stubs is nameable, and inside the owning
+            // package it is named without qualification.
+            self.type_owners()
+                .get(&leaf.to_ascii_lowercase())
+                .map(|owner| {
+                    if owner.eq_ignore_ascii_case(package) {
+                        leaf.to_owned()
+                    } else {
+                        format!("{owner}.{leaf}")
+                    }
+                })
+        };
+        let mut params = Vec::new();
+        for (index, (name, ty)) in profile.params.iter().enumerate() {
+            let spelled = nameable(ty)?;
+            let name = if name.trim().is_empty() {
+                format!("P{}", index + 1)
+            } else {
+                name.clone()
+            };
+            params.push(format!("{name} : {spelled}"));
+        }
+        let list = if params.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", params.join("; "))
+        };
+        match kind {
+            AccessSubprogramKind::Procedure => Some(format!("procedure{list}")),
+            AccessSubprogramKind::Function => {
+                let ret = nameable(profile.ret.as_deref()?)?;
+                Some(format!("function{list} return {ret}"))
+            }
+        }
+    }
+
     fn resolve_from_pair(&mut self, expected: &str, found: &str) -> bool {
         let exp_ph = placeholder_of(expected);
         let found_ph = placeholder_of(found);
@@ -2080,11 +2189,24 @@ type TypeForms = BTreeMap<String, TypeForm>;
 /// the case for a TAGGED stub type: it has no `'First`, and an aggregate would have
 /// to match a record definition the stub does not model.
 fn writable_default(ty: &str, forms: &TypeForms) -> Option<String> {
+    // An anonymous access-to-subprogram parameter (`access procedure (...)`) has
+    // no `'First`; its neutral value is `null`.
+    if is_anonymous_access_profile(ty) {
+        return Some("null".to_owned());
+    }
     let leaf = ty.rsplit('.').next().unwrap_or(ty).to_ascii_lowercase();
     match forms.get(&leaf) {
         Some(TypeForm::Tagged) => None,
         _ => Some(default_value(ty)),
     }
+}
+
+/// Whether a slot spelling is an anonymous access-to-subprogram profile rather
+/// than a type NAME. Such a spelling is written straight into the parameter and
+/// must not be treated as a name to qualify, default with `'First`, or `with`.
+pub(crate) fn is_anonymous_access_profile(ty: &str) -> bool {
+    let t = ty.trim_start();
+    t.starts_with("access procedure") || t.starts_with("access function")
 }
 
 /// A neutral default value for a return type spelling.
@@ -2483,6 +2605,53 @@ fn find_first<'a>(node: tree_sitter::Node<'a>, kind: &str) -> Option<tree_sitter
 ///   `parser.adb:5:31: error: expected type "Gf_Stub" defined at vendorlib.ads:2`
 ///   `parser.adb:5:31: error: found type "Standard.String"`
 /// Returns the quoted type spelling for the requested keyword (`expected`/`found`).
+/// Which kind of subprogram a callback actual denotes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AccessSubprogramKind {
+    Procedure,
+    Function,
+}
+
+/// Read GNAT's `found type access to procedure "X"` / `... function "X"`.
+///
+/// This is how a callback actual is reported: the diagnostic names the client
+/// subprogram whose `'Access` was passed, and pairs it with the stub's
+/// placeholder as the expected type on the same line.
+fn parse_access_to_subprogram_note(line: &str) -> Option<(AccessSubprogramKind, String)> {
+    let kind = if line.contains("access to procedure") {
+        AccessSubprogramKind::Procedure
+    } else if line.contains("access to function") {
+        AccessSubprogramKind::Function
+    } else {
+        return None;
+    };
+    let marker = match kind {
+        AccessSubprogramKind::Procedure => "access to procedure \"",
+        AccessSubprogramKind::Function => "access to function \"",
+    };
+    Some((kind, parse_quoted_after(line, marker)?))
+}
+
+/// Whether a leaf type name is one Ada makes visible without any `with`, so a
+/// synthesized profile may name it directly.
+fn is_predefined_ada_type(leaf: &str) -> bool {
+    const PREDEFINED: &[&str] = &[
+        "boolean",
+        "character",
+        "duration",
+        "float",
+        "integer",
+        "long_float",
+        "long_integer",
+        "natural",
+        "positive",
+        "string",
+        "wide_character",
+        "wide_string",
+    ];
+    PREDEFINED.contains(&leaf.to_ascii_lowercase().as_str())
+}
+
 fn parse_type_note(line: &str, keyword: &str) -> Option<String> {
     let needle = format!("{keyword} type \"");
     parse_quoted_after(line, &needle)
@@ -3664,5 +3833,176 @@ mod tests {
         let spec = model.render_spec("Vendorlib", &model.packages["Vendorlib"]);
         assert!(spec.contains("function Score"), "{spec}");
         assert!(!spec.contains("Score : constant"), "{spec}");
+    }
+}
+
+#[cfg(test)]
+mod access_to_subprogram_tests {
+    //! A callback parameter — a call site passing `X'Access` — was recorded as a
+    //! closed boundary: the claim was that such a profile is always written in
+    //! CLIENT types a stub cannot name without a circular unit dependency.
+    //!
+    //! Reading a real consumer showed the premise is usually false. GNATColl's
+    //! `Map_JSON_Object` takes a callback whose parameters are `UTF8_String` and
+    //! `JSON_Value` — both types of GNATColl ITSELF, which the stub declares. The
+    //! boundary is real only when the profile names something the stub cannot,
+    //! and that case is declined rather than mis-declared.
+    use super::*;
+
+    fn pkgset(names: &[&str]) -> BTreeSet<String> {
+        names.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// The shape of the real case: the client declares a local callback in the
+    /// LIBRARY's types and passes it to a library operation.
+    const CLIENT: &str = "with Vendorlib;\n\
+                          package body Client is\n\
+                          procedure Add_Time (Name  : Vendorlib.UTF8_String;\n\
+                                              Value : Vendorlib.JSON_Value) is\n\
+                          begin\n\
+                             null;\n\
+                          end Add_Time;\n\
+                          procedure Go (Object : Vendorlib.JSON_Value) is\n\
+                          begin\n\
+                             Vendorlib.Map_Object (Object, Add_Time'Access);\n\
+                          end Go;\n\
+                          end Client;\n";
+
+    fn seeded_model() -> ExternalStubModel {
+        let mut model = ExternalStubModel::default();
+        model.seed_from_sources(&[CLIENT.to_owned()], &pkgset(&["Vendorlib"]));
+        model
+    }
+
+    fn placeholder_for_second_param(model: &ExternalStubModel) -> String {
+        let stub = &model.packages["Vendorlib"];
+        let op = stub
+            .ops
+            .values()
+            .find(|op| op.name.eq_ignore_ascii_case("Map_Object"))
+            .expect("the call site seeded the operation");
+        op.params[1].ty.spelling().to_owned()
+    }
+
+    #[test]
+    fn a_callback_actual_becomes_an_access_to_subprogram_type() {
+        let mut model = seeded_model();
+        let placeholder = placeholder_for_second_param(&model);
+        let stderr = format!(
+            "client.adb:10:41: error: expected type \"{placeholder}\"\n\
+             client.adb:10:41: error: found type access to procedure \"Add_Time\"\n"
+        );
+
+        assert!(
+            model.refine_access_to_subprogram(&stderr, &[CLIENT.to_owned()]),
+            "the callback parameter must be resolved, not left as a placeholder"
+        );
+
+        let spec = model.render_spec("Vendorlib", &model.packages["Vendorlib"]);
+        // An ANONYMOUS access parameter, not a named library-level access type.
+        // Ada rejects `X'Access` when X is nested more deeply than the access
+        // type, and a callback is usually declared inside the body making the
+        // call — so a named type would compile here and fail on the real thing.
+        assert!(
+            spec.contains("access procedure (Name : UTF8_String; Value : JSON_Value)"),
+            "the parameter must be an anonymous access-to-subprogram carrying the \
+             client's profile: {spec}"
+        );
+        assert!(
+            !spec.contains("is access procedure"),
+            "no named access type may be declared — it would reintroduce the \
+             accessibility rejection: {spec}"
+        );
+        assert!(
+            spec.contains(":= null"),
+            "an access parameter defaults to null, not to 'First: {spec}"
+        );
+    }
+
+    #[test]
+    fn a_profile_naming_an_unstubbable_type_is_declined() {
+        // THIS is where the boundary really is: a callback written in a client
+        // type the stub does not declare and cannot see. Emitting an access type
+        // over some other type would not conform to the actual, so nothing is
+        // emitted and the parameter stays unresolved.
+        let client = "with Vendorlib;\n\
+                      package body Client is\n\
+                      procedure On_Row (Row : Client_Only_Record) is\n\
+                      begin\n\
+                         null;\n\
+                      end On_Row;\n\
+                      procedure Go is\n\
+                      begin\n\
+                         Vendorlib.Each (On_Row'Access);\n\
+                      end Go;\n\
+                      end Client;\n";
+        let mut model = ExternalStubModel::default();
+        model.seed_from_sources(&[client.to_owned()], &pkgset(&["Vendorlib"]));
+        let stub = &model.packages["Vendorlib"];
+        let op = stub
+            .ops
+            .values()
+            .find(|op| op.name.eq_ignore_ascii_case("Each"))
+            .expect("seeded");
+        let placeholder = op.params[0].ty.spelling().to_owned();
+        let stderr = format!(
+            "client.adb:9:22: error: expected type \"{placeholder}\"\n\
+             client.adb:9:22: error: found type access to procedure \"On_Row\"\n"
+        );
+
+        assert!(
+            !model.refine_access_to_subprogram(&stderr, &[client.to_owned()]),
+            "a profile the stub cannot name must be declined, not guessed at"
+        );
+        let spec = model.render_spec("Vendorlib", &model.packages["Vendorlib"]);
+        assert!(
+            !spec.contains("access procedure"),
+            "nothing may be emitted for an unnameable profile: {spec}"
+        );
+    }
+
+    #[test]
+    fn a_callback_with_no_parameters_renders_a_bare_access_procedure() {
+        let client = "with Vendorlib;\n\
+                      package body Client is\n\
+                      procedure Tick is\n\
+                      begin\n\
+                         null;\n\
+                      end Tick;\n\
+                      procedure Go is\n\
+                      begin\n\
+                         Vendorlib.At_Exit (Tick'Access);\n\
+                      end Go;\n\
+                      end Client;\n";
+        let mut model = ExternalStubModel::default();
+        model.seed_from_sources(&[client.to_owned()], &pkgset(&["Vendorlib"]));
+        let op_placeholder = {
+            let stub = &model.packages["Vendorlib"];
+            let op = stub
+                .ops
+                .values()
+                .find(|op| op.name.eq_ignore_ascii_case("At_Exit"))
+                .expect("seeded");
+            op.params[0].ty.spelling().to_owned()
+        };
+        let stderr = format!(
+            "client.adb:9:25: error: expected type \"{op_placeholder}\"\n\
+             client.adb:9:25: error: found type access to procedure \"Tick\"\n"
+        );
+
+        assert!(model.refine_access_to_subprogram(&stderr, &[client.to_owned()]));
+        let spec = model.render_spec("Vendorlib", &model.packages["Vendorlib"]);
+        assert!(
+            spec.contains("access procedure := null"),
+            "a parameterless callback takes no parameter list: {spec}"
+        );
+    }
+
+    #[test]
+    fn an_unrelated_diagnostic_pair_changes_nothing() {
+        let mut model = seeded_model();
+        let stderr = "client.adb:3:1: error: expected type \"Integer\"\n\
+                      client.adb:3:1: error: found type \"String\"\n";
+        assert!(!model.refine_access_to_subprogram(stderr, &[CLIENT.to_owned()]));
     }
 }

@@ -54,6 +54,7 @@ pub mod preflight;
 pub mod progress;
 pub mod provenance;
 pub mod python_build;
+pub mod recipe_mining;
 pub mod repair;
 pub mod report;
 pub mod report_only;

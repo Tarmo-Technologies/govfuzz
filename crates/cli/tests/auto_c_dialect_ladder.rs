@@ -173,13 +173,16 @@ fn a_target_only_gcc_accepts_is_built_by_falling_back_to_it() {
     let work = root.join("work");
     let stderr = run_auto(&root, &src, &work);
 
-    // What the fallback is responsible for is that the target BUILDS. Whether a
-    // one-second fuzz budget then records executions depends on host load, so
-    // asserting on it here would make this test flaky about something it is not
-    // testing.
+    // What the fallback is responsible for is that the target BUILDS. What a
+    // one-second fuzz budget then manages to execute — and therefore whether the
+    // target-entry checkpoint is observed — depends on host load, so asserting on
+    // that would make this test flaky about something it is not testing.
     let outcome = outcome_of_target(&work, "parse_record");
     assert!(
-        matches!(outcome.as_str(), "built_and_fuzzed" | "built"),
+        matches!(
+            outcome.as_str(),
+            "built_and_fuzzed" | "built" | "built_not_entered"
+        ),
         "a target the default compiler rejects and the other accepts must not be \
          lost, got {outcome}; stderr=\n{stderr}"
     );

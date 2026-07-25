@@ -323,7 +323,7 @@ pub(crate) fn prepare_layout(args: &BuildArgs) -> Result<BuildLayout, String> {
     })?;
 
     let build_dir = work_dir.join("build").join(&harness_id);
-    let ada_standard = detect_ada_standard(&source_dir, &build_dir)?;
+    let ada_standard = detect_ada_standard(&source_dir, &work_dir)?;
     let obj_dir = build_dir.join("obj");
     fs::create_dir_all(&obj_dir)
         .map_err(|error| format!("create build directory '{}': {error}", obj_dir.display()))?;
@@ -769,11 +769,18 @@ pub(crate) fn try_run_c_make_build_with_target(
         }
     };
     cmd.arg(make_target.unwrap_or("main"));
-    // Override the C++ standard for the legacy-dialect ladder. A make command-line
-    // assignment wins over the Makefile's `CXX_STD ?=`; harmless on the C Makefile
-    // (no CXX_STD variable there).
+    // Override the language standard for the legacy-dialect ladder. A make
+    // command-line assignment wins over the Makefile's `?=` default. The two
+    // Makefiles carry different variables, so route by which harness this is:
+    // `CXX_STD` names a bare standard (`gnu++14`) that the C++ template splices
+    // into `-std=`, and `C_STD` does the same on the C side, where it is empty by
+    // default so an ordinary build carries no `-std` at all.
     if let Some(std) = cxx_std {
-        cmd.arg(format!("CXX_STD={std}"));
+        cmd.arg(if is_cpp {
+            format!("CXX_STD={std}")
+        } else {
+            format!("C_STD={std}")
+        });
     }
     let force_includes = repair_force_includes(&harness_dir);
     apply_c_family_make_env(
@@ -1398,12 +1405,12 @@ fn harness_roots(work_dir: &Path) -> [PathBuf; 2] {
 /// safe, maximally-buildable choice — squarely govfuzz's "fuzz code that doesn't
 /// cleanly build" thesis. (The `@` form is not a token the standard-probe
 /// recognises, so per-source detection cannot reliably pick 2022 here anyway.)
-fn detect_ada_standard(_source_dir: &Path, build_dir: &Path) -> Result<AdaStandard, String> {
+fn detect_ada_standard(_source_dir: &Path, work_dir: &Path) -> Result<AdaStandard, String> {
     // The legacy-dialect ladder (see `crate::auto::attempt`) writes the standard it
     // found buildable to this cache; honor it so the whole build (and any
     // synthesized stub bodies) compiles under the SAME `-gnatXXXX`. Absent a cache,
     // Ada 2022 is the maximally-buildable default.
-    Ok(read_ada_dialect_cache(build_dir).unwrap_or(AdaStandard::Ada2022))
+    Ok(read_ada_dialect_cache(work_dir).unwrap_or(AdaStandard::Ada2022))
 }
 
 /// Run-level object directory shared by every Ada harness of a sweep, so the
@@ -1420,14 +1427,20 @@ pub(crate) const SHARED_ADA_OBJ_DIR: &str = "ada_obj";
 /// depending on it, for each harness.
 pub(crate) const SHARED_ADA_STUBS_DIR: &str = "ada_external_stubs";
 
-/// Path of the per-harness Ada dialect cache written by the legacy-dialect ladder.
-pub(crate) fn ada_dialect_cache_path(build_dir: &Path) -> PathBuf {
-    build_dir.join("ada_dialect")
+/// Path of the Ada dialect cache written by the legacy-dialect ladder.
+///
+/// RUN-level, not per harness. Which `-gnatXXXX` a project's sources compile
+/// under is a property of the project — one target does not use Ada 95 while its
+/// neighbour uses Ada 2022 — but the cache used to sit in `build/<harness>/`, so
+/// every target of a legacy project re-ran the whole ladder, paying up to three
+/// extra full builds each to rediscover the same answer.
+pub(crate) fn ada_dialect_cache_path(work_dir: &Path) -> PathBuf {
+    work_dir.join("ada_dialect")
 }
 
-/// Read a cached Ada standard (a `-gnatXXXX` token) for this build, if any.
-pub(crate) fn read_ada_dialect_cache(build_dir: &Path) -> Option<AdaStandard> {
-    let raw = fs::read_to_string(ada_dialect_cache_path(build_dir)).ok()?;
+/// Read the cached Ada standard (a `-gnatXXXX` token) for this run, if any.
+pub(crate) fn read_ada_dialect_cache(work_dir: &Path) -> Option<AdaStandard> {
+    let raw = fs::read_to_string(ada_dialect_cache_path(work_dir)).ok()?;
     ada_standard_from_switch(raw.trim())
 }
 

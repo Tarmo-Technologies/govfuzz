@@ -1467,6 +1467,14 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_c_dialect_ladder.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_c_ejects_unbuildable_source.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_c_opaque_returning_ctor.rs",
       "license": "Apache-2.0"
     },

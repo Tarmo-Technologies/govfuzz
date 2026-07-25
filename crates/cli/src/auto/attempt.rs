@@ -3095,6 +3095,40 @@ fn run_attempt(
                         harness_dir,
                     });
                 }
+                // A translation unit the repair loop ADDED for its symbols may
+                // itself refuse to compile — a flight-software unit wanting a full
+                // mission build, a file that only compiles behind its project's
+                // generated config. Once added it stays on the command line, so
+                // its errors poison every later round and the target is lost even
+                // though its own code is fine.
+                //
+                // Eject it and let the symbols it was providing go undefined
+                // again: the planner has already recorded AddSource for that path,
+                // so the next round blind-stubs them instead. This is the C
+                // counterpart of the Ada body stub-out, which replaces an
+                // offline-unbuildable non-target body with a raising stub — the
+                // same principle that took a real Ada project from 0 to 8 built.
+                //
+                // Only auto-added units are ejectable. A `--extra-source` the
+                // operator named is a deliberate instruction, and dropping it
+                // silently would hide the real problem.
+                let c_build_output =
+                    std::fs::read_to_string(harness_dir.join("repairs").join(C_BUILD_OUTPUT_LOG))
+                        .unwrap_or_default();
+                if let Some(ejected) = eject_unbuildable_added_source(
+                    &c_build_output,
+                    &mut extra_sources,
+                    &options.extra_sources,
+                ) {
+                    eprintln!(
+                        "govfuzz auto: {}: recovered source {} does not compile in \
+                         isolation; dropping it and stubbing the symbols it \
+                         provided",
+                        candidate.harness_id,
+                        ejected.display()
+                    );
+                    continue;
+                }
                 // §26.1: whole-library link fallback. When the link fails with
                 // undefined externals that name NO in-tree definition — the
                 // signature of sibling translation units that live only in the
@@ -4772,8 +4806,21 @@ fn try_build_c(
     // intact (byte-identical to before); `None` builds coverage-only (no
     // `-fsanitize=`); `Set` swaps in exactly the requested matrix.
     let sanitizer_override;
+    let fallback_override;
+    // A previous target already proved this project needs the other compiler.
+    // Honour that before anything else so one probe serves the whole run — but
+    // never over an explicit cross build or an operator's `--sanitizers`, both of
+    // which carry their own compiler and flags on purpose.
+    let cached_alternate = cross_compiler.is_none()
+        && matches!(sanitizers, SanitizerSelection::Default)
+        && std::fs::read_to_string(c_compiler_cache_path(work_dir))
+            .is_ok_and(|cached| cached.trim() == "gcc");
     let compiler = match cross_compiler {
         Some(cross) => Some(cross),
+        None if cached_alternate => {
+            fallback_override = gcc_fallback_override();
+            Some(&fallback_override)
+        }
         None => match sanitizers {
             SanitizerSelection::Default => None,
             SanitizerSelection::None => {
@@ -4847,6 +4894,7 @@ fn try_build_c(
         return BuildOutcome::Success;
     }
     let mut raw_output = combined_build_output(&output);
+    persist_c_build_output(work_dir, harness_id, &raw_output);
     let mut errors = build_classifier::classify(&raw_output);
 
     // GCC 10 and Clang 11 changed C's default from -fcommon to -fno-common.
@@ -4878,6 +4926,7 @@ fn try_build_c(
         let compat_raw = combined_build_output(&compat_output);
         if !output_may_require_fcommon(&compat_raw) {
             raw_output = compat_raw;
+            persist_c_build_output(work_dir, harness_id, &raw_output);
             errors = build_classifier::classify(&raw_output);
         } else {
             // Function duplicates and accidentally repeated source files are
@@ -4916,6 +4965,7 @@ fn try_build_c(
             return BuildOutcome::Success;
         }
         raw_output = combined_build_output(&output);
+        persist_c_build_output(work_dir, harness_id, &raw_output);
         errors = build_classifier::classify(&raw_output);
     }
 
@@ -4939,9 +4989,22 @@ fn try_build_c(
         && errors
             .iter()
             .all(|e| matches!(e, BuildErrorKind::UndefinedSymbol { .. }));
-    if is_cpp && explicit_std.is_none() && cached_std.is_none() && !is_pure_link_failure {
+    // The best rung's errors, adopted below only after the compiler fallback has
+    // had its turn — otherwise a ladder that merely reduces the error count would
+    // return before a different compiler gets to build the target outright.
+    let mut ladder_best: Option<Vec<BuildErrorKind>> = None;
+    if explicit_std.is_none() && cached_std.is_none() && !is_pure_link_failure {
+        let ladder: &[&'static str] = if is_cpp {
+            &CXX_DIALECT_LADDER
+        } else {
+            // C had no ladder at all: a modern default (gnu17) rejects
+            // pre-standard constructs that older projects are full of, and the
+            // target simply failed. The C harness carries no `-std` unless a rung
+            // is selected, so an ordinary build is unaffected.
+            &C_DIALECT_LADDER
+        };
         let mut best: Option<(&'static str, Vec<BuildErrorKind>)> = None;
-        for std in CXX_DIALECT_LADDER {
+        for std in ladder.iter().copied() {
             let out = crate::build::try_run_c_make_build_with_target(
                 work_dir,
                 harness_id,
@@ -4971,22 +5034,53 @@ fn try_build_c(
                 best = Some((std, errs));
             }
         }
-        if let Some((_std, errs)) = best {
-            // Adopt the fewest-errors dialect for the repair loop even on a TIE
-            // (`<=`, offline-legacy audit #10). A legacy TU commonly swaps
-            // gnu++20's UNREPAIRABLE dialect rejection (a removed-syntax `Other`)
-            // for an equal count of REPAIRABLE errors under an older rung (a
-            // missing type the loop can stub). With strict `<` the tie kept the
-            // default's dialect error, which the planner can't act on, so the
-            // target failed immediately and never fuzzed. Returning the older
-            // rung's errors lets the loop stub the missing type; the ladder
-            // re-runs next round and BUILDS under that older std once the stub is
-            // in place — so convergence needs no persisted (and possibly wrong)
-            // failed dialect. Gated behind !is_pure_link_failure above, so a pure
-            // link failure never mis-selects a pre-C++11 std (auto_full_tu_link).
-            if errs.len() <= errors.len() {
-                return BuildOutcome::Failed { errors: errs };
-            }
+        ladder_best = best.map(|(_std, errs)| errs);
+    }
+    // Last resort before giving up on the build: the OTHER compiler. gcc and
+    // clang reject different real-world code, and until now a target only one of
+    // them could compile was simply lost. Probed once per run and remembered, and
+    // only when the failure is a COMPILE problem — a standard or a compiler
+    // cannot conjure a symbol that is genuinely undefined.
+    if !is_pure_link_failure
+        && !cached_alternate
+        && cross_compiler.is_none()
+        && matches!(sanitizers, SanitizerSelection::Default)
+        && !c_compiler_cache_path(work_dir).exists()
+        && which::which("gcc").is_ok()
+    {
+        let alternate = gcc_fallback_override();
+        let out = crate::build::try_run_c_make_build_with_target(
+            work_dir,
+            harness_id,
+            extra_sources,
+            extra_includes,
+            Some(&alternate),
+            None,
+            chosen_std.as_deref(),
+        );
+        if build_succeeded(&out) {
+            let _ = std::fs::write(c_compiler_cache_path(work_dir), "gcc");
+            eprintln!(
+                "govfuzz auto: {harness_id}: clang rejected this target and gcc \
+                 accepted it; using gcc for the rest of the run"
+            );
+            return BuildOutcome::Success;
+        }
+    }
+    // Adopt the fewest-errors dialect for the repair loop even on a TIE
+    // (`<=`, offline-legacy audit #10). A legacy TU commonly swaps the modern
+    // default's UNREPAIRABLE dialect rejection (a removed-syntax `Other`) for an
+    // equal count of REPAIRABLE errors under an older rung (a missing type the
+    // loop can stub). With strict `<` the tie kept the default's dialect error,
+    // which the planner cannot act on, so the target failed immediately and never
+    // fuzzed. Returning the older rung's errors lets the loop stub the missing
+    // type; the ladder re-runs next round and BUILDS under that older standard
+    // once the stub is in place — so convergence needs no persisted (and possibly
+    // wrong) failed dialect. Gated behind !is_pure_link_failure above, so a pure
+    // link failure never mis-selects a pre-C++11 standard (auto_full_tu_link).
+    if let Some(errs) = ladder_best {
+        if errs.len() <= errors.len() {
+            return BuildOutcome::Failed { errors: errs };
         }
     }
     BuildOutcome::Failed { errors }
@@ -4997,7 +5091,11 @@ fn cxx_dialect_cache_path(work_dir: &Path, harness_id: &str) -> PathBuf {
     let harness_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
     let mut hasher = Sha256::new();
     hasher.update(b"govfuzz-cxx-dialect-context-v2\0");
-    for name in ["Makefile", "main.cpp"] {
+    // `main.c` as well as `main.cpp`: the ladder now serves both lanes, and a C
+    // harness whose main changed must not inherit a rung chosen for a different
+    // one. A name that does not exist for this harness simply contributes
+    // nothing.
+    for name in ["Makefile", "main.cpp", "main.c"] {
         hasher.update(name.as_bytes());
         if let Ok(bytes) = std::fs::read(harness_dir.join(name)) {
             hasher.update(bytes);
@@ -5118,6 +5216,17 @@ mod cxx_dialect_output_tests {
 // C++98 project code is still commonly accepted by gnu++11; genuinely
 // pre-standard code is handled by the explicit report-only dialect lane.
 const CXX_DIALECT_LADDER: [&str; 3] = ["gnu++17", "gnu++14", "gnu++11"];
+
+/// Successively older C standards the dialect ladder retries — newest first, so a
+/// target builds at the newest standard it can.
+///
+/// The rungs are all `gnu*` rather than `c*`: legacy C leans on GNU extensions
+/// (statement expressions, `asm`, anonymous unions) that strict ISO modes reject,
+/// so a `-std=c89` rung would fail code that `-std=gnu89` accepts, for reasons
+/// having nothing to do with the vintage of the source. `gnu89` is the oldest
+/// worth trying — the generated driver needs no more than that, and anything a
+/// K&R-era file needs beyond it belongs to the report-only dialect lane.
+const C_DIALECT_LADDER: [&str; 3] = ["gnu11", "gnu99", "gnu89"];
 
 fn combined_build_output(output: &std::process::Output) -> String {
     format!(
@@ -5366,6 +5475,111 @@ fn coverage_only_compiler_override() -> crate::build::CFamilyCompilerOverride {
 /// Conflicting sanitizers (e.g. `asan`+`msan`) make clang reject the build — a
 /// normal build error; `address,undefined,leak` are the compatible set. MSan/TSan
 /// are best-effort without an instrumented libc but still build and run.
+/// File under a target's `repairs/` holding the last C/C++ build's raw combined
+/// output, mirroring the Ada lane's log. The classified errors are not enough on
+/// their own: most kinds carry a name and no location (`IncompleteType` is just a
+/// type name), so attributing a failure to the file that caused it needs the
+/// compiler's own text.
+pub(crate) const C_BUILD_OUTPUT_LOG: &str = "c_build_output.log";
+
+fn persist_c_build_output(work_dir: &Path, harness_id: &str, raw: &str) {
+    let log = crate::auto::layout::harness_dir(work_dir, harness_id)
+        .join("repairs")
+        .join(C_BUILD_OUTPUT_LOG);
+    if let Some(parent) = log.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(log, raw);
+}
+
+/// Drop one auto-added translation unit that the compiler is complaining ABOUT,
+/// returning it so the caller can report the ejection.
+///
+/// The unit was added to supply a symbol; if it cannot compile, it supplies
+/// nothing and blocks everything. The symbols it was meant to provide return to
+/// being undefined, which the planner already knows how to blind-stub.
+///
+/// `protected` holds operator-supplied `--extra-source` paths, which are never
+/// ejected: those are explicit instructions, and silently dropping one would
+/// hide the real problem behind a stub.
+fn eject_unbuildable_added_source(
+    build_output: &str,
+    extra_sources: &mut Vec<PathBuf>,
+    protected: &[PathBuf],
+) -> Option<PathBuf> {
+    // Only lines the compiler flagged as errors count. A file merely mentioned in
+    // a note, an include trace, or a warning is not the one that failed.
+    let error_lines: Vec<&str> = build_output
+        .lines()
+        .filter(|line| line.contains("error:") || line.contains("error :"))
+        .collect();
+    let blamed = |path: &Path| -> bool {
+        let full = path.to_string_lossy().into_owned();
+        let base = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        error_lines.iter().any(|line| {
+            // Match the location prefix, so a path appearing later in a message
+            // (as an argument, say) does not condemn the file.
+            let location = line.split(": ").next().unwrap_or(line);
+            location.contains(&full) || (!base.is_empty() && location.contains(&base))
+        })
+    };
+    // An archive is linked, never compiled, so a compile error can never be about
+    // one; skipping them keeps a link failure from ejecting the library that is
+    // resolving everything else.
+    let ejectable = |path: &PathBuf| -> bool {
+        !protected.contains(path)
+            && !path
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("a") || ext.eq_ignore_ascii_case("so"))
+            && blamed(path)
+    };
+    let index = extra_sources.iter().position(ejectable)?;
+    Some(extra_sources.remove(index))
+}
+
+/// The OTHER host C/C++ compiler, used when the default one rejects a
+/// translation unit it need not have.
+///
+/// gcc and clang disagree about plenty of real code — GNU extensions each
+/// accepts and the other does not, differing strictness about old constructs,
+/// different built-in expectations. A target that only one of them can compile
+/// was simply lost, because govfuzz always used the same one.
+///
+/// The coverage flag differs between them and is not interchangeable: GCC has no
+/// `trace-pc-guard`, and asking for it fails the build outright, so the fallback
+/// carries GCC's `trace-pc` — the same flag the generated Makefile emits when it
+/// detects a GCC toolchain.
+fn gcc_fallback_override() -> crate::build::CFamilyCompilerOverride {
+    let coverage = "-fsanitize-coverage=trace-pc".to_owned();
+    let sanitizers = "-fsanitize=address,undefined".to_owned();
+    let no_sanitize = "-fno-sanitize=alignment".to_owned();
+    let base = |extra: &str| {
+        let mut flags = vec!["-O1".to_owned(), "-g".to_owned()];
+        if !extra.is_empty() {
+            flags.push(extra.to_owned());
+        }
+        flags.push(sanitizers.clone());
+        flags.push(no_sanitize.clone());
+        flags.push(coverage.clone());
+        flags
+    };
+    crate::build::CFamilyCompilerOverride {
+        cc: "gcc".to_owned(),
+        cxx: "g++".to_owned(),
+        cflags: base(""),
+        cxxflags: base("-std=gnu++17"),
+    }
+}
+
+/// Where the winning C-family compiler is remembered, so one probe serves the
+/// whole run instead of every target rediscovering it.
+fn c_compiler_cache_path(work_dir: &Path) -> PathBuf {
+    work_dir.join("c_compiler.txt")
+}
+
 fn native_coverage_override(
     fsanitize: Option<String>,
     has_ubsan: bool,
@@ -5664,8 +5878,10 @@ fn run_ada_build_once(
     // rest of the project (and for any synthesized stub bodies). Mirrors the C++
     // ladder. A pure external/link failure is never a dialect problem, so require
     // an actual dialect diagnostic before laddering.
-    let build_dir = work_dir.join("build").join(harness_id);
-    let cache_path = crate::build::ada_dialect_cache_path(&build_dir);
+    // The cache is RUN-level: which standard a project's sources compile under is
+    // a property of the project, so the first target to ladder settles it for the
+    // rest instead of each one paying up to three extra full builds.
+    let cache_path = crate::build::ada_dialect_cache_path(work_dir);
     if matches!(outcome, BuildOutcome::Failed { .. })
         && !cache_path.exists()
         && output_has_ada_dialect_error(&raw)
@@ -5911,7 +6127,7 @@ fn stub_out_unbuildable_bodies(
         .join(ADA_STUB_BODIES_DIR);
     // Synthesize under the SAME standard the build settled on (the dialect ladder
     // may have dropped below Ada 2012, where the raise-expression form is illegal).
-    let standard = crate::build::read_ada_dialect_cache(&work_dir.join("build").join(harness_id))
+    let standard = crate::build::read_ada_dialect_cache(work_dir)
         .unwrap_or(ada_parser::ast::AdaStandard::Ada2022);
     let mut excluded = load_excluded_bodies(repairs_dir);
     let mut changed = false;
@@ -9899,5 +10115,127 @@ mod refused_repair_tracking_tests {
         );
 
         fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod eject_unbuildable_added_source_tests {
+    //! A translation unit the repair loop added for its symbols can itself refuse
+    //! to compile. It then stays on the command line and poisons every later
+    //! round, so the target is lost even though its own code is fine. Ejecting it
+    //! returns those symbols to being undefined, which the planner already knows
+    //! how to blind-stub — the C counterpart of the Ada body stub-out.
+    //!
+    //! Attribution reads the compiler's own text, not the classified errors: most
+    //! error kinds carry a name and no location (`IncompleteType` is just a type
+    //! name), so the classified list cannot say which file failed.
+    use super::*;
+
+    #[test]
+    fn the_blamed_source_is_the_one_dropped() {
+        let mut sources = vec![
+            PathBuf::from("/proj/src/good.c"),
+            PathBuf::from("/proj/src/needs_mission_build.c"),
+        ];
+        let output = "/proj/src/needs_mission_build.c:12:3: error: use of undeclared \
+                      identifier 'MISSION_CFG'\n";
+
+        let ejected = eject_unbuildable_added_source(output, &mut sources, &[]);
+
+        assert_eq!(
+            ejected,
+            Some(PathBuf::from("/proj/src/needs_mission_build.c"))
+        );
+        assert_eq!(sources, vec![PathBuf::from("/proj/src/good.c")]);
+    }
+
+    #[test]
+    fn an_incomplete_type_error_still_names_its_file() {
+        // The case that motivated reading raw output: the classifier reduces this
+        // to `IncompleteType { name }`, which carries no path at all.
+        let mut sources = vec![PathBuf::from("/proj/src/mission_helper.c")];
+        let output = "/proj/src/mission_helper.c:4:35: error: variable has incomplete \
+                      type 'struct never_defined_anywhere'\n";
+
+        assert_eq!(
+            eject_unbuildable_added_source(output, &mut sources, &[]),
+            Some(PathBuf::from("/proj/src/mission_helper.c"))
+        );
+    }
+
+    #[test]
+    fn an_operator_supplied_source_is_never_dropped() {
+        // `--extra-source` is an explicit instruction. Dropping it silently would
+        // replace the operator's file with a stub and hide the real problem.
+        let named = PathBuf::from("/proj/src/explicit.c");
+        let mut sources = vec![named.clone()];
+        let output = "/proj/src/explicit.c:3:1: error: unknown type name 'widget_t'\n";
+
+        assert_eq!(
+            eject_unbuildable_added_source(output, &mut sources, std::slice::from_ref(&named)),
+            None
+        );
+        assert_eq!(sources, vec![named]);
+    }
+
+    #[test]
+    fn a_link_failure_never_ejects_the_archive_resolving_it() {
+        // An archive is linked, never compiled, so a compile error cannot be about
+        // one — and ejecting it would drop the library closing the link.
+        let archive = PathBuf::from("/proj/build/libzstd.a");
+        let mut sources = vec![archive.clone()];
+        let output = "/usr/bin/ld: /proj/build/libzstd.a(zstd.o): error: undefined \
+                      reference to `foo'\n";
+
+        assert_eq!(
+            eject_unbuildable_added_source(output, &mut sources, &[]),
+            None
+        );
+        assert_eq!(sources, vec![archive]);
+    }
+
+    #[test]
+    fn nothing_is_dropped_when_no_added_source_is_blamed() {
+        // The error is in the target's own code; ejecting a healthy recovered
+        // source would lose symbols for no reason.
+        let mut sources = vec![PathBuf::from("/proj/src/helper.c")];
+        let output = "main.c:9:1: error: too few arguments to function call\n";
+
+        assert_eq!(
+            eject_unbuildable_added_source(output, &mut sources, &[]),
+            None
+        );
+        assert_eq!(sources.len(), 1);
+    }
+
+    #[test]
+    fn a_file_named_only_in_a_note_or_warning_is_not_blamed() {
+        // Being mentioned is not being at fault: an include trace or a warning
+        // names files that compiled perfectly well.
+        let mut sources = vec![PathBuf::from("/proj/src/helper.c")];
+        let output = "/proj/src/helper.c:3:5: warning: unused variable 'x'\n\
+                      /proj/src/helper.c:1:1: note: expanded from macro\n";
+
+        assert_eq!(
+            eject_unbuildable_added_source(output, &mut sources, &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn one_unit_is_ejected_per_round_so_each_is_re_evaluated() {
+        // Two broken units: dropping both at once could discard one whose errors
+        // were only a consequence of the other.
+        let mut sources = vec![
+            PathBuf::from("/proj/src/a.c"),
+            PathBuf::from("/proj/src/b.c"),
+        ];
+        let output = "/proj/src/a.c:1:1: error: boom\n/proj/src/b.c:1:1: error: boom\n";
+
+        assert_eq!(
+            eject_unbuildable_added_source(output, &mut sources, &[]),
+            Some(PathBuf::from("/proj/src/a.c"))
+        );
+        assert_eq!(sources, vec![PathBuf::from("/proj/src/b.c")]);
     }
 }

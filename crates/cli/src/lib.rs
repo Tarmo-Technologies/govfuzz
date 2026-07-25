@@ -836,7 +836,7 @@ mod tests {
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
         let log_path = temp.join("build-args.log");
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
         let _log = EnvVarGuard::set("GOVFUZZ_BUILD_LOG", log_path.as_os_str());
 
         let exit = run_from([
@@ -864,7 +864,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -886,7 +886,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -928,7 +928,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -987,7 +987,7 @@ mod tests {
         );
         let build_log_path = temp.join("build-args.log");
         let gnat_log_path = temp.join("raw-gnat.log");
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
         let _build_log = EnvVarGuard::set("GOVFUZZ_BUILD_LOG", build_log_path.as_os_str());
         let _gnat_log = EnvVarGuard::set("GOVFUZZ_RAW_GNAT_LOG", gnat_log_path.as_os_str());
 
@@ -1024,7 +1024,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -1055,7 +1055,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -1084,7 +1084,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -1107,23 +1107,9 @@ mod tests {
         assert!(!probe_body.contains("adafuzz_probe_memory_buffer"));
     }
 
-    #[test]
-    fn build_subcommand_returns_two_when_no_compiler_present() {
-        let _lock = PATH_LOCK.lock().expect("path lock is acquired");
-        let temp = temp_dir("build-no-compiler");
-        let work_dir = create_minimal_work_dir(&temp);
-        let empty_path = temp.join("empty-path");
-        fs::create_dir_all(&empty_path).expect("empty PATH directory is created");
-        let _path = PathEnvGuard::set(&empty_path);
-
-        let exit = run_from([
-            "govfuzz",
-            "build",
-            work_dir.to_str().expect("utf-8 work dir"),
-        ]);
-
-        assert_eq!(exit, 2);
-    }
+    // `build_subcommand_returns_two_when_no_compiler_present` lives in
+    // `tests/cli_no_compiler.rs`: an empty PATH cannot be installed process-wide
+    // without breaking tests running concurrently (see `PathEnvGuard::prepend`).
 
     #[test]
     fn build_subcommand_returns_three_when_work_dir_missing() {
@@ -1133,7 +1119,7 @@ mod tests {
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
         let missing = temp.join("missing-work");
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -1144,18 +1130,8 @@ mod tests {
         assert_eq!(exit, 3);
     }
 
-    #[test]
-    fn stub_subcommand_returns_two_when_no_compiler() {
-        let _lock = PATH_LOCK.lock().expect("path lock is acquired");
-        let temp = temp_dir("stub-no-compiler");
-        let empty_path = temp.join("empty-path");
-        fs::create_dir_all(&empty_path).expect("empty PATH directory is created");
-        let _path = PathEnvGuard::set(&empty_path);
-
-        let exit = run_from(["govfuzz", "stub", "/tmp/govfuzz-missing-work"]);
-
-        assert_eq!(exit, 2);
-    }
+    // `stub_subcommand_returns_two_when_no_compiler` lives in
+    // `tests/cli_no_compiler.rs`, for the same reason as the `build` case above.
 
     #[test]
     fn stub_subcommand_returns_three_when_work_dir_missing() {
@@ -1165,7 +1141,7 @@ mod tests {
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
         let missing = temp.join("missing-work");
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from(["govfuzz", "stub", missing.to_str().expect("utf-8 work dir")]);
 
@@ -1180,7 +1156,7 @@ mod tests {
         let bin_dir = temp.join("bin");
         fs::create_dir_all(&bin_dir).expect("fake compiler bin directory is created");
         write_executable(&bin_dir.join("gprbuild"), fake_build_compiler_script());
-        let _path = PathEnvGuard::set(&bin_dir);
+        let _path = PathEnvGuard::prepend(&bin_dir);
 
         let exit = run_from([
             "govfuzz",
@@ -1468,9 +1444,33 @@ exit 1
     }
 
     impl PathEnvGuard {
-        fn set(path: &Path) -> Self {
+        /// PREPEND `path` to the process `PATH` for the duration of a test, so a fake
+        /// tool written there is found ahead of the real one.
+        ///
+        /// It must prepend rather than REPLACE. `PATH` is process-global while cargo
+        /// runs unit tests on many threads, so replacing it hid the real toolchain
+        /// from every test running concurrently: a C++ header preflight that spawns
+        /// `clang++` by name got `NotFound`, which the preflight reports as
+        /// "unavailable" and the caller treats like "header is fine" — so a harness
+        /// that should have been blocked was generated instead, failing
+        /// `owner_translation_unit_only_header_is_rejected_before_harness_build`
+        /// intermittently. Prepending keeps the fake tool authoritative without
+        /// making the real ones unreachable.
+        ///
+        /// A test that needs a compiler to be genuinely ABSENT cannot use this; see
+        /// `crates/cli/tests/cli_no_compiler.rs`, which runs the binary in a child
+        /// process with its own environment.
+        fn prepend(path: &Path) -> Self {
             let original = std::env::var_os("PATH");
-            std::env::set_var("PATH", path);
+            let joined = match &original {
+                Some(existing) => {
+                    let mut dirs = vec![path.to_path_buf()];
+                    dirs.extend(std::env::split_paths(existing));
+                    std::env::join_paths(dirs).expect("PATH entries are joinable")
+                }
+                None => path.as_os_str().to_owned(),
+            };
+            std::env::set_var("PATH", joined);
             Self { original }
         }
     }

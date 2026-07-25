@@ -1,5 +1,13 @@
 --  SPDX-License-Identifier: Apache-2.0
-pragma Ada_95;
+--  Ada 2005, not Ada 95 like the spec: the spec is `Preelaborate`, and this body
+--  declares a private object (a `Stream_IO.File_Type`), which Ada 95 forbids in a
+--  preelaborated unit and Ada 2005 permits. A code-generating compile never
+--  raised it, but `-gnatc` enforces the categorization rule, so the claim was
+--  wrong rather than merely unchecked. The body also `with`s
+--  `Ada.Environment_Variables`, itself an Ada 2005 unit, so Ada 95 was never an
+--  honest description of it. The SPEC stays Ada 95 and keeps `Preelaborate`, so
+--  preelaborated user code can still depend on it.
+pragma Ada_2005;
 with Ada.Environment_Variables;
 with Ada.Streams;
 with Ada.Streams.Stream_IO;

@@ -1,0 +1,235 @@
+{
+ "lane": "go",
+ "repo": "nektos/act",
+ "stars": 71207,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/nektos__act --json --out /home/ubuntu/govfuzz-sweep-work/go__nektos__act.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 32696,
+   "sloc_by_lang": {
+    "go": 24500,
+    "config": 4450,
+    "javascript": 3746
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/nektos__act --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/nektos__act --out /home/ubuntu/govfuzz-sweep-work/go__nektos__act/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.34,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 43,
+   "by_severity": {
+    "medium": 18,
+    "high": 25
+   },
+   "top_rules": {
+    "GF-405": 23,
+    "GF-500": 10,
+    "GF-477": 7,
+    "GF-426": 2,
+    "GF-544": 1
+   },
+   "gaps": 329
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/nektos__act --out /home/ubuntu/govfuzz-sweep-work/go__nektos__act/sbom",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "components": 393
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/nektos__act --work-dir /home/ubuntu/govfuzz-sweep-work/go__nektos__act --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 22.82,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 409,
+    "dropped_by_cap": 399,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadDockerAuthConfig",
+     "source": "docker_auth.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `context.Context` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ReadAction",
+     "source": "action.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/sys@v0.43.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ReadWorkflow",
+     "source": "workflow.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/sys@v0.43.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnmarshalJSON",
+     "source": "schema.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `UnmarshalJSON` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Readlink",
+     "source": "file_collector.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `Readlink` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "addPath",
+     "source": "index.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 117.6082717913126,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "debug",
+     "source": "index.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 117.0506065167303,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "create",
+     "source": "index.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 99.15434038763144,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "checkBypass",
+     "source": "index.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 97.45129297569733,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "index.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 98.89673013039575,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Go method \"X\"",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "go build failed: go: golang.org/x/sys@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "unsupported Go parameter type \"X\"",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4f411281417e88660bea1c1a1749aa71ae0bd60f",
+ "clone_s": 3.5,
+ "lane_check": "go: 128 files / 25605 lines; top=go(25605)",
+ "status": "done"
+}

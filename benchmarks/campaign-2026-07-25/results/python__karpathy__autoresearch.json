@@ -1,0 +1,11 @@
+{
+ "lane": "python",
+ "repo": "karpathy/autoresearch",
+ "stars": 92047,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "228791fb499afffb54b46200aca536f79142f117",
+ "clone_s": 0.6,
+ "lane_check": "too few python files (python: 2 files / 870 lines; top=python(870))",
+ "status": "rejected_lane"
+}

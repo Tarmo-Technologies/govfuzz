@@ -3647,6 +3647,15 @@ fn rewrite_path_value(line: &str, base: &Path) -> String {
         return line.to_owned();
     }
     let abs = lexical_join(base, val);
+    // A dependency that lives INSIDE the crate directory was copied along with
+    // it, and the copy's own [workspace] members already point at that copy.
+    // Absolutising it back to the original makes cargo see the same package
+    // twice — "package collision in the lockfile: macros v0.1.0 (...) and
+    // macros v0.1.0 (...) are different" — so leave it relative and let it
+    // resolve within the copy. Only deps OUTSIDE the copied tree need pinning.
+    if abs.starts_with(base) {
+        return line.to_owned();
+    }
     let abs = abs.to_string_lossy();
     let mut out = String::with_capacity(line.len() + abs.len());
     out.push_str(&line[..range.start]);
@@ -3772,7 +3781,15 @@ fn prepare_incrate_manifest(
             out.push_str(&format!("\n[dependencies]\n{runtime_dep}\n"));
         }
     }
-    // 2. staticlib crate-type.
+    // 2. staticlib crate-type. A binary-only crate (vaultwarden, most Rust
+    //    applications) has no `src/lib.rs`, so declaring a [lib] without saying
+    //    where it lives makes cargo refuse the manifest outright: "can't find
+    //    library `X`, rename file to src/lib.rs or specify lib.path". The
+    //    in-crate injection already falls back to `src/main.rs` as the module
+    //    root, so point the library at the same file.
+    let needs_lib_path = !manifest_dir.join("src/lib.rs").is_file()
+        && manifest_dir.join("src/main.rs").is_file()
+        && find_line_starting_with(&out, "path =").is_none();
     if let Some(lib_pos) = section_header_end(&out, "[lib]") {
         if let Some(ct_line) = find_line_starting_with(&out, "crate-type") {
             // Add "staticlib" to the existing array if absent.
@@ -3785,6 +3802,12 @@ fn prepare_incrate_manifest(
         } else {
             out.insert_str(lib_pos, "crate-type = [\"staticlib\", \"rlib\"]\n");
         }
+        if needs_lib_path {
+            let lib_pos = section_header_end(&out, "[lib]").unwrap_or(out.len());
+            out.insert_str(lib_pos, "path = \"src/main.rs\"\n");
+        }
+    } else if needs_lib_path {
+        out.push_str("\n[lib]\ncrate-type = [\"staticlib\", \"rlib\"]\npath = \"src/main.rs\"\n");
     } else {
         out.push_str("\n[lib]\ncrate-type = [\"staticlib\", \"rlib\"]\n");
     }
@@ -5656,6 +5679,50 @@ mod tests {
         assert_eq!(out3.matches("crate-type").count(), 1, "{out3}");
         assert!(out3.contains("version = \"0.0.0\""), "{out3}");
         assert!(out3.contains("edition = \"2021\""), "{out3}");
+    }
+
+    #[test]
+    fn a_path_dep_inside_the_crate_stays_relative_so_the_copy_is_used() {
+        // vaultwarden depends on its own `macros/` subdirectory and lists it as
+        // a workspace member. The whole crate is copied, so the copy has its own
+        // `macros/`; absolutising the dep back to the original made cargo see
+        // two different packages with one name — "package collision in the
+        // lockfile" — and no target in the crate could build.
+        let base = Path::new("/proj/app");
+        let inside = rewrite_path_value("macros = { path = \"macros\" }", base);
+        assert_eq!(
+            inside, "macros = { path = \"macros\" }",
+            "in-tree dep stays relative"
+        );
+
+        // A sibling OUTSIDE the copied tree still has to be pinned, or the copy
+        // would look for `<copy>/../pest`, which does not exist.
+        let outside = rewrite_path_value("pest = { path = \"../pest\" }", base);
+        assert_eq!(outside, "pest = { path = \"/proj/pest\" }");
+    }
+
+    #[test]
+    #[test]
+    fn prepare_incrate_manifest_points_the_lib_at_main_for_a_binary_crate() {
+        // vaultwarden and most Rust applications are binary-only: no
+        // `src/lib.rs`. Declaring a [lib] without a path made cargo refuse the
+        // whole manifest — "can't find library `vaultwarden`" — so every target
+        // in the crate failed to build. The in-crate injection already uses
+        // src/main.rs as the module root; the manifest has to agree.
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("mkdir");
+        std::fs::write(dir.path().join("src/main.rs"), "fn main() {}\n").expect("write");
+        let manifest = "[package]\nname = \"app\"\nversion = \"1.0.0\"\nedition = \"2021\"\n";
+        let out = prepare_incrate_manifest(manifest, dir.path(), Path::new("/rt"))
+            .expect("manifest prepared");
+        assert!(out.contains("[lib]"), "{out}");
+        assert!(out.contains("path = \"src/main.rs\""), "{out}");
+
+        // A crate that HAS a lib root is left alone.
+        std::fs::write(dir.path().join("src/lib.rs"), "").expect("write");
+        let out = prepare_incrate_manifest(manifest, dir.path(), Path::new("/rt"))
+            .expect("manifest prepared");
+        assert!(!out.contains("path = \"src/main.rs\""), "{out}");
     }
 
     #[test]

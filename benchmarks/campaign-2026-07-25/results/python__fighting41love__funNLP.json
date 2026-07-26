@@ -1,0 +1,11 @@
+{
+ "lane": "python",
+ "repo": "fighting41love/funNLP",
+ "stars": 82045,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "29f4ac896f11058e87e10968569f999c69679b6f",
+ "clone_s": 6.5,
+ "lane_check": "too few python files (python: 1 files / 15 lines; top=python(15))",
+ "status": "rejected_lane"
+}

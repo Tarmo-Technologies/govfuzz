@@ -1,0 +1,234 @@
+{
+ "lane": "go",
+ "repo": "juanfont/headscale",
+ "stars": 42099,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/juanfont__headscale --json --out /home/ubuntu/govfuzz-sweep-work/go__juanfont__headscale.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 120842,
+   "sloc_by_lang": {
+    "go": 118797,
+    "config": 2045
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/juanfont__headscale --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/juanfont__headscale --out /home/ubuntu/govfuzz-sweep-work/go__juanfont__headscale/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.01,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 75,
+   "by_severity": {
+    "high": 44,
+    "medium": 26,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-405": 28,
+    "GF-500": 12,
+    "GF-544": 8,
+    "GF-423": 7,
+    "GF-426": 6,
+    "GF-436": 6,
+    "GF-419": 3,
+    "GF-404": 2,
+    "GF-472": 2,
+    "GF-470": 1
+   },
+   "gaps": 311
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/juanfont__headscale --out /home/ubuntu/govfuzz-sweep-work/go__juanfont__headscale/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 302
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/juanfont__headscale --work-dir /home/ubuntu/govfuzz-sweep-work/go__juanfont__headscale --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 21.44,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1459,
+    "dropped_by_cap": 1449,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ParseIPSet",
+     "source": "addr.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*int` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbsolutePathFromConfigPath",
+     "source": "file.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseLoginURLFromCLILogin",
+     "source": "util.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AuthIDFromString",
+     "source": "common.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseNodeID",
+     "source": "node.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseTraceroute",
+     "source": "util.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustParseNodeID",
+     "source": "node.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FetchPathFromContainer",
+     "source": "util.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*dockertest.Pool` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseAPIKeyPrefix",
+     "source": "api_key.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadConfig",
+     "source": "config.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: tailscale.com@v1.101.0-pre requires go >= 1.26.4 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "go build failed: go: tailscale.com@v1.N.N-pre requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "unsupported Go parameter type \"X\"",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7a1ee34f7122993ff1b6c703eef96545832c034a",
+ "clone_s": 4.5,
+ "lane_check": "go: 378 files / 138021 lines; top=go(138021)",
+ "status": "done"
+}

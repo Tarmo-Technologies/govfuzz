@@ -1,0 +1,150 @@
+{
+ "lane": "rust",
+ "repo": "starship/starship",
+ "stars": 59076,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/starship__starship --json --out /home/ubuntu/govfuzz-sweep-work/rust__starship__starship.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 43912,
+   "sloc_by_lang": {
+    "rust": 43143,
+    "config": 766,
+    "javascript": 3
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/starship__starship --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.6,
+   "timed_out": false,
+   "panic": false,
+   "count": 477,
+   "by_language": {
+    "rust": 477
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/starship__starship --out /home/ubuntu/govfuzz-sweep-work/rust__starship__starship/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.32,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 27,
+   "by_severity": {
+    "medium": 27
+   },
+   "top_rules": {
+    "GF-500": 25,
+    "GF-422": 2
+   },
+   "gaps": 7
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/starship__starship --out /home/ubuntu/govfuzz-sweep-work/rust__starship__starship/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 602
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/starship__starship --work-dir /home/ubuntu/govfuzz-sweep-work/rust__starship__starship --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 212.71,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 457,
+    "dropped_by_cap": 454,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "from_str",
+     "source": "direnv.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'from_str' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_str",
+     "source": "direnv.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'from_str' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse",
+     "source": "git_metrics.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "in-crate cargo build failed: Compiling serde_spanned v1.N.N",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "eebb9a3c7ddc716fd8a2d629ee22a48518d3b871",
+ "clone_s": 2.4,
+ "lane_check": "rust: 245 files / 44909 lines; top=rust(44909)",
+ "status": "done"
+}

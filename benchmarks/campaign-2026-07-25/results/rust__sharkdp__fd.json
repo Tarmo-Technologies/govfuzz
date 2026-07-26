@@ -1,0 +1,235 @@
+{
+ "lane": "rust",
+ "repo": "sharkdp/fd",
+ "stars": 43873,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__fd --json --out /home/ubuntu/govfuzz-sweep-work/rust__sharkdp__fd.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 6779,
+   "sloc_by_lang": {
+    "rust": 6456,
+    "config": 323
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__fd --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.46,
+   "timed_out": false,
+   "panic": false,
+   "count": 100,
+   "by_language": {
+    "rust": 100
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__fd --out /home/ubuntu/govfuzz-sweep-work/rust__sharkdp__fd/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.45,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 7,
+   "by_severity": {
+    "high": 4,
+    "critical": 1,
+    "low": 2
+   },
+   "top_rules": {
+    "GF-472": 4,
+    "GF-553": 2,
+    "GF-304": 1
+   },
+   "gaps": 19
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__fd --out /home/ubuntu/govfuzz-sweep-work/rust__sharkdp__fd/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 130
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__fd --work-dir /home/ubuntu/govfuzz-sweep-work/rust__sharkdp__fd --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 2.86,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 85,
+    "dropped_by_cap": 75,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 8,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "from_string",
+     "source": "owner.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_string",
+     "source": "size.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse",
+     "source": "mod.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pattern_has_uppercase_char",
+     "source": "regex_helper.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sanitize_for_terminal",
+     "source": "sanitize.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pattern_matches_strings_with_leading_dot",
+     "source": "regex_helper.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "before",
+     "source": "time.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "after",
+     "source": "time.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scan",
+     "source": "walk.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&[PathBuf]' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_arg_matches",
+     "source": "cli.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'from_arg_matches' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 8,
+     "detail": "in-crate cargo build failed: error: failed to parse manifest at \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "ca51233d277e5c0601ddb216948bcbcf0a56c80e",
+ "clone_s": 1.0,
+ "lane_check": "rust: 24 files / 7254 lines; top=rust(7254)",
+ "status": "done"
+}

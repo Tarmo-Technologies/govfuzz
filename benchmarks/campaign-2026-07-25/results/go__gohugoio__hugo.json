@@ -1,0 +1,253 @@
+{
+ "lane": "go",
+ "repo": "gohugoio/hugo",
+ "stars": 89178,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --json --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 183762,
+   "sloc_by_lang": {
+    "go": 169768,
+    "config": 6248,
+    "javascript": 3969,
+    "c": 3777
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.26,
+   "timed_out": false,
+   "panic": false,
+   "count": 162,
+   "by_language": {
+    "c": 162
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 27.33,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 62,
+   "by_severity": {
+    "medium": 12,
+    "high": 49,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-405": 47,
+    "GF-422": 11,
+    "GF-477": 1,
+    "GF-476": 1,
+    "GF-403": 1,
+    "GF-404": 1
+   },
+   "gaps": 52
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo/sbom",
+   "exit": 0,
+   "wall_s": 0.36,
+   "timed_out": false,
+   "panic": false,
+   "components": 229
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --work-dir /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 41.68,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3442,
+    "dropped_by_cap": 3432,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 5,
+    "synthesized_types": 1,
+    "synthesized_macros": 11,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "FormatFromString",
+     "source": "format.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeConfig",
+     "source": "roles.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `map[string]any` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeConfig",
+     "source": "versions.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `map[string]any` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExtractSummaryFromHTMLWithDivider",
+     "source": "page_markup.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `media.Type` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "f",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_input_message",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_input_message",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "encodeNRGBAAnimated",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing macro",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "unsupported Go parameter type \"X\"",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "go build failed: go: golang.org/x/text@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "ReferenceError: window is not defined",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f228c87d417ae5b4461edf4ff80de717efceb661",
+ "clone_s": 3.6,
+ "lane_check": "go: 899 files / 194083 lines; top=go(194083)",
+ "status": "done"
+}

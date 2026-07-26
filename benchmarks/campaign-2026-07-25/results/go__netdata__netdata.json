@@ -1,0 +1,269 @@
+{
+ "lane": "go",
+ "repo": "netdata/netdata",
+ "stars": 79848,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --json --out /home/ubuntu/govfuzz-sweep-work/go__netdata__netdata.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.97,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 3920351,
+   "sloc_by_lang": {
+    "config": 2786692,
+    "go": 569319,
+    "c": 353556,
+    "rust": 168603,
+    "python": 26462,
+    "cpp": 15349,
+    "javascript": 370
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --format json --top 100000",
+   "exit": 0,
+   "wall_s": 23.68,
+   "timed_out": false,
+   "panic": false,
+   "count": 14216,
+   "by_language": {
+    "rust": 2437,
+    "c": 11271,
+    "cpp": 508
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --out /home/ubuntu/govfuzz-sweep-work/go__netdata__netdata/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 42.0,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1044,
+   "by_severity": {
+    "high": 609,
+    "medium": 380,
+    "low": 50,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-405": 239,
+    "GF-424": 117,
+    "GF-472": 115,
+    "GF-408": 106,
+    "GF-406": 85,
+    "GF-500": 70,
+    "GF-425": 65,
+    "GF-401": 61,
+    "GF-403": 34,
+    "GF-546": 26,
+    "GF-553": 24,
+    "GF-426": 21,
+    "GF-407": 20,
+    "GF-436": 15,
+    "GF-422": 12
+   },
+   "gaps": 2545
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --out /home/ubuntu/govfuzz-sweep-work/go__netdata__netdata/sbom",
+   "exit": 0,
+   "wall_s": 0.97,
+   "timed_out": false,
+   "panic": false,
+   "components": 975
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --work-dir /home/ubuntu/govfuzz-sweep-work/go__netdata__netdata --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 158.59,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 19352,
+    "dropped_by_cap": 19342,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 2,
+    "synthesized_macros": 17,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "inicfg_load",
+     "source": "inicfg_conf_file.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 22,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Parse",
+     "source": "lempar.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ParseARG_PDECL' of type 'ParseTOKENTYPE yyminor /* The value for the token */' has no byte-buffer decoder after struct synthesis: opaque type 'ParseTOKENTYPE yyminor / *The value for the token */' for parameter 'ParseARG_PDECL' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "lqs_request_parse_and_validate",
+     "source": "logs_query_status.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/go/netdata__netdata/src/libnetdata/facets/logs_query_status.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: <stdin>:1:10: fatal error: 'limits' file not found |     1 | #include <limits> |       |          ^~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_cancel_pending_req",
+     "source": "agent_cmds.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 10,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BuildJSONPayload",
+     "source": "response_payload.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10527.009839981461,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BatchDirDecode",
+     "source": "frame.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 14010.761319291736,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "RequestField.from_tuples",
+     "source": "fields.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python_modules.urllib3.fields` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'python_modules.urllib3.packages.six.moves'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HTTPHeaderDict.from_httplib",
+     "source": "_collections.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python_modules.urllib3._collections` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'python_modules.urllib3.packages.six.moves'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode",
+     "source": "mod.rs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4310.193734969291,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "batch_dir_decode",
+     "source": "mod.rs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6719.928433005507,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "\"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "347c638a0e095cb290eeee60e343530c4dc8254a",
+ "clone_s": 9.1,
+ "lane_check": "go: 2810 files / 589037 lines; top=go(589037)",
+ "status": "done"
+}

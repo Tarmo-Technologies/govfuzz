@@ -1,0 +1,11 @@
+{
+ "lane": "python",
+ "repo": "521xueweihan/HelloGitHub",
+ "stars": 167268,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "f3dae3b56af40e032c1b5bee2907770676d59c91",
+ "clone_s": 1.1,
+ "lane_check": "too few python files (python: 2 files / 261 lines; top=python(261))",
+ "status": "rejected_lane"
+}

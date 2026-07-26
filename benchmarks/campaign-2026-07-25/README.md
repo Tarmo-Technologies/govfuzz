@@ -1,0 +1,79 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+# 500-project sweep (2026-07)
+
+A single sweep of govfuzz over 500 pinned open-source projects spanning all
+sixteen supported languages, run to find bugs and feature gaps rather than to
+produce a number. The numbers came second; every one of them is reproducible
+from what is in this directory.
+
+## How to reproduce
+
+```sh
+python3 build_corpus.py select      # re-select the corpus (writes corpus.tsv + pool.tsv)
+sh launch_full.sh                   # run the sweep with the pinned binary
+python3 aggregate.py --blockers 25  # the tables below
+python3 charts.py                   # the figures
+python3 surfaces.py --project <dir> # the 22 non-fuzz surfaces
+python3 compare.py sloc|static|sbom # against cloc/tokei, cppcheck/…, syft
+```
+
+The corpus is pinned in `corpus.tsv` (lane, repo, clone URL, stars, size), with
+`pool.tsv` holding ranked replacements. Clones are streamed — cloned, measured,
+deleted — so the whole 500-project sweep never holds more than a handful of
+working trees on disk. `results/` has one distilled JSON row per project:
+target-status histogram, residual blockers, findings, per-surface exit codes and
+wall times, and any panic.
+
+The binary is pinned to a copy (`/home/ubuntu/govfuzz-sweep-bin/govfuzz`) for
+the duration: rebuilding mid-sweep would mix tool versions across the corpus and
+make the aggregate unattributable.
+
+## Corpus selection
+
+Star-ranked GitHub search per language, minus repositories that would distort
+the measurement: fuzzing corpora and deliberately-vulnerable trees (they supply
+their own bugs), awesome-lists and courses (no code), forks, archived trees, and
+anything over 400 MB.
+
+GitHub's primary-language attribution is unreliable — JavaScript wrappers get
+tagged COBOL, C projects tagged Perl, editor-config trees tagged Lua — so each
+clone is checked against its lane before it counts, and a clone that is not
+mostly that lane's source is replaced from the pool.
+
+## What the sweep exercises
+
+Every project: `sloc`, `list targets`, `static-scan` (report + SARIF), `sbom`,
+`auto` (discover → harness → repair → build → fuzz → report), and `report` in
+all four formats. Separately, `surfaces.py` exercises the 22 commands the
+per-project sweep does not: the triage chain (`minimize`, `replay`, `explain`,
+`capsule`, `verify-poc`, `cartography`), supply chain (`license-audit`),
+governance (`policy`, `audit`, `export`), `binary scan`, `snippet`, and `ci`.
+
+## What it found
+
+The sweep's purpose was to find defects, and it did. Each of these was a real
+bug with a real fix, verified against the project that exposed it:
+
+| Defect | Effect | Verified fix |
+|---|---|---|
+| Extension-only language detection | cloc — 20k lines of Perl — discovered **0** targets, because its code lives in a file named `cloc` | shebang detection; 0 → 6/6 fuzzed |
+| `require` compiles into the caller's package | a script's `main::` subs looked undefined to the harness | load as `main`; part of the same 0 → 6/6 |
+| Driver and Fortran glue both defined `__sanitizer_cov_trace_pc` | **every** Fortran target failed to link | weak symbol; LAPACK failed_build → built+fuzzed |
+| Only MODULE-defining Fortran files were pre-compiled | FORTRAN 77 projects had nothing to link against | symbol-directed link closure |
+| C# TFM table hardcoded net8.0, ignored platform suffixes and `Directory.Build.props` | v2rayN: **0/25** targets | dynamic SDK ceiling; 0 → 3/5 at 9.5k exec/s |
+| `dotnet build -o` across a project graph | every C# harness after the first died in MSB4018 | build in place, copy output |
+| Interpreted lanes searched only the file's directory and the checkout root | Ruby and Lua skipped nearly everything as "not loadable" | package-root recovery |
+| `app/` on the non-library exclusion list | scrcpy, a C project, discovered **0** C targets | recover a language that would otherwise be empty; 0 → 759 candidates |
+| ANSI `(void)` prototypes and commented-out example calls read as K&R | modern C files routed to report-only, never fuzzed | comment-aware scan, keywords are not parameter names |
+| `--campaign-time` billed from process start | discovery on a large tree ate the whole budget; 8606 candidates, **0** attempted | bill from the sweep |
+| `--campaign-time` did not bound work in flight | a 150s budget ran ten minutes | clamp subprocesses, stop repairing past the budget |
+| Undefined function-like macro in a `#if` | scrcpy's FFmpeg version check left every target in the TU unbuildable | numeric function-like expansion |
+| `verify-poc` on a known-non-reproducing capsule | reported FAIL, reading as a regression | report the packaged verdict |
+| Blocker histogram keyed on the first line | MSBuild's "Build FAILED." banner merged every C# failure into one row naming nothing | prefer the line that names an error; keep diagnostic codes intact |
+
+## Results
+
+See `results/` for the raw rows, `charts/` for the figures, and
+`docs/site/sweep-500.md` for the written comparison. `baseline-w0/` holds the
+pre-fix measurement of the same one-project-per-language smoke wave, which is
+what the before/after figure compares against.

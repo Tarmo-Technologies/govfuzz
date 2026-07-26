@@ -18,16 +18,26 @@
 # variable is the flag. What --force produces is recorded as stub-only when it
 # fuzzes blind stubs rather than the project's own code, so the comparison shows
 # both what it recovers and what that recovery is worth.
+# The force arm MUST run the SAME binary that produced the baseline. Re-pinning
+# first would fold unrelated code changes into the delta and make it
+# unattributable — the same mistake as rebuilding mid-sweep.
 cd "$(dirname "$0")" || exit 1
 GOVFUZZ_BIN="${GOVFUZZ_BIN:-/home/ubuntu/govfuzz-sweep-bin/govfuzz}"
 export GOVFUZZ_BIN
 "$GOVFUZZ_BIN" --version >/dev/null 2>&1 || { echo "pinned binary missing: $GOVFUZZ_BIN"; exit 1; }
+echo "force arm binary: $("$GOVFUZZ_BIN" --version)"
 mkdir -p results-force
+# `--repos force-repos.tsv`: only the 126 projects whose baseline had at least one
+# `unsupported_params` target. On the other 100 in these lanes --force is a no-op
+# by construction, so measuring them would only add wall-clock and dilute the
+# delta. `--corpus-only` is deliberately absent: the filter already pins the exact
+# set, so the pool cannot pad it, and two of the 126 are pool replacements.
+# `--surfaces fuzz`: sloc/static/sbom do not depend on the flag.
 nohup python3 -u run_sweep.py \
     --wave FORCE \
     --per-lane 60 \
     --only c,cpp,rust,go,csharp \
-    --corpus-only \
+    --repos force-repos.tsv \
     --results-dir results-force \
     --auto-force \
     --surfaces fuzz \

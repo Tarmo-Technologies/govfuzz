@@ -300,6 +300,7 @@ def run_project(row: dict, args: argparse.Namespace) -> dict:
                 "--campaign-time", str(args.campaign_time),
                 "--per-target-time", str(args.per_target_time),
                 "--max-attempts", str(args.max_attempts),
+                "--max-repair-rounds", str(args.max_repair_rounds),
                 "--jobs", str(args.inner_jobs),
                 "--profile", "external-tools",
             ]  # fmt: skip
@@ -350,12 +351,15 @@ def pick_wave(args: argparse.Namespace) -> list[dict]:
                 done.add(row.get("repo"))
     wave: list[dict] = []
     for lane in lanes:
-        want = args.per_lane
+        lane_corpus = [r for r in corpus if r["lane"] == lane]
+        # The corpus is the pinned 500. The pool exists to REPLACE a pick that
+        # turns out not to be the lane it was labelled, not to pad a lane past
+        # what was selected.
+        lane_pool = [r for r in pool if r["lane"] == lane]
+        want = min(args.per_lane, len(lane_corpus)) if args.corpus_only else args.per_lane
         picked = 0
         skip = args.skip
-        for row in [r for r in corpus if r["lane"] == lane] + [
-            r for r in pool if r["lane"] == lane
-        ]:
+        for row in lane_corpus + lane_pool:
             if picked >= want:
                 break
             if verdicts.get(row["repo"]) == "rejected_lane":
@@ -375,6 +379,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--wave", default="W0")
     ap.add_argument("--per-lane", type=int, default=1)
+    ap.add_argument("--corpus-only", action="store_true",
+                    help="never pad a lane from the backup pool")
     ap.add_argument("--skip", type=int, default=0, help="skip the first N per lane")
     ap.add_argument("--only", default="", help="comma-separated lanes")
     ap.add_argument("--jobs", type=int, default=3, help="concurrent projects")
@@ -382,6 +388,7 @@ def main() -> int:
     ap.add_argument("--campaign-time", type=int, default=240)
     ap.add_argument("--per-target-time", type=int, default=6)
     ap.add_argument("--max-attempts", type=int, default=60)
+    ap.add_argument("--max-repair-rounds", type=int, default=16)
     ap.add_argument("--auto-slack", type=int, default=900, help="grace over campaign-time")
     ap.add_argument("--single-pass", action="store_true", default=True)
     ap.add_argument("--all-passes", dest="single_pass", action="store_false")

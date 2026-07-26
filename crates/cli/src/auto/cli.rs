@@ -1582,6 +1582,14 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         args.campaign_time
             .map(|secs| sweep_start + std::time::Duration::from_secs(secs))
     };
+    // The deadline stops new targets from STARTING, but a build step carries its
+    // own 30-minute timeout, so one slow target could run minutes past a small
+    // budget — a `--campaign-time 150` sweep taking ten minutes. Bound every
+    // subprocess by the budget plus a grace margin, so the in-flight target gets
+    // a fair chance to finish and the run still ends near when it was asked to.
+    if let Some(deadline) = campaign_deadline {
+        crate::command_output::set_campaign_deadline(deadline);
+    }
 
     let results = if jobs <= 1 {
         // --jobs 1 (default): the historical serial sweep, byte-identical when no
@@ -1954,6 +1962,16 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // how many targets share the cause. The counts are the whole point: the top
     // row is the next lever worth building, and re-running after building it is
     // how that lever gets judged. Diagnostic only — nothing above depends on it.
+    // A build killed by the budget is not the same as a build that cannot work,
+    // and reading the histogram without knowing which is which wastes a fix
+    // round on a phantom blocker.
+    if crate::command_output::campaign_budget_exhausted() {
+        eprintln!(
+            "govfuzz auto: the --campaign-time budget was exhausted; build steps still \
+             running were cut off, so some failures below are budget cut-offs rather \
+             than real blockers. Re-run with a larger --campaign-time to tell them apart."
+        );
+    }
     let blockers = crate::auto::blocker_histogram::BlockerHistogram::from_results(&results);
     if !blockers.is_empty() {
         eprint!("{}", blockers.render());

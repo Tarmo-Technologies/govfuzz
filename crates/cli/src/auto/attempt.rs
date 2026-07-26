@@ -2555,6 +2555,18 @@ fn run_attempt(
     // check has demonstrably said something the compiler would not.
     let mut distrust_semantic_check = false;
     for retry in 0..=max_repair_rounds {
+        // A repair round is a full rebuild. Once the run's budget is gone, more
+        // rounds cannot produce a fuzzed target — they only push the run past the
+        // wall-clock the operator asked for (a `--campaign-time 150` sweep ran ten
+        // minutes because one target kept repairing). Stop and report honestly.
+        if retry > 0 && crate::command_output::campaign_budget_exhausted() {
+            eprintln!(
+                "govfuzz auto: {}: --campaign-time budget exhausted after {retry} repair \
+                 round(s); abandoning this target",
+                candidate.harness_id
+            );
+            break;
+        }
         progress.update(&ProgressUpdate::phase(Phase::Build { retry }));
         // Round 0 always builds outright, so a target that compiles as-is never
         // pays for a check it did not need.

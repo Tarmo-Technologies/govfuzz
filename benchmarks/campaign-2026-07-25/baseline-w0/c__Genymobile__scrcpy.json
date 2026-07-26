@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "Genymobile/scrcpy",
  "stars": 146403,
- "wave": "W1",
+ "wave": "W0",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --json --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -22,7 +22,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --format json --top 100000",
    "exit": 0,
-   "wall_s": 0.52,
+   "wall_s": 0.42,
    "timed_out": false,
    "panic": false,
    "count": 1435,
@@ -34,7 +34,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 0.5,
+   "wall_s": 0.49,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -58,26 +58,26 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/sbom",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "components": 12
   },
   "auto": {
-   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --work-dir /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy --campaign-time 240 --per-target-time 5 --max-attempts 30 --jobs 1 --profile external-tools --single-pass",
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --work-dir /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy --campaign-time 180 --per-target-time 5 --max-attempts 25 --jobs 1 --profile external-tools --single-pass",
    "exit": 1,
-   "wall_s": 110.33,
+   "wall_s": 143.9,
    "timed_out": false,
    "panic": false,
    "summary": {
-    "discovered": 30,
-    "discovered_total": 1272,
-    "dropped_by_cap": 1242,
+    "discovered": 25,
+    "discovered_total": 514,
+    "dropped_by_cap": 489,
     "built": 0,
     "built_and_fuzzed": 0,
     "fuzzed_stub_only": 0,
     "failed_build": 20,
-    "unsupported_params": 10,
+    "unsupported_params": 5,
     "unrecoverable_link": 0,
     "unrecoverable_runtime": 0,
     "findings": 0
@@ -85,9 +85,9 @@
    "mode": "reporting",
    "partial": false,
    "needed_for_build": {
-    "synthesized_headers": 4,
+    "synthesized_headers": 0,
     "synthesized_types": 0,
-    "synthesized_macros": 147,
+    "synthesized_macros": 0,
     "stubbed_symbols_declared": 0,
     "stubbed_symbols_blind": 0,
     "stubbed_ada_units": 0,
@@ -101,138 +101,6 @@
     "missing_ada_units": 0
    },
    "targets": [
-    {
-     "name": "sc_device_msg_deserialize",
-     "source": "device_msg.c",
-     "outcome": "failed_build",
-     "retries": 8,
-     "repairs": 11,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_pipe_read_all",
-     "source": "process.c",
-     "outcome": "unsupported_params",
-     "retries": null,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": "C parameter 'pipe' of type 'sc_pipe' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pipe' needs lifecycle support (Phase C)",
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_pipe_read_intr",
-     "source": "process_intr.c",
-     "outcome": "unsupported_params",
-     "retries": null,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": "C parameter 'pid' of type 'sc_pid' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pid' needs lifecycle support (Phase C)",
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_pipe_read_all_intr",
-     "source": "process_intr.c",
-     "outcome": "unsupported_params",
-     "retries": null,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": "C parameter 'pid' of type 'sc_pid' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pid' needs lifecycle support (Phase C)",
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_process_execute",
-     "source": "process.c",
-     "outcome": "unsupported_params",
-     "retries": null,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": "C parameter 'pid' of type 'sc_pid *' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for pointer parameter 'pid' needs lifecycle support (Phase C)",
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_uhid_devices_process_hid_output",
-     "source": "uhid_output.c",
-     "outcome": "failed_build",
-     "retries": 16,
-     "repairs": 148,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_keyboard_uhid_process_hid_output",
-     "source": "keyboard_uhid.c",
-     "outcome": "failed_build",
-     "retries": 16,
-     "repairs": 135,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_process_execute_p",
-     "source": "process.c",
-     "outcome": "unsupported_params",
-     "retries": null,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": "C parameter 'handle' of type 'HANDLE *' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for pointer parameter 'handle' needs lifecycle support (Phase C)",
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "net_send_intr",
-     "source": "net_intr.c",
-     "outcome": "failed_build",
-     "retries": 7,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "net_send_all_intr",
-     "source": "net_intr.c",
-     "outcome": "failed_build",
-     "retries": 7,
-     "repairs": 8,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "net_send",
-     "source": "net.c",
-     "outcome": "failed_build",
-     "retries": 8,
-     "repairs": 11,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "net_send_all",
-     "source": "net.c",
-     "outcome": "failed_build",
-     "retries": 8,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
     {
      "name": "ControlMessageReader",
      "source": "ControlMessageReader.java",
@@ -271,39 +139,6 @@
      "source": "ControlMessage.java",
      "outcome": "failed_build",
      "retries": 0,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_adb_getprop",
-     "source": "adb.c",
-     "outcome": "failed_build",
-     "retries": 9,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_adb_get_device_ip",
-     "source": "adb.c",
-     "outcome": "failed_build",
-     "retries": 9,
-     "repairs": 13,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "sc_adb_connect",
-     "source": "adb.c",
-     "outcome": "failed_build",
-     "retries": 9,
      "repairs": 0,
      "execs_per_sec": null,
      "reason": null,
@@ -399,6 +234,39 @@
      "blind_stub_fraction": null
     },
     {
+     "name": "createProgram",
+     "source": "GLUtils.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createUhidOutput",
+     "source": "DeviceMessage.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "findByName",
+     "source": "AudioCodec.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
      "name": "UhidManager",
      "source": "UhidManager.java",
      "outcome": "unsupported_params",
@@ -410,7 +278,84 @@
      "blind_stub_fraction": null
     },
     {
+     "name": "d",
+     "source": "Ln.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createShader",
+     "source": "GLUtils.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
      "name": "createInjectText",
+     "source": "ControlMessage.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "e",
+     "source": "Ln.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "e",
+     "source": "Ln.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createSetClipboard",
+     "source": "ControlMessage.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createUhidInput",
+     "source": "ControlMessage.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createStartApp",
      "source": "ControlMessage.java",
      "outcome": "failed_build",
      "retries": 0,
@@ -435,37 +380,7 @@
    "blockers": [
     {
      "category": "failed_build",
-     "count": 4,
-     "detail": "function-like macro \"X\" is not defined",
-     "language": "c"
-    },
-    {
-     "category": "failed_build",
-     "count": 4,
-     "detail": "incomplete type",
-     "language": "c"
-    },
-    {
-     "category": "unsupported_params",
-     "count": 3,
-     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
-     "language": "c"
-    },
-    {
-     "category": "failed_build",
-     "count": 2,
-     "detail": "missing macro",
-     "language": "c"
-    },
-    {
-     "category": "unsupported_params",
-     "count": 2,
-     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
-     "language": "c"
-    },
-    {
-     "category": "failed_build",
-     "count": 10,
+     "count": 20,
      "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/c/Genymobile__scrcpy/server/src/main/java/com/genymobile/scrcpy/Options.java:N: error: package android.grap\u2026",
      "language": "java"
     },

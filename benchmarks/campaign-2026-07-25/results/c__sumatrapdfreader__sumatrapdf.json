@@ -1,0 +1,96 @@
+{
+ "lane": "c",
+ "repo": "sumatrapdfreader/sumatrapdf",
+ "stars": 17175,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf --json --out /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.53,
+   "timed_out": false,
+   "panic": false,
+   "languages": 9,
+   "sloc_total": 1946927,
+   "sloc_by_lang": {
+    "c": 1286855,
+    "cpp": 577466,
+    "javascript": 36753,
+    "python": 25490,
+    "java": 14714,
+    "config": 2448,
+    "ada": 1681,
+    "go": 1141,
+    "perl": 379
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf --format json --top 100000",
+   "exit": 0,
+   "wall_s": 169.1,
+   "timed_out": false,
+   "panic": false,
+   "count": 59185,
+   "by_language": {
+    "cpp": 24019,
+    "c": 34170,
+    "java": 825,
+    "ada": 171
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf --out /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 65.02,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1622,
+   "by_severity": {
+    "medium": 523,
+    "high": 1064,
+    "critical": 26,
+    "low": 9
+   },
+   "top_rules": {
+    "GF-407": 299,
+    "GF-401": 270,
+    "GF-405": 231,
+    "GF-425": 212,
+    "GF-406": 143,
+    "GF-403": 129,
+    "GF-424": 117,
+    "GF-408": 112,
+    "GF-404": 23,
+    "GF-422": 21,
+    "GF-472": 14,
+    "GF-436": 14,
+    "GF-546": 9,
+    "GF-500": 7,
+    "GF-560": 4
+   },
+   "gaps": 874
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf --out /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf/sbom",
+   "exit": 0,
+   "wall_s": 2.57,
+   "timed_out": false,
+   "panic": false,
+   "components": 103
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf --work-dir /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -6,
+   "wall_s": 175.68,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf/packages/Microsoft.Web.WebView2.1.0.4022.49/WebView2.idl: expected ';' at line 12114, column 1\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint c3a0fe7b1708c458-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2383348) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "bc35fd865167f75235f4ca75c6d76fb222037a2a",
+ "clone_s": 11.3,
+ "lane_check": "c: 1621 files / 1089354 lines; top=c(1089354)",
+ "status": "done"
+}

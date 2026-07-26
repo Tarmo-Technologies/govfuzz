@@ -63,6 +63,7 @@ pub mod ruby;
 pub mod ruby_build;
 pub mod runtrace;
 pub mod rust_build;
+pub mod script_load_roots;
 pub mod shim_path;
 pub mod sink_oracle;
 pub mod triage;

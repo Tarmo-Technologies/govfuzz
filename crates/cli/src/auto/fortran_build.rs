@@ -173,6 +173,160 @@ fn project_module_objects(moddir: &Path, target_src: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
+/// The procedures a Fortran file defines, as the symbols gfortran emits for
+/// them (lowercased name + trailing underscore, the default calling convention).
+///
+/// FORTRAN 77 codebases — LAPACK, BLAS, NASTRAN, most numerical libraries — are
+/// free subroutines in one-procedure-per-file layouts with no MODULE anywhere,
+/// so the module pre-compile finds nothing and every harness fails to link on
+/// the routines its target calls. Indexing definitions by symbol makes those
+/// callees resolvable.
+fn defined_symbols(source: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for line in source.lines() {
+        // Fixed-form comment: `C`, `c`, `*`, or `!` in column 1.
+        let mut chars = line.chars();
+        if matches!(chars.next(), Some('C' | 'c' | '*' | '!')) {
+            continue;
+        }
+        let lowered = line.to_ascii_lowercase();
+        let trimmed = lowered.trim_start();
+        // A continuation of a statement, or the END of a procedure, defines
+        // nothing.
+        if trimmed.starts_with("end") || trimmed.contains("!") && trimmed.starts_with('!') {
+            continue;
+        }
+        for keyword in ["subroutine ", "function "] {
+            let Some(at) = trimmed.find(keyword) else {
+                continue;
+            };
+            // `end subroutine`, `module procedure`, and a call inside a comment
+            // are not definitions. Only a prefix of type/attribute words may
+            // precede the keyword.
+            let before = trimmed[..at].trim();
+            if !before
+                .split_whitespace()
+                .all(is_procedure_prefix_word)
+            {
+                continue;
+            }
+            let rest = trimmed[at + keyword.len()..].trim_start();
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if name.is_empty() {
+                continue;
+            }
+            out.push(format!("{name}_"));
+            break;
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// Words allowed between the start of a statement and `SUBROUTINE`/`FUNCTION`
+/// in a definition: type specifiers and procedure attributes. Anything else
+/// (`end`, `call`, `use`) means this is not a definition.
+fn is_procedure_prefix_word(word: &str) -> bool {
+    let word = word.trim_end_matches(['(', ')', ',']);
+    matches!(
+        word,
+        "recursive"
+            | "pure"
+            | "elemental"
+            | "impure"
+            | "module"
+            | "real"
+            | "integer"
+            | "logical"
+            | "complex"
+            | "character"
+            | "double"
+            | "precision"
+            | "type"
+            | "class"
+            | "" // `double precision function` splits into two words
+    ) || word.starts_with("real*")
+        || word.starts_with("integer*")
+        || word.starts_with("complex*")
+        || word.starts_with("character*")
+}
+
+/// Symbol -> defining source file, for every Fortran file under the project.
+/// Bounded so a huge tree cannot make indexing dominate the run.
+fn build_symbol_index(
+    root: &Path,
+    file_budget: usize,
+) -> std::collections::HashMap<String, PathBuf> {
+    let mut index = std::collections::HashMap::new();
+    let mut stack = vec![root.to_path_buf()];
+    let mut scanned = 0usize;
+    while let Some(dir) = stack.pop() {
+        if scanned >= file_budget {
+            break;
+        }
+        let Ok(rd) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in rd.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+                if !matches!(
+                    name.as_str(),
+                    ".git" | "build" | "target" | "node_modules" | ".fpm" | "doc" | "docs"
+                ) {
+                    stack.push(path);
+                }
+                continue;
+            }
+            if !is_fortran_source(&path) {
+                continue;
+            }
+            scanned += 1;
+            if scanned >= file_budget {
+                break;
+            }
+            let Ok(source) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            for symbol in defined_symbols(&source) {
+                // First definition wins: a project's own source outranks a copy
+                // vendored deeper in the tree (the walk starts at the root).
+                index.entry(symbol).or_insert_with(|| path.clone());
+            }
+        }
+    }
+    index
+}
+
+/// Symbols the linker could not resolve, from either GNU ld or lld output.
+fn undefined_symbols(linker_output: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for line in linker_output.lines() {
+        for needle in ["undefined reference to ", "undefined symbol: "] {
+            let Some(at) = line.find(needle) else {
+                continue;
+            };
+            let rest = line[at + needle.len()..].trim();
+            let name: String = rest
+                .trim_start_matches(['`', '\'', '"'])
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if !name.is_empty() {
+                out.push(name);
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
 fn have_gfortran() -> bool {
     Command::new("gfortran")
         .arg("--version")
@@ -396,7 +550,12 @@ fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> Strin
          \x20   if (ftruncate(fd, GF_COV_BITS) == 0) {{ void *m = mmap(0, GF_COV_BITS, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); if (m != MAP_FAILED) gf_cov = (unsigned char *)m; }}\n\
          \x20   close(fd);\n\
          }}\n\
-         __attribute__((no_sanitize(\"coverage\"))) void __sanitizer_cov_trace_pc(void) {{\n\
+         /* WEAK: the govfuzz C driver also defines this hook (it serves the\n\
+          * GCC-family trace-pc builds), and two strong definitions in one link\n\
+          * is a hard error that failed EVERY Fortran target. Weak here means the\n\
+          * driver's richer version wins when it is linked, and this one still\n\
+          * provides coverage when the glue is built standalone. */\n\
+         __attribute__((weak)) __attribute__((no_sanitize(\"coverage\"))) void __sanitizer_cov_trace_pc(void) {{\n\
          \x20   if (!gf_cov_init) gf_cov_open();\n\
          \x20   if (!gf_cov) return;\n\
          \x20   uintptr_t pc = (uintptr_t)__builtin_return_address(0);\n\
@@ -560,26 +719,161 @@ pub fn build_fortran_harness(
         ldflags.push_str(&format!("-L{dir} "));
     }
     ldflags.push_str("-lgfortran -lquadmath -lm");
-    let built = crate::command_output::output_with_timeout(
-        Command::new("make")
-            .current_dir(&hdir)
-            .env("AUTO_EXTRA_LDFLAGS", ldflags),
-        std::time::Duration::from_secs(30 * 60),
-    );
+    link_with_project_closure(
+        &hdir,
+        &ldflags,
+        &moddir,
+        source_root,
+        &candidate.source_path,
+    )
+}
+
+/// Link the harness, pulling in the project's own procedures as the linker asks
+/// for them.
+///
+/// A FORTRAN 77 target calls sibling routines that live in other files with no
+/// module to announce them (LAPACK's `CBDSQR` calls `XERBLA`, `SLASR`, `CSROT`).
+/// Pre-compiling the whole project to find them would cost minutes on a tree
+/// like LAPACK, so instead each failed link names its undefined symbols, those
+/// are resolved against an index of the project's definitions, only the files
+/// that define them are compiled, and the link is retried. Each round pulls in
+/// the next layer of callees, so the closure converges without ever parsing a
+/// call graph.
+fn link_with_project_closure(
+    hdir: &Path,
+    base_ldflags: &str,
+    moddir: &Path,
+    source_root: &Path,
+    target_src: &Path,
+) -> FortranBuildResult {
+    const MAX_ROUNDS: usize = 8;
     let main_bin = hdir.join("main");
-    match built {
-        Ok(o) if o.status.success() && main_bin.is_file() => FortranBuildResult::Built,
-        Ok(o) => FortranBuildResult::Failed(format!(
-            "Fortran harness build failed: {}",
-            String::from_utf8_lossy(&o.stderr)
+    let mut extra_objects: Vec<PathBuf> = Vec::new();
+    let mut index: Option<std::collections::HashMap<String, PathBuf>> = None;
+    let mut last_output = String::new();
+    let mut unresolved: Vec<String> = Vec::new();
+
+    for _round in 0..MAX_ROUNDS {
+        let mut ldflags = String::from(base_ldflags);
+        for obj in &extra_objects {
+            ldflags.push(' ');
+            ldflags.push_str(&obj.display().to_string());
+        }
+        let built = crate::command_output::output_with_timeout(
+            Command::new("make")
+                .current_dir(hdir)
+                .env("AUTO_EXTRA_LDFLAGS", &ldflags),
+            std::time::Duration::from_secs(30 * 60),
+        );
+        let output = match built {
+            Ok(o) if o.status.success() && main_bin.is_file() => return FortranBuildResult::Built,
+            Ok(o) => {
+                let mut text = String::from_utf8_lossy(&o.stderr).to_string();
+                text.push_str(&String::from_utf8_lossy(&o.stdout));
+                text
+            }
+            Err(e) => return FortranBuildResult::Failed(format!("spawn make: {e}")),
+        };
+        last_output = output;
+
+        let missing = undefined_symbols(&last_output);
+        if missing.is_empty() {
+            break; // a compile error, not a link closure problem
+        }
+        let index = index.get_or_insert_with(|| build_symbol_index(source_root, 12_000));
+        let target_stem = target_src.file_stem().and_then(|s| s.to_str());
+        let mut added = false;
+        unresolved.clear();
+        for symbol in &missing {
+            let Some(source) = index.get(symbol) else {
+                unresolved.push(symbol.clone());
+                continue;
+            };
+            let stem = source.file_stem().and_then(|s| s.to_str()).unwrap_or("dep");
+            if Some(stem) == target_stem {
+                continue; // the target's own object is already linked
+            }
+            let obj = moddir.join(format!("closure_{stem}.o"));
+            if extra_objects.contains(&obj) {
+                continue;
+            }
+            if !obj.is_file() && !compile_dependency(source, &obj, moddir) {
+                unresolved.push(symbol.clone());
+                continue;
+            }
+            extra_objects.push(obj);
+            added = true;
+        }
+        if !added {
+            break; // nothing new to offer the linker; report honestly below
+        }
+    }
+
+    let detail = if !unresolved.is_empty() {
+        let shown: Vec<&str> = unresolved.iter().take(6).map(String::as_str).collect();
+        let more = unresolved.len().saturating_sub(shown.len());
+        format!(
+            "unresolved external symbol(s): {}{}",
+            shown.join(", "),
+            if more > 0 {
+                format!(" (+{more} more)")
+            } else {
+                String::new()
+            }
+        )
+    } else {
+        // Keep the lines that say what failed: a bare "linker command failed"
+        // names nothing, and the undefined-reference lines do not contain the
+        // word "error" at all.
+        let lines: Vec<&str> = last_output
+            .lines()
+            .filter(|l| {
+                l.contains("undefined reference")
+                    || l.contains("undefined symbol")
+                    // `ld: multiple definition of ...` carries no "error" token,
+                    // so a filter keyed on that word reported only clang's
+                    // content-free "linker command failed" summary.
+                    || l.contains("multiple definition")
+                    || (l.contains("error") && !l.contains("linker command failed"))
+            })
+            .take(3)
+            .collect();
+        if lines.is_empty() {
+            last_output
                 .lines()
                 .filter(|l| l.contains("error"))
-                .take(3)
+                .take(2)
                 .collect::<Vec<_>>()
                 .join("; ")
-        )),
-        Err(e) => FortranBuildResult::Failed(format!("spawn make: {e}")),
-    }
+        } else {
+            lines.join("; ")
+        }
+    };
+    FortranBuildResult::Failed(format!("Fortran harness build failed: {detail}"))
+}
+
+/// Compile one project Fortran file into the shared object directory with the
+/// same instrumentation as the target, so linking it keeps coverage working.
+fn compile_dependency(source: &Path, obj: &Path, moddir: &Path) -> bool {
+    crate::command_output::output_with_timeout(
+        Command::new("gfortran")
+            .args(["-O1", "-g", "-fsanitize=address"])
+            .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+            .arg("-cpp")
+            .arg("-ffree-line-length-none")
+            .arg("-fallow-argument-mismatch")
+            .arg("-J")
+            .arg(moddir)
+            .arg("-I")
+            .arg(moddir)
+            .arg("-c")
+            .arg(source)
+            .arg("-o")
+            .arg(obj),
+        std::time::Duration::from_secs(10 * 60),
+    )
+    .map(|o| o.status.success() && obj.is_file())
+    .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -591,6 +885,85 @@ mod tests {
             name: name.to_owned(),
             kind,
         }
+    }
+
+    #[test]
+    fn fixed_form_procedure_definitions_are_indexed_by_link_symbol() {
+        // LAPACK-shaped fixed form: a comment block, then the definition.
+        let lapack = "\
+*> \\brief CBDSQR
+      SUBROUTINE CBDSQR( UPLO, N, NCVT, NRU, NCC, D, E, VT, LDVT )
+      CALL XERBLA( 'CBDSQR', -INFO )
+      END
+      REAL             FUNCTION SLAMCH( CMACH )
+      END
+      INTEGER FUNCTION ILAENV( ISPEC, NAME )
+      END
+      DOUBLE PRECISION FUNCTION DLAMCH( CMACH )
+      END
+";
+        let symbols = defined_symbols(lapack);
+        for want in ["cbdsqr_", "slamch_", "ilaenv_", "dlamch_"] {
+            assert!(symbols.contains(&want.to_owned()), "{want} in {symbols:?}");
+        }
+        // A CALL is not a definition, and neither is an END.
+        assert!(!symbols.iter().any(|s| s == "xerbla_"), "{symbols:?}");
+
+        // Free-form, with attributes and a module procedure.
+        let modern = "\
+module m
+contains
+  pure elemental function scale_it(x) result(y)
+  end function scale_it
+  recursive subroutine walk(node)
+  end subroutine walk
+end module m
+";
+        let symbols = defined_symbols(modern);
+        assert!(symbols.contains(&"scale_it_".to_owned()), "{symbols:?}");
+        assert!(symbols.contains(&"walk_".to_owned()), "{symbols:?}");
+    }
+
+    #[test]
+    fn undefined_symbols_are_parsed_from_both_linkers() {
+        let gnu = "/usr/bin/ld: main.o: in function `LLVMFuzzerTestOneInput':\n\
+                   glue.c:(.text+0x2a): undefined reference to `xerbla_'\n\
+                   glue.c:(.text+0x4c): undefined reference to `slasr_'\n\
+                   clang: error: linker command failed with exit code 1";
+        assert_eq!(undefined_symbols(gnu), vec!["slasr_", "xerbla_"]);
+
+        let lld = "ld.lld: error: undefined symbol: dlamch_\n>>> referenced by glue.c";
+        assert_eq!(undefined_symbols(lld), vec!["dlamch_"]);
+
+        assert!(undefined_symbols("everything linked fine").is_empty());
+    }
+
+    #[test]
+    fn symbol_index_maps_a_symbol_to_the_file_that_defines_it() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::write(
+            root.join("xerbla.f"),
+            "      SUBROUTINE XERBLA( SRNAME, INFO )\n      END\n",
+        )
+        .expect("write");
+        std::fs::create_dir_all(root.join("SRC")).expect("mkdir");
+        std::fs::write(
+            root.join("SRC/cbdsqr.f"),
+            "      SUBROUTINE CBDSQR( UPLO )\n      CALL XERBLA( 'X', 1 )\n      END\n",
+        )
+        .expect("write");
+        // A build directory must not shadow the project's own source.
+        std::fs::create_dir_all(root.join("build")).expect("mkdir");
+        std::fs::write(
+            root.join("build/xerbla.f"),
+            "      SUBROUTINE XERBLA( SRNAME )\n      END\n",
+        )
+        .expect("write");
+
+        let index = build_symbol_index(root, 100);
+        assert_eq!(index.get("xerbla_"), Some(&root.join("xerbla.f")));
+        assert_eq!(index.get("cbdsqr_"), Some(&root.join("SRC/cbdsqr.f")));
     }
 
     #[test]

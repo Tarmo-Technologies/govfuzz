@@ -1978,7 +1978,16 @@ fn dedup_cpp_functions(fns: Vec<cpp_parser::CppFunction>) -> Vec<cpp_parser::Cpp
         .collect()
 }
 
+/// Is this file worth parsing for targets? Extension first, then the `#!` line
+/// for the extension-less scripts that carry a whole tool's code.
 fn has_targetable_extension(path: &Path) -> bool {
+    if path.extension().is_none() {
+        return shebang_lang_of_file(path).is_some();
+    }
+    has_targetable_extension_only(path)
+}
+
+fn has_targetable_extension_only(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|ext| {
@@ -2056,8 +2065,63 @@ fn file_dialect(lang: Lang, source: &str) -> Option<lang_profile::Dialect> {
     }
 }
 
+/// The interpreter named by a `#!` line, for the scripting lanes.
+///
+/// Command-line tools written in a scripting language are routinely installed
+/// as extension-less executables — `cloc`, `sqitch`, `ack`, most `git-*`
+/// helpers — so an extension-only rule drops the whole program. cloc, for
+/// example, is 20k lines of Perl in a file named `cloc`.
+fn shebang_lang(first_line: &str) -> Option<Lang> {
+    let line = first_line.strip_prefix("#!")?.trim();
+    // `#!/usr/bin/env -S perl -w` and `#!/usr/bin/perl -w` both name the
+    // interpreter in a different argument, so scan the words and take the first
+    // one that IS an interpreter rather than assuming a position.
+    for word in line.split_whitespace() {
+        let name = word.rsplit('/').next().unwrap_or(word);
+        // Strip a version suffix: python3, python3.12, lua5.4, ruby2.7.
+        let stem: String = name
+            .chars()
+            .take_while(|c| c.is_ascii_alphabetic() || *c == '_')
+            .collect();
+        match stem.as_str() {
+            "perl" => return Some(Lang::Perl),
+            "python" => return Some(Lang::Python),
+            "ruby" => return Some(Lang::Ruby),
+            "php" => return Some(Lang::Php),
+            "lua" | "luajit" => return Some(Lang::Lua),
+            "node" | "nodejs" => return Some(Lang::Js),
+            // `env` itself, and shells (`sh`, `bash`) which are not a lane.
+            _ => continue,
+        }
+    }
+    None
+}
+
+/// The `#!` lane of a file, read without pulling the whole file into memory.
+/// Only extension-less files are peeked at: everything else is classified by
+/// extension, and a peek per non-source file would cost a syscall per entry.
+fn shebang_lang_of_file(path: &Path) -> Option<Lang> {
+    use std::io::Read;
+    if path.extension().is_some() {
+        return None;
+    }
+    let mut head = [0u8; 128];
+    let mut file = std::fs::File::open(path).ok()?;
+    let read = file.read(&mut head).ok()?;
+    let head = &head[..read];
+    if !head.starts_with(b"#!") {
+        return None;
+    }
+    let line = head.split(|b| *b == b'\n').next().unwrap_or(head);
+    shebang_lang(&String::from_utf8_lossy(line))
+}
+
 fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
-    let ext = path.extension().and_then(|e| e.to_str())?;
+    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+        // No extension: an interpreter shebang is the only language signal, and
+        // the source is already in hand, so no extra read is needed here.
+        return shebang_lang(source.lines().next().unwrap_or_default());
+    };
     if ext == "C" {
         return Some(Lang::Cpp);
     }
@@ -3230,6 +3294,52 @@ mod tests {
             "/x/test_heatshrink_dynamic.c"
         )));
         assert!(is_test_or_tool_source_file(Path::new("/x/pngtest.c")));
+    }
+
+    #[test]
+    fn extensionless_interpreter_scripts_are_discovered_by_shebang() {
+        // A scripting-language tool installed as an extension-less executable is
+        // still the whole program: cloc is 20k lines of Perl in a file named
+        // `cloc`. Extension-only classification discovered zero targets in it.
+        for (line, want) in [
+            ("#!/usr/bin/perl -w", Lang::Perl),
+            ("#!/usr/bin/env perl", Lang::Perl),
+            ("#!/usr/bin/env -S perl -CSD", Lang::Perl),
+            ("#!/usr/bin/python3", Lang::Python),
+            ("#!/usr/bin/env python3.12", Lang::Python),
+            ("#!/usr/bin/env ruby", Lang::Ruby),
+            ("#!/usr/local/bin/php", Lang::Php),
+            ("#!/usr/bin/env luajit", Lang::Lua),
+            ("#!/usr/bin/env node", Lang::Js),
+        ] {
+            assert_eq!(shebang_lang(line), Some(want), "shebang {line:?}");
+        }
+        // A shell script is not one of our lanes, and a non-shebang first line
+        // must never be read as one.
+        assert_eq!(shebang_lang("#!/bin/sh"), None);
+        assert_eq!(shebang_lang("#!/usr/bin/env bash"), None);
+        assert_eq!(shebang_lang("package Foo;"), None);
+        assert_eq!(shebang_lang(""), None);
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let script = dir.path().join("cloc");
+        fs::write(
+            &script,
+            "#!/usr/bin/env perl\nsub parse_line { return 1; }\n",
+        )
+        .expect("write script");
+        assert!(
+            has_targetable_extension(&script),
+            "extension-less perl script must be parsed for targets"
+        );
+        assert_eq!(
+            detect_lang(&script, &fs::read_to_string(&script).expect("read")),
+            Some(Lang::Perl)
+        );
+        // A README or a binary blob with no extension stays out of the sweep.
+        let readme = dir.path().join("README");
+        fs::write(&readme, "just words, no shebang\n").expect("write readme");
+        assert!(!has_targetable_extension(&readme));
     }
 
     #[test]

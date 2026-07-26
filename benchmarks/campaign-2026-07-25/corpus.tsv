@@ -1,0 +1,501 @@
+# lane	repo	clone_url	stars	size_kb	description
+c	Genymobile/scrcpy	https://github.com/Genymobile/scrcpy.git	146403	8717	Display and control your Android device
+c	ventoy/Ventoy	https://github.com/ventoy/Ventoy.git	78243	228591	A new bootable USB solution.
+c	redis/redis	https://github.com/redis/redis.git	75698	215196	For developers, who are building real-time data-driven applications, Redis is the preferred, fastest, and most feature-rich cache, data structure server, and do
+c	obsproject/obs-studio	https://github.com/obsproject/obs-studio.git	74144	82054	OBS Studio - Free and open source software for live streaming and screen recording
+c	colbymchenry/codegraph	https://github.com/colbymchenry/codegraph.git	62458	16317	Pre-indexed code knowledge graph, auto syncs on code changes, for Claude Code, Codex, Gemini, Cursor, OpenCode, AntiGravity, Kiro, and Hermes Agent — fewer toke
+c	git/git	https://github.com/git/git.git	62202	314320	Git Source Code Mirror - This is a publish-only repository but pull requests can be turned into patches to the mailing list via GitGitGadget (https://gitgitgadg
+c	tmux/tmux	https://github.com/tmux/tmux.git	48047	21694	tmux source code
+c	curl/curl	https://github.com/curl/curl.git	42473	142984	A command line tool and library for transferring data with URL syntax, supporting DICT, FILE, FTP, FTPS, GOPHER, GOPHERS, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS,
+c	wg/wrk	https://github.com/wg/wrk.git	40355	38743	Modern HTTP benchmarking tool
+c	pbatard/rufus	https://github.com/pbatard/rufus.git	37043	44055	The Reliable USB Formatting Utility
+c	mpv-player/mpv	https://github.com/mpv-player/mpv.git	36182	120241	🎥 Command line media player
+c	DeusData/codebase-memory-mcp	https://github.com/DeusData/codebase-memory-mcp.git	35355	183071	High-performance code intelligence MCP server. Indexes codebases into a persistent knowledge graph — average repo in milliseconds. 158 languages, sub-ms queries
+c	jqlang/jq	https://github.com/jqlang/jq.git	35276	7968	Command-line JSON processor
+c	nothings/stb	https://github.com/nothings/stb.git	34277	5854	stb single-file public domain libraries for C/C++
+c	valinet/ExplorerPatcher	https://github.com/valinet/ExplorerPatcher.git	33426	9196	This project aims to enhance the working environment on Windows
+c	bilibili/ijkplayer	https://github.com/bilibili/ijkplayer.git	33185	8283	Android/iOS video player based on FFmpeg n3.4, with MediaCodec, VideoToolbox support.
+c	lizongying/my-tv	https://github.com/lizongying/my-tv.git	32045	72954	我的电视 电视直播软件，安装即可使用
+c	kingToolbox/WindTerm	https://github.com/kingToolbox/WindTerm.git	31734	18742	A professional cross-platform SSH/Sftp/Shell/Telnet/Tmux/Serial terminal.
+c	coolsnowwolf/lede	https://github.com/coolsnowwolf/lede.git	31540	341550	Lean's LEDE source
+c	nginx/nginx	https://github.com/nginx/nginx.git	31224	76290	The official NGINX Open Source repository.
+c	openssl/openssl	https://github.com/openssl/openssl.git	30514	348549	General purpose TLS and crypto library
+c	asmvik/yabai	https://github.com/asmvik/yabai.git	29343	7457	A tiling window manager for macOS based on binary space partitioning
+c	ValdikSS/GoodbyeDPI	https://github.com/ValdikSS/GoodbyeDPI.git	28516	222	GoodbyeDPI — Deep Packet Inspection circumvention utility (for Windows)
+c	openwrt/openwrt	https://github.com/openwrt/openwrt.git	27657	302608	This repository is a mirror of https://git.openwrt.org/openwrt/openwrt.git It is for reference only and is not active for check-ins.  We will continue to accept
+c	facebook/zstd	https://github.com/facebook/zstd.git	27466	40416	Zstandard - Fast real-time compression algorithm
+c	ggreer/the_silver_searcher	https://github.com/ggreer/the_silver_searcher.git	27099	2426	A code-searching tool similar to ack, but faster.
+c	libuv/libuv	https://github.com/libuv/libuv.git	27034	17777	Cross-platform asynchronous I/O
+c	valkey-io/valkey	https://github.com/valkey-io/valkey.git	26614	210132	A flexible distributed key-value database that is optimized for caching and other realtime workloads.
+c	pjreddie/darknet	https://github.com/pjreddie/darknet.git	26486	6526	Convolutional Neural Networks
+c	hashcat/hashcat	https://github.com/hashcat/hashcat.git	26414	145991	World's fastest and most advanced password recovery utility
+c	robertdavidgraham/masscan	https://github.com/robertdavidgraham/masscan.git	25884	3696	TCP port scanner, spews SYN packets asynchronously, scanning entire Internet in under 5 minutes.
+c	xiaojieonly/Ehviewer_CN_SXJ	https://github.com/xiaojieonly/Ehviewer_CN_SXJ.git	25569	14899	ehviewer，用爱发电，快乐前行
+c	arendst/Tasmota	https://github.com/arendst/Tasmota.git	24591	282068	Alternative firmware for ESP8266 and ESP32 based devices with easy configuration using webUI, OTA updates, automation using timers or rules, expandability and e
+c	radareorg/radare2	https://github.com/radareorg/radare2.git	24441	200948	UNIX-like reverse engineering framework and command-line toolset
+c	fastfetch-cli/fastfetch	https://github.com/fastfetch-cli/fastfetch.git	23899	17207	A maintained, feature-rich and performance oriented, neofetch like system information tool.
+c	HandBrake/HandBrake	https://github.com/HandBrake/HandBrake.git	23851	123628	HandBrake's development repository 
+c	timescale/timescaledb	https://github.com/timescale/timescaledb.git	23180	62954	A time-series database for high-performance real-time analytics packaged as a Postgres extension
+c	iovisor/bcc	https://github.com/iovisor/bcc.git	22576	23964	BCC - Tools for BPF-based Linux IO analysis, networking, monitoring, and more
+c	SamyPesse/How-to-Make-a-Computer-Operating-System	https://github.com/SamyPesse/How-to-Make-a-Computer-Operating-System.git	22428	5986	How to Make a Computer Operating System in C++
+c	pgvector/pgvector	https://github.com/pgvector/pgvector.git	22345	1998	Open-source vector similarity search for Postgres
+c	TheAlgorithms/C	https://github.com/TheAlgorithms/C.git	22280	20365	Collection of various algorithms in mathematics, machine learning, computer science, physics, etc implemented in C for educational purposes.
+c	micropython/micropython	https://github.com/micropython/micropython.git	21936	76390	MicroPython - a lean and efficient Python implementation for microcontrollers and constrained systems
+c	DarkFlippers/unleashed-firmware	https://github.com/DarkFlippers/unleashed-firmware.git	21899	105265	Flipper Zero Unleashed Firmware
+c	gentilkiwi/mimikatz	https://github.com/gentilkiwi/mimikatz.git	21731	5326	A little tool to play with Windows security
+c	jarun/nnn	https://github.com/jarun/nnn.git	21728	7403	n³ The unorthodox terminal file manager
+c	julycoding/The-Art-Of-Programming-By-July-2nd	https://github.com/julycoding/The-Art-Of-Programming-By-July-2nd.git	21508	27547	本项目曾冲到全球第一，干货集锦见本页面最底部，另完整精致的纸质版《编程之法：面试和算法心得》已在京东/当当上销售
+c	jart/cosmopolitan	https://github.com/jart/cosmopolitan.git	21175	337977	build-once run-anywhere c library
+c	allinurl/goaccess	https://github.com/allinurl/goaccess.git	20729	9188	GoAccess is a real-time web log analyzer and interactive viewer that runs in a terminal in *nix systems or through your browser.
+c	ish-app/ish	https://github.com/ish-app/ish.git	20184	5587	Linux shell for iOS
+c	karpathy/llama2.c	https://github.com/karpathy/llama2.c.git	19781	1275	Inference Llama 2 in one file of pure C
+c	ExistentialAudio/BlackHole	https://github.com/ExistentialAudio/BlackHole.git	19440	5559	BlackHole is a modern macOS audio loopback driver that allows applications to pass audio to other applications with zero additional latency.
+c	antirez/ds4	https://github.com/antirez/ds4.git	19220	12012	DeepSeek 4 Flash and PRO local inference engine for Metal, CUDA and ROCm
+c	JustVugg/colibri	https://github.com/JustVugg/colibri.git	19134	7648	Run GLM-5.2 (744B MoE) on a 25GB-RAM consumer machine — pure C, zero deps, experts streamed from disk. Tiny engine, immense model. 🐦
+c	sandboxie-plus/Sandboxie	https://github.com/sandboxie-plus/Sandboxie.git	19004	214319	Sandboxie Plus & Classic
+c	nicbarker/clay	https://github.com/nicbarker/clay.git	17692	19203	High performance UI layout library in C.
+c	ffmpegwasm/ffmpeg.wasm	https://github.com/ffmpegwasm/ffmpeg.wasm.git	17692	17802	FFmpeg for browser, powered by WebAssembly
+c	bkaradzic/bgfx	https://github.com/bkaradzic/bgfx.git	17323	337157	Cross-platform, graphics API agnostic, "Bring Your Own Engine/Framework" style rendering library.
+c	NVIDIA/open-gpu-kernel-modules	https://github.com/NVIDIA/open-gpu-kernel-modules.git	17188	146834	NVIDIA Linux open GPU kernel module source
+c	sumatrapdfreader/sumatrapdf	https://github.com/sumatrapdfreader/sumatrapdf.git	17175	357403	SumatraPDF reader
+c	swaywm/sway	https://github.com/swaywm/sway.git	17160	30859	i3-compatible Wayland compositor
+cpp	electron/electron	https://github.com/electron/electron.git	122194	209607	:electron: Build cross-platform desktop apps with JavaScript, HTML, and CSS
+cpp	microsoft/terminal	https://github.com/microsoft/terminal.git	104346	174447	The new Windows Terminal and the original Windows console host, all in the same place!
+cpp	bitcoin/bitcoin	https://github.com/bitcoin/bitcoin.git	89696	320696	Bitcoin Core integration/staging tree
+cpp	nomic-ai/gpt4all	https://github.com/nomic-ai/gpt4all.git	77396	44678	GPT4All: Run Local LLMs on Any Device. Open-source and available for commercial use.
+cpp	tesseract-ocr/tesseract	https://github.com/tesseract-ocr/tesseract.git	75555	54931	Tesseract Open Source OCR Engine (main repository)
+cpp	ocornut/imgui	https://github.com/ocornut/imgui.git	75063	131143	Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies
+cpp	protocolbuffers/protobuf	https://github.com/protocolbuffers/protobuf.git	71649	233744	Protocol Buffers - Google's data interchange format
+cpp	WerWolv/ImHex	https://github.com/WerWolv/ImHex.git	54277	51713	🔍 A Hex Editor for Reverse Engineers, Programmers and people who value their retinas when working at 3 AM.
+cpp	ggml-org/whisper.cpp	https://github.com/ggml-org/whisper.cpp.git	52299	41062	Port of OpenAI's Whisper model in C/C++
+cpp	nlohmann/json	https://github.com/nlohmann/json.git	50216	266400	JSON for Modern C++
+cpp	x64dbg/x64dbg	https://github.com/x64dbg/x64dbg.git	48997	64820	An open-source user mode debugger for Windows. Optimized for reverse engineering and malware analysis.
+cpp	zhongyang219/TrafficMonitor	https://github.com/zhongyang219/TrafficMonitor.git	45378	16963	这是一个用于显示当前网速、CPU及内存利用率的桌面悬浮窗软件，并支持任务栏显示，支持更换皮肤。
+cpp	Light-City/CPlusPlusThings	https://github.com/Light-City/CPlusPlusThings.git	43308	2503	C++那些事
+cpp	aria2/aria2	https://github.com/aria2/aria2.git	41525	31510	aria2 is a lightweight multi-protocol & multi-source, cross platform download utility operated in command-line. It supports HTTP/HTTPS, FTP, SFTP, BitTorrent an
+cpp	facebookresearch/faiss	https://github.com/facebookresearch/faiss.git	40586	283508	A library for efficient similarity search and clustering of dense vectors.
+cpp	microsoft/BitNet	https://github.com/microsoft/BitNet.git	39788	8756	Official inference framework for 1-bit LLMs
+cpp	LizardByte/Sunshine	https://github.com/LizardByte/Sunshine.git	39583	65414	Self-hosted game stream host for Moonlight.
+cpp	google/leveldb	https://github.com/google/leveldb.git	39255	1848	LevelDB is a fast key-value storage library written at Google that provides an ordered mapping from string keys to string values.
+cpp	qbittorrent/qBittorrent	https://github.com/qbittorrent/qBittorrent.git	39025	317422	qBittorrent BitTorrent client
+cpp	google/googletest	https://github.com/google/googletest.git	38862	14277	GoogleTest - Google Testing and Mocking Framework
+cpp	aseprite/aseprite	https://github.com/aseprite/aseprite.git	38320	47670	Animated sprite editor & pixel art tool (Windows, macOS, Linux)
+cpp	hyprwm/Hyprland	https://github.com/hyprwm/Hyprland.git	37475	80030	Hyprland is an independent, highly customizable, dynamic tiling Wayland compositor that doesn't sacrifice on its looks.
+cpp	BVLC/caffe	https://github.com/BVLC/caffe.git	34574	76170	Caffe: a fast open framework for deep learning.
+cpp	TheAlgorithms/C-Plus-Plus	https://github.com/TheAlgorithms/C-Plus-Plus.git	34519	140614	Collection of various algorithms in mathematics, machine learning, computer science and physics implemented in C++ for educational purposes.
+cpp	CMU-Perceptual-Computing-Lab/openpose	https://github.com/CMU-Perceptual-Computing-Lab/openpose.git	34317	86496	OpenPose: Real-time multi-person keypoint detection library for body, face, hands, and foot estimation
+cpp	carbon-language/carbon-lang	https://github.com/carbon-language/carbon-lang.git	33821	121657	Carbon Language's main repository: documents, design, implementation, and related tools. (NOTE: Carbon Language is experimental; see README)
+cpp	SerenityOS/serenity	https://github.com/SerenityOS/serenity.git	33659	241917	The Serenity Operating System 🐞
+cpp	aristocratos/btop	https://github.com/aristocratos/btop.git	33637	10020	A monitor of resources
+cpp	microsoft/WSL	https://github.com/microsoft/WSL.git	33206	76438	Windows Subsystem for Linux
+cpp	telegramdesktop/tdesktop	https://github.com/telegramdesktop/tdesktop.git	32404	277070	Telegram Desktop messaging app
+cpp	ValveSoftware/Proton	https://github.com/ValveSoftware/Proton.git	32338	153529	Compatibility tool for Steam Play based on Wine and additional components
+cpp	shadps4-emu/shadPS4	https://github.com/shadps4-emu/shadPS4.git	32259	72941	PlayStation 4 emulator for Windows, Linux, macOS and FreeBSD written in C++
+cpp	facebook/rocksdb	https://github.com/facebook/rocksdb.git	31906	245961	A library that provides an embeddable, persistent key-value store for fast storage.
+cpp	microsoft/calculator	https://github.com/microsoft/calculator.git	30991	40068	Windows Calculator: A simple yet powerful calculator that ships with Windows
+cpp	dragonflydb/dragonfly	https://github.com/dragonflydb/dragonfly.git	30913	27870	A modern replacement for Redis and Memcached
+cpp	barry-ran/QtScrcpy	https://github.com/barry-ran/QtScrcpy.git	30704	43246	Android real-time display control software
+cpp	facebook/folly	https://github.com/facebook/folly.git	30474	57552	An open-source C++ library developed and used at Facebook.
+cpp	flameshot-org/flameshot	https://github.com/flameshot-org/flameshot.git	30467	27294	Powerful yet simple to use screenshot software :desktop_computer: :camera_flash:
+cpp	gabime/spdlog	https://github.com/gabime/spdlog.git	29265	42915	Fast C++ logging library.
+cpp	ossrs/srs	https://github.com/ossrs/srs.git	29072	262107	SRS is a simple, high-efficiency, real-time media server supporting RTMP, WebRTC, HLS, HTTP-FLV, HTTP-TS, SRT, MPEG-DASH, and GB28181, with codec support for H.
+cpp	notepad-plus-plus/notepad-plus-plus	https://github.com/notepad-plus-plus/notepad-plus-plus.git	28813	321618	Notepad++ official repository
+cpp	envoyproxy/envoy	https://github.com/envoyproxy/envoy.git	28638	320271	Cloud-native high-performance edge/middle/service proxy
+cpp	dmlc/xgboost	https://github.com/dmlc/xgboost.git	28601	37569	Scalable, Portable and Distributed Gradient Boosting (GBDT, GBRT or GBM) Library,  for Python, R, Java, Scala, C++ and more. Runs on single machine, Hadoop, Spa
+cpp	78/xiaozhi-esp32	https://github.com/78/xiaozhi-esp32.git	28358	10139	An MCP-based chatbot | 一个基于MCP的聊天机器人
+cpp	taichi-dev/taichi	https://github.com/taichi-dev/taichi.git	28306	60275	Productive, portable, and performant GPU programming in Python.
+cpp	keepassxreboot/keepassxc	https://github.com/keepassxreboot/keepassxc.git	28140	80400	KeePassXC is a cross-platform community-driven port of the Windows application “KeePass Password Safe”.
+cpp	ml-explore/mlx	https://github.com/ml-explore/mlx.git	27709	69628	MLX: An array framework for Apple silicon
+cpp	deskflow/deskflow	https://github.com/deskflow/deskflow.git	27609	180200	Share a single keyboard and mouse between multiple computers.
+cpp	emscripten-core/emscripten	https://github.com/emscripten-core/emscripten.git	27528	269538	Emscripten: An LLVM-to-WebAssembly Compiler
+cpp	rethinkdb/rethinkdb	https://github.com/rethinkdb/rethinkdb.git	27001	283668	The open-source database for the realtime web.
+cpp	typesense/typesense	https://github.com/typesense/typesense.git	26356	14523	Open Source alternative to Algolia + Pinecone and an Easier-to-Use alternative to ElasticSearch ⚡ 🔍 ✨ Fast, typo tolerant, in-memory fuzzy Search Engine for bui
+cpp	google/flatbuffers	https://github.com/google/flatbuffers.git	26267	22278	FlatBuffers: Memory Efficient Serialization Library
+cpp	microsoft/winget-cli	https://github.com/microsoft/winget-cli.git	26232	46180	WinGet is the Windows Package Manager. This project includes a CLI (Command Line Interface), PowerShell modules, and a COM (Component Object Model) API (Applica
+cpp	argotorg/solidity	https://github.com/argotorg/solidity.git	25685	84810	Solidity, the Smart Contract Programming Language
+cpp	mozilla-ai/llamafile	https://github.com/mozilla-ai/llamafile.git	25450	28038	Distribute and run LLMs with a single file.
+rust	ultraworkers/claw-code	https://github.com/ultraworkers/claw-code.git	194912	25104	An agent-managed museum exhibit, built in Rust with Gajae-Code / LazyCodex — developed and maintained with no human intervention.
+rust	farion1231/cc-switch	https://github.com/farion1231/cc-switch.git	121185	66644	A cross-platform desktop All-in-One assistant for Claude Code, Codex, OpenCode, OpenClaw, Grok Build & Hermes Agent. Only official website: ccswitch.io
+rust	rustdesk/rustdesk	https://github.com/rustdesk/rustdesk.git	118862	75770	An open-source remote desktop application designed for self-hosting, as an alternative to TeamViewer.
+rust	tauri-apps/tauri	https://github.com/tauri-apps/tauri.git	109499	107417	Build smaller, faster, and more secure desktop and mobile applications with a web frontend.
+rust	denoland/deno	https://github.com/denoland/deno.git	107809	245068	A modern runtime for JavaScript and TypeScript.
+rust	astral-sh/uv	https://github.com/astral-sh/uv.git	87894	185277	An extremely fast Python package and project manager, written in Rust.
+rust	ruvnet/RuView	https://github.com/ruvnet/RuView.git	86399	183610	π RuView turns commodity WiFi signals into real-time spatial intelligence, vital sign monitoring, and presence detection — all without a single pixel of video.
+rust	rtk-ai/rtk	https://github.com/rtk-ai/rtk.git	73258	5944	CLI proxy that reduces LLM token consumption by 60-90% on common dev commands. Single Rust binary, zero dependencies
+rust	openinterpreter/openinterpreter	https://github.com/openinterpreter/openinterpreter.git	67290	230086	A coding agent for open models like Kimi K3
+rust	BurntSushi/ripgrep	https://github.com/BurntSushi/ripgrep.git	66529	5690	ripgrep recursively searches directories for a regex pattern while respecting your gitignore
+rust	alacritty/alacritty	https://github.com/alacritty/alacritty.git	65067	14577	A cross-platform, OpenGL terminal emulator.
+rust	dani-garcia/vaultwarden	https://github.com/dani-garcia/vaultwarden.git	64274	12016	Unofficial Bitwarden compatible server written in Rust, formerly known as bitwarden_rs
+rust	warpdotdev/warp	https://github.com/warpdotdev/warp.git	63675	314179	Warp is an agentic development environment, born out of the terminal.
+rust	rust-lang/rustlings	https://github.com/rust-lang/rustlings.git	63617	4373	:crab: Small exercises to get you used to reading and writing Rust code!
+rust	FuelLabs/sway	https://github.com/FuelLabs/sway.git	61554	124284	🌴 Empowering everyone to build reliable and efficient smart contracts.
+rust	tw93/Pake	https://github.com/tw93/Pake.git	60217	66402	🤱🏻 Turn any webpage into a desktop app with one command.
+rust	sharkdp/bat	https://github.com/sharkdp/bat.git	59875	35262	A cat(1) clone with wings.
+rust	starship/starship	https://github.com/starship/starship.git	59076	47293	☄🌌️  The minimal, blazing-fast, and infinitely customizable prompt for any shell!
+rust	meilisearch/meilisearch	https://github.com/meilisearch/meilisearch.git	58728	91198	A lightning-fast search engine API bringing AI-powered hybrid search to your sites and applications.
+rust	typst/typst	https://github.com/typst/typst.git	55099	142073	A markup-based typesetting system that is powerful and easy to learn.
+rust	lencx/ChatGPT	https://github.com/lencx/ChatGPT.git	54420	32499	❄️ ChatGPT Desktop Application (Mac, Windows and Linux)
+rust	astral-sh/ruff	https://github.com/astral-sh/ruff.git	48843	179361	An extremely fast Python linter and code formatter, written in Rust.
+rust	bevyengine/bevy	https://github.com/bevyengine/bevy.git	47341	171449	A refreshingly simple data-driven game engine built in Rust
+rust	helix-editor/helix	https://github.com/helix-editor/helix.git	45593	89879	A post-modern modal text editor.
+rust	sharkdp/fd	https://github.com/sharkdp/fd.git	43873	2363	A simple, fast and user-friendly alternative to 'find'
+rust	FuelLabs/fuels-rs	https://github.com/FuelLabs/fuels-rs.git	43098	20136	Fuel Network Rust SDK
+rust	sxyazi/yazi	https://github.com/sxyazi/yazi.git	40762	8843	💥 Blazing fast terminal file manager written in Rust, based on async I/O.
+rust	GyulyVGC/sniffnet	https://github.com/GyulyVGC/sniffnet.git	40156	360139	Comfortably monitor your Internet traffic 🕵️‍♂️
+rust	Hmbown/CodeWhale	https://github.com/Hmbown/CodeWhale.git	40115	68370	Open-source, community-driven agent harness
+rust	nushell/nushell	https://github.com/nushell/nushell.git	40088	67935	A new type of shell
+rust	vercel-labs/agent-browser	https://github.com/vercel-labs/agent-browser.git	39200	19281	Browser automation CLI for AI agents
+rust	pola-rs/polars	https://github.com/pola-rs/polars.git	39106	213128	Extremely fast Query Engine for DataFrames, written in Rust
+rust	lapce/lapce	https://github.com/lapce/lapce.git	38691	28651	Lightning-fast and Powerful Code Editor written in Rust
+rust	spacedriveapp/spacedrive	https://github.com/spacedriveapp/spacedrive.git	38650	271488	Spacedrive is an open source cross-platform file explorer, powered by a virtual distributed filesystem written in Rust.
+rust	DioxusLabs/dioxus	https://github.com/DioxusLabs/dioxus.git	38299	53082	Fullstack app framework for web, desktop, and mobile.
+rust	ajeetdsouza/zoxide	https://github.com/ajeetdsouza/zoxide.git	38246	4422	A smarter cd command. Supports all major shells.
+rust	pnpm/pnpm	https://github.com/pnpm/pnpm.git	35874	236055	Fast, disk space efficient package manager
+rust	firecracker-microvm/firecracker	https://github.com/firecracker-microvm/firecracker.git	35652	41243	Secure and fast microVMs for serverless computing.
+rust	tinyhumansai/openhuman	https://github.com/tinyhumansai/openhuman.git	35426	154946	Your Personal AI super intelligence. A brain that builds a local-first memory of your life, a fantastic orchestrator of agent fleets and workflows, and a deep r
+rust	casey/just	https://github.com/casey/just.git	34949	17798	🤖 Just a command runner
+go	ollama/ollama	https://github.com/ollama/ollama.git	176895	89997	Get up and running with Kimi-K2.6, GLM-5.2, MiniMax, DeepSeek, gpt-oss, Qwen, Gemma and other models.
+go	fatedier/frp	https://github.com/fatedier/frp.git	108343	32314	A fast reverse proxy to help you expose a local server behind a NAT or firewall to the internet.
+go	gohugoio/hugo	https://github.com/gohugoio/hugo.git	89178	142869	The world’s fastest framework for building websites.
+go	gin-gonic/gin	https://github.com/gin-gonic/gin.git	88973	10588	Gin is a high-performance HTTP web framework written in Go. It provides a Martini-like API but with significantly better performance—up to 40 times faster—thank
+go	syncthing/syncthing	https://github.com/syncthing/syncthing.git	86893	127110	Open Source Continuous File Synchronization
+go	infiniflow/ragflow	https://github.com/infiniflow/ragflow.git	85999	143855	RAGFlow is a leading open-source Retrieval-Augmented Generation (RAG) engine that fuses cutting-edge RAG with Agent capabilities to create a superior context la
+go	junegunn/fzf	https://github.com/junegunn/fzf.git	81969	8525	:cherry_blossom: A command-line fuzzy finder
+go	jesseduffield/lazygit	https://github.com/jesseduffield/lazygit.git	80732	155986	simple terminal UI for git commands
+go	netdata/netdata	https://github.com/netdata/netdata.git	79848	295829	The fastest path to AI-powered full stack observability, even for lean teams.
+go	caddyserver/caddy	https://github.com/caddyserver/caddy.git	74363	21744	Fast and extensible multi-platform HTTP/1-2-3 web server with automatic HTTPS
+go	moby/moby	https://github.com/moby/moby.git	71904	266850	The Moby Project - a collaborative project for the container ecosystem to assemble container-based systems
+go	nektos/act	https://github.com/nektos/act.git	71207	17758	Run your GitHub Actions locally 🚀
+go	prometheus/prometheus	https://github.com/prometheus/prometheus.git	65313	286110	The Prometheus monitoring system and time series database.
+go	traefik/traefik	https://github.com/traefik/traefik.git	64116	159391	The Cloud Native Application Proxy
+go	usememos/memos	https://github.com/usememos/memos.git	61794	40213	Open-source, self-hosted note-taking tool built for quick capture. Markdown-native, lightweight, and fully yours.
+go	pocketbase/pocketbase	https://github.com/pocketbase/pocketbase.git	60256	142843	Open Source realtime backend in 1 file
+go	FiloSottile/mkcert	https://github.com/FiloSottile/mkcert.git	59365	1799	A simple zero-config tool to make locally trusted development certificates with any names you'd like.
+go	rclone/rclone	https://github.com/rclone/rclone.git	58702	248958	"rsync for cloud storage" - Google Drive, S3, Dropbox, Backblaze B2, One Drive, Swift, Hubic, Wasabi, Google Cloud Storage, Azure Blob, Azure Files, Yandex File
+go	go-gitea/gitea	https://github.com/go-gitea/gitea.git	57033	346138	Git with a cup of tea! Painless self-hosted all-in-one software development service, including Git hosting, code review, team collaboration, package registry an
+go	wagoodman/dive	https://github.com/wagoodman/dive.git	54357	6927	A tool for exploring each layer in a docker image
+go	jesseduffield/lazydocker	https://github.com/jesseduffield/lazydocker.git	52161	30218	The lazier way to manage everything docker
+go	etcd-io/etcd	https://github.com/etcd-io/etcd.git	52026	98396	Distributed reliable key-value store for the most critical data of a distributed system
+go	ethereum/go-ethereum	https://github.com/ethereum/go-ethereum.git	51220	238543	Go implementation of the Ethereum protocol
+go	AlistGo/alist	https://github.com/AlistGo/alist.git	49924	6596	🗂️A file list/WebDAV program that supports multiple storages, powered by Gin and Solidjs. / 一个支持多存储的文件列表/WebDAV程序，使用 Gin 和 Solidjs。
+go	hashicorp/terraform	https://github.com/hashicorp/terraform.git	49293	356937	Terraform enables you to safely and predictably create, change, and improve infrastructure. It is a source-available tool that codifies APIs into declarative co
+go	mudler/LocalAI	https://github.com/mudler/LocalAI.git	47853	82552	LocalAI is the open-source AI engine. Run any model - LLMs, vision, voice, image, video - on any hardware. No GPU required.
+go	gogs/gogs	https://github.com/gogs/gogs.git	47698	212358	The painless way to host your own Git service
+go	coreybutler/nvm-windows	https://github.com/coreybutler/nvm-windows.git	47161	32685	A node.js version management utility for Windows. Ironically written in Go.
+go	v2ray/v2ray-core	https://github.com/v2ray/v2ray-core.git	46926	55173	A platform for building proxies to bypass network restrictions.
+go	cli/cli	https://github.com/cli/cli.git	45415	77906	GitHub’s official command line tool
+go	milvus-io/milvus	https://github.com/milvus-io/milvus.git	45382	313088	Milvus is a high-performance, cloud-native vector database built for scalable vector ANN search
+go	router-for-me/CLIProxyAPI	https://github.com/router-for-me/CLIProxyAPI.git	44916	21532	Wrap Antigravity, ChatGPT Codex, Claude Code, Grok Build as an OpenAI/Gemini/Claude/Codex compatible API service, allowing you to enjoy the free Gemini 3.1 Pro,
+go	spf13/cobra	https://github.com/spf13/cobra.git	44314	2107	A Commander for modern Go CLI interactions
+go	charmbracelet/bubbletea	https://github.com/charmbracelet/bubbletea.git	43960	5878	A powerful little TUI framework 🏗
+go	astaxie/build-web-application-with-golang	https://github.com/astaxie/build-web-application-with-golang.git	43916	38293	A golang ebook intro how to build a web with golang
+go	MHSanaei/3x-ui	https://github.com/MHSanaei/3x-ui.git	43663	55776	Xray panel supporting multi-protocol multi-user expire day & traffic & IP limit (Vmess, Vless, Trojan, ShadowSocks, Wireguard, Hysteria, Tunnel, Mixed, HTTP, Tu
+go	danielmiessler/Fabric	https://github.com/danielmiessler/Fabric.git	43199	154655	Fabric is an open-source framework for augmenting humans using AI. It provides a modular system for solving specific problems using a crowdsourced set of AI pro
+go	juanfont/headscale	https://github.com/juanfont/headscale.git	42099	55698	An open source, self-hosted implementation of the Tailscale control server
+go	multica-ai/multica	https://github.com/multica-ai/multica.git	42033	87648	The open-source managed agents platform. Turn coding agents into real teammates — assign tasks, track progress, compound skills.
+go	XTLS/Xray-core	https://github.com/XTLS/Xray-core.git	40629	30950	Xray, Penetrates Everything. Also the best v2ray-core. Where the magic happens. An open platform for various uses.
+python	public-apis/public-apis	https://github.com/public-apis/public-apis.git	452551	7732	A collective list of free APIs
+python	donnemartin/system-design-primer	https://github.com/donnemartin/system-design-primer.git	359189	11277	Learn how to design large-scale systems. Prep for the system design interview.  Includes Anki flashcards.
+python	TheAlgorithms/Python	https://github.com/TheAlgorithms/Python.git	223159	16574	All Algorithms implemented in Python
+python	yt-dlp/yt-dlp	https://github.com/yt-dlp/yt-dlp.git	180095	61518	A feature-rich command-line audio/video downloader
+python	microsoft/markitdown	https://github.com/microsoft/markitdown.git	169025	4333	Python tool for converting files and office documents to Markdown.
+python	521xueweihan/HelloGitHub	https://github.com/521xueweihan/HelloGitHub.git	167268	9207	:octocat: 分享 GitHub 上有趣、入门级的开源项目。Share interesting, entry-level open source projects on GitHub.
+python	AUTOMATIC1111/stable-diffusion-webui	https://github.com/AUTOMATIC1111/stable-diffusion-webui.git	164274	36552	Stable Diffusion web UI
+python	anthropics/skills	https://github.com/anthropics/skills.git	164175	4252	Public repository for Agent Skills
+python	open-webui/open-webui	https://github.com/open-webui/open-webui.git	146740	398926	User-friendly AI Interface (Supports Ollama, OpenAI API, ...)
+python	ytdl-org/youtube-dl	https://github.com/ytdl-org/youtube-dl.git	140801	65510	Command-line program to download videos from YouTube.com and other video sites
+python	anthropics/claude-code	https://github.com/anthropics/claude-code.git	139095	29243	Claude Code is an agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster by executing routine tasks, explaining c
+python	github/spec-kit	https://github.com/github/spec-kit.git	123817	13755	💫 Toolkit to help you get started with Spec-Driven Development
+python	Comfy-Org/ComfyUI	https://github.com/Comfy-Org/ComfyUI.git	122251	92362	The most powerful and modular diffusion model GUI, api and backend with a graph/nodes interface.
+python	nextlevelbuilder/ui-ux-pro-max-skill	https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git	110134	7423	An AI SKILL that provide design intelligence for building professional UI/UX multiple platforms
+python	browser-use/browser-use	https://github.com/browser-use/browser-use.git	106780	33595	🌐 Make websites accessible for AI agents. Automate tasks online with ease.
+python	openai/whisper	https://github.com/openai/whisper.git	105581	4132	Robust Speech Recognition via Large-Scale Weak Supervision
+python	deepseek-ai/DeepSeek-V3	https://github.com/deepseek-ai/DeepSeek-V3.git	104009	1768	
+python	fastapi/fastapi	https://github.com/fastapi/fastapi.git	100882	53113	FastAPI framework, high performance, easy to learn, fast to code, ready for production
+python	nvbn/thefuck	https://github.com/nvbn/thefuck.git	97568	4043	Magnificent app which corrects your previous console command.
+python	Graphify-Labs/graphify	https://github.com/Graphify-Labs/graphify.git	95922	8329	Turn any codebase, with its docs, SQL schemas, configs, and PDFs, into a queryable knowledge graph. A /graphify skill for Claude Code, Cursor, Codex, and Gemini
+python	hacksider/Deep-Live-Cam	https://github.com/hacksider/Deep-Live-Cam.git	95248	156148	real time face swap and one-click video deepfake with only a single image
+python	TauricResearch/TradingAgents	https://github.com/TauricResearch/TradingAgents.git	94531	5233	TradingAgents: Multi-Agents LLM Financial Trading Framework
+python	karpathy/autoresearch	https://github.com/karpathy/autoresearch.git	92047	530	AI agents running research on single-GPU nanochat training automatically
+python	3b1b/manim	https://github.com/3b1b/manim.git	88860	76639	Animation engine for explanatory math videos
+python	django/django	https://github.com/django/django.git	88214	281647	The Web framework for perfectionists with deadlines.
+python	vllm-project/vllm	https://github.com/vllm-project/vllm.git	87160	245825	A high-throughput and memory-efficient inference and serving engine for LLMs
+python	sherlock-project/sherlock	https://github.com/sherlock-project/sherlock.git	87075	18619	Hunt down social media accounts by username across social networks
+python	OpenHands/OpenHands	https://github.com/OpenHands/OpenHands.git	82086	360118	🙌 OpenHands: AI-Driven Development
+python	fighting41love/funNLP	https://github.com/fighting41love/funNLP.git	82045	174188	中英文敏感词、语言检测、中外手机/电话归属地/运营商查询、名字推断性别、手机号抽取、身份证抽取、邮箱抽取、中日文人名库、中文缩写库、拆字词典、词汇情感值、停用词、反动词表、暴恐词表、繁简体转换、英文模拟中文发音、汪峰歌词生成器、职业名称词库、同义词库、反义词库、否定词库、汽车品牌词库、汽车零件词库、连续英文切割、各种中
+python	swisskyrepo/PayloadsAllTheThings	https://github.com/swisskyrepo/PayloadsAllTheThings.git	79437	23298	A list of useful payloads and bypass for Web Application Security and Pentest/CTF
+python	d2l-ai/d2l-zh	https://github.com/d2l-ai/d2l-zh.git	79195	316965	《动手学深度学习》：面向中文读者、能运行、可讨论。中英文版被70多个国家的500多所大学用于教学。
+python	Z4nzu/hackingtool	https://github.com/Z4nzu/hackingtool.git	78482	2486	ALL IN ONE Hacking Tool For Hackers
+python	bytedance/deer-flow	https://github.com/bytedance/deer-flow.git	77861	48767	An open-source long-horizon SuperAgent harness that researches, codes, and creates. With the help of sandboxes, memories, tools, skill, subagents and message ga
+python	opendatalab/MinerU	https://github.com/opendatalab/MinerU.git	75716	158200	Transforms complex documents like PDFs and Office docs into LLM-ready markdown/JSON for your Agentic workflows.
+python	unclecode/crawl4ai	https://github.com/unclecode/crawl4ai.git	75008	150904	🚀🤖 Crawl4AI: Open-source LLM Friendly Web Crawler & Scraper. Don't be shy, join here: https://discord.gg/jP8KfhDhyN
+python	hiyouga/LlamaFactory	https://github.com/hiyouga/LlamaFactory.git	73513	13917	Unified Efficient Fine-Tuning of 100+ LLMs & VLMs (ACL 2024)
+python	abi/screenshot-to-code	https://github.com/abi/screenshot-to-code.git	73446	11322	Drop in a screenshot and convert it to clean code (HTML/Tailwind/React/Vue)
+python	pallets/flask	https://github.com/pallets/flask.git	72016	12008	The Python micro framework for building web applications.
+python	D4Vinci/Scrapling	https://github.com/D4Vinci/Scrapling.git	71268	9203	🕷️ An adaptive Web Scraping framework that handles everything from a single request to a full-scale crawl!
+python	binary-husky/gpt_academic	https://github.com/binary-husky/gpt_academic.git	71137	72756	为GPT/GLM等LLM大语言模型提供实用化交互接口，特别优化论文阅读/润色/写作体验，模块化设计，支持自定义快捷按钮&函数插件，支持Python和C++等项目剖析&自译解功能，PDF/LaTex论文翻译&总结功能，支持并行问询多种LLM模型，支持chatglm3等本地模型。接入通义千问, deepseekcoder,
+java	iluwatar/java-design-patterns	https://github.com/iluwatar/java-design-patterns.git	94244	47683	Design patterns implemented in Java
+java	macrozheng/mall	https://github.com/macrozheng/mall.git	84420	58736	mall项目是一套电商系统，包括前台商城系统及后台管理系统，基于Spring Boot+MyBatis实现，采用Docker容器化部署。 前台商城系统包含首页门户、商品推荐、商品搜索、商品展示、购物车、订单流程、会员中心、客户服务、帮助中心等模块。 后台管理系统包含商品管理、订单管理、会员管理、促销管理、运营管理、内容
+java	spring-projects/spring-boot	https://github.com/spring-projects/spring-boot.git	81167	217073	Spring Boot helps you to create Spring-powered, production-grade applications and services with absolute minimum fuss.
+java	doocs/advanced-java	https://github.com/doocs/advanced-java.git	79016	34444	😮 Core Interview Questions & Answers For Experienced Java(Backend) Developers | 互联网 Java 工程师进阶知识完全扫盲：涵盖高并发、分布式、高可用、微服务、海量数据处理等领域知识
+java	TheAlgorithms/Java	https://github.com/TheAlgorithms/Java.git	66059	7503	All Algorithms implemented in Java
+java	spring-projects/spring-framework	https://github.com/spring-projects/spring-framework.git	60139	243435	Spring Framework
+java	termux/termux-app	https://github.com/termux/termux-app.git	58146	5170	Termux - a terminal emulator application for Android OS extendible by variety of packages.
+java	dbeaver/dbeaver	https://github.com/dbeaver/dbeaver.git	51138	215522	Free universal database tool and SQL client
+java	skylot/jadx	https://github.com/skylot/jadx.git	49786	25879	Dex to Java decompiler
+java	ReactiveX/RxJava	https://github.com/ReactiveX/RxJava.git	48226	178318	RxJava – Reactive Extensions for the JVM – a library for composing asynchronous and event-based programs using observable sequences for the Java VM.
+java	jeecgboot/JeecgBoot	https://github.com/jeecgboot/JeecgBoot.git	47184	97057	【低代码迈入v2.0时代，一句话即可生成整个系统】企业级AI低代码平台，一键生成前后端代码甚至整个系统。 AI Skills 一句话画流程、设计表单、生成报表、大屏。内置 AI应用平台涵盖：AI聊天、知识库、流程编排、MCP插件等，兼容主流大模型。引领AI低代码「Skills 生成 → 在线配置 → 代码生成 → 手工
+java	lysine-dev/retrofit	https://github.com/lysine-dev/retrofit.git	43920	7371	A type-safe HTTP client for Android and the JVM
+java	apache/dubbo	https://github.com/apache/dubbo.git	41543	61740	The java implementation of Apache Dubbo. An RPC and microservice framework.
+java	halo-dev/halo	https://github.com/halo-dev/halo.git	39339	87624	Halo 是一款强大易用的开源建站工具，从个人博客、知识库，到企业官网、在线商城，Halo 都能助您轻松实现，一站式满足您的多样化建站需求。
+java	TeamNewPipe/NewPipe	https://github.com/TeamNewPipe/NewPipe.git	39116	89461	A libre lightweight streaming front-end for Android.
+java	YunaiV/ruoyi-vue-pro	https://github.com/YunaiV/ruoyi-vue-pro.git	38375	195927	🔥 官方推荐 🔥 RuoYi-Vue 全新 Pro 版本，优化重构所有功能。基于 Spring Boot + MyBatis Plus + Vue & Element 实现的后台管理系统 + 微信小程序，支持 RBAC 动态权限、数据权限、SaaS 多租户、Flowable 工作流、三方登录、支付、短信、商城、CRM、
+java	PhilJay/MPAndroidChart	https://github.com/PhilJay/MPAndroidChart.git	38198	21593	A powerful 🚀 Android chart view / graph view library, supporting line- bar- pie- radar- bubble- and candlestick charts as well as scaling, panning and animation
+java	alibaba/arthas	https://github.com/alibaba/arthas.git	37452	72434	Alibaba Java Diagnostic Tool Arthas/Alibaba Java诊断利器Arthas
+java	geekxh/hello-algorithm	https://github.com/geekxh/hello-algorithm.git	36095	365053	🌍 针对小白的算法训练 | 包括四部分：①.大厂面经 ②.力扣图解  ③.千本开源电子书 ④.百张技术思维导图（项目花了上百小时，希望可以点 star 支持，🌹感谢~）推荐免费ChatGPT使用网站
+java	airbnb/lottie-android	https://github.com/airbnb/lottie-android.git	35676	137398	Render After Effects animations natively on Android and iOS, Web, and React Native
+java	bumptech/glide	https://github.com/bumptech/glide.git	35029	98034	An image loading and caching library for Android focused on smooth scrolling
+java	netty/netty	https://github.com/netty/netty.git	35014	112464	Netty project - an event-driven asynchronous network application framework
+java	zxing/zxing	https://github.com/zxing/zxing.git	34034	244263	ZXing ("Zebra Crossing") barcode scanning library for Java, Android
+java	Blankj/AndroidUtilCode	https://github.com/Blankj/AndroidUtilCode.git	33654	47329	:fire: Android developers should collect the following utils(updating).
+java	apache/kafka	https://github.com/apache/kafka.git	33333	302030	Apache Kafka - A distributed event streaming platform
+java	alibaba/nacos	https://github.com/alibaba/nacos.git	33211	100245	an easy-to-use dynamic service discovery, configuration and service management platform for building AI cloud native applications.
+java	binarywang/WxJava	https://github.com/binarywang/WxJava.git	32965	20120	微信开发 Java SDK ，支持包括微信支付，开放平台，小程序，企业微信，视频号，公众号等的后端开发
+java	conductor-oss/conductor	https://github.com/conductor-oss/conductor.git	32046	50429	Conductor is an event driven agentic workflow engine providing durable and highly resilient execution engine for applications and AI Agents
+java	yuliskov/SmartTube	https://github.com/yuliskov/SmartTube.git	31543	104773	Browse media content with your own rules on Android TV
+java	xuxueli/xxl-job	https://github.com/xuxueli/xxl-job.git	30401	39073	A distributed task scheduling framework.（分布式任务调度平台XXL-JOB）
+java	chinabugotech/hutool	https://github.com/chinabugotech/hutool.git	30282	75140	🍬A set of tools that keep Java sweet.
+java	apolloconfig/apollo	https://github.com/apolloconfig/apollo.git	29795	57740	Apollo is a reliable configuration management system suitable for microservice configuration management scenarios.
+java	alibaba/canal	https://github.com/alibaba/canal.git	29710	24251	阿里巴巴 MySQL binlog 增量订阅&消费组件 
+java	alibaba/spring-cloud-alibaba	https://github.com/alibaba/spring-cloud-alibaba.git	29139	56357	Spring Cloud Alibaba provides a one-stop solution for application development for the distributed solutions of Alibaba middleware.
+java	wuyouzhuguli/SpringAll	https://github.com/wuyouzhuguli/SpringAll.git	28966	1069	循序渐进，学习Spring Boot、Spring Boot & Shiro、Spring Batch、Spring Cloud、Spring Cloud Alibaba、Spring Security & Spring Security OAuth2，博客Spring系列源码：https://mrbird.cc
+java	alibaba/druid	https://github.com/alibaba/druid.git	28180	94536	阿里云计算平台DataWorks(https://help.aliyun.com/document_detail/137663.html) 团队出品，为监控而生的数据库连接池
+java	lenve/vhr	https://github.com/lenve/vhr.git	28081	8480	微人事是一个前后端分离的人力资源管理系统，项目采用SpringBoot+Vue开发。
+java	kestra-io/kestra	https://github.com/kestra-io/kestra.git	27469	125461	Event Driven Orchestration & Scheduling Platform for Mission Critical Applications
+js	affaan-m/ECC	https://github.com/affaan-m/ECC.git	233364	43860	The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor 
+js	trekhleb/javascript-algorithms	https://github.com/trekhleb/javascript-algorithms.git	196333	14964	📝 Algorithms and data structures implemented in JavaScript with explanations and links to further readings
+js	Snailclimb/JavaGuide	https://github.com/Snailclimb/JavaGuide.git	157300	182862	Java 面试 & 后端通用面试指南，覆盖计算机基础、数据库、分布式、高并发、系统设计与 AI 应用开发
+js	airbnb/javascript	https://github.com/airbnb/javascript.git	148094	3738	JavaScript Style Guide
+js	axios/axios	https://github.com/axios/axios.git	109163	28024	Promise based HTTP client for the browser and node.js
+js	react/create-react-app	https://github.com/react/create-react-app.git	103302	25186	Set up a modern web app by running one command.
+js	ryanmcdermott/clean-code-javascript	https://github.com/ryanmcdermott/clean-code-javascript.git	94744	520	Clean Code concepts adapted for JavaScript
+js	JuliusBrussee/caveman	https://github.com/JuliusBrussee/caveman.git	93002	2809	🪨 why use many token when few token do trick — Claude Code skill that cuts 65% of tokens by talking like caveman
+js	louislam/uptime-kuma	https://github.com/louislam/uptime-kuma.git	89495	38006	A fancy self-hosted monitoring tool
+js	DietrichGebert/ponytail	https://github.com/DietrichGebert/ponytail.git	89409	2253	Makes your AI agent think like the laziest senior dev in the room. The best code is the code you never wrote.
+js	thedotmack/claude-mem	https://github.com/thedotmack/claude-mem.git	88564	289177	Persistent Context Across Sessions for Every Agent –  Captures everything your agent does during sessions, compresses it with AI, and injects relevant context b
+js	sveltejs/svelte	https://github.com/sveltejs/svelte.git	87682	121808	web development for the rest of us
+js	addyosmani/agent-skills	https://github.com/addyosmani/agent-skills.git	80384	657	Production-grade engineering skills for AI coding agents.
+js	anuraghazra/github-readme-stats	https://github.com/anuraghazra/github-readme-stats.git	79785	7741	:zap: Dynamically generated stats for your github readmes
+js	typicode/json-server	https://github.com/typicode/json-server.git	75676	4258	Get a full fake REST API with zero coding in less than 30 seconds (seriously)
+js	hakimel/reveal.js	https://github.com/hakimel/reveal.js.git	72023	34577	The HTML Presentation Framework
+js	juliangarnier/anime	https://github.com/juliangarnier/anime.git	71491	182753	JavaScript animation engine
+js	expressjs/express	https://github.com/expressjs/express.git	69249	9827	Fast, unopinionated, minimalist web framework for node.
+js	Leonxlnx/taste-skill	https://github.com/Leonxlnx/taste-skill.git	67658	33423	Taste-Skill - gives your AI good taste. stops the AI from generating boring, generic slop 
+js	chartjs/Chart.js	https://github.com/chartjs/Chart.js.git	67605	43590	Simple HTML5 Charts using the <canvas> tag
+js	leonardomso/33-js-concepts	https://github.com/leonardomso/33-js-concepts.git	66510	2906	📜 33 JavaScript concepts every developer should know.
+js	gorhill/uBlock	https://github.com/gorhill/uBlock.git	66499	153035	uBlock Origin - An efficient blocker for Chromium and Firefox. Fast and lean.
+js	webpack/webpack	https://github.com/webpack/webpack.git	65865	90958	A bundler for javascript and friends. Packs many modules into a few bundled assets. Code Splitting allows for loading parts of the application on demand. Throug
+js	Mintplex-Labs/anything-llm	https://github.com/Mintplex-Labs/anything-llm.git	63842	89555	Stop renting your intelligence. Own it with AnythingLLM. Everything you need for a powerful local-first agent experience 
+js	jgraph/drawio-desktop	https://github.com/jgraph/drawio-desktop.git	62296	3279	Official electron build of draw.io
+js	santifer/career-ops	https://github.com/santifer/career-ops.git	61559	39946	Open-source AI job search: scan job portals, evaluate listings with a structured A-F rubric into a 1.0-5.0 score, tailor your CV, track applications — runs loca
+js	lodash/lodash	https://github.com/lodash/lodash.git	61260	49920	A modern JavaScript utility library delivering modularity, performance, & extras.
+js	asgeirtj/system_prompts_leaks	https://github.com/asgeirtj/system_prompts_leaks.git	60510	8908	Extracted system prompts from Anthropic - Claude Fable 5, Opus 4.8, Claude Code, Claude Design. OpenAI - ChatGPT GPT-5.6, Codex GPT-5.6, GPT-5.5. Google - Gemin
+js	adam-p/markdown-here	https://github.com/adam-p/markdown-here.git	60236	17985	Google Chrome, Firefox, and Thunderbird extension that lets you write email in Markdown and render it before sending.
+js	jquery/jquery	https://github.com/jquery/jquery.git	59797	36175	jQuery JavaScript Library
+ts	vuejs/vue	https://github.com/vuejs/vue.git	210144	32152	This is the repo for Vue 2. For Vue 3, go to https://github.com/vuejs/core
+ts	firecrawl/firecrawl	https://github.com/firecrawl/firecrawl.git	156037	96621	The API to search, scrape, and interact with the web at scale. 🔥
+ts	clash-verge-rev/clash-verge-rev	https://github.com/clash-verge-rev/clash-verge-rev.git	133744	77596	A modern GUI client based on Tauri, designed to run in Windows, macOS and Linux for tailored proxy experience
+ts	excalidraw/excalidraw	https://github.com/excalidraw/excalidraw.git	128342	101518	Virtual whiteboard for sketching hand-drawn like diagrams
+ts	garrytan/gstack	https://github.com/garrytan/gstack.git	124361	116115	Use Garry Tan's exact Claude Code setup: 23 opinionated tools that serve as CEO, Designer, Eng Manager, Release Manager, Doc Engineer, and QA
+ts	shadcn-ui/ui	https://github.com/shadcn-ui/ui.git	119825	68835	A set of beautifully-designed, accessible components and a code distribution platform. Works with your favorite frameworks. Open Source. Open Code.
+ts	immich-app/immich	https://github.com/immich-app/immich.git	108777	315118	High performance self-hosted photo and video management solution.
+ts	google-gemini/gemini-cli	https://github.com/google-gemini/gemini-cli.git	106179	101209	An open-source AI agent that brings the power of Gemini directly into your terminal.
+ts	ant-design/ant-design	https://github.com/ant-design/ant-design.git	98820	272259	An enterprise-class UI design language and React UI library
+ts	tailwindlabs/tailwindcss	https://github.com/tailwindlabs/tailwindcss.git	96078	113763	A utility-first CSS framework for rapid UI development.
+ts	microsoft/playwright	https://github.com/microsoft/playwright.git	93461	239643	Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API. 
+ts	mermaid-js/mermaid	https://github.com/mermaid-js/mermaid.git	89419	273925	Generation of diagrams like flowcharts or sequence diagrams from text in a similar manner as markdown
+ts	modelcontextprotocol/servers	https://github.com/modelcontextprotocol/servers.git	88892	29386	Model Context Protocol Servers
+ts	ChatGPTNextWeb/NextChat	https://github.com/ChatGPTNextWeb/NextChat.git	88549	21027	✨ Light and Fast AI Assistant. Support: Web | iOS | MacOS | Android |  Linux | Windows
+ts	realworld-apps/realworld	https://github.com/realworld-apps/realworld.git	83907	35591	"The mother of all demo apps" — Exemplary fullstack Medium.com clone powered by React, Angular, Node, Django, and many more
+ts	vitejs/vite	https://github.com/vitejs/vite.git	82093	72863	Next generation frontend tooling. It's fast!
+ts	hoppscotch/hoppscotch	https://github.com/hoppscotch/hoppscotch.git	79895	99199	Open-Source API Development Ecosystem • https://hoppscotch.io • Offline, On-Prem & Cloud • Web, Desktop & CLI • Open-Source Alternative to Postman, Insomnia
+ts	OpenCut-app/OpenCut	https://github.com/OpenCut-app/OpenCut.git	78747	28198	The open-source CapCut alternative
+ts	coder/code-server	https://github.com/coder/code-server.git	78525	54766	VS Code in the browser
+ts	earendil-works/pi	https://github.com/earendil-works/pi.git	77602	54984	AI agent toolkit: unified LLM API, agent loop, TUI, coding agent CLI
+ts	Egonex-AI/Understand-Anything	https://github.com/Egonex-AI/Understand-Anything.git	76107	35072	Graphs that teach > graphs that impress. Turn any code into an interactive knowledge graph you can explore, search, and ask questions about. Works with Claude C
+ts	paperclipai/paperclip	https://github.com/paperclipai/paperclip.git	74742	142172	The open-source app everyone uses to manage agents at work
+ts	koala73/worldmonitor	https://github.com/koala73/worldmonitor.git	74223	141311	Real-time global intelligence dashboard. AI-powered news aggregation, geopolitical monitoring, and infrastructure tracking in a unified situational awareness in
+ts	Eugeny/tabby	https://github.com/Eugeny/tabby.git	73504	100218	A terminal for a more modern age
+ts	apache/echarts	https://github.com/apache/echarts.git	66903	270544	Apache ECharts is a powerful, interactive charting and data visualization library for browser
+csharp	2dust/v2rayN	https://github.com/2dust/v2rayN.git	112214	49089	A GUI client for Windows, Linux and macOS, support Xray and sing-box and others
+csharp	shadowsocks/shadowsocks-windows	https://github.com/shadowsocks/shadowsocks-windows.git	59580	13489	A C# port of shadowsocks
+csharp	jellyfin/jellyfin	https://github.com/jellyfin/jellyfin.git	54977	75862	The Free Software Media System - Server Backend & API
+csharp	PowerShell/PowerShell	https://github.com/PowerShell/PowerShell.git	54539	104700	PowerShell for every system!
+csharp	files-community/Files	https://github.com/files-community/Files.git	44430	280517	A modern file manager that helps users organize their files and folders.
+csharp	ShareX/ShareX	https://github.com/ShareX/ShareX.git	38818	75194	ShareX is a free and open-source application that enables users to capture or record any area of their screen with a single keystroke. It also supports uploadin
+csharp	huiyadanli/RevokeMsgPatcher	https://github.com/huiyadanli/RevokeMsgPatcher.git	38257	3755	:trollface: A hex editor for WeChat/QQ/TIM - PC版微信/QQ/TIM防撤回补丁（我已经看到了，撤回也没用了）
+csharp	dotnet/aspnetcore	https://github.com/dotnet/aspnetcore.git	38238	386162	ASP.NET Core is a cross-platform .NET framework for building modern cloud-based web applications on Windows, Mac, or Linux.
+csharp	DevToys-app/DevToys	https://github.com/DevToys-app/DevToys.git	31802	229285	A Swiss Army knife for developers.
+csharp	AvaloniaUI/Avalonia	https://github.com/AvaloniaUI/Avalonia.git	31224	234955	Develop Desktop, Embedded, Mobile and WebAssembly apps with C# and XAML. The future of .NET UI
+csharp	microsoft/semantic-kernel	https://github.com/microsoft/semantic-kernel.git	28369	102798	Integrate cutting-edge LLM technology quickly and easily into your apps
+csharp	NickeManarin/ScreenToGif	https://github.com/NickeManarin/ScreenToGif.git	27343	26373	🎬 ScreenToGif allows you to record a selected area of your screen, edit and save it as a gif or video.
+csharp	BeyondDimension/SteamTools	https://github.com/BeyondDimension/SteamTools.git	26280	267233	🛠「Watt Toolkit」是一个开源跨平台的多功能 Steam 工具箱。
+csharp	icsharpcode/ILSpy	https://github.com/icsharpcode/ILSpy.git	25719	51885	.NET Decompiler with support for PDB generation, ReadyToRun, Metadata (&more) - cross-platform!
+csharp	mxgmn/WaveFunctionCollapse	https://github.com/mxgmn/WaveFunctionCollapse.git	25218	31117	Bitmap & tilemap generation from a single example with the help of ideas from quantum mechanics
+csharp	QL-Win/QuickLook	https://github.com/QL-Win/QuickLook.git	24196	346783	Bring macOS “Quick Look” feature to Windows
+csharp	iOfficeAI/OfficeCLI	https://github.com/iOfficeAI/OfficeCLI.git	22175	316545	OfficeCLI is the first and best Office suite  purpose-built for AI agents to read, edit, and automate Word, Excel, and PowerPoint files. Free, open-source, sing
+csharp	BCUninstaller/Bulk-Crap-Uninstaller	https://github.com/BCUninstaller/Bulk-Crap-Uninstaller.git	20381	12242	Remove large amounts of unwanted applications quickly.
+csharp	jasontaylordev/CleanArchitecture	https://github.com/jasontaylordev/CleanArchitecture.git	20362	9787	Clean Architecture Solution Template for ASP.NET Core
+csharp	peass-ng/PEASS-ng	https://github.com/peass-ng/PEASS-ng.git	20198	65464	PEASS - Privilege Escalation Awesome Scripts SUITE (with colors)
+csharp	BluePointLilac/ContextMenuManager	https://github.com/BluePointLilac/ContextMenuManager.git	19636	1843	🖱️ 纯粹的Windows右键菜单管理程序
+csharp	bitwarden/server	https://github.com/bitwarden/server.git	19510	56769	Bitwarden infrastructure/backend (API, database, Docker, etc).
+csharp	rocksdanister/lively	https://github.com/rocksdanister/lively.git	19257	314156	Free and open-source software that allows users to set animated desktop wallpapers and screensavers powered by WinUI 3.
+csharp	TGSAN/CMWTAT_Digital_Edition	https://github.com/TGSAN/CMWTAT_Digital_Edition.git	19213	59447	CloudMoe Windows 10/11 Activation Toolkit get digital license, the best open source Win 10/11 activator in GitHub. GitHub 上最棒的开源 Win10/Win11 数字权利（数字许可证）激活工具！
+csharp	ppy/osu	https://github.com/ppy/osu.git	18738	205222	rhythm is just a *click* away!
+php	coollabsio/coolify	https://github.com/coollabsio/coolify.git	59534	74219	An open-source, self-hostable PaaS alternative to Vercel, Heroku & Netlify that lets you easily deploy static sites, databases, full-stack applications and 280+
+php	laravel/framework	https://github.com/laravel/framework.git	34814	102940	Laravel is a web application framework with expressive, elegant syntax.
+php	symfony/symfony	https://github.com/symfony/symfony.git	31110	331317	The Symfony PHP framework
+php	composer/composer	https://github.com/composer/composer.git	29494	30129	Dependency Manager for PHP
+php	bagisto/bagisto	https://github.com/bagisto/bagisto.git	27834	396349	Free and open source laravel eCommerce platform
+php	monicahq/monica	https://github.com/monicahq/monica.git	24896	152694	Personal CRM. Remember everything about your friends, family and business relationships.
+php	firefly-iii/firefly-iii	https://github.com/firefly-iii/firefly-iii.git	24135	317932	Firefly III: a personal finances manager
+php	livewire/livewire	https://github.com/livewire/livewire.git	23558	45647	A full-stack framework for Laravel that takes the pain out of building dynamic UIs.
+php	krayin/laravel-crm	https://github.com/krayin/laravel-crm.git	23495	52843	Free & Opensource Laravel CRM solution for SMEs and Enterprises for complete customer lifecycle management.
+php	guzzle/guzzle	https://github.com/guzzle/guzzle.git	23459	13744	Guzzle, an extensible PHP HTTP client
+php	PHPMailer/PHPMailer	https://github.com/PHPMailer/PHPMailer.git	22257	31382	The classic email sending library for PHP
+php	DesignPatternsPHP/DesignPatternsPHP	https://github.com/DesignPatternsPHP/DesignPatternsPHP.git	22189	6214	Sample code for several design patterns in PHP 8.x
+php	matomo-org/matomo	https://github.com/matomo-org/matomo.git	21717	361814	Empowering People Ethically 🚀 — Matomo is hiring! Join us → https://matomo.org/jobs Matomo is the leading open-source alternative to Google Analytics, giving yo
+php	Seldaek/monolog	https://github.com/Seldaek/monolog.git	21397	4999	Sends your logs to files, sockets, inboxes, databases and various web services
+php	sebastianbergmann/phpunit	https://github.com/sebastianbergmann/phpunit.git	20044	233435	The PHP Unit Testing framework.
+php	fruitcake/laravel-debugbar	https://github.com/fruitcake/laravel-debugbar.git	19271	15535	Debugbar for Laravel (Integrates PHP Debug Bar)
+php	BookStackApp/BookStack	https://github.com/BookStackApp/BookStack.git	18941	51524	NOW MANAGED ON CODEBERG
+php	easychen/howto-make-more-money	https://github.com/easychen/howto-make-more-money.git	18614	7943	程序员如何优雅的挣零花钱，2.0版，升级为小书了。Most of this not work outside China , so no English translate
+php	bcit-ci/CodeIgniter	https://github.com/bcit-ci/CodeIgniter.git	18164	54780	Open Source PHP Framework (originally from EllisLab)
+php	nikic/PHP-Parser	https://github.com/nikic/PHP-Parser.git	17453	7548	A PHP parser written in PHP
+php	koel/koel	https://github.com/koel/koel.git	17196	28106	Music streaming solution that works.
+php	briannesbitt/Carbon	https://github.com/briannesbitt/Carbon.git	16611	21681	A simple PHP API extension for DateTime.
+ruby	rails/rails	https://github.com/rails/rails.git	58641	286195	Ruby on Rails
+ruby	jekyll/jekyll	https://github.com/jekyll/jekyll.git	51596	71128	:globe_with_meridians: Jekyll is a blog-aware static site generator in Ruby
+ruby	mastodon/mastodon	https://github.com/mastodon/mastodon.git	50143	396887	Your self-hosted, globally interconnected microblogging community
+ruby	huginn/huginn	https://github.com/huginn/huginn.git	49686	9477	Create agents that monitor and act on your behalf.  Your agents are standing by!
+ruby	Homebrew/brew	https://github.com/Homebrew/brew.git	48950	120672	🍺 The Package Manager for Everywhere
+ruby	fastlane/fastlane	https://github.com/fastlane/fastlane.git	41884	85317	🚀 The easiest way to automate building and releasing your iOS and Android apps
+ruby	freeCodeCamp/devdocs	https://github.com/freeCodeCamp/devdocs.git	39222	32785	API Documentation Browser
+ruby	chatwoot/chatwoot	https://github.com/chatwoot/chatwoot.git	34770	259026	Open-source live-chat, email support, omni-channel desk. An alternative to Intercom, Zendesk, Salesforce Service Cloud etc. 🔥💬
+ruby	hashicorp/vagrant	https://github.com/hashicorp/vagrant.git	27196	82683	Vagrant is a tool for building and distributing development environments.
+ruby	heartcombo/devise	https://github.com/heartcombo/devise.git	24346	5944	Flexible authentication solution for Rails with Warden.
+ruby	ruby/ruby	https://github.com/ruby/ruby.git	23661	391399	The Ruby Programming Language
+ruby	lewagon/setup	https://github.com/lewagon/setup.git	19626	27234	Setup instructions for Le Wagon's students on their first day of AI Software Development Bootcamp
+ruby	docusealco/docuseal	https://github.com/docusealco/docuseal.git	18096	7514	Open source DocuSign alternative. Create, fill, and sign digital documents ✍️
+ruby	postalserver/postal	https://github.com/postalserver/postal.git	16702	3172	📮 A fully featured open source mail delivery platform for incoming & outgoing e-mail
+ruby	spree/spree	https://github.com/spree/spree.git	15572	286493	Open Source eCommerce Platform for B2B, Marketplace, and Enterprise. REST API, TypeScript SDK, and production-ready Next.js storefront. Self-host it. Own your s
+ruby	CocoaPods/CocoaPods	https://github.com/CocoaPods/CocoaPods.git	14829	98379	The Cocoa Dependency Manager.
+ruby	mame/quine-relay	https://github.com/mame/quine-relay.git	14546	17695	An uroboros program with 100+ programming languages
+ruby	basecamp/kamal	https://github.com/basecamp/kamal.git	14438	3203	Deploy web apps anywhere.
+ruby	gollum/gollum	https://github.com/gollum/gollum.git	14309	137814	A simple, Git-powered wiki with a local frontend and support for many kinds of markup and content.
+ruby	tmuxinator/tmuxinator	https://github.com/tmuxinator/tmuxinator.git	13685	1020	Manage complex tmux sessions easily
+ruby	diaspora/diaspora	https://github.com/diaspora/diaspora.git	13655	117655	A privacy-aware, distributed, open source social network.
+ruby	github-linguist/linguist	https://github.com/github-linguist/linguist.git	13604	42009	Language Savant. If your repository's language is being reported incorrectly, send us a pull request!
+perl	AlDanial/cloc	https://github.com/AlDanial/cloc.git	23336	7580	cloc counts blank lines, comment lines, and physical lines of source code in many programming languages.
+perl	brendangregg/FlameGraph	https://github.com/brendangregg/FlameGraph.git	19623	1914	Stack trace visualizer
+perl	so-fancy/diff-so-fancy	https://github.com/so-fancy/diff-so-fancy.git	18076	769	Make your diffs human readable for improved code quality and faster defect detection. :tada:
+perl	sullo/nikto	https://github.com/sullo/nikto.git	10575	5358	Nikto web server scanner
+perl	major/MySQLTuner-perl	https://github.com/major/MySQLTuner-perl.git	9470	36149	MySQLTuner is a script written in Perl that will assist you with your MySQL configuration and make recommendations for increased performance and stability.
+perl	sitaramc/gitolite	https://github.com/sitaramc/gitolite.git	8581	3183	Hosting git repositories -- Gitolite allows you to setup git hosting on a central server, with very fine-grained access control and many (many!) more powerful f
+perl	exiftool/exiftool	https://github.com/exiftool/exiftool.git	4897	59927	ExifTool meta information reader/writer
+perl	jlord/git-it-electron	https://github.com/jlord/git-it-electron.git	4887	80418	:computer: :mortar_board: Git-it is a (Mac, Win, Linux) Desktop App for Learning Git and GitHub
+perl	Jack000/Expose	https://github.com/Jack000/Expose.git	4435	409	A simple static site generator for photoessays
+perl	darold/pgbadger	https://github.com/darold/pgbadger.git	4047	17315	A fast PostgreSQL Log Analyzer
+perl	holzschu/a-shell	https://github.com/holzschu/a-shell.git	3833	127621	A terminal for iOS, with multiple windows
+perl	jimsalterjrs/sanoid	https://github.com/jimsalterjrs/sanoid.git	3825	1147	These are policy-driven snapshot management and replication tools which use OpenZFS for underlying next-gen storage. (Btrfs support plans are shelved unless and
+perl	rsnapshot/rsnapshot	https://github.com/rsnapshot/rsnapshot.git	3656	2275	a tool for backing up your data using rsync (if you want to get help, use https://lists.sourceforge.net/lists/listinfo/rsnapshot-discuss)
+perl	ddclient/ddclient	https://github.com/ddclient/ddclient.git	3499	2622	ddclient updates dynamic DNS entries for accounts on a wide range of dynamic DNS services.
+perl	adrienverge/openfortivpn	https://github.com/adrienverge/openfortivpn.git	3368	1297	Client for PPP+TLS VPN tunnel services
+perl	curl/trurl	https://github.com/curl/trurl.git	3346	532	a command line tool for URL parsing and manipulation.
+perl	thoughtbot/rcm	https://github.com/thoughtbot/rcm.git	3247	2124	rc file (dotfile) management
+perl	GuidoBartoli/sherloq	https://github.com/GuidoBartoli/sherloq.git	3169	201504	An open-source digital image forensic toolset
+perl	sqitchers/sqitch	https://github.com/sqitchers/sqitch.git	3143	13881	Sensible database change management
+perl	Difegue/LANraragi	https://github.com/Difegue/LANraragi.git	3039	93141	Web application for archival and reading of manga/doujinshi. Lightweight and Docker-ready for NAS/servers.
+ada	AdaCore/gnatstudio	https://github.com/AdaCore/gnatstudio.git	524	139197	GNAT Studio is a powerful and lightweight IDE for Ada and SPARK.
+ada	tsoding/eepers	https://github.com/tsoding/eepers.git	468	72851	Simple Turn-based Game
+ada	pyjarrett/septum	https://github.com/pyjarrett/septum.git	459	548	Context-based code search tool
+ada	alire-project/alire	https://github.com/alire-project/alire.git	405	7249	Command-line tool from the Alire project and supporting library
+ada	mk270/whitakers-words	https://github.com/mk270/whitakers-words.git	324	7560	William Whitaker's WORDS, a Latin dictionary
+ada	AdaCore/spark2014	https://github.com/AdaCore/spark2014.git	319	341062	SPARK 2014 is the new version of SPARK, a software development technology specifically designed for engineering high-reliability applications.
+ada	AdaCore/ada_language_server	https://github.com/AdaCore/ada_language_server.git	300	33905	Server implementing the Microsoft Language Protocol for Ada and SPARK
+ada	AdaDoom3/AdaDoom3	https://github.com/AdaDoom3/AdaDoom3.git	283	360114	Id Software's Id-tech-4-BFG in the Ada programming language. 
+ada	AdaCore/Ada_Drivers_Library	https://github.com/AdaCore/Ada_Drivers_Library.git	282	19612	Ada source code and complete sample GNAT projects for selected bare-board platforms supported by GNAT.
+ada	jrmarino/synth	https://github.com/jrmarino/synth.git	271	999	Next D/Ports build tool for live systems (Alternative for Portmaster and Portupgrade tools)
+ada	AdaCore/gnat-llvm	https://github.com/AdaCore/gnat-llvm.git	231	10579	LLVM based GNAT compiler
+ada	zertovitch/hac	https://github.com/zertovitch/hac.git	172	12181	HAC Ada Compiler - a small, quick Ada compiler fully in Ada 
+ada	AdaCore/libadalang	https://github.com/AdaCore/libadalang.git	169	32936	Ada semantic analysis library.
+ada	AdaCore/aws	https://github.com/AdaCore/aws.git	159	24921	AWS is a complete framework to develop Web based applications in Ada.
+ada	rod-chapman/SPARKNaCl	https://github.com/rod-chapman/SPARKNaCl.git	136	3065	SPARK 2014 re-implementation of the TweetNaCl crypto library
+ada	ada-game-framework/sdlada	https://github.com/ada-game-framework/sdlada.git	134	1071	Ada 2022 bindings to SDL 2
+ada	AdaCore/RecordFlux	https://github.com/AdaCore/RecordFlux.git	129	34723	Formal specification and generation of verifiable binary parsers, message generators and protocol state machines
+ada	Lucretia/tamp	https://github.com/Lucretia/tamp.git	117	4979	The Ada Microkernel Project
+ada	stcarrez/ada-awa	https://github.com/stcarrez/ada-awa.git	111	124544	Ada Web Application - Framework to build high performance secure web applications
+ada	joular/powerjoular	https://github.com/joular/powerjoular.git	111	11312	PowerJoular allows monitoring power consumption of multiple platforms and processes
+ada	PatrikFehrenbach/amass-tools	https://github.com/PatrikFehrenbach/amass-tools.git	107	2	OWASP Amass data source scripts (assetfinder, findomain, github, subfinder)
+ada	AdaCore/gtkada	https://github.com/AdaCore/gtkada.git	106	40334	Ada bindings for the GTK+ graphical library.
+ada	flyx/OpenGLAda	https://github.com/flyx/OpenGLAda.git	105	11683	Thick Ada binding for OpenGL and GLFW
+ada	codelabs-ch/muen	https://github.com/codelabs-ch/muen.git	100	35470	Official mirror of the Muen Separation Kernel repository
+ada	AdaCore/langkit	https://github.com/AdaCore/langkit.git	95	31269	Language creation framework.
+lua	Kong/kong	https://github.com/Kong/kong.git	43858	97739	🦍 The API and AI Gateway
+lua	nvim-lua/kickstart.nvim	https://github.com/nvim-lua/kickstart.nvim.git	31150	919	A launch point for your personal nvim configuration
+lua	NvChad/NvChad	https://github.com/NvChad/NvChad.git	28390	2012	Blazing fast Neovim framework providing solid defaults and a beautiful UI, enhancing your neovim experience.
+lua	koreader/koreader	https://github.com/koreader/koreader.git	28032	71750	An ebook reader application supporting PDF, DjVu, EPUB, FB2 and many more formats, running on Cervantes, Kindle, Kobo, PocketBook and Android devices
+lua	LazyVim/LazyVim	https://github.com/LazyVim/LazyVim.git	27011	5666	Neovim config for the lazy
+lua	folke/lazy.nvim	https://github.com/folke/lazy.nvim.git	21318	3150	💤 A modern plugin manager for Neovim
+lua	nvim-telescope/telescope.nvim	https://github.com/nvim-telescope/telescope.nvim.git	19658	4825	Find, Filter, Preview, Pick. All lua, all the time.
+lua	LunarVim/LunarVim	https://github.com/LunarVim/LunarVim.git	19278	14211	🌙 LunarVim is an IDE layer for Neovim. Completely free and community driven.
+lua	iDvel/rime-ice	https://github.com/iDvel/rime-ice.git	18505	237000	Rime 配置：雾凇拼音 | 长期维护的简体词库
+lua	jcjohnson/neural-style	https://github.com/jcjohnson/neural-style.git	18285	48191	Torch implementation of neural style algorithm
+lua	yetone/avante.nvim	https://github.com/yetone/avante.nvim.git	18073	4841	Use your Neovim like using Cursor AI IDE!
+lua	apache/apisix	https://github.com/apache/apisix.git	16909	47159	The Cloud-Native API Gateway and AI Gateway
+lua	cmusatyalab/openface	https://github.com/cmusatyalab/openface.git	15431	24646	Face recognition with deep neural networks.
+lua	AstroNvim/AstroNvim	https://github.com/AstroNvim/AstroNvim.git	14401	3719	AstroNvim is an aesthetic and feature-rich neovim config that is extensible and easy to use with a great set of plugins 
+lua	neovim/nvim-lspconfig	https://github.com/neovim/nvim-lspconfig.git	13809	8153	Quickstart configs for Nvim LSP
+lua	junyanz/CycleGAN	https://github.com/junyanz/CycleGAN.git	12871	12841	Software that can generate photos from paintings,  turn horses into zebras,  perform style transfer, and more.
+lua	xmake-io/xmake	https://github.com/xmake-io/xmake.git	12109	45501	🔥 A cross-platform build utility based on Lua
+lua	karpathy/char-rnn	https://github.com/karpathy/char-rnn.git	12083	13412	Multi-layer Recurrent Neural Networks (LSTM, GRU, RNN) for character-level language models in Torch
+lua	phillipi/pix2pix	https://github.com/phillipi/pix2pix.git	10651	2497	Image-to-image translation with conditional adversarial nets
+lua	mason-org/mason.nvim	https://github.com/mason-org/mason.nvim.git	10407	3227	Portable package manager for Neovim that runs everywhere Neovim runs. Easily install and manage LSP servers, DAP servers, linters, and formatters.
+fortran	Reference-LAPACK/lapack	https://github.com/Reference-LAPACK/lapack.git	1879	38820	LAPACK development repository
+fortran	wrf-model/WRF	https://github.com/wrf-model/WRF.git	1714	276193	The official repository for the Weather Research and Forecasting (WRF) model
+fortran	ElmerCSC/elmerfem	https://github.com/ElmerCSC/elmerfem.git	1637	134422	Official git repository of Elmer FEM software
+fortran	fortran-lang/stdlib	https://github.com/fortran-lang/stdlib.git	1336	39081	Fortran Standard Library
+fortran	cp2k/cp2k	https://github.com/cp2k/cp2k.git	1174	286486	Quantum chemistry and solid state physics software package
+fortran	fortran-lang/fpm	https://github.com/fortran-lang/fpm.git	1059	79602	Fortran Package Manager (fpm)
+fortran	OpenFAST/openfast	https://github.com/OpenFAST/openfast.git	941	343732	Main repository for the NREL-supported OpenFAST whole-turbine and FAST.Farm wind farm simulation codes.
+fortran	pymc-devs/pymc2	https://github.com/pymc-devs/pymc2.git	877	28008	THIS IS THE **OLD** PYMC PROJECT (VERSION 2). PLEASE USE PYMC INSTEAD:
+fortran	OpenRadioss/OpenRadioss	https://github.com/OpenRadioss/OpenRadioss.git	843	184860	OpenRadioss is a powerful, industry-proven finite element solver for dynamic event analysis 
+fortran	grimme-lab/xtb	https://github.com/grimme-lab/xtb.git	820	5719	Semiempirical Extended Tight-Binding Program Package
+fortran	mapmeld/fortran-machine	https://github.com/mapmeld/fortran-machine.git	811	1399	Finally a Fortran MVC web platform
+fortran	nwchemgit/nwchem	https://github.com/nwchemgit/nwchem.git	614	361380	NWChem: Open Source High-Performance Computational Chemistry
+fortran	nasa/NASTRAN-95	https://github.com/nasa/NASTRAN-95.git	582	87810	
+fortran	Nek5000/Nek5000	https://github.com/Nek5000/Nek5000.git	479	22958	our classic
+fortran	modern-fortran/neural-fortran	https://github.com/modern-fortran/neural-fortran.git	469	20622	A parallel framework for deep learning
+fortran	Foadsf/Cmathtuts	https://github.com/Foadsf/Cmathtuts.git	440	3850	trying to collect all useful tutorials for famous C math and linear algebra libraries such as CBLAS, CLAPACK, GSL...
+fortran	wavebitscientific/functional-fortran	https://github.com/wavebitscientific/functional-fortran.git	437	167	Functional programming for modern Fortran
+fortran	dftbplus/dftbplus	https://github.com/dftbplus/dftbplus.git	432	31310	DFTB+ general package for performing fast atomistic simulations
+fortran	libprima/prima	https://github.com/libprima/prima.git	406	23208	PRIMA is a package for solving general nonlinear optimization problems without using derivatives. It provides the reference implementation for Powell's derivati
+fortran	MITgcm/MITgcm	https://github.com/MITgcm/MITgcm.git	403	381147	M.I.T General Circulation Model master code and documentation repository
+cobol	azac/cobol-on-wheelchair	https://github.com/azac/cobol-on-wheelchair.git	1030	81	Micro web-framework for COBOL
+cobol	IonicaBizau/node-cobol	https://github.com/IonicaBizau/node-cobol.git	724	101	:tv: COBOL bridge for NodeJS which allows you to run COBOL code from NodeJS.
+cobol	meyfa/CobolCraft	https://github.com/meyfa/CobolCraft.git	699	1300	A Minecraft server written in COBOL
+cobol	cloudflare/cobweb	https://github.com/cloudflare/cobweb.git	396	5775	COBOL to WebAssembly compiler
+cobol	aws-samples/aws-mainframe-modernization-carddemo	https://github.com/aws-samples/aws-mainframe-modernization-carddemo.git	259	5019	A comprehensive COBOL mainframe credit card management application designed to showcase AWS mainframe modernization technologies and migration patterns.
+cobol	uwol/proleap-cobol-parser	https://github.com/uwol/proleap-cobol-parser.git	205	6981	ProLeap ANTLR4-based parser for COBOL
+cobol	jmsdnns/webbol	https://github.com/jmsdnns/webbol.git	195	22	A minimal static web server written in COBOL
+cobol	IonicaBizau/node.cobol	https://github.com/IonicaBizau/node.cobol.git	164	28	:pager: Node.js bridge for COBOL which allows you to run Node.js code from COBOL.
+cobol	avishek-sen-gupta/cobol-rekt	https://github.com/avishek-sen-gupta/cobol-rekt.git	163	40242	An evolving toolkit of capabilities helpful for reverse engineering legacy Cobol code
+cobol	lauryndbrown/Cisp	https://github.com/lauryndbrown/Cisp.git	143	5528	A Common Lisp Interpreter Built in COBOL
+cobol	neopragma/cobol-unit-test	https://github.com/neopragma/cobol-unit-test.git	123	580	Unit testing framework and sample code for batch Cobol programs.
+cobol	opensourcecobol/opensourcecobol4j	https://github.com/opensourcecobol/opensourcecobol4j.git	123	31864	A new version of opensourcecobol. Translate COBOL to Java.
+cobol	moxon6/cobol-js-emscripten	https://github.com/moxon6/cobol-js-emscripten.git	116	1326	
+cobol	eclipse-che4z/che-che4z-lsp-for-cobol	https://github.com/eclipse-che4z/che-che4z-lsp-for-cobol.git	114	80783	COBOL Language Support provides autocomplete, highlighting and diagnostics for COBOL code and copybooks
+cobol	Apress/beg-cobol-for-programmers	https://github.com/Apress/beg-cobol-for-programmers.git	114	167	Source code for 'Beginning COBOL for Programmers' by Michael  Coughlan
+cobol	kotlin-graphics/assimp	https://github.com/kotlin-graphics/assimp.git	104	73269	JVM Open Asset Import Library (Assimp)
+cobol	Martinfx/Cobol	https://github.com/Martinfx/Cobol.git	103	431	Open library with source code for OpenCobol, GnuCobol AS 400 COBOL, CL, CLP, CLLE, CBLLE
+cobol	icitry/FPS.cob	https://github.com/icitry/FPS.cob.git	97	37	

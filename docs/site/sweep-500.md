@@ -1,0 +1,89 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+# What 500 real projects say about govfuzz
+
+A fuzzer's brochure numbers come from a corpus its authors chose. This page
+reports the opposite: govfuzz run over 500 open-source projects picked by
+star rank rather than by suitability, across all sixteen languages it supports,
+with every failure counted.
+
+The sweep was run to find defects. It found fourteen, listed below with the
+project that exposed each one. The measurements come after the fixes, from a
+single pinned binary over the whole corpus.
+
+## Method
+
+- **Corpus**: 500 repositories, star-ranked per language, pinned in
+  `benchmarks/campaign-2026-07-25/corpus.tsv`. Excluded: fuzzing corpora and
+  deliberately-vulnerable trees (they supply their own bugs), awesome-lists and
+  courses (no code), forks, archived trees, anything over 400 MB. GitHub's
+  language label is not trusted — each clone is checked against its lane and
+  replaced from a ranked pool if it is not mostly that language.
+- **Budget**: every project gets the same one. No per-project tuning, no
+  hand-written harnesses, no build fixes, no dependency installation beyond what
+  a developer of that language would already have.
+- **Counting**: a target counts as fuzzed only if it built AND the fuzz entry
+  point was reached. A build that links against stubs and executes none of the
+  project's own code is recorded separately (`fuzzed_stub_only`), never folded
+  into the headline.
+
+Everything needed to re-run it is in `benchmarks/campaign-2026-07-25/`.
+
+## What the sweep is measuring
+
+The question is not "how fast does the engine mutate bytes" — on one hand-written
+harness, libFuzzer and AFL++ are excellent and govfuzz says so. The question is
+how much of a real estate can be fuzzed *at all* without someone writing
+harnesses first, because that is the work that does not happen: an engineer with
+a week can write five harnesses, not five hundred.
+
+So the headline is coverage of the estate:
+
+- targets discovered, per language, across 500 projects nobody prepared
+- of those attempted, how many built and fuzzed
+- what stopped the rest, named precisely enough to fix
+
+## Defects the sweep found
+
+Every one of these was a govfuzz bug, not a project bug, and each is fixed with
+a regression test:
+
+| Language | What was wrong | Effect on the project that exposed it |
+|---|---|---|
+| Perl | code was classified by file extension only | cloc — 20k lines of Perl in a file named `cloc` — discovered **0** targets; now 6/6 fuzzed |
+| Perl | `require FILE` compiles into the caller's package | a script's `main::` subs looked undefined |
+| Fortran | the C driver and the Fortran glue both defined `__sanitizer_cov_trace_pc` | **every** Fortran target failed to link |
+| Fortran | only MODULE-defining files were pre-compiled | FORTRAN 77 (LAPACK, BLAS) had nothing to link against |
+| C# | the framework table was hardcoded to net8.0 and ignored `Directory.Build.props` | v2rayN: **0 of 25** targets; now 3/5 at 9.5k exec/s |
+| C# | `dotnet build -o` across a project graph | every harness after the first died in MSB4018 |
+| Ruby, Lua | the interpreter saw only the file's directory and the checkout root | nearly everything skipped as "not loadable" |
+| Python | a module whose name is not an identifier | git's `git-p4.py`: **0 of 3**, reported as the project's syntax error; now 3/3 |
+| C | `app/` was on the non-library exclusion list | scrcpy, a C project, discovered **0** C targets; now 759 candidates |
+| C | ANSI `(void)` prototypes and commented-out examples read as K&R | modern C files routed to report-only, never fuzzed |
+| C | an undefined function-like macro in a `#if` | scrcpy's FFmpeg version check left a whole TU unbuildable |
+| core | `--campaign-time` was billed from process start | discovery on a large tree consumed the budget: 8606 candidates, **0** attempted |
+| core | the budget did not bound work already running | a 150-second budget took ten minutes |
+| triage | `verify-poc` on a capsule packaged as non-reproducing | reported FAIL, reading as a regression rather than a known limitation |
+
+Two of those were caused during this campaign and caught by it: a repair-loop
+`break` that reached an `unreachable!`, and a binary rebuilt mid-sweep that would
+have made the corpus numbers unattributable. Both are in the table's spirit —
+the sweep is the thing that notices.
+
+## Results
+
+<!-- Filled from benchmarks/campaign-2026-07-25/results by aggregate.py. -->
+
+## Honest limits
+
+- A target whose parameters are types the project does not define — an external
+  SDK's opaque handle — is skipped, not guessed at. govfuzz names the type; it
+  does not invent one and call the result a clean fuzz.
+- A project whose dependencies are not installed is reported as needing them,
+  with the package named, rather than fuzzed against stubs by default.
+  `--force` will drive past that; what it produces is recorded as stub-only.
+- Interpreted lanes execute the target's module to load it. That is the same
+  exposure as fuzzing it, and it is bounded, but it is not free.
+- The per-project budget bounds how many targets are attempted. A project with
+  thousands of candidates has a fraction of them measured here; the ratio
+  reported is over attempted targets, and the discovered total is reported
+  beside it so the difference is visible.

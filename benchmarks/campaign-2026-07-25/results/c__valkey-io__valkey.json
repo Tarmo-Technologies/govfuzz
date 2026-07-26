@@ -1,0 +1,159 @@
+{
+ "lane": "c",
+ "repo": "valkey-io/valkey",
+ "stars": 26614,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/valkey-io__valkey --json --out /home/ubuntu/govfuzz-sweep-work/c__valkey-io__valkey.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 256318,
+   "sloc_by_lang": {
+    "c": 228020,
+    "cpp": 19970,
+    "config": 5346,
+    "python": 2730,
+    "perl": 222,
+    "javascript": 30
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/valkey-io__valkey --format json --top 100000",
+   "exit": 0,
+   "wall_s": 9.64,
+   "timed_out": false,
+   "panic": false,
+   "count": 11851,
+   "by_language": {
+    "c": 11095,
+    "cpp": 756
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/valkey-io__valkey --out /home/ubuntu/govfuzz-sweep-work/c__valkey-io__valkey/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 7.93,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 547,
+   "by_severity": {
+    "medium": 216,
+    "high": 308,
+    "low": 3,
+    "critical": 20
+   },
+   "top_rules": {
+    "GF-407": 155,
+    "GF-424": 131,
+    "GF-405": 69,
+    "GF-408": 42,
+    "GF-406": 24,
+    "GF-401": 23,
+    "GF-497": 22,
+    "GF-425": 22,
+    "GF-403": 17,
+    "GF-404": 16,
+    "GF-500": 7,
+    "GF-436": 7,
+    "GF-546": 3,
+    "GF-550": 3,
+    "GF-429": 2
+   },
+   "gaps": 4204
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/valkey-io__valkey --out /home/ubuntu/govfuzz-sweep-work/c__valkey-io__valkey/sbom",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "components": 39
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/valkey-io__valkey --work-dir /home/ubuntu/govfuzz-sweep-work/c__valkey-io__valkey --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 347.73,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 2,
+    "discovered_total": 5747,
+    "dropped_by_cap": 5745,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 2,
+    "stubbed_symbols_declared": 79,
+    "stubbed_symbols_blind": 14,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parseOptions",
+     "source": "valkey-benchmark.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 24,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sentinelProcessHelloMessage",
+     "source": "sentinel.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 159,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "note: \"X\" has been explicitly marked deprecated here",
+     "language": "c"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4733aed65893c3227925e17f4423c44c0a892d15",
+ "clone_s": 1.4,
+ "lane_check": "c: 196 files / 165957 lines; top=c(165957)",
+ "status": "done"
+}

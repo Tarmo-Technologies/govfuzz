@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "simdjson/simdjson",
  "stars": 24068,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson --json --out /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
    "languages": 7,

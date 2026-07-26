@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "typst/typst",
  "stars": 55099,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/typst__typst --json --out /home/ubuntu/govfuzz-sweep-work/rust__typst__typst.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.15,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -203,7 +203,7 @@
   }
  },
  "sha": "b212e34147986d8cfecb553bbaae2a4825f53e07",
- "clone_s": 2.9,
+ "clone_s": 1.8,
  "lane_check": "rust: 405 files / 140474 lines; top=rust(140474)",
  "status": "done"
 }

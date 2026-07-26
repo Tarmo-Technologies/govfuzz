@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "aseprite/aseprite",
  "stars": 38320,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/aseprite__aseprite --json --out /home/ubuntu/govfuzz-sweep-work/cpp__aseprite__aseprite.cwd/sloc.json",
@@ -10,10 +10,11 @@
    "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 194543,
+   "languages": 4,
+   "sloc_total": 202353,
    "sloc_by_lang": {
     "cpp": 193770,
+    "lua": 7810,
     "c": 431,
     "config": 342
    }
@@ -158,7 +159,7 @@
   }
  },
  "sha": "35c35e645f68b6a2d39808c9e7b193d3144f100d",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "cpp: 800 files / 173539 lines; top=cpp(173539)",
  "status": "done"
 }

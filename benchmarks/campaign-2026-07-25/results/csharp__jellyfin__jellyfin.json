@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "jellyfin/jellyfin",
  "stars": 54977,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/jellyfin__jellyfin --json --out /home/ubuntu/govfuzz-sweep-work/csharp__jellyfin__jellyfin.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 1015,
+   "languages": 2,
+   "sloc_total": 223482,
    "sloc_by_lang": {
+    "csharp": 222467,
     "config": 1015
    }
   },
@@ -210,7 +211,7 @@
   }
  },
  "sha": "b04614e18d2aeed8d3d3de920c381c6bd5b97bdb",
- "clone_s": 1.6,
+ "clone_s": 1.8,
  "lane_check": "csharp: 2118 files / 268823 lines; top=csharp(268823)",
  "status": "done"
 }

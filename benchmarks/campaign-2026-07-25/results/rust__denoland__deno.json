@@ -2,21 +2,22 @@
  "lane": "rust",
  "repo": "denoland/deno",
  "stars": 107809,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/denoland__deno --json --out /home/ubuntu/govfuzz-sweep-work/rust__denoland__deno.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.53,
+   "wall_s": 0.87,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 1111738,
+   "languages": 6,
+   "sloc_total": 1111975,
    "sloc_by_lang": {
     "rust": 575924,
-    "javascript": 515372,
+    "javascript": 515509,
     "c": 12248,
     "config": 8154,
+    "csharp": 100,
     "cpp": 40
    }
   },
@@ -162,8 +163,8 @@
    "findings_detail": []
   }
  },
- "sha": "dc80b470a9bc278b702028a31b5c65753c010ae1",
- "clone_s": 4.9,
+ "sha": "bec84a05d564d1fcf8f5386465d82c03febdd3a1",
+ "clone_s": 5.6,
  "lane_check": "rust: 1039 files / 622809 lines; top=rust(622809)",
  "status": "done"
 }

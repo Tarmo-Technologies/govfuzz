@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "bagisto/bagisto",
  "stars": 27834,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto --json --out /home/ubuntu/govfuzz-sweep-work/php__bagisto__bagisto.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.22,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 35076,
+   "languages": 3,
+   "sloc_total": 430191,
    "sloc_by_lang": {
+    "php": 395115,
     "javascript": 34197,
     "config": 879
    }
@@ -217,7 +218,7 @@
   }
  },
  "sha": "fd6be0662c2fb6935c826d1af79e44ff96c42244",
- "clone_s": 6.8,
+ "clone_s": 5.2,
  "lane_check": "php: 2582 files / 424574 lines; top=php(424574)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "YunaiV/ruoyi-vue-pro",
  "stars": 38375,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/YunaiV__ruoyi-vue-pro --json --out /home/ubuntu/govfuzz-sweep-work/java__YunaiV__ruoyi-vue-pro.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.13,
+   "wall_s": 0.14,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -141,7 +141,7 @@
   }
  },
  "sha": "e4e460d563a3b6f0b5255f9b061b258128ffd822",
- "clone_s": 3.3,
+ "clone_s": 3.4,
  "lane_check": "java: 5511 files / 373118 lines; top=java(373118)",
  "status": "done"
 }

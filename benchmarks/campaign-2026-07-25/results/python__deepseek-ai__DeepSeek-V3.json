@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "deepseek-ai/DeepSeek-V3",
  "stars": 104009,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/deepseek-ai__DeepSeek-V3 --json --out /home/ubuntu/govfuzz-sweep-work/python__deepseek-ai__DeepSeek-V3.cwd/sloc.json",
@@ -211,7 +211,7 @@
   }
  },
  "sha": "9b4e9788e4a3a731f7567338ed15d3ec549ce03b",
- "clone_s": 0.6,
+ "clone_s": 1.4,
  "lane_check": "python: 5 files / 1204 lines; top=python(1204)",
  "status": "done"
 }

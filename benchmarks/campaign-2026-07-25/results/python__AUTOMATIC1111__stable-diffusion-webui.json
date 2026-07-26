@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "AUTOMATIC1111/stable-diffusion-webui",
  "stars": 164274,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/AUTOMATIC1111__stable-diffusion-webui --json --out /home/ubuntu/govfuzz-sweep-work/python__AUTOMATIC1111__stable-diffusion-webui.cwd/sloc.json",

@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "taichi-dev/taichi",
  "stars": 28306,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --json --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -83,7 +83,7 @@
   }
  },
  "sha": "ba0e81dce559fb63a5958bf82feb1d00c55c02fe",
- "clone_s": 1.6,
+ "clone_s": 1.4,
  "lane_check": "cpp: 357 files / 76991 lines; top=cpp(76991)",
  "status": "done"
 }

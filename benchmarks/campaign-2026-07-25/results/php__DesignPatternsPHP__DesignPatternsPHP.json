@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "DesignPatternsPHP/DesignPatternsPHP",
  "stars": 22189,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/DesignPatternsPHP__DesignPatternsPHP --json --out /home/ubuntu/govfuzz-sweep-work/php__DesignPatternsPHP__DesignPatternsPHP.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 89,
+   "languages": 3,
+   "sloc_total": 3210,
    "sloc_by_lang": {
+    "php": 3121,
     "config": 53,
     "python": 36
    }
@@ -212,7 +213,7 @@
   }
  },
  "sha": "54254e0f2a59e27280f81304bce9218e12f97a03",
- "clone_s": 1.1,
+ "clone_s": 1.3,
  "lane_check": "php: 176 files / 3471 lines; top=php(3471)",
  "status": "done"
 }

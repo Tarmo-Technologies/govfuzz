@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaCore/gnatstudio",
  "stars": 524,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.27,
+   "wall_s": 0.2,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -298,7 +298,7 @@
   }
  },
  "sha": "67198cff1e3611969fbf783c762e541cdd6b9cd3",
- "clone_s": 3.0,
+ "clone_s": 3.8,
  "lane_check": "ada: 2341 files / 790328 lines; top=ada(790328)",
  "status": "done"
 }

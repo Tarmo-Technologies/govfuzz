@@ -2,7 +2,7 @@
  "lane": "perl",
  "repo": "thoughtbot/rcm",
  "stars": 3247,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/thoughtbot__rcm --json --out /home/ubuntu/govfuzz-sweep-work/perl__thoughtbot__rcm.cwd/sloc.json",
@@ -143,7 +143,7 @@
   }
  },
  "sha": "f1e5b2de10803e194335ed5a8d1078edaede936f",
- "clone_s": 0.5,
+ "clone_s": 0.9,
  "lane_check": "perl: 47 files / 773 lines; top=perl(773)",
  "status": "done"
 }

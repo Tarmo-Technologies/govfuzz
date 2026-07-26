@@ -2,7 +2,7 @@
  "lane": "ruby",
  "repo": "heartcombo/devise",
  "stars": 24346,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/heartcombo__devise --json --out /home/ubuntu/govfuzz-sweep-work/ruby__heartcombo__devise.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 185,
+   "languages": 2,
+   "sloc_total": 12015,
    "sloc_by_lang": {
+    "ruby": 11830,
     "config": 185
    }
   },
@@ -210,7 +211,7 @@
   }
  },
  "sha": "372b295fe6f63b4af3269f5dcd51a18c0bc2016c",
- "clone_s": 0.7,
+ "clone_s": 0.6,
  "lane_check": "ruby: 197 files / 14465 lines; top=ruby(14465)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "facebook/zstd",
  "stars": 27466,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/facebook__zstd --json --out /home/ubuntu/govfuzz-sweep-work/c__facebook__zstd.cwd/sloc.json",
@@ -10,13 +10,14 @@
    "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 97424,
+   "languages": 5,
+   "sloc_total": 97494,
    "sloc_by_lang": {
     "c": 86346,
     "cpp": 6784,
     "python": 2840,
-    "config": 1454
+    "config": 1454,
+    "lua": 70
    }
   },
   "list_targets": {
@@ -164,7 +165,7 @@
   }
  },
  "sha": "5c7b7bad26808e6b40ac3b3d0075466e27738a9d",
- "clone_s": 0.8,
+ "clone_s": 0.9,
  "lane_check": "c: 141 files / 93737 lines; top=c(93737)",
  "status": "done"
 }

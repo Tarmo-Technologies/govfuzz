@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "NVIDIA/open-gpu-kernel-modules",
  "stars": 17188,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --json --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.67,
+   "wall_s": 0.32,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -71,7 +71,7 @@
   }
  },
  "sha": "452cec62d827034798072827d3866d1881662b77",
- "clone_s": 6.6,
+ "clone_s": 5.4,
  "lane_check": "c: 1496 files / 1476068 lines; top=c(1476068)",
  "status": "done"
 }

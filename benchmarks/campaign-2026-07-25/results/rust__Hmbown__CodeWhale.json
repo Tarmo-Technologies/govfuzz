@@ -2,18 +2,18 @@
  "lane": "rust",
  "repo": "Hmbown/CodeWhale",
  "stars": 40115,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/Hmbown__CodeWhale --json --out /home/ubuntu/govfuzz-sweep-work/rust__Hmbown__CodeWhale.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.5,
+   "wall_s": 0.16,
    "timed_out": false,
    "panic": false,
    "languages": 4,
-   "sloc_total": 582221,
+   "sloc_total": 585607,
    "sloc_by_lang": {
-    "rust": 559964,
+    "rust": 563350,
     "javascript": 16975,
     "config": 3290,
     "python": 1992
@@ -245,8 +245,8 @@
    "findings_detail": []
   }
  },
- "sha": "7e46029f961a88ba2a25ed0995df4a9224c15fb9",
- "clone_s": 5.1,
- "lane_check": "rust: 660 files / 615018 lines; top=rust(615018)",
+ "sha": "25b64562870bc15f3f54f33aa5f0039ed5579c81",
+ "clone_s": 4.3,
+ "lane_check": "rust: 663 files / 618721 lines; top=rust(618721)",
  "status": "done"
 }

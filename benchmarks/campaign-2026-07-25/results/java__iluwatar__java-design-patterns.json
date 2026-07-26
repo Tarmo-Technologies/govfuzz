@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "iluwatar/java-design-patterns",
  "stars": 94244,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/iluwatar__java-design-patterns --json --out /home/ubuntu/govfuzz-sweep-work/java__iluwatar__java-design-patterns.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -227,7 +227,7 @@
   }
  },
  "sha": "b55fc2bcb5f8e1c4b884bca0a38d402d19fe467c",
- "clone_s": 2.9,
+ "clone_s": 4.0,
  "lane_check": "java: 1902 files / 111102 lines; top=java(111102)",
  "status": "done"
 }

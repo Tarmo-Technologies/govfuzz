@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "etcd-io/etcd",
  "stars": 52026,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --json --out /home/ubuntu/govfuzz-sweep-work/go__etcd-io__etcd.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -244,7 +244,7 @@
   }
  },
  "sha": "3e3b4c181c69eaaee169d33cbdb9a94a369207bf",
- "clone_s": 1.8,
+ "clone_s": 1.6,
  "lane_check": "go: 1107 files / 195983 lines; top=go(195983)",
  "status": "done"
 }

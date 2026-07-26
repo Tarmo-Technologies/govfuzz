@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "microsoft/semantic-kernel",
  "stars": 28369,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/microsoft__semantic-kernel --json --out /home/ubuntu/govfuzz-sweep-work/csharp__microsoft__semantic-kernel.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.35,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 136930,
+   "languages": 4,
+   "sloc_total": 400857,
    "sloc_by_lang": {
+    "csharp": 263927,
     "python": 128005,
     "config": 7160,
     "javascript": 1765
@@ -173,7 +174,7 @@
   }
  },
  "sha": "61a6b0c5fade87e1cc048fdfdf3993cc7b95d163",
- "clone_s": 3.0,
+ "clone_s": 4.8,
  "lane_check": "csharp: 2960 files / 330859 lines; top=csharp(330859)",
  "status": "done"
 }

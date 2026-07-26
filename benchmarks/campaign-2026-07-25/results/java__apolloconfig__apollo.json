@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "apolloconfig/apollo",
  "stars": 29795,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/apolloconfig__apollo --json --out /home/ubuntu/govfuzz-sweep-work/java__apolloconfig__apollo.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -215,7 +215,7 @@
   }
  },
  "sha": "cdaedad3cd85989e37c717e81ed050f46c6a8bcc",
- "clone_s": 2.5,
+ "clone_s": 2.1,
  "lane_check": "java: 743 files / 80197 lines; top=java(80197)",
  "status": "done"
 }

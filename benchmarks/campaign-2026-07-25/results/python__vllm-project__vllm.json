@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "vllm-project/vllm",
  "stars": 87160,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/vllm-project__vllm --json --out /home/ubuntu/govfuzz-sweep-work/python__vllm-project__vllm.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.37,
+   "wall_s": 0.22,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -86,7 +86,7 @@
   }
  },
  "sha": "da3a252fd13f51c22657bfc8650936f2fbb5b6f3",
- "clone_s": 5.3,
+ "clone_s": 5.8,
  "lane_check": "python: 3835 files / 1077150 lines; top=python(1077150)",
  "status": "done"
 }

@@ -2,18 +2,19 @@
  "lane": "cpp",
  "repo": "microsoft/terminal",
  "stars": 104346,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__terminal.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.18,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 217058,
+   "languages": 6,
+   "sloc_total": 227234,
    "sloc_by_lang": {
     "cpp": 211767,
+    "csharp": 10176,
     "c": 4010,
     "config": 1078,
     "python": 195,
@@ -301,7 +302,7 @@
   }
  },
  "sha": "4f225a56aff245bbb9d1400f266c20e1747cc580",
- "clone_s": 0.0,
+ "clone_s": 3.8,
  "lane_check": "cpp: 671 files / 223391 lines; top=cpp(223391)",
  "status": "done"
 }

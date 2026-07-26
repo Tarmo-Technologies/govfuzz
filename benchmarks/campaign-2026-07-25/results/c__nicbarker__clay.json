@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "nicbarker/clay",
  "stars": 17692,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/nicbarker__clay --json --out /home/ubuntu/govfuzz-sweep-work/c__nicbarker__clay.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -359,7 +359,7 @@
   }
  },
  "sha": "e6cc36941ab2af5d81107617039d6f527a1c660b",
- "clone_s": 1.0,
+ "clone_s": 0.7,
  "lane_check": "c: 31 files / 8842 lines; top=c(8842)",
  "status": "done"
 }

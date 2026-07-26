@@ -2,20 +2,20 @@
  "lane": "go",
  "repo": "go-gitea/gitea",
  "stars": 57033,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/go-gitea__gitea --json --out /home/ubuntu/govfuzz-sweep-work/go__go-gitea__gitea.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.18,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
    "languages": 3,
-   "sloc_total": 415952,
+   "sloc_total": 415951,
    "sloc_by_lang": {
     "go": 374143,
-    "javascript": 23084,
-    "config": 18725
+    "javascript": 23077,
+    "config": 18731
    }
   },
   "list_targets": {
@@ -236,8 +236,8 @@
    "findings_detail": []
   }
  },
- "sha": "a2166293f73f06aa2e5dbb30792146de1b65948d",
- "clone_s": 2.7,
+ "sha": "14ca2e7526f5809d007f60b7db8f781547493b7c",
+ "clone_s": 2.8,
  "lane_check": "go: 2986 files / 421653 lines; top=go(421653)",
  "status": "done"
 }

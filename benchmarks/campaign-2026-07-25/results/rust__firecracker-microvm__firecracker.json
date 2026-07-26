@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "firecracker-microvm/firecracker",
  "stars": 35652,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/firecracker-microvm__firecracker --json --out /home/ubuntu/govfuzz-sweep-work/rust__firecracker-microvm__firecracker.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -133,7 +133,7 @@
   }
  },
  "sha": "c1490c7983644f68facfc267c20156546e81bd4f",
- "clone_s": 5.7,
+ "clone_s": 1.6,
  "lane_check": "rust: 362 files / 106423 lines; top=rust(106423)",
  "status": "done"
 }

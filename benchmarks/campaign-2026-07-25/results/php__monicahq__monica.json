@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "monicahq/monica",
  "stars": 24896,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/monicahq__monica --json --out /home/ubuntu/govfuzz-sweep-work/php__monicahq__monica.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 34891,
+   "languages": 3,
+   "sloc_total": 138096,
    "sloc_by_lang": {
+    "php": 103205,
     "javascript": 34177,
     "config": 714
    }
@@ -220,7 +221,7 @@
   }
  },
  "sha": "e08e91734170b6bbd582cb578532c3948196124e",
- "clone_s": 2.3,
+ "clone_s": 1.8,
  "lane_check": "php: 1649 files / 116825 lines; top=php(116825)",
  "status": "done"
 }

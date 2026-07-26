@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "jrmarino/synth",
  "stars": 271,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/jrmarino__synth --json --out /home/ubuntu/govfuzz-sweep-work/ada__jrmarino__synth.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -92,7 +92,7 @@
   }
  },
  "sha": "e5459102e15b55aef369f1353ce3484656e370f8",
- "clone_s": 0.5,
+ "clone_s": 0.9,
  "lane_check": "ada: 33 files / 15665 lines; top=ada(15665)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "lua",
  "repo": "cmusatyalab/openface",
  "stars": 15431,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/cmusatyalab__openface --json --out /home/ubuntu/govfuzz-sweep-work/lua__cmusatyalab__openface.cwd/sloc.json",
@@ -10,10 +10,11 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 4341,
+   "languages": 4,
+   "sloc_total": 7637,
    "sloc_by_lang": {
     "python": 3794,
+    "lua": 3296,
     "javascript": 384,
     "config": 163
    }
@@ -239,7 +240,7 @@
   }
  },
  "sha": "99b7241a8748421e2c5e32ccf7581c08e513e79e",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "lua: 33 files / 4052 lines; top=python(4686)",
  "status": "done"
 }

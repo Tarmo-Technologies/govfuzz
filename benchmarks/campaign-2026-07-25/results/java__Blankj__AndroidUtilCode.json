@@ -2,7 +2,7 @@
  "lane": "java",
  "repo": "Blankj/AndroidUtilCode",
  "stars": 33654,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/Blankj__AndroidUtilCode --json --out /home/ubuntu/govfuzz-sweep-work/java__Blankj__AndroidUtilCode.cwd/sloc.json",
@@ -219,7 +219,7 @@
   }
  },
  "sha": "7b4caf9e5440046b3fefb63b6b6e2ead7ebaf809",
- "clone_s": 1.2,
+ "clone_s": 1.0,
  "lane_check": "java: 275 files / 57316 lines; top=java(57316)",
  "status": "done"
 }

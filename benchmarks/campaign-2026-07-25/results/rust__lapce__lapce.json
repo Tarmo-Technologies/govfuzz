@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "lapce/lapce",
  "stars": 38691,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/lapce__lapce --json --out /home/ubuntu/govfuzz-sweep-work/rust__lapce__lapce.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -118,7 +118,7 @@
   }
  },
  "sha": "c9e4c33948033f10f003991a037d949a708eedf8",
- "clone_s": 1.1,
+ "clone_s": 0.9,
  "lane_check": "rust: 141 files / 62953 lines; top=rust(62953)",
  "status": "done"
 }

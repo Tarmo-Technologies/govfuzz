@@ -2,7 +2,7 @@
  "lane": "ts",
  "repo": "firecrawl/firecrawl",
  "stars": 156037,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --json --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl.cwd/sloc.json",
@@ -10,15 +10,18 @@
    "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 247525,
+   "languages": 9,
+   "sloc_total": 257275,
    "sloc_by_lang": {
     "javascript": 174224,
     "python": 30888,
     "config": 24576,
     "rust": 10304,
     "java": 4636,
-    "go": 2897
+    "php": 4517,
+    "csharp": 2981,
+    "go": 2897,
+    "ruby": 2252
    }
   },
   "list_targets": {
@@ -192,7 +195,7 @@
   }
  },
  "sha": "3fded32f30bb77e599b694438b4519da54b914b4",
- "clone_s": 2.6,
+ "clone_s": 3.9,
  "lane_check": "ts: 756 files / 183856 lines; top=ts(183856)",
  "status": "done"
 }

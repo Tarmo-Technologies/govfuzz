@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "ffmpegwasm/ffmpeg.wasm",
  "stars": 17692,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ffmpegwasm__ffmpeg.wasm --json --out /home/ubuntu/govfuzz-sweep-work/c__ffmpegwasm__ffmpeg.wasm.cwd/sloc.json",
@@ -229,7 +229,7 @@
   }
  },
  "sha": "f876f907c7e9b9bf51d4ed0b913a855a63ae63fc",
- "clone_s": 0.8,
+ "clone_s": 0.7,
  "lane_check": "c: 9 files / 18585 lines; top=c(18585)",
  "status": "done"
 }

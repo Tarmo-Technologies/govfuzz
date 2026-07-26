@@ -2,20 +2,21 @@
  "lane": "java",
  "repo": "spring-projects/spring-boot",
  "stars": 81167,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/spring-projects__spring-boot --json --out /home/ubuntu/govfuzz-sweep-work/java__spring-projects__spring-boot.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.33,
+   "wall_s": 0.19,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 504522,
+   "languages": 4,
+   "sloc_total": 504537,
    "sloc_by_lang": {
     "java": 492057,
     "javascript": 8460,
-    "config": 4005
+    "config": 4005,
+    "ruby": 15
    }
   },
   "list_targets": {
@@ -153,7 +154,7 @@
   }
  },
  "sha": "c731cfd8923278ffccef90be88d66187a07fc000",
- "clone_s": 4.2,
+ "clone_s": 6.2,
  "lane_check": "java: 8353 files / 711018 lines; top=java(711018)",
  "status": "done"
 }

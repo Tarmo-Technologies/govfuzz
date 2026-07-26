@@ -2,19 +2,21 @@
  "lane": "rust",
  "repo": "BurntSushi/ripgrep",
  "stars": 66529,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/BurntSushi__ripgrep --json --out /home/ubuntu/govfuzz-sweep-work/rust__BurntSushi__ripgrep.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 40259,
+   "languages": 4,
+   "sloc_total": 40290,
    "sloc_by_lang": {
     "rust": 39635,
-    "config": 624
+    "config": 624,
+    "ruby": 19,
+    "lua": 12
    }
   },
   "list_targets": {
@@ -139,7 +141,7 @@
   }
  },
  "sha": "f9c05a949d1a0dc8e16dee28ca9605d38611faeb",
- "clone_s": 0.7,
+ "clone_s": 1.2,
  "lane_check": "rust: 110 files / 50918 lines; top=rust(50918)",
  "status": "done"
 }

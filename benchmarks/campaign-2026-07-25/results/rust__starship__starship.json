@@ -2,19 +2,20 @@
  "lane": "rust",
  "repo": "starship/starship",
  "stars": 59076,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/starship__starship --json --out /home/ubuntu/govfuzz-sweep-work/rust__starship__starship.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 43912,
+   "languages": 4,
+   "sloc_total": 43975,
    "sloc_by_lang": {
     "rust": 43143,
     "config": 766,
+    "lua": 63,
     "javascript": 3
    }
   },
@@ -143,8 +144,8 @@
    "findings_detail": []
   }
  },
- "sha": "eebb9a3c7ddc716fd8a2d629ee22a48518d3b871",
- "clone_s": 2.4,
+ "sha": "d2db83a75de893d4f4efc8221a9bb9283bbcb4cf",
+ "clone_s": 1.4,
  "lane_check": "rust: 245 files / 44909 lines; top=rust(44909)",
  "status": "done"
 }

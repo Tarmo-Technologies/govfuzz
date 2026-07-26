@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "coder/code-server",
  "stars": 78525,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/coder__code-server --json --out /home/ubuntu/govfuzz-sweep-work/ts__coder__code-server.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,

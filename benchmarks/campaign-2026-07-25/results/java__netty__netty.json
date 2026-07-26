@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "netty/netty",
  "stars": 35014,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/netty__netty --json --out /home/ubuntu/govfuzz-sweep-work/java__netty__netty.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -144,7 +144,7 @@
   }
  },
  "sha": "db6c258bab7bb87c828fc1d31f60fd0400f0d41e",
- "clone_s": 3.1,
+ "clone_s": 3.2,
  "lane_check": "java: 3540 files / 558808 lines; top=java(558808)",
  "status": "done"
 }

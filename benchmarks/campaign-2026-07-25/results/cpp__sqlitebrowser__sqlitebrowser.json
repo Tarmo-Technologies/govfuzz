@@ -1,0 +1,82 @@
+{
+ "lane": "cpp",
+ "repo": "sqlitebrowser/sqlitebrowser",
+ "stars": 24366,
+ "wave": "SLOC",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --json --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 368189,
+   "sloc_by_lang": {
+    "javascript": 189025,
+    "cpp": 171431,
+    "c": 6225,
+    "config": 1371,
+    "python": 137
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --format json --top 100000",
+   "exit": 0,
+   "wall_s": 12.12,
+   "timed_out": false,
+   "panic": false,
+   "count": 7453,
+   "by_language": {
+    "c": 109,
+    "cpp": 7344
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 103.75,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 137,
+   "by_severity": {
+    "high": 129,
+    "medium": 8
+   },
+   "top_rules": {
+    "GF-401": 33,
+    "GF-405": 32,
+    "GF-407": 25,
+    "GF-403": 19,
+    "GF-472": 12,
+    "GF-424": 6,
+    "GF-408": 6,
+    "GF-406": 2,
+    "GF-547": 1,
+    "GF-426": 1
+   },
+   "gaps": 413
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser/sbom",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "components": 16
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.09,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "582f086e4db8df599a7ef2838d921046600854ac",
+ "clone_s": 2.3,
+ "lane_check": "cpp: 279 files / 185213 lines; top=ts(189025)",
+ "status": "done"
+}

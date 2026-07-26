@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "ocornut/imgui",
  "stars": 75063,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ocornut__imgui --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ocornut__imgui.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -76,7 +76,7 @@
   }
  },
  "sha": "01380c579715e62fb9a8d6ec0502c4ea83bfde6e",
- "clone_s": 0.8,
+ "clone_s": 1.0,
  "lane_check": "cpp: 53 files / 68617 lines; top=cpp(68617)",
  "status": "done"
 }

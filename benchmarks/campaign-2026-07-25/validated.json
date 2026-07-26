@@ -33,5 +33,9 @@
  "get-iplayer/get_iplayer": "rejected_lane",
  "htrgouvea/nipe": "rejected_lane",
  "victorqribeiro/perceptronCobol": "rejected_lane",
- "continuous-copilot/modernize-legacy-cobol-app": "rejected_lane"
+ "continuous-copilot/modernize-legacy-cobol-app": "rejected_lane",
+ "byoungd/up": "rejected_lane",
+ "easychen/opc-methodology": "rejected_lane",
+ "IBM/zOS-Client-Web-Enablement-Toolkit": "rejected_lane",
+ "cloudflare/cobol-worker": "rejected_lane"
 }

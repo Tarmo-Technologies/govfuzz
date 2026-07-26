@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "jqlang/jq",
  "stars": 35276,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/jqlang__jq --json --out /home/ubuntu/govfuzz-sweep-work/c__jqlang__jq.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -156,7 +156,7 @@
   }
  },
  "sha": "603db3f57741d217ba651e61086b550a72148b83",
- "clone_s": 0.8,
+ "clone_s": 0.6,
  "lane_check": "c: 26 files / 22220 lines; top=c(22220)",
  "status": "done"
 }

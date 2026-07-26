@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "adam-p/markdown-here",
  "stars": 60236,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/adam-p__markdown-here --json --out /home/ubuntu/govfuzz-sweep-work/js__adam-p__markdown-here.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -236,7 +236,7 @@
   }
  },
  "sha": "e00d005299922198aef968e0cd42b275525c20a6",
- "clone_s": 1.1,
+ "clone_s": 1.6,
  "lane_check": "js: 27 files / 74033 lines; top=js(74033)",
  "status": "done"
 }

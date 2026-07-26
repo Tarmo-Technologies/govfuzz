@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "rod-chapman/SPARKNaCl",
  "stars": 136,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/rod-chapman__SPARKNaCl --json --out /home/ubuntu/govfuzz-sweep-work/ada__rod-chapman__SPARKNaCl.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -232,7 +232,7 @@
   }
  },
  "sha": "49e3bddf092561ce2b74c134a35acff91a2da9a4",
- "clone_s": 0.6,
+ "clone_s": 0.8,
  "lane_check": "ada: 119 files / 13866 lines; top=ada(13866)",
  "status": "done"
 }

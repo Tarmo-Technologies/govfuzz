@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "binarywang/WxJava",
  "stars": 32965,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/binarywang__WxJava --json --out /home/ubuntu/govfuzz-sweep-work/java__binarywang__WxJava.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.21,
+   "wall_s": 0.11,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -161,7 +161,7 @@
   }
  },
  "sha": "8c5d917db934da9af8e68b2e25ee929b4fa1be18",
- "clone_s": 2.1,
+ "clone_s": 1.7,
  "lane_check": "java: 3949 files / 322296 lines; top=java(322296)",
  "status": "done"
 }

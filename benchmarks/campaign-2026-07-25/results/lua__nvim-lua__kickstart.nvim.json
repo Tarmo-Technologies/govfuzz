@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "nvim-lua/kickstart.nvim",
  "stars": 31150,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/nvim-lua__kickstart.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__nvim-lua__kickstart.nvim.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.0,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 26,
+   "languages": 2,
+   "sloc_total": 546,
    "sloc_by_lang": {
+    "lua": 520,
     "config": 26
    }
   },
@@ -158,7 +159,7 @@
   }
  },
  "sha": "267fb6aa73b035ca5cc5d6b54335cafab11eed16",
- "clone_s": 0.4,
+ "clone_s": 0.6,
  "lane_check": "lua: 9 files / 1115 lines; top=lua(1115)",
  "status": "done"
 }

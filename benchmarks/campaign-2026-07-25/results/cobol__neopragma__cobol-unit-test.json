@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "neopragma/cobol-unit-test",
  "stars": 123,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/neopragma__cobol-unit-test --json --out /home/ubuntu/govfuzz-sweep-work/cobol__neopragma__cobol-unit-test.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 25,
+   "languages": 2,
+   "sloc_total": 5079,
    "sloc_by_lang": {
+    "cobol": 5054,
     "python": 25
    }
   },
@@ -124,7 +125,7 @@
   }
  },
  "sha": "8e2c04fc8cda62fb54df8042c141b9ee43abdc16",
- "clone_s": 0.6,
+ "clone_s": 0.5,
  "lane_check": "cobol: 27 files / 5897 lines; top=cobol(5897)",
  "status": "done"
 }

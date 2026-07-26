@@ -2,7 +2,7 @@
  "lane": "fortran",
  "repo": "modern-fortran/neural-fortran",
  "stars": 469,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/modern-fortran__neural-fortran --json --out /home/ubuntu/govfuzz-sweep-work/fortran__modern-fortran__neural-fortran.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 61,
+   "languages": 2,
+   "sloc_total": 9095,
    "sloc_by_lang": {
+    "fortran": 9034,
     "config": 61
    }
   },
@@ -90,7 +91,7 @@
   }
  },
  "sha": "5e4940ff2850c9b039f8dd77982715bced8f3ce5",
- "clone_s": 0.5,
+ "clone_s": 0.8,
  "lane_check": "fortran: 101 files / 10482 lines; top=fortran(10482)",
  "status": "done"
 }

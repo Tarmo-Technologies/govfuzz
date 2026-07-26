@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "django/django",
  "stars": 88214,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/django__django --json --out /home/ubuntu/govfuzz-sweep-work/python__django__django.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.23,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -229,7 +229,7 @@
   }
  },
  "sha": "957d0cee7167757ae221ffde59d2cf0a322e89c7",
- "clone_s": 3.6,
+ "clone_s": 3.4,
  "lane_check": "python: 2927 files / 453850 lines; top=python(453850)",
  "status": "done"
 }

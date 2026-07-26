@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "ansible/ansible",
  "stars": 69695,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible --json --out /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.23,
+   "wall_s": 0.36,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -266,7 +266,7 @@
   }
  },
  "sha": "76884711a617bfe59b417df11fbfc42016c99de8",
- "clone_s": 1.8,
+ "clone_s": 4.2,
  "lane_check": "python: 1808 files / 212995 lines; top=python(212995)",
  "status": "done"
 }

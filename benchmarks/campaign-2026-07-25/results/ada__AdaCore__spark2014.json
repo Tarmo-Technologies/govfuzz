@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaCore/spark2014",
  "stars": 319,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__spark2014 --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__spark2014.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.52,
+   "wall_s": 0.66,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -188,7 +188,7 @@
   }
  },
  "sha": "c05ad9bfde8d065e762fc6934f2d7b30ceec9d96",
- "clone_s": 5.5,
+ "clone_s": 5.8,
  "lane_check": "ada: 13020 files / 802289 lines; top=ada(802289)",
  "status": "done"
 }

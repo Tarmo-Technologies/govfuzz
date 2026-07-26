@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "Lucretia/tamp",
  "stars": 117,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/Lucretia__tamp --json --out /home/ubuntu/govfuzz-sweep-work/ada__Lucretia__tamp.cwd/sloc.json",
@@ -237,7 +237,7 @@
   }
  },
  "sha": "9fbc92482d7cfdec22fbcfc9cc24f6b722736ff8",
- "clone_s": 0.4,
+ "clone_s": 0.7,
  "lane_check": "ada: 21 files / 1572 lines; top=ada(1572)",
  "status": "done"
 }

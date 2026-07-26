@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "valinet/ExplorerPatcher",
  "stars": 33426,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/valinet__ExplorerPatcher --json --out /home/ubuntu/govfuzz-sweep-work/c__valinet__ExplorerPatcher.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -247,7 +247,7 @@
   }
  },
  "sha": "0a88a6e0ef6b1752fea36e581cffff1097e862b0",
- "clone_s": 1.2,
+ "clone_s": 0.7,
  "lane_check": "c: 23 files / 27228 lines; top=c(27228)",
  "status": "done"
 }

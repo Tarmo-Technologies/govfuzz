@@ -2,18 +2,18 @@
  "lane": "rust",
  "repo": "nushell/nushell",
  "stars": 40088,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/nushell__nushell --json --out /home/ubuntu/govfuzz-sweep-work/rust__nushell__nushell.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.35,
+   "wall_s": 0.16,
    "timed_out": false,
    "panic": false,
    "languages": 4,
-   "sloc_total": 340180,
+   "sloc_total": 340627,
    "sloc_by_lang": {
-    "rust": 338098,
+    "rust": 338545,
     "config": 1712,
     "python": 188,
     "javascript": 182
@@ -134,8 +134,8 @@
    "findings_detail": []
   }
  },
- "sha": "3a299f3fcec508404cd77111b88766224941212e",
- "clone_s": 4.0,
- "lane_check": "rust: 1813 files / 364421 lines; top=rust(364421)",
+ "sha": "677af8423131f6a36d24230aa902bd4acb08df04",
+ "clone_s": 3.5,
+ "lane_check": "rust: 1813 files / 364892 lines; top=rust(364892)",
  "status": "done"
 }

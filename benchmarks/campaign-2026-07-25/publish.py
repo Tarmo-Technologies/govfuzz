@@ -89,6 +89,15 @@ def summarize(rows: list[dict]) -> tuple[dict, dict]:
 
 
 def render(per_lane: dict, totals: dict, rows: list[dict]) -> str:
+    # One vendored or generated monster can dominate a corpus-wide line count,
+    # so name it rather than letting it quietly carry the headline.
+    biggest = max(
+        (
+            ((row.get("surfaces") or {}).get("sloc") or {}).get("sloc_total") or 0,
+            row.get("repo", "?"),
+        )
+        for row in rows
+    )
     lines = [
         "",
         f"{totals['projects']} projects measured, "
@@ -117,6 +126,16 @@ def render(per_lane: dict, totals: dict, rows: list[dict]) -> str:
         f"**{totals['discovered']:,}** | **{totals['attempted']}** | "
         f"**{totals['built_and_fuzzed']}** | **{rate}** | **{totals['findings']}** |"
     )
+    if totals["sloc"] and biggest[0] > totals["sloc"] * 0.1:
+        share = biggest[0] / totals["sloc"] * 100
+        lines += [
+            "",
+            f"One repository, `{biggest[1]}`, contributes {biggest[0]:,} of those lines "
+            f"({share:.0f}% of the corpus) at roughly 46,000 lines per file — generated "
+            f"or amalgamated content rather than written code. Without it the corpus is "
+            f"{totals['sloc'] - biggest[0]:,} lines, which is the figure to reason about; "
+            f"it is left in because the corpus is star-ranked, not curated.",
+        ]
 
     panics = sum(
         1

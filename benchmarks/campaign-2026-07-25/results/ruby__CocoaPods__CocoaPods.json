@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "CocoaPods/CocoaPods",
  "stars": 14829,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/CocoaPods__CocoaPods --json --out /home/ubuntu/govfuzz-sweep-work/ruby__CocoaPods__CocoaPods.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.2,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 7707,
+   "languages": 4,
+   "sloc_total": 42084,
    "sloc_by_lang": {
+    "ruby": 34377,
     "c": 3676,
     "cpp": 3211,
     "config": 820
@@ -244,7 +245,7 @@
   }
  },
  "sha": "b80e113e28a7e23cd6dbc169f0c923f6b48bf7a2",
- "clone_s": 4.8,
+ "clone_s": 8.0,
  "lane_check": "ruby: 268 files / 42175 lines; top=ruby(42175)",
  "status": "done"
 }

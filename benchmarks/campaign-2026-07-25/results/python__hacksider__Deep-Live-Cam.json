@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "hacksider/Deep-Live-Cam",
  "stars": 95248,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/hacksider__Deep-Live-Cam --json --out /home/ubuntu/govfuzz-sweep-work/python__hacksider__Deep-Live-Cam.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -216,7 +216,7 @@
   }
  },
  "sha": "8234965ee8711394ccc47cadde8754b17cb34ee9",
- "clone_s": 4.2,
+ "clone_s": 3.6,
  "lane_check": "python: 34 files / 6674 lines; top=python(6674)",
  "status": "done"
 }

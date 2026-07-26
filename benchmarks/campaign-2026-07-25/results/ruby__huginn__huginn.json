@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "huginn/huginn",
  "stars": 49686,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/huginn__huginn --json --out /home/ubuntu/govfuzz-sweep-work/ruby__huginn__huginn.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 2607,
+   "languages": 3,
+   "sloc_total": 44070,
    "sloc_by_lang": {
+    "ruby": 41463,
     "javascript": 1452,
     "config": 1155
    }

@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "LazyVim/LazyVim",
  "stars": 27011,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/LazyVim__LazyVim --json --out /home/ubuntu/govfuzz-sweep-work/lua__LazyVim__LazyVim.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 218,
+   "languages": 2,
+   "sloc_total": 13365,
    "sloc_by_lang": {
+    "lua": 13147,
     "config": 218
    }
   },
@@ -216,7 +217,7 @@
   }
  },
  "sha": "459a4c3b1059671e766a46c7cc223827dc67e3d0",
- "clone_s": 0.5,
+ "clone_s": 1.7,
  "lane_check": "lua: 155 files / 14532 lines; top=lua(14532)",
  "status": "done"
 }

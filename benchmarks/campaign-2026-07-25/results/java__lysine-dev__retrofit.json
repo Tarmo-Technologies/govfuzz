@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "lysine-dev/retrofit",
  "stars": 43920,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/lysine-dev__retrofit --json --out /home/ubuntu/govfuzz-sweep-work/java__lysine-dev__retrofit.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.16,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -229,7 +229,7 @@
   }
  },
  "sha": "d0b112dad073b7fe49c953ebc46ff1b424cb1e51",
- "clone_s": 0.9,
+ "clone_s": 1.0,
  "lane_check": "java: 306 files / 34182 lines; top=java(34182)",
  "status": "done"
 }

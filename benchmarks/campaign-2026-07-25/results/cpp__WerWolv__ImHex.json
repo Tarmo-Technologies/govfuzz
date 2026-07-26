@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "WerWolv/ImHex",
  "stars": 54277,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --json --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -80,7 +80,7 @@
   }
  },
  "sha": "5ce75b3f58f0423a236506cae3c46e94f532c47a",
- "clone_s": 2.0,
+ "clone_s": 2.9,
  "lane_check": "cpp: 464 files / 82970 lines; top=cpp(82970)",
  "status": "done"
 }

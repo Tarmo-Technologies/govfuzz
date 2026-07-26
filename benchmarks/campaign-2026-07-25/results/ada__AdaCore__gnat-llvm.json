@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "AdaCore/gnat-llvm",
  "stars": 231,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnat-llvm --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnat-llvm.cwd/sloc.json",
@@ -72,7 +72,7 @@
   }
  },
  "sha": "5b6a2a9fa3c30c0b051e6ea87712ba3ac8d1c730",
- "clone_s": 0.8,
+ "clone_s": 1.4,
  "lane_check": "ada: 96 files / 58401 lines; top=ada(58401)",
  "status": "done"
 }

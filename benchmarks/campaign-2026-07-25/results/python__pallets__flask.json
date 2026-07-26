@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "pallets/flask",
  "stars": 72016,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/pallets__flask --json --out /home/ubuntu/govfuzz-sweep-work/python__pallets__flask.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -225,7 +225,7 @@
   }
  },
  "sha": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81",
- "clone_s": 0.7,
+ "clone_s": 1.3,
  "lane_check": "python: 83 files / 14081 lines; top=python(14081)",
  "status": "done"
 }

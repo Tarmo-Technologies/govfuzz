@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "halo-dev/halo",
  "stars": 39339,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/halo-dev__halo --json --out /home/ubuntu/govfuzz-sweep-work/java__halo-dev__halo.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.48,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -230,7 +230,7 @@
   }
  },
  "sha": "82bfe486855697a9973012f840086993b7f8a5c4",
- "clone_s": 1.8,
+ "clone_s": 2.9,
  "lane_check": "java: 1296 files / 103117 lines; top=java(103117)",
  "status": "done"
 }

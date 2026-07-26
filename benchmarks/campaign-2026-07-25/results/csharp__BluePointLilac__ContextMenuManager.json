@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "BluePointLilac/ContextMenuManager",
  "stars": 19636,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/BluePointLilac__ContextMenuManager --json --out /home/ubuntu/govfuzz-sweep-work/csharp__BluePointLilac__ContextMenuManager.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 5,
+   "languages": 2,
+   "sloc_total": 14520,
    "sloc_by_lang": {
+    "csharp": 14515,
     "c": 5
    }
   },
@@ -208,7 +209,7 @@
   }
  },
  "sha": "55507155dd8e49c7ab4606da97f2af192d590dfe",
- "clone_s": 0.9,
+ "clone_s": 0.8,
  "lane_check": "csharp: 112 files / 15128 lines; top=csharp(15128)",
  "status": "done"
 }

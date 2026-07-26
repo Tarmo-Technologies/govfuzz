@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "facebookresearch/faiss",
  "stars": 40586,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/facebookresearch__faiss --json --out /home/ubuntu/govfuzz-sweep-work/cpp__facebookresearch__faiss.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -258,7 +258,7 @@
   }
  },
  "sha": "3e313e4c496b6a042b71193fe0bd9dd713efc7a2",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "cpp: 326 files / 92719 lines; top=cpp(92719)",
  "status": "done"
 }

@@ -2,18 +2,19 @@
  "lane": "go",
  "repo": "junegunn/fzf",
  "stars": 81969,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/junegunn__fzf --json --out /home/ubuntu/govfuzz-sweep-work/go__junegunn__fzf.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 26793,
+   "languages": 3,
+   "sloc_total": 33896,
    "sloc_by_lang": {
     "go": 26285,
+    "ruby": 7103,
     "config": 508
    }
   },
@@ -225,7 +226,7 @@
   }
  },
  "sha": "0efef298d2a47cf757d6deedaa804ecc0515bb28",
- "clone_s": 0.9,
+ "clone_s": 1.4,
  "lane_check": "go: 81 files / 28492 lines; top=go(28492)",
  "status": "done"
 }

@@ -2,19 +2,20 @@
  "lane": "go",
  "repo": "caddyserver/caddy",
  "stars": 74363,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/caddyserver__caddy --json --out /home/ubuntu/govfuzz-sweep-work/go__caddyserver__caddy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 72869,
+   "languages": 4,
+   "sloc_total": 72872,
    "sloc_by_lang": {
     "go": 71244,
     "config": 1624,
+    "php": 3,
     "javascript": 1
    }
   },

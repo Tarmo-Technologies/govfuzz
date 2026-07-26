@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "OpenHands/OpenHands",
  "stars": 82086,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/OpenHands__OpenHands --json --out /home/ubuntu/govfuzz-sweep-work/python__OpenHands__OpenHands.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.15,
+   "wall_s": 0.11,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -247,7 +247,7 @@
   }
  },
  "sha": "ee9e78b7defdfa744e0bbe48c9cafa90b6135ad7",
- "clone_s": 2.0,
+ "clone_s": 2.4,
  "lane_check": "python: 915 files / 203241 lines; top=python(203241)",
  "status": "done"
 }

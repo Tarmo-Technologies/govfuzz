@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "nothings/stb",
  "stars": 34277,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/nothings__stb --json --out /home/ubuntu/govfuzz-sweep-work/c__nothings__stb.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -297,7 +297,7 @@
   }
  },
  "sha": "31c1ad37456438565541f4919958214b6e762fb4",
- "clone_s": 0.6,
+ "clone_s": 0.7,
  "lane_check": "c: 53 files / 21158 lines; top=c(21158)",
  "status": "done"
 }

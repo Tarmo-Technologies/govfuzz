@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "syncthing/syncthing",
  "stars": 86893,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/syncthing__syncthing --json --out /home/ubuntu/govfuzz-sweep-work/go__syncthing__syncthing.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -236,7 +236,7 @@
   }
  },
  "sha": "119d5e72efcf7d4c003664640ca0db6f472edfa4",
- "clone_s": 1.7,
+ "clone_s": 1.1,
  "lane_check": "go: 540 files / 103901 lines; top=go(103901)",
  "status": "done"
 }

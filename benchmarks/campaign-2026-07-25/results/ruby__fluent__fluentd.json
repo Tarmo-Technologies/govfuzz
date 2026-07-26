@@ -2,12 +2,12 @@
  "lane": "ruby",
  "repo": "fluent/fluentd",
  "stars": 13568,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/fluent__fluentd --json --out /home/ubuntu/govfuzz-sweep-work/ruby__fluent__fluentd.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -223,7 +223,7 @@
   }
  },
  "sha": "62b1bc7c3b453475a84d196e5d6e9bb72769dcd2",
- "clone_s": 0.9,
+ "clone_s": 1.7,
  "lane_check": "ruby: 444 files / 93715 lines; top=ruby(93715)",
  "status": "done"
 }

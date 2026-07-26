@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "AdaCore/aws",
  "stars": 159,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__aws --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__aws.cwd/sloc.json",
@@ -258,7 +258,7 @@
   }
  },
  "sha": "02cbd01c2f96c288440415a46bf865616c0ee0f8",
- "clone_s": 1.7,
+ "clone_s": 1.8,
  "lane_check": "ada: 1229 files / 156547 lines; top=ada(156547)",
  "status": "done"
 }

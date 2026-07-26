@@ -2,18 +2,19 @@
  "lane": "ruby",
  "repo": "chatwoot/chatwoot",
  "stars": 34770,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/chatwoot__chatwoot --json --out /home/ubuntu/govfuzz-sweep-work/ruby__chatwoot__chatwoot.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.21,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 299009,
+   "languages": 4,
+   "sloc_total": 464571,
    "sloc_by_lang": {
     "javascript": 235969,
+    "ruby": 165562,
     "config": 62882,
     "python": 158
    }
@@ -227,7 +228,7 @@
   }
  },
  "sha": "19c96fcc07be8b48594aa1eaa9e7613eb47d899f",
- "clone_s": 10.8,
+ "clone_s": 7.4,
  "lane_check": "ruby: 2368 files / 171940 lines; top=ruby(171940)",
  "status": "done"
 }

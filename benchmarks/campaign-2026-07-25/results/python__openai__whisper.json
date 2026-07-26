@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "openai/whisper",
  "stars": 105581,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/openai__whisper --json --out /home/ubuntu/govfuzz-sweep-work/python__openai__whisper.cwd/sloc.json",
@@ -211,7 +211,7 @@
   }
  },
  "sha": "04f449b8a437f1bbd3dba5c9f826aca972e7709a",
- "clone_s": 1.0,
+ "clone_s": 1.8,
  "lane_check": "python: 20 files / 3565 lines; top=python(3565)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "swaywm/sway",
  "stars": 17160,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/swaywm__sway --json --out /home/ubuntu/govfuzz-sweep-work/c__swaywm__sway.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -224,7 +224,7 @@
   }
  },
  "sha": "6959a78a8f0d52f79ad7465135b3295307a5146a",
- "clone_s": 1.5,
+ "clone_s": 0.8,
  "lane_check": "c: 242 files / 42632 lines; top=c(42632)",
  "status": "done"
 }

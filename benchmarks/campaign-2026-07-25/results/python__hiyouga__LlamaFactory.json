@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "hiyouga/LlamaFactory",
  "stars": 73513,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/hiyouga__LlamaFactory --json --out /home/ubuntu/govfuzz-sweep-work/python__hiyouga__LlamaFactory.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -223,7 +223,7 @@
   }
  },
  "sha": "2ebe7be6116e13ccb5be38f468dcd8cd8a07a051",
- "clone_s": 1.4,
+ "clone_s": 2.3,
  "lane_check": "python: 283 files / 44750 lines; top=python(44750)",
  "status": "done"
 }

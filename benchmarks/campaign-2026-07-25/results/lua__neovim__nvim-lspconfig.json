@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "neovim/nvim-lspconfig",
  "stars": 13809,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/neovim__nvim-lspconfig --json --out /home/ubuntu/govfuzz-sweep-work/lua__neovim__nvim-lspconfig.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 253,
+   "languages": 2,
+   "sloc_total": 19535,
    "sloc_by_lang": {
+    "lua": 19282,
     "config": 253
    }
   },
@@ -211,8 +212,8 @@
    "findings_detail": []
   }
  },
- "sha": "d592c1e6ad9a0a01b3d5ed3f0345d68407167181",
- "clone_s": 0.6,
- "lane_check": "lua: 847 files / 54034 lines; top=lua(54034)",
+ "sha": "7ab79bb1b57160a537f427ac8a6026102f12b701",
+ "clone_s": 1.1,
+ "lane_check": "lua: 850 files / 55062 lines; top=lua(55062)",
  "status": "done"
 }

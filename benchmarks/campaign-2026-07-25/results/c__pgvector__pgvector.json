@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "pgvector/pgvector",
  "stars": 22345,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/pgvector__pgvector --json --out /home/ubuntu/govfuzz-sweep-work/c__pgvector__pgvector.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -231,7 +231,7 @@
   }
  },
  "sha": "a6420355c5d1c08f4c5fbd5112fc17e4cf3b5eb5",
- "clone_s": 0.4,
+ "clone_s": 0.5,
  "lane_check": "c: 19 files / 10392 lines; top=c(10392)",
  "status": "done"
 }

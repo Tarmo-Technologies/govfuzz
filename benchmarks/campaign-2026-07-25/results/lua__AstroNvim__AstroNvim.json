@@ -2,7 +2,7 @@
  "lane": "lua",
  "repo": "AstroNvim/AstroNvim",
  "stars": 14401,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/AstroNvim__AstroNvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__AstroNvim__AstroNvim.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 184,
+   "languages": 2,
+   "sloc_total": 3515,
    "sloc_by_lang": {
+    "lua": 3331,
     "config": 184
    }
   },
@@ -216,7 +217,7 @@
   }
  },
  "sha": "7fc1bf55037f98b3270eed761cb5b0794b30e7d2",
- "clone_s": 0.4,
+ "clone_s": 0.5,
  "lane_check": "lua: 54 files / 3448 lines; top=lua(3448)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "dani-garcia/vaultwarden",
  "stars": 64274,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/dani-garcia__vaultwarden --json --out /home/ubuntu/govfuzz-sweep-work/rust__dani-garcia__vaultwarden.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -235,7 +235,7 @@
   }
  },
  "sha": "46ae59eaf444f0ae0a799070cf2bd6c415284a51",
- "clone_s": 1.0,
+ "clone_s": 1.1,
  "lane_check": "rust: 62 files / 30325 lines; top=rust(30325)",
  "status": "done"
 }

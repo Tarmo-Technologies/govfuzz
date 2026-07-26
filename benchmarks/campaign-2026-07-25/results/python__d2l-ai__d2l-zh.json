@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "d2l-ai/d2l-zh",
  "stars": 79195,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/d2l-ai__d2l-zh --json --out /home/ubuntu/govfuzz-sweep-work/python__d2l-ai__d2l-zh.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -221,7 +221,7 @@
   }
  },
  "sha": "e6b18ccea71451a55fcd861d7b96fddf2587b09a",
- "clone_s": 7.4,
+ "clone_s": 10.4,
  "lane_check": "python: 14 files / 9174 lines; top=python(9174)",
  "status": "done"
 }

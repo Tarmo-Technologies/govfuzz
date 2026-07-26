@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "MITgcm/MITgcm",
  "stars": 403,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/MITgcm__MITgcm --json --out /home/ubuntu/govfuzz-sweep-work/fortran__MITgcm__MITgcm.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.16,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 85585,
+   "languages": 6,
+   "sloc_total": 393463,
    "sloc_by_lang": {
+    "fortran": 307878,
     "c": 78496,
     "python": 3849,
     "cpp": 3051,
@@ -280,7 +281,7 @@
   }
  },
  "sha": "d7a3a8f5b74e10d829ea5bbdde9309a2ade755e0",
- "clone_s": 17.0,
+ "clone_s": 21.8,
  "lane_check": "fortran: 1922 files / 408552 lines; top=fortran(408552)",
  "status": "done"
 }

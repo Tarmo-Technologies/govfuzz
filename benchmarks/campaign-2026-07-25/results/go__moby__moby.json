@@ -2,19 +2,20 @@
  "lane": "go",
  "repo": "moby/moby",
  "stars": 71904,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/moby__moby --json --out /home/ubuntu/govfuzz-sweep-work/go__moby__moby.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.47,
+   "wall_s": 0.33,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 639390,
+   "languages": 5,
+   "sloc_total": 639925,
    "sloc_by_lang": {
     "config": 353691,
     "go": 285266,
+    "lua": 535,
     "c": 271,
     "python": 162
    }
@@ -299,7 +300,7 @@
   }
  },
  "sha": "12812a9432c89a7e0352427399d2be055a743745",
- "clone_s": 6.3,
+ "clone_s": 6.4,
  "lane_check": "go: 2176 files / 321790 lines; top=go(321790)",
  "status": "done"
 }

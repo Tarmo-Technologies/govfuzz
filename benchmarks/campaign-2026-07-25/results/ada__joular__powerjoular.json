@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "joular/powerjoular",
  "stars": 111,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/joular__powerjoular --json --out /home/ubuntu/govfuzz-sweep-work/ada__joular__powerjoular.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -213,7 +213,7 @@
   }
  },
  "sha": "382ef395cb16549e1c6163dc727a428de4e2b3e8",
- "clone_s": 0.4,
+ "clone_s": 0.7,
  "lane_check": "ada: 23 files / 1975 lines; top=ada(1975)",
  "status": "done"
 }

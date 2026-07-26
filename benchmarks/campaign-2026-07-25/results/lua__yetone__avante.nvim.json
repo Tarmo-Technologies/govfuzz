@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "yetone/avante.nvim",
  "stars": 18073,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/yetone__avante.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__yetone__avante.nvim.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 4417,
+   "languages": 4,
+   "sloc_total": 31769,
    "sloc_by_lang": {
+    "lua": 27352,
     "rust": 2205,
     "python": 1710,
     "config": 502
@@ -246,7 +247,7 @@
   }
  },
  "sha": "b57b7d8e601ec6c7675c67de40cc7f5f0c0d40d0",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "lua: 129 files / 32642 lines; top=lua(32642)",
  "status": "done"
 }

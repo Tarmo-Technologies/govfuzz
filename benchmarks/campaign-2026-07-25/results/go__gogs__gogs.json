@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "gogs/gogs",
  "stars": 47698,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/gogs__gogs --json --out /home/ubuntu/govfuzz-sweep-work/go__gogs__gogs.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -255,7 +255,7 @@
   }
  },
  "sha": "eb1054e5432fc8397678372f08613429be233d7c",
- "clone_s": 6.4,
+ "clone_s": 3.4,
  "lane_check": "go: 302 files / 51340 lines; top=js(53978)",
  "status": "done"
 }

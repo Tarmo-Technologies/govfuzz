@@ -2,7 +2,7 @@
  "lane": "ts",
  "repo": "realworld-apps/realworld",
  "stars": 83907,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/realworld-apps__realworld --json --out /home/ubuntu/govfuzz-sweep-work/ts__realworld-apps__realworld.cwd/sloc.json",
@@ -214,7 +214,7 @@
   }
  },
  "sha": "98f29fb3f8bcb1dd614b91f2851371bf22c34775",
- "clone_s": 1.1,
+ "clone_s": 2.1,
  "lane_check": "ts: 24 files / 3440 lines; top=ts(3440)",
  "status": "done"
 }

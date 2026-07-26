@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "ssloy/tinyrenderer",
  "stars": 23967,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ssloy__tinyrenderer --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ssloy__tinyrenderer.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -334,7 +334,7 @@
   }
  },
  "sha": "951799831824b0d84d94487881a9a7eab886275e",
- "clone_s": 2.7,
+ "clone_s": 3.6,
  "lane_check": "cpp: 4 files / 379 lines; top=cpp(379)",
  "status": "done"
 }

@@ -2,18 +2,18 @@
  "lane": "c",
  "repo": "tmux/tmux",
  "stars": 48047,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/tmux__tmux --json --out /home/ubuntu/govfuzz-sweep-work/c__tmux__tmux.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 4,
-   "sloc_total": 88075,
+   "sloc_total": 88079,
    "sloc_by_lang": {
-    "c": 84349,
+    "c": 84353,
     "cpp": 3503,
     "config": 182,
     "perl": 41
@@ -266,8 +266,8 @@
    ]
   }
  },
- "sha": "29bf7fe2f70559d574c84c068d90d173891907d0",
- "clone_s": 0.8,
- "lane_check": "c: 198 files / 91783 lines; top=c(91783)",
+ "sha": "0a92ff6e76bae0ad22f7f943ca1d1e57d37d3465",
+ "clone_s": 0.9,
+ "lane_check": "c: 198 files / 91787 lines; top=c(91787)",
  "status": "done"
 }

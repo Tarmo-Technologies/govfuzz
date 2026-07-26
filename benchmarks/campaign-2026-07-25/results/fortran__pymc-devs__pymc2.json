@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "pymc-devs/pymc2",
  "stars": 877,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/pymc-devs__pymc2 --json --out /home/ubuntu/govfuzz-sweep-work/fortran__pymc-devs__pymc2.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 22876,
+   "languages": 4,
+   "sloc_total": 82862,
    "sloc_by_lang": {
+    "fortran": 59986,
     "python": 15033,
     "c": 7801,
     "config": 42
@@ -260,7 +261,7 @@
   }
  },
  "sha": "6b1b51ddea1a74c50d9a027741252b30810b29e0",
- "clone_s": 1.1,
+ "clone_s": 1.0,
  "lane_check": "fortran: 410 files / 129069 lines; top=fortran(129069)",
  "status": "done"
 }

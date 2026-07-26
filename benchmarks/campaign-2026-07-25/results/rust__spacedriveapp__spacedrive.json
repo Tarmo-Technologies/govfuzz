@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "spacedriveapp/spacedrive",
  "stars": 38650,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/spacedriveapp__spacedrive --json --out /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -263,7 +263,7 @@
   }
  },
  "sha": "60369e9f00b5abe07f4518626bf36f6a7453476f",
- "clone_s": 3.9,
+ "clone_s": 3.6,
  "lane_check": "rust: 1166 files / 209259 lines; top=rust(209259)",
  "status": "done"
 }

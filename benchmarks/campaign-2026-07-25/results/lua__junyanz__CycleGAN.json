@@ -2,7 +2,7 @@
  "lane": "lua",
  "repo": "junyanz/CycleGAN",
  "stars": 12871,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/junyanz__CycleGAN --json --out /home/ubuntu/govfuzz-sweep-work/lua__junyanz__CycleGAN.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 58,
+   "languages": 2,
+   "sloc_total": 2698,
    "sloc_by_lang": {
+    "lua": 2640,
     "python": 58
    }
   },
@@ -206,7 +207,7 @@
   }
  },
  "sha": "40b4498526de6b566f94a000d98fe18b9b8921db",
- "clone_s": 1.0,
+ "clone_s": 1.7,
  "lane_check": "lua: 25 files / 3085 lines; top=lua(3085)",
  "status": "done"
 }

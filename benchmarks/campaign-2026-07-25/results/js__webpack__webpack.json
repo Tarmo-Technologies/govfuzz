@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "webpack/webpack",
  "stars": 65865,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/webpack__webpack --json --out /home/ubuntu/govfuzz-sweep-work/js__webpack__webpack.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.3,
+   "wall_s": 0.22,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -273,7 +273,7 @@
   }
  },
  "sha": "db98306a8197c04affcef30ce7d1d5dc1810079b",
- "clone_s": 4.0,
+ "clone_s": 3.5,
  "lane_check": "js: 10289 files / 332529 lines; top=js(332529)",
  "status": "done"
 }

@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "libprima/prima",
  "stars": 406,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/libprima__prima --json --out /home/ubuntu/govfuzz-sweep-work/fortran__libprima__prima.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 15280,
+   "languages": 5,
+   "sloc_total": 106091,
    "sloc_by_lang": {
+    "fortran": 90811,
     "config": 8971,
     "python": 4997,
     "c": 1045,
@@ -112,7 +113,7 @@
   }
  },
  "sha": "1d76fb88aeffb427cd17ed1e9d0d3b34f414913f",
- "clone_s": 1.4,
+ "clone_s": 1.5,
  "lane_check": "fortran: 493 files / 142636 lines; top=fortran(142636)",
  "status": "done"
 }

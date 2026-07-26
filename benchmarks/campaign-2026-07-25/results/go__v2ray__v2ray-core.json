@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "v2ray/v2ray-core",
  "stars": 46926,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/v2ray__v2ray-core --json --out /home/ubuntu/govfuzz-sweep-work/go__v2ray__v2ray-core.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -262,7 +262,7 @@
   }
  },
  "sha": "d80440f3d57b45c829dbf513306f7adf9a0f3f76",
- "clone_s": 1.6,
+ "clone_s": 2.4,
  "lane_check": "go: 641 files / 68307 lines; top=go(68307)",
  "status": "done"
 }

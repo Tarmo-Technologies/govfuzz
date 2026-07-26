@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "Martinfx/Cobol",
  "stars": 103,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/Martinfx__Cobol --json --out /home/ubuntu/govfuzz-sweep-work/cobol__Martinfx__Cobol.cwd/sloc.json",
@@ -10,9 +10,11 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 1093,
+   "sloc_by_lang": {
+    "cobol": 1093
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/Martinfx__Cobol --format json --top 100000",

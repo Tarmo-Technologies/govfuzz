@@ -2,22 +2,23 @@
  "lane": "c",
  "repo": "openssl/openssl",
  "stars": 30514,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/openssl__openssl --json --out /home/ubuntu/govfuzz-sweep-work/c__openssl__openssl.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.19,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 927798,
+   "languages": 6,
+   "sloc_total": 927815,
    "sloc_by_lang": {
     "c": 674478,
     "perl": 231393,
     "cpp": 15212,
     "config": 4963,
-    "python": 1752
+    "python": 1752,
+    "ruby": 17
    }
   },
   "list_targets": {
@@ -294,7 +295,7 @@
   }
  },
  "sha": "971b8d060e52499d6ffd2f9ca697fe23f72a629a",
- "clone_s": 9.3,
+ "clone_s": 3.8,
  "lane_check": "c: 1691 files / 711415 lines; top=c(711415)",
  "status": "done"
 }

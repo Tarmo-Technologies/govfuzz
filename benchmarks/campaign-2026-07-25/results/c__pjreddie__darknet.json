@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "pjreddie/darknet",
  "stars": 26486,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/pjreddie__darknet --json --out /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -155,7 +155,7 @@
   }
  },
  "sha": "f6afaabcdf85f77e7aff2ec55c020c0e297c77f9",
- "clone_s": 0.7,
+ "clone_s": 0.9,
  "lane_check": "c: 69 files / 22153 lines; top=c(22153)",
  "status": "done"
 }

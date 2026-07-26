@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "TheAlgorithms/Java",
  "stars": 66059,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/TheAlgorithms__Java --json --out /home/ubuntu/govfuzz-sweep-work/java__TheAlgorithms__Java.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -209,7 +209,7 @@
   }
  },
  "sha": "af9aad308151ffeda699acdabed09a7e90e194a6",
- "clone_s": 1.0,
+ "clone_s": 1.1,
  "lane_check": "java: 1578 files / 118104 lines; top=java(118104)",
  "status": "done"
 }

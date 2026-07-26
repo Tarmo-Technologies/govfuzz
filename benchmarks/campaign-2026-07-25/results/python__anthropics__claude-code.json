@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "anthropics/claude-code",
  "stars": 139095,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/anthropics__claude-code --json --out /home/ubuntu/govfuzz-sweep-work/python__anthropics__claude-code.cwd/sloc.json",
@@ -220,7 +220,7 @@
   }
  },
  "sha": "7ef6eec9d9ba84ea6f233f26c45f1df5c5991843",
- "clone_s": 1.2,
+ "clone_s": 2.6,
  "lane_check": "python: 21 files / 6598 lines; top=python(6598)",
  "status": "done"
 }

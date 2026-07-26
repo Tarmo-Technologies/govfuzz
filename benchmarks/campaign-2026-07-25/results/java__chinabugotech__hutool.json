@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "chinabugotech/hutool",
  "stars": 30282,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/chinabugotech__hutool --json --out /home/ubuntu/govfuzz-sweep-work/java__chinabugotech__hutool.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -155,7 +155,7 @@
   }
  },
  "sha": "8870454b2a0c29cc6ffd31dcf5667c8ceb2fc442",
- "clone_s": 1.5,
+ "clone_s": 2.1,
  "lane_check": "java: 2264 files / 269641 lines; top=java(269641)",
  "status": "done"
 }

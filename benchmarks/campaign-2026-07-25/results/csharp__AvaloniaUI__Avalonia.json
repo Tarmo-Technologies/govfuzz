@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "AvaloniaUI/Avalonia",
  "stars": 31224,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia --json --out /home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.35,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 4145,
+   "languages": 5,
+   "sloc_total": 460815,
    "sloc_by_lang": {
+    "csharp": 456670,
     "javascript": 2487,
     "cpp": 841,
     "config": 669,
@@ -246,8 +247,8 @@
    "findings_detail": []
   }
  },
- "sha": "847de736c3b0c6e245f033060d2e82f4caa2ecba",
- "clone_s": 5.1,
- "lane_check": "csharp: 4049 files / 528284 lines; top=csharp(528284)",
+ "sha": "386be0fa0ba5545fe584cd44a03972489081c762",
+ "clone_s": 4.5,
+ "lane_check": "csharp: 4049 files / 528296 lines; top=csharp(528296)",
  "status": "done"
 }

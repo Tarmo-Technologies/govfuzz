@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "abi/screenshot-to-code",
  "stars": 73446,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/abi__screenshot-to-code --json --out /home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -228,7 +228,7 @@
   }
  },
  "sha": "6094fd710becd981fbcf29cfc32d7ebef921866d",
- "clone_s": 0.8,
+ "clone_s": 1.6,
  "lane_check": "python: 135 files / 17658 lines; top=python(17658)",
  "status": "done"
 }

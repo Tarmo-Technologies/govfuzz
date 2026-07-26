@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "DioxusLabs/dioxus",
  "stars": 38299,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/DioxusLabs__dioxus --json --out /home/ubuntu/govfuzz-sweep-work/rust__DioxusLabs__dioxus.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -265,7 +265,7 @@
   }
  },
  "sha": "ad05395479fa01f3eb7fe394661770c88334141c",
- "clone_s": 2.2,
+ "clone_s": 2.0,
  "lane_check": "rust: 805 files / 137511 lines; top=rust(137511)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "java",
  "repo": "geekxh/hello-algorithm",
  "stars": 36095,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/geekxh__hello-algorithm --json --out /home/ubuntu/govfuzz-sweep-work/java__geekxh__hello-algorithm.cwd/sloc.json",
@@ -214,7 +214,7 @@
   }
  },
  "sha": "60a2b5f56d4d982c12fa2e04b6005fc27cb8d903",
- "clone_s": 9.5,
+ "clone_s": 15.3,
  "lane_check": "java: 73 files / 2814 lines; top=java(2814)",
  "status": "done"
 }

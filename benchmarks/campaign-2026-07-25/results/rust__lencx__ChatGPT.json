@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "lencx/ChatGPT",
  "stars": 54420,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/lencx__ChatGPT --json --out /home/ubuntu/govfuzz-sweep-work/rust__lencx__ChatGPT.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -226,7 +226,7 @@
   }
  },
  "sha": "a6de9a8b61077fa63ad5c3ecbe2bc12e0cb4b4b9",
- "clone_s": 1.0,
+ "clone_s": 0.6,
  "lane_check": "rust: 9 files / 746 lines; top=rust(746)",
  "status": "done"
 }

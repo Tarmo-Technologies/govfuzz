@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "ChatGPTNextWeb/NextChat",
  "stars": 88549,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat --json --out /home/ubuntu/govfuzz-sweep-work/ts__ChatGPTNextWeb__NextChat.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -248,7 +248,7 @@
   }
  },
  "sha": "706a18b95b714ab29b2a4842d3b9ff4f887935d5",
- "clone_s": 1.1,
+ "clone_s": 2.0,
  "lane_check": "ts: 183 files / 39540 lines; top=ts(39540)",
  "status": "done"
 }

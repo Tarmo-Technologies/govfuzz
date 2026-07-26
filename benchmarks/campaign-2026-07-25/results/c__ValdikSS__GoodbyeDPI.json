@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "ValdikSS/GoodbyeDPI",
  "stars": 28516,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ValdikSS__GoodbyeDPI --json --out /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI.cwd/sloc.json",
@@ -268,7 +268,7 @@
   }
  },
  "sha": "f593a276f9ec753889f80208c6a7c5cf455df94a",
- "clone_s": 0.4,
+ "clone_s": 0.3,
  "lane_check": "c: 8 files / 2623 lines; top=c(2623)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "java",
  "repo": "alibaba/spring-cloud-alibaba",
  "stars": 29139,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__spring-cloud-alibaba --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__spring-cloud-alibaba.cwd/sloc.json",
@@ -232,7 +232,7 @@
   }
  },
  "sha": "171ea765c8179ca871903baad701245a7330a3ab",
- "clone_s": 0.8,
+ "clone_s": 0.9,
  "lane_check": "java: 534 files / 40020 lines; top=java(40020)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "micropython/micropython",
  "stars": 21936,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/micropython__micropython --json --out /home/ubuntu/govfuzz-sweep-work/c__micropython__micropython.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.19,
+   "wall_s": 0.16,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -252,7 +252,7 @@
   }
  },
  "sha": "072ff7bd384f0b17865dd4068289165938015b81",
- "clone_s": 2.6,
+ "clone_s": 2.0,
  "lane_check": "c: 1155 files / 320541 lines; top=c(320541)",
  "status": "done"
 }

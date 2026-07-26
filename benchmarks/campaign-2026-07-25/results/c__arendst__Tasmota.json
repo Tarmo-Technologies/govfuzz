@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "arendst/Tasmota",
  "stars": 24591,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota --json --out /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.39,
+   "wall_s": 0.27,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -85,7 +85,7 @@
   }
  },
  "sha": "2f136a32900196ec09318559e7ed8ecdd9c82706",
- "clone_s": 5.2,
+ "clone_s": 5.5,
  "lane_check": "c: 1351 files / 755072 lines; top=c(755072)",
  "status": "done"
 }

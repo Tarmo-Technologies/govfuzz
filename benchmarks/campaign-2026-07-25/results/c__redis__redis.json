@@ -2,21 +2,23 @@
  "lane": "c",
  "repo": "redis/redis",
  "stars": 75698,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/redis__redis --json --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 265321,
+   "languages": 7,
+   "sloc_total": 266266,
    "sloc_by_lang": {
     "c": 246244,
     "cpp": 12000,
     "python": 4175,
     "config": 2872,
+    "ruby": 639,
+    "lua": 306,
     "javascript": 30
    }
   },
@@ -83,7 +85,7 @@
   }
  },
  "sha": "b53f65d9b471ee264293976805ad6c896171e3ed",
- "clone_s": 0.0,
+ "clone_s": 1.8,
  "lane_check": "c: 191 files / 191129 lines; top=c(191129)",
  "status": "done"
 }

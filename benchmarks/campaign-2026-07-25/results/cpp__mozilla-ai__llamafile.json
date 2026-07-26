@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "mozilla-ai/llamafile",
  "stars": 25450,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/mozilla-ai__llamafile --json --out /home/ubuntu/govfuzz-sweep-work/cpp__mozilla-ai__llamafile.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -79,7 +79,7 @@
   }
  },
  "sha": "0ce2b877b22346ac11315425daf47448f73f3283",
- "clone_s": 1.2,
+ "clone_s": 2.2,
  "lane_check": "cpp: 127 files / 23921 lines; top=cpp(23921)",
  "status": "done"
 }

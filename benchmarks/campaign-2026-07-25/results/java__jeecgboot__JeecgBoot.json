@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "jeecgboot/JeecgBoot",
  "stars": 47184,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/jeecgboot__JeecgBoot --json --out /home/ubuntu/govfuzz-sweep-work/java__jeecgboot__JeecgBoot.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.31,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -245,7 +245,7 @@
   }
  },
  "sha": "df83f4de76811ea73bf5b37a8fe00cbb59988a1b",
- "clone_s": 5.9,
+ "clone_s": 6.2,
  "lane_check": "java: 961 files / 112068 lines; top=java(112068)",
  "status": "done"
 }

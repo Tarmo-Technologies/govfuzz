@@ -2,20 +2,20 @@
  "lane": "rust",
  "repo": "farion1231/cc-switch",
  "stars": 121185,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/farion1231__cc-switch --json --out /home/ubuntu/govfuzz-sweep-work/rust__farion1231__cc-switch.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 3,
-   "sloc_total": 230217,
+   "sloc_total": 230443,
    "sloc_by_lang": {
-    "rust": 136981,
-    "javascript": 87230,
-    "config": 6006
+    "rust": 136982,
+    "javascript": 87383,
+    "config": 6078
    }
   },
   "list_targets": {
@@ -123,8 +123,8 @@
    "findings_detail": []
   }
  },
- "sha": "878c26f31e012ba32b9772bd080bd4fa9e7d495e",
- "clone_s": 3.1,
- "lane_check": "rust: 233 files / 150469 lines; top=rust(150469)",
+ "sha": "b0482320a71f448a90532bddebd4d17215274880",
+ "clone_s": 2.6,
+ "lane_check": "rust: 233 files / 150471 lines; top=rust(150471)",
  "status": "done"
 }

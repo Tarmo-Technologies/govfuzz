@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "sharkdp/fd",
  "stars": 43873,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__fd --json --out /home/ubuntu/govfuzz-sweep-work/rust__sharkdp__fd.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -229,7 +229,7 @@
   }
  },
  "sha": "ca51233d277e5c0601ddb216948bcbcf0a56c80e",
- "clone_s": 1.0,
+ "clone_s": 0.7,
  "lane_check": "rust: 24 files / 7254 lines; top=rust(7254)",
  "status": "done"
 }

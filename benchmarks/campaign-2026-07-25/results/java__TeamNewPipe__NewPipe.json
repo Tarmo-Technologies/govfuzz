@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "TeamNewPipe/NewPipe",
  "stars": 39116,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/TeamNewPipe__NewPipe --json --out /home/ubuntu/govfuzz-sweep-work/java__TeamNewPipe__NewPipe.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -224,7 +224,7 @@
   }
  },
  "sha": "98843e5dc5f4a6ca6b44ceaa0b7184cd4da1622a",
- "clone_s": 2.1,
+ "clone_s": 2.3,
  "lane_check": "java: 295 files / 54922 lines; top=java(54922)",
  "status": "done"
 }

@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "nikic/PHP-Parser",
  "stars": 17453,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/nikic__PHP-Parser --json --out /home/ubuntu/govfuzz-sweep-work/php__nikic__PHP-Parser.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 124,
+   "languages": 2,
+   "sloc_total": 23766,
    "sloc_by_lang": {
+    "php": 23642,
     "config": 124
    }
   },
@@ -204,7 +205,7 @@
   }
  },
  "sha": "fbd47f7ebcbb450138d92642a0a53b72a5285dda",
- "clone_s": 0.8,
+ "clone_s": 1.4,
  "lane_check": "php: 341 files / 28783 lines; top=php(28783)",
  "status": "done"
 }

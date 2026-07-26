@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "Kong/kong",
  "stars": 43858,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/Kong__kong --json --out /home/ubuntu/govfuzz-sweep-work/lua__Kong__kong.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 32414,
+   "languages": 7,
+   "sloc_total": 297614,
    "sloc_by_lang": {
+    "lua": 265200,
     "config": 30460,
     "python": 1141,
     "rust": 542,
@@ -265,7 +266,7 @@
   }
  },
  "sha": "391ee48d3a68e8d0bbd0405ec1d02d75f768aa92",
- "clone_s": 1.9,
+ "clone_s": 3.9,
  "lane_check": "lua: 1308 files / 285556 lines; top=lua(285556)",
  "status": "done"
 }

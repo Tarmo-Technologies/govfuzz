@@ -2,16 +2,16 @@
  "lane": "c",
  "repo": "hashcat/hashcat",
  "stars": 26414,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat --json --out /home/ubuntu/govfuzz-sweep-work/c__hashcat__hashcat.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.26,
+   "wall_s": 0.21,
    "timed_out": false,
    "panic": false,
-   "languages": 7,
-   "sloc_total": 605607,
+   "languages": 8,
+   "sloc_total": 605838,
    "sloc_by_lang": {
     "c": 525458,
     "cpp": 40013,
@@ -19,7 +19,8 @@
     "python": 3917,
     "rust": 1772,
     "ada": 1682,
-    "config": 1280
+    "config": 1280,
+    "csharp": 231
    }
   },
   "list_targets": {

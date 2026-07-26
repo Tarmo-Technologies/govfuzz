@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "TheAlgorithms/Python",
  "stars": 223159,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/TheAlgorithms__Python --json --out /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python.cwd/sloc.json",
@@ -254,7 +254,7 @@
   }
  },
  "sha": "25bcced0f37df781b0e5aaa575e2a4fad41a2816",
- "clone_s": 1.0,
+ "clone_s": 1.5,
  "lane_check": "python: 1385 files / 97825 lines; top=python(97825)",
  "status": "done"
 }

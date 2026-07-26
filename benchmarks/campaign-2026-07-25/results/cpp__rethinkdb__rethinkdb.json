@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "rethinkdb/rethinkdb",
  "stars": 27001,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --json --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.23,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -86,7 +86,7 @@
   }
  },
  "sha": "a2cf1308b57dca2e05d744f225a082881bab3fca",
- "clone_s": 2.5,
+ "clone_s": 2.7,
  "lane_check": "cpp: 1011 files / 307896 lines; top=cpp(307896)",
  "status": "done"
 }

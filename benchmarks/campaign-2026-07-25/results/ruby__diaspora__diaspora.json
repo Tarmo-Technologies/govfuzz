@@ -2,7 +2,7 @@
  "lane": "ruby",
  "repo": "diaspora/diaspora",
  "stars": 13655,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/diaspora__diaspora --json --out /home/ubuntu/govfuzz-sweep-work/ruby__diaspora__diaspora.cwd/sloc.json",
@@ -10,10 +10,11 @@
    "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 103295,
+   "languages": 3,
+   "sloc_total": 154629,
    "sloc_by_lang": {
     "config": 86083,
+    "ruby": 51334,
     "javascript": 17212
    }
   },
@@ -222,7 +223,7 @@
   }
  },
  "sha": "b7bf1dc33566c036a3d788dd8876e97c30905842",
- "clone_s": 1.9,
+ "clone_s": 2.7,
  "lane_check": "ruby: 861 files / 54218 lines; top=ruby(54218)",
  "status": "done"
 }

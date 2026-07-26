@@ -2,22 +2,23 @@
  "lane": "cpp",
  "repo": "carbon-language/carbon-lang",
  "stars": 33821,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang --json --out /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 116019,
+   "languages": 6,
+   "sloc_total": 116038,
    "sloc_by_lang": {
     "cpp": 107796,
     "python": 5407,
     "config": 1531,
     "javascript": 1129,
-    "c": 156
+    "c": 156,
+    "lua": 19
    }
   },
   "list_targets": {
@@ -75,7 +76,7 @@
   }
  },
  "sha": "39916ad2ca341ad4b999f0214874f9c4534160bc",
- "clone_s": 3.0,
+ "clone_s": 4.0,
  "lane_check": "cpp: 384 files / 97426 lines; top=cpp(97426)",
  "status": "done"
 }

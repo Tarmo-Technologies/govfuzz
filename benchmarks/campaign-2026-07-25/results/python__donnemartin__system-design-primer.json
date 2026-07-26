@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "donnemartin/system-design-primer",
  "stars": 359189,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/donnemartin__system-design-primer --json --out /home/ubuntu/govfuzz-sweep-work/python__donnemartin__system-design-primer.cwd/sloc.json",
@@ -213,7 +213,7 @@
   }
  },
  "sha": "ae9bbd7b02d90b9866215de185217d33f39ab733",
- "clone_s": 1.0,
+ "clone_s": 1.4,
  "lane_check": "python: 26 files / 766 lines; top=python(766)",
  "status": "done"
 }

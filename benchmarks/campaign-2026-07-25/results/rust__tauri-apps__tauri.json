@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "tauri-apps/tauri",
  "stars": 109499,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/tauri-apps__tauri --json --out /home/ubuntu/govfuzz-sweep-work/rust__tauri-apps__tauri.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -129,7 +129,7 @@
   }
  },
  "sha": "3f5d3984bc8916b5dd31289b19284637ede37e3d",
- "clone_s": 1.1,
+ "clone_s": 2.8,
  "lane_check": "rust: 319 files / 88271 lines; top=rust(88271)",
  "status": "done"
 }

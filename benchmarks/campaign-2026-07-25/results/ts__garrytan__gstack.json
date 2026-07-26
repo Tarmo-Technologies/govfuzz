@@ -2,19 +2,20 @@
  "lane": "ts",
  "repo": "garrytan/gstack",
  "stars": 124361,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/garrytan__gstack --json --out /home/ubuntu/govfuzz-sweep-work/ts__garrytan__gstack.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 130530,
+   "languages": 4,
+   "sloc_total": 130594,
    "sloc_by_lang": {
     "javascript": 129636,
     "config": 880,
+    "ruby": 64,
     "cpp": 14
    }
   },
@@ -222,7 +223,7 @@
   }
  },
  "sha": "a3259400a366593e0c909dd9ac3e59752efd2488",
- "clone_s": 1.8,
+ "clone_s": 3.1,
  "lane_check": "ts: 704 files / 155592 lines; top=ts(155592)",
  "status": "done"
 }

@@ -2,18 +2,19 @@
  "lane": "rust",
  "repo": "sxyazi/yazi",
  "stars": 40762,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/sxyazi__yazi --json --out /home/ubuntu/govfuzz-sweep-work/rust__sxyazi__yazi.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 59006,
+   "languages": 4,
+   "sloc_total": 62066,
    "sloc_by_lang": {
     "rust": 57974,
+    "lua": 3060,
     "config": 800,
     "javascript": 232
    }
@@ -218,7 +219,7 @@
   }
  },
  "sha": "e7fa4d215ae0773e6a60b04ea7aa7aae0d6beaf7",
- "clone_s": 1.8,
+ "clone_s": 1.2,
  "lane_check": "rust: 1168 files / 58943 lines; top=rust(58943)",
  "status": "done"
 }

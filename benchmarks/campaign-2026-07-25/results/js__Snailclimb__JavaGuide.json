@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "Snailclimb/JavaGuide",
  "stars": 157300,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/Snailclimb__JavaGuide --json --out /home/ubuntu/govfuzz-sweep-work/js__Snailclimb__JavaGuide.cwd/sloc.json",
@@ -91,7 +91,7 @@
   }
  },
  "sha": "74d6cef1443b7f276eefdf8d367824761e2a1ec5",
- "clone_s": 1.9,
+ "clone_s": 1.7,
  "lane_check": "js: 3 files / 385 lines; top=ts(2092)",
  "status": "done"
 }

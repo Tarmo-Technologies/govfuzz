@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "rust-lang/rustlings",
  "stars": 63617,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/rust-lang__rustlings --json --out /home/ubuntu/govfuzz-sweep-work/rust__rust-lang__rustlings.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -229,7 +229,7 @@
   }
  },
  "sha": "734461f2fb8c7bb8403f4a9bd1fc7f983d32860b",
- "clone_s": 0.8,
+ "clone_s": 0.7,
  "lane_check": "rust: 220 files / 9916 lines; top=rust(9916)",
  "status": "done"
 }

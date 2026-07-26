@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "microsoft/winget-cli",
  "stars": 26232,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.32,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -74,7 +74,7 @@
   }
  },
  "sha": "12dad5ca26ddfe4e64be3f68eb31a54389162ce4",
- "clone_s": 1.8,
+ "clone_s": 2.5,
  "lane_check": "cpp: 521 files / 128541 lines; top=cpp(128541)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "openwrt/openwrt",
  "stars": 27657,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/openwrt__openwrt --json --out /home/ubuntu/govfuzz-sweep-work/c__openwrt__openwrt.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -275,7 +275,7 @@
   }
  },
  "sha": "fdb162fb8106a9af05bd02dbf28f9cd7e0ac4521",
- "clone_s": 3.1,
+ "clone_s": 4.6,
  "lane_check": "c: 160 files / 72825 lines; top=c(72825)",
  "status": "done"
 }

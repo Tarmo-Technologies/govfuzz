@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "nwchemgit/nwchem",
  "stars": 614,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/nwchemgit__nwchem --json --out /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.73,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 108946,
+   "languages": 7,
+   "sloc_total": 5032950,
    "sloc_by_lang": {
+    "fortran": 4924004,
     "c": 68272,
     "java": 12311,
     "python": 11087,
@@ -383,7 +384,7 @@
   }
  },
  "sha": "86b193cfeb2d4d1f39889e9f73a8f58f742872ea",
- "clone_s": 34.5,
+ "clone_s": 36.8,
  "lane_check": "fortran: 17574 files / 5773821 lines; top=fortran(5773821)",
  "status": "done"
 }

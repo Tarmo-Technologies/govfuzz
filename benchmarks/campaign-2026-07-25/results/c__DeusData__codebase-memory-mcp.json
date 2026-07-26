@@ -2,14 +2,25 @@
  "lane": "c",
  "repo": "DeusData/codebase-memory-mcp",
  "stars": 35355,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --json --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp.cwd/sloc.json",
-   "exit": 1,
-   "wall_s": 4.13,
+   "exit": 0,
+   "wall_s": 4.2,
    "timed_out": false,
-   "panic": false
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 37987460,
+   "sloc_by_lang": {
+    "c": 37883858,
+    "cpp": 86365,
+    "javascript": 6730,
+    "python": 6509,
+    "config": 2900,
+    "go": 1056,
+    "ruby": 42
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --format json --top 100000",
@@ -49,7 +60,7 @@
   }
  },
  "sha": "97ce23f9827177fff3858831156e9795c6832b18",
- "clone_s": 18.1,
+ "clone_s": 17.4,
  "lane_check": "c: 819 files / 37958470 lines; top=c(37958470)",
  "status": "done"
 }

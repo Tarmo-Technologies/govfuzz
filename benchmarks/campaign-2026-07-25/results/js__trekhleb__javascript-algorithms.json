@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "trekhleb/javascript-algorithms",
  "stars": 196333,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms --json --out /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -238,7 +238,7 @@
   }
  },
  "sha": "85293e3e2b88f4d2ce330d956b139cf628aa1e82",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "js: 361 files / 20143 lines; top=js(20143)",
  "status": "done"
 }

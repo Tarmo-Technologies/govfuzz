@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "modelcontextprotocol/servers",
  "stars": 88892,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/modelcontextprotocol__servers --json --out /home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -223,7 +223,7 @@
   }
  },
  "sha": "d31124c982401739917fd817c2a59db344529c16",
- "clone_s": 0.9,
+ "clone_s": 0.6,
  "lane_check": "ts: 65 files / 10555 lines; top=ts(10555)",
  "status": "done"
 }

@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "cloudflare/cobol-worker",
+ "stars": 40,
+ "wave": "SLOC",
+ "surfaces": {},
+ "sha": "82f1c118f88f2330758ec93d734811743fb7786f",
+ "clone_s": 0.5,
+ "lane_check": "too few cobol files (cobol: 1 files / 88 lines; top=js(108))",
+ "status": "rejected_lane"
+}

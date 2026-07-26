@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "kotlin-graphics/assimp",
  "stars": 104,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/kotlin-graphics__assimp --json --out /home/ubuntu/govfuzz-sweep-work/cobol__kotlin-graphics__assimp.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 59,
+   "languages": 3,
+   "sloc_total": 64053,
    "sloc_by_lang": {
+    "cobol": 63994,
     "config": 59,
     "java": 0
    }
@@ -91,7 +92,7 @@
   }
  },
  "sha": "536857c52555c5600eb18c46d079126353bd5387",
- "clone_s": 5.5,
+ "clone_s": 5.2,
  "lane_check": "cobol: 8 files / 65765 lines; top=cobol(65765)",
  "status": "done"
 }

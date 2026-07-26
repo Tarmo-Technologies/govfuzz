@@ -2,7 +2,7 @@
  "lane": "lua",
  "repo": "mason-org/mason.nvim",
  "stars": 10407,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/mason-org__mason.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__mason-org__mason.nvim.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 515,
+   "languages": 2,
+   "sloc_total": 19637,
    "sloc_by_lang": {
+    "lua": 19122,
     "config": 515
    }
   },
@@ -212,7 +213,7 @@
   }
  },
  "sha": "2a6940af80375532e5e9e7c1f2fc6319a1b7a69d",
- "clone_s": 0.6,
+ "clone_s": 0.8,
  "lane_check": "lua: 194 files / 21505 lines; top=lua(21505)",
  "status": "done"
 }

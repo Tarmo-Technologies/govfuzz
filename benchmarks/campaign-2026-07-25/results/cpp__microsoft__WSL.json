@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "microsoft/WSL",
  "stars": 33206,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -81,7 +81,7 @@
   }
  },
  "sha": "c268673b4a2af113fce712a2a14b0c8a705f348a",
- "clone_s": 2.0,
+ "clone_s": 2.5,
  "lane_check": "cpp: 369 files / 134854 lines; top=cpp(134854)",
  "status": "done"
 }

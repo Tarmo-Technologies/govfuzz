@@ -2,20 +2,21 @@
  "lane": "cpp",
  "repo": "ggml-org/whisper.cpp",
  "stars": 52299,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.18,
+   "wall_s": 0.19,
    "timed_out": false,
    "panic": false,
-   "languages": 7,
-   "sloc_total": 423079,
+   "languages": 8,
+   "sloc_total": 425508,
    "sloc_by_lang": {
     "cpp": 267189,
     "c": 144821,
     "python": 3710,
+    "ruby": 2429,
     "config": 2202,
     "javascript": 1770,
     "java": 1736,
@@ -278,7 +279,7 @@
   }
  },
  "sha": "080bbbe85230f624f0b52127f1ae1218247989f9",
- "clone_s": 2.1,
+ "clone_s": 1.7,
  "lane_check": "cpp: 484 files / 266150 lines; top=cpp(266150)",
  "status": "done"
 }

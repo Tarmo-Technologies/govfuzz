@@ -2,23 +2,24 @@
  "lane": "ts",
  "repo": "microsoft/playwright",
  "stars": 93461,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright --json --out /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.2,
+   "wall_s": 0.11,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 427492,
+   "languages": 7,
+   "sloc_total": 427545,
    "sloc_by_lang": {
     "javascript": 417747,
     "config": 6931,
     "cpp": 2034,
     "java": 466,
     "c": 245,
-    "python": 69
+    "python": 69,
+    "csharp": 53
    }
   },
   "list_targets": {
@@ -265,7 +266,7 @@
   }
  },
  "sha": "3827650d171cc1b035cbefb7e00bf5948d6809df",
- "clone_s": 4.3,
+ "clone_s": 3.7,
  "lane_check": "ts: 1440 files / 421131 lines; top=ts(421131)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "fastapi/fastapi",
  "stars": 100882,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/fastapi__fastapi --json --out /home/ubuntu/govfuzz-sweep-work/python__fastapi__fastapi.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -217,7 +217,7 @@
   }
  },
  "sha": "255b912928904e3ba5980425a54d6837c8bd1a1c",
- "clone_s": 2.7,
+ "clone_s": 2.6,
  "lane_check": "python: 1095 files / 94435 lines; top=python(94435)",
  "status": "done"
 }

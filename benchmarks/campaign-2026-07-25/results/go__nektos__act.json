@@ -2,7 +2,7 @@
  "lane": "go",
  "repo": "nektos/act",
  "stars": 71207,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/nektos__act --json --out /home/ubuntu/govfuzz-sweep-work/go__nektos__act.cwd/sloc.json",
@@ -229,7 +229,7 @@
   }
  },
  "sha": "4f411281417e88660bea1c1a1749aa71ae0bd60f",
- "clone_s": 3.5,
+ "clone_s": 2.7,
  "lane_check": "go: 128 files / 25605 lines; top=go(25605)",
  "status": "done"
 }

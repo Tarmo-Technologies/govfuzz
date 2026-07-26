@@ -2,19 +2,20 @@
  "lane": "lua",
  "repo": "iDvel/rime-ice",
  "stars": 18505,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/iDvel__rime-ice --json --out /home/ubuntu/govfuzz-sweep-work/lua__iDvel__rime-ice.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.51,
+   "wall_s": 0.72,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 2085045,
+   "languages": 3,
+   "sloc_total": 2086923,
    "sloc_by_lang": {
     "config": 2082814,
-    "go": 2231
+    "go": 2231,
+    "lua": 1878
    }
   },
   "list_targets": {
@@ -214,7 +215,7 @@
   }
  },
  "sha": "b681a34f788795034b3b288830f4861980bc8b0d",
- "clone_s": 4.2,
+ "clone_s": 4.8,
  "lane_check": "lua: 29 files / 2435 lines; top=go(2453)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "crossoverJie/JCSprout",
  "stars": 26875,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/crossoverJie__JCSprout --json --out /home/ubuntu/govfuzz-sweep-work/java__crossoverJie__JCSprout.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -226,7 +226,7 @@
   }
  },
  "sha": "fc4c6e5f6d1772c2aec4c0f94cb3c8e7eb04018f",
- "clone_s": 0.8,
+ "clone_s": 1.4,
  "lane_check": "java: 109 files / 5619 lines; top=java(5619)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "alacritty/alacritty",
  "stars": 65067,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/alacritty__alacritty --json --out /home/ubuntu/govfuzz-sweep-work/rust__alacritty__alacritty.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -255,7 +255,7 @@
   }
  },
  "sha": "852e971cddfabe222d2d5bcda466e130f53af207",
- "clone_s": 1.5,
+ "clone_s": 1.3,
  "lane_check": "rust: 88 files / 28550 lines; top=rust(28550)",
  "status": "done"
 }

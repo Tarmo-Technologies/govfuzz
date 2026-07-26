@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "xiaojieonly/Ehviewer_CN_SXJ",
  "stars": 25569,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/xiaojieonly__Ehviewer_CN_SXJ --json --out /home/ubuntu/govfuzz-sweep-work/c__xiaojieonly__Ehviewer_CN_SXJ.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -272,7 +272,7 @@
   }
  },
  "sha": "c7b8c5460edba6f3533ade79489f513416211755",
- "clone_s": 2.0,
+ "clone_s": 1.7,
  "lane_check": "c: 394 files / 214005 lines; top=c(214005)",
  "status": "done"
 }

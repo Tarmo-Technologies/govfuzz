@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "jmsdnns/webbol",
  "stars": 195,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/jmsdnns__webbol --json --out /home/ubuntu/govfuzz-sweep-work/cobol__jmsdnns__webbol.cwd/sloc.json",
@@ -10,9 +10,11 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 596,
+   "sloc_by_lang": {
+    "cobol": 596
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/jmsdnns__webbol --format json --top 100000",
@@ -129,7 +131,7 @@
   }
  },
  "sha": "df59fc9070c4fa6ca30843f8c9b316bc5de13687",
- "clone_s": 0.4,
+ "clone_s": 0.5,
  "lane_check": "cobol: 10 files / 867 lines; top=cobol(867)",
  "status": "done"
 }

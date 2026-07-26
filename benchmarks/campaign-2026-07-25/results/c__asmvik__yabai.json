@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "asmvik/yabai",
  "stars": 29343,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/asmvik__yabai --json --out /home/ubuntu/govfuzz-sweep-work/c__asmvik__yabai.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -306,7 +306,7 @@
   }
  },
  "sha": "dd845723416f5fe92af49fad5ebab00369e07edd",
- "clone_s": 0.5,
+ "clone_s": 0.6,
  "lane_check": "c: 17 files / 11483 lines; top=c(11483)",
  "status": "done"
 }

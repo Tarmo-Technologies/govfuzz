@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "react/create-react-app",
  "stars": 103302,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/react__create-react-app --json --out /home/ubuntu/govfuzz-sweep-work/js__react__create-react-app.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -221,7 +221,7 @@
   }
  },
  "sha": "6254386531d263688ccfa542d0e628fbc0de0b28",
- "clone_s": 0.9,
+ "clone_s": 1.0,
  "lane_check": "js: 273 files / 86791 lines; top=js(86791)",
  "status": "done"
 }

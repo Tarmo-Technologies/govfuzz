@@ -2,7 +2,7 @@
  "lane": "php",
  "repo": "krayin/laravel-crm",
  "stars": 23495,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm --json --out /home/ubuntu/govfuzz-sweep-work/php__krayin__laravel-crm.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 2623,
+   "languages": 3,
+   "sloc_total": 95159,
    "sloc_by_lang": {
+    "php": 92536,
     "javascript": 2406,
     "config": 217
    }
@@ -215,7 +216,7 @@
   }
  },
  "sha": "5b09780e38d73f0e72c4749889e71a06876dccd2",
- "clone_s": 4.7,
+ "clone_s": 3.9,
  "lane_check": "php: 918 files / 103569 lines; top=php(103569)",
  "status": "done"
 }

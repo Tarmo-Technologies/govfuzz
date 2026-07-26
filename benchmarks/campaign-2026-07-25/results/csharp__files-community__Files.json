@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "files-community/Files",
  "stars": 44430,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/files-community__Files --json --out /home/ubuntu/govfuzz-sweep-work/csharp__files-community__Files.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 4177,
+   "languages": 4,
+   "sloc_total": 102241,
    "sloc_by_lang": {
+    "csharp": 98064,
     "cpp": 3114,
     "config": 1002,
     "c": 61
@@ -209,7 +210,7 @@
   }
  },
  "sha": "30625e91eff276009ebfbb33e9db29f014a06f7d",
- "clone_s": 2.7,
+ "clone_s": 1.8,
  "lane_check": "csharp: 1131 files / 110306 lines; top=csharp(110306)",
  "status": "done"
 }

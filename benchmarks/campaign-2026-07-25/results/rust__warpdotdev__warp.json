@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "warpdotdev/warp",
  "stars": 63675,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/warpdotdev__warp --json --out /home/ubuntu/govfuzz-sweep-work/rust__warpdotdev__warp.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.54,
+   "wall_s": 0.28,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -133,7 +133,7 @@
   }
  },
  "sha": "c16fd426d2ceaeed2f16217d7985dda324c38c9b",
- "clone_s": 23.6,
+ "clone_s": 13.9,
  "lane_check": "rust: 3872 files / 1447073 lines; top=rust(1447073)",
  "status": "done"
 }

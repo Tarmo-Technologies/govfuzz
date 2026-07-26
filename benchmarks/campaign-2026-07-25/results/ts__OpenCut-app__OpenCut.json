@@ -2,7 +2,7 @@
  "lane": "ts",
  "repo": "OpenCut-app/OpenCut",
  "stars": 78747,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/OpenCut-app__OpenCut --json --out /home/ubuntu/govfuzz-sweep-work/ts__OpenCut-app__OpenCut.cwd/sloc.json",

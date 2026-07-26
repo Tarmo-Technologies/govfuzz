@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "avishek-sen-gupta/cobol-rekt",
  "stars": 163,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/avishek-sen-gupta__cobol-rekt --json --out /home/ubuntu/govfuzz-sweep-work/cobol__avishek-sen-gupta__cobol-rekt.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 27986,
+   "languages": 6,
+   "sloc_total": 346356,
    "sloc_by_lang": {
+    "cobol": 318370,
     "java": 24340,
     "javascript": 1566,
     "python": 1561,
@@ -236,7 +237,7 @@
   }
  },
  "sha": "a8b68546e91ff9e804c2f5e7aadbbf27e4ea292e",
- "clone_s": 2.0,
+ "clone_s": 2.3,
  "lane_check": "cobol: 34 files / 349386 lines; top=cobol(349386)",
  "status": "done"
 }

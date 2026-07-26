@@ -2,7 +2,7 @@
  "lane": "ruby",
  "repo": "docusealco/docuseal",
  "stars": 18096,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal --json --out /home/ubuntu/govfuzz-sweep-work/ruby__docusealco__docuseal.cwd/sloc.json",
@@ -10,10 +10,11 @@
    "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 44898,
+   "languages": 3,
+   "sloc_total": 69365,
    "sloc_by_lang": {
     "javascript": 36074,
+    "ruby": 24467,
     "config": 8824
    }
   },
@@ -229,7 +230,7 @@
   }
  },
  "sha": "5fe75c84ffc71d1e879884f453a7532b4dee049a",
- "clone_s": 1.1,
+ "clone_s": 0.7,
  "lane_check": "ruby: 464 files / 26178 lines; top=ruby(26178)",
  "status": "done"
 }

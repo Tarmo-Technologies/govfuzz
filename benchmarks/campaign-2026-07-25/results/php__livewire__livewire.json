@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "livewire/livewire",
  "stars": 23558,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire --json --out /home/ubuntu/govfuzz-sweep-work/php__livewire__livewire.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 10658,
+   "languages": 3,
+   "sloc_total": 82078,
    "sloc_by_lang": {
+    "php": 71420,
     "javascript": 9938,
     "config": 720
    }
@@ -219,7 +220,7 @@
   }
  },
  "sha": "9c1450739d30c9b0b223ad6512be2a33f8f62f96",
- "clone_s": 1.5,
+ "clone_s": 2.0,
  "lane_check": "php: 819 files / 75894 lines; top=php(75894)",
  "status": "done"
 }

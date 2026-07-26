@@ -2,7 +2,7 @@
  "lane": "ruby",
  "repo": "mame/quine-relay",
  "stars": 14546,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/mame__quine-relay --json --out /home/ubuntu/govfuzz-sweep-work/ruby__mame__quine-relay.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 201,
+   "languages": 2,
+   "sloc_total": 2746,
    "sloc_by_lang": {
+    "ruby": 2545,
     "config": 201
    }
   },

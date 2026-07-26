@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "Z4nzu/hackingtool",
  "stars": 78482,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/Z4nzu__hackingtool --json --out /home/ubuntu/govfuzz-sweep-work/python__Z4nzu__hackingtool.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -208,7 +208,7 @@
   }
  },
  "sha": "01a51bbca6d0c7a20696aeef9ed92b143e26b10c",
- "clone_s": 0.6,
+ "clone_s": 0.9,
  "lane_check": "python: 40 files / 4182 lines; top=python(4182)",
  "status": "done"
 }

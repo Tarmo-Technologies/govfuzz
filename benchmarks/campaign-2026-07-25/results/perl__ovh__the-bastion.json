@@ -1,0 +1,26 @@
+{
+ "lane": "perl",
+ "repo": "ovh/the-bastion",
+ "stars": 2162,
+ "wave": "SLOC",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion --json --out /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 7616,
+   "sloc_by_lang": {
+    "perl": 7307,
+    "config": 271,
+    "python": 38
+   }
+  }
+ },
+ "sha": "9a1254facb86a550834e7bf16932ec6c6ae5c42e",
+ "clone_s": 0.9,
+ "lane_check": "perl: 33 files / 10079 lines; top=perl(10079)",
+ "status": "done"
+}

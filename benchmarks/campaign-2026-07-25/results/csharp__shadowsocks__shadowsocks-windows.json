@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "shadowsocks/shadowsocks-windows",
  "stars": 59580,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/shadowsocks__shadowsocks-windows --json --out /home/ubuntu/govfuzz-sweep-work/csharp__shadowsocks__shadowsocks-windows.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 823,
+   "languages": 3,
+   "sloc_total": 15002,
    "sloc_by_lang": {
+    "csharp": 14179,
     "javascript": 778,
     "config": 45
    }
@@ -207,7 +208,7 @@
   }
  },
  "sha": "891d971682eefcaa2e640258d3b352a3ad3b2233",
- "clone_s": 0.7,
+ "clone_s": 0.9,
  "lane_check": "csharp: 89 files / 15606 lines; top=csharp(15606)",
  "status": "done"
 }

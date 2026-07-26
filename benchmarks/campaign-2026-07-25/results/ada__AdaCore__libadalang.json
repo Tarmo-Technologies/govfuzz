@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaCore/libadalang",
  "stars": 169,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__libadalang --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__libadalang.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.18,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -237,7 +237,7 @@
   }
  },
  "sha": "e57da2da2a1726629899642a7cc08ff6e967e228",
- "clone_s": 1.5,
+ "clone_s": 1.9,
  "lane_check": "ada: 2373 files / 247161 lines; top=ada(247161)",
  "status": "done"
 }

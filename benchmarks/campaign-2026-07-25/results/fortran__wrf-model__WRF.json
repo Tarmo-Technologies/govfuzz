@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "wrf-model/WRF",
  "stars": 1714,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --json --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.41,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 80944,
+   "languages": 6,
+   "sloc_total": 1315986,
    "sloc_by_lang": {
+    "fortran": 1235042,
     "c": 74988,
     "python": 2707,
     "cpp": 1788,
@@ -80,7 +81,7 @@
   }
  },
  "sha": "06d4240ae989cc3e50af412bb472df3d9048783c",
- "clone_s": 9.0,
+ "clone_s": 14.6,
  "lane_check": "fortran: 1045 files / 1429206 lines; top=fortran(1429206)",
  "status": "done"
 }

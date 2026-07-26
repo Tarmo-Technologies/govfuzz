@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "postalserver/postal",
  "stars": 16702,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/postalserver__postal --json --out /home/ubuntu/govfuzz-sweep-work/ruby__postalserver__postal.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 653,
+   "languages": 3,
+   "sloc_total": 17373,
    "sloc_by_lang": {
+    "ruby": 16720,
     "config": 653,
     "javascript": 0
    }
@@ -215,7 +216,7 @@
   }
  },
  "sha": "d038eaa8c763d3cafa797ccd6f773d53470bd336",
- "clone_s": 0.9,
+ "clone_s": 0.7,
  "lane_check": "ruby: 292 files / 19267 lines; top=ruby(19267)",
  "status": "done"
 }

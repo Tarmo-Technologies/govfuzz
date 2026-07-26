@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "fortran-lang/stdlib",
  "stars": 1336,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__stdlib --json --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__stdlib.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 2888,
+   "languages": 5,
+   "sloc_total": 28550,
    "sloc_by_lang": {
+    "fortran": 25662,
     "c": 1255,
     "config": 890,
     "cpp": 623,

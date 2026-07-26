@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "bumptech/glide",
  "stars": 35029,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/bumptech__glide --json --out /home/ubuntu/govfuzz-sweep-work/java__bumptech__glide.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -224,7 +224,7 @@
   }
  },
  "sha": "688da5a311f0185c5d4ec97b4588c520d388c19c",
- "clone_s": 3.6,
+ "clone_s": 3.4,
  "lane_check": "java: 684 files / 90400 lines; top=java(90400)",
  "status": "done"
 }

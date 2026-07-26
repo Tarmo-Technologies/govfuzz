@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "astaxie/build-web-application-with-golang",
  "stars": 43916,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/astaxie__build-web-application-with-golang --json --out /home/ubuntu/govfuzz-sweep-work/go__astaxie__build-web-application-with-golang.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -213,7 +213,7 @@
   }
  },
  "sha": "c294b087b96d99d2593ad8f470151af5354bb57f",
- "clone_s": 3.4,
+ "clone_s": 3.7,
  "lane_check": "go: 289 files / 13744 lines; top=go(13744)",
  "status": "done"
 }

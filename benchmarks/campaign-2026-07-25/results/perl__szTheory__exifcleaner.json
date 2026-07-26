@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "szTheory/exifcleaner",
  "stars": 2527,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/szTheory__exifcleaner --json --out /home/ubuntu/govfuzz-sweep-work/perl__szTheory__exifcleaner.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.21,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -274,7 +274,7 @@
   }
  },
  "sha": "bf7f88dcdf31ec6bde4c601a058ce5acf3cc218b",
- "clone_s": 14.5,
+ "clone_s": 1.9,
  "lane_check": "perl: 696 files / 765119 lines; top=perl(765119)",
  "status": "done"
 }

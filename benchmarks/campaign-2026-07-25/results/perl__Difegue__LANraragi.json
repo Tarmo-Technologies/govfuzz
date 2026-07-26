@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "Difegue/LANraragi",
  "stars": 3039,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/Difegue__LANraragi --json --out /home/ubuntu/govfuzz-sweep-work/perl__Difegue__LANraragi.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -240,7 +240,7 @@
   }
  },
  "sha": "b94e4805677d4ca75e7d61ca13c4e3e99c4b99c8",
- "clone_s": 1.7,
+ "clone_s": 2.1,
  "lane_check": "perl: 136 files / 19991 lines; top=perl(19991)",
  "status": "done"
 }

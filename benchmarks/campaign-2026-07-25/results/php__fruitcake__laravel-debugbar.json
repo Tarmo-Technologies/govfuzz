@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "fruitcake/laravel-debugbar",
  "stars": 19271,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/fruitcake__laravel-debugbar --json --out /home/ubuntu/govfuzz-sweep-work/php__fruitcake__laravel-debugbar.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 991,
+   "languages": 4,
+   "sloc_total": 8838,
    "sloc_by_lang": {
+    "php": 7847,
     "config": 422,
     "javascript": 391,
     "python": 178
@@ -214,7 +215,7 @@
   }
  },
  "sha": "0c0e217b98f858d9d474ed1e74a052f83c06b0fa",
- "clone_s": 1.4,
+ "clone_s": 1.1,
  "lane_check": "php: 123 files / 8913 lines; top=php(8913)",
  "status": "done"
 }

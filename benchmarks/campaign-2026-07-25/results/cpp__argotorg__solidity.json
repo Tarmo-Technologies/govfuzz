@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "argotorg/solidity",
  "stars": 25685,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/argotorg__solidity --json --out /home/ubuntu/govfuzz-sweep-work/cpp__argotorg__solidity.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -256,7 +256,7 @@
   }
  },
  "sha": "96bdc54854a16664ac9dde32862c733ee419c89c",
- "clone_s": 2.3,
+ "clone_s": 3.2,
  "lane_check": "cpp: 452 files / 150364 lines; top=cpp(150364)",
  "status": "done"
 }

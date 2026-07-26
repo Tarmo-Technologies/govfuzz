@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "LunarVim/LunarVim",
  "stars": 19278,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/LunarVim__LunarVim --json --out /home/ubuntu/govfuzz-sweep-work/lua__LunarVim__LunarVim.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 535,
+   "languages": 3,
+   "sloc_total": 7585,
    "sloc_by_lang": {
+    "lua": 7050,
     "config": 493,
     "javascript": 42
    }
@@ -205,7 +206,7 @@
   }
  },
  "sha": "aa51c20f3404cb482e9c6fd6e5e4a4bf5b1612aa",
- "clone_s": 0.4,
+ "clone_s": 0.5,
  "lane_check": "lua: 76 files / 7641 lines; top=lua(7641)",
  "status": "done"
 }

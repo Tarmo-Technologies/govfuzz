@@ -2,23 +2,25 @@
  "lane": "csharp",
  "repo": "dotnet/aspnetcore",
  "stars": 38238,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore --json --out /home/ubuntu/govfuzz-sweep-work/csharp__dotnet__aspnetcore.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.38,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 99006,
+   "languages": 8,
+   "sloc_total": 1355103,
    "sloc_by_lang": {
+    "csharp": 1255953,
     "cpp": 34602,
     "javascript": 33187,
     "config": 19698,
     "java": 9378,
     "c": 1849,
-    "python": 292
+    "python": 292,
+    "lua": 144
    }
   },
   "list_targets": {
@@ -267,7 +269,7 @@
   }
  },
  "sha": "6058c72bf2431b8cc25b5f1a788ee809f9bea8de",
- "clone_s": 7.1,
+ "clone_s": 7.3,
  "lane_check": "csharp: 10540 files / 1467951 lines; top=csharp(1467951)",
  "status": "done"
 }

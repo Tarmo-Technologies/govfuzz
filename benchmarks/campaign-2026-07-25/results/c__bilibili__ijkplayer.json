@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "bilibili/ijkplayer",
  "stars": 33185,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --json --out /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer.cwd/sloc.json",
@@ -272,7 +272,7 @@
   }
  },
  "sha": "30eb9441945da795079492041a791c121d2b8206",
- "clone_s": 0.8,
+ "clone_s": 0.6,
  "lane_check": "c: 94 files / 27586 lines; top=c(27586)",
  "status": "done"
 }

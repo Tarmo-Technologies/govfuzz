@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "uwol/proleap-cobol-parser",
  "stars": 205,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/uwol__proleap-cobol-parser --json --out /home/ubuntu/govfuzz-sweep-work/cobol__uwol__proleap-cobol-parser.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.11,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 61685,
+   "languages": 3,
+   "sloc_total": 371445,
    "sloc_by_lang": {
+    "cobol": 309760,
     "java": 61669,
     "config": 16
    }

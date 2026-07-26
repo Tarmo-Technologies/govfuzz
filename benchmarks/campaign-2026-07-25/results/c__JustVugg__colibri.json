@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "JustVugg/colibri",
  "stars": 19134,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/JustVugg__colibri --json --out /home/ubuntu/govfuzz-sweep-work/c__JustVugg__colibri.cwd/sloc.json",
@@ -330,7 +330,7 @@
   }
  },
  "sha": "81f08a09e5651ce52616dc720f68810f9021c0be",
- "clone_s": 0.9,
+ "clone_s": 1.3,
  "lane_check": "c: 37 files / 11377 lines; top=c(11377)",
  "status": "done"
 }

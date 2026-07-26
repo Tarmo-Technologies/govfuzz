@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "fatedier/frp",
  "stars": 108343,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/fatedier__frp --json --out /home/ubuntu/govfuzz-sweep-work/go__fatedier__frp.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -218,7 +218,7 @@
   }
  },
  "sha": "40274d8c92249043d8cddb6e40b4b23128e18df4",
- "clone_s": 1.4,
+ "clone_s": 1.2,
  "lane_check": "go: 333 files / 46588 lines; top=go(46588)",
  "status": "done"
 }

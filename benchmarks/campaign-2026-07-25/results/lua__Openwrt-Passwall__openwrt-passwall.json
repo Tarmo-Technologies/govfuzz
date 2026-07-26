@@ -2,12 +2,12 @@
  "lane": "lua",
  "repo": "Openwrt-Passwall/openwrt-passwall",
  "stars": 9815,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/Openwrt-Passwall__openwrt-passwall --json --out /home/ubuntu/govfuzz-sweep-work/lua__Openwrt-Passwall__openwrt-passwall.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -218,7 +218,7 @@
   }
  },
  "sha": "ae5d8e9d62761b68763d405d1d293d009d510a01",
- "clone_s": 0.7,
+ "clone_s": 0.9,
  "lane_check": "lua: 46 files / 19548 lines; top=lua(19548)",
  "status": "done"
 }

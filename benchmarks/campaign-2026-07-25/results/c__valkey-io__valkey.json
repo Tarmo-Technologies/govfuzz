@@ -2,21 +2,23 @@
  "lane": "c",
  "repo": "valkey-io/valkey",
  "stars": 26614,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/valkey-io__valkey --json --out /home/ubuntu/govfuzz-sweep-work/c__valkey-io__valkey.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 256318,
+   "languages": 8,
+   "sloc_total": 257558,
    "sloc_by_lang": {
     "c": 228020,
     "cpp": 19970,
     "config": 5346,
     "python": 2730,
+    "ruby": 934,
+    "lua": 306,
     "perl": 222,
     "javascript": 30
    }
@@ -153,7 +155,7 @@
   }
  },
  "sha": "4733aed65893c3227925e17f4423c44c0a892d15",
- "clone_s": 1.7,
+ "clone_s": 2.7,
  "lane_check": "c: 196 files / 165957 lines; top=c(165957)",
  "status": "done"
 }

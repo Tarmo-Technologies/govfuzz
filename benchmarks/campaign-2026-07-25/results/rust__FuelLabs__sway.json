@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "FuelLabs/sway",
  "stars": 61554,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/FuelLabs__sway --json --out /home/ubuntu/govfuzz-sweep-work/rust__FuelLabs__sway.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.37,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -150,7 +150,7 @@
   }
  },
  "sha": "0cd3db3a79695414c7e63d08e09e55f04e33dd90",
- "clone_s": 3.7,
+ "clone_s": 2.9,
  "lane_check": "rust: 749 files / 217357 lines; top=rust(217357)",
  "status": "done"
 }

@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "ruby/ruby",
  "stars": 23661,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/ruby__ruby --json --out /home/ubuntu/govfuzz-sweep-work/ruby__ruby__ruby.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.24,
+   "wall_s": 0.58,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 548895,
+   "languages": 7,
+   "sloc_total": 1706633,
    "sloc_by_lang": {
+    "ruby": 1157738,
     "c": 425419,
     "rust": 98154,
     "config": 14387,
@@ -200,7 +201,7 @@
   }
  },
  "sha": "97d602a55f9e77bd64c2130dc0a755f657b4ce65",
- "clone_s": 8.2,
+ "clone_s": 6.1,
  "lane_check": "ruby: 7313 files / 1218106 lines; top=ruby(1218106)",
  "status": "done"
 }

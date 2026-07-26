@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "wg/wrk",
  "stars": 40355,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/wg__wrk --json --out /home/ubuntu/govfuzz-sweep-work/c__wg__wrk.cwd/sloc.json",
@@ -10,10 +10,11 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 4741,
+   "languages": 3,
+   "sloc_total": 4895,
    "sloc_by_lang": {
     "c": 4726,
+    "lua": 154,
     "config": 15
    }
   },
@@ -224,7 +225,7 @@
   }
  },
  "sha": "a211dd5a7050b1f9e8a9870b95513060e72ac4a0",
- "clone_s": 0.0,
+ "clone_s": 0.8,
  "lane_check": "c: 14 files / 4646 lines; top=c(4646)",
  "status": "done"
 }

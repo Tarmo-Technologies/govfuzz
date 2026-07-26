@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "FuelLabs/fuels-rs",
  "stars": 43098,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/FuelLabs__fuels-rs --json --out /home/ubuntu/govfuzz-sweep-work/rust__FuelLabs__fuels-rs.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -119,7 +119,7 @@
   }
  },
  "sha": "d9a250a51818dda64bfeb5ef7cc19cf27bdcd623",
- "clone_s": 0.9,
+ "clone_s": 0.6,
  "lane_check": "rust: 226 files / 38911 lines; top=rust(38911)",
  "status": "done"
 }

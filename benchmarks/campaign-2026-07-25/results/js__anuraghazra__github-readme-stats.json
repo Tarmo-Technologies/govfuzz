@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "anuraghazra/github-readme-stats",
  "stars": 79785,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/anuraghazra__github-readme-stats --json --out /home/ubuntu/govfuzz-sweep-work/js__anuraghazra__github-readme-stats.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -218,7 +218,7 @@
   }
  },
  "sha": "54a7985aeefda00d5eadb55b80c17c7f976c37d2",
- "clone_s": 0.7,
+ "clone_s": 0.6,
  "lane_check": "js: 82 files / 13334 lines; top=js(13334)",
  "status": "done"
 }

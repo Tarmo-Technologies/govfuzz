@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "GyulyVGC/sniffnet",
  "stars": 40156,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/GyulyVGC__sniffnet --json --out /home/ubuntu/govfuzz-sweep-work/rust__GyulyVGC__sniffnet.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -223,7 +223,7 @@
   }
  },
  "sha": "1402225fe7c92c1be9c1c5212ad8eaf62b99e327",
- "clone_s": 19.5,
+ "clone_s": 7.6,
  "lane_check": "rust: 147 files / 26266 lines; top=rust(26266)",
  "status": "done"
 }

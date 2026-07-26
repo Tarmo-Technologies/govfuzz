@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "laravel/framework",
  "stars": 34814,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/laravel__framework --json --out /home/ubuntu/govfuzz-sweep-work/php__laravel__framework.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 1594,
+   "languages": 3,
+   "sloc_total": 339226,
    "sloc_by_lang": {
+    "php": 337632,
     "config": 1492,
     "javascript": 102
    }

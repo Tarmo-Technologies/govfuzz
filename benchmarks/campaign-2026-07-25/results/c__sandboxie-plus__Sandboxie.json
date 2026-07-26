@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "sandboxie-plus/Sandboxie",
  "stars": 19004,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/sandboxie-plus__Sandboxie --json --out /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -210,7 +210,7 @@
   }
  },
  "sha": "030d2b6dccfa2b47af15e7a3e45c90934b2316b1",
- "clone_s": 3.0,
+ "clone_s": 2.2,
  "lane_check": "c: 199 files / 135019 lines; top=ts(294743)",
  "status": "done"
 }

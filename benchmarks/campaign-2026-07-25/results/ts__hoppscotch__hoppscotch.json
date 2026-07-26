@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "hoppscotch/hoppscotch",
  "stars": 79895,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/hoppscotch__hoppscotch --json --out /home/ubuntu/govfuzz-sweep-work/ts__hoppscotch__hoppscotch.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.17,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -131,7 +131,7 @@
   }
  },
  "sha": "a4395b3e7c41541de1d769e8701ea110ba8f96c2",
- "clone_s": 2.7,
+ "clone_s": 1.7,
  "lane_check": "ts: 1038 files / 185241 lines; top=ts(185241)",
  "status": "done"
 }

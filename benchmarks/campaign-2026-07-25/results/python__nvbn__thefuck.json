@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "nvbn/thefuck",
  "stars": 97568,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/nvbn__thefuck --json --out /home/ubuntu/govfuzz-sweep-work/python__nvbn__thefuck.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -215,7 +215,7 @@
   }
  },
  "sha": "c7e7e1d884d3bb241ea6448f72a989434c2a35ec",
- "clone_s": 0.7,
+ "clone_s": 0.8,
  "lane_check": "python: 416 files / 12743 lines; top=python(12743)",
  "status": "done"
 }

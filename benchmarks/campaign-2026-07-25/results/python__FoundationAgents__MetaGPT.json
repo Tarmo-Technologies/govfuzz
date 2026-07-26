@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "FoundationAgents/MetaGPT",
  "stars": 69514,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/FoundationAgents__MetaGPT --json --out /home/ubuntu/govfuzz-sweep-work/python__FoundationAgents__MetaGPT.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -233,7 +233,7 @@
   }
  },
  "sha": "11cdf466d042aece04fc6cfd13b28e1a70341b1f",
- "clone_s": 2.0,
+ "clone_s": 3.8,
  "lane_check": "python: 890 files / 73324 lines; top=python(73324)",
  "status": "done"
 }

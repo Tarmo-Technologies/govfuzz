@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "chartjs/Chart.js",
  "stars": 67605,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/chartjs__Chart.js --json --out /home/ubuntu/govfuzz-sweep-work/js__chartjs__Chart.js.cwd/sloc.json",
@@ -217,7 +217,7 @@
   }
  },
  "sha": "cb02e1d207bd4c4c40b20c259017f85f26f1e30a",
- "clone_s": 1.2,
+ "clone_s": 2.6,
  "lane_check": "js: 658 files / 59685 lines; top=js(59685)",
  "status": "done"
 }

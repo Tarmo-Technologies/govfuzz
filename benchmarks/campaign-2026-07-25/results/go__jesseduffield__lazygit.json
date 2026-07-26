@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "jesseduffield/lazygit",
  "stars": 80732,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/jesseduffield__lazygit --json --out /home/ubuntu/govfuzz-sweep-work/go__jesseduffield__lazygit.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -244,7 +244,7 @@
   }
  },
  "sha": "292035709f880f33b9f9c90177f1d2fe63f2bd6a",
- "clone_s": 2.1,
+ "clone_s": 1.6,
  "lane_check": "go: 1039 files / 119946 lines; top=go(119946)",
  "status": "done"
 }

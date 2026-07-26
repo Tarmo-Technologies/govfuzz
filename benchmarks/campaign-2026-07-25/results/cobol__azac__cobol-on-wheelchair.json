@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "azac/cobol-on-wheelchair",
  "stars": 1030,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/azac__cobol-on-wheelchair --json --out /home/ubuntu/govfuzz-sweep-work/cobol__azac__cobol-on-wheelchair.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 11,
+   "languages": 2,
+   "sloc_total": 370,
    "sloc_by_lang": {
+    "cobol": 359,
     "config": 11
    }
   },

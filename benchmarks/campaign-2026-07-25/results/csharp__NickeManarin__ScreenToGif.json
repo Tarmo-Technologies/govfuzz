@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "NickeManarin/ScreenToGif",
  "stars": 27343,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/NickeManarin__ScreenToGif --json --out /home/ubuntu/govfuzz-sweep-work/csharp__NickeManarin__ScreenToGif.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 25,
+   "languages": 2,
+   "sloc_total": 63881,
    "sloc_by_lang": {
+    "csharp": 63856,
     "config": 25
    }
   },
@@ -212,7 +213,7 @@
   }
  },
  "sha": "367fdf0cc11d26bfc423e936d4b2dd7a7ff29e70",
- "clone_s": 1.4,
+ "clone_s": 1.9,
  "lane_check": "csharp: 648 files / 74755 lines; top=csharp(74755)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "Light-City/CPlusPlusThings",
  "stars": 43308,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/Light-City__CPlusPlusThings --json --out /home/ubuntu/govfuzz-sweep-work/cpp__Light-City__CPlusPlusThings.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -222,7 +222,7 @@
   }
  },
  "sha": "cfc9af1fcbd4ca1cb99b5e2c02c3f13839fa2ee2",
- "clone_s": 0.7,
+ "clone_s": 1.1,
  "lane_check": "cpp: 416 files / 13335 lines; top=cpp(13335)",
  "status": "done"
 }

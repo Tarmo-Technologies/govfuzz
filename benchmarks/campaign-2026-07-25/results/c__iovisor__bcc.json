@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "iovisor/bcc",
  "stars": 22576,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc --json --out /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -84,7 +84,7 @@
   }
  },
  "sha": "6485e12983cfae6a54be8e3191db236b417a0acb",
- "clone_s": 1.2,
+ "clone_s": 1.8,
  "lane_check": "c: 157 files / 35136 lines; top=python(48562)",
  "status": "done"
 }

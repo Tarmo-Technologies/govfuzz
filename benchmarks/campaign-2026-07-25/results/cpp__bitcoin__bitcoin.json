@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "bitcoin/bitcoin",
  "stars": 89696,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --json --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.21,
+   "wall_s": 0.18,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -86,7 +86,7 @@
   }
  },
  "sha": "e34b8d5a7dcd45e4faa3bb5fdeae64bf049037f6",
- "clone_s": 2.2,
+ "clone_s": 5.2,
  "lane_check": "cpp: 843 files / 231507 lines; top=ts(294126)",
  "status": "done"
 }

@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "wavebitscientific/functional-fortran",
  "stars": 437,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/wavebitscientific__functional-fortran --json --out /home/ubuntu/govfuzz-sweep-work/fortran__wavebitscientific__functional-fortran.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 28,
+   "languages": 2,
+   "sloc_total": 4318,
    "sloc_by_lang": {
+    "fortran": 4290,
     "config": 28
    }
   },
@@ -122,7 +123,7 @@
   }
  },
  "sha": "2457a66531b3b803db36928fec21d74a20434830",
- "clone_s": 0.5,
+ "clone_s": 0.8,
  "lane_check": "fortran: 27 files / 5411 lines; top=fortran(5411)",
  "status": "done"
 }

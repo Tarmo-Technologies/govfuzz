@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaCore/langkit",
  "stars": 95,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__langkit --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__langkit.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.13,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -205,7 +205,7 @@
   }
  },
  "sha": "7e37eeab994534e8827f9e6610a2fbf02d9901d9",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "ada: 583 files / 309817 lines; top=ada(309817)",
  "status": "done"
 }

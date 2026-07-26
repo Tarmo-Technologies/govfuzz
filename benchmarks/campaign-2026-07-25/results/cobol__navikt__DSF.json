@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "navikt/DSF",
  "stars": 56,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/navikt__DSF --json --out /home/ubuntu/govfuzz-sweep-work/cobol__navikt__DSF.cwd/sloc.json",
@@ -86,7 +86,7 @@
   }
  },
  "sha": "faade4961e316c89e8c312456bae411c63f1c482",
- "clone_s": 2.1,
+ "clone_s": 2.4,
  "lane_check": "cobol: 7 files / 1199 lines; top=cobol(1199)",
  "status": "done"
 }

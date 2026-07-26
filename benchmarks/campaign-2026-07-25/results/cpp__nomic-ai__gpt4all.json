@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "nomic-ai/gpt4all",
  "stars": 77396,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --json --out /home/ubuntu/govfuzz-sweep-work/cpp__nomic-ai__gpt4all.cwd/sloc.json",
@@ -149,7 +149,7 @@
   }
  },
  "sha": "b666d16db5aeab8b91aaf7963adcee9c643734d7",
- "clone_s": 2.1,
+ "clone_s": 2.5,
  "lane_check": "cpp: 34 files / 15721 lines; top=ts(23836)",
  "status": "done"
 }

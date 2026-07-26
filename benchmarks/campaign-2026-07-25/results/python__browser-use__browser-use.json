@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "browser-use/browser-use",
  "stars": 106780,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/browser-use__browser-use --json --out /home/ubuntu/govfuzz-sweep-work/python__browser-use__browser-use.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -231,7 +231,7 @@
   }
  },
  "sha": "0964ad452a9f3fe249042a5ffb235e5f98519b2e",
- "clone_s": 1.0,
+ "clone_s": 1.8,
  "lane_check": "python: 370 files / 88485 lines; top=python(88485)",
  "status": "done"
 }

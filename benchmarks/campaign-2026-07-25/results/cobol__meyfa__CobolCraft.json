@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "meyfa/CobolCraft",
  "stars": 699,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/meyfa__CobolCraft --json --out /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 600,
+   "languages": 4,
+   "sloc_total": 23445,
    "sloc_by_lang": {
+    "cobol": 22845,
     "cpp": 452,
     "config": 125,
     "c": 23
@@ -230,7 +231,7 @@
   }
  },
  "sha": "e8c420df7a901b51b10c70bc08b56af7310d00f2",
- "clone_s": 0.5,
+ "clone_s": 0.8,
  "lane_check": "cobol: 268 files / 25502 lines; top=cobol(25502)",
  "status": "done"
 }

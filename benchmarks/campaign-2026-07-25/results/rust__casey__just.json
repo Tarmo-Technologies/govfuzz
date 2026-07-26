@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "casey/just",
  "stars": 34949,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/casey__just --json --out /home/ubuntu/govfuzz-sweep-work/rust__casey__just.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -146,7 +146,7 @@
   }
  },
  "sha": "13bf03f642f4cec7799c19f1f8f039e1cb3b095d",
- "clone_s": 1.7,
+ "clone_s": 0.9,
  "lane_check": "rust: 265 files / 58160 lines; top=rust(58160)",
  "status": "done"
 }

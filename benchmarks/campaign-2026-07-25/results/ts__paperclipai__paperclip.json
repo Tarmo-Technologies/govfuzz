@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "paperclipai/paperclip",
  "stars": 74742,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/paperclipai__paperclip --json --out /home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.24,
+   "wall_s": 0.16,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -228,7 +228,7 @@
   }
  },
  "sha": "d1b9448b57a8cfb0e8dbede9bbbc8874a9f66ad7",
- "clone_s": 4.7,
+ "clone_s": 4.4,
  "lane_check": "ts: 2942 files / 945166 lines; top=ts(945166)",
  "status": "done"
 }

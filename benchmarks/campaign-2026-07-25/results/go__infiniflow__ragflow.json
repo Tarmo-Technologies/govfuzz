@@ -2,18 +2,18 @@
  "lane": "go",
  "repo": "infiniflow/ragflow",
  "stars": 85999,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/infiniflow__ragflow --json --out /home/ubuntu/govfuzz-sweep-work/go__infiniflow__ragflow.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.42,
+   "wall_s": 0.23,
    "timed_out": false,
    "panic": false,
    "languages": 6,
-   "sloc_total": 866792,
+   "sloc_total": 866846,
    "sloc_by_lang": {
-    "go": 391594,
+    "go": 391648,
     "python": 215310,
     "javascript": 194385,
     "cpp": 42472,
@@ -152,8 +152,8 @@
    "findings_detail": []
   }
  },
- "sha": "d2a769c53291f58747a2a67d69144de2ef29234e",
- "clone_s": 10.0,
- "lane_check": "go: 1536 files / 456063 lines; top=go(456063)",
+ "sha": "53e83dcadfef7b88c56648049c9966b5046cd06a",
+ "clone_s": 5.9,
+ "lane_check": "go: 1536 files / 456117 lines; top=go(456117)",
  "status": "done"
 }

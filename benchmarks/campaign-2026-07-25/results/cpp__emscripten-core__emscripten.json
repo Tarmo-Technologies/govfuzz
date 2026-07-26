@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "emscripten-core/emscripten",
  "stars": 27528,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/emscripten-core__emscripten --json --out /home/ubuntu/govfuzz-sweep-work/cpp__emscripten-core__emscripten.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.31,
+   "wall_s": 0.23,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -85,7 +85,7 @@
   }
  },
  "sha": "34cf5496e5eda1cf07d38b609181a6e4896b0721",
- "clone_s": 5.0,
+ "clone_s": 5.5,
  "lane_check": "cpp: 1221 files / 186484 lines; top=cpp(186484)",
  "status": "done"
 }

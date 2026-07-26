@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "nvim-telescope/telescope.nvim",
  "stars": 19658,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/nvim-telescope__telescope.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__nvim-telescope__telescope.nvim.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 258,
+   "languages": 2,
+   "sloc_total": 16730,
    "sloc_by_lang": {
+    "lua": 16472,
     "config": 258
    }
   },
@@ -224,7 +225,7 @@
   }
  },
  "sha": "427b576c16792edad01a92b89721d923c19ad60f",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "lua: 77 files / 19676 lines; top=lua(19676)",
  "status": "done"
 }

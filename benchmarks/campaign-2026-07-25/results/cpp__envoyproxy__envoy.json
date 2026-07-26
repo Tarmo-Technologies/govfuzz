@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "envoyproxy/envoy",
  "stars": 28638,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --json --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.44,
+   "wall_s": 0.35,
    "timed_out": false,
    "panic": false,
    "languages": 8,
@@ -89,7 +89,7 @@
   }
  },
  "sha": "295ef9d9d87c645e2f1cc344c05220f6794036b7",
- "clone_s": 9.9,
+ "clone_s": 8.4,
  "lane_check": "cpp: 4102 files / 1184448 lines; top=cpp(1184448)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "anthropics/skills",
  "stars": 164175,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/anthropics__skills --json --out /home/ubuntu/govfuzz-sweep-work/python__anthropics__skills.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -219,7 +219,7 @@
   }
  },
  "sha": "b29e7cf65e5cb78a5ac33d582270551bc74a14eb",
- "clone_s": 0.9,
+ "clone_s": 1.0,
  "lane_check": "python: 70 files / 12516 lines; top=python(12516)",
  "status": "done"
 }

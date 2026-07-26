@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "Reference-LAPACK/lapack",
  "stars": 1879,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/Reference-LAPACK__lapack --json --out /home/ubuntu/govfuzz-sweep-work/fortran__Reference-LAPACK__lapack.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.29,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 219896,
+   "languages": 5,
+   "sloc_total": 862618,
    "sloc_by_lang": {
+    "fortran": 642722,
     "c": 196786,
     "cpp": 22192,
     "config": 648,
@@ -278,7 +279,7 @@
   }
  },
  "sha": "7a7d7453ed11e765a31c8c8f4f6ef449aad231aa",
- "clone_s": 2.2,
+ "clone_s": 2.3,
  "lane_check": "fortran: 3613 files / 1587403 lines; top=fortran(1587403)",
  "status": "done"
 }

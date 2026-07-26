@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "aria2/aria2",
  "stars": 41525,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/aria2__aria2 --json --out /home/ubuntu/govfuzz-sweep-work/cpp__aria2__aria2.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 5,

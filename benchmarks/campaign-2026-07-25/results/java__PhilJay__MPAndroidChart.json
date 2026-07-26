@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "PhilJay/MPAndroidChart",
  "stars": 38198,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/PhilJay__MPAndroidChart --json --out /home/ubuntu/govfuzz-sweep-work/java__PhilJay__MPAndroidChart.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -221,7 +221,7 @@
   }
  },
  "sha": "9c7275a0596a7ac0e50ca566e680f7f9d73607af",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "java: 223 files / 34246 lines; top=java(34246)",
  "status": "done"
 }

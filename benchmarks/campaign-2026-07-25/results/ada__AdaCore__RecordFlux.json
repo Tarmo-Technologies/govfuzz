@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaCore/RecordFlux",
  "stars": 129,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__RecordFlux --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__RecordFlux.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.19,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -273,7 +273,7 @@
   }
  },
  "sha": "d13da982a2277eda4850fe7875e2a6d723d8bd0f",
- "clone_s": 1.1,
+ "clone_s": 1.3,
  "lane_check": "ada: 1105 files / 198418 lines; top=ada(198418)",
  "status": "done"
 }

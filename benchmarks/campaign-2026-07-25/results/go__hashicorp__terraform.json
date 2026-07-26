@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "hashicorp/terraform",
  "stars": 49293,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/hashicorp__terraform --json --out /home/ubuntu/govfuzz-sweep-work/go__hashicorp__terraform.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.3,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -220,7 +220,7 @@
   }
  },
  "sha": "38e20815846fecc9013232c360a18182291b69e8",
- "clone_s": 2.5,
+ "clone_s": 3.5,
  "lane_check": "go: 1985 files / 603323 lines; top=go(603323)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "lodash/lodash",
  "stars": 61260,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/lodash__lodash --json --out /home/ubuntu/govfuzz-sweep-work/js__lodash__lodash.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -201,7 +201,7 @@
   }
  },
  "sha": "a666ba591064c8011988275790ad7d625279f09c",
- "clone_s": 1.0,
+ "clone_s": 0.8,
  "lane_check": "js: 27 files / 41920 lines; top=js(41920)",
  "status": "done"
 }

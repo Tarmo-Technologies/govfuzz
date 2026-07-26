@@ -2,7 +2,7 @@
  "lane": "go",
  "repo": "spf13/cobra",
  "stars": 44314,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/spf13__cobra --json --out /home/ubuntu/govfuzz-sweep-work/go__spf13__cobra.cwd/sloc.json",
@@ -214,7 +214,7 @@
   }
  },
  "sha": "adbc8813901bba65827259daa8e22ff94ec1f30e",
- "clone_s": 0.6,
+ "clone_s": 0.9,
  "lane_check": "go: 36 files / 14399 lines; top=go(14399)",
  "status": "done"
 }

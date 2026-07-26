@@ -74,6 +74,8 @@ bug with a real fix, verified against the project that exposed it:
 | CPython quotes the module name, and the extractor stopped at the quote | the Python needle never fired, so no Python package was ever named | skip the opening quote |
 | A Composer tree with no `vendor/` matched nothing | the shape of nearly every real PHP project produced no requirement at all | `Failed opening required` needle → `vendor/autoload.php`, with `composer install` as the hint |
 | A backtick assumed to close with an apostrophe | rustc- and interpreter-style `` `foo` `` leaked the name into the grouping key; the published table carried a mangled `target module "X"torch"X"` row | close a backtick on either delimiter |
+| The external-class degradation matched compiler wording | the substitution it was written for (an opaque scalar) is no longer what govfuzz emits, so an unsuppliable MFC class stayed a bare failed_build | decide on provenance: a diagnostic in the project's own source is not a govfuzz codegen bug |
+| Seven wall-clock-budgeted fuzz assertions on six cores | a planted OOB went unfound at ~6 executions where one test alone gets ~32 | serialize the fuzz-bearing tests |
 
 ### Re-measuring one surface, or an A/B
 

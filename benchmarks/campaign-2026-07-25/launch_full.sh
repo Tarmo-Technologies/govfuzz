@@ -12,12 +12,12 @@ nohup python3 -u run_sweep.py \
     --wave FULL \
     --per-lane 60 \
     --corpus-only \
-    --jobs 4 \
-    --campaign-time 180 \
-    --per-target-time 4 \
-    --max-attempts 20 \
-    --max-repair-rounds 6 \
-    --auto-slack 600 \
+    --jobs 6 \
+    --campaign-time 90 \
+    --per-target-time 3 \
+    --max-attempts 10 \
+    --max-repair-rounds 4 \
+    --auto-slack 420 \
     --rerun \
     > /tmp/full.log 2>&1 &
 echo "launched pid $!"

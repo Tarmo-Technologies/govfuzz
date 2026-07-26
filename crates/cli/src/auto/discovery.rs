@@ -563,8 +563,12 @@ fn languages_lost_to_exclusions(
     lost
 }
 
-/// The lane an extension implies, without reading the file. Headers are left out
-/// deliberately: a `.h` alone does not establish that C code was excluded.
+/// The lane an extension implies, without reading the file.
+///
+/// The single extension table: [`detect_lang`] adds only the cases that need
+/// the file's contents (a `.h` can be either C or C++) or its full path (a
+/// `.d.ts` declares types and has no runtime code). A bare `.h` is deliberately
+/// absent here, since a header alone does not establish that C code exists.
 fn extension_lang_hint(path: &Path) -> Option<Lang> {
     let ext = path.extension().and_then(|e| e.to_str())?;
     if ext == "C" {
@@ -573,7 +577,7 @@ fn extension_lang_hint(path: &Path) -> Option<Lang> {
     match ext.to_ascii_lowercase().as_str() {
         "ads" | "adb" => Some(Lang::Ada),
         "c" => Some(Lang::C),
-        "cpp" | "cc" | "cxx" => Some(Lang::Cpp),
+        "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" => Some(Lang::Cpp),
         "rs" => Some(Lang::Rust),
         "java" => Some(Lang::Java),
         "py" => Some(Lang::Python),
@@ -2274,31 +2278,14 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
         // the source is already in hand, so no extra read is needed here.
         return shebang_lang(source.lines().next().unwrap_or_default());
     };
-    if ext == "C" {
-        return Some(Lang::Cpp);
-    }
     match ext.to_ascii_lowercase().as_str() {
-        "ads" | "adb" => Some(Lang::Ada),
-        "c" => Some(Lang::C),
+        // A header's language depends on what is IN it, and a `.d.ts` is a
+        // type-declaration file with no runtime code. Everything else is decided
+        // by the extension alone, from the one table.
         "h" => Some(classify_c_header(path, source)),
-        "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" => Some(Lang::Cpp),
-        "rs" => Some(Lang::Rust),
-        "java" => Some(Lang::Java),
-        "py" => Some(Lang::Python),
-        "pl" | "pm" => Some(Lang::Perl),
-        "go" => Some(Lang::Go),
-        "cob" | "cbl" | "cobol" | "cble" => Some(Lang::Cobol),
-        "f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" => Some(Lang::Fortran),
-        "cs" => Some(Lang::CSharp),
-        "js" | "mjs" | "cjs" => Some(Lang::Js),
-        // .d.ts is a type-declaration file (no runtime code) — not fuzzable.
-        "ts" | "tsx" | "mts" | "cts" if !path.to_string_lossy().ends_with(".d.ts") => {
-            Some(Lang::Ts)
-        }
-        "rb" => Some(Lang::Ruby),
-        "lua" => Some(Lang::Lua),
-        "php" => Some(Lang::Php),
-        _ => None,
+        "hpp" | "hh" | "hxx" => Some(Lang::Cpp),
+        "ts" | "tsx" | "mts" | "cts" if path.to_string_lossy().ends_with(".d.ts") => None,
+        _ => extension_lang_hint(path),
     }
 }
 

@@ -58,6 +58,10 @@ def sh(
     env = dict(os.environ)
     env.setdefault("GOVFUZZ_PROFILE", "external-tools")
     env["RUST_BACKTRACE"] = "1"
+    # A C# shop has a current SDK; the distro one is .NET 8 and most of the
+    # corpus now targets 9/10. govfuzz picks the newest it finds on PATH.
+    env["DOTNET_ROOT"] = "/home/ubuntu/.dotnet"
+    env["PATH"] = "/home/ubuntu/.dotnet:" + env.get("PATH", "")
     if env_extra:
         env.update(env_extra)
     started = time.monotonic()

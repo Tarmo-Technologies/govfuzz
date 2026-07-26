@@ -509,7 +509,8 @@ mod tests {
         std::fs::create_dir_all(root.join("active_support")).expect("mkdir");
         std::fs::write(root.join("active_support/ordered_options.rb"), "").expect("write");
         assert_eq!(
-            resolve_constant_file("ActiveSupport::OrderedOptions", &[root.clone()]).as_deref(),
+            resolve_constant_file("ActiveSupport::OrderedOptions", std::slice::from_ref(&root))
+                .as_deref(),
             Some("active_support/ordered_options")
         );
         // A constant with no matching file is not guessed at.

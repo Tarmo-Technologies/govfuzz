@@ -1,0 +1,255 @@
+{
+ "lane": "ada",
+ "repo": "AdaCore/gtkada",
+ "stars": 106,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gtkada --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gtkada.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 193018,
+   "sloc_by_lang": {
+    "ada": 148951,
+    "c": 37580,
+    "python": 4550,
+    "perl": 1598,
+    "config": 218,
+    "javascript": 100,
+    "cpp": 21
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gtkada --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.79,
+   "timed_out": false,
+   "panic": false,
+   "count": 20933,
+   "by_language": {
+    "ada": 19182,
+    "c": 1750,
+    "cpp": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gtkada --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gtkada/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.54,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 908,
+   "by_severity": {
+    "medium": 901,
+    "high": 6,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-409": 798,
+    "GF-412": 55,
+    "GF-410": 42,
+    "GF-472": 4,
+    "GF-500": 3,
+    "GF-411": 2,
+    "GF-402": 1,
+    "GF-404": 1,
+    "GF-403": 1,
+    "GF-408": 1
+   },
+   "gaps": 21
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gtkada --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gtkada/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 16
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gtkada --work-dir /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gtkada --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 115.14,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 6702,
+    "dropped_by_cap": 6692,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 4,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 5,
+    "synthesized_types": 5,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 5,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse",
+     "source": "gdk-color.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "quark_from_string",
+     "source": "glib.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bind_text_domain",
+     "source": "gtkada-intl.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bind_text_domain_codeset",
+     "source": "gtkada-intl.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_gtk_text_buffer_insert_with_tags",
+     "source": "misc.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'buffer' of type 'GtkTextBuffer *' has no byte-buffer decoder after struct synthesis: opaque type 'GtkTextBuffer' for pointer parameter 'buffer' needs lifecycle support (Phase C); sequence generation also failed first: C sequence handle 'GtkTextBuffer' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::process_modules",
+     "source": "build_skeleton.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8.348935671788139,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ada_g_module_build_path",
+     "source": "misc.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 11,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_g_module_open",
+     "source": "misc.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_g_log",
+     "source": "misc.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'log_level' of type 'GLogLevelFlags' has no byte-buffer decoder after struct synthesis: opaque type 'GLogLevelFlags' for parameter 'log_level' needs lifecycle support (Phase C); sequence generation also failed first: C sequence handle 'gchar' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::analyze_dir",
+     "source": "build_skeleton.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 18.52892102671015,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unrecoverable_link",
+     "count": 4,
+     "detail": "1 undefined symbol(s) after repair",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C); sequence gen\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C); sequ\u2026",
+     "language": "c"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9b009dfb57f4b9f8364ebdf11f0edbdc07c29303",
+ "clone_s": 3.9,
+ "lane_check": "ada: 717 files / 231960 lines; top=ada(231960)",
+ "status": "done"
+}

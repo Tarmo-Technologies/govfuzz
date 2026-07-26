@@ -219,6 +219,17 @@ fn imported_build_props(csproj: &Path) -> Vec<PathBuf> {
 
 fn target_frameworks_in_file(path: &Path) -> Option<Vec<String>> {
     let text = std::fs::read_to_string(path).ok()?;
+    // An old-style (non-SDK) project spells it `<TargetFrameworkVersion>v4.7.2`.
+    // Missing that made a .NET Framework project look like it declared no
+    // framework at all, so the harness referenced it and MSBuild failed on
+    // reference assemblies that do not exist off Windows (MSB3644) instead of
+    // taking the source-inclusion path.
+    if let Some(version) = xml_element(&text, "TargetFrameworkVersion") {
+        let digits: String = version.chars().filter(|c| c.is_ascii_digit()).collect();
+        if !digits.is_empty() {
+            return Some(vec![format!("net{digits}")]);
+        }
+    }
     let raw =
         xml_element(&text, "TargetFrameworks").or_else(|| xml_element(&text, "TargetFramework"))?;
     let list: Vec<String> = raw
@@ -1055,6 +1066,32 @@ mod tests {
             &TargetLinkage::ProjectReference { pinned_tfm: None },
         );
         assert!(!out_none.contains("SetTargetFramework"));
+    }
+
+    #[test]
+    fn an_old_style_project_declares_its_framework_differently() {
+        // A non-SDK csproj says `<TargetFrameworkVersion>v4.7.2`. Reading only
+        // <TargetFramework> made it look like no framework was declared, so the
+        // harness referenced the project and MSBuild failed on .NET Framework
+        // reference assemblies that do not exist off Windows.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let csproj = dir.path().join("Legacy.csproj");
+        std::fs::write(
+            &csproj,
+            "<Project><PropertyGroup>\
+             <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>\
+             </PropertyGroup></Project>",
+        )
+        .expect("write");
+        assert_eq!(
+            declared_target_frameworks(&csproj),
+            vec!["net472".to_owned()]
+        );
+        assert_eq!(
+            choose_target_framework(&csproj),
+            None,
+            ".NET Framework is not buildable here, so source-inclusion applies"
+        );
     }
 
     #[test]

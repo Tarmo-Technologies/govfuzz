@@ -190,18 +190,31 @@ fn declared_target_frameworks(csproj: &Path) -> Vec<String> {
     if let Some(found) = target_frameworks_in_file(csproj) {
         return found;
     }
+    for props in imported_build_props(csproj) {
+        if let Some(found) = target_frameworks_in_file(&props) {
+            return found;
+        }
+    }
+    Vec::new()
+}
+
+/// The `Directory.Build.props` / `.targets` files MSBuild imports into a
+/// project, nearest first. Bounded: MSBuild itself stops at the first one, and
+/// an unbounded walk would climb out of the project into the filesystem root.
+fn imported_build_props(csproj: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
     let mut dir = csproj.parent();
-    // Bounded walk: MSBuild stops at the first Directory.Build.props it finds.
     for _ in 0..12 {
         let Some(current) = dir else { break };
         for name in ["Directory.Build.props", "Directory.Build.targets"] {
-            if let Some(found) = target_frameworks_in_file(&current.join(name)) {
-                return found;
+            let path = current.join(name);
+            if path.is_file() {
+                out.push(path);
             }
         }
         dir = current.parent();
     }
-    Vec::new()
+    out
 }
 
 fn target_frameworks_in_file(path: &Path) -> Option<Vec<String>> {
@@ -417,19 +430,15 @@ fn effective_package_references(csproj: &Path) -> Vec<(String, String)> {
     let mut out = std::fs::read_to_string(csproj)
         .map(|text| target_package_references(&text))
         .unwrap_or_default();
-    let mut dir = csproj.parent();
-    for _ in 0..12 {
-        let Some(current) = dir else { break };
-        for name in ["Directory.Build.props", "Directory.Build.targets"] {
-            if let Ok(text) = std::fs::read_to_string(current.join(name)) {
-                for entry in target_package_references(&text) {
-                    if !out.iter().any(|(name, _)| *name == entry.0) {
-                        out.push(entry);
-                    }
-                }
+    for props in imported_build_props(csproj) {
+        let Ok(text) = std::fs::read_to_string(&props) else {
+            continue;
+        };
+        for entry in target_package_references(&text) {
+            if !out.iter().any(|(name, _)| *name == entry.0) {
+                out.push(entry);
             }
         }
-        dir = current.parent();
     }
     out
 }

@@ -1,0 +1,268 @@
+{
+ "lane": "c",
+ "repo": "robertdavidgraham/masscan",
+ "stars": 25884,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --json --out /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 42118,
+   "sloc_by_lang": {
+    "c": 41355,
+    "cpp": 484,
+    "javascript": 256,
+    "config": 23
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.25,
+   "timed_out": false,
+   "panic": false,
+   "count": 1003,
+   "by_language": {
+    "c": 1003
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --out /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.59,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 23,
+   "by_severity": {
+    "high": 18,
+    "medium": 4,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-405": 16,
+    "GF-424": 3,
+    "GF-407": 2,
+    "GF-404": 1,
+    "GF-425": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --out /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --work-dir /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 203.83,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 8,
+    "discovered_total": 978,
+    "dropped_by_cap": 970,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 4
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 2,
+    "stubbed_symbols_blind": 17,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "readscan_report",
+     "source": "in-report.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'r_data' of type 'unsigned char **' has no byte-buffer decoder after struct synthesis: pointer parameter 'r_data' of type 'unsigned char * *' is not safely drivable after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "memcached_udp_parse",
+     "source": "proto-memcached.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 3,
+     "repairs": 36,
+     "execs_per_sec": 1467.5109435207505,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.3611111111111111
+    },
+    {
+     "name": "rawsock_selftest_if",
+     "source": "rawsock.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 5,
+     "repairs": 67,
+     "execs_per_sec": 1.0499273906019184,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.2537313432835821
+    },
+    {
+     "name": "stack_incoming_tcp",
+     "source": "stack-tcp-core.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'tcpcon' of type 'struct TCP_ConnectionTable *' has no byte-buffer decoder after struct synthesis: opaque handle 'struct TCP_ConnectionTable' for parameter 'tcpcon' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'struct TCP_ConnectionTable' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "massip_parse_file",
+     "source": "massip-parse.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 5,
+     "execs_per_sec": 3.6099054394422314,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "x509_decode",
+     "source": "proto-x509.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 7,
+     "execs_per_sec": 900.0979628189344,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "pcapfile_readframe",
+     "source": "rawsock-pcapfile.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.4315689785422214,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "smb_parse_smb",
+     "source": "proto-smb.c",
+     "outcome": "failed_build",
+     "retries": 1,
+     "repairs": 6,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"struct TCP_Con\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: pointer parameter \"X\" of type \"X\" is not safely drivable after struct synthesis",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-1ed95895",
+     "rule": "GF-206",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C0365-C10E919F"
+    },
+    {
+     "id": "F-0001-808d0a5a",
+     "rule": "GF-203",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C0336-E92F12EE"
+    },
+    {
+     "id": "F-0002-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C0221-2C580DED"
+    },
+    {
+     "id": "F-0003-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C0111-EBA6FC97"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan/findings --out /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "94e118ccd26c2fb263fb2fe731043f7b3240723c",
+ "clone_s": 0.8,
+ "lane_check": "c: 115 files / 47067 lines; top=c(47067)",
+ "status": "done"
+}

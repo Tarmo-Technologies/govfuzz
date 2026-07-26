@@ -1,0 +1,284 @@
+{
+ "lane": "perl",
+ "repo": "holzschu/a-shell",
+ "stars": 3833,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --json --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.41,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 1021016,
+   "sloc_by_lang": {
+    "perl": 637075,
+    "c": 293942,
+    "cpp": 73070,
+    "javascript": 15754,
+    "python": 1083,
+    "config": 92
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --format json --top 100000",
+   "exit": 0,
+   "wall_s": 157.29,
+   "timed_out": false,
+   "panic": false,
+   "count": 31157,
+   "by_language": {
+    "cpp": 15024,
+    "c": 16133
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 34.36,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 942,
+   "by_severity": {
+    "critical": 402,
+    "medium": 488,
+    "high": 48,
+    "low": 4
+   },
+   "top_rules": {
+    "GF-425": 353,
+    "GF-420": 219,
+    "GF-404": 181,
+    "GF-424": 124,
+    "GF-547": 13,
+    "GF-408": 12,
+    "GF-422": 9,
+    "GF-401": 8,
+    "GF-423": 5,
+    "GF-405": 4,
+    "GF-546": 4,
+    "GF-403": 4,
+    "GF-304": 2,
+    "GF-406": 2,
+    "GF-507": 2
+   },
+   "gaps": 141
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell/sbom",
+   "exit": 0,
+   "wall_s": 1.2,
+   "timed_out": false,
+   "panic": false,
+   "components": 2645
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --work-dir /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 487.64,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 29375,
+    "dropped_by_cap": 29365,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 6,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "vec_load_len",
+     "source": "vecintrin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vec_load_len",
+     "source": "vecintrin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vec_load_len",
+     "source": "vecintrin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vec_lvlx(int, const signed char *)",
+     "source": "altivec.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/10.0.0/include/altivec.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/10.0.0/include/altivec.h:13:2: error: \"AltiVec support not enabled\" |    13 | #error \"AltiVec support not enabled\" |       |  ^ | /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/10.0.0/include/altivec.h:48:19: error: unknown type name 'vector' |    48 | static __inline__ vector signed char __ATTRS_o_ai vec_perm(",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vec_lvlx(int, const signed char *)",
+     "source": "altivec.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/12.0.0/include/altivec.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/12.0.0/include/altivec.h:13:2: error: \"AltiVec support not enabled\" |    13 | #error \"AltiVec support not enabled\" |       |  ^ | /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/12.0.0/include/altivec.h:48:19: error: unknown type name 'vector' |    48 | static __inline__ vector signed char __ATTRS_o_ai vec_perm(",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vec_lvlx(int, const unsigned char *)",
+     "source": "altivec.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/12.0.0/include/altivec.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/12.0.0/include/altivec.h:13:2: error: \"AltiVec support not enabled\" |    13 | #error \"AltiVec support not enabled\" |       |  ^ | /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/usr_old/lib/clang/12.0.0/include/altivec.h:48:19: error: unknown type name 'vector' |    48 | static __inline__ vector signed char __ATTRS_o_ai vec_perm(",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AutoSplit::autosplit",
+     "source": "AutoSplit.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `AutoSplit` is not loadable (skipped cleanly): -e: Perl lib version (5.34.0) doesn't match executable '/usr/bin/perl' version (5.38.2) at /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/Perl/Config.pm line 62.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Archive::Tar::can_handle_compressed_files",
+     "source": "Tar.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `Archive::Tar` is not loadable (skipped cleanly): -e: Perl lib version (5.34.0) doesn't match executable '/usr/bin/perl' version (5.38.2) at /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell/Resources/Perl/Config.pm line 62.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MetaFile.add",
+     "source": "meta2deps.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `MetaFile.add` needs a receiver, but `MetaFile.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MetaFile.add",
+     "source": "meta2deps.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `MetaFile.add` needs a receiver, but `MetaFile.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[c_knr] K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target module \"X\"t match executable \"X\" version (N.N.N) at /home/ubuntu/govfuzz-corpus-N/perl/holzschu__a-shell/Resources/Perl/Config.pm line N.",
+     "language": "perl"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "instance method \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-H-C0538-122881E4-000",
+     "rule": "GF-425",
+     "cwe": null,
+     "kind": null,
+     "severity": "medium",
+     "tier": null,
+     "harness": "H-C0538-122881E4"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell/findings --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "0a0614464ec65a9480f4d44f95a85273a33a6dfa",
+ "clone_s": 11.5,
+ "lane_check": "perl: 1282 files / 799089 lines; top=perl(799089)",
+ "status": "done"
+}

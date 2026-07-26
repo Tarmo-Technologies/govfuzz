@@ -1,0 +1,212 @@
+{
+ "lane": "lua",
+ "repo": "junyanz/CycleGAN",
+ "stars": 12871,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/junyanz__CycleGAN --json --out /home/ubuntu/govfuzz-sweep-work/lua__junyanz__CycleGAN.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 1,
+   "sloc_total": 58,
+   "sloc_by_lang": {
+    "python": 58
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/junyanz__CycleGAN --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/junyanz__CycleGAN --out /home/ubuntu/govfuzz-sweep-work/lua__junyanz__CycleGAN/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/junyanz__CycleGAN --out /home/ubuntu/govfuzz-sweep-work/lua__junyanz__CycleGAN/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/junyanz__CycleGAN --work-dir /home/ubuntu/govfuzz-sweep-work/lua__junyanz__CycleGAN --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 11.1,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 140,
+    "dropped_by_cap": 130,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "BaseDataLoader:__init",
+     "source": "base_data_loader.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BaseDataLoader:__init` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...rpus-500/lua/junyanz__CycleGAN/data/base_data_loader.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AlignedDataLoader:__init",
+     "source": "aligned_data_loader.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AlignedDataLoader:__init` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...rpus-500/lua/junyanz__CycleGAN/data/base_data_loader.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BaseDataLoader:Initialize",
+     "source": "base_data_loader.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BaseDataLoader:Initialize` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...rpus-500/lua/junyanz__CycleGAN/data/base_data_loader.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AlignedDataLoader:Initialize",
+     "source": "aligned_data_loader.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AlignedDataLoader:Initialize` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...rpus-500/lua/junyanz__CycleGAN/data/base_data_loader.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AlignedDataLoader:size",
+     "source": "aligned_data_loader.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AlignedDataLoader:size` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...rpus-500/lua/junyanz__CycleGAN/data/base_data_loader.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BaseDataLoader:size",
+     "source": "base_data_loader.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BaseDataLoader:size` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...rpus-500/lua/junyanz__CycleGAN/data/base_data_loader.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BaseModel:DisplayPlot",
+     "source": "base_model.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BaseModel:DisplayPlot` is not loadable (skipped cleanly): missing module `class` (not in the project and not installed) \u2014 /usr/bin/lua: ...z-corpus-500/lua/junyanz__CycleGAN/models/base_model.lua:5: module 'class' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_resized_img",
+     "source": "prepare_cityscapes_dataset.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3746.5833911666523,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "process_cityscapes",
+     "source": "prepare_cityscapes_dataset.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3760.9163492549424,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "check_matching_pair",
+     "source": "prepare_cityscapes_dataset.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4742.125740287015,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 7,
+     "detail": "target \"X\"class\"X\"",
+     "language": "lua"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "40b4498526de6b566f94a000d98fe18b9b8921db",
+ "clone_s": 1.0,
+ "lane_check": "lua: 25 files / 3085 lines; top=lua(3085)",
+ "status": "done"
+}

@@ -1,0 +1,220 @@
+{
+ "lane": "lua",
+ "repo": "iDvel/rime-ice",
+ "stars": 18505,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/iDvel__rime-ice --json --out /home/ubuntu/govfuzz-sweep-work/lua__iDvel__rime-ice.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.51,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 2085045,
+   "sloc_by_lang": {
+    "config": 2082814,
+    "go": 2231
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/iDvel__rime-ice --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.0,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/iDvel__rime-ice --out /home/ubuntu/govfuzz-sweep-work/lua__iDvel__rime-ice/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 8.62,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 25,
+   "by_severity": {
+    "high": 24,
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-405": 22,
+    "GF-472": 2,
+    "GF-422": 1
+   },
+   "gaps": 2
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/iDvel__rime-ice --out /home/ubuntu/govfuzz-sweep-work/lua__iDvel__rime-ice/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 4
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/iDvel__rime-ice --work-dir /home/ubuntu/govfuzz-sweep-work/lua__iDvel__rime-ice --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 66.98,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 55,
+    "dropped_by_cap": 45,
+    "built": 10,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "F.func",
+     "source": "en_spacer.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3553.3348467831147,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "M.func",
+     "source": "is_in_user_dict.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3824.336701621272,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "M.func",
+     "source": "date_translator.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2882.815563225896,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "M.func",
+     "source": "uuid.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4216.756503533018,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "M.func",
+     "source": "corrector.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3610.486461254688,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CheckPolyphone",
+     "source": "polyphone.go",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Check",
+     "source": "check.go",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AddWeight",
+     "source": "rime.go",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Pinyin",
+     "source": "pinyin.go",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GeneratePinyinTest",
+     "source": "pinyin.go",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "built_not_fuzzed",
+     "count": 5,
+     "detail": "built, no fuzz pass ran",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b681a34f788795034b3b288830f4861980bc8b0d",
+ "clone_s": 4.2,
+ "lane_check": "lua: 29 files / 2435 lines; top=go(2453)",
+ "status": "done"
+}

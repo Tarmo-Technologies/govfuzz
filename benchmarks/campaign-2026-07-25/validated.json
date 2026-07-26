@@ -14,5 +14,6 @@
  "jimsalterjrs/sanoid": "rejected_lane",
  "adrienverge/openfortivpn": "rejected_lane",
  "curl/trurl": "rejected_lane",
- "PatrikFehrenbach/amass-tools": "rejected_lane"
+ "PatrikFehrenbach/amass-tools": "rejected_lane",
+ "jcjohnson/neural-style": "rejected_lane"
 }

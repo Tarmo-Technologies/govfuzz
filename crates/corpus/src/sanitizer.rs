@@ -901,6 +901,30 @@ fn parse_asan(stderr: &str) -> Option<SanitizerReport> {
     })
 }
 
+/// Whether a `runtime error:` line really came from UBSan, as opposed to another
+/// runtime that happens to use the same words (a Go panic).
+///
+/// UBSan localizes every report to a source position, so its line begins
+/// `<file>:<line>:<col>: runtime error:`, and it names itself in the trailing
+/// `SUMMARY: UndefinedBehaviorSanitizer:`. Either signal is conclusive; a Go
+/// panic has neither.
+fn is_ubsan_output(line: &str, stderr: &str) -> bool {
+    if stderr.contains("UndefinedBehaviorSanitizer") {
+        return true;
+    }
+    let prefix = match line.split("runtime error:").next() {
+        Some(prefix) => prefix.trim_end(),
+        None => return false,
+    };
+    // `...:<line>:<col>:` — the last two colon-separated fields before the message
+    // are numbers. Checking both avoids matching a bare `foo: runtime error:`.
+    let mut fields = prefix.trim_end_matches(':').rsplit(':');
+    let column = fields.next().unwrap_or("");
+    let line_no = fields.next().unwrap_or("");
+    let numeric = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit());
+    numeric(column) && numeric(line_no)
+}
+
 fn parse_ubsan(stderr: &str) -> Option<SanitizerReport> {
     // UBSan prints a single line per error in the form:
     // `<file>:<line>:<col>: runtime error: <message>`
@@ -918,13 +942,37 @@ fn parse_ubsan(stderr: &str) -> Option<SanitizerReport> {
         || after.starts_with("store to null pointer")
         || after.starts_with("member access within null pointer")
         || after.starts_with("reference binding to null pointer")
+        // UBSan's `nonnull`/`nullability-arg` checks. `memcpy`, `strcpy`, `memset`
+        // and most of libc are declared `__attribute__((nonnull))`, so passing NULL
+        // to one is reported this way rather than as a load/store — and it is one of
+        // the most common real null-deref shapes there is. Unmatched, the report
+        // fell through to `None` below, the SIGABRT read as an assert-style input
+        // rejection, and the crash was DISCARDED: a NULL returned by a stubbed
+        // external and handed to memcpy produced no finding at all.
+        || after.starts_with("null pointer passed as argument")
+        || after.starts_with("null pointer returned from function")
+        // The `pointer-overflow` check on a null base. The offset is interpolated
+        // ("applying non-zero offset 8 to null pointer"), so match the ends.
+        || (after.starts_with("applying") && after.contains("to null pointer"))
     {
         ("null-pointer-dereference".to_owned(), "GF-206")
     } else if after.starts_with("index ") && after.contains("out of bounds") {
         ("out-of-bounds-access".to_owned(), "GF-201")
     } else if after.starts_with("division by zero") {
         ("division-by-zero".to_owned(), "GF-205")
+    } else if is_ubsan_output(line, stderr) {
+        // An unrecognised check is still UNDEFINED BEHAVIOUR that UBSan localized
+        // to a file and line. Returning None for it failed CLOSED: the caller reads
+        // no report, the abort looks like the target rejecting the input, and a real
+        // fault is dropped. UBSan has ~20 checks and the list above covers four, so
+        // failing closed silently discarded most of them. Report it generically
+        // instead; the message carries the exact check.
+        ("undefined-behavior".to_owned(), "GF-210")
     } else {
+        // `runtime error:` is not UBSan's alone — a Go panic reads `panic: runtime
+        // error: index out of range [5] with length 1`, and this parser runs BEFORE
+        // the Go one. Without this guard the generic arm above would hijack every
+        // Go panic and report it as C undefined behaviour.
         return None;
     };
 
@@ -1418,6 +1466,74 @@ called `Option::unwrap()` on a `None` value
         // A plain C assert/abort must NOT be misread as a Rust panic.
         assert!(parse_sanitizer_report("Assertion failed: x > 0\n").is_none());
         assert!(parse_sanitizer_report("some unrelated output\n").is_none());
+    }
+
+    /// Most of libc is declared `__attribute__((nonnull))`, so passing NULL to
+    /// `memcpy` is reported by UBSan's nonnull check — not as a load/store of a
+    /// null pointer. That shape was unmatched, so the report fell through to
+    /// `None`, the SIGABRT read as the target rejecting the input, and the crash
+    /// was discarded: a NULL returned by a stubbed external and handed to memcpy
+    /// produced no finding at all, which left both the capsule and the
+    /// stub-provenance features with no crash to work on.
+    #[test]
+    fn ubsan_nonnull_argument_is_a_null_dereference_finding() {
+        for message in [
+            "null pointer passed as argument 1, which is declared to never be null",
+            "null pointer returned from function declared to never return null",
+            "applying non-zero offset 8 to null pointer",
+        ] {
+            let stderr = format!(
+                "/src/snippet.c:5:12: runtime error: {message}\n\
+                 SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /src/snippet.c:5:12\n"
+            );
+            let report = parse_sanitizer_report(&stderr)
+                .unwrap_or_else(|| panic!("must be a finding: {message}"));
+            assert_eq!(report.rule_id, "GF-206", "{message}");
+            assert_eq!(report.kind, "null-pointer-dereference", "{message}");
+        }
+    }
+
+    /// UBSan has ~20 checks. Failing closed on the ones this parser does not name
+    /// individually meant discarding them, so an unrecognised check is reported
+    /// generically rather than dropped.
+    #[test]
+    fn an_unrecognised_ubsan_check_is_reported_generically_not_dropped() {
+        let stderr = "/src/t.c:9:3: runtime error: \
+                      execution reached an unreachable program point\n\
+                      SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /src/t.c:9:3\n";
+        let report = parse_sanitizer_report(stderr).expect("must not be dropped");
+        assert_eq!(report.rule_id, "GF-210");
+        assert_eq!(report.kind, "undefined-behavior");
+        assert!(
+            report.message.contains("unreachable program point"),
+            "the exact check must survive in the message: {}",
+            report.message
+        );
+    }
+
+    /// `runtime error:` is not UBSan's alone: a Go panic uses the same words and
+    /// this parser runs BEFORE the Go one, so the generic fallback must not hijack
+    /// it. Each of these must still classify as its own lane's finding.
+    #[test]
+    fn a_go_panic_is_not_mistaken_for_c_undefined_behavior() {
+        for stderr in [
+            "panic: runtime error: index out of range [5] with length 1\n",
+            "panic: runtime error: invalid memory address or nil pointer dereference\n",
+            "panic: runtime error: integer divide by zero\n",
+        ] {
+            let report = parse_sanitizer_report(stderr).expect("still a finding");
+            assert_ne!(
+                report.sanitizer,
+                Sanitizer::UndefinedBehaviorSanitizer,
+                "a Go panic must not be reported as C UBSan: {stderr}"
+            );
+        }
+        // And a bare `foo: runtime error: ...` with no source position and no
+        // UBSan banner is not claimed either.
+        assert!(!is_ubsan_output(
+            "thing: runtime error: something",
+            "thing: runtime error: something"
+        ));
     }
 
     #[test]

@@ -837,11 +837,22 @@ fn ada_runtime_adafuzz_probe_stub_adb_parses() {
     parse_ada_file(&runtime_file("adafuzz-probe-stub.adb"));
 }
 
+/// The probe BODY is Ada 2005 and its SPEC is Ada 95, deliberately and for a
+/// reason the body's own header states: the spec is `Preelaborate`, and the body
+/// declares a private `Stream_IO.File_Type` and `with`s
+/// `Ada.Environment_Variables` — which Ada 95 forbids in a preelaborated unit
+/// and Ada 2005 permits. `-gnatc` enforces that categorization rule, so calling
+/// the body Ada 95 was wrong, not merely unchecked. This test asserted the old
+/// claim and had been failing ever since the pragma was corrected; the parser
+/// reads `pragma Ada_2005;` off line 10 and is right.
 #[test]
-fn ada_runtime_adafuzz_probe_adb_uses_ada95() {
-    let ast = parse_ada_file(&runtime_file("adafuzz-probe.adb"));
+fn ada_runtime_adafuzz_probe_body_is_ada2005_while_its_spec_stays_ada95() {
+    let body = parse_ada_file(&runtime_file("adafuzz-probe.adb"));
+    assert_eq!(body.units[0].ada_standard, AdaStandard::Ada2005);
 
-    assert_eq!(ast.units[0].ada_standard, AdaStandard::Ada95);
+    // The spec must NOT drift with it: preelaborated user code depends on it.
+    let spec = parse_ada_file(&runtime_file("adafuzz-probe.ads"));
+    assert_eq!(spec.units[0].ada_standard, AdaStandard::Ada95);
 }
 
 #[test]

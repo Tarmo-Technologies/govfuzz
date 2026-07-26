@@ -304,6 +304,12 @@ def run_project(row: dict, args: argparse.Namespace) -> dict:
                 "--jobs", str(args.inner_jobs),
                 "--profile", "external-tools",
             ]  # fmt: skip
+            if args.max_targets:
+                # Success-seeking mode: attempt ranked candidates until N of them
+                # FUZZ, backfilling past the nonviable ones. Answers "can govfuzz
+                # find N fuzzable targets here?", where the attempt cap answers
+                # "of the top N candidates, how many fuzz?".
+                cmd += ["--max-targets", str(args.max_targets)]
             if args.single_pass:
                 cmd.append("--single-pass")
             if args.force:
@@ -389,6 +395,8 @@ def main() -> int:
     ap.add_argument("--per-target-time", type=int, default=6)
     ap.add_argument("--max-attempts", type=int, default=60)
     ap.add_argument("--max-repair-rounds", type=int, default=16)
+    ap.add_argument("--max-targets", type=int, default=0,
+                    help="seek N successful fuzzes per project (0 = off)")
     ap.add_argument("--auto-slack", type=int, default=900, help="grace over campaign-time")
     ap.add_argument("--single-pass", action="store_true", default=True)
     ap.add_argument("--all-passes", dest="single_pass", action="store_false")

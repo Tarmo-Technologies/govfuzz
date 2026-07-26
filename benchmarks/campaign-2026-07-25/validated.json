@@ -24,5 +24,6 @@
  "woltapp/blurhash": "rejected_lane",
  "microsoft/BitNet": "rejected_lane",
  "qbittorrent/qBittorrent": "rejected_lane",
- "flameshot-org/flameshot": "rejected_lane"
+ "flameshot-org/flameshot": "rejected_lane",
+ "keepassxreboot/keepassxc": "rejected_lane"
 }

@@ -1,0 +1,85 @@
+{
+ "lane": "cpp",
+ "repo": "mozilla-ai/llamafile",
+ "stars": 25450,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/mozilla-ai__llamafile --json --out /home/ubuntu/govfuzz-sweep-work/cpp__mozilla-ai__llamafile.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 33179,
+   "sloc_by_lang": {
+    "cpp": 23820,
+    "c": 6603,
+    "python": 2090,
+    "config": 666
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/mozilla-ai__llamafile --format json --top 100000",
+   "exit": 0,
+   "wall_s": 20.49,
+   "timed_out": false,
+   "panic": false,
+   "count": 8477,
+   "by_language": {
+    "c": 7527,
+    "cpp": 950
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/mozilla-ai__llamafile --out /home/ubuntu/govfuzz-sweep-work/cpp__mozilla-ai__llamafile/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.26,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 95,
+   "by_severity": {
+    "medium": 43,
+    "high": 44,
+    "critical": 1,
+    "low": 7
+   },
+   "top_rules": {
+    "GF-424": 20,
+    "GF-408": 20,
+    "GF-405": 19,
+    "GF-406": 15,
+    "GF-546": 7,
+    "GF-428": 4,
+    "GF-500": 2,
+    "GF-403": 2,
+    "GF-401": 2,
+    "GF-425": 2,
+    "GF-407": 1,
+    "GF-404": 1
+   },
+   "gaps": 96
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/mozilla-ai__llamafile --out /home/ubuntu/govfuzz-sweep-work/cpp__mozilla-ai__llamafile/sbom",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "components": 12
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/mozilla-ai__llamafile --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__mozilla-ai__llamafile --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.1,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "0ce2b877b22346ac11315425daf47448f73f3283",
+ "clone_s": 1.2,
+ "lane_check": "cpp: 127 files / 23921 lines; top=cpp(23921)",
+ "status": "done"
+}

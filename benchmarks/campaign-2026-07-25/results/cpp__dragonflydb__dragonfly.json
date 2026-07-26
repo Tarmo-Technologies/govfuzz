@@ -2,28 +2,29 @@
  "lane": "cpp",
  "repo": "dragonflydb/dragonfly",
  "stars": 30913,
- "wave": "FULL",
+ "wave": "FIXED",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --json --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 206483,
+   "languages": 6,
+   "sloc_total": 206882,
    "sloc_by_lang": {
     "cpp": 154199,
     "python": 29896,
     "c": 14454,
     "config": 6885,
-    "go": 1049
+    "go": 1049,
+    "lua": 399
    }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --format json --top 100000",
    "exit": 0,
-   "wall_s": 12.8,
+   "wall_s": 10.1,
    "timed_out": false,
    "panic": false,
    "count": 8543,
@@ -35,7 +36,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 4.72,
+   "wall_s": 4.85,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -68,18 +69,18 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/sbom",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.3,
    "timed_out": false,
    "panic": false,
    "components": 270
   },
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
-   "exit": -6,
-   "wall_s": 13.08,
+   "exit": -9,
+   "wall_s": 35.81,
    "timed_out": false,
    "panic": false,
-   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 9e6d5d7ca56ac393-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2439996) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 9e6d5d7ca56ac393-pp:auto). Pass --no-discovery-cache to disable caching.\n",
    "findings_detail": []
   }
  },

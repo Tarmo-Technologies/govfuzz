@@ -1,0 +1,11 @@
+{
+ "lane": "cpp",
+ "repo": "keepassxreboot/keepassxc",
+ "stars": 28140,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "205891202f4b995a8c9277cd125498ac76468b15",
+ "clone_s": 2.2,
+ "lane_check": "mislabelled by GitHub (cpp: 390 files / 98426 lines; top=ts(471810))",
+ "status": "rejected_lane"
+}

@@ -1,0 +1,84 @@
+{
+ "lane": "cpp",
+ "repo": "telegramdesktop/tdesktop",
+ "stars": 32404,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/telegramdesktop__tdesktop --json --out /home/ubuntu/govfuzz-sweep-work/cpp__telegramdesktop__tdesktop.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.21,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 927535,
+   "sloc_by_lang": {
+    "cpp": 921495,
+    "python": 2589,
+    "config": 1583,
+    "javascript": 1464,
+    "c": 404
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/telegramdesktop__tdesktop --format json --top 100000",
+   "exit": 0,
+   "wall_s": 48.83,
+   "timed_out": false,
+   "panic": false,
+   "count": 36296,
+   "by_language": {
+    "cpp": 36290,
+    "c": 6
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/telegramdesktop__tdesktop --out /home/ubuntu/govfuzz-sweep-work/cpp__telegramdesktop__tdesktop/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 33.39,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 260,
+   "by_severity": {
+    "medium": 23,
+    "high": 228,
+    "critical": 9
+   },
+   "top_rules": {
+    "GF-405": 205,
+    "GF-500": 17,
+    "GF-472": 14,
+    "GF-404": 8,
+    "GF-437": 7,
+    "GF-406": 4,
+    "GF-403": 1,
+    "GF-425": 1,
+    "GF-422": 1,
+    "GF-429": 1,
+    "GF-549": 1
+   },
+   "gaps": 1056
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/telegramdesktop__tdesktop --out /home/ubuntu/govfuzz-sweep-work/cpp__telegramdesktop__tdesktop/sbom",
+   "exit": 0,
+   "wall_s": 0.93,
+   "timed_out": false,
+   "panic": false,
+   "components": 38
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/telegramdesktop__tdesktop --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__telegramdesktop__tdesktop --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "2a6fd2cb752f8b3caca9b3589b2e89d28b36f00d",
+ "clone_s": 3.2,
+ "lane_check": "cpp: 1279 files / 816183 lines; top=cpp(816183)",
+ "status": "done"
+}

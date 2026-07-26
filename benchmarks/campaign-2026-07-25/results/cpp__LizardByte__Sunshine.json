@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "LizardByte/Sunshine",
  "stars": 39583,
- "wave": "FULL",
+ "wave": "FIXED",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine --json --out /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine.cwd/sloc.json",
@@ -10,19 +10,20 @@
    "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 49920,
+   "languages": 5,
+   "sloc_total": 50313,
    "sloc_by_lang": {
     "cpp": 42488,
     "config": 3143,
     "javascript": 2720,
-    "c": 1569
+    "c": 1569,
+    "ruby": 393
    }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine --format json --top 100000",
    "exit": 0,
-   "wall_s": 4.96,
+   "wall_s": 2.93,
    "timed_out": false,
    "panic": false,
    "count": 1760,
@@ -34,7 +35,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine --out /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 2.82,
+   "wall_s": 2.65,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -67,16 +68,16 @@
   },
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
-   "exit": -6,
-   "wall_s": 2.98,
+   "exit": -9,
+   "wall_s": 52.3,
    "timed_out": false,
    "panic": false,
-   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint affbc1d494e403f3-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2419016) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint affbc1d494e403f3-pp:auto). Pass --no-discovery-cache to disable caching.\n",
    "findings_detail": []
   }
  },
  "sha": "7cb92071ac4394698e92ff6d070d310db9acc32c",
- "clone_s": 2.2,
+ "clone_s": 1.6,
  "lane_check": "cpp: 90 files / 46650 lines; top=cpp(46650)",
  "status": "done"
 }

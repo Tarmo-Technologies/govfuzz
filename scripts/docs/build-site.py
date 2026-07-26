@@ -36,6 +36,7 @@ PAGES = [
     Page("vulnerability-coverage", "vulnerability-coverage.md", "Vulnerability Coverage"),
     Page("static-cwe-coverage", "static-cwe-coverage.md", "Static CWE Coverage"),
     Page("sast-comparison", "sast-comparison.md", "SAST Comparison"),
+    Page("sweep-500", "sweep-500.md", "500-Project Sweep"),
     Page("whitepaper-coverage", "whitepaper-coverage.md", "White Paper: Coverage"),
     Page("sink-oracles", "sink-oracles.md", "Sink Oracles"),
     Page("c-cpp", "c-cpp.md", "C and C++"),

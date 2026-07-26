@@ -6,7 +6,7 @@ reports the opposite: govfuzz run over 500 open-source projects picked by
 star rank rather than by suitability, across all sixteen languages it supports,
 with every failure counted.
 
-The sweep was run to find defects. It found twenty-one, listed below with the
+The sweep was run to find defects. It found twenty-two, listed below with the
 project that exposed each one. The measurements come after the fixes, from a
 single pinned binary over the whole corpus.
 
@@ -71,6 +71,7 @@ a regression test:
 | report | a compiler `note:` was read as the blocker | Ventoy's histogram named a deprecation notice as what stopped the build |
 | sloc, static | the file walk admitted ten of the sixteen fuzzed lanes | a 217-file PHP project measured **333 lines**, all of it config; Ruby, Lua, C#, COBOL and Fortran were equally invisible |
 | sbom | the gemspec parser required parentheses | every gemspec-driven Ruby project reported **zero** components |
+| afl++ | the armed `ASAN_OPTIONS` reached afl-fuzz without `symbolize=0`, which AFL++ v4 refuses to start without | the **entire `--engine afl++` path was dead**: harnesses built, AFL aborted in pre-flight, no target ever counted as fuzzed |
 
 The last two were found by running govfuzz against cloc and syft rather than
 against projects — the comparison was worth as much as the sweep. Two others

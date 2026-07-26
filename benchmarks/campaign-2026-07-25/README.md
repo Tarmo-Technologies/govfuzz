@@ -70,6 +70,18 @@ bug with a real fix, verified against the project that exposed it:
 | Undefined function-like macro in a `#if` | scrcpy's FFmpeg version check left every target in the TU unbuildable | numeric function-like expansion |
 | `verify-poc` on a known-non-reproducing capsule | reported FAIL, reading as a regression | report the packaged verdict |
 | Blocker histogram keyed on the first line | MSBuild's "Build FAILED." banner merged every C# failure into one row naming nothing | prefer the line that names an error; keep diagnostic codes intact |
+| A package that isn't installed reported as "a parameter couldn't be driven" | 661 corpus targets advised to run `--force`, which cannot install a package, while `missing-deps.txt` reported nothing missing | one shared reason builder for all six interpreted lanes; the triage counts the two causes apart |
+| CPython quotes the module name, and the extractor stopped at the quote | the Python needle never fired, so no Python package was ever named | skip the opening quote |
+| A Composer tree with no `vendor/` matched nothing | the shape of nearly every real PHP project produced no requirement at all | `Failed opening required` needle → `vendor/autoload.php`, with `composer install` as the hint |
+| A backtick assumed to close with an apostrophe | rustc- and interpreter-style `` `foo` `` leaked the name into the grouping key; the published table carried a mangled `target module "X"torch"X"` row | close a backtick on either delimiter |
+
+### Re-measuring one surface, or an A/B
+
+`--merge` updates only the surfaces named by `--surfaces`, keeping the rest of an
+existing row — a `sloc`-only pass over the corpus is minutes where a full re-run
+is hours. `--results-dir` writes rows somewhere else, so an A/B wave (say
+`--auto-force`) can be compared with `aggregate.py --compare` without
+overwriting the baseline it is being compared to.
 
 ## Results
 

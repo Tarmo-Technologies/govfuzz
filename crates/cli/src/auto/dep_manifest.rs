@@ -644,6 +644,14 @@ pub fn acquisition_hint(kind: DepKind, name: &str) -> Option<String> {
         DepKind::CodegenTool => Some(format!(
             "install '{name}' and re-run with --run-untrusted to generate its outputs"
         )),
+        // An absent autoloader is not one package to look up — it is the whole
+        // dependency set, and the exact command is known. Listing six package
+        // managers there made the operator pick the answer we already had.
+        DepKind::LanguagePackage if name.ends_with("vendor/autoload.php") => Some(
+            "run `composer install` in the project — its Composer dependencies are not \
+             installed, so nothing that requires the autoloader can load"
+                .to_owned(),
+        ),
         DepKind::LanguagePackage => Some(format!(
             "install the package providing '{name}' with the project's package manager \
              (bundle install / pip install / npm install / cpanm / luarocks / composer), \
@@ -747,6 +755,22 @@ mod tests {
         for h in ["ares.h", "ares_dns.h", "stdio.h", "widget.h", "buildit.h"] {
             assert!(!is_configure_generated_header(h), "should not match: {h}");
         }
+    }
+
+    /// A missing Composer autoloader has exactly one remedy, so say it instead of
+    /// listing every ecosystem's package manager and making the operator choose.
+    #[test]
+    fn a_missing_composer_autoloader_names_composer_install() {
+        let hint = acquisition_hint(DepKind::LanguagePackage, "vendor/autoload.php")
+            .expect("a language package always has a hint");
+        assert!(hint.contains("composer install"), "{hint}");
+        assert!(!hint.contains("pip install"), "not a menu of six: {hint}");
+
+        // An ordinary package still gets the general pointer.
+        let general = acquisition_hint(DepKind::LanguagePackage, "werkzeug")
+            .expect("a language package always has a hint");
+        assert!(general.contains("werkzeug"), "{general}");
+        assert!(general.contains("--install-deps"), "{general}");
     }
 
     #[test]

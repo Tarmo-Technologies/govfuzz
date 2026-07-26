@@ -1444,7 +1444,7 @@ fn render_report(
         body.push_str(&format!("  env: {env_state}\n"));
     }
 
-    let reason_limit = (max_examples + 1) / 2;
+    let reason_limit = max_examples.div_ceil(2);
     let error_limit = max_examples / 2;
     body.push_str("representative_outcomes:\n");
     for ((lang, outcome, shape), count) in sorted_shapes(&evidence.reason_shapes)
@@ -1845,8 +1845,10 @@ mod tests {
 
     #[test]
     fn report_enforces_hard_size_limit() {
-        let mut evidence = Evidence::default();
-        evidence.results = 100;
+        let mut evidence = Evidence {
+            results: 100,
+            ..Default::default()
+        };
         for index in 0..100 {
             evidence.reason_shapes.insert(
                 (

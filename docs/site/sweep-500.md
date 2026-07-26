@@ -6,7 +6,7 @@ reports the opposite: govfuzz run over 500 open-source projects picked by
 star rank rather than by suitability, across all sixteen languages it supports,
 with every failure counted.
 
-The sweep was run to find defects. It found twenty-two, listed below with the
+The sweep was run to find defects. It found twenty-six, listed below with the
 project that exposed each one. The measurements come after the fixes, from a
 single pinned binary over the whole corpus.
 
@@ -72,6 +72,10 @@ a regression test:
 | sloc, static | the file walk admitted ten of the sixteen fuzzed lanes | a 217-file PHP project measured **333 lines**, all of it config; Ruby, Lua, C#, COBOL and Fortran were equally invisible |
 | sbom | the gemspec parser required parentheses | every gemspec-driven Ruby project reported **zero** components |
 | afl++ | the armed `ASAN_OPTIONS` reached afl-fuzz without `symbolize=0`, which AFL++ v4 refuses to start without | the **entire `--engine afl++` path was dead**: harnesses built, AFL aborted in pre-flight, no target ever counted as fuzzed |
+| Python, JavaScript, PHP | a target that could not LOAD because a package is not installed was reported as "a parameter couldn't be driven", and named no package | the **largest single blocker class in the corpus** told the operator to run `--force`, which cannot install a package, while `missing-deps.txt` said no dependency was missing |
+| Python | the extractor for CPython's `No module named 'x'` stopped at the opening quote | the needle was in the table but never once fired |
+| PHP | a Composer project with no `vendor/` produced no requirement at all | the shape of nearly every real PHP tree; now recorded as `vendor/autoload.php` with `composer install` as the remedy |
+| report | a backtick span was assumed to close with an apostrophe (the GNAT `` `foo' `` form) | rustc- and interpreter-style `` `foo` `` messages leaked the identifier into the grouping key, so each distinct name became its own histogram row — the opposite of what the histogram is for |
 
 The last two were found by running govfuzz against cloc and syft rather than
 against projects — the comparison was worth as much as the sweep. Two others
@@ -133,10 +137,16 @@ The largest single class is not a govfuzz limitation: it is uninstalled
 dependencies. TypeScript's 179 and Python's 171 top entries are "cannot find
 module" — the corpus was cloned and measured without running `npm install` or
 `pip install` for 500 projects, so a target whose module graph reaches a package
-that is not on the machine cannot be loaded. govfuzz now names the package and
-records it as an acquirable requirement (`missing-deps.json`, actionable with
-`--install-deps`) rather than skipping silently, which is what the campaign
-changed. Install the dependencies and those targets move.
+that is not on the machine cannot be loaded. Install the dependencies and those
+targets move.
+
+Finding that out took reading per-target reasons by hand, because the tool did
+not say it: three of the six interpreted lanes (Python, JavaScript, PHP) filed
+these under "a parameter couldn't be driven", recorded no requirement, and
+advised `--force` — the one lever that cannot install a package. All six now name
+the package, record it as an acquirable requirement (`missing-deps.json`,
+actionable with `--install-deps`), and separate it in the triage from the skips
+`--force` is actually for.
 
 What IS a govfuzz limit is the next tier: parameters whose types the project
 never defines (80 in C, 38 in C++, 47 in Rust, 58 in Go), C++ headers that
@@ -150,8 +160,10 @@ worth building next, in that order.
   SDK's opaque handle — is skipped, not guessed at. govfuzz names the type; it
   does not invent one and call the result a clean fuzz.
 - A project whose dependencies are not installed is reported as needing them,
-  with the package named, rather than fuzzed against stubs by default.
-  `--force` will drive past that; what it produces is recorded as stub-only.
+  with the package named, rather than fuzzed against stubs by default. For a
+  compiled lane `--force` will drive past a missing type or symbol, and what it
+  produces is recorded as stub-only; for an interpreted lane a missing package
+  cannot be forced past at all, and govfuzz says so instead of implying it can.
 - Interpreted lanes execute the target's module to load it. That is the same
   exposure as fuzzing it, and it is bounded, but it is not free.
 - The per-project budget bounds how many targets are attempted. A project with

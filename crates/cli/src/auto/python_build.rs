@@ -191,14 +191,14 @@ pub fn build_python_harness(
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
+            // Name the distribution when CPython named it: an uninstalled PyPI
+            // package is a REQUIREMENT the operator can satisfy, whereas the raw
+            // traceback tail reads as an unsupported signature and sent every
+            // such target to the "try --force" advice, which cannot install it.
             return PythonBuildResult::Failed {
-                reason: format!(
-                    "target module `{module}` is not importable under this interpreter \
-                     (skipped cleanly): {}",
-                    String::from_utf8_lossy(&out.stderr)
-                        .lines()
-                        .last()
-                        .unwrap_or("import error")
+                reason: crate::auto::script_load_roots::unloadable_reason(
+                    &module,
+                    &String::from_utf8_lossy(&out.stderr),
                 ),
                 skip: true,
             };

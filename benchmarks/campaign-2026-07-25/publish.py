@@ -19,7 +19,12 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 MARKER = "## Results"
-NEXT_SECTION = "## Honest limits"
+# The generated region ENDS here. Everything from this heading on is written by
+# hand — the interpretation of the blocker table and the honest-limits section —
+# so the end marker has to be the first hand-written heading after the tables,
+# not the last one on the page. Pointing it at "## Honest limits" silently
+# deleted the interpretation section on the next publish.
+NEXT_SECTION = "## Reading the blocker table"
 
 STATUSES = [
     "built_and_fuzzed",

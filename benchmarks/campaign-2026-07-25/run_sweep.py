@@ -358,7 +358,7 @@ def pick_wave(args: argparse.Namespace) -> list[dict]:
     lanes = args.only.split(",") if args.only else LANES
     done = set()
     if not args.rerun:
-        for path in RESULTS.glob("*.json"):
+        for path in args.results_dir.glob("*.json"):
             row = read_json(path)
             if isinstance(row, dict) and row.get("status") in ("done", "rejected_lane"):
                 done.add(row.get("repo"))
@@ -409,6 +409,9 @@ def main() -> int:
     ap.add_argument("--all-passes", dest="single_pass", action="store_false")
     ap.add_argument("--auto-force", dest="force", action="store_true",
                     help="pass --force to auto (drive opaque/unbuildable targets)")
+    ap.add_argument("--results-dir", type=Path, default=RESULTS,
+                    help="where rows are written; a separate dir keeps an A/B "
+                         "wave (e.g. --auto-force) from overwriting the baseline")
     ap.add_argument("--surfaces", default="sloc,list,static,sbom,fuzz,report")
     ap.add_argument("--keep-clone", action="store_true")
     ap.add_argument("--keep-work", action="store_true")
@@ -421,7 +424,7 @@ def main() -> int:
     if not GOVFUZZ.exists():
         print(f"missing binary: {GOVFUZZ}", file=sys.stderr)
         return 2
-    RESULTS.mkdir(exist_ok=True)
+    args.results_dir.mkdir(parents=True, exist_ok=True)
     WORK_ROOT.mkdir(parents=True, exist_ok=True)
 
     wave = pick_wave(args)
@@ -443,7 +446,7 @@ def main() -> int:
                     "status": "runner_error",
                     "error": repr(exc)[:500],
                 }
-            out_path = RESULTS / f"{slug}.json"
+            out_path = args.results_dir / f"{slug}.json"
             if args.merge:
                 # Re-measuring ONE surface must not discard the others: a
                 # sloc-only pass over the corpus is minutes, a full re-run is

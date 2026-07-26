@@ -124,13 +124,9 @@ pub fn build_php_harness(
         Ok(out) if out.status.success() => {}
         Ok(out) => {
             return PhpBuildResult::Failed {
-                reason: format!(
-                    "target `{}` is not loadable (skipped cleanly): {}",
-                    candidate.name,
-                    String::from_utf8_lossy(&out.stderr)
-                        .lines()
-                        .last()
-                        .unwrap_or("load error")
+                reason: crate::auto::script_load_roots::unloadable_reason(
+                    &candidate.name,
+                    &String::from_utf8_lossy(&out.stderr),
                 ),
                 skip: true,
             };

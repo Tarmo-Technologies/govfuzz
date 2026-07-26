@@ -549,7 +549,7 @@ fn write_idl_ast(
     recovery: IdlRecoveryContext,
 ) -> Result<usize, String> {
     let dictionary_tokens = idl_parser::extract_idl_dictionary_tokens_from_ast(ast);
-    let output = idl_parser::emit_ada_packages(&ast);
+    let output = idl_parser::emit_ada_packages(ast);
     let reopened_modules = count_reopened_idl_modules(&ast.declarations);
     let generated_unit_collisions = output
         .units

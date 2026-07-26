@@ -50,9 +50,23 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
             '"' | '`' | '\'' => {
                 // Consume through the closing delimiter. An unterminated quote
                 // (truncated compiler tail) just ends the span at end of line.
-                let closing = if ch == '`' { '\'' } else { ch };
+                //
+                // A backtick closes with EITHER a backtick or an apostrophe:
+                // GNAT and GCC write `foo', while rustc, cargo and every
+                // interpreted lane write `foo`. Accepting only the apostrophe
+                // made a backtick pair run past its real end to the next
+                // apostrophe on the line, so the quoted identifier leaked into
+                // the key and each distinct name became its own histogram row —
+                // the exact grouping this function exists to produce.
+                let closes = |c: char| {
+                    if ch == '`' {
+                        c == '`' || c == '\''
+                    } else {
+                        c == ch
+                    }
+                };
                 for inner in chars.by_ref() {
-                    if inner == closing {
+                    if closes(inner) {
                         break;
                     }
                 }
@@ -361,6 +375,43 @@ impl BlockerHistogram {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A backtick pair must be redacted as one span. Closing only on an
+    /// apostrophe made the span run past its end to the next apostrophe on the
+    /// line, so the name leaked out and every distinct package or symbol became
+    /// its own histogram row instead of grouping.
+    #[test]
+    fn a_backtick_pair_redacts_as_one_span_whichever_way_it_closes() {
+        let modern = normalize_detail(
+            "target `flask.cli` is not loadable: missing module `werkzeug` (not installed) \
+             — ModuleNotFoundError: No module named 'werkzeug'",
+        );
+        assert!(
+            !modern.contains("werkzeug"),
+            "the package name must not leak into the key: {modern}"
+        );
+        assert!(
+            modern.contains("missing module \"X\""),
+            "the marker must survive redaction so the row is readable: {modern}"
+        );
+
+        // Two different packages must produce the SAME key — that is the point.
+        let other = normalize_detail(
+            "target `django.apps` is not loadable: missing module `asgiref` (not installed) \
+             — ModuleNotFoundError: No module named 'asgiref'",
+        );
+        assert_eq!(modern, other, "distinct packages must group into one row");
+
+        // GNAT/GCC's `foo' form still redacts as one span.
+        let gnat = normalize_detail("error: `Foo' is undefined here");
+        assert_eq!(gnat, "error: \"X\" is undefined here");
+
+        // rustc's backtick pairs group across identifiers too.
+        assert_eq!(
+            normalize_detail("error[E0425]: cannot find value `alpha` in this scope"),
+            normalize_detail("error[E0425]: cannot find value `beta` in this scope"),
+        );
+    }
 
     #[test]
     fn a_build_banner_never_becomes_the_histogram_key() {

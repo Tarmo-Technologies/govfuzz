@@ -1,0 +1,181 @@
+{
+ "lane": "cpp",
+ "repo": "hyprwm/Hyprland",
+ "stars": 37475,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/hyprwm__Hyprland --json --out /home/ubuntu/govfuzz-sweep-work/cpp__hyprwm__Hyprland.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 113533,
+   "sloc_by_lang": {
+    "cpp": 112061,
+    "config": 714,
+    "python": 697,
+    "c": 61
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/hyprwm__Hyprland --format json --top 100000",
+   "exit": 0,
+   "wall_s": 5.2,
+   "timed_out": false,
+   "panic": false,
+   "count": 5479,
+   "by_language": {
+    "cpp": 5479
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/hyprwm__Hyprland --out /home/ubuntu/govfuzz-sweep-work/cpp__hyprwm__Hyprland/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.79,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 71,
+   "by_severity": {
+    "medium": 48,
+    "high": 22,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-406": 41,
+    "GF-405": 12,
+    "GF-472": 10,
+    "GF-500": 4,
+    "GF-497": 2,
+    "GF-425": 1,
+    "GF-404": 1
+   },
+   "gaps": 283
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/hyprwm__Hyprland --out /home/ubuntu/govfuzz-sweep-work/cpp__hyprwm__Hyprland/sbom",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "components": 36
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/hyprwm__Hyprland --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__hyprwm__Hyprland --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 278.7,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 4231,
+    "dropped_by_cap": 4227,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 8,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parseWindowRuleEffect",
+     "source": "WindowRule.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'e' of type 'CWindowRuleEffectContainer::storageType' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'CWindowRuleEffectContainer::storageType' for parameter 'e' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CXCursorManager::loadTheme",
+     "source": "XCursorManager.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CANRManager::SANRData::runDialog",
+     "source": "ANRManager.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'SANRData' to harness 'runDialog': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'SANRData' was found. Add a small wrapper or factory harness that constructs the object and calls 'runDialog', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CCompositor::initServer",
+     "source": "Compositor.cpp",
+     "outcome": "failed_build",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "453d96e92739a2a0b865cf9166d48ba14ec14b7b",
+ "clone_s": 4.2,
+ "lane_check": "cpp: 870 files / 116649 lines; top=cpp(116649)",
+ "status": "done"
+}

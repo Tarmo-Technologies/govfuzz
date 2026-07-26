@@ -1,0 +1,11 @@
+{
+ "lane": "cpp",
+ "repo": "qbittorrent/qBittorrent",
+ "stars": 39025,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "78bf5f0c715b447c4ca1127e3aae7cd3c2f0e90b",
+ "clone_s": 2.5,
+ "lane_check": "mislabelled by GitHub (cpp: 260 files / 76139 lines; top=ts(1149650))",
+ "status": "rejected_lane"
+}

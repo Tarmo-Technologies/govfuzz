@@ -1,0 +1,85 @@
+{
+ "lane": "cpp",
+ "repo": "WerWolv/ImHex",
+ "stars": 54277,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --json --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 80502,
+   "sloc_by_lang": {
+    "cpp": 78865,
+    "config": 1561,
+    "python": 76
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --format json --top 100000",
+   "exit": 0,
+   "wall_s": 46.0,
+   "timed_out": false,
+   "panic": false,
+   "count": 13696,
+   "by_language": {
+    "cpp": 13333,
+    "c": 363
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.96,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 136,
+   "by_severity": {
+    "high": 110,
+    "medium": 16,
+    "critical": 9,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-405": 70,
+    "GF-472": 36,
+    "GF-404": 9,
+    "GF-425": 8,
+    "GF-500": 3,
+    "GF-497": 2,
+    "GF-401": 2,
+    "GF-424": 2,
+    "GF-406": 1,
+    "GF-408": 1,
+    "GF-438": 1,
+    "GF-546": 1
+   },
+   "gaps": 168
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/sbom",
+   "exit": 0,
+   "wall_s": 0.37,
+   "timed_out": false,
+   "panic": false,
+   "components": 87
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -6,
+   "wall_s": 20.65,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 9468f1595ee413be-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2409000) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "27a76e6b99c28ddf19866a0017014ecd054355f0",
+ "clone_s": 2.3,
+ "lane_check": "cpp: 464 files / 82971 lines; top=cpp(82971)",
+ "status": "done"
+}

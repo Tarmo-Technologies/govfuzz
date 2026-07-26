@@ -1,0 +1,134 @@
+[
+ {
+  "project": "cJSON",
+  "govfuzz": {
+   "wall_s": 2.58,
+   "components": 2
+  },
+  "syft": {
+   "wall_s": 40.8,
+   "components": 4
+  }
+ },
+ {
+  "project": "jansson",
+  "govfuzz": {
+   "wall_s": 2.05,
+   "components": 4
+  },
+  "syft": {
+   "wall_s": 41.36,
+   "components": 4
+  }
+ },
+ {
+  "project": "leveldb",
+  "govfuzz": {
+   "wall_s": 1.62,
+   "components": 6
+  },
+  "syft": {
+   "wall_s": 21.44,
+   "components": 1
+  }
+ },
+ {
+  "project": "tinyxml2",
+  "govfuzz": {
+   "wall_s": 0.68,
+   "components": 3
+  },
+  "syft": {
+   "wall_s": 51.15,
+   "components": 4
+  }
+ },
+ {
+  "project": "mkcert",
+  "govfuzz": {
+   "wall_s": 0.11,
+   "components": 6
+  },
+  "syft": {
+   "wall_s": 30.25,
+   "components": 11
+  }
+ },
+ {
+  "project": "gson",
+  "govfuzz": {
+   "wall_s": 1.34,
+   "components": 22
+  },
+  "syft": {
+   "wall_s": 33.07,
+   "components": 42
+  }
+ },
+ {
+  "project": "inspect.lua",
+  "govfuzz": {
+   "wall_s": 0.35,
+   "components": 0
+  },
+  "syft": {
+   "wall_s": 12.11,
+   "components": 12
+  }
+ },
+ {
+  "project": "MySQLTuner-perl",
+  "govfuzz": {
+   "wall_s": 1.45,
+   "components": 185
+  },
+  "syft": {
+   "wall_s": 15.16,
+   "components": 21
+  }
+ },
+ {
+  "project": "monolog",
+  "govfuzz": {
+   "wall_s": 0.33,
+   "components": 19
+  },
+  "syft": {
+   "wall_s": 13.44,
+   "components": 12
+  }
+ },
+ {
+  "project": "requests",
+  "govfuzz": {
+   "wall_s": 0.51,
+   "components": 21
+  },
+  "syft": {
+   "wall_s": 47.25,
+   "components": 22
+  }
+ },
+ {
+  "project": "tmuxinator",
+  "govfuzz": {
+   "wall_s": 0.51,
+   "components": 0
+  },
+  "syft": {
+   "wall_s": 18.72,
+   "components": 4
+  }
+ },
+ {
+  "project": "fd",
+  "govfuzz": {
+   "wall_s": 0.9,
+   "components": 130
+  },
+  "syft": {
+   "wall_s": 24.51,
+   "components": 137
+  }
+ }
+]

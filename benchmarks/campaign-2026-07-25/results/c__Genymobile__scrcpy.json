@@ -7,7 +7,7 @@
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --json --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -22,7 +22,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --format json --top 100000",
    "exit": 0,
-   "wall_s": 0.91,
+   "wall_s": 0.5,
    "timed_out": false,
    "panic": false,
    "count": 1435,
@@ -34,7 +34,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 0.92,
+   "wall_s": 0.45,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -58,7 +58,7 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/sbom",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "components": 12
@@ -66,7 +66,7 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --work-dir /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 1,
-   "wall_s": 93.51,
+   "wall_s": 85.04,
    "timed_out": false,
    "panic": false,
    "summary": {
@@ -376,7 +376,7 @@
   }
  },
  "sha": "2926c06c5dc3064ae6d8db706f1a98a37cfcf3f0",
- "clone_s": 0.5,
+ "clone_s": 0.0,
  "lane_check": "c: 91 files / 20941 lines; top=c(20941)",
  "status": "done"
 }

@@ -1,0 +1,11 @@
+{
+ "lane": "java",
+ "repo": "doocs/advanced-java",
+ "stars": 79016,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "1659850d7de4739ac9394dddd6c68466a8c38761",
+ "clone_s": 1.0,
+ "lane_check": "too few java files (java: 1 files / 8 lines; top=ts(41))",
+ "status": "rejected_lane"
+}

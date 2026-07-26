@@ -1,0 +1,244 @@
+{
+ "lane": "python",
+ "repo": "AUTOMATIC1111/stable-diffusion-webui",
+ "stars": 164274,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/AUTOMATIC1111__stable-diffusion-webui --json --out /home/ubuntu/govfuzz-sweep-work/python__AUTOMATIC1111__stable-diffusion-webui.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 33895,
+   "sloc_by_lang": {
+    "python": 29321,
+    "javascript": 3837,
+    "config": 737
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/AUTOMATIC1111__stable-diffusion-webui --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/AUTOMATIC1111__stable-diffusion-webui --out /home/ubuntu/govfuzz-sweep-work/python__AUTOMATIC1111__stable-diffusion-webui/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.46,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 49,
+   "by_severity": {
+    "medium": 3,
+    "low": 27,
+    "high": 15,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-546": 27,
+    "GF-427": 14,
+    "GF-500": 3,
+    "GF-420": 3,
+    "GF-405": 1,
+    "GF-429": 1
+   },
+   "gaps": 231
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/AUTOMATIC1111__stable-diffusion-webui --out /home/ubuntu/govfuzz-sweep-work/python__AUTOMATIC1111__stable-diffusion-webui/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 45
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/AUTOMATIC1111__stable-diffusion-webui --work-dir /home/ubuntu/govfuzz-sweep-work/python__AUTOMATIC1111__stable-diffusion-webui --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 9.09,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1580,
+    "dropped_by_cap": 1570,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse_version",
+     "source": "infotext_versions.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `infotext_versions` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'modules'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "embedding_from_b64",
+     "source": "image_embedding.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `image_embedding` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_generation_parameters",
+     "source": "infotext_utils.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `infotext_utils` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'gradio'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_prompt_attention",
+     "source": "prompt_parser.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `prompt_parser` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'lark'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "txt2img_create_processing",
+     "source": "txt2img.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `txt2img` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'modules'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_file_from_url",
+     "source": "modelloader.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `modelloader` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "process_batch",
+     "source": "img2img.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `img2img` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'gradio'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_models",
+     "source": "modelloader.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `modelloader` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_spandrel_model",
+     "source": "modelloader.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `modelloader` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_embedding_from_data",
+     "source": "textual_inversion.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `textual_inversion` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "target module \"X\"torch\"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target module \"X\"gradio\"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target module \"X\"modules\"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target module \"X\"lark\"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "82a973c04367123ae98bd9abdf80d9eda9b910e2",
+ "clone_s": 0.8,
+ "lane_check": "python: 213 files / 34008 lines; top=python(34008)",
+ "status": "done"
+}

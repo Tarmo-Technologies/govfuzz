@@ -1,0 +1,246 @@
+{
+ "lane": "go",
+ "repo": "MHSanaei/3x-ui",
+ "stars": 43663,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --json --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 158220,
+   "sloc_by_lang": {
+    "go": 83126,
+    "javascript": 65598,
+    "config": 9496
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 20.52,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 101,
+   "by_severity": {
+    "medium": 7,
+    "high": 81,
+    "critical": 13
+   },
+   "top_rules": {
+    "GF-405": 48,
+    "GF-472": 16,
+    "GF-419": 8,
+    "GF-490": 5,
+    "GF-495": 4,
+    "GF-426": 4,
+    "GF-477": 3,
+    "GF-429": 3,
+    "GF-485": 2,
+    "GF-497": 1,
+    "GF-491": 1,
+    "GF-563": 1,
+    "GF-548": 1,
+    "GF-422": 1,
+    "GF-436": 1
+   },
+   "gaps": 999
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/sbom",
+   "exit": 0,
+   "wall_s": 0.25,
+   "timed_out": false,
+   "panic": false,
+   "components": 1518
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --work-dir /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 4.57,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1233,
+    "dropped_by_cap": 1223,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ParseInboundSettingsClients",
+     "source": "inbound_settings_clients.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseSubscriptionBody",
+     "source": "outbound.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseLink",
+     "source": "outbound.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeCertPin",
+     "source": "tls_client.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CreateHostsFromExternalProxy",
+     "source": "db.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*gorm.DB` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64.encode",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T0277-DECA7BDE/target.js requires an npm dependency that is not installed (Error: Cannot find module 'i18next'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64.alternativeEncode",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T0281-7969E20B/target.js requires an npm dependency that is not installed (Error: Cannot find module 'i18next'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64.decode",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T0285-0181E2F0/target.js requires an npm dependency that is not installed (Error: Cannot find module 'i18next'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CPUFormatter.cpuSpeedFormat",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T02A6-C81C821C/target.js requires an npm dependency that is not installed (Error: Cannot find module 'i18next'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CPUFormatter.cpuCoreFormat",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T02AA-F1DDD082/target.js requires an npm dependency that is not installed (Error: Cannot find module 'i18next'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "go build failed: go.mod:N: require github.com/mhsanaei/Nx-ui/v3: version \"X\" invalid: should be v3, not v0",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "unsupported Go parameter type \"X\"",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "acbb879f800380ceb8005df5b5e755b348971028",
+ "clone_s": 1.8,
+ "lane_check": "go: 447 files / 90284 lines; top=go(90284)",
+ "status": "done"
+}

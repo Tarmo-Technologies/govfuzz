@@ -1,0 +1,259 @@
+{
+ "lane": "python",
+ "repo": "swisskyrepo/PayloadsAllTheThings",
+ "stars": 79437,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/swisskyrepo__PayloadsAllTheThings --json --out /home/ubuntu/govfuzz-sweep-work/python__swisskyrepo__PayloadsAllTheThings.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 1346,
+   "sloc_by_lang": {
+    "python": 1216,
+    "config": 125,
+    "javascript": 5
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/swisskyrepo__PayloadsAllTheThings --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/swisskyrepo__PayloadsAllTheThings --out /home/ubuntu/govfuzz-sweep-work/python__swisskyrepo__PayloadsAllTheThings/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 7,
+   "by_severity": {
+    "high": 3,
+    "medium": 1,
+    "low": 3
+   },
+   "top_rules": {
+    "GF-546": 3,
+    "GF-472": 2,
+    "GF-500": 1,
+    "GF-426": 1
+   },
+   "gaps": 3
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/swisskyrepo__PayloadsAllTheThings --out /home/ubuntu/govfuzz-sweep-work/python__swisskyrepo__PayloadsAllTheThings/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/swisskyrepo__PayloadsAllTheThings --work-dir /home/ubuntu/govfuzz-sweep-work/python__swisskyrepo__PayloadsAllTheThings --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 11.37,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 30,
+    "dropped_by_cap": 20,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "insertPayload",
+     "source": "createBulletproofJPG.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `createBulletproofJPG` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'future'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "make_txt_packet",
+     "source": "gen_avi_bypass.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4696.948600010908,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "echo_seq",
+     "source": "gen_xbin_avi.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3.261667349906609,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "convert",
+     "source": "ip.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ip` is not importable under this interpreter (skipped cleanly):   chars = string.ascii_letters + string.digits + \"!$%^&*()<>;:,.|\\~`\"",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadMessage",
+     "source": "ws-harness.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ws-harness` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'BaseHTTPServer'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FuzzWebSocket",
+     "source": "ws-harness.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ws-harness` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'BaseHTTPServer'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DECIMAL_SINGLE",
+     "source": "ip.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ip` is not importable under this interpreter (skipped cleanly):   chars = string.ascii_letters + string.digits + \"!$%^&*()<>;:,.|\\~`\"",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HEX_SINGLE",
+     "source": "ip.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ip` is not importable under this interpreter (skipped cleanly):   chars = string.ascii_letters + string.digits + \"!$%^&*()<>;:,.|\\~`\"",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OCT_SINGLE",
+     "source": "ip.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ip` is not importable under this interpreter (skipped cleanly):   chars = string.ascii_letters + string.digits + \"!$%^&*()<>;:,.|\\~`\"",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DEC_OVERFLOW_SINGLE",
+     "source": "ip.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `ip` is not importable under this interpreter (skipped cleanly):   chars = string.ascii_letters + string.digits + \"!$%^&*()<>;:,.|\\~`\"",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "target module \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target module \"X\"BaseHTTPServer\"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target module \"X\"future\"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-3c3582eb",
+     "rule": "GF-210",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-P0051-7FAF7040"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/python__swisskyrepo__PayloadsAllTheThings/findings --out /home/ubuntu/govfuzz-sweep-work/python__swisskyrepo__PayloadsAllTheThings/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "434cc897f9b1e561f3804631e40643e6c82c3d14",
+ "clone_s": 1.2,
+ "lane_check": "python: 10 files / 1350 lines; top=python(1350)",
+ "status": "done"
+}

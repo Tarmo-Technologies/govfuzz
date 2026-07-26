@@ -1,0 +1,139 @@
+{
+ "lane": "fortran",
+ "repo": "ElmerCSC/elmerfem",
+ "stars": 1637,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/ElmerCSC__elmerfem --json --out /home/ubuntu/govfuzz-sweep-work/fortran__ElmerCSC__elmerfem.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 300325,
+   "sloc_by_lang": {
+    "cpp": 169165,
+    "c": 127636,
+    "python": 2226,
+    "config": 1298
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/ElmerCSC__elmerfem --format json --top 100000",
+   "exit": 0,
+   "wall_s": 12.27,
+   "timed_out": false,
+   "panic": false,
+   "count": 8652,
+   "by_language": {
+    "cpp": 5982,
+    "c": 2670
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/ElmerCSC__elmerfem --out /home/ubuntu/govfuzz-sweep-work/fortran__ElmerCSC__elmerfem/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.47,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1139,
+   "by_severity": {
+    "medium": 56,
+    "high": 1072,
+    "critical": 11
+   },
+   "top_rules": {
+    "GF-405": 289,
+    "GF-401": 287,
+    "GF-403": 204,
+    "GF-407": 185,
+    "GF-547": 60,
+    "GF-406": 35,
+    "GF-408": 30,
+    "GF-404": 11,
+    "GF-438": 9,
+    "GF-424": 9,
+    "GF-500": 8,
+    "GF-472": 7,
+    "GF-550": 2,
+    "GF-477": 2,
+    "GF-496": 1
+   },
+   "gaps": 981
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/ElmerCSC__elmerfem --out /home/ubuntu/govfuzz-sweep-work/fortran__ElmerCSC__elmerfem/sbom",
+   "exit": 0,
+   "wall_s": 0.29,
+   "timed_out": false,
+   "panic": false,
+   "components": 16
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/ElmerCSC__elmerfem --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__ElmerCSC__elmerfem --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 288.31,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 1,
+    "discovered_total": 7911,
+    "dropped_by_cap": 7910,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadAbaqusInput",
+     "source": "egconvert.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "c"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "be707951fc8d07addf5d06ea07594edc06786835",
+ "clone_s": 6.4,
+ "lane_check": "fortran: 2237 files / 985368 lines; top=fortran(985368)",
+ "status": "done"
+}

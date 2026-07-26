@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "htrgouvea/nipe",
+ "stars": 2364,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "08d37038d17a61eddb89ba73328c8d105c7dc199",
+ "clone_s": 0.6,
+ "lane_check": "too little perl code (perl: 8 files / 299 lines; top=perl(299))",
+ "status": "rejected_lane"
+}

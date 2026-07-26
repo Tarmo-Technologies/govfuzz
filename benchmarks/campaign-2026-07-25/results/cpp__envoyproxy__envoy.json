@@ -1,0 +1,95 @@
+{
+ "lane": "cpp",
+ "repo": "envoyproxy/envoy",
+ "stars": 28638,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --json --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.44,
+   "timed_out": false,
+   "panic": false,
+   "languages": 8,
+   "sloc_total": 1431321,
+   "sloc_by_lang": {
+    "cpp": 1278998,
+    "config": 49350,
+    "rust": 34611,
+    "java": 24706,
+    "go": 16773,
+    "c": 13537,
+    "python": 11842,
+    "javascript": 1504
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --format json --top 100000",
+   "exit": 0,
+   "wall_s": 149.41,
+   "timed_out": false,
+   "panic": false,
+   "count": 69480,
+   "by_language": {
+    "cpp": 64748,
+    "c": 1128,
+    "java": 1375,
+    "rust": 2229
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 72.14,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 468,
+   "by_severity": {
+    "medium": 187,
+    "high": 216,
+    "low": 16,
+    "critical": 49
+   },
+   "top_rules": {
+    "GF-424": 111,
+    "GF-405": 83,
+    "GF-406": 57,
+    "GF-549": 55,
+    "GF-429": 46,
+    "GF-403": 34,
+    "GF-407": 19,
+    "GF-546": 16,
+    "GF-422": 15,
+    "GF-408": 11,
+    "GF-552": 4,
+    "GF-404": 3,
+    "GF-542": 3,
+    "GF-401": 2,
+    "GF-425": 2
+   },
+   "gaps": 1426
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/sbom",
+   "exit": 0,
+   "wall_s": 1.97,
+   "timed_out": false,
+   "panic": false,
+   "components": 414
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 119.54,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 3cb416b9aed5e15c-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "295ef9d9d87c645e2f1cc344c05220f6794036b7",
+ "clone_s": 9.9,
+ "lane_check": "cpp: 4102 files / 1184448 lines; top=cpp(1184448)",
+ "status": "done"
+}

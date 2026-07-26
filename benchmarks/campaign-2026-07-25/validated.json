@@ -25,5 +25,13 @@
  "microsoft/BitNet": "rejected_lane",
  "qbittorrent/qBittorrent": "rejected_lane",
  "flameshot-org/flameshot": "rejected_lane",
- "keepassxreboot/keepassxc": "rejected_lane"
+ "keepassxreboot/keepassxc": "rejected_lane",
+ "flarum/flarum": "rejected_lane",
+ "scutan90/DeepLearning-500-questions": "rejected_lane",
+ "jfcoz/postgresqltuner": "rejected_lane",
+ "Moham3dRiahi/Th3inspector": "rejected_lane",
+ "get-iplayer/get_iplayer": "rejected_lane",
+ "htrgouvea/nipe": "rejected_lane",
+ "victorqribeiro/perceptronCobol": "rejected_lane",
+ "continuous-copilot/modernize-legacy-cobol-app": "rejected_lane"
 }

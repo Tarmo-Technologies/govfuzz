@@ -1,0 +1,82 @@
+{
+ "lane": "cpp",
+ "repo": "deskflow/deskflow",
+ "stars": 27609,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow --json --out /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 62833,
+   "sloc_by_lang": {
+    "cpp": 52678,
+    "javascript": 8458,
+    "config": 1302,
+    "c": 395
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.12,
+   "timed_out": false,
+   "panic": false,
+   "count": 2760,
+   "by_language": {
+    "cpp": 2760
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow --out /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.68,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 202,
+   "by_severity": {
+    "medium": 31,
+    "high": 169,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-405": 82,
+    "GF-403": 36,
+    "GF-408": 31,
+    "GF-472": 18,
+    "GF-497": 17,
+    "GF-500": 11,
+    "GF-404": 2,
+    "GF-407": 2,
+    "GF-406": 2,
+    "GF-422": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow --out /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 12
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 32.82,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint b503f45f755fc94f-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "3dd6b6a49fb337717aa8e40e9981b46a6c6f7f0a",
+ "clone_s": 1.0,
+ "lane_check": "cpp: 229 files / 47883 lines; top=cpp(47883)",
+ "status": "done"
+}

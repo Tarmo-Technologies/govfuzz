@@ -1,0 +1,234 @@
+{
+ "lane": "cobol",
+ "repo": "krisds/koopa",
+ "stars": 57,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/krisds__koopa --json --out /home/ubuntu/govfuzz-sweep-work/cobol__krisds__koopa.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 352922,
+   "sloc_by_lang": {
+    "cobol": 306789,
+    "java": 46103,
+    "config": 30
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/krisds__koopa --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.71,
+   "timed_out": false,
+   "panic": false,
+   "count": 2274,
+   "by_language": {
+    "java": 2274
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cobol/krisds__koopa --out /home/ubuntu/govfuzz-sweep-work/cobol__krisds__koopa/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.05,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 35
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cobol/krisds__koopa --out /home/ubuntu/govfuzz-sweep-work/cobol__krisds__koopa/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 17
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cobol/krisds__koopa --work-dir /home/ubuntu/govfuzz-sweep-work/cobol__krisds__koopa --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 44.09,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1667,
+    "dropped_by_cap": 1657,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 6,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "evaluate",
+     "source": "Jaxen.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'evaluate' parameter #0 has an unsupported type `Tree`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from",
+     "source": "TemplateLoader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromResource",
+     "source": "TemplateLoader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromName",
+     "source": "SourceFormat.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse",
+     "source": "CobolParser.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'parse' parameter #0 has an unsupported type `File`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseXPath",
+     "source": "KoopaNavigator.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'parseXPath' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "KoopaXPath",
+     "source": "KoopaXPath.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromString",
+     "source": "TabStops.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CallTo",
+     "source": "CallTo.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GrammaticalCombinator",
+     "source": "GrammaticalCombinator.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'GrammaticalCombinator' constructs the abstract class/interface 'koopa.core.grammars.combinators.GrammaticalCombinator', which cannot be instantiated; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 6,
+     "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/cobol/krisds__koopa/src/core/koopa/core/parsers/Trace.java:N: error: package org.apache.logging.log4j does \u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" constructs the abstract class/interface \"X\", which cannot be instantiated; not auto-harnessable",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9d63708848d724a382aa6d48fca71e8f9e2a7d29",
+ "clone_s": 2.3,
+ "lane_check": "cobol: 515 files / 348607 lines; top=cobol(348607)",
+ "status": "done"
+}

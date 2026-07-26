@@ -350,12 +350,35 @@ def run_project(row: dict, args: argparse.Namespace) -> dict:
         shutil.rmtree(scratch, ignore_errors=True)
 
 
+def read_repo_filter(path: Path) -> set[str]:
+    """`<lane>\\tOWNER/REPO` per line (a leading `#` comments a line out).
+
+    An A/B wave should only re-measure the projects where the flag under test can
+    change anything. `--force` cannot move a project that had no undrivable
+    parameter, so including those costs hours of wall-clock and dilutes the delta
+    with rows that are identical by construction.
+    """
+    repos: set[str] = set()
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        repos.add(line.split("\t")[-1].strip())
+    if not repos:
+        raise SystemExit(f"repo filter {path} selected nothing")
+    return repos
+
+
 def pick_wave(args: argparse.Namespace) -> list[dict]:
     """Choose `--per-lane` projects per lane, skipping known lane rejects."""
     corpus = bc.read_tsv(bc.CORPUS_TSV)
     pool = bc.read_tsv(bc.POOL_TSV) if bc.POOL_TSV.exists() else []
     verdicts = read_json(VALIDATED) or {}
     lanes = args.only.split(",") if args.only else LANES
+    only_repos = read_repo_filter(args.repos) if args.repos else None
+    if only_repos is not None:
+        corpus = [r for r in corpus if r["repo"] in only_repos]
+        pool = [r for r in pool if r["repo"] in only_repos]
     done = set()
     if not args.rerun:
         for path in args.results_dir.glob("*.json"):
@@ -412,6 +435,9 @@ def main() -> int:
     ap.add_argument("--results-dir", type=Path, default=RESULTS,
                     help="where rows are written; a separate dir keeps an A/B "
                          "wave (e.g. --auto-force) from overwriting the baseline")
+    ap.add_argument("--repos", type=Path,
+                    help="file of `<lane>\\tOWNER/REPO` lines to restrict the wave to "
+                         "(for an A/B: only the projects the flag can move)")
     ap.add_argument("--surfaces", default="sloc,list,static,sbom,fuzz,report")
     ap.add_argument("--keep-clone", action="store_true")
     ap.add_argument("--keep-work", action="store_true")

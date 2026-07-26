@@ -1,0 +1,204 @@
+{
+ "lane": "c",
+ "repo": "DarkFlippers/unleashed-firmware",
+ "stars": 21899,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/DarkFlippers__unleashed-firmware --work-dir /home/ubuntu/govfuzz-sweep-work/c__DarkFlippers__unleashed-firmware --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 169.37,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 12211,
+    "dropped_by_cap": 12201,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 7,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "mf_classic_key_cache_load",
+     "source": "mf_classic_key_cache.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mf_plus_key_cache_load",
+     "source": "mf_plus_key_cache.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "flipper_application_assets_load",
+     "source": "application_assets.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (2 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cs_read_file",
+     "source": "platform_flipper.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (6 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "build_message",
+     "source": "send.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `send` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'firebase_admin'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "elf_symbolname_hash",
+     "source": "api_hashtable.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AccessorApp::set_text_store",
+     "source": "accessor_app.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (7 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "elf_gnu_hash",
+     "source": "api_hashtable.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/DarkFlippers__unleashed-firmware/lib/flipper_application/api_hashtable/api_hashtable.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/DarkFlippers__unleashed-firmware/lib/flipper_application/api_hashtable/api_hashtable.h:3:10: fatal error: 'flipper_application/elf/elf_api_interface.h' file not found |     3 | #include <flipper_application/elf/elf_api_interface.h> |       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_args",
+     "source": "send.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `send` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'firebase_admin'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_service_account",
+     "source": "send.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `send` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'firebase_admin'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 4,
+     "detail": "[c99] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target module \"X\"firebase_admin\"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-425-57573D38",
+     "rule": "GF-425",
+     "cwe": [
+      "CWE-197"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0075-FB19E6CF"
+    }
+   ]
+  }
+ },
+ "sha": "a56750ffe7a1b6cc5295cdf9af20d736bc8e9724",
+ "clone_s": 2.8,
+ "lane_check": "c: 1330 files / 641838 lines; top=c(641838)",
+ "status": "done"
+}

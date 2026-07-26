@@ -1,0 +1,217 @@
+{
+ "lane": "go",
+ "repo": "netdata/netdata",
+ "stars": 79848,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --work-dir /home/ubuntu/govfuzz-sweep-work/go__netdata__netdata --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 166.21,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 19393,
+    "dropped_by_cap": 19383,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "inicfg_load",
+     "source": "inicfg_conf_file.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (11 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Parse",
+     "source": "lempar.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (14 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "lqs_request_parse_and_validate",
+     "source": "logs_query_status.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/go/netdata__netdata/src/libnetdata/facets/logs_query_status.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: <stdin>:1:10: fatal error: 'limits' file not found |     1 | #include <limits> |       |          ^~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_cancel_pending_req",
+     "source": "agent_cmds.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BuildJSONPayload",
+     "source": "response_payload.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17201.132564085925,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BatchDirDecode",
+     "source": "frame.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 14216.409892212376,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "RequestField.from_tuples",
+     "source": "fields.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python_modules.urllib3.fields` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'python_modules.urllib3.packages.six.moves'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HTTPHeaderDict.from_httplib",
+     "source": "_collections.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python_modules.urllib3._collections` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'python_modules.urllib3.packages.six.moves'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode",
+     "source": "mod.rs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2092.129686415879,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "batch_dir_decode",
+     "source": "mod.rs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8488.234938061247,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-403-712A9551",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C00A1-CFB71167"
+    },
+    {
+     "id": "F-RO-GF-405-A2E14F27",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C00A1-CFB71167"
+    }
+   ]
+  }
+ },
+ "sha": "0496808029bce0976195d21291c3c06ac4d53460",
+ "clone_s": 11.4,
+ "lane_check": "go: 2823 files / 595371 lines; top=go(595371)",
+ "status": "done"
+}

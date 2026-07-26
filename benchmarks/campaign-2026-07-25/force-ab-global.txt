@@ -1,0 +1,18 @@
+--force A/B over 126 project(s) measured in both arms
+  baseline: /home/ubuntu/github/tarmo/govfuzz/benchmarks/campaign-2026-07-25/results
+  forced:   /home/ubuntu/github/tarmo/govfuzz/benchmarks/campaign-2026-07-25/results-force
+
+lane    proj      REAL fuzzed        stub-only       undrivable     failed build      report-only       FUZZ finds     static finds
+-----------------------------------------------------------------------------------------------------------------------------------
+c         35     64->59             0->0            124->50            76->0             54->184           14->20            24->336      
+cpp       18     30->23             0->0             71->54            31->0             19->58            13->12             0->63       
+csharp    12     15->15             0->0             52->47            25->0              3->28             4->4              0->0        
+go        36     58->58             0->0            219->217           58->0              7->67            13->12             4->14       
+rust      25     47->46             0->0            121->101           42->0              2->30             9->6              0->28       
+-----------------------------------------------------------------------------------------------------------------------------------
+ALL      126    214->201            0->0            587->469          232->0             85->367           53->54            28->441      
+
+--force, over the targets it could act on: -13 into REAL fuzzing, +0 into stub-only, +282 into report-only (analyzed, NOT fuzzed).
+Findings: +1 from fuzzing, +413 from static analysis of what it still could not fuzz.
+So --force did NOT buy fuzz reach here. Any headline that counts its
+static findings as fuzzing results is measuring the wrong thing.

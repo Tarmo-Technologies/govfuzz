@@ -1,0 +1,190 @@
+{
+ "lane": "cpp",
+ "repo": "facebookresearch/faiss",
+ "stars": 40586,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/facebookresearch__faiss --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__facebookresearch__faiss --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 110.23,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 2840,
+    "dropped_by_cap": 2830,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 7,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "faiss::parse_other_indexes",
+     "source": "index_factory.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "faiss::parse_VectorTransform",
+     "source": "index_factory.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "faiss::parse_IndexHNSW",
+     "source": "index_factory.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "faiss::index_factory_sub",
+     "source": "index_factory.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deserialize_index",
+     "source": "__init__.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python.__init__` is not importable under this interpreter (skipped cleanly): - If none of the above instruction sets are supported on your system, you can execute 'cmake' without setting the FAISS_OPT_LEVEL variable and build the 'swigfaiss' target.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deserialize_index_binary",
+     "source": "__init__.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python.__init__` is not importable under this interpreter (skipped cleanly): - If none of the above instruction sets are supported on your system, you can execute 'cmake' without setting the FAISS_OPT_LEVEL variable and build the 'swigfaiss' target.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "unpack_bitstrings",
+     "source": "extra_wrappers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `python.extra_wrappers` is not importable under this interpreter (skipped cleanly): - If none of the above instruction sets are supported on your system, you can execute 'cmake' without setting the FAISS_OPT_LEVEL variable and build the 'swigfaiss' target.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "popcount32",
+     "source": "popcount.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/facebookresearch__faiss/faiss/utils/popcount.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/cpp/facebookresearch__faiss/faiss/utils/popcount.h:10:10: fatal error: 'cstdint' file not found |    10 | #include <cstdint> |       |          ^~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "popcount64",
+     "source": "popcount.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/facebookresearch__faiss/faiss/utils/popcount.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/cpp/facebookresearch__faiss/faiss/utils/popcount.h:10:10: fatal error: 'cstdint' file not found |    10 | #include <cstdint> |       |          ^~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "drand",
+     "source": "example_c.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (63 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling proj\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 4,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "- If none of the above instruction sets are supported on your system, you can execute \"X\" without setting the FAISS_OPT_LEVEL variable and build the \"X\" target.",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "3e313e4c496b6a042b71193fe0bd9dd713efc7a2",
+ "clone_s": 1.1,
+ "lane_check": "cpp: 326 files / 92719 lines; top=cpp(92719)",
+ "status": "done"
+}

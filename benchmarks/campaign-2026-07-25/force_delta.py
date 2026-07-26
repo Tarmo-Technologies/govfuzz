@@ -60,8 +60,24 @@ def tally(row: dict) -> dict:
     auto = (row.get("surfaces") or {}).get("auto") or {}
     summary = auto.get("summary") or {}
     out = {key: summary.get(key, 0) or 0 for key in STATUSES}
-    out["findings"] = summary.get("findings", 0) or 0
     out["attempted"] = sum(out[key] for key in STATUSES)
+    # `summary.findings` counts report-only STATIC findings alongside runtime
+    # crashes, and forcing pushes targets into `report_only` — statically
+    # analyzed, never fuzzed. Reporting the total would have read as "--force
+    # found 76 more bugs" when what it found was static findings on targets it
+    # still could not fuzz. The finding id carries the provenance: `F-RO-*` is
+    # report-only, `F-STATIC-*` is the whole-tree scan, anything else is runtime.
+    fuzz_findings = static_findings = 0
+    for finding in auto.get("findings_detail") or []:
+        if not isinstance(finding, dict):
+            continue
+        fid = finding.get("id") or ""
+        if fid.startswith(("F-RO-", "F-STATIC-")):
+            static_findings += 1
+        else:
+            fuzz_findings += 1
+    out["fuzz_findings"] = fuzz_findings
+    out["static_findings"] = static_findings
     # `stub_only` is per TARGET, so read the target rows rather than trusting a
     # summary field: a project can have both kinds at once.
     stub_only = 0
@@ -93,51 +109,66 @@ def main() -> None:
         b, f = tally(base[repo]), tally(forced[repo])
         bucket = per_lane[lane]
         bucket["projects"] += 1
-        for key in ("attempted", "built_and_fuzzed", "real_fuzzed", "stub_only_targets", "findings"):
+        for key in (
+            "attempted",
+            "built_and_fuzzed",
+            "real_fuzzed",
+            "stub_only_targets",
+            "report_only",
+            "unsupported_params",
+            "failed_build",
+            "fuzz_findings",
+            "static_findings",
+        ):
             bucket[f"b_{key}"] += b[key]
             bucket[f"f_{key}"] += f[key]
 
     print(f"--force A/B over {len(shared)} project(s) measured in both arms")
     print(f"  baseline: {args.baseline}")
     print(f"  forced:   {args.forced}\n")
-    header = (
-        f"{'lane':8s} {'proj':>4s} {'attempted':>19s} {'REAL fuzzed':>19s} "
-        f"{'stub-only':>15s} {'findings':>13s}"
-    )
+    columns = [
+        ("REAL fuzzed", "real_fuzzed"),
+        ("stub-only", "stub_only_targets"),
+        ("undrivable", "unsupported_params"),
+        ("failed build", "failed_build"),
+        ("report-only", "report_only"),
+        ("FUZZ finds", "fuzz_findings"),
+        ("static finds", "static_findings"),
+    ]
+    header = f"{'lane':7s} {'proj':>4s} " + " ".join(f"{label:>16s}" for label, _ in columns)
     print(header)
     print("-" * len(header))
     totals: dict[str, int] = defaultdict(int)
+
+    def render(name: str, bucket: dict) -> str:
+        cells = " ".join(
+            f"{bucket['b_' + key]:6d}->{bucket['f_' + key]:<9d}" for _, key in columns
+        )
+        return f"{name:7s} {bucket['projects']:4d} {cells}"
+
     for lane in sorted(per_lane):
         bucket = per_lane[lane]
         for key, value in bucket.items():
             totals[key] += value
-        print(
-            f"{lane:8s} {bucket['projects']:4d} "
-            f"{bucket['b_attempted']:8d} -> {bucket['f_attempted']:<7d} "
-            f"{bucket['b_real_fuzzed']:8d} -> {bucket['f_real_fuzzed']:<7d} "
-            f"{bucket['b_stub_only_targets']:6d} -> {bucket['f_stub_only_targets']:<6d} "
-            f"{bucket['b_findings']:5d} -> {bucket['f_findings']:<5d}"
-        )
+        print(render(lane, bucket))
     print("-" * len(header))
-    print(
-        f"{'ALL':8s} {totals['projects']:4d} "
-        f"{totals['b_attempted']:8d} -> {totals['f_attempted']:<7d} "
-        f"{totals['b_real_fuzzed']:8d} -> {totals['f_real_fuzzed']:<7d} "
-        f"{totals['b_stub_only_targets']:6d} -> {totals['f_stub_only_targets']:<6d} "
-        f"{totals['b_findings']:5d} -> {totals['f_findings']:<5d}"
-    )
+    print(render("ALL", totals))
 
-    real_gain = totals["f_real_fuzzed"] - totals["b_real_fuzzed"]
-    stub_gain = totals["f_stub_only_targets"] - totals["b_stub_only_targets"]
-    find_gain = totals["f_findings"] - totals["b_findings"]
+    def delta(key: str) -> int:
+        return totals[f"f_{key}"] - totals[f"b_{key}"]
+
+    real, stub = delta("real_fuzzed"), delta("stub_only_targets")
+    fuzz_finds, static_finds = delta("fuzz_findings"), delta("static_findings")
     print(
-        f"\n--force moved {real_gain:+d} target(s) into REAL fuzzing and "
-        f"{stub_gain:+d} into stub-only, for {find_gain:+d} finding(s)."
+        f"\n--force, over the targets it could act on: {real:+d} into REAL fuzzing, "
+        f"{stub:+d} into stub-only, {delta('report_only'):+d} into report-only "
+        f"(analyzed, NOT fuzzed).\nFindings: {fuzz_finds:+d} from fuzzing, "
+        f"{static_finds:+d} from static analysis of what it still could not fuzz."
     )
-    if real_gain <= 0 and stub_gain > 0:
+    if real <= 0:
         print(
-            "Read that as a cost, not a gain: the extra reach exercised govfuzz's "
-            "own fabricated values, not the project's code."
+            "So --force did NOT buy fuzz reach here. Any headline that counts its\n"
+            "static findings as fuzzing results is measuring the wrong thing."
         )
 
 

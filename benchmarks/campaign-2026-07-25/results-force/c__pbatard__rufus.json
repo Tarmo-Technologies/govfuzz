@@ -1,0 +1,588 @@
+{
+ "lane": "c",
+ "repo": "pbatard/rufus",
+ "stars": 37043,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus --work-dir /home/ubuntu/govfuzz-sweep-work/c__pbatard__rufus --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 78.96,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3920,
+    "dropped_by_cap": 3910,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 10,
+    "findings": 31
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "wimlib_extract_image_from_pipe_with_progress",
+     "source": "extract.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 0 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IsBootloaderRevoked",
+     "source": "hash.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (7 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wimlib_export_image",
+     "source": "export_image.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ZSTD_decompressSequencesLong_body",
+     "source": "zstd_decompress_block.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ezxml_parse_str",
+     "source": "xml.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (12 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ZSTD_cpuid_t::ZSTD_cpuid",
+     "source": "zstd_cpu.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/bled/zstd_cpu.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | In file included from /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/bled/zstd_mem.h:22: | In file included from /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/bled/zstd_compiler.h:15: | /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/bled/zstd_deps.h:42:10: fatal error: 'crtdefs.h' file not found |    42 | #include <crtdefs.h> |       |          ^~~~~~~~~~~",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "iso_volume_descriptor_s",
+     "source": "iso9660_private.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/libcdio/iso9660/iso9660_private.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/libcdio/iso9660/iso9660_private.h:33:10: fatal error: 'cdio/types.h' file not found |    33 | #include <cdio/types.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "iso_su_sp_s",
+     "source": "rock.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/libcdio/cdio/rock.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus/src/libcdio/cdio/rock.h:32:10: fatal error: 'cdio/types.h' file not found |    32 | #include <cdio/types.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wim_provider_rpdata",
+     "source": "wof.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 0 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wof_check_structs",
+     "source": "wof.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 0 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 5,
+     "detail": "[c99] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-401-179ADE2A",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-2F19AE7B",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-50E123ED",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C095F-E44A0AE6"
+    },
+    {
+     "id": "F-RO-GF-401-654FB70B",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-95A16B20",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-9771E417",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-A9E3A44F",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-D98D3273",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-401-FED22F05",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-08C52F12",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-1171E696",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-1A1336CE",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-38DA493C",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-3FB76EB4",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-41821B61",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-447FB3B0",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-4BB86903",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-544CBDB8",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-6C64764B",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-6D1A8923",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-7C3095CB",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-86581367",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-94F7920F",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-9BA54273",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-403-B53A5E57",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C07BE-353323A1"
+    },
+    {
+     "id": "F-RO-GF-403-C0D57EC8",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-406-948F8C2E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C07BE-353323A1"
+    },
+    {
+     "id": "F-RO-GF-407-57C9E51D",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C095F-E44A0AE6"
+    },
+    {
+     "id": "F-RO-GF-408-1171E696",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-408-1A1336CE",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    },
+    {
+     "id": "F-RO-GF-408-C0D57EC8",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0219-20EA4A5F"
+    }
+   ]
+  }
+ },
+ "sha": "6d8fbf98305ff37eb531c45cbd6ff44563c53917",
+ "clone_s": 1.3,
+ "lane_check": "c: 221 files / 122845 lines; top=c(122845)",
+ "status": "done"
+}

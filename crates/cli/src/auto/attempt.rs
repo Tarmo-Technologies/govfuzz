@@ -2459,6 +2459,7 @@ fn run_attempt(
                 let repair = Repair::MacroDefine {
                     name,
                     as_value: false,
+                    function_like: false,
                 };
                 if manifest.already_attempted(&repair_key(&repair)) {
                     continue;

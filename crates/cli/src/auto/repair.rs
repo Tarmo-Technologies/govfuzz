@@ -102,6 +102,13 @@ pub enum Repair {
     MacroDefine {
         name: String,
         as_value: bool,
+        /// The macro is invoked with arguments, so its replacement has to be
+        /// function-like. A `#if VER >= AV_VERSION_INT(58, 9, 100)` against a
+        /// library that is not installed needs `#define AV_VERSION_INT(...) 0`;
+        /// the object-like `0` an ordinary value macro gets would leave the
+        /// condition malformed and the translation unit unbuildable.
+        #[serde(default)]
+        function_like: bool,
     },
     /// Force-include a standard header for an undefined standard symbol that is a
     /// macro / needs a declaration to compile (`assert` -> `<assert.h>`), rather
@@ -384,6 +391,32 @@ fn calling_convention_macro_from_error(tail: &str) -> Option<String> {
         })
         .map(str::to_owned)
         .next()
+}
+
+/// The macro named by clang's `function-like macro 'X' is not defined`.
+///
+/// The diagnostic is specific to a preprocessor condition, so the fix is
+/// specific too: give it a numeric expansion. gcc words the same situation as
+/// `missing binary operator before token "("`, which does not name the macro,
+/// so only clang's form is recognised.
+fn undefined_function_like_macro_in_condition(tail: &str) -> Option<String> {
+    for line in tail.lines() {
+        let Some(at) = line.find("function-like macro '") else {
+            continue;
+        };
+        if !line.contains("is not defined") {
+            continue;
+        }
+        let rest = &line[at + "function-like macro '".len()..];
+        let name = rest.split('\'').next()?.trim();
+        if !name.is_empty()
+            && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+            && !name.starts_with(|c: char| c.is_ascii_digit())
+        {
+            return Some(name.to_owned());
+        }
+    }
+    None
 }
 
 fn macro_used_function_like(source: &str, name: &str) -> bool {
@@ -1373,7 +1406,11 @@ pub fn apply_repair_with_source(
                 })
             }
         }
-        Repair::MacroDefine { name, as_value } => {
+        Repair::MacroDefine {
+            name,
+            as_value,
+            function_like,
+        } => {
             // Value position -> a benign 0 (works as int, NULL, or boolean in
             // version numbers / capability flags / `#ifdef` gates). Type or
             // specifier position (an inline/export qualifier like JSON_INLINE)
@@ -1388,6 +1425,11 @@ pub fn apply_repair_with_source(
                 definition.to_owned()
             } else if target_source.is_some_and(|s| macro_used_as_declaration_wrapper(s, name)) {
                 format!("#define {name}(...) __VA_ARGS__\n")
+            } else if *function_like {
+                // The compiler told us it is invoked with arguments (a
+                // preprocessor condition against an absent library's version
+                // macro), so the replacement must be function-like AND numeric.
+                format!("#define {name}(...) 0\n")
             } else if target_source.is_some_and(|s| macro_used_function_like(s, name)) {
                 // Function-like macro (PX4_ERR(fmt, ...), NuttX/flight-software
                 // logging/assert macros). A variadic stub expanding to `(0)` works
@@ -2675,6 +2717,7 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 return Some(Repair::MacroDefine {
                     name: name.clone(),
                     as_value: *as_value,
+                    function_like: false,
                 });
             }
             // Clang's ALL-CAPS heuristic can classify a standard typedef such as
@@ -2758,6 +2801,7 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 Some(Repair::MacroDefine {
                     name: name.clone(),
                     as_value: *as_value,
+                    function_like: false,
                 })
             }
         }
@@ -2775,6 +2819,7 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                     return Some(Repair::MacroDefine {
                         name: wrapper,
                         as_value: false,
+                        function_like: false,
                     });
                 }
             }
@@ -2810,6 +2855,7 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
                     name: name.clone(),
                     as_value: false,
+                    function_like: false,
                 })
             }
         }
@@ -2954,11 +3000,29 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 .then_some(Repair::StubGprImport { project })
         }
         BuildErrorKind::Other { tail } => {
+            // `error: function-like macro 'X' is not defined` is emitted ONLY for
+            // a use inside a preprocessor condition, where the expansion has to
+            // be a number: scrcpy's compat.h asks
+            // `#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58, 9, 100)` for an
+            // FFmpeg macro that is not installed. An empty definition leaves the
+            // condition malformed, so the whole translation unit — and every
+            // target in it — stays unbuildable.
+            if let Some(name) = undefined_function_like_macro_in_condition(tail) {
+                let key = format!("macro:{name}");
+                if !attempted.already_attempted(&key) {
+                    return Some(Repair::MacroDefine {
+                        name,
+                        as_value: true,
+                        function_like: true,
+                    });
+                }
+            }
             calling_convention_macro_from_error(tail).and_then(|name| {
                 let key = format!("macro:{name}");
                 (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
                     name,
                     as_value: false,
+                    function_like: false,
                 })
             })
         }
@@ -3091,6 +3155,7 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
                     name,
                     as_value: false,
+                    function_like: false,
                 })
             })
         }
@@ -4092,7 +4157,7 @@ mod tests {
         );
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: false }) if name == "API_PUBLIC"
+            Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "API_PUBLIC"
         ));
 
         fs::write(
@@ -4109,7 +4174,7 @@ mod tests {
         );
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: false }) if name == "YAML_DECLARE"
+            Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "YAML_DECLARE"
         ));
     }
 
@@ -4134,7 +4199,7 @@ mod tests {
 
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: false }) if name == "FFI_HIDDEN"
+            Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "FFI_HIDDEN"
         ));
     }
 
@@ -4178,7 +4243,7 @@ mod tests {
         );
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: false }) if name == "LIB_API"
+            Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "LIB_API"
         ));
     }
 
@@ -4260,6 +4325,7 @@ mod tests {
             repairs: vec![Repair::MacroDefine {
                 name: "LIB_API".to_owned(),
                 as_value: false,
+                function_like: false,
             }],
         };
         let repair = plan_repair_with_attempts(
@@ -4293,7 +4359,7 @@ mod tests {
         );
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: false }) if name == "ProjectAssert"
+            Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "ProjectAssert"
         ));
     }
 
@@ -4656,6 +4722,27 @@ mod tests {
     }
 
     #[test]
+    fn an_undefined_function_like_macro_in_a_condition_gets_a_numeric_expansion() {
+        // scrcpy's compat.h asks
+        //   #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58, 9, 100)
+        // and FFmpeg is not installed. clang names the macro; the definition has
+        // to be function-like AND numeric, or the condition stays malformed and
+        // every target in the translation unit remains unbuildable.
+        let tail = "/p/compat.h:24:32: error: function-like macro 'AV_VERSION_INT' \
+                    is not defined\n/p/compat.h:33:32: error: function-like macro \
+                    'AV_VERSION_INT' is not defined";
+        assert_eq!(
+            undefined_function_like_macro_in_condition(tail).as_deref(),
+            Some("AV_VERSION_INT")
+        );
+        // An unrelated diagnostic names nothing.
+        assert_eq!(
+            undefined_function_like_macro_in_condition("error: expected identifier"),
+            None
+        );
+    }
+
+    #[test]
     fn missing_installed_layout_header_forwards_to_unique_real_header() {
         let root = tmpdir();
         let real_dir = root.join("src/api");
@@ -4758,6 +4845,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "True".to_owned(),
                 as_value: true,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -4767,6 +4855,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "cJSON_Number".to_owned(),
                 as_value: true,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -4776,6 +4865,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "CJSON_NESTING_LIMIT".to_owned(),
                 as_value: true,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -4785,6 +4875,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "cJSON_ArrayForEach".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5473,6 +5564,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "YAML_VERSION_STRING".to_owned(),
                 as_value: true,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5483,6 +5575,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "JSON_INLINE".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5509,6 +5602,7 @@ mod tests {
                 &Repair::MacroDefine {
                     name: name.to_owned(),
                     as_value: true,
+                    function_like: false,
                 },
                 &repairs,
                 &idx,
@@ -5538,6 +5632,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "API_PUBLIC".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5563,6 +5658,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "LIB_API".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5588,6 +5684,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "SHIM".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5613,6 +5710,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "PROJECT_LOG".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5640,6 +5738,7 @@ mod tests {
                 &Repair::MacroDefine {
                     name: name.to_owned(),
                     as_value: true,
+                    function_like: false,
                 },
                 &repairs,
                 &idx,
@@ -5671,7 +5770,7 @@ mod tests {
         );
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: false }) if name == "WIDGET_CDECL"
+            Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "WIDGET_CDECL"
         ));
     }
 
@@ -5706,6 +5805,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "YYJSON_U64_TO_F64_NO_IMPL".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5724,6 +5824,7 @@ mod tests {
             &Repair::MacroDefine {
                 name: "JSON_INLINE".to_owned(),
                 as_value: false,
+                function_like: false,
             },
             &repairs,
             &idx,
@@ -5751,7 +5852,7 @@ mod tests {
         );
         assert!(matches!(
             repair,
-            Some(Repair::MacroDefine { name, as_value: true }) if name == "YAML_VERSION_MAJOR"
+            Some(Repair::MacroDefine { name, as_value: true, .. }) if name == "YAML_VERSION_MAJOR"
         ));
     }
 

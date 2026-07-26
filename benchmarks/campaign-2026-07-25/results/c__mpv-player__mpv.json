@@ -1,0 +1,444 @@
+{
+ "lane": "c",
+ "repo": "mpv-player/mpv",
+ "stars": 36182,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/mpv-player__mpv --json --out /home/ubuntu/govfuzz-sweep-work/c__mpv-player__mpv.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 107077,
+   "sloc_by_lang": {
+    "c": 102447,
+    "config": 1659,
+    "python": 1259,
+    "cpp": 1063,
+    "javascript": 649
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/mpv-player__mpv --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.67,
+   "timed_out": false,
+   "panic": false,
+   "count": 6375,
+   "by_language": {
+    "c": 6352,
+    "cpp": 23
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/mpv-player__mpv --out /home/ubuntu/govfuzz-sweep-work/c__mpv-player__mpv/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.39,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 109,
+   "by_severity": {
+    "medium": 50,
+    "high": 56,
+    "low": 3
+   },
+   "top_rules": {
+    "GF-406": 32,
+    "GF-405": 29,
+    "GF-500": 15,
+    "GF-408": 12,
+    "GF-472": 11,
+    "GF-497": 3,
+    "GF-546": 3,
+    "GF-407": 2,
+    "GF-403": 1,
+    "GF-507": 1
+   },
+   "gaps": 7
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/mpv-player__mpv --out /home/ubuntu/govfuzz-sweep-work/c__mpv-player__mpv/sbom",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "components": 91
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/mpv-player__mpv --work-dir /home/ubuntu/govfuzz-sweep-work/c__mpv-player__mpv --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 152.3,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 20,
+    "discovered_total": 6307,
+    "dropped_by_cap": 6287,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 9,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 34,
+    "synthesized_types": 39,
+    "synthesized_macros": 65,
+    "stubbed_symbols_declared": 3,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 6,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "m_config_parse",
+     "source": "parse_configfile.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (pl_chroma_location, pl_color_levels, pl_color_primaries, pl_color_repr, pl_color_space, pl_color_system, pl_color_transfer) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "json_parse",
+     "source": "json.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "stream_read_partial",
+     "source": "stream.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (pl_chroma_location, pl_color_levels, pl_color_primaries, pl_color_repr, pl_color_space, pl_color_system, pl_color_transfer) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mp_msg_va",
+     "source": "msg.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'va' of type 'va_list' has no byte-buffer decoder after struct synthesis: opaque type 'va_list' for parameter 'va' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ao_read_data_converted",
+     "source": "buffer.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 158,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ass_mt.append",
+     "source": "assdraw.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 6,
+     "execs_per_sec": 1078.1655327385859,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ass_mt.an",
+     "source": "assdraw.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 6,
+     "execs_per_sec": 991.301453471011,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "__index",
+     "source": "auto_profiles.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `__index` is not loadable (skipped cleanly): missing module `mp.msg` (not in the project and not installed) \u2014 /usr/bin/lua: ...orpus-500/c/mpv-player__mpv/player/lua/auto_profiles.lua:3: module 'mp.msg' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "_G.get",
+     "source": "select.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `_G.get` is not loadable (skipped cleanly): missing module `mp.utils` (not in the project and not installed) \u2014 /usr/bin/lua: ...vfuzz-corpus-500/c/mpv-player__mpv/player/lua/select.lua:18: module 'mp.utils' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "__index",
+     "source": "select.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `__index` is not loadable (skipped cleanly): missing module `mp.utils` (not in the project and not installed) \u2014 /usr/bin/lua: ...vfuzz-corpus-500/c/mpv-player__mpv/player/lua/select.lua:18: module 'mp.utils' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "lint_rule",
+     "source": "lint-commit-msg.py",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "do_lint",
+     "source": "lint-commit-msg.py",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "description_lowercase",
+     "source": "lint-commit-msg.py",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "empty_line",
+     "source": "lint-commit-msg.py",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "line_too_long",
+     "source": "lint-commit-msg.py",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mpv_deleter::operator()",
+     "source": "smtc.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'mpv_deleter::operator()' is a member of class 'mpv_deleter' defined only in a .cpp translation unit (not declared in any header) \u2014 not reachable from an external harness",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "update_metadata",
+     "source": "smtc.cpp",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handle_mp_event",
+     "source": "smtc.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'event' of type 'mpv_event *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'struct mpv_event' for pointer parameter 'event' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WindowProc",
+     "source": "smtc.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'WindowProc' return type 'LRESULT' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mpv_event_loop_fn",
+     "source": "smtc.cpp",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 6,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (pl_chroma_location, pl_color_levels, pl_color_primaries, pl_color_repr, pl_color_space, pl_colo\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undefined symbol",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ target \"X\" is a member of class \"X\" defined only in a .cpp translation unit (not declared in any header) \u2014 not reachable from an external harness",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\"mp.utils\"X\"",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\"mp.msg\"X\"",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\"mp.utils\"X\"",
+     "language": "lua"
+    },
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "SyntaxError: invalid syntax",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-H-X014B-9040DA0A-000",
+     "rule": "GF-407",
+     "cwe": null,
+     "kind": null,
+     "severity": "high",
+     "tier": null,
+     "harness": "H-X014B-9040DA0A"
+    },
+    {
+     "id": "F-RO-H-X014B-9040DA0A-001",
+     "rule": "GF-407",
+     "cwe": null,
+     "kind": null,
+     "severity": "high",
+     "tier": null,
+     "harness": "H-X014B-9040DA0A"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__mpv-player__mpv/findings --out /home/ubuntu/govfuzz-sweep-work/c__mpv-player__mpv/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "8c67647b50059406c5c0444903597281b81516cf",
+ "clone_s": 1.1,
+ "lane_check": "c: 253 files / 104519 lines; top=c(104519)",
+ "status": "done"
+}

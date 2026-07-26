@@ -58,6 +58,12 @@ pub enum DepKind {
     DlopenLibrary,
     /// A code-generation/build tool the project needs run (fpp-to-cpp, alr, ...).
     CodegenTool,
+    /// A package from a language ecosystem the interpreted lanes load at runtime
+    /// (a RubyGem, a PyPI distribution, an npm package, a CPAN module, a
+    /// LuaRock, a Composer package). Distinct from a shared library: it is
+    /// acquired with the language's own package manager, and its absence stops
+    /// the target from loading at all.
+    LanguagePackage,
     /// A `pkg-config` module the build queried.
     PkgConfig,
     /// A CORBA/IDL interface whose generated stub (`<base>C.h`/`<base>S.h` from
@@ -89,6 +95,7 @@ impl DepKind {
             DepKind::NetworkEndpoint => "network endpoint",
             DepKind::DlopenLibrary => "dlopen library",
             DepKind::CodegenTool => "codegen tool",
+            DepKind::LanguagePackage => "language package",
             DepKind::PkgConfig => "pkg-config",
             DepKind::IdlInterface => "idl interface",
             DepKind::Other => "other",
@@ -107,6 +114,7 @@ impl DepKind {
                 | DepKind::GeneratedSource
                 | DepKind::VendorSource
                 | DepKind::CodegenTool
+                | DepKind::LanguagePackage
                 | DepKind::IdlInterface
         )
     }
@@ -556,7 +564,7 @@ impl DependencyManifest {
 /// it knows — an unknown name gets a generic `apt-file search` / `alr get` style
 /// pointer, which is still more useful than nothing for the offline-transfer
 /// workflow.
-fn acquisition_hint(kind: DepKind, name: &str) -> Option<String> {
+pub fn acquisition_hint(kind: DepKind, name: &str) -> Option<String> {
     let lname = name.to_ascii_lowercase();
     // Well-known shared libs / headers -> Debian/Ubuntu -dev packages.
     let known_pkg = |n: &str| -> Option<&'static str> {
@@ -635,6 +643,11 @@ fn acquisition_hint(kind: DepKind, name: &str) -> Option<String> {
         )),
         DepKind::CodegenTool => Some(format!(
             "install '{name}' and re-run with --run-untrusted to generate its outputs"
+        )),
+        DepKind::LanguagePackage => Some(format!(
+            "install the package providing '{name}' with the project's package manager \
+             (bundle install / pip install / npm install / cpanm / luarocks / composer), \
+             or run `govfuzz auto --install-deps`"
         )),
         DepKind::FilePath
         | DepKind::CType

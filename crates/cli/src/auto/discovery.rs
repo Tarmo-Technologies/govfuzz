@@ -493,7 +493,129 @@ impl DirFilter {
         }
         self.extra_excludes.contains(&n)
     }
+
+    /// The same filter with the ORGANIZATIONAL name heuristics (`app/`, `cli/`,
+    /// `tools/`, `bin/`, `examples/`, ...) admitted, keeping the hard exclusions
+    /// (VCS, build output, vendored code, test and fuzz directories) and every
+    /// user-supplied `--exclude-dir`. `None` when the caller already opted every
+    /// organizational name back in, so there is nothing to relax.
+    fn without_organizational_exclusions(&self) -> Option<Self> {
+        let mut keep = self.keep.clone();
+        let mut added = false;
+        for name in ORGANIZATIONAL_DIR_NAMES {
+            if keep.insert((*name).to_owned()) {
+                added = true;
+            }
+        }
+        added.then(|| Self {
+            extra_excludes: self.extra_excludes.clone(),
+            keep,
+            work_dir: self.work_dir.clone(),
+        })
+    }
 }
+
+/// Languages that discovery found NOTHING for, but whose source files sit under
+/// a directory the organizational heuristic excluded. Deliberately conservative:
+/// only a language with zero candidates is reconsidered, so a project with a
+/// real library plus an `examples/` directory is unaffected.
+fn languages_lost_to_exclusions(
+    root: &Path,
+    found: &[Candidate],
+    relaxed: &DirFilter,
+    _preprocess: PreprocessMode,
+) -> std::collections::HashSet<Lang> {
+    use std::collections::HashSet;
+    let have: HashSet<Lang> = found.iter().map(|c| c.lang).collect();
+    let mut lost: HashSet<Lang> = HashSet::new();
+    let mut stack = vec![root.to_path_buf()];
+    let mut files_seen = 0usize;
+    while let Some(dir) = stack.pop() {
+        // A census, not a parse: bounded so this can never dominate discovery.
+        if files_seen > 20_000 {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_dir() {
+                if !is_excluded_dir(&path, relaxed) {
+                    stack.push(path);
+                }
+                continue;
+            }
+            files_seen += 1;
+            if !has_targetable_extension_only(&path) {
+                continue;
+            }
+            if let Some(lang) = extension_lang_hint(&path) {
+                if !have.contains(&lang) {
+                    lost.insert(lang);
+                }
+            }
+        }
+    }
+    lost
+}
+
+/// The lane an extension implies, without reading the file. Headers are left out
+/// deliberately: a `.h` alone does not establish that C code was excluded.
+fn extension_lang_hint(path: &Path) -> Option<Lang> {
+    let ext = path.extension().and_then(|e| e.to_str())?;
+    if ext == "C" {
+        return Some(Lang::Cpp);
+    }
+    match ext.to_ascii_lowercase().as_str() {
+        "ads" | "adb" => Some(Lang::Ada),
+        "c" => Some(Lang::C),
+        "cpp" | "cc" | "cxx" => Some(Lang::Cpp),
+        "rs" => Some(Lang::Rust),
+        "java" => Some(Lang::Java),
+        "py" => Some(Lang::Python),
+        "pl" | "pm" => Some(Lang::Perl),
+        "go" => Some(Lang::Go),
+        "cob" | "cbl" | "cobol" | "cble" => Some(Lang::Cobol),
+        "f90" | "f95" | "f03" | "f08" | "f" | "for" | "f77" => Some(Lang::Fortran),
+        "cs" => Some(Lang::CSharp),
+        "js" | "mjs" | "cjs" => Some(Lang::Js),
+        "ts" | "tsx" | "mts" | "cts" => Some(Lang::Ts),
+        "rb" => Some(Lang::Ruby),
+        "lua" => Some(Lang::Lua),
+        "php" => Some(Lang::Php),
+        _ => None,
+    }
+}
+
+/// Directory names excluded because of what they usually CONTAIN (driver or
+/// demo code), as opposed to what they always are (VCS, build output, vendored
+/// third-party code, tests). Only these are reconsidered when a language would
+/// otherwise be discovered as empty.
+const ORGANIZATIONAL_DIR_NAMES: &[&str] = &[
+    "app",
+    "apps",
+    "bin",
+    "cli",
+    "tool",
+    "tools",
+    "program",
+    "programs",
+    "src-tauri",
+    "demo",
+    "demos",
+    "example",
+    "examples",
+    "sample",
+    "samples",
+    "script",
+    "scripts",
+    "utils",
+    "util",
+];
 
 pub fn discover(root: &Path) -> Result<Vec<Candidate>> {
     discover_with_dir_filter(root, &DirFilter::default())
@@ -515,6 +637,36 @@ pub fn discover_with_options(
 ) -> Result<Vec<Candidate>> {
     let mut out = Vec::new();
     walk(root, &mut out, filter, preprocess)?;
+    // The organizational-directory heuristic (`app/`, `tools/`, `cli/`, `bin/`)
+    // assumes the library lives elsewhere and those directories only hold demo
+    // or driver code. When a project IS one of them — scrcpy keeps its entire C
+    // client under `app/` — the heuristic discovers zero C candidates in a C
+    // project, and the whole sweep then runs on the Android server's Java.
+    // Excluding your way to nothing is never right: retry the languages that
+    // came back empty with those directories admitted.
+    if let Some(relaxed) = filter.without_organizational_exclusions() {
+        let empty_langs = languages_lost_to_exclusions(root, &out, &relaxed, preprocess);
+        if !empty_langs.is_empty() {
+            let mut recovered = Vec::new();
+            walk(root, &mut recovered, &relaxed, preprocess)?;
+            let before = out.len();
+            out.extend(
+                recovered
+                    .into_iter()
+                    .filter(|c| empty_langs.contains(&c.lang)),
+            );
+            if out.len() > before {
+                let names: Vec<String> =
+                    empty_langs.iter().map(|lang| format!("{lang:?}")).collect();
+                eprintln!(
+                    "govfuzz auto: {} candidate(s) recovered from organizational \
+                     directories: {} code lives only there, so excluding them found nothing",
+                    out.len() - before,
+                    names.join("/"),
+                );
+            }
+        }
+    }
     // Cross-file C++ visibility filter. A method DEFINED out-of-line
     // (`int Class::m(){}` in a .cpp) loses the access specifier that lives in the
     // class body (a .h), so its per-file `member_access` is None and the rank

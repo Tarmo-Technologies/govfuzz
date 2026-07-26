@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "mk270/whitakers-words",
  "stars": 324,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/mk270__whitakers-words --json --out /home/ubuntu/govfuzz-sweep-work/ada__mk270__whitakers-words.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -222,7 +222,7 @@
   }
  },
  "sha": "9b11477e53f4adfb17d6f6aa563669dc71e0a680",
- "clone_s": 0.7,
+ "clone_s": 1.2,
  "lane_check": "ada: 133 files / 24434 lines; top=ada(24434)",
  "status": "done"
 }

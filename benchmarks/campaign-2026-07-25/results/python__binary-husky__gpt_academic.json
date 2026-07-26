@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "binary-husky/gpt_academic",
  "stars": 71137,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/binary-husky__gpt_academic --json --out /home/ubuntu/govfuzz-sweep-work/python__binary-husky__gpt_academic.cwd/sloc.json",
@@ -235,7 +235,7 @@
   }
  },
  "sha": "d6bde0fa54373309bd05823a49bda8da019d2c77",
- "clone_s": 1.0,
+ "clone_s": 1.7,
  "lane_check": "python: 276 files / 53558 lines; top=python(53558)",
  "status": "done"
 }

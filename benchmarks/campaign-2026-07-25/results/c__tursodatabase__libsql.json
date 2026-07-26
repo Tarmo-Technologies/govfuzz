@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "tursodatabase/libsql",
  "stars": 16991,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/tursodatabase__libsql --json --out /home/ubuntu/govfuzz-sweep-work/c__tursodatabase__libsql.cwd/sloc.json",
@@ -89,7 +89,7 @@
   }
  },
  "sha": "6f451a1fabacbcbc9960b232b4c1605a5021979b",
- "clone_s": 4.9,
+ "clone_s": 6.8,
  "lane_check": "c: 524 files / 1248413 lines; top=c(1248413)",
  "status": "done"
 }

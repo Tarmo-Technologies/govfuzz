@@ -2,17 +2,19 @@
  "lane": "cobol",
  "repo": "aws-samples/aws-mainframe-modernization-carddemo",
  "stars": 259,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/aws-samples__aws-mainframe-modernization-carddemo --json --out /home/ubuntu/govfuzz-sweep-work/cobol__aws-samples__aws-mainframe-modernization-carddemo.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 33225,
+   "sloc_by_lang": {
+    "cobol": 33225
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/aws-samples__aws-mainframe-modernization-carddemo --format json --top 100000",
@@ -146,7 +148,7 @@
   }
  },
  "sha": "59cc6c2fd7ebd7ef7925cad552a01a4b8b6e4d5e",
- "clone_s": 0.9,
+ "clone_s": 0.7,
  "lane_check": "cobol: 106 files / 38120 lines; top=cobol(38120)",
  "status": "done"
 }

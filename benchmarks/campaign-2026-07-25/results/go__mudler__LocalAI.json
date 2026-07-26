@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "mudler/LocalAI",
  "stars": 47853,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/mudler__LocalAI --json --out /home/ubuntu/govfuzz-sweep-work/go__mudler__LocalAI.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.13,
+   "wall_s": 0.22,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -268,7 +268,7 @@
   }
  },
  "sha": "90355cd44420e0cdbd9b79d7ce763341990a6851",
- "clone_s": 2.7,
+ "clone_s": 2.6,
  "lane_check": "go: 1494 files / 509913 lines; top=go(509913)",
  "status": "done"
 }

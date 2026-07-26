@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "LizardByte/Sunshine",
  "stars": 39583,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/LizardByte__Sunshine --json --out /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine.cwd/sloc.json",
@@ -77,7 +77,7 @@
   }
  },
  "sha": "7cb92071ac4394698e92ff6d070d310db9acc32c",
- "clone_s": 1.6,
+ "clone_s": 2.0,
  "lane_check": "cpp: 90 files / 46650 lines; top=cpp(46650)",
  "status": "done"
 }

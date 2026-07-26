@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "axios/axios",
  "stars": 109163,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/axios__axios --json --out /home/ubuntu/govfuzz-sweep-work/js__axios__axios.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,

@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "robertdavidgraham/masscan",
  "stars": 25884,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --json --out /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -150,7 +150,7 @@
   }
  },
  "sha": "94e118ccd26c2fb263fb2fe731043f7b3240723c",
- "clone_s": 0.7,
+ "clone_s": 0.6,
  "lane_check": "c: 115 files / 47067 lines; top=c(47067)",
  "status": "done"
 }

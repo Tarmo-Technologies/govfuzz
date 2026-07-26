@@ -2,7 +2,7 @@
  "lane": "lua",
  "repo": "phillipi/pix2pix",
  "stars": 10651,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/phillipi__pix2pix --json --out /home/ubuntu/govfuzz-sweep-work/lua__phillipi__pix2pix.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 265,
+   "languages": 2,
+   "sloc_total": 1600,
    "sloc_by_lang": {
+    "lua": 1335,
     "python": 265
    }
   },
@@ -218,7 +219,7 @@
   }
  },
  "sha": "89ff2a81ce441fbe1f1b13eca463b87f1e539df8",
- "clone_s": 0.5,
+ "clone_s": 1.2,
  "lane_check": "lua: 8 files / 1538 lines; top=lua(1538)",
  "status": "done"
 }

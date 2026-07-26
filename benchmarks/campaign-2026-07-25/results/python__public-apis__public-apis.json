@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "public-apis/public-apis",
  "stars": 452551,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/public-apis__public-apis --json --out /home/ubuntu/govfuzz-sweep-work/python__public-apis__public-apis.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -216,7 +216,7 @@
   }
  },
  "sha": "c4cfee67d61923e500d64ca382f499ff93e52ba8",
- "clone_s": 0.4,
+ "clone_s": 1.3,
  "lane_check": "python: 6 files / 880 lines; top=python(880)",
  "status": "done"
 }

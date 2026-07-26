@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "gentilkiwi/mimikatz",
  "stars": 21731,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/gentilkiwi__mimikatz --json --out /home/ubuntu/govfuzz-sweep-work/c__gentilkiwi__mimikatz.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.28,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -123,7 +123,7 @@
   }
  },
  "sha": "306bc6b43099c7b698f2898401fddbded6a630c8",
- "clone_s": 0.0,
+ "clone_s": 0.9,
  "lane_check": "c: 139 files / 295795 lines; top=c(295795)",
  "status": "done"
 }

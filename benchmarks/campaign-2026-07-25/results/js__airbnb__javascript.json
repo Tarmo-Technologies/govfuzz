@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "airbnb/javascript",
  "stars": 148094,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/airbnb__javascript --json --out /home/ubuntu/govfuzz-sweep-work/js__airbnb__javascript.cwd/sloc.json",

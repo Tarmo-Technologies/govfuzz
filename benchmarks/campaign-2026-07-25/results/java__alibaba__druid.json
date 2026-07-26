@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "alibaba/druid",
  "stars": 28180,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__druid --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__druid.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.21,
+   "wall_s": 0.14,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -126,7 +126,7 @@
   }
  },
  "sha": "899c27609705335c9dd9608fc4b5ca28d7885155",
- "clone_s": 2.8,
+ "clone_s": 3.2,
  "lane_check": "java: 5331 files / 502173 lines; top=java(502173)",
  "status": "done"
 }

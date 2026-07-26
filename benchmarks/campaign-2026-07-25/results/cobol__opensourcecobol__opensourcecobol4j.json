@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "opensourcecobol/opensourcecobol4j",
  "stars": 123,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/opensourcecobol__opensourcecobol4j --json --out /home/ubuntu/govfuzz-sweep-work/cobol__opensourcecobol__opensourcecobol4j.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 76715,
+   "languages": 6,
+   "sloc_total": 363524,
    "sloc_by_lang": {
+    "cobol": 286809,
     "c": 47273,
     "java": 26008,
     "config": 1752,
@@ -244,7 +245,7 @@
   }
  },
  "sha": "2e0c03dda1ec284f10967ac4f116e371ea088fec",
- "clone_s": 1.8,
+ "clone_s": 1.9,
  "lane_check": "cobol: 423 files / 320244 lines; top=cobol(320244)",
  "status": "done"
 }

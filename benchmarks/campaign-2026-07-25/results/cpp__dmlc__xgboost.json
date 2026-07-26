@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "dmlc/xgboost",
  "stars": 28601,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost --json --out /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -85,7 +85,7 @@
   }
  },
  "sha": "13131cd1a1d7d0877a6e2bed6380363cf50804d0",
- "clone_s": 1.4,
+ "clone_s": 1.1,
  "lane_check": "cpp: 268 files / 49288 lines; top=cpp(49288)",
  "status": "done"
 }

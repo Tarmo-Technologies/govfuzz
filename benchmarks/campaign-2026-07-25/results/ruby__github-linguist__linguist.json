@@ -2,26 +2,32 @@
  "lane": "ruby",
  "repo": "github-linguist/linguist",
  "stars": 13604,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist --json --out /home/ubuntu/govfuzz-sweep-work/ruby__github-linguist__linguist.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
-   "languages": 9,
-   "sloc_total": 91457,
+   "languages": 15,
+   "sloc_total": 108197,
    "sloc_by_lang": {
     "c": 27779,
     "javascript": 24372,
     "config": 13249,
     "cpp": 10813,
+    "ruby": 8211,
     "perl": 6191,
+    "php": 3877,
     "java": 3062,
+    "fortran": 2841,
     "go": 2785,
     "rust": 2158,
-    "python": 1048
+    "lua": 1459,
+    "python": 1048,
+    "csharp": 336,
+    "cobol": 16
    }
   },
   "list_targets": {
@@ -295,7 +301,7 @@
   }
  },
  "sha": "8afc9a0110df1b62c723d51bea82bd29345f92d3",
- "clone_s": 1.9,
+ "clone_s": 2.6,
  "lane_check": "ruby: 53 files / 10551 lines; top=c(29444)",
  "status": "done"
 }

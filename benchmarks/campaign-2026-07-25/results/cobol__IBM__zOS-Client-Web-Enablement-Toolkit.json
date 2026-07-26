@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "IBM/zOS-Client-Web-Enablement-Toolkit",
+ "stars": 41,
+ "wave": "SLOC",
+ "surfaces": {},
+ "sha": "5117ca15e45eb77e39f0b80a421b0d6c7e3c79e3",
+ "clone_s": 0.7,
+ "lane_check": "too few cobol files (cobol: 1 files / 1865 lines; top=c(2249))",
+ "status": "rejected_lane"
+}

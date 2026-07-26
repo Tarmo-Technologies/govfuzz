@@ -2,17 +2,19 @@
  "lane": "cobol",
  "repo": "lauryndbrown/Cisp",
  "stars": 143,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/lauryndbrown__Cisp --json --out /home/ubuntu/govfuzz-sweep-work/cobol__lauryndbrown__Cisp.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.0,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 824,
+   "sloc_by_lang": {
+    "cobol": 824
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/lauryndbrown__Cisp --format json --top 100000",
@@ -162,7 +164,7 @@
   }
  },
  "sha": "9364c7392ff903bbb3f2f7d72e188e0126afd89b",
- "clone_s": 0.9,
+ "clone_s": 1.9,
  "lane_check": "cobol: 6 files / 925 lines; top=cobol(925)",
  "status": "done"
 }

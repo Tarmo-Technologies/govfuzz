@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "BVLC/caffe",
  "stars": 34574,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe --json --out /home/ubuntu/govfuzz-sweep-work/cpp__BVLC__caffe.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,

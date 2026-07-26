@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "conductor-oss/conductor",
  "stars": 32046,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/conductor-oss__conductor --json --out /home/ubuntu/govfuzz-sweep-work/java__conductor-oss__conductor.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.19,
+   "wall_s": 0.5,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -153,7 +153,7 @@
   }
  },
  "sha": "b479d83a9e650297085ede588b13be23b3498cbb",
- "clone_s": 3.5,
+ "clone_s": 4.6,
  "lane_check": "java: 1444 files / 255670 lines; top=java(255670)",
  "status": "done"
 }

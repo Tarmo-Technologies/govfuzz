@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaDoom3/AdaDoom3",
  "stars": 283,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaDoom3__AdaDoom3 --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaDoom3__AdaDoom3.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -228,7 +228,7 @@
   }
  },
  "sha": "6b979248c03cfae9af705257b116179f7d250267",
- "clone_s": 15.0,
+ "clone_s": 19.5,
  "lane_check": "ada: 79 files / 27622 lines; top=ada(27622)",
  "status": "done"
 }

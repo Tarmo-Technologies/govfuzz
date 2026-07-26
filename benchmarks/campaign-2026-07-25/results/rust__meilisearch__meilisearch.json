@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "meilisearch/meilisearch",
  "stars": 58728,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/meilisearch__meilisearch --json --out /home/ubuntu/govfuzz-sweep-work/rust__meilisearch__meilisearch.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.15,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -231,7 +231,7 @@
   }
  },
  "sha": "a765263e32424145adc18fa44462fd82c5666c56",
- "clone_s": 4.1,
+ "clone_s": 2.2,
  "lane_check": "rust: 706 files / 234372 lines; top=rust(234372)",
  "status": "done"
 }

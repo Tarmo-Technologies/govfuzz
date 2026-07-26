@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "gabime/spdlog",
  "stars": 29265,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog --json --out /home/ubuntu/govfuzz-sweep-work/cpp__gabime__spdlog.cwd/sloc.json",
@@ -212,7 +212,7 @@
   }
  },
  "sha": "989d28dd768adef702538634857942db24e1058a",
- "clone_s": 0.7,
+ "clone_s": 1.3,
  "lane_check": "cpp: 40 files / 4198 lines; top=cpp(4198)",
  "status": "done"
 }

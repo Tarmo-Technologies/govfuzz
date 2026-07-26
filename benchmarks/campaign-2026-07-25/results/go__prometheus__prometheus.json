@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "prometheus/prometheus",
  "stars": 65313,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus --json --out /home/ubuntu/govfuzz-sweep-work/go__prometheus__prometheus.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.13,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -259,7 +259,7 @@
   }
  },
  "sha": "ab225f6ef5a833551ea0130be468f1d1b1968daa",
- "clone_s": 2.1,
+ "clone_s": 1.9,
  "lane_check": "go: 726 files / 331709 lines; top=go(331709)",
  "status": "done"
 }

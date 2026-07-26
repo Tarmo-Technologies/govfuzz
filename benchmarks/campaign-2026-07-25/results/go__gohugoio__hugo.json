@@ -2,18 +2,18 @@
  "lane": "go",
  "repo": "gohugoio/hugo",
  "stars": 89178,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --json --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.13,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 4,
-   "sloc_total": 183762,
+   "sloc_total": 183887,
    "sloc_by_lang": {
-    "go": 169768,
+    "go": 169893,
     "config": 6248,
     "javascript": 3969,
     "c": 3777
@@ -246,8 +246,8 @@
    "findings_detail": []
   }
  },
- "sha": "f228c87d417ae5b4461edf4ff80de717efceb661",
- "clone_s": 3.6,
- "lane_check": "go: 899 files / 194083 lines; top=go(194083)",
+ "sha": "861ede6d10311837a4fee88f34a8469a876e95f6",
+ "clone_s": 2.0,
+ "lane_check": "go: 899 files / 194228 lines; top=go(194228)",
  "status": "done"
 }

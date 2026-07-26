@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "rustdesk/rustdesk",
  "stars": 118862,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --json --out /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -197,7 +197,7 @@
   }
  },
  "sha": "eefd22b2057ba057305b10a6b5bf93c79b686eb9",
- "clone_s": 1.0,
+ "clone_s": 2.7,
  "lane_check": "rust: 250 files / 136560 lines; top=rust(136560)",
  "status": "done"
 }

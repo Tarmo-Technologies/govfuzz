@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "tw93/Pake",
  "stars": 60217,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/tw93__Pake --json --out /home/ubuntu/govfuzz-sweep-work/rust__tw93__Pake.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -127,7 +127,7 @@
   }
  },
  "sha": "cc445cbf69bd0ff615c2292d83fbbfa8abca7717",
- "clone_s": 1.6,
+ "clone_s": 2.3,
  "lane_check": "rust: 11 files / 2206 lines; top=ts(6636)",
  "status": "done"
 }

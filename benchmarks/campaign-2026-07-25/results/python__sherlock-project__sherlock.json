@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "sherlock-project/sherlock",
  "stars": 87075,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/sherlock-project__sherlock --json --out /home/ubuntu/govfuzz-sweep-work/python__sherlock-project__sherlock.cwd/sloc.json",
@@ -218,7 +218,7 @@
   }
  },
  "sha": "206068dc7842665130c87e16e1535572d3d1a907",
- "clone_s": 1.0,
+ "clone_s": 1.2,
  "lane_check": "python: 17 files / 1796 lines; top=python(1796)",
  "status": "done"
 }

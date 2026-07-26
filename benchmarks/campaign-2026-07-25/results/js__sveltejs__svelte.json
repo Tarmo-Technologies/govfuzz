@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "sveltejs/svelte",
  "stars": 87682,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte --json --out /home/ubuntu/govfuzz-sweep-work/js__sveltejs__svelte.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -223,7 +223,7 @@
   }
  },
  "sha": "44a7813730579b94004e182e5a67aab27aa9d2a6",
- "clone_s": 1.9,
+ "clone_s": 1.6,
  "lane_check": "js: 3380 files / 118540 lines; top=js(118540)",
  "status": "done"
 }

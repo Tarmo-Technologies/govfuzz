@@ -2,7 +2,7 @@
  "lane": "perl",
  "repo": "major/MySQLTuner-perl",
  "stars": 9470,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/major__MySQLTuner-perl --json --out /home/ubuntu/govfuzz-sweep-work/perl__major__MySQLTuner-perl.cwd/sloc.json",
@@ -206,7 +206,7 @@
   }
  },
  "sha": "fa2ab7dbab6779be0dbe3fb01ea3111bc51e6d41",
- "clone_s": 0.6,
+ "clone_s": 0.7,
  "lane_check": "perl: 97 files / 24225 lines; top=perl(24225)",
  "status": "done"
 }

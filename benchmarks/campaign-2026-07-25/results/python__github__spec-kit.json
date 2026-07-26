@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "github/spec-kit",
  "stars": 123817,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/github__spec-kit --json --out /home/ubuntu/govfuzz-sweep-work/python__github__spec-kit.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -213,7 +213,7 @@
   }
  },
  "sha": "c0fe0e43cd728ebc3dd1f714343f3921510a157f",
- "clone_s": 1.2,
+ "clone_s": 1.4,
  "lane_check": "python: 282 files / 104529 lines; top=python(104529)",
  "status": "done"
 }

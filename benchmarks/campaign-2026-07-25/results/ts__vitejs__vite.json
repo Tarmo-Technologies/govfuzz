@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "vitejs/vite",
  "stars": 82093,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/vitejs__vite --json --out /home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.13,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -217,7 +217,7 @@
   }
  },
  "sha": "3ac77d9dd742968961af38a5a91ed6b061ceda7d",
- "clone_s": 1.7,
+ "clone_s": 1.9,
  "lane_check": "ts: 584 files / 80880 lines; top=ts(80880)",
  "status": "done"
 }

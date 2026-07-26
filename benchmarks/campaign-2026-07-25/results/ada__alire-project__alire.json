@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "alire-project/alire",
  "stars": 405,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/alire-project__alire --json --out /home/ubuntu/govfuzz-sweep-work/ada__alire-project__alire.cwd/sloc.json",
@@ -286,7 +286,7 @@
   }
  },
  "sha": "61bb04a46fa18c8a60c40ab484d8f8fb48601664",
- "clone_s": 0.9,
+ "clone_s": 1.7,
  "lane_check": "ada: 474 files / 54503 lines; top=ada(54503)",
  "status": "done"
 }

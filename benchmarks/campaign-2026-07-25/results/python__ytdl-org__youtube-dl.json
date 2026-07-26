@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "ytdl-org/youtube-dl",
  "stars": 140801,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/ytdl-org__youtube-dl --json --out /home/ubuntu/govfuzz-sweep-work/python__ytdl-org__youtube-dl.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -247,7 +247,7 @@
   }
  },
  "sha": "956b8c585591b401a543e409accb163eeaaa1193",
- "clone_s": 1.2,
+ "clone_s": 1.8,
  "lane_check": "python: 902 files / 150327 lines; top=python(150327)",
  "status": "done"
 }

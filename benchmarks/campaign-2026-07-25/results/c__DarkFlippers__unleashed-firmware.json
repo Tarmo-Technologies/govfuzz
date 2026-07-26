@@ -2,21 +2,21 @@
  "lane": "c",
  "repo": "DarkFlippers/unleashed-firmware",
  "stars": 21899,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/DarkFlippers__unleashed-firmware --json --out /home/ubuntu/govfuzz-sweep-work/c__DarkFlippers__unleashed-firmware.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
    "languages": 5,
-   "sloc_total": 345396,
+   "sloc_total": 345419,
    "sloc_by_lang": {
     "c": 328019,
     "python": 11474,
     "cpp": 2134,
-    "config": 2062,
+    "config": 2085,
     "javascript": 1707
    }
   },
@@ -224,8 +224,8 @@
    "findings_detail": []
   }
  },
- "sha": "589ce3a7caf7ca6b6b365f807d96a5decd9ba82f",
- "clone_s": 0.0,
+ "sha": "a56750ffe7a1b6cc5295cdf9af20d736bc8e9724",
+ "clone_s": 2.6,
  "lane_check": "c: 1330 files / 641838 lines; top=c(641838)",
  "status": "done"
 }

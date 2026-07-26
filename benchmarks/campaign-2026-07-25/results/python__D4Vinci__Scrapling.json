@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "D4Vinci/Scrapling",
  "stars": 71268,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/D4Vinci__Scrapling --json --out /home/ubuntu/govfuzz-sweep-work/python__D4Vinci__Scrapling.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.33,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -219,7 +219,7 @@
   }
  },
  "sha": "07a548362ff904a2837f503ed9d9f6b9dcef0195",
- "clone_s": 0.8,
+ "clone_s": 1.4,
  "lane_check": "python: 116 files / 22165 lines; top=python(22165)",
  "status": "done"
 }

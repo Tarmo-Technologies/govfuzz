@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "codelabs-ch/muen",
  "stars": 100,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/codelabs-ch__muen --json --out /home/ubuntu/govfuzz-sweep-work/ada__codelabs-ch__muen.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -239,7 +239,7 @@
   }
  },
  "sha": "377335576569839b32fc53a228e71788e0deab43",
- "clone_s": 0.5,
+ "clone_s": 1.1,
  "lane_check": "ada: 86 files / 9787 lines; top=ada(9787)",
  "status": "done"
 }

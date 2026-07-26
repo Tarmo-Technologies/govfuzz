@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "tsoding/eepers",
  "stars": 468,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/tsoding__eepers --json --out /home/ubuntu/govfuzz-sweep-work/ada__tsoding__eepers.cwd/sloc.json",
@@ -221,7 +221,7 @@
   }
  },
  "sha": "90a6ff6644cbc507588f193a7a7d8300da06e6fa",
- "clone_s": 3.9,
+ "clone_s": 5.2,
  "lane_check": "ada: 5 files / 2141 lines; top=ada(2141)",
  "status": "done"
 }

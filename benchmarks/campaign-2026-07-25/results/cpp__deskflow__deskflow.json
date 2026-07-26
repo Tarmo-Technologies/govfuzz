@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "deskflow/deskflow",
  "stars": 27609,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/deskflow__deskflow --json --out /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -76,7 +76,7 @@
   }
  },
  "sha": "3dd6b6a49fb337717aa8e40e9981b46a6c6f7f0a",
- "clone_s": 1.0,
+ "clone_s": 1.1,
  "lane_check": "cpp: 229 files / 47883 lines; top=cpp(47883)",
  "status": "done"
 }

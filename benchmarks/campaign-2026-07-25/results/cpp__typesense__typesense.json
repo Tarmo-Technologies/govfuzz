@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "typesense/typesense",
  "stars": 26356,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/typesense__typesense --json --out /home/ubuntu/govfuzz-sweep-work/cpp__typesense__typesense.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -133,7 +133,7 @@
   }
  },
  "sha": "e6607fd78d461eb2945741a8a4104eae7b1b2eeb",
- "clone_s": 1.1,
+ "clone_s": 1.3,
  "lane_check": "cpp: 147 files / 173713 lines; top=cpp(173713)",
  "status": "done"
 }

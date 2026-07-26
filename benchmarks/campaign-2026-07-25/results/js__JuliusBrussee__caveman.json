@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "JuliusBrussee/caveman",
  "stars": 93002,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/JuliusBrussee__caveman --json --out /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman.cwd/sloc.json",
@@ -238,7 +238,7 @@
   }
  },
  "sha": "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "js: 30 files / 7169 lines; top=js(7169)",
  "status": "done"
 }

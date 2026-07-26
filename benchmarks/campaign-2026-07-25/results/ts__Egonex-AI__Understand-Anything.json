@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "Egonex-AI/Understand-Anything",
  "stars": 76107,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/Egonex-AI__Understand-Anything --json --out /home/ubuntu/govfuzz-sweep-work/ts__Egonex-AI__Understand-Anything.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -216,7 +216,7 @@
   }
  },
  "sha": "2cda14e89535049e49120198886bc0b82e9e630f",
- "clone_s": 3.0,
+ "clone_s": 1.8,
  "lane_check": "ts: 254 files / 41883 lines; top=ts(41883)",
  "status": "done"
 }

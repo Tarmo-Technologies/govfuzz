@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "koreader/koreader",
  "stars": 28032,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/koreader__koreader --json --out /home/ubuntu/govfuzz-sweep-work/lua__koreader__koreader.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 900,
+   "languages": 3,
+   "sloc_total": 178575,
    "sloc_by_lang": {
+    "lua": 177675,
     "python": 502,
     "config": 398
    }
@@ -225,7 +226,7 @@
   }
  },
  "sha": "3c46f1d4ce14d3484579fd0c76e0d694383ffd94",
- "clone_s": 1.2,
+ "clone_s": 2.5,
  "lane_check": "lua: 565 files / 199222 lines; top=lua(199222)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "tesseract-ocr/tesseract",
  "stars": 75555,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/tesseract-ocr__tesseract --json --out /home/ubuntu/govfuzz-sweep-work/cpp__tesseract-ocr__tesseract.cwd/sloc.json",

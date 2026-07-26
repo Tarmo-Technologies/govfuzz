@@ -2,7 +2,7 @@
  "lane": "php",
  "repo": "Seldaek/monolog",
  "stars": 21397,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/Seldaek__monolog --json --out /home/ubuntu/govfuzz-sweep-work/php__Seldaek__monolog.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 333,
+   "languages": 2,
+   "sloc_total": 17538,
    "sloc_by_lang": {
+    "php": 17205,
     "config": 333
    }
   },
@@ -206,7 +207,7 @@
   }
  },
  "sha": "57eb1028342134e701e77c617565d51b6e5a2a53",
- "clone_s": 0.8,
+ "clone_s": 0.6,
  "lane_check": "php: 217 files / 24136 lines; top=php(24136)",
  "status": "done"
 }

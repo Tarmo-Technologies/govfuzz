@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "ShareX/ShareX",
  "stars": 38818,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/ShareX__ShareX --json --out /home/ubuntu/govfuzz-sweep-work/csharp__ShareX__ShareX.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 415,
+   "languages": 2,
+   "sloc_total": 164586,
    "sloc_by_lang": {
+    "csharp": 164171,
     "config": 415
    }
   },
@@ -216,7 +217,7 @@
   }
  },
  "sha": "152da098050329a81f744d8c70d81fd509458a1c",
- "clone_s": 2.7,
+ "clone_s": 1.8,
  "lane_check": "csharp: 1230 files / 193418 lines; top=csharp(193418)",
  "status": "done"
 }

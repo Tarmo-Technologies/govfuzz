@@ -81,24 +81,50 @@ the sweep is the thing that notices.
 
 ## Results
 
-1 projects measured, 34,324 lines of code, 1,272 fuzzable targets discovered, **zero harnesses written by hand**.
+534 projects measured, 156,861,059 lines of code, 1,048,530 fuzzable targets discovered, **zero harnesses written by hand**.
 
 | Language | Projects | SLOC | Targets found | Attempted | Fuzzed | Rate | Findings |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| C | 1 | 34,324 | 1,272 | 10 | 0 | 0% | 0 |
-| **All 16** | **1** | **34,324** | **1,272** | **10** | **0** | **0%** | **0** |
+| Java | 39 | 8,585,082 | 258,463 | 240 | 45 | 19% | 3 |
+| C | 62 | 58,369,970 | 211,934 | 414 | 95 | 23% | 56 |
+| Rust | 40 | 10,958,714 | 139,262 | 236 | 56 | 24% | 10 |
+| Go | 40 | 13,252,595 | 117,922 | 366 | 63 | 17% | 17 |
+| C++ | 59 | 15,274,203 | 64,876 | 187 | 43 | 23% | 13 |
+| Ada | 26 | 3,109,189 | 42,043 | 212 | 39 | 18% | 6 |
+| Ruby | 23 | 4,464,292 | 41,825 | 211 | 55 | 26% | 0 |
+| Perl | 30 | 3,435,644 | 40,959 | 144 | 86 | 60% | 4 |
+| Python | 43 | 3,893,826 | 37,190 | 384 | 135 | 35% | 12 |
+| Fortran | 20 | 12,808,458 | 24,996 | 124 | 37 | 30% | 159 |
+| PHP | 24 | 4,685,622 | 24,842 | 206 | 109 | 53% | 0 |
+| TypeScript | 25 | 5,159,766 | 12,624 | 210 | 55 | 26% | 2 |
+| Lua | 21 | 3,024,694 | 10,843 | 183 | 54 | 30% | 1 |
+| COBOL | 24 | 2,243,149 | 10,082 | 83 | 27 | 33% | 7 |
+| C# | 25 | 6,002,013 | 5,887 | 180 | 22 | 12% | 4 |
+| JavaScript | 33 | 1,593,842 | 4,782 | 228 | 107 | 47% | 10 |
+| **All 16** | **534** | **156,861,059** | **1,048,530** | **3608** | **1028** | **28%** | **304** |
+
+One repository, `DeusData/codebase-memory-mcp`, contributes 37,987,460 of those lines (24% of the corpus) at roughly 46,000 lines per file — generated or amalgamated content rather than written code. Without it the corpus is 118,873,599 lines, which is the figure to reason about; it is left in because the corpus is star-ranked, not curated.
 
 ### Robustness
 
-Across 1 projects and 6 surface invocations: **0 panics**, **0 timeouts**. A tool that is run unattended over an estate has to survive every tree in it, including the malformed ones.
+Across 534 projects and 3204 surface invocations: **0 panics**, **17 timeouts**. A tool that is run unattended over an estate has to survive every tree in it, including the malformed ones.
 
 ### What blocked the rest
 
 | Targets | Language | Cause |
 |---:|---|---|
-| 5 | java | javac (target) failed: /home/ubuntu/govfuzz-corpus-N/c/Genymobile__scr |
-| 3 | c | C parameter "X" of type "X" has no byte-buffer decoder after struct sy |
-| 2 | c | missing header |
+| 179 | typescript | Cannot find module "X"); run "X" |
+| 171 | python | ModuleNotFoundError: No module named "X" |
+| 80 | c | C parameter "X" of type "X" has no byte-buffer decoder after struct sy |
+| 76 | php | target "X" |
+| 71 | java | Java target "X" parameter #N has an unsupported type "X" |
+| 58 | go | unsupported Go parameter type "X" |
+| 56 | javascript | Error [ERR_MODULE_NOT_FOUND]: Cannot find package "X" imported from /h |
+| 53 | cpp | [cpp20] blocked_by_non_self_contained_header: "X" cannot be included b |
+| 47 | rust | Rust parameter type "X" has no govfuzz-native byte decoder |
+| 44 | javascript | Cannot find module "X"); run "X" |
+| 38 | cpp | C++ parameter "X" of type "X" has no byte-buffer decoder (auto-harness |
+| 34 | csharp | instance method "X" |
 
 ## Honest limits
 

@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "router-for-me/CLIProxyAPI",
  "stars": 44916,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/router-for-me__CLIProxyAPI --json --out /home/ubuntu/govfuzz-sweep-work/go__router-for-me__CLIProxyAPI.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -279,7 +279,7 @@
   }
  },
  "sha": "42a00a2a6521b867c27f7ad096d08699db8e6d19",
- "clone_s": 1.4,
+ "clone_s": 1.6,
  "lane_check": "go: 969 files / 281880 lines; top=go(281880)",
  "status": "done"
 }

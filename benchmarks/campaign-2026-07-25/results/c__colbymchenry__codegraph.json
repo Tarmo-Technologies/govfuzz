@@ -2,16 +2,16 @@
  "lane": "c",
  "repo": "colbymchenry/codegraph",
  "stars": 62458,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/colbymchenry__codegraph --json --out /home/ubuntu/govfuzz-sweep-work/c__colbymchenry__codegraph.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.65,
+   "wall_s": 0.48,
    "timed_out": false,
    "panic": false,
-   "languages": 8,
-   "sloc_total": 2205145,
+   "languages": 12,
+   "sloc_total": 2205783,
    "sloc_by_lang": {
     "c": 2092285,
     "javascript": 90971,
@@ -19,7 +19,11 @@
     "cpp": 924,
     "python": 234,
     "config": 217,
+    "php": 197,
+    "ruby": 187,
+    "csharp": 178,
     "java": 78,
+    "lua": 76,
     "go": 46
    }
   },
@@ -216,7 +220,7 @@
   }
  },
  "sha": "572d22bfbe82602080e457bec655f72e3314f9ef",
- "clone_s": 0.0,
+ "clone_s": 3.7,
  "lane_check": "c: 9 files / 2091329 lines; top=c(2091329)",
  "status": "done"
 }

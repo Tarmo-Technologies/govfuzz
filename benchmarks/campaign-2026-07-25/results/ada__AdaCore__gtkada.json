@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "AdaCore/gtkada",
  "stars": 106,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gtkada --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gtkada.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -249,7 +249,7 @@
   }
  },
  "sha": "9b009dfb57f4b9f8364ebdf11f0edbdc07c29303",
- "clone_s": 3.9,
+ "clone_s": 5.7,
  "lane_check": "ada: 717 files / 231960 lines; top=ada(231960)",
  "status": "done"
 }

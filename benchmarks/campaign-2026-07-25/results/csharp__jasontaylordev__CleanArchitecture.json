@@ -2,7 +2,7 @@
  "lane": "csharp",
  "repo": "jasontaylordev/CleanArchitecture",
  "stars": 20362,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/jasontaylordev__CleanArchitecture --json --out /home/ubuntu/govfuzz-sweep-work/csharp__jasontaylordev__CleanArchitecture.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 1749,
+   "languages": 3,
+   "sloc_total": 4604,
    "sloc_by_lang": {
+    "csharp": 2855,
     "javascript": 1549,
     "config": 200
    }
@@ -150,7 +151,7 @@
   }
  },
  "sha": "43831e20374677b81f93bb08923eff3245b7195f",
- "clone_s": 1.2,
+ "clone_s": 1.0,
  "lane_check": "csharp: 110 files / 3011 lines; top=csharp(3011)",
  "status": "done"
 }

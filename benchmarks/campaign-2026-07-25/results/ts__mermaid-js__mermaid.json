@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "mermaid-js/mermaid",
  "stars": 89419,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/mermaid-js__mermaid --json --out /home/ubuntu/govfuzz-sweep-work/ts__mermaid-js__mermaid.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -246,7 +246,7 @@
   }
  },
  "sha": "46d72558156421f69b8b2d2af7d4525523e043d3",
- "clone_s": 1.5,
+ "clone_s": 1.6,
  "lane_check": "ts: 794 files / 112463 lines; top=ts(112463)",
  "status": "done"
 }

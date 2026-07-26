@@ -2,20 +2,21 @@
  "lane": "c",
  "repo": "kingToolbox/WindTerm",
  "stars": 31734,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/kingToolbox__WindTerm --json --out /home/ubuntu/govfuzz-sweep-work/c__kingToolbox__WindTerm.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 140843,
+   "languages": 6,
+   "sloc_total": 141632,
    "sloc_by_lang": {
     "c": 134868,
     "cpp": 4036,
     "python": 1444,
+    "ruby": 789,
     "config": 475,
     "javascript": 20
    }
@@ -257,7 +258,7 @@
   }
  },
  "sha": "a8336c1d1e3dd1a981500dae8ef9eb42066de95f",
- "clone_s": 0.7,
+ "clone_s": 0.9,
  "lane_check": "c: 231 files / 112262 lines; top=c(112262)",
  "status": "done"
 }

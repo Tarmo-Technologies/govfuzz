@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "TheAlgorithms/C",
  "stars": 22280,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/TheAlgorithms__C --json --out /home/ubuntu/govfuzz-sweep-work/c__TheAlgorithms__C.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -280,7 +280,7 @@
   }
  },
  "sha": "e5dad3fa8def3726ec850ca66a7f51521f8ad393",
- "clone_s": 0.0,
+ "clone_s": 1.1,
  "lane_check": "c: 407 files / 33170 lines; top=c(33170)",
  "status": "done"
 }

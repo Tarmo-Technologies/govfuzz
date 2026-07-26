@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "google/leveldb",
  "stars": 39255,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/google__leveldb --json --out /home/ubuntu/govfuzz-sweep-work/cpp__google__leveldb.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -121,7 +121,7 @@
   }
  },
  "sha": "7ee830d02b623e8ffe0b95d59a74db1e58da04c5",
- "clone_s": 0.6,
+ "clone_s": 0.7,
  "lane_check": "cpp: 76 files / 19865 lines; top=cpp(19865)",
  "status": "done"
 }

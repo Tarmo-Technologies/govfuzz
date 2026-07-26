@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "bcit-ci/CodeIgniter",
  "stars": 18164,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/bcit-ci__CodeIgniter --json --out /home/ubuntu/govfuzz-sweep-work/php__bcit-ci__CodeIgniter.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.23,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 333,
+   "languages": 4,
+   "sloc_total": 36121,
    "sloc_by_lang": {
+    "php": 35788,
     "javascript": 154,
     "config": 112,
     "python": 67
@@ -206,7 +207,7 @@
   }
  },
  "sha": "3658d731eaabe6117298a105ffb5b9dd59e190ce",
- "clone_s": 1.2,
+ "clone_s": 1.5,
  "lane_check": "php: 282 files / 65212 lines; top=php(65212)",
  "status": "done"
 }

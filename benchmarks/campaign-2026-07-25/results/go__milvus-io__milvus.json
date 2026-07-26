@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "milvus-io/milvus",
  "stars": 45382,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --json --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.37,
+   "wall_s": 0.44,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -87,7 +87,7 @@
   }
  },
  "sha": "f7a5984811e4ebceb81b1d4f1c03112410866a0a",
- "clone_s": 6.0,
+ "clone_s": 5.5,
  "lane_check": "go: 3396 files / 1221005 lines; top=go(1221005)",
  "status": "done"
 }

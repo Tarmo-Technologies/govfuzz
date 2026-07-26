@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "timescale/timescaledb",
  "stars": 23180,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb --json --out /home/ubuntu/govfuzz-sweep-work/c__timescale__timescaledb.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -255,7 +255,7 @@
   }
  },
  "sha": "77d9d3281ce1265209eb1c39c8a7c04067786213",
- "clone_s": 3.5,
+ "clone_s": 2.0,
  "lane_check": "c: 279 files / 138243 lines; top=c(138243)",
  "status": "done"
 }

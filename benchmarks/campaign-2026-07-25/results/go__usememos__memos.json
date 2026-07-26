@@ -2,7 +2,7 @@
  "lane": "go",
  "repo": "usememos/memos",
  "stars": 61794,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/usememos__memos --json --out /home/ubuntu/govfuzz-sweep-work/go__usememos__memos.cwd/sloc.json",
@@ -229,7 +229,7 @@
   }
  },
  "sha": "390126f1cd5f6aca55a17faf031655da4354b60b",
- "clone_s": 1.4,
+ "clone_s": 2.2,
  "lane_check": "go: 347 files / 80558 lines; top=go(80558)",
  "status": "done"
 }

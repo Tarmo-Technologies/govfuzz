@@ -2,21 +2,23 @@
  "lane": "fortran",
  "repo": "ElmerCSC/elmerfem",
  "stars": 1637,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/ElmerCSC__elmerfem --json --out /home/ubuntu/govfuzz-sweep-work/fortran__ElmerCSC__elmerfem.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.37,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 300325,
+   "languages": 6,
+   "sloc_total": 905971,
    "sloc_by_lang": {
+    "fortran": 605196,
     "cpp": 169165,
     "c": 127636,
     "python": 2226,
-    "config": 1298
+    "config": 1298,
+    "lua": 450
    }
   },
   "list_targets": {
@@ -133,7 +135,7 @@
   }
  },
  "sha": "be707951fc8d07addf5d06ea07594edc06786835",
- "clone_s": 6.4,
+ "clone_s": 6.9,
  "lane_check": "fortran: 2237 files / 985368 lines; top=fortran(985368)",
  "status": "done"
 }

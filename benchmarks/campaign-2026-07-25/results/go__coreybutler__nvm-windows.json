@@ -2,7 +2,7 @@
  "lane": "go",
  "repo": "coreybutler/nvm-windows",
  "stars": 47161,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/coreybutler__nvm-windows --json --out /home/ubuntu/govfuzz-sweep-work/go__coreybutler__nvm-windows.cwd/sloc.json",
@@ -224,7 +224,7 @@
   }
  },
  "sha": "5b18223ca19ff50d707f35410dbc6bd440a9f74d",
- "clone_s": 1.0,
+ "clone_s": 0.8,
  "lane_check": "go: 14 files / 4550 lines; top=go(4550)",
  "status": "done"
 }

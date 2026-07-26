@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "h5bp/html5-boilerplate",
  "stars": 57570,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/h5bp__html5-boilerplate --json --out /home/ubuntu/govfuzz-sweep-work/js__h5bp__html5-boilerplate.cwd/sloc.json",

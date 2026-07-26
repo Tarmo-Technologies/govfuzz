@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "composer/composer",
  "stars": 29494,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/composer__composer --json --out /home/ubuntu/govfuzz-sweep-work/php__composer__composer.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 544,
+   "languages": 2,
+   "sloc_total": 89808,
    "sloc_by_lang": {
+    "php": 89264,
     "config": 544
    }
   },
@@ -206,7 +207,7 @@
   }
  },
  "sha": "bb38c69cac82c5c6caeda8721715b0f9f9e7b6c2",
- "clone_s": 1.8,
+ "clone_s": 1.3,
  "lane_check": "php: 589 files / 111768 lines; top=php(111768)",
  "status": "done"
 }

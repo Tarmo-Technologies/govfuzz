@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "ultraworkers/claw-code",
  "stars": 194912,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/ultraworkers__claw-code --json --out /home/ubuntu/govfuzz-sweep-work/rust__ultraworkers__claw-code.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -205,7 +205,7 @@
   }
  },
  "sha": "4ea31c1bc91c4e9bcbd67d51c550c01e127e6d0d",
- "clone_s": 0.9,
+ "clone_s": 1.1,
  "lane_check": "rust: 101 files / 106170 lines; top=rust(106170)",
  "status": "done"
 }

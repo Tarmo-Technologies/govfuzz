@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "TauricResearch/TradingAgents",
  "stars": 94531,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/TauricResearch__TradingAgents --json --out /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents.cwd/sloc.json",

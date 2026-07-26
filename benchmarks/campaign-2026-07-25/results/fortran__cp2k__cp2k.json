@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "cp2k/cp2k",
  "stars": 1174,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --json --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.27,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 81133,
+   "languages": 6,
+   "sloc_total": 1123206,
    "sloc_by_lang": {
+    "fortran": 1042073,
     "c": 63112,
     "python": 10219,
     "config": 4258,
@@ -249,7 +250,7 @@
   }
  },
  "sha": "71c3ab0c0b558fd9ed8ea010a76e5cd388a72f96",
- "clone_s": 12.4,
+ "clone_s": 16.8,
  "lane_check": "fortran: 1351 files / 1245629 lines; top=fortran(1245629)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "santifer/career-ops",
  "stars": 61559,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops --json --out /home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -228,7 +228,7 @@
   }
  },
  "sha": "adc04fb0586e5b50d9d2dbacea3526f90c2174f3",
- "clone_s": 2.7,
+ "clone_s": 3.1,
  "lane_check": "js: 258 files / 60700 lines; top=js(60700)",
  "status": "done"
 }

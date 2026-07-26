@@ -2,7 +2,7 @@
  "lane": "lua",
  "repo": "karpathy/char-rnn",
  "stars": 12083,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/karpathy__char-rnn --json --out /home/ubuntu/govfuzz-sweep-work/lua__karpathy__char-rnn.cwd/sloc.json",
@@ -10,9 +10,11 @@
    "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 885,
+   "sloc_by_lang": {
+    "lua": 885
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/karpathy__char-rnn --format json --top 100000",
@@ -204,7 +206,7 @@
   }
  },
  "sha": "6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e",
- "clone_s": 0.5,
+ "clone_s": 1.7,
  "lane_check": "lua: 11 files / 1043 lines; top=lua(1043)",
  "status": "done"
 }

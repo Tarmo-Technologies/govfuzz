@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "BookStackApp/BookStack",
  "stars": 18941,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack --json --out /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.14,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 62276,
+   "languages": 3,
+   "sloc_total": 212718,
    "sloc_by_lang": {
+    "php": 150442,
     "javascript": 61577,
     "config": 699
    }
@@ -217,7 +218,7 @@
   }
  },
  "sha": "4e406c41c4c8060a5795e74c66fb96362e54f400",
- "clone_s": 1.9,
+ "clone_s": 2.6,
  "lane_check": "php: 1763 files / 169027 lines; top=php(169027)",
  "status": "done"
 }

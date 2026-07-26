@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "TGSAN/CMWTAT_Digital_Edition",
  "stars": 19213,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/TGSAN__CMWTAT_Digital_Edition --json --out /home/ubuntu/govfuzz-sweep-work/csharp__TGSAN__CMWTAT_Digital_Edition.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 13,
+   "languages": 2,
+   "sloc_total": 2375,
    "sloc_by_lang": {
+    "csharp": 2362,
     "config": 13
    }
   },
@@ -150,7 +151,7 @@
   }
  },
  "sha": "2bab2dfd5734ea1d1719b9a24d5541e09d333354",
- "clone_s": 5.6,
+ "clone_s": 1.2,
  "lane_check": "csharp: 9 files / 2640 lines; top=csharp(2640)",
  "status": "done"
 }

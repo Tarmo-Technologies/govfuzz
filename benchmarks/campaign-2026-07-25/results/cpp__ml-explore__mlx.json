@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "ml-explore/mlx",
  "stars": 27709,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ml-explore__mlx --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ml-explore__mlx.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -149,7 +149,7 @@
   }
  },
  "sha": "973e27f82ffe68dbd626cda31ba34997045d1eb7",
- "clone_s": 0.9,
+ "clone_s": 1.2,
  "lane_check": "cpp: 225 files / 83188 lines; top=cpp(83188)",
  "status": "done"
 }

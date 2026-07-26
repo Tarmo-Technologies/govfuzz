@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "zhongyang219/TrafficMonitor",
  "stars": 45378,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/zhongyang219__TrafficMonitor --json --out /home/ubuntu/govfuzz-sweep-work/cpp__zhongyang219__TrafficMonitor.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -163,7 +163,7 @@
   }
  },
  "sha": "430f14d49d46a796a41c8960b44ec56a461d4760",
- "clone_s": 1.0,
+ "clone_s": 1.2,
  "lane_check": "cpp: 106 files / 27123 lines; top=cpp(27123)",
  "status": "done"
 }

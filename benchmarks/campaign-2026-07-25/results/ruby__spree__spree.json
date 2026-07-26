@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "spree/spree",
  "stars": 15572,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree --json --out /home/ubuntu/govfuzz-sweep-work/ruby__spree__spree.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.17,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 171593,
+   "languages": 3,
+   "sloc_total": 342908,
    "sloc_by_lang": {
+    "ruby": 171315,
     "config": 86450,
     "javascript": 85143
    }
@@ -228,7 +229,7 @@
   }
  },
  "sha": "9d80cbc04bf2cd4dead8fa4b9401b181938865fc",
- "clone_s": 8.4,
+ "clone_s": 7.4,
  "lane_check": "ruby: 2334 files / 183496 lines; top=ruby(183496)",
  "status": "done"
 }

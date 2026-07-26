@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "mxgmn/WaveFunctionCollapse",
  "stars": 25218,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/mxgmn__WaveFunctionCollapse --json --out /home/ubuntu/govfuzz-sweep-work/csharp__mxgmn__WaveFunctionCollapse.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 1,
+   "languages": 2,
+   "sloc_total": 687,
    "sloc_by_lang": {
+    "csharp": 686,
     "config": 1
    }
   },
@@ -86,7 +87,7 @@
   }
  },
  "sha": "de7d22e705e816b62b4d613199d0463820fcaef3",
- "clone_s": 5.6,
+ "clone_s": 6.4,
  "lane_check": "csharp: 5 files / 686 lines; top=csharp(686)",
  "status": "done"
 }

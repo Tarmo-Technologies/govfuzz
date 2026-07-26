@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "ruvnet/RuView",
  "stars": 86399,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/ruvnet__RuView --json --out /home/ubuntu/govfuzz-sweep-work/rust__ruvnet__RuView.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.36,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -277,7 +277,7 @@
   }
  },
  "sha": "f783df234eec22929b88e256422cbfc50579196b",
- "clone_s": 17.3,
+ "clone_s": 6.1,
  "lane_check": "rust: 693 files / 228540 lines; top=rust(228540)",
  "status": "done"
 }

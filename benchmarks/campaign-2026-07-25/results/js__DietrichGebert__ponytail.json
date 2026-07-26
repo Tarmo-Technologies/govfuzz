@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "DietrichGebert/ponytail",
  "stars": 89409,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/DietrichGebert__ponytail --json --out /home/ubuntu/govfuzz-sweep-work/js__DietrichGebert__ponytail.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -210,7 +210,7 @@
   }
  },
  "sha": "16f29800fd2681bdf24f3eb4ccffe38be3baec6b",
- "clone_s": 0.6,
+ "clone_s": 0.7,
  "lane_check": "js: 45 files / 3736 lines; top=js(3736)",
  "status": "done"
 }

@@ -2,18 +2,19 @@
  "lane": "php",
  "repo": "symfony/symfony",
  "stars": 31110,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --json --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.67,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 11844,
+   "languages": 3,
+   "sloc_total": 1692241,
    "sloc_by_lang": {
-    "config": 10846,
+    "php": 1680368,
+    "config": 10875,
     "javascript": 998
    }
   },
@@ -212,8 +213,8 @@
    "findings_detail": []
   }
  },
- "sha": "b2ec790993c5e61a3ba0d5ef3c97fa921bbd2459",
- "clone_s": 12.5,
- "lane_check": "php: 10774 files / 1834164 lines; top=php(1834164)",
+ "sha": "ba234b4d8474d4b512d15832a7a330bfb8d3f8a6",
+ "clone_s": 7.2,
+ "lane_check": "php: 10774 files / 1834539 lines; top=php(1834539)",
  "status": "done"
 }

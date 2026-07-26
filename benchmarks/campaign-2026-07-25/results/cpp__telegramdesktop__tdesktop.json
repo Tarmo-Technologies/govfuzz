@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "telegramdesktop/tdesktop",
  "stars": 32404,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/telegramdesktop__tdesktop --json --out /home/ubuntu/govfuzz-sweep-work/cpp__telegramdesktop__tdesktop.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.21,
+   "wall_s": 0.19,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -78,7 +78,7 @@
   }
  },
  "sha": "2a6fd2cb752f8b3caca9b3589b2e89d28b36f00d",
- "clone_s": 3.2,
+ "clone_s": 3.7,
  "lane_check": "cpp: 1279 files / 816183 lines; top=cpp(816183)",
  "status": "done"
 }

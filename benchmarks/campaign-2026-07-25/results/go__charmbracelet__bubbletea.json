@@ -2,7 +2,7 @@
  "lane": "go",
  "repo": "charmbracelet/bubbletea",
  "stars": 43960,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/charmbracelet__bubbletea --json --out /home/ubuntu/govfuzz-sweep-work/go__charmbracelet__bubbletea.cwd/sloc.json",
@@ -225,7 +225,7 @@
   }
  },
  "sha": "fc707bb7ea0161405bb6c653ec93f6a9c6a72fe1",
- "clone_s": 0.6,
+ "clone_s": 0.9,
  "lane_check": "go: 111 files / 12011 lines; top=go(12011)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "aristocratos/btop",
  "stars": 33637,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/aristocratos__btop --json --out /home/ubuntu/govfuzz-sweep-work/cpp__aristocratos__btop.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -231,7 +231,7 @@
   }
  },
  "sha": "cece4df4db2112f63d94347f6ee2f89ee7224c7b",
- "clone_s": 0.8,
+ "clone_s": 0.7,
  "lane_check": "cpp: 34 files / 20203 lines; top=cpp(20203)",
  "status": "done"
 }

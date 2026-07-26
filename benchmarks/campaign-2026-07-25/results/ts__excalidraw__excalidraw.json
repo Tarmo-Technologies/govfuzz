@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "excalidraw/excalidraw",
  "stars": 128342,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/excalidraw__excalidraw --json --out /home/ubuntu/govfuzz-sweep-work/ts__excalidraw__excalidraw.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -223,7 +223,7 @@
   }
  },
  "sha": "b2e81e38a6fde8b3cb5dfdf2f2fb651323ad309d",
- "clone_s": 2.7,
+ "clone_s": 5.3,
  "lane_check": "ts: 626 files / 162754 lines; top=ts(162754)",
  "status": "done"
 }

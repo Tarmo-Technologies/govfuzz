@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "SamyPesse/How-to-Make-a-Computer-Operating-System",
  "stars": 22428,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/SamyPesse__How-to-Make-a-Computer-Operating-System --json --out /home/ubuntu/govfuzz-sweep-work/c__SamyPesse__How-to-Make-a-Computer-Operating-System.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,

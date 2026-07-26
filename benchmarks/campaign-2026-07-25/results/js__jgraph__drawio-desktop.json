@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "jgraph/drawio-desktop",
  "stars": 62296,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/jgraph__drawio-desktop --json --out /home/ubuntu/govfuzz-sweep-work/js__jgraph__drawio-desktop.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -158,7 +158,7 @@
   }
  },
  "sha": "aa55e7c093a00033262cdddcfe0b9ff1754861c0",
- "clone_s": 0.6,
+ "clone_s": 1.4,
  "lane_check": "js: 11 files / 4950 lines; top=js(4950)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "netdata/netdata",
  "stars": 79848,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/netdata__netdata --json --out /home/ubuntu/govfuzz-sweep-work/go__netdata__netdata.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.97,
+   "wall_s": 0.64,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -263,7 +263,7 @@
   }
  },
  "sha": "347c638a0e095cb290eeee60e343530c4dc8254a",
- "clone_s": 9.1,
+ "clone_s": 9.6,
  "lane_check": "go: 2810 files / 589037 lines; top=go(589037)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "yt-dlp/yt-dlp",
  "stars": 180095,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/yt-dlp__yt-dlp --json --out /home/ubuntu/govfuzz-sweep-work/python__yt-dlp__yt-dlp.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -268,7 +268,7 @@
   }
  },
  "sha": "fdcc954df4955267ec1627cbeb347b661a110e7c",
- "clone_s": 1.8,
+ "clone_s": 1.5,
  "lane_check": "python: 1124 files / 222148 lines; top=python(222148)",
  "status": "done"
 }

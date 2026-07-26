@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "earendil-works/pi",
  "stars": 77602,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi --json --out /home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -239,7 +239,7 @@
   }
  },
  "sha": "5bc1c2c0a6f07e00e8c240304182f213ab8d311f",
- "clone_s": 1.6,
+ "clone_s": 1.2,
  "lane_check": "ts: 926 files / 189775 lines; top=ts(189775)",
  "status": "done"
 }

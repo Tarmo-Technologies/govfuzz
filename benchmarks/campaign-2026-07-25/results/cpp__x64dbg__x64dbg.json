@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "x64dbg/x64dbg",
  "stars": 48997,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --json --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.24,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -79,7 +79,7 @@
   }
  },
  "sha": "74e1ab8a3a9f44da84f1dcca35ff130fa45f1b89",
- "clone_s": 2.0,
+ "clone_s": 1.8,
  "lane_check": "cpp: 348 files / 116975 lines; top=cpp(116975)",
  "status": "done"
 }

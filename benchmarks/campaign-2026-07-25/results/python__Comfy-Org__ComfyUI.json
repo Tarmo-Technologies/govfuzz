@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "Comfy-Org/ComfyUI",
  "stars": 122251,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/Comfy-Org__ComfyUI --json --out /home/ubuntu/govfuzz-sweep-work/python__Comfy-Org__ComfyUI.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -236,7 +236,7 @@
   }
  },
  "sha": "806e092ed42772e4ce7abf44c97c50021cc4bd10",
- "clone_s": 2.0,
+ "clone_s": 2.3,
  "lane_check": "python: 723 files / 209575 lines; top=python(209575)",
  "status": "done"
 }

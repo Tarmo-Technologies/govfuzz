@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "gorhill/uBlock",
  "stars": 66499,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/gorhill__uBlock --json --out /home/ubuntu/govfuzz-sweep-work/js__gorhill__uBlock.cwd/sloc.json",
@@ -218,7 +218,7 @@
   }
  },
  "sha": "2c23c298d5fa7d998d9d397a610ece42ff405abc",
- "clone_s": 1.5,
+ "clone_s": 2.1,
  "lane_check": "js: 289 files / 142856 lines; top=js(142856)",
  "status": "done"
 }

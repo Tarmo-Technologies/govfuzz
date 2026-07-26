@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "TheAlgorithms/C-Plus-Plus",
  "stars": 34519,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/TheAlgorithms__C-Plus-Plus --json --out /home/ubuntu/govfuzz-sweep-work/cpp__TheAlgorithms__C-Plus-Plus.cwd/sloc.json",

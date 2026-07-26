@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "jquery/jquery",
  "stars": 59797,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/jquery__jquery --json --out /home/ubuntu/govfuzz-sweep-work/js__jquery__jquery.cwd/sloc.json",
@@ -10,11 +10,12 @@
    "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 38503,
+   "languages": 3,
+   "sloc_total": 38784,
    "sloc_by_lang": {
     "javascript": 37903,
-    "config": 600
+    "config": 600,
+    "php": 281
    }
   },
   "list_targets": {
@@ -211,7 +212,7 @@
   }
  },
  "sha": "51eb576cca6ffce252dc152bf8e91d5230a0d887",
- "clone_s": 0.6,
+ "clone_s": 1.2,
  "lane_check": "js: 222 files / 43858 lines; top=js(43858)",
  "status": "done"
 }

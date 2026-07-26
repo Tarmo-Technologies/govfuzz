@@ -1,0 +1,11 @@
+{
+ "lane": "js",
+ "repo": "byoungd/up",
+ "stars": 56259,
+ "wave": "SLOC",
+ "surfaces": {},
+ "sha": "42e6faa9b881d30d9e572cef14ab0d85b59661a4",
+ "clone_s": 3.2,
+ "lane_check": "too few js files (js: 1 files / 159 lines; top=js(159))",
+ "status": "rejected_lane"
+}

@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "matomo-org/matomo",
  "stars": 21717,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/matomo-org__matomo --json --out /home/ubuntu/govfuzz-sweep-work/php__matomo-org__matomo.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.33,
+   "wall_s": 0.18,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 190517,
+   "languages": 4,
+   "sloc_total": 579068,
    "sloc_by_lang": {
+    "php": 388551,
     "javascript": 187768,
     "config": 2600,
     "perl": 149
@@ -241,7 +242,7 @@
   }
  },
  "sha": "509a3140785796ae7b022fce5d1c2884cb89f79d",
- "clone_s": 7.8,
+ "clone_s": 5.8,
  "lane_check": "php: 3460 files / 494697 lines; top=php(494697)",
  "status": "done"
 }

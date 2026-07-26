@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "FiloSottile/mkcert",
  "stars": 59365,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/FiloSottile__mkcert --json --out /home/ubuntu/govfuzz-sweep-work/go__FiloSottile__mkcert.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -114,7 +114,7 @@
   }
  },
  "sha": "1c1dc4ed27ed5936046b6398d39cab4d657a2d8e",
- "clone_s": 0.5,
+ "clone_s": 1.4,
  "lane_check": "go: 7 files / 1205 lines; top=go(1205)",
  "status": "done"
 }

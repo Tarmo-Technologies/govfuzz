@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "immich-app/immich",
  "stars": 108777,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/immich-app__immich --json --out /home/ubuntu/govfuzz-sweep-work/ts__immich-app__immich.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -249,7 +249,7 @@
   }
  },
  "sha": "409734e1db36e8df09591b1867104ed7cf3a304c",
- "clone_s": 6.0,
+ "clone_s": 5.0,
  "lane_check": "ts: 1017 files / 139177 lines; top=ts(139177)",
  "status": "done"
 }

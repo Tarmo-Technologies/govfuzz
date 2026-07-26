@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "open-webui/open-webui",
  "stars": 146740,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/open-webui__open-webui --json --out /home/ubuntu/govfuzz-sweep-work/python__open-webui__open-webui.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -259,7 +259,7 @@
   }
  },
  "sha": "ecd48e2f718220a6400ecf49eafd4867a38feb10",
- "clone_s": 4.6,
+ "clone_s": 4.7,
  "lane_check": "python: 237 files / 85895 lines; top=python(85895)",
  "status": "done"
 }

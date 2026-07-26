@@ -2,7 +2,7 @@
  "lane": "perl",
  "repo": "rsnapshot/rsnapshot",
  "stars": 3656,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/rsnapshot__rsnapshot --json --out /home/ubuntu/govfuzz-sweep-work/perl__rsnapshot__rsnapshot.cwd/sloc.json",
@@ -215,7 +215,7 @@
   }
  },
  "sha": "e7d78207682150cb9a186fbd4034ea37509d9741",
- "clone_s": 0.4,
+ "clone_s": 0.5,
  "lane_check": "perl: 5 files / 7141 lines; top=perl(7141)",
  "status": "done"
 }

@@ -2,19 +2,20 @@
  "lane": "ts",
  "repo": "Eugeny/tabby",
  "stars": 73504,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby --json --out /home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
+   "languages": 3,
    "sloc_total": 26096,
    "sloc_by_lang": {
     "javascript": 24811,
-    "config": 1285
+    "config": 1285,
+    "lua": 0
    }
   },
   "list_targets": {
@@ -212,7 +213,7 @@
   }
  },
  "sha": "14e2d60b9b6dee84a53c37f05eefeb803787de04",
- "clone_s": 2.5,
+ "clone_s": 2.0,
  "lane_check": "ts: 284 files / 25293 lines; top=ts(25293)",
  "status": "done"
 }

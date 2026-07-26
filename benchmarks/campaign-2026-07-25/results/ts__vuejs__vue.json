@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "vuejs/vue",
  "stars": 210144,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --json --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -228,7 +228,7 @@
   }
  },
  "sha": "9e88707940088cb1f4cd7dd210c9168a50dc347c",
- "clone_s": 0.8,
+ "clone_s": 0.9,
  "lane_check": "ts: 391 files / 66960 lines; top=ts(66960)",
  "status": "done"
 }

@@ -2,22 +2,23 @@
  "lane": "go",
  "repo": "rclone/rclone",
  "stars": 58702,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/rclone__rclone --json --out /home/ubuntu/govfuzz-sweep-work/go__rclone__rclone.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 299029,
+   "languages": 6,
+   "sloc_total": 299105,
    "sloc_by_lang": {
     "go": 291843,
     "config": 5045,
     "javascript": 1023,
     "python": 1018,
-    "c": 100
+    "c": 100,
+    "php": 76
    }
   },
   "list_targets": {
@@ -249,7 +250,7 @@
   }
  },
  "sha": "2217d38273711451e0181e6d787dc90a76ebafdf",
- "clone_s": 2.0,
+ "clone_s": 3.1,
  "lane_check": "go: 1132 files / 329887 lines; top=go(329887)",
  "status": "done"
 }

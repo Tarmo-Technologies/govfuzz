@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "78/xiaozhi-esp32",
  "stars": 28358,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/78__xiaozhi-esp32 --json --out /home/ubuntu/govfuzz-sweep-work/cpp__78__xiaozhi-esp32.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -244,7 +244,7 @@
   }
  },
  "sha": "38bc4f443b96da306a4f7c77375042e46d588e64",
- "clone_s": 1.2,
+ "clone_s": 1.0,
  "lane_check": "cpp: 258 files / 65979 lines; top=cpp(65979)",
  "status": "done"
 }

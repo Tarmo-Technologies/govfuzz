@@ -2,7 +2,7 @@
  "lane": "perl",
  "repo": "sullo/nikto",
  "stars": 10575,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/sullo__nikto --json --out /home/ubuntu/govfuzz-sweep-work/perl__sullo__nikto.cwd/sloc.json",
@@ -208,7 +208,7 @@
   }
  },
  "sha": "999670cb6a939b6c93840ce666941756e4c5dcf5",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "perl: 3 files / 5718 lines; top=perl(5718)",
  "status": "done"
 }

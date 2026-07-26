@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "krisds/koopa",
  "stars": 57,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/krisds__koopa --json --out /home/ubuntu/govfuzz-sweep-work/cobol__krisds__koopa.cwd/sloc.json",
@@ -228,7 +228,7 @@
   }
  },
  "sha": "9d63708848d724a382aa6d48fca71e8f9e2a7d29",
- "clone_s": 2.3,
+ "clone_s": 1.9,
  "lane_check": "cobol: 515 files / 348607 lines; top=cobol(348607)",
  "status": "done"
 }

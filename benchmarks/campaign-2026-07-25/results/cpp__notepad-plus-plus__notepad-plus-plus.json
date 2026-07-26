@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "notepad-plus-plus/notepad-plus-plus",
  "stars": 28813,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus --json --out /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 11,
@@ -86,7 +86,7 @@
   }
  },
  "sha": "40176040e424276bf4b492febe591f5389c946e1",
- "clone_s": 2.7,
+ "clone_s": 2.6,
  "lane_check": "cpp: 534 files / 328153 lines; top=cpp(328153)",
  "status": "done"
 }

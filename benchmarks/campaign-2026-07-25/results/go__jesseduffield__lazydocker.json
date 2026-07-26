@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "jesseduffield/lazydocker",
  "stars": 52161,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/jesseduffield__lazydocker --json --out /home/ubuntu/govfuzz-sweep-work/go__jesseduffield__lazydocker.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -268,7 +268,7 @@
   }
  },
  "sha": "7e7aadc2071d58031bf2daafca1fbd4093efc23f",
- "clone_s": 2.0,
+ "clone_s": 2.2,
  "lane_check": "go: 87 files / 10829 lines; top=go(10829)",
  "status": "done"
 }

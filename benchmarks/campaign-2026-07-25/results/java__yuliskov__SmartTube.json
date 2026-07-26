@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "yuliskov/SmartTube",
  "stars": 31543,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/yuliskov__SmartTube --json --out /home/ubuntu/govfuzz-sweep-work/java__yuliskov__SmartTube.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.19,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -194,7 +194,7 @@
   }
  },
  "sha": "409198e240811a82ad1c323d7c06254a61da9176",
- "clone_s": 4.6,
+ "clone_s": 4.2,
  "lane_check": "java: 1672 files / 357187 lines; top=java(357187)",
  "status": "done"
 }

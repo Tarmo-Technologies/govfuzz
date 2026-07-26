@@ -2,7 +2,7 @@
  "lane": "ruby",
  "repo": "tmuxinator/tmuxinator",
  "stars": 13685,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/tmuxinator__tmuxinator --json --out /home/ubuntu/govfuzz-sweep-work/ruby__tmuxinator__tmuxinator.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 1342,
+   "languages": 2,
+   "sloc_total": 5821,
    "sloc_by_lang": {
+    "ruby": 4479,
     "config": 1342
    }
   },

@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "xuxueli/xxl-job",
  "stars": 30401,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/xuxueli__xxl-job --json --out /home/ubuntu/govfuzz-sweep-work/java__xuxueli__xxl-job.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -193,7 +193,7 @@
   }
  },
  "sha": "e74c784f68f81fa89cb350913ef15794865d7b12",
- "clone_s": 1.4,
+ "clone_s": 4.7,
  "lane_check": "java: 168 files / 15575 lines; top=js(18526)",
  "status": "done"
 }

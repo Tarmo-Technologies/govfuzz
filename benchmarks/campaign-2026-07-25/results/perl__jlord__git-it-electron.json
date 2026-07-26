@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "jlord/git-it-electron",
  "stars": 4887,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron --json --out /home/ubuntu/govfuzz-sweep-work/perl__jlord__git-it-electron.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -226,7 +226,7 @@
   }
  },
  "sha": "e7551c58366787dbc62ee7ef6079fc8cc6c7acb9",
- "clone_s": 7.1,
+ "clone_s": 5.4,
  "lane_check": "perl: 1260 files / 648448 lines; top=perl(648448)",
  "status": "done"
 }

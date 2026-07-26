@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "alibaba/nacos",
  "stars": 33211,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__nacos --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__nacos.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.72,
+   "wall_s": 0.4,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -187,7 +187,7 @@
   }
  },
  "sha": "cecde03072bf703937cf83ab40b8d368ac3af606",
- "clone_s": 5.7,
+ "clone_s": 6.0,
  "lane_check": "java: 4583 files / 554015 lines; top=java(554015)",
  "status": "done"
 }

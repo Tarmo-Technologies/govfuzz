@@ -2,17 +2,19 @@
  "lane": "fortran",
  "repo": "nasa/NASTRAN-95",
  "stars": 582,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/nasa__NASTRAN-95 --json --out /home/ubuntu/govfuzz-sweep-work/fortran__nasa__NASTRAN-95.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 284187,
+   "sloc_by_lang": {
+    "fortran": 284187
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/nasa__NASTRAN-95 --format json --top 100000",
@@ -126,7 +128,7 @@
   }
  },
  "sha": "65e29e9db7b21a02bb42e723afa74fa7635ed765",
- "clone_s": 4.9,
+ "clone_s": 6.8,
  "lane_check": "fortran: 1848 files / 417453 lines; top=fortran(417453)",
  "status": "done"
 }

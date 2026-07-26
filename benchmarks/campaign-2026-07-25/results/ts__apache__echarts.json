@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "apache/echarts",
  "stars": 66903,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/apache__echarts --json --out /home/ubuntu/govfuzz-sweep-work/ts__apache__echarts.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -215,7 +215,7 @@
   }
  },
  "sha": "e647e7746279397170a1e654e5567cac73b79f9b",
- "clone_s": 4.3,
+ "clone_s": 4.5,
  "lane_check": "ts: 640 files / 131402 lines; top=ts(131402)",
  "status": "done"
 }

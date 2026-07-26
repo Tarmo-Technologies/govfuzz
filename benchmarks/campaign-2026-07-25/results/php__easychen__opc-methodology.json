@@ -1,0 +1,11 @@
+{
+ "lane": "php",
+ "repo": "easychen/opc-methodology",
+ "stars": 16278,
+ "wave": "SLOC",
+ "surfaces": {},
+ "sha": "b3d0503a52298a2fbe4751231f3119d6a015eab5",
+ "clone_s": 2.6,
+ "lane_check": "too few php files (php: 1 files / 48 lines; top=php(48))",
+ "status": "rejected_lane"
+}

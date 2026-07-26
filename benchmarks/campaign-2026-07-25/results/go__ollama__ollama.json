@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "ollama/ollama",
  "stars": 176895,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --json --out /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.2,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -288,7 +288,7 @@
   }
  },
  "sha": "64ee2f9847ccaedd8f05a139c30f086e9e0abe73",
- "clone_s": 6.1,
+ "clone_s": 2.5,
  "lane_check": "go: 763 files / 264932 lines; top=go(264932)",
  "status": "done"
 }

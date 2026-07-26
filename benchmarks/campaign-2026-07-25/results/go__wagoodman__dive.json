@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "wagoodman/dive",
  "stars": 54357,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/wagoodman__dive --json --out /home/ubuntu/govfuzz-sweep-work/go__wagoodman__dive.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -234,7 +234,7 @@
   }
  },
  "sha": "d6c691947f8fda635c952a17ee3b7555379d58f0",
- "clone_s": 0.9,
+ "clone_s": 1.3,
  "lane_check": "go: 110 files / 9756 lines; top=go(9756)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "MHSanaei/3x-ui",
  "stars": 43663,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --json --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -240,7 +240,7 @@
   }
  },
  "sha": "acbb879f800380ceb8005df5b5e755b348971028",
- "clone_s": 1.8,
+ "clone_s": 2.3,
  "lane_check": "go: 447 files / 90284 lines; top=go(90284)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "expressjs/express",
  "stars": 69249,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/expressjs__express --json --out /home/ubuntu/govfuzz-sweep-work/js__expressjs__express.cwd/sloc.json",
@@ -213,7 +213,7 @@
   }
  },
  "sha": "ae6dd37680e3a00618d6c8a3e522f0ee4eeba1a4",
- "clone_s": 0.6,
+ "clone_s": 0.8,
  "lane_check": "js: 141 files / 17541 lines; top=js(17541)",
  "status": "done"
 }

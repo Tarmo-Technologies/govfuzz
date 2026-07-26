@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "Lucretia/bare_bones",
  "stars": 91,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/Lucretia__bare_bones --json --out /home/ubuntu/govfuzz-sweep-work/ada__Lucretia__bare_bones.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 1,
@@ -200,7 +200,7 @@
   }
  },
  "sha": "2666092925729aa8b5655211211529b98c5d18bd",
- "clone_s": 0.5,
+ "clone_s": 0.4,
  "lane_check": "ada: 7 files / 713 lines; top=ada(713)",
  "status": "done"
 }

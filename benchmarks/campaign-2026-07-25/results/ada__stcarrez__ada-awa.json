@@ -2,12 +2,12 @@
  "lane": "ada",
  "repo": "stcarrez/ada-awa",
  "stars": 111,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/stcarrez__ada-awa --json --out /home/ubuntu/govfuzz-sweep-work/ada__stcarrez__ada-awa.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -168,7 +168,7 @@
   }
  },
  "sha": "59ec443a43dbbc3f53bdec5e03c8ffe72fe1e899",
- "clone_s": 1.0,
+ "clone_s": 1.4,
  "lane_check": "ada: 356 files / 74885 lines; top=ada(74885)",
  "status": "done"
 }

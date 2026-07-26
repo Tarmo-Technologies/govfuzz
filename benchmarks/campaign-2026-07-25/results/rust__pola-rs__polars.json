@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "pola-rs/polars",
  "stars": 39106,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/pola-rs__polars --json --out /home/ubuntu/govfuzz-sweep-work/rust__pola-rs__polars.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.44,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -272,7 +272,7 @@
   }
  },
  "sha": "a3e282a0f9003952a721f09eed5b54f425860773",
- "clone_s": 3.1,
+ "clone_s": 2.4,
  "lane_check": "rust: 2101 files / 426005 lines; top=rust(426005)",
  "status": "done"
 }

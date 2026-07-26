@@ -2,19 +2,20 @@
  "lane": "c",
  "repo": "jart/cosmopolitan",
  "stars": 21175,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/jart__cosmopolitan --json --out /home/ubuntu/govfuzz-sweep-work/c__jart__cosmopolitan.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.24,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 273600,
+   "languages": 5,
+   "sloc_total": 284219,
    "sloc_by_lang": {
     "c": 253750,
     "cpp": 18761,
+    "lua": 10619,
     "python": 580,
     "config": 509
    }
@@ -213,7 +214,7 @@
   }
  },
  "sha": "3293fad0a9eac7865c019be98fb993eeb933405e",
- "clone_s": 0.0,
+ "clone_s": 8.6,
  "lane_check": "c: 3010 files / 308052 lines; top=c(308052)",
  "status": "done"
 }

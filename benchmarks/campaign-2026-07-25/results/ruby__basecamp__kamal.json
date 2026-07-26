@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "basecamp/kamal",
  "stars": 14438,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/basecamp__kamal --json --out /home/ubuntu/govfuzz-sweep-work/ruby__basecamp__kamal.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 2007,
+   "languages": 2,
+   "sloc_total": 18347,
    "sloc_by_lang": {
+    "ruby": 16340,
     "config": 2007
    }
   },
@@ -218,7 +219,7 @@
   }
  },
  "sha": "eee0083b38661c3707c6b6052cc89e85038a096c",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "ruby: 173 files / 16550 lines; top=ruby(16550)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "vercel-labs/agent-browser",
  "stars": 39200,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/vercel-labs__agent-browser --json --out /home/ubuntu/govfuzz-sweep-work/rust__vercel-labs__agent-browser.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 3,

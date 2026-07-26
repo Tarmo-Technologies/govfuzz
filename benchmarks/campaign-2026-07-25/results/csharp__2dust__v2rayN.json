@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "2dust/v2rayN",
  "stars": 112214,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/2dust__v2rayN --json --out /home/ubuntu/govfuzz-sweep-work/csharp__2dust__v2rayN.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 1395,
+   "languages": 2,
+   "sloc_total": 40340,
    "sloc_by_lang": {
+    "csharp": 38945,
     "config": 1395
    }
   },
@@ -139,7 +140,7 @@
   }
  },
  "sha": "b01476d1470314fd9ea1adbdb9a0376bf95c0b7f",
- "clone_s": 1.7,
+ "clone_s": 1.2,
  "lane_check": "csharp: 273 files / 42264 lines; top=csharp(42264)",
  "status": "done"
 }

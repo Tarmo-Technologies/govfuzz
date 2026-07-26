@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "dbeaver/dbeaver",
  "stars": 51138,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/dbeaver__dbeaver --json --out /home/ubuntu/govfuzz-sweep-work/java__dbeaver__dbeaver.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.42,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -146,7 +146,7 @@
   }
  },
  "sha": "93e03097c9f024e1174c4a2887a8e6bf3035150c",
- "clone_s": 3.6,
+ "clone_s": 5.8,
  "lane_check": "java: 6396 files / 799872 lines; top=java(799872)",
  "status": "done"
 }

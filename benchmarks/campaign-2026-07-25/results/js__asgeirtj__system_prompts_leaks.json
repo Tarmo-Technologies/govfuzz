@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "asgeirtj/system_prompts_leaks",
  "stars": 60510,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks --json --out /home/ubuntu/govfuzz-sweep-work/js__asgeirtj__system_prompts_leaks.cwd/sloc.json",
@@ -208,7 +208,7 @@
   }
  },
  "sha": "d1decbf3f8b52bb5d77a9e420012983359ef45d2",
- "clone_s": 1.1,
+ "clone_s": 1.7,
  "lane_check": "js: 35 files / 13945 lines; top=js(13945)",
  "status": "done"
 }

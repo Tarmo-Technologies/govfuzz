@@ -1,0 +1,25 @@
+{
+ "lane": "perl",
+ "repo": "CNSRE/ABTestingGateway",
+ "stars": 2351,
+ "wave": "SLOC",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/CNSRE__ABTestingGateway --json --out /home/ubuntu/govfuzz-sweep-work/perl__CNSRE__ABTestingGateway.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 5837,
+   "sloc_by_lang": {
+    "lua": 5173,
+    "python": 664
+   }
+  }
+ },
+ "sha": "ea987bde60805603cdd55c3c4dce8f6fb986e15f",
+ "clone_s": 1.4,
+ "lane_check": "perl: 24 files / 8771 lines; top=perl(8771)",
+ "status": "done"
+}

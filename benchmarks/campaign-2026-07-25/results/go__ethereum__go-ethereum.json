@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "ethereum/go-ethereum",
  "stars": 51220,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/ethereum__go-ethereum --json --out /home/ubuntu/govfuzz-sweep-work/go__ethereum__go-ethereum.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -178,7 +178,7 @@
   }
  },
  "sha": "ca1f2e4d38f4e94676981bb9251239a5d490b004",
- "clone_s": 2.8,
+ "clone_s": 3.5,
  "lane_check": "go: 1404 files / 384509 lines; top=go(384509)",
  "status": "done"
 }

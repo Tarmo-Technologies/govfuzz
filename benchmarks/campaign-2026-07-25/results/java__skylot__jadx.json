@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "skylot/jadx",
  "stars": 49786,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/skylot__jadx --json --out /home/ubuntu/govfuzz-sweep-work/java__skylot__jadx.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -172,7 +172,7 @@
   }
  },
  "sha": "81fdaaf48edfd32f07c142f074efc77c90876a52",
- "clone_s": 1.5,
+ "clone_s": 2.0,
  "lane_check": "java: 1931 files / 158179 lines; top=java(158179)",
  "status": "done"
 }

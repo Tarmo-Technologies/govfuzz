@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "mapmeld/fortran-machine",
  "stars": 811,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/mapmeld__fortran-machine --json --out /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 5918,
+   "languages": 3,
+   "sloc_total": 37990,
    "sloc_by_lang": {
+    "fortran": 32072,
     "c": 5722,
     "java": 196
    }
@@ -1335,7 +1336,7 @@
   }
  },
  "sha": "5e5e6bbdab353149047971a3f872238a2a4b716e",
- "clone_s": 0.6,
+ "clone_s": 0.8,
  "lane_check": "fortran: 195 files / 50548 lines; top=fortran(50548)",
  "status": "done"
 }

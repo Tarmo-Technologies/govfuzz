@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "DevToys-app/DevToys",
  "stars": 31802,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/DevToys-app__DevToys --json --out /home/ubuntu/govfuzz-sweep-work/csharp__DevToys-app__DevToys.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 7466,
+   "languages": 3,
+   "sloc_total": 39469,
    "sloc_by_lang": {
+    "csharp": 32003,
     "javascript": 7220,
     "config": 246
    }
@@ -270,7 +271,7 @@
   }
  },
  "sha": "7e12df8448aa1f6aec4a8736b3e06a1c90530715",
- "clone_s": 7.3,
+ "clone_s": 8.5,
  "lane_check": "csharp: 587 files / 41965 lines; top=csharp(41965)",
  "status": "done"
 }

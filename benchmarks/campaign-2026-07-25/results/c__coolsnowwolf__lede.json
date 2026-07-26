@@ -2,21 +2,22 @@
  "lane": "c",
  "repo": "coolsnowwolf/lede",
  "stars": 31540,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/coolsnowwolf__lede --json --out /home/ubuntu/govfuzz-sweep-work/c__coolsnowwolf__lede.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.22,
+   "wall_s": 0.21,
    "timed_out": false,
    "panic": false,
-   "languages": 6,
-   "sloc_total": 1253140,
+   "languages": 7,
+   "sloc_total": 1254907,
    "sloc_by_lang": {
     "c": 1198665,
     "cpp": 43564,
     "perl": 9012,
     "python": 1781,
+    "lua": 1767,
     "config": 117,
     "javascript": 1
    }
@@ -260,7 +261,7 @@
   }
  },
  "sha": "6883e66e8b002791cce8587ddb85b63b81b0754c",
- "clone_s": 7.7,
+ "clone_s": 7.0,
  "lane_check": "c: 935 files / 1027814 lines; top=c(1027814)",
  "status": "done"
 }

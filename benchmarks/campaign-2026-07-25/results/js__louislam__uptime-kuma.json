@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "louislam/uptime-kuma",
  "stars": 89495,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/louislam__uptime-kuma --json --out /home/ubuntu/govfuzz-sweep-work/js__louislam__uptime-kuma.cwd/sloc.json",
@@ -10,13 +10,15 @@
    "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 58977,
+   "languages": 7,
+   "sloc_total": 59007,
    "sloc_by_lang": {
     "javascript": 57306,
     "config": 1522,
     "go": 116,
     "java": 25,
+    "csharp": 18,
+    "php": 12,
     "python": 8
    }
   },
@@ -254,7 +256,7 @@
   }
  },
  "sha": "1aa80912e73c17d525d232073c4c8d757f8e38ab",
- "clone_s": 0.9,
+ "clone_s": 1.4,
  "lane_check": "js: 352 files / 38117 lines; top=js(38117)",
  "status": "done"
 }

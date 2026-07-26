@@ -2,7 +2,7 @@
  "lane": "cpp",
  "repo": "barry-ran/QtScrcpy",
  "stars": 30704,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/barry-ran__QtScrcpy --json --out /home/ubuntu/govfuzz-sweep-work/cpp__barry-ran__QtScrcpy.cwd/sloc.json",
@@ -240,7 +240,7 @@
   }
  },
  "sha": "3e8892649d1a36982197f4fd3664bc1321bb13b2",
- "clone_s": 1.7,
+ "clone_s": 2.4,
  "lane_check": "cpp: 15 files / 3566 lines; top=cpp(3566)",
  "status": "done"
 }

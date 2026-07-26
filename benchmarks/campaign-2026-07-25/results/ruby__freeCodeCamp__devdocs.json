@@ -2,7 +2,7 @@
  "lane": "ruby",
  "repo": "freeCodeCamp/devdocs",
  "stars": 39222,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/freeCodeCamp__devdocs --json --out /home/ubuntu/govfuzz-sweep-work/ruby__freeCodeCamp__devdocs.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 8588,
+   "languages": 3,
+   "sloc_total": 49146,
    "sloc_by_lang": {
+    "ruby": 40558,
     "javascript": 7802,
     "config": 786
    }
@@ -168,7 +169,7 @@
   }
  },
  "sha": "29088c059283a551de57a8bbdee01939b1cf50ef",
- "clone_s": 1.7,
+ "clone_s": 1.3,
  "lane_check": "ruby: 855 files / 41767 lines; top=ruby(41767)",
  "status": "done"
 }

@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "ppy/osu",
  "stars": 18738,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/ppy__osu --json --out /home/ubuntu/govfuzz-sweep-work/csharp__ppy__osu.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 746,
+   "languages": 2,
+   "sloc_total": 445799,
    "sloc_by_lang": {
+    "csharp": 445053,
     "config": 746
    }
   },
@@ -135,7 +136,7 @@
   }
  },
  "sha": "5da71008b082d1a77e4bb301dc98886f1f24b895",
- "clone_s": 9.0,
+ "clone_s": 4.3,
  "lane_check": "csharp: 4831 files / 490475 lines; top=csharp(490475)",
  "status": "done"
 }

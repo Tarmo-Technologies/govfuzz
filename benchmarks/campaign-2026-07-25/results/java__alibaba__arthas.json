@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "alibaba/arthas",
  "stars": 37452,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__arthas --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__arthas.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -266,7 +266,7 @@
   }
  },
  "sha": "a960592c79ba5da5182fb82fd9dca7b3b4c85292",
- "clone_s": 1.9,
+ "clone_s": 2.6,
  "lane_check": "java: 1014 files / 97988 lines; top=java(97988)",
  "status": "done"
 }

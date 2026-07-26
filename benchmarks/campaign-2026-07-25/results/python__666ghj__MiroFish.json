@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "666ghj/MiroFish",
  "stars": 69308,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/666ghj__MiroFish --json --out /home/ubuntu/govfuzz-sweep-work/python__666ghj__MiroFish.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -236,7 +236,7 @@
   }
  },
  "sha": "60757b3c825d577a1d7a86ab1ba6d5c21f51c261",
- "clone_s": 1.0,
+ "clone_s": 2.9,
  "lane_check": "python: 62 files / 25823 lines; top=python(25823)",
  "status": "done"
 }

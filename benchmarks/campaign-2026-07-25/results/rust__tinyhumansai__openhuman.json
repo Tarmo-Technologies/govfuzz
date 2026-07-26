@@ -2,21 +2,22 @@
  "lane": "rust",
  "repo": "tinyhumansai/openhuman",
  "stars": 35426,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/tinyhumansai__openhuman --json --out /home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.64,
+   "wall_s": 0.22,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 1117140,
+   "languages": 5,
+   "sloc_total": 1117196,
    "sloc_by_lang": {
     "rust": 684074,
     "javascript": 405487,
     "config": 27258,
-    "python": 321
+    "python": 321,
+    "ruby": 56
    }
   },
   "list_targets": {
@@ -244,7 +245,7 @@
   }
  },
  "sha": "ee1fa76081bc03a9e18d7684e9150ecd0f186f69",
- "clone_s": 7.4,
+ "clone_s": 5.3,
  "lane_check": "rust: 2278 files / 802693 lines; top=rust(802693)",
  "status": "done"
 }

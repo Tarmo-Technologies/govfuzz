@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "Nek5000/Nek5000",
  "stars": 479,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/Nek5000__Nek5000 --json --out /home/ubuntu/govfuzz-sweep-work/fortran__Nek5000__Nek5000.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 19439,
+   "languages": 4,
+   "sloc_total": 206925,
    "sloc_by_lang": {
+    "fortran": 187486,
     "c": 16588,
     "python": 2569,
     "config": 282

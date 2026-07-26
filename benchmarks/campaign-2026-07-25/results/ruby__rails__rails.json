@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "rails/rails",
  "stars": 58641,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/rails__rails --json --out /home/ubuntu/govfuzz-sweep-work/ruby__rails__rails.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.12,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 16273,
+   "languages": 3,
+   "sloc_total": 409700,
    "sloc_by_lang": {
+    "ruby": 393427,
     "javascript": 11912,
     "config": 4361
    }
@@ -229,8 +230,8 @@
    "findings_detail": []
   }
  },
- "sha": "6c8f4059775c8eedd652f1a6a268441cfa94a9c9",
- "clone_s": 3.4,
- "lane_check": "ruby: 3426 files / 461081 lines; top=ruby(461081)",
+ "sha": "22c4d98fd6d8da5a15256d7a4cd3335121595c5c",
+ "clone_s": 2.3,
+ "lane_check": "ruby: 3425 files / 461070 lines; top=ruby(461070)",
  "status": "done"
 }

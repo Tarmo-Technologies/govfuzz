@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "ventoy/Ventoy",
  "stars": 78243,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ventoy__Ventoy --json --out /home/ubuntu/govfuzz-sweep-work/c__ventoy__Ventoy.cwd/sloc.json",
@@ -293,7 +293,7 @@
   }
  },
  "sha": "7cbdc5cf69935bcf1f085ae67f40e70ea7e74bae",
- "clone_s": 5.0,
+ "clone_s": 3.8,
  "lane_check": "c: 408 files / 238221 lines; top=c(238221)",
  "status": "done"
 }

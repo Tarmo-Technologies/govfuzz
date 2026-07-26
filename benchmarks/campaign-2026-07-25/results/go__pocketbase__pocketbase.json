@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "pocketbase/pocketbase",
  "stars": 60256,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/pocketbase__pocketbase --json --out /home/ubuntu/govfuzz-sweep-work/go__pocketbase__pocketbase.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -275,7 +275,7 @@
   }
  },
  "sha": "0cbfc046c7548421268582db4bfb9a03a158361a",
- "clone_s": 1.4,
+ "clone_s": 2.2,
  "lane_check": "go: 453 files / 109492 lines; top=go(109492)",
  "status": "done"
 }

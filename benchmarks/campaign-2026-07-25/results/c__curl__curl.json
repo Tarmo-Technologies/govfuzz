@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "curl/curl",
  "stars": 42473,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/curl__curl --json --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -255,7 +255,7 @@
   }
  },
  "sha": "c5d683b961d49dbfa297c61c53b58466b960e202",
- "clone_s": 0.0,
+ "clone_s": 3.1,
  "lane_check": "c: 757 files / 228651 lines; top=c(228651)",
  "status": "done"
 }

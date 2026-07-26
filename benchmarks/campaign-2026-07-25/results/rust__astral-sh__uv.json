@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "astral-sh/uv",
  "stars": 87894,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/astral-sh__uv --json --out /home/ubuntu/govfuzz-sweep-work/rust__astral-sh__uv.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -144,7 +144,7 @@
   }
  },
  "sha": "9e4d20c1b1eeb1c38b51c2d462ff3a32b8dda9a4",
- "clone_s": 1.8,
+ "clone_s": 4.0,
  "lane_check": "rust: 612 files / 439670 lines; top=rust(439670)",
  "status": "done"
 }

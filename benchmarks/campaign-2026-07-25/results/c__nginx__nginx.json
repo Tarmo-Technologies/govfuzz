@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "nginx/nginx",
  "stars": 31224,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx --json --out /home/ubuntu/govfuzz-sweep-work/c__nginx__nginx.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 4,

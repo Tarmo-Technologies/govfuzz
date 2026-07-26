@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "Mintplex-Labs/anything-llm",
  "stars": 63842,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm --json --out /home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm.cwd/sloc.json",
@@ -241,7 +241,7 @@
   }
  },
  "sha": "633fc1960914298009134b40c25007cb422c7884",
- "clone_s": 3.8,
+ "clone_s": 4.0,
  "lane_check": "js: 1147 files / 224087 lines; top=js(224087)",
  "status": "done"
 }

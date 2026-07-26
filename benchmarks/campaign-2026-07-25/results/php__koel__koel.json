@@ -2,17 +2,18 @@
  "lane": "php",
  "repo": "koel/koel",
  "stars": 17196,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/koel__koel --json --out /home/ubuntu/govfuzz-sweep-work/php__koel__koel.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 60590,
+   "languages": 3,
+   "sloc_total": 115353,
    "sloc_by_lang": {
+    "php": 54763,
     "javascript": 52510,
     "config": 8080
    }
@@ -227,7 +228,7 @@
   }
  },
  "sha": "d1a5f3d0ef229bf1d0ceb7586c5c81da5eb4c287",
- "clone_s": 2.5,
+ "clone_s": 1.8,
  "lane_check": "php: 1405 files / 60761 lines; top=php(60761)",
  "status": "done"
 }

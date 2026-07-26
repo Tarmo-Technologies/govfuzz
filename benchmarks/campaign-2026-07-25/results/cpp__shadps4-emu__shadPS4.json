@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "shadps4-emu/shadPS4",
  "stars": 32259,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/shadps4-emu__shadPS4 --json --out /home/ubuntu/govfuzz-sweep-work/cpp__shadps4-emu__shadPS4.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -79,7 +79,7 @@
   }
  },
  "sha": "d976c33ca88a540bd948f9fafd64f86610c61070",
- "clone_s": 2.8,
+ "clone_s": 3.0,
  "lane_check": "cpp: 398 files / 170066 lines; top=cpp(170066)",
  "status": "done"
 }

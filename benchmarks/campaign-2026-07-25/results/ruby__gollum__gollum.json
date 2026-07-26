@@ -2,17 +2,18 @@
  "lane": "ruby",
  "repo": "gollum/gollum",
  "stars": 14309,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/gollum__gollum --json --out /home/ubuntu/govfuzz-sweep-work/ruby__gollum__gollum.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 3265,
+   "languages": 3,
+   "sloc_total": 7763,
    "sloc_by_lang": {
+    "ruby": 4498,
     "javascript": 2679,
     "config": 586
    }

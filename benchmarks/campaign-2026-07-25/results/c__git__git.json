@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "git/git",
  "stars": 62202,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/git__git --json --out /home/ubuntu/govfuzz-sweep-work/c__git__git.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.1,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 7,
@@ -249,7 +249,7 @@
   }
  },
  "sha": "9a0c4701dcd5725c4184599322b52933ff5005ca",
- "clone_s": 4.4,
+ "clone_s": 5.2,
  "lane_check": "c: 639 files / 340135 lines; top=c(340135)",
  "status": "done"
 }

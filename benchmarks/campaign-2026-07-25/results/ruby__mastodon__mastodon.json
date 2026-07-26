@@ -2,18 +2,19 @@
  "lane": "ruby",
  "repo": "mastodon/mastodon",
  "stars": 50143,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon --json --out /home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.28,
+   "wall_s": 0.18,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 301225,
+   "languages": 3,
+   "sloc_total": 442548,
    "sloc_by_lang": {
     "config": 217529,
+    "ruby": 141323,
     "javascript": 83696
    }
   },
@@ -245,7 +246,7 @@
   }
  },
  "sha": "1553ca26f27af816885970a02b2bf69b64748e46",
- "clone_s": 8.3,
+ "clone_s": 6.5,
  "lane_check": "ruby: 3220 files / 147964 lines; top=ruby(147964)",
  "status": "done"
 }

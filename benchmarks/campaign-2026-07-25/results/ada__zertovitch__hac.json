@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "zertovitch/hac",
  "stars": 172,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/zertovitch__hac --json --out /home/ubuntu/govfuzz-sweep-work/ada__zertovitch__hac.cwd/sloc.json",
@@ -200,7 +200,7 @@
   }
  },
  "sha": "4aa3af4f2d776d37df4d3caf1a34001bf7859d0a",
- "clone_s": 1.4,
+ "clone_s": 2.2,
  "lane_check": "ada: 390 files / 65417 lines; top=ada(65417)",
  "status": "done"
 }

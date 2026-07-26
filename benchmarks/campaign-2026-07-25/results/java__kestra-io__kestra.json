@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "kestra-io/kestra",
  "stars": 27469,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --json --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.17,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -242,7 +242,7 @@
   }
  },
  "sha": "0b9c48eed42d9c415dc4fa8dcb82ffa906d91aea",
- "clone_s": 2.3,
+ "clone_s": 2.9,
  "lane_check": "java: 2449 files / 224323 lines; top=java(224323)",
  "status": "done"
 }

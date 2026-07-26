@@ -2,12 +2,12 @@
  "lane": "rust",
  "repo": "bevyengine/bevy",
  "stars": 47341,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/bevyengine__bevy --json --out /home/ubuntu/govfuzz-sweep-work/rust__bevyengine__bevy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.34,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -122,7 +122,7 @@
   }
  },
  "sha": "17ca59b4dab18a8d494412b70b842961f102c573",
- "clone_s": 10.7,
+ "clone_s": 7.6,
  "lane_check": "rust: 1835 files / 555045 lines; top=rust(555045)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "leonardomso/33-js-concepts",
  "stars": 66510,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/leonardomso__33-js-concepts --json --out /home/ubuntu/govfuzz-sweep-work/js__leonardomso__33-js-concepts.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -91,7 +91,7 @@
   }
  },
  "sha": "16d0d95c02b19df6a8c841f1a0012d7b7367a340",
- "clone_s": 0.9,
+ "clone_s": 1.5,
  "lane_check": "js: 69 files / 37679 lines; top=js(37679)",
  "status": "done"
 }

@@ -1,0 +1,27 @@
+{
+ "lane": "perl",
+ "repo": "Perl/perl5",
+ "stars": 2310,
+ "wave": "SLOC",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/Perl__perl5 --json --out /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 503302,
+   "sloc_by_lang": {
+    "perl": 238663,
+    "c": 220675,
+    "cpp": 40857,
+    "config": 3107
+   }
+  }
+ },
+ "sha": "f4c86fe110b25c0ea4735a81d1f69f482cb7af2d",
+ "clone_s": 6.3,
+ "lane_check": "perl: 3831 files / 726701 lines; top=perl(726701)",
+ "status": "done"
+}

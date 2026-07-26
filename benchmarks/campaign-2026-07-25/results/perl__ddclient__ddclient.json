@@ -2,7 +2,7 @@
  "lane": "perl",
  "repo": "ddclient/ddclient",
  "stars": 3499,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/ddclient__ddclient --json --out /home/ubuntu/govfuzz-sweep-work/perl__ddclient__ddclient.cwd/sloc.json",
@@ -93,7 +93,7 @@
   }
  },
  "sha": "f4dcf6fc8e4bf47d1041d75dd6fcd328132e6141",
- "clone_s": 0.5,
+ "clone_s": 0.8,
  "lane_check": "perl: 107 files / 21237 lines; top=perl(21237)",
  "status": "done"
 }

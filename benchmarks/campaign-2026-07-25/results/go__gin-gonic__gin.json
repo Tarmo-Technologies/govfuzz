@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "gin-gonic/gin",
  "stars": 88973,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/gin-gonic__gin --json --out /home/ubuntu/govfuzz-sweep-work/go__gin-gonic__gin.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -222,7 +222,7 @@
   }
  },
  "sha": "34dac209ffb6ef85cc78c5d217bbb7ad001d68fd",
- "clone_s": 0.8,
+ "clone_s": 0.5,
  "lane_check": "go: 99 files / 20415 lines; top=go(20415)",
  "status": "done"
 }

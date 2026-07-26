@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "cli/cli",
  "stars": 45415,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/cli__cli --json --out /home/ubuntu/govfuzz-sweep-work/go__cli__cli.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -225,7 +225,7 @@
   }
  },
  "sha": "592255318aa6a68944a534765bacbf4c52de5741",
- "clone_s": 3.8,
+ "clone_s": 2.4,
  "lane_check": "go: 890 files / 238515 lines; top=go(238515)",
  "status": "done"
 }

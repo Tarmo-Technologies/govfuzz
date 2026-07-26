@@ -2,25 +2,31 @@
  "lane": "perl",
  "repo": "AlDanial/cloc",
  "stars": 23336,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/AlDanial__cloc --json --out /home/ubuntu/govfuzz-sweep-work/perl__AlDanial__cloc.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 8,
-   "sloc_total": 15023,
+   "languages": 14,
+   "sloc_total": 15785,
    "sloc_by_lang": {
     "config": 11845,
     "cpp": 1279,
     "javascript": 626,
     "python": 578,
     "c": 435,
+    "fortran": 360,
+    "csharp": 192,
     "java": 120,
+    "ruby": 110,
     "perl": 94,
-    "go": 46
+    "go": 46,
+    "php": 38,
+    "cobol": 35,
+    "lua": 27
    }
   },
   "list_targets": {
@@ -219,7 +225,7 @@
   }
  },
  "sha": "f2f5076fe0fe575a622754b4ec274d8b6ac60a2c",
- "clone_s": 0.8,
+ "clone_s": 1.6,
  "lane_check": "perl: 8 files / 3081 lines; top=perl(3081)",
  "status": "done"
 }

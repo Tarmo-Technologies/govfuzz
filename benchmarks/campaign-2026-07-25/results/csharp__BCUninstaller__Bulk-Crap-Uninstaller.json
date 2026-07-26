@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "BCUninstaller/Bulk-Crap-Uninstaller",
  "stars": 20381,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/BCUninstaller__Bulk-Crap-Uninstaller --json --out /home/ubuntu/govfuzz-sweep-work/csharp__BCUninstaller__Bulk-Crap-Uninstaller.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 171,
+   "languages": 4,
+   "sloc_total": 74972,
    "sloc_by_lang": {
+    "csharp": 74801,
     "cpp": 118,
     "config": 44,
     "c": 9
@@ -222,7 +223,7 @@
   }
  },
  "sha": "f39663316ad5d593c4d160b0445841ce7eb6a35f",
- "clone_s": 1.9,
+ "clone_s": 1.3,
  "lane_check": "csharp: 565 files / 117013 lines; top=csharp(117013)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "multica-ai/multica",
  "stars": 42033,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/multica-ai__multica --json --out /home/ubuntu/govfuzz-sweep-work/go__multica-ai__multica.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.17,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -245,7 +245,7 @@
   }
  },
  "sha": "b0bae3f95ebe131079ae3f34e9cf39a62f69712e",
- "clone_s": 3.9,
+ "clone_s": 3.7,
  "lane_check": "go: 950 files / 349186 lines; top=go(349186)",
  "status": "done"
 }

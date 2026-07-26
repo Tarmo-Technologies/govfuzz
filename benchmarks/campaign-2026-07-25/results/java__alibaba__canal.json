@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "alibaba/canal",
  "stars": 29710,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__canal --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__canal.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -148,7 +148,7 @@
   }
  },
  "sha": "e20e4424468ef0ed60a97d921763b348eca27163",
- "clone_s": 2.0,
+ "clone_s": 2.2,
  "lane_check": "java: 702 files / 109694 lines; top=java(109694)",
  "status": "done"
 }

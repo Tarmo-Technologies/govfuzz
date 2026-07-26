@@ -2,12 +2,12 @@
  "lane": "python",
  "repo": "bytedance/deer-flow",
  "stars": 77861,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/bytedance__deer-flow --json --out /home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -235,7 +235,7 @@
   }
  },
  "sha": "04b7e693f03a639288cc3aa1b3ed08a865492fe8",
- "clone_s": 2.7,
+ "clone_s": 4.3,
  "lane_check": "python: 1021 files / 261707 lines; top=python(261707)",
  "status": "done"
 }

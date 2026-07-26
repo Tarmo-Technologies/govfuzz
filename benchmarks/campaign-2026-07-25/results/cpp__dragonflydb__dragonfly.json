@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "dragonflydb/dragonfly",
  "stars": 30913,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --json --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.09,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -85,7 +85,7 @@
   }
  },
  "sha": "3656fbc8479d43882848ce8f041c0e7cad559b13",
- "clone_s": 1.4,
+ "clone_s": 2.2,
  "lane_check": "cpp: 268 files / 143386 lines; top=cpp(143386)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "danielmiessler/Fabric",
  "stars": 43199,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/danielmiessler__Fabric --json --out /home/ubuntu/govfuzz-sweep-work/go__danielmiessler__Fabric.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -237,7 +237,7 @@
   }
  },
  "sha": "d85544c88ac0d9c9673b255506df2215e1cce5f0",
- "clone_s": 1.6,
+ "clone_s": 1.9,
  "lane_check": "go: 193 files / 31526 lines; top=go(31526)",
  "status": "done"
 }

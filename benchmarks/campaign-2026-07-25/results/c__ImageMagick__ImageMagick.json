@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "ImageMagick/ImageMagick",
  "stars": 17024,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ImageMagick__ImageMagick --json --out /home/ubuntu/govfuzz-sweep-work/c__ImageMagick__ImageMagick.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.15,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -254,7 +254,7 @@
   }
  },
  "sha": "f55e39808e1ef004358dbbfc4a276874ed4b73cc",
- "clone_s": 2.3,
+ "clone_s": 2.9,
  "lane_check": "c: 283 files / 464487 lines; top=c(464487)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "sitaramc/gitolite",
  "stars": 8581,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/sitaramc__gitolite --json --out /home/ubuntu/govfuzz-sweep-work/perl__sitaramc__gitolite.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
    "languages": 1,
@@ -206,7 +206,7 @@
   }
  },
  "sha": "4d2611d6e256a21c9c2683ba98db78b67e244888",
- "clone_s": 0.7,
+ "clone_s": 0.6,
  "lane_check": "perl: 69 files / 9866 lines; top=perl(9866)",
  "status": "done"
 }

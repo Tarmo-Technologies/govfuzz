@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "airbnb/lottie-android",
  "stars": 35676,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/airbnb__lottie-android --json --out /home/ubuntu/govfuzz-sweep-work/java__airbnb__lottie-android.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -217,7 +217,7 @@
   }
  },
  "sha": "05ea92e90381eb8a8ae06855ea2b74f322bebbec",
- "clone_s": 4.8,
+ "clone_s": 4.4,
  "lane_check": "java: 235 files / 23953 lines; top=java(23953)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "exiftool/exiftool",
  "stars": 4897,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/exiftool__exiftool --json --out /home/ubuntu/govfuzz-sweep-work/perl__exiftool__exiftool.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -208,7 +208,7 @@
   }
  },
  "sha": "2200871d9cef988051d2a99d67df3bda6cbb30a8",
- "clone_s": 2.9,
+ "clone_s": 2.3,
  "lane_check": "perl: 356 files / 349709 lines; top=perl(349709)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "google/googletest",
  "stars": 38862,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/google__googletest --json --out /home/ubuntu/govfuzz-sweep-work/cpp__google__googletest.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -166,7 +166,7 @@
   }
  },
  "sha": "b78aa5ee64be299ae50932e7b4d7e5d7b89a72f6",
- "clone_s": 0.6,
+ "clone_s": 0.9,
  "lane_check": "cpp: 108 files / 49849 lines; top=cpp(49849)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "ada",
  "repo": "ada-game-framework/sdlada",
  "stars": 134,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/ada-game-framework__sdlada --json --out /home/ubuntu/govfuzz-sweep-work/ada__ada-game-framework__sdlada.cwd/sloc.json",
@@ -229,7 +229,7 @@
   }
  },
  "sha": "0d8238d610eb4af92f9840300218f6434aa85c77",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "ada: 114 files / 12785 lines; top=ada(12785)",
  "status": "done"
 }

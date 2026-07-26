@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "apache/apisix",
  "stars": 16909,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/apache__apisix --json --out /home/ubuntu/govfuzz-sweep-work/lua__apache__apisix.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 7,
-   "sloc_total": 11584,
+   "languages": 8,
+   "sloc_total": 75431,
    "sloc_by_lang": {
+    "lua": 63847,
     "config": 5810,
     "go": 2817,
     "javascript": 1187,
@@ -241,7 +242,7 @@
   }
  },
  "sha": "fcefe6d38acfe1353fa955b66ab966ea9033418c",
- "clone_s": 1.7,
+ "clone_s": 3.1,
  "lane_check": "lua: 386 files / 74793 lines; top=perl(237847)",
  "status": "done"
 }

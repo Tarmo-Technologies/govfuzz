@@ -2,18 +2,18 @@
  "lane": "ts",
  "repo": "ant-design/ant-design",
  "stars": 98820,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/ant-design__ant-design --json --out /home/ubuntu/govfuzz-sweep-work/ts__ant-design__ant-design.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.14,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
    "languages": 2,
-   "sloc_total": 237868,
+   "sloc_total": 237880,
    "sloc_by_lang": {
-    "javascript": 235740,
+    "javascript": 235752,
     "config": 2128
    }
   },
@@ -220,8 +220,8 @@
    "findings_detail": []
   }
  },
- "sha": "97a74641b4d734cb4840e3d13bc9f55e1bb98db5",
- "clone_s": 4.1,
- "lane_check": "ts: 3039 files / 246284 lines; top=ts(246284)",
+ "sha": "912a9927357bb9d5b47295fd8f9f408e5f79dd56",
+ "clone_s": 4.8,
+ "lane_check": "ts: 3039 files / 246297 lines; top=ts(246297)",
  "status": "done"
 }

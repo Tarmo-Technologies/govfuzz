@@ -2,19 +2,20 @@
  "lane": "c",
  "repo": "pbatard/rufus",
  "stars": 37043,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus --json --out /home/ubuntu/govfuzz-sweep-work/c__pbatard__rufus.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 132727,
+   "languages": 5,
+   "sloc_total": 133785,
    "sloc_by_lang": {
     "c": 125818,
     "cpp": 6469,
+    "csharp": 1058,
     "config": 406,
     "python": 34
    }
@@ -265,7 +266,7 @@
   }
  },
  "sha": "6d8fbf98305ff37eb531c45cbd6ff44563c53917",
- "clone_s": 0.0,
+ "clone_s": 1.5,
  "lane_check": "c: 221 files / 122845 lines; top=c(122845)",
  "status": "done"
 }

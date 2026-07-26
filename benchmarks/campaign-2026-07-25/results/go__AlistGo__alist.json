@@ -2,12 +2,12 @@
  "lane": "go",
  "repo": "AlistGo/alist",
  "stars": 49924,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/AlistGo__alist --json --out /home/ubuntu/govfuzz-sweep-work/go__AlistGo__alist.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -228,7 +228,7 @@
   }
  },
  "sha": "aead76e49a8629edcd3032cc43489787b4b5b319",
- "clone_s": 0.9,
+ "clone_s": 1.1,
  "lane_check": "go: 752 files / 111026 lines; top=go(111026)",
  "status": "done"
 }

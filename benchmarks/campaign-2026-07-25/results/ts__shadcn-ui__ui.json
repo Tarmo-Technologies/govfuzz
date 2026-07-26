@@ -2,12 +2,12 @@
  "lane": "ts",
  "repo": "shadcn-ui/ui",
  "stars": 119825,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/shadcn-ui__ui --json --out /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.14,
+   "wall_s": 0.17,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -243,7 +243,7 @@
   }
  },
  "sha": "7774cd7dcee1e98d0815aa6e829f33a7fc952fdf",
- "clone_s": 3.2,
+ "clone_s": 3.0,
  "lane_check": "ts: 3734 files / 502721 lines; top=ts(502721)",
  "status": "done"
 }

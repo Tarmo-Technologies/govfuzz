@@ -1,0 +1,26 @@
+{
+ "lane": "perl",
+ "repo": "curl/everything-curl",
+ "stars": 2255,
+ "wave": "SLOC",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/curl__everything-curl --json --out /home/ubuntu/govfuzz-sweep-work/perl__curl__everything-curl.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 932,
+   "sloc_by_lang": {
+    "perl": 631,
+    "config": 280,
+    "lua": 21
+   }
+  }
+ },
+ "sha": "a1ce52827ec4c7806abea8b303ac8e4b014287ed",
+ "clone_s": 0.8,
+ "lane_check": "perl: 8 files / 792 lines; top=perl(792)",
+ "status": "done"
+}

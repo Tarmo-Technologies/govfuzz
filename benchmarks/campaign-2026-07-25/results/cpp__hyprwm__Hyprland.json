@@ -2,20 +2,21 @@
  "lane": "cpp",
  "repo": "hyprwm/Hyprland",
  "stars": 37475,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/hyprwm__Hyprland --json --out /home/ubuntu/govfuzz-sweep-work/cpp__hyprwm__Hyprland.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 113533,
+   "languages": 5,
+   "sloc_total": 114192,
    "sloc_by_lang": {
     "cpp": 112061,
     "config": 714,
     "python": 697,
+    "lua": 659,
     "c": 61
    }
   },
@@ -175,7 +176,7 @@
   }
  },
  "sha": "453d96e92739a2a0b865cf9166d48ba14ec14b7b",
- "clone_s": 4.2,
+ "clone_s": 3.1,
  "lane_check": "cpp: 870 files / 116649 lines; top=cpp(116649)",
  "status": "done"
 }

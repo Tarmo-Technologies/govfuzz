@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "GuidoBartoli/sherloq",
  "stars": 3169,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/GuidoBartoli__sherloq --json --out /home/ubuntu/govfuzz-sweep-work/perl__GuidoBartoli__sherloq.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -230,7 +230,7 @@
   }
  },
  "sha": "3fe95fcb56037e47e2eefbc2d3785804a31a74f5",
- "clone_s": 11.9,
+ "clone_s": 22.4,
  "lane_check": "perl: 354 files / 342986 lines; top=perl(342986)",
  "status": "done"
 }

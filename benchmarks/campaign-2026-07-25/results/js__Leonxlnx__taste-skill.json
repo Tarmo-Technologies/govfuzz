@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "Leonxlnx/taste-skill",
  "stars": 67658,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/Leonxlnx__taste-skill --json --out /home/ubuntu/govfuzz-sweep-work/js__Leonxlnx__taste-skill.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 1,
@@ -86,7 +86,7 @@
   }
  },
  "sha": "e988add20dab0fa97d7a76781c48961c8184288e",
- "clone_s": 0.8,
+ "clone_s": 0.9,
  "lane_check": "js: 4 files / 311 lines; top=js(311)",
  "status": "done"
 }

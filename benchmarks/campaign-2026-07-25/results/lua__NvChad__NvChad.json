@@ -2,17 +2,19 @@
  "lane": "lua",
  "repo": "NvChad/NvChad",
  "stars": 28390,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/NvChad__NvChad --json --out /home/ubuntu/govfuzz-sweep-work/lua__NvChad__NvChad.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 500,
+   "sloc_by_lang": {
+    "lua": 500
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/NvChad__NvChad --format json --top 100000",
@@ -126,7 +128,7 @@
   }
  },
  "sha": "add44b952d631981614bbb8cfc6f7002f296dfe6",
- "clone_s": 0.3,
+ "clone_s": 2.7,
  "lane_check": "lua: 12 files / 535 lines; top=lua(535)",
  "status": "done"
 }

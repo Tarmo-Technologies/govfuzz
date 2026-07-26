@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "electron/electron",
  "stars": 122194,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/electron__electron --json --out /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -253,7 +253,7 @@
   }
  },
  "sha": "e12e04e87bb7c3a0ce744a0bab9b317d250d725e",
- "clone_s": 0.0,
+ "clone_s": 2.5,
  "lane_check": "cpp: 383 files / 82491 lines; top=cpp(82491)",
  "status": "done"
 }

@@ -2,7 +2,7 @@
  "lane": "js",
  "repo": "thedotmack/claude-mem",
  "stars": 88564,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/thedotmack__claude-mem --json --out /home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem.cwd/sloc.json",
@@ -222,7 +222,7 @@
   }
  },
  "sha": "132b46343e60ecf4057c427736c57b08f7615dfe",
- "clone_s": 1.3,
+ "clone_s": 1.8,
  "lane_check": "js: 32 files / 17428 lines; top=ts(132770)",
  "status": "done"
 }

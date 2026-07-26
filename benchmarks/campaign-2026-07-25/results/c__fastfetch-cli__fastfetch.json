@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "fastfetch-cli/fastfetch",
  "stars": 23899,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/fastfetch-cli__fastfetch --json --out /home/ubuntu/govfuzz-sweep-work/c__fastfetch-cli__fastfetch.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -323,7 +323,7 @@
   }
  },
  "sha": "ccf39093726bc227f5b3c602a7c17e722e811fda",
- "clone_s": 1.3,
+ "clone_s": 0.9,
  "lane_check": "c: 485 files / 74859 lines; top=c(74859)",
  "status": "done"
 }

@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "PowerShell/PowerShell",
  "stars": 54539,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/PowerShell__PowerShell --json --out /home/ubuntu/govfuzz-sweep-work/csharp__PowerShell__PowerShell.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.15,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 11107,
+   "languages": 2,
+   "sloc_total": 488973,
    "sloc_by_lang": {
+    "csharp": 477866,
     "config": 11107
    }
   },
@@ -210,7 +211,7 @@
   }
  },
  "sha": "463ef4374ad598f396e9438580761157ea840376",
- "clone_s": 4.7,
+ "clone_s": 3.0,
  "lane_check": "csharp: 1275 files / 648183 lines; top=csharp(648183)",
  "status": "done"
 }

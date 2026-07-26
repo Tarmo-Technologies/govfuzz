@@ -2,21 +2,22 @@
  "lane": "cpp",
  "repo": "nlohmann/json",
  "stars": 50216,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/nlohmann__json --json --out /home/ubuntu/govfuzz-sweep-work/cpp__nlohmann__json.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 113321,
+   "languages": 5,
+   "sloc_total": 113328,
    "sloc_by_lang": {
     "cpp": 110719,
     "config": 1738,
     "python": 820,
-    "c": 44
+    "c": 44,
+    "lua": 7
    }
   },
   "list_targets": {
@@ -267,7 +268,7 @@
   }
  },
  "sha": "dfa51af6922a39be550fab4a94c9d195817c2fba",
- "clone_s": 1.3,
+ "clone_s": 1.1,
  "lane_check": "cpp: 399 files / 113909 lines; top=cpp(113909)",
  "status": "done"
 }

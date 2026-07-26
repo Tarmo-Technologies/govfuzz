@@ -2,7 +2,7 @@
  "lane": "csharp",
  "repo": "huiyadanli/RevokeMsgPatcher",
  "stars": 38257,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/huiyadanli__RevokeMsgPatcher --json --out /home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher.cwd/sloc.json",
@@ -10,9 +10,10 @@
    "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 92,
+   "languages": 2,
+   "sloc_total": 6707,
    "sloc_by_lang": {
+    "csharp": 6615,
     "config": 92
    }
   },

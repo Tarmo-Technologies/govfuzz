@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "IonicaBizau/node-cobol",
  "stars": 724,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/IonicaBizau__node-cobol --json --out /home/ubuntu/govfuzz-sweep-work/cobol__IonicaBizau__node-cobol.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.01,
    "timed_out": false,
    "panic": false,
-   "languages": 2,
-   "sloc_total": 183,
+   "languages": 3,
+   "sloc_total": 520,
    "sloc_by_lang": {
+    "cobol": 337,
     "javascript": 179,
     "config": 4
    }
@@ -144,7 +145,7 @@
   }
  },
  "sha": "89a041bc2f6d2d63e78ac33cfb2991b2c31eb257",
- "clone_s": 0.4,
+ "clone_s": 0.6,
  "lane_check": "cobol: 6 files / 338 lines; top=cobol(338)",
  "status": "done"
 }

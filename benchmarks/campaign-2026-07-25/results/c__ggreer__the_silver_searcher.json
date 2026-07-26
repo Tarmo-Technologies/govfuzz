@@ -2,7 +2,7 @@
  "lane": "c",
  "repo": "ggreer/the_silver_searcher",
  "stars": 27099,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ggreer__the_silver_searcher --json --out /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher.cwd/sloc.json",

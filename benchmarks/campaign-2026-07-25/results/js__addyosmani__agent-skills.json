@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "addyosmani/agent-skills",
  "stars": 80384,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/addyosmani__agent-skills --json --out /home/ubuntu/govfuzz-sweep-work/js__addyosmani__agent-skills.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 3,

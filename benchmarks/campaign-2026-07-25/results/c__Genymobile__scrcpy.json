@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "Genymobile/scrcpy",
  "stars": 146403,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --json --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 4,

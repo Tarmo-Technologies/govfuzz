@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "mojolicious/mojo",
  "stars": 2744,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/mojolicious__mojo --json --out /home/ubuntu/govfuzz-sweep-work/perl__mojolicious__mojo.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -209,7 +209,7 @@
   }
  },
  "sha": "de20dca602da5f2809a5da35d0148b62d9c2ff53",
- "clone_s": 0.7,
+ "clone_s": 1.7,
  "lane_check": "perl: 272 files / 56429 lines; top=perl(56429)",
  "status": "done"
 }

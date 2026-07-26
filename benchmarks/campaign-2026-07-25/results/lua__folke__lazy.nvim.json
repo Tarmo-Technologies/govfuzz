@@ -2,17 +2,18 @@
  "lane": "lua",
  "repo": "folke/lazy.nvim",
  "stars": 21318,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/folke__lazy.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__folke__lazy.nvim.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.01,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 1,
-   "sloc_total": 254,
+   "languages": 2,
+   "sloc_total": 12109,
    "sloc_by_lang": {
+    "lua": 11855,
     "config": 254
    }
   },
@@ -218,7 +219,7 @@
   }
  },
  "sha": "306a05526ada86a7b30af95c5cc81ffba93fef97",
- "clone_s": 0.5,
+ "clone_s": 0.7,
  "lane_check": "lua: 65 files / 13301 lines; top=lua(13301)",
  "status": "done"
 }

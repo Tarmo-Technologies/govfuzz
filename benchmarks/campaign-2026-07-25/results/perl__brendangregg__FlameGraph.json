@@ -2,18 +2,19 @@
  "lane": "perl",
  "repo": "brendangregg/FlameGraph",
  "stars": 19623,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/brendangregg__FlameGraph --json --out /home/ubuntu/govfuzz-sweep-work/perl__brendangregg__FlameGraph.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 2545,
+   "languages": 4,
+   "sloc_total": 2681,
    "sloc_by_lang": {
     "perl": 2458,
+    "php": 136,
     "python": 72,
     "config": 15
    }
@@ -224,7 +225,7 @@
   }
  },
  "sha": "41fee1f99f9276008b7cd112fca19dc3ea84ac32",
- "clone_s": 0.7,
+ "clone_s": 0.9,
  "lane_check": "perl: 28 files / 3842 lines; top=perl(3842)",
  "status": "done"
 }

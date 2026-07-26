@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "libuv/libuv",
  "stars": 27034,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/libuv__libuv --json --out /home/ubuntu/govfuzz-sweep-work/c__libuv__libuv.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 5,

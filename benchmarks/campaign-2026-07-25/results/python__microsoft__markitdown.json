@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "microsoft/markitdown",
  "stars": 169025,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/microsoft__markitdown --json --out /home/ubuntu/govfuzz-sweep-work/python__microsoft__markitdown.cwd/sloc.json",
@@ -220,7 +220,7 @@
   }
  },
  "sha": "2e42a01c404629b06892a1bdb5e7bf5261770c40",
- "clone_s": 2.4,
+ "clone_s": 1.1,
  "lane_check": "python: 72 files / 10658 lines; top=python(10658)",
  "status": "done"
 }

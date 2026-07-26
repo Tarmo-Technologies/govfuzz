@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "jarun/nnn",
  "stars": 21728,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/jarun__nnn --json --out /home/ubuntu/govfuzz-sweep-work/c__jarun__nnn.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -135,7 +135,7 @@
   }
  },
  "sha": "88a7711f55835afa68ec6caf1fd2e2a40e011637",
- "clone_s": 0.0,
+ "clone_s": 0.6,
  "lane_check": "c: 3 files / 9547 lines; top=c(9547)",
  "status": "done"
 }

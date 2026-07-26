@@ -2,7 +2,7 @@
  "lane": "ts",
  "repo": "clash-verge-rev/clash-verge-rev",
  "stars": 133744,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev --json --out /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev.cwd/sloc.json",
@@ -236,7 +236,7 @@
   }
  },
  "sha": "389c5342e56b2f5f6d213882a038895d3b012698",
- "clone_s": 1.4,
+ "clone_s": 1.9,
  "lane_check": "ts: 214 files / 41643 lines; top=ts(41643)",
  "status": "done"
 }

@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "zxing/zxing",
  "stars": 34034,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/zxing__zxing --json --out /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -214,7 +214,7 @@
   }
  },
  "sha": "ff54b24b26b1c80a78aa69a9bb0b61bf7c9c5267",
- "clone_s": 8.1,
+ "clone_s": 7.0,
  "lane_check": "java: 523 files / 66379 lines; top=java(66379)",
  "status": "done"
 }

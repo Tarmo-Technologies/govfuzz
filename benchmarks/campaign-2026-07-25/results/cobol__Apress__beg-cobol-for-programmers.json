@@ -2,7 +2,7 @@
  "lane": "cobol",
  "repo": "Apress/beg-cobol-for-programmers",
  "stars": 114,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/Apress__beg-cobol-for-programmers --json --out /home/ubuntu/govfuzz-sweep-work/cobol__Apress__beg-cobol-for-programmers.cwd/sloc.json",
@@ -10,9 +10,11 @@
    "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 0,
-   "sloc_total": 0,
-   "sloc_by_lang": {}
+   "languages": 1,
+   "sloc_total": 6641,
+   "sloc_by_lang": {
+    "cobol": 6641
+   }
   },
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/Apress__beg-cobol-for-programmers --format json --top 100000",

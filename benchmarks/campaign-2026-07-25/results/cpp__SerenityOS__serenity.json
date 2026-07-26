@@ -2,22 +2,23 @@
  "lane": "cpp",
  "repo": "SerenityOS/serenity",
  "stars": 33659,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/SerenityOS__serenity --json --out /home/ubuntu/govfuzz-sweep-work/cpp__SerenityOS__serenity.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.46,
+   "wall_s": 0.21,
    "timed_out": false,
    "panic": false,
-   "languages": 5,
-   "sloc_total": 1001456,
+   "languages": 6,
+   "sloc_total": 1001484,
    "sloc_by_lang": {
     "cpp": 927602,
     "javascript": 59595,
     "c": 9137,
     "python": 3958,
-    "config": 1164
+    "config": 1164,
+    "lua": 28
    }
   },
   "list_targets": {
@@ -82,7 +83,7 @@
   }
  },
  "sha": "d62c97ce483fa85f621f28f1212e0d5b359be3b0",
- "clone_s": 8.4,
+ "clone_s": 14.5,
  "lane_check": "cpp: 3732 files / 791246 lines; top=cpp(791246)",
  "status": "done"
 }

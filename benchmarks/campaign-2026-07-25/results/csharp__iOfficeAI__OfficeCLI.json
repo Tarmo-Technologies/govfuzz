@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "iOfficeAI/OfficeCLI",
  "stars": 22175,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/iOfficeAI__OfficeCLI --json --out /home/ubuntu/govfuzz-sweep-work/csharp__iOfficeAI__OfficeCLI.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.08,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 15950,
+   "languages": 4,
+   "sloc_total": 203656,
    "sloc_by_lang": {
+    "csharp": 187706,
     "python": 13395,
     "javascript": 2130,
     "config": 425
@@ -115,7 +116,7 @@
   }
  },
  "sha": "e56ee7f3595cb81ff2c87cf83a32a44bd71ed07d",
- "clone_s": 6.5,
+ "clone_s": 6.4,
  "lane_check": "csharp: 350 files / 256657 lines; top=csharp(256657)",
  "status": "done"
 }

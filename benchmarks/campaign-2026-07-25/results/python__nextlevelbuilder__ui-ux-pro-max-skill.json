@@ -2,7 +2,7 @@
  "lane": "python",
  "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
  "stars": 110134,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/nextlevelbuilder__ui-ux-pro-max-skill --json --out /home/ubuntu/govfuzz-sweep-work/python__nextlevelbuilder__ui-ux-pro-max-skill.cwd/sloc.json",
@@ -210,7 +210,7 @@
   }
  },
  "sha": "1307d97a72e6c1cda572cb65471ae5ce82995218",
- "clone_s": 1.1,
+ "clone_s": 1.5,
  "lane_check": "python: 56 files / 15897 lines; top=python(15897)",
  "status": "done"
 }

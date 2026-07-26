@@ -2,25 +2,29 @@
  "lane": "python",
  "repo": "Graphify-Labs/graphify",
  "stars": 95922,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/Graphify-Labs__graphify --json --out /home/ubuntu/govfuzz-sweep-work/python__Graphify-Labs__graphify.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.05,
    "timed_out": false,
    "panic": false,
-   "languages": 8,
-   "sloc_total": 62415,
+   "languages": 12,
+   "sloc_total": 62741,
    "sloc_by_lang": {
     "python": 61838,
     "config": 174,
     "javascript": 131,
+    "php": 130,
+    "csharp": 103,
     "cpp": 82,
+    "fortran": 67,
     "rust": 63,
     "c": 45,
     "go": 42,
-    "java": 40
+    "java": 40,
+    "ruby": 26
    }
   },
   "list_targets": {
@@ -228,7 +232,7 @@
   }
  },
  "sha": "66d8110a534b52df3d660b5fda5aa5461a6b667a",
- "clone_s": 1.2,
+ "clone_s": 1.5,
  "lane_check": "python: 260 files / 93500 lines; top=python(93500)",
  "status": "done"
 }

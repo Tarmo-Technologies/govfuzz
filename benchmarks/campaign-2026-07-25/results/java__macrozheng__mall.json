@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "macrozheng/mall",
  "stars": 84420,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --json --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -127,7 +127,7 @@
   }
  },
  "sha": "0504e86b1f1b6f1b8aa6a734d37a90fb67346be7",
- "clone_s": 1.4,
+ "clone_s": 2.5,
  "lane_check": "java: 524 files / 68598 lines; top=java(68598)",
  "status": "done"
 }

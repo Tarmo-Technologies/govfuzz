@@ -2,28 +2,34 @@
  "lane": "rust",
  "repo": "sharkdp/bat",
  "stars": 59875,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/sharkdp__bat --json --out /home/ubuntu/govfuzz-sweep-work/rust__sharkdp__bat.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
-   "languages": 11,
-   "sloc_total": 31576,
+   "languages": 17,
+   "sloc_total": 32923,
    "sloc_by_lang": {
     "rust": 14316,
     "javascript": 7309,
     "python": 6826,
     "ada": 1068,
+    "fortran": 694,
     "config": 619,
     "c": 576,
     "qml": 334,
     "perl": 220,
+    "cobol": 200,
+    "php": 165,
+    "ruby": 132,
     "cpp": 122,
     "go": 117,
-    "java": 69
+    "csharp": 108,
+    "java": 69,
+    "lua": 48
    }
   },
   "list_targets": {
@@ -134,7 +140,7 @@
   }
  },
  "sha": "78951393e29bfd2f2a45f4326b9d2bb5e737dd2a",
- "clone_s": 1.5,
+ "clone_s": 1.1,
  "lane_check": "rust: 63 files / 15463 lines; top=rust(15463)",
  "status": "done"
 }

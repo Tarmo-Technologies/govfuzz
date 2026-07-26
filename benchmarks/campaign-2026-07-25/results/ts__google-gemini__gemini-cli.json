@@ -2,20 +2,21 @@
  "lane": "ts",
  "repo": "google-gemini/gemini-cli",
  "stars": 106179,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli --json --out /home/ubuntu/govfuzz-sweep-work/ts__google-gemini__gemini-cli.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.19,
+   "wall_s": 0.1,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 544962,
+   "languages": 4,
+   "sloc_total": 545423,
    "sloc_by_lang": {
     "javascript": 536066,
     "config": 7676,
-    "python": 1220
+    "python": 1220,
+    "csharp": 461
    }
   },
   "list_targets": {
@@ -247,7 +248,7 @@
   }
  },
  "sha": "3818efbbfbf8ef029ef53a6ab1093db39971ce83",
- "clone_s": 4.1,
+ "clone_s": 3.1,
  "lane_check": "ts: 2143 files / 573841 lines; top=ts(573841)",
  "status": "done"
 }

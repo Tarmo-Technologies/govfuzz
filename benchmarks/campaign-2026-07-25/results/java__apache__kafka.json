@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "apache/kafka",
  "stars": 33333,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/apache__kafka --json --out /home/ubuntu/govfuzz-sweep-work/java__apache__kafka.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.41,
+   "wall_s": 0.29,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -130,7 +130,7 @@
   }
  },
  "sha": "a9fa6f7c715c46712d208df8faa976b6a12d3f34",
- "clone_s": 6.4,
+ "clone_s": 7.5,
  "lane_check": "java: 6108 files / 1337831 lines; top=java(1337831)",
  "status": "done"
 }

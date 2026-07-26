@@ -2,12 +2,12 @@
  "lane": "c",
  "repo": "allinurl/goaccess",
  "stars": 20729,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/allinurl__goaccess --json --out /home/ubuntu/govfuzz-sweep-work/c__allinurl__goaccess.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -180,7 +180,7 @@
   }
  },
  "sha": "615490d44e43544ec778e0841047772d313f14b3",
- "clone_s": 0.0,
+ "clone_s": 0.7,
  "lane_check": "c: 40 files / 32773 lines; top=c(32773)",
  "status": "done"
 }

@@ -2,19 +2,19 @@
  "lane": "c",
  "repo": "sumatrapdfreader/sumatrapdf",
  "stars": 17175,
- "wave": "FIXED",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/sumatrapdfreader__sumatrapdf --json --out /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.34,
+   "wall_s": 0.47,
    "timed_out": false,
    "panic": false,
    "languages": 11,
-   "sloc_total": 1954027,
+   "sloc_total": 1954061,
    "sloc_by_lang": {
-    "c": 1286855,
-    "cpp": 577495,
+    "c": 1286854,
+    "cpp": 577530,
     "javascript": 36759,
     "python": 25490,
     "java": 14714,
@@ -91,8 +91,8 @@
    "findings_detail": []
   }
  },
- "sha": "64b856cc7c8ad20b44c43d7eea8e53675798c24c",
- "clone_s": 8.2,
+ "sha": "bf5443efdcae8d483c3e50c7d85f8b2097facb4e",
+ "clone_s": 9.2,
  "lane_check": "c: 1621 files / 1089354 lines; top=c(1089354)",
  "status": "done"
 }

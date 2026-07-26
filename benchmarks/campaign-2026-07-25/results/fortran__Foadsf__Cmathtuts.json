@@ -2,17 +2,18 @@
  "lane": "fortran",
  "repo": "Foadsf/Cmathtuts",
  "stars": 440,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/Foadsf__Cmathtuts --json --out /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 18818,
+   "languages": 4,
+   "sloc_total": 39358,
    "sloc_by_lang": {
+    "fortran": 20540,
     "c": 18297,
     "cpp": 507,
     "config": 14
@@ -372,7 +373,7 @@
   }
  },
  "sha": "e3fbc1cacd5f9a8a0673f6741fc344d2455efe3a",
- "clone_s": 1.0,
+ "clone_s": 2.3,
  "lane_check": "fortran: 50 files / 27797 lines; top=fortran(27797)",
  "status": "done"
 }

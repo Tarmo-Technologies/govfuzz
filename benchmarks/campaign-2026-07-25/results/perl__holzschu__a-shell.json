@@ -2,12 +2,12 @@
  "lane": "perl",
  "repo": "holzschu/a-shell",
  "stars": 3833,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --json --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.41,
+   "wall_s": 0.24,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -278,7 +278,7 @@
   }
  },
  "sha": "0a0614464ec65a9480f4d44f95a85273a33a6dfa",
- "clone_s": 11.5,
+ "clone_s": 7.4,
  "lane_check": "perl: 1282 files / 799089 lines; top=perl(799089)",
  "status": "done"
 }

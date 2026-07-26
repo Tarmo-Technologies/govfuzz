@@ -2,17 +2,18 @@
  "lane": "csharp",
  "repo": "bitwarden/server",
  "stars": 19510,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/bitwarden__server --json --out /home/ubuntu/govfuzz-sweep-work/csharp__bitwarden__server.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.25,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 8058,
+   "languages": 4,
+   "sloc_total": 1325500,
    "sloc_by_lang": {
+    "csharp": 1317442,
     "rust": 3735,
     "config": 3135,
     "javascript": 1188
@@ -150,7 +151,7 @@
   }
  },
  "sha": "2f375aa0852a3f464415aac71ae58494cc12d4e8",
- "clone_s": 5.7,
+ "clone_s": 3.6,
  "lane_check": "csharp: 5076 files / 1351021 lines; top=csharp(1351021)",
  "status": "done"
 }

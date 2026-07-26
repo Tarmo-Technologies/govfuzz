@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "lenve/vhr",
  "stars": 28081,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr --json --out /home/ubuntu/govfuzz-sweep-work/java__lenve__vhr.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.04,
+   "wall_s": 0.03,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -229,7 +229,7 @@
   }
  },
  "sha": "03abbd35af24e55368ce4e09f4038dc2aba3ff5f",
- "clone_s": 0.8,
+ "clone_s": 1.1,
  "lane_check": "java: 92 files / 4119 lines; top=js(5928)",
  "status": "done"
 }

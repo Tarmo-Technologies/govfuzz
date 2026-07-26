@@ -2,12 +2,12 @@
  "lane": "js",
  "repo": "juliangarnier/anime",
  "stars": 71491,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime --json --out /home/ubuntu/govfuzz-sweep-work/js__juliangarnier__anime.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.03,
+   "wall_s": 0.02,
    "timed_out": false,
    "panic": false,
    "languages": 2,
@@ -207,7 +207,7 @@
   }
  },
  "sha": "2c9cf8ea00329f6768c7d7902252ed977d75ce42",
- "clone_s": 0.8,
+ "clone_s": 1.2,
  "lane_check": "js: 177 files / 37838 lines; top=js(37838)",
  "status": "done"
 }

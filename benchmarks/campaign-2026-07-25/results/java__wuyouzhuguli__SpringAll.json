@@ -2,12 +2,12 @@
  "lane": "java",
  "repo": "wuyouzhuguli/SpringAll",
  "stars": 28966,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/wuyouzhuguli__SpringAll --json --out /home/ubuntu/govfuzz-sweep-work/java__wuyouzhuguli__SpringAll.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.07,
+   "wall_s": 0.04,
    "timed_out": false,
    "panic": false,
    "languages": 3,
@@ -154,7 +154,7 @@
   }
  },
  "sha": "614d2578d9495acf53cc02f2dee9c6131cc5e51a",
- "clone_s": 0.8,
+ "clone_s": 0.9,
  "lane_check": "java: 661 files / 19507 lines; top=java(19507)",
  "status": "done"
 }

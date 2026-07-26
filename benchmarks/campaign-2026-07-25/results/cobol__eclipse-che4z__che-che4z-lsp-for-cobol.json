@@ -2,17 +2,18 @@
  "lane": "cobol",
  "repo": "eclipse-che4z/che-che4z-lsp-for-cobol",
  "stars": 114,
- "wave": "FULL",
+ "wave": "SLOC",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/eclipse-che4z__che-che4z-lsp-for-cobol --json --out /home/ubuntu/govfuzz-sweep-work/cobol__eclipse-che4z__che-che4z-lsp-for-cobol.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
-   "languages": 3,
-   "sloc_total": 143145,
+   "languages": 4,
+   "sloc_total": 671922,
    "sloc_by_lang": {
+    "cobol": 528777,
     "java": 119359,
     "javascript": 22843,
     "config": 943
@@ -237,7 +238,7 @@
   }
  },
  "sha": "1da38bad5dde7250b9a7a81c76133edb04956d0f",
- "clone_s": 4.0,
+ "clone_s": 2.6,
  "lane_check": "cobol: 1075 files / 548970 lines; top=cobol(548970)",
  "status": "done"
 }

@@ -1,0 +1,382 @@
+{
+ "lane": "c",
+ "repo": "ValdikSS/GoodbyeDPI",
+ "stars": 28516,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ValdikSS__GoodbyeDPI --json --out /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 3544,
+   "sloc_by_lang": {
+    "c": 3378,
+    "config": 166
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/ValdikSS__GoodbyeDPI --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "count": 61,
+   "by_language": {
+    "c": 61
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/ValdikSS__GoodbyeDPI --out /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 18,
+   "by_severity": {
+    "medium": 3,
+    "high": 15
+   },
+   "top_rules": {
+    "GF-408": 7,
+    "GF-403": 4,
+    "GF-436": 2,
+    "GF-401": 2,
+    "GF-500": 1,
+    "GF-405": 1,
+    "GF-407": 1
+   },
+   "gaps": 12
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/ValdikSS__GoodbyeDPI --out /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/ValdikSS__GoodbyeDPI --work-dir /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 354.11,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 20,
+    "discovered_total": 60,
+    "dropped_by_cap": 40,
+    "built": 7,
+    "built_and_fuzzed": 7,
+    "fuzzed_stub_only": 0,
+    "failed_build": 13,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 4,
+    "synthesized_types": 7,
+    "synthesized_macros": 34,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "dns_handle_incoming",
+     "source": "dnsredir.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 6,
+     "execs_per_sec": 587.0615271360216,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "blackwhitelist_load_list",
+     "source": "blackwhitelist.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 1122.4002793633306,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "blackwhitelist_check_hostname",
+     "source": "blackwhitelist.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 5129.26927916922,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "fake_load_from_hex",
+     "source": "fakepackets.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 14,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fake_load_from_sni",
+     "source": "fakepackets.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "dns_handle_outgoing",
+     "source": "dnsredir.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 6,
+     "execs_per_sec": 145.41563474074007,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "send_fake_http_request",
+     "source": "fakepackets.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "send_fake_https_request",
+     "source": "fakepackets.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extract_sni",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 32,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "dns_is_dns_packet",
+     "source": "dnsredir.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 6,
+     "execs_per_sec": 3764.9305626195546,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "is_passivedpi_redirect",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "find_header_and_get_info",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "find_http_method_end",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "add_hostname",
+     "source": "blackwhitelist.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 1915.1071464106283,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "fake_add",
+     "source": "fakepackets.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "repl_str",
+     "source": "repl_str.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.09937475174081513,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "fill_data_from_key",
+     "source": "dnsredir.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 11,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "atousi",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "atoub",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "dumb_memmem",
+     "source": "goodbyedpi.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 7,
+     "detail": "redefinition of \"X\" as different kind of symbol",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "expected \"X\" after expression",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing macro",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-c6abaaa1",
+     "rule": "GF-203",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C00DB-1912D3BE"
+    },
+    {
+     "id": "F-0001-a784c81f",
+     "rule": "GF-203",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C00C8-2B6996F3"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI/findings --out /home/ubuntu/govfuzz-sweep-work/c__ValdikSS__GoodbyeDPI/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "f593a276f9ec753889f80208c6a7c5cf455df94a",
+ "clone_s": 0.0,
+ "lane_check": "c: 8 files / 2623 lines; top=c(2623)",
+ "status": "done"
+}

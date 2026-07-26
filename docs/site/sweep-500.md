@@ -71,7 +71,24 @@ the sweep is the thing that notices.
 
 ## Results
 
-<!-- Filled from benchmarks/campaign-2026-07-25/results by aggregate.py. -->
+1 projects measured, 34,324 lines of code, 1,272 fuzzable targets discovered, **zero harnesses written by hand**.
+
+| Language | Projects | SLOC | Targets found | Attempted | Fuzzed | Rate | Findings |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| C | 1 | 34,324 | 1,272 | 10 | 0 | 0% | 0 |
+| **All 16** | **1** | **34,324** | **1,272** | **10** | **0** | **0%** | **0** |
+
+### Robustness
+
+Across 1 projects and 6 surface invocations: **0 panics**, **0 timeouts**. A tool that is run unattended over an estate has to survive every tree in it, including the malformed ones.
+
+### What blocked the rest
+
+| Targets | Language | Cause |
+|---:|---|---|
+| 5 | java | javac (target) failed: /home/ubuntu/govfuzz-corpus-N/c/Genymobile__scr |
+| 3 | c | C parameter "X" of type "X" has no byte-buffer decoder after struct sy |
+| 2 | c | missing header |
 
 ## Honest limits
 

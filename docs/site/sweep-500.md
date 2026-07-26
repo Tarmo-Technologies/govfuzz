@@ -6,7 +6,7 @@ reports the opposite: govfuzz run over 500 open-source projects picked by
 star rank rather than by suitability, across all sixteen languages it supports,
 with every failure counted.
 
-The sweep was run to find defects. It found twenty-eight, listed below with the
+The sweep was run to find defects. It found thirty-four, listed below with the
 project that exposed each one. The measurements come after the fixes, from a
 single pinned binary over the whole corpus.
 
@@ -78,13 +78,25 @@ a regression test:
 | report | a backtick span was assumed to close with an apostrophe (the GNAT `` `foo' `` form) | rustc- and interpreter-style `` `foo` `` messages leaked the identifier into the grouping key, so each distinct name became its own histogram row — the opposite of what the histogram is for |
 | C++ | the check that degrades an unsuppliable external class to a report-only scan matched on the compiler's *wording*, and the substitution it was written for is no longer the one govfuzz emits | an out-of-tree MFC class stayed a bare `failed_build`; the check now decides on provenance — a diagnostic in the project's own source cannot be a govfuzz codegen bug — so it survives the next change of substitution shape |
 | tests | a fuzz assertion's budget is wall-clock, and seven of them shared six cores | a planted OOB went unfound at ~6 executions where one test alone gets ~32; the assertion was sound, the contention was not |
+| fuzz | the AFL++ fix above armed `symbolize=0` on **every** fuzz child, and file:line in a sanitizer report is what joins a crash to the static finding at the same line | **every `fuzz_confirmed` static finding silently became `fuzz_exercised`** — the one result govfuzz exists to produce, traded away to make another engine start. The two engines want opposite settings and now get them |
+| C, C++ | UBSan's `nonnull` check — how `memcpy(NULL, …)` is actually reported — was not one of the four the parser named, and it returned nothing for the rest | the abort read as the target rejecting the input and the crash was **discarded**, so `govfuzz capsule` had nothing to package and the provenance pass had nothing to demote to `lab_only`. An unrecognised check is now reported generically rather than dropped |
+| core | `--max-targets` is exact only when attempts are serial | an exact-count assertion against a parallel sweep read 4 where it wanted 2; the in-flight attempts finishing past the cap is deliberate |
+| docs | the site generator refuses to build when a page in `docs/site/` is absent from its manifest | this very page was never registered, so `govfuzz`'s own documentation build failed |
+| Ada | a snapshot asserted the probe body is Ada 95 | the body's own header explains why it is Ada 2005 — a `Stream_IO.File_Type` in a `Preelaborate` unit, which `-gnatc` rejects. The parser was right and the expectation was stale |
 
-The last two were found by running govfuzz against cloc and syft rather than
-against projects — the comparison was worth as much as the sweep. Two others
-were caused during this campaign and caught by it: a repair-loop
-`break` that reached an `unreachable!`, and a binary rebuilt mid-sweep that would
-have made the corpus numbers unattributable. Both are in the table's spirit —
-the sweep is the thing that notices.
+Two were found by running govfuzz against cloc and syft rather than against
+projects — the comparison was worth as much as the sweep. Two more were caused
+during this campaign and caught by it: a repair-loop `break` that reached an
+`unreachable!`, and a binary rebuilt mid-sweep that would have made the corpus
+numbers unattributable. And the `symbolize=0` regression above was introduced by
+the fix immediately preceding it, then caught by the suite two commits later.
+All of that is the table's spirit: the sweep, and the gate it runs behind, are
+the things that notice.
+
+Six of these surfaced only after switching the verification run to
+`--no-fail-fast`. The suite had been aborting at one C++ test — binary 92 of 315
+— so five later failures were invisible; fail-fast had been reporting one problem
+where there were six.
 
 ## Results
 

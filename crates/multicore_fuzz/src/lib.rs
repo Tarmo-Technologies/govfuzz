@@ -507,7 +507,16 @@ pub fn sanitizer_options_key(s: Sanitizer) -> &'static str {
 /// `abort_on_error`/`halt_on_error` turn a sanitizer report into a fault the
 /// engine saves as a finding (instead of a printed-and-ignored warning), and
 /// `detect_leaks` arms LSan. These MUST win over any operator value.
-const REQUIRED_SANITIZER_OPTIONS: &str = "abort_on_error=1:halt_on_error=1:detect_leaks=1";
+///
+/// `symbolize=0` is required, not merely preferred: AFL++ v4 refuses to start at
+/// all when it inherits a custom `ASAN_OPTIONS` without it —
+/// "PROGRAM ABORT: Custom ASAN_OPTIONS set without symbolize=0 - please fix!"
+/// (afl-fuzz-init.c). Without it every `--engine afl++` run died in AFL's
+/// pre-flight check, so no afl++ pass was ever recorded. It is also what we want
+/// regardless: a fuzz child must not fork llvm-symbolizer in the hot loop, and
+/// crashes are re-symbolized on replay.
+const REQUIRED_SANITIZER_OPTIONS: &str =
+    "abort_on_error=1:halt_on_error=1:detect_leaks=1:symbolize=0";
 
 /// Merge an operator-provided `<SAN>_OPTIONS` (from the inherited environment)
 /// with the keys govfuzz requires (#435). govfuzz's keys go LAST so they win on
@@ -647,6 +656,35 @@ fn unique_finding_count(per_worker: &[WorkerReport]) -> usize {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn required_sanitizer_options_satisfy_afl_preflight() {
+        // AFL++ v4 aborts before fuzzing anything when it inherits a custom
+        // ASAN_OPTIONS without symbolize=0, so every `--engine afl++` run died
+        // in its pre-flight check and no afl++ pass was ever recorded.
+        assert!(
+            REQUIRED_SANITIZER_OPTIONS.contains("symbolize=0"),
+            "AFL++ refuses to start without it: {REQUIRED_SANITIZER_OPTIONS}"
+        );
+        // The keys that make a sanitizer report a saved finding stay required.
+        for key in ["abort_on_error=1", "halt_on_error=1"] {
+            assert!(
+                REQUIRED_SANITIZER_OPTIONS.contains(key),
+                "{key} is required"
+            );
+        }
+        // And an operator value cannot drop symbolize=0, because govfuzz's keys
+        // are merged last.
+        let merged = merge_sanitizer_options(
+            Some("symbolize=1:suppressions=/x.supp"),
+            REQUIRED_SANITIZER_OPTIONS,
+        );
+        assert!(merged.contains("symbolize=0"), "{merged}");
+        assert!(
+            merged.contains("suppressions=/x.supp"),
+            "operator keys survive: {merged}"
+        );
+    }
+
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
 

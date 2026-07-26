@@ -2,19 +2,20 @@
  "lane": "cpp",
  "repo": "microsoft/WSL",
  "stars": 33206,
- "wave": "FULL",
+ "wave": "FIXED",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.09,
    "timed_out": false,
    "panic": false,
-   "languages": 4,
-   "sloc_total": 199331,
+   "languages": 5,
+   "sloc_total": 203287,
    "sloc_by_lang": {
     "cpp": 146658,
     "c": 49191,
+    "csharp": 3956,
     "config": 2112,
     "python": 1370
    }
@@ -22,7 +23,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --format json --top 100000",
    "exit": 0,
-   "wall_s": 11.43,
+   "wall_s": 10.95,
    "timed_out": false,
    "panic": false,
    "count": 5450,
@@ -34,7 +35,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 5.71,
+   "wall_s": 4.54,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -64,23 +65,23 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/sbom",
    "exit": 0,
-   "wall_s": 0.27,
+   "wall_s": 0.11,
    "timed_out": false,
    "panic": false,
    "components": 60
   },
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
-   "exit": -6,
-   "wall_s": 12.67,
+   "exit": -9,
+   "wall_s": 48.44,
    "timed_out": false,
    "panic": false,
-   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/WslcSDK/winrt/wslcsdk.idl: unexpected character '.' at line 15, column 20\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/WSLCCompat.idl: expected declaration, found 'cpp_quote' at line 22, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/WSLCShared.idl: expected ';' at line 20, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/windowsdefs.idl: expected identifier at line 38, column 8\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/wslc.idl: expected declaration, found 'cpp_quote' at line 23, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/wslservice.idl: expected declaration, found 'cpp_quote' at line 22, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/wslinstaller/inc/wslinstallerservice.idl: expected declaration, found 'cpp_quote' at line 19, column 1\nIDL mapping is partial: 7 blocking recovery warning(s); see idl_recovery_report.json\ngovfuzz auto: generated CORBA scaffolding from 1 in-tree .idl file(s)\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 9578deba106678c4-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2433723) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/WslcSDK/winrt/wslcsdk.idl: unexpected character '.' at line 15, column 20\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/WSLCCompat.idl: expected declaration, found 'cpp_quote' at line 22, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/WSLCShared.idl: expected ';' at line 20, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/windowsdefs.idl: expected identifier at line 38, column 8\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/wslc.idl: expected declaration, found 'cpp_quote' at line 23, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/wslservice.idl: expected declaration, found 'cpp_quote' at line 22, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/wslinstaller/inc/wslinstallerservice.idl: expected declaration, found 'cpp_quote' at line 19, column 1\nIDL mapping is partial: 7 blocking recovery warning(s); see idl_recovery_report.json\ngovfuzz auto: generated CORBA scaffolding from 1 in-tree .idl file(s)\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 9578deba106678c4-pp:auto). Pass --no-discovery-cache to disable caching.\n",
    "findings_detail": []
   }
  },
  "sha": "c268673b4a2af113fce712a2a14b0c8a705f348a",
- "clone_s": 2.3,
+ "clone_s": 2.0,
  "lane_check": "cpp: 369 files / 134854 lines; top=cpp(134854)",
  "status": "done"
 }

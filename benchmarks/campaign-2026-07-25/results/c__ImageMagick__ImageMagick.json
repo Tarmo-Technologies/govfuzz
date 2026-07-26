@@ -1,0 +1,260 @@
+{
+ "lane": "c",
+ "repo": "ImageMagick/ImageMagick",
+ "stars": 17024,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ImageMagick__ImageMagick --json --out /home/ubuntu/govfuzz-sweep-work/c__ImageMagick__ImageMagick.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 405283,
+   "sloc_by_lang": {
+    "c": 377810,
+    "cpp": 24070,
+    "perl": 2000,
+    "config": 1403
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/ImageMagick__ImageMagick --format json --top 100000",
+   "exit": 0,
+   "wall_s": 11.91,
+   "timed_out": false,
+   "panic": false,
+   "count": 6614,
+   "by_language": {
+    "c": 4719,
+    "cpp": 1895
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/ImageMagick__ImageMagick --out /home/ubuntu/govfuzz-sweep-work/c__ImageMagick__ImageMagick/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 7.01,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 74,
+   "by_severity": {
+    "medium": 44,
+    "critical": 24,
+    "high": 6
+   },
+   "top_rules": {
+    "GF-406": 41,
+    "GF-420": 16,
+    "GF-404": 8,
+    "GF-497": 3,
+    "GF-405": 3,
+    "GF-407": 3
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/ImageMagick__ImageMagick --out /home/ubuntu/govfuzz-sweep-work/c__ImageMagick__ImageMagick/sbom",
+   "exit": 0,
+   "wall_s": 0.29,
+   "timed_out": false,
+   "panic": false,
+   "components": 21
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/ImageMagick__ImageMagick --work-dir /home/ubuntu/govfuzz-sweep-work/c__ImageMagick__ImageMagick --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 322.15,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 6333,
+    "dropped_by_cap": 6323,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 13,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "analyzeImage",
+     "source": "analyze.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'exception' of type 'ExceptionInfo *' has no byte-buffer decoder after struct synthesis: opaque type 'struct _ExceptionInfo' for pointer parameter 'exception' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GetModuleList",
+     "source": "module.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (utimbuf) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ProcessCommandOptions",
+     "source": "magick-cli.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'cli_wand' of type 'MagickCLI *' has no byte-buffer decoder after struct synthesis: decoder for parameter 'cli_wand' exceeds 65536 bytes after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ReadImages",
+     "source": "constitute.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 14,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Magick::Image::read(const std::string &)",
+     "source": "Image.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Image' to harness 'read': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Image' was found. Add a small wrapper or factory harness that constructs the object and calls 'read', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Magick::Color::operator=(const std::string &)",
+     "source": "Color.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Color' to harness 'operator=': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Color' was found. Add a small wrapper or factory harness that constructs the object and calls 'operator=', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Magick::Image::process",
+     "source": "Image.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Image' to harness 'process': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Image' was found. Add a small wrapper or factory harness that constructs the object and calls 'process', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Magick::Image::write(Blob *, const std::string &, const size_t)",
+     "source": "Image.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Image' to harness 'write': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Image' was found. Add a small wrapper or factory harness that constructs the object and calls 'write', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Image::Magick::Q16HDRI::New",
+     "source": "quantum.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `Image::Magick::Q16HDRI` is not loadable (skipped cleanly): &Image::Magick::Q16HDRI::constant not defined. The required ImageMagick libraries are not installed or not installed properly.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Image::Magick::New",
+     "source": "Magick.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `Image::Magick` is not loadable (skipped cleanly): &Image::Magick::constant not defined. The required ImageMagick libraries are not installed or not installed properly.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "incomplete type",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (utimbuf) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: decoder for parameter \"X\" exceeds N bytes after struct synthesis",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target module \"X\"",
+     "language": "perl"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f55e39808e1ef004358dbbfc4a276874ed4b73cc",
+ "clone_s": 2.3,
+ "lane_check": "c: 283 files / 464487 lines; top=c(464487)",
+ "status": "done"
+}

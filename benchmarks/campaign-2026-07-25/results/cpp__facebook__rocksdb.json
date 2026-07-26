@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "facebook/rocksdb",
  "stars": 31906,
- "wave": "FULL",
+ "wave": "FIXED",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --json --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.26,
+   "wall_s": 0.19,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -24,7 +24,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --format json --top 100000",
    "exit": 0,
-   "wall_s": 52.57,
+   "wall_s": 61.47,
    "timed_out": false,
    "panic": false,
    "count": 30765,
@@ -37,7 +37,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 22.08,
+   "wall_s": 29.71,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -70,23 +70,23 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/sbom",
    "exit": 0,
-   "wall_s": 0.3,
+   "wall_s": 0.64,
    "timed_out": false,
    "panic": false,
    "components": 28
   },
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
-   "exit": -6,
-   "wall_s": 23.53,
+   "exit": -9,
+   "wall_s": 124.78,
    "timed_out": false,
    "panic": false,
-   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 65e3cecb588d3cfa-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2439685) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 65e3cecb588d3cfa-pp:auto). Pass --no-discovery-cache to disable caching.\n",
    "findings_detail": []
   }
  },
  "sha": "14a7646fb598835bacdd6f9fe8db107d8078e24b",
- "clone_s": 3.2,
+ "clone_s": 2.8,
  "lane_check": "cpp: 751 files / 571254 lines; top=cpp(571254)",
  "status": "done"
 }

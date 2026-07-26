@@ -1,0 +1,3482 @@
+{
+ "per_lane": {
+  "ada": {
+   "projects": 25,
+   "measured": 22,
+   "no_targets": 0,
+   "majority_built": 3,
+   "discovered_total": 42034,
+   "attempted": 203,
+   "findings": 6,
+   "wall_s": 1417.9399999999998,
+   "built_and_fuzzed": 39,
+   "fuzzed_stub_only": 0,
+   "failed_build": 74,
+   "unsupported_params": 58,
+   "unrecoverable_link": 28,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 4
+  },
+  "c": {
+   "projects": 60,
+   "measured": 51,
+   "no_targets": 0,
+   "majority_built": 8,
+   "discovered_total": 205601,
+   "attempted": 404,
+   "findings": 56,
+   "wall_s": 6610.2599999999975,
+   "built_and_fuzzed": 95,
+   "fuzzed_stub_only": 1,
+   "failed_build": 133,
+   "unsupported_params": 116,
+   "unrecoverable_link": 3,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 56
+  },
+  "cobol": {
+   "projects": 18,
+   "measured": 14,
+   "no_targets": 2,
+   "majority_built": 3,
+   "discovered_total": 8415,
+   "attempted": 73,
+   "findings": 7,
+   "wall_s": 426.35,
+   "built_and_fuzzed": 27,
+   "fuzzed_stub_only": 0,
+   "failed_build": 26,
+   "unsupported_params": 19,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 1
+  },
+  "cpp": {
+   "projects": 54,
+   "measured": 27,
+   "no_targets": 0,
+   "majority_built": 1,
+   "discovered_total": 64419,
+   "attempted": 174,
+   "findings": 4,
+   "wall_s": 4697.139999999999,
+   "built_and_fuzzed": 33,
+   "fuzzed_stub_only": 0,
+   "failed_build": 48,
+   "unsupported_params": 70,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 23
+  },
+  "csharp": {
+   "projects": 25,
+   "measured": 25,
+   "no_targets": 1,
+   "majority_built": 3,
+   "discovered_total": 5887,
+   "attempted": 180,
+   "findings": 4,
+   "wall_s": 1964.02,
+   "built_and_fuzzed": 22,
+   "fuzzed_stub_only": 0,
+   "failed_build": 103,
+   "unsupported_params": 52,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 3
+  },
+  "fortran": {
+   "projects": 20,
+   "measured": 19,
+   "no_targets": 1,
+   "majority_built": 3,
+   "discovered_total": 24996,
+   "attempted": 124,
+   "findings": 159,
+   "wall_s": 2104.4900000000002,
+   "built_and_fuzzed": 37,
+   "fuzzed_stub_only": 0,
+   "failed_build": 52,
+   "unsupported_params": 21,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 14
+  },
+  "go": {
+   "projects": 40,
+   "measured": 39,
+   "no_targets": 0,
+   "majority_built": 1,
+   "discovered_total": 117922,
+   "attempted": 366,
+   "findings": 17,
+   "wall_s": 1406.8800000000003,
+   "built_and_fuzzed": 63,
+   "fuzzed_stub_only": 0,
+   "failed_build": 75,
+   "unsupported_params": 219,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 9
+  },
+  "java": {
+   "projects": 38,
+   "measured": 36,
+   "no_targets": 0,
+   "majority_built": 6,
+   "discovered_total": 256860,
+   "attempted": 227,
+   "findings": 2,
+   "wall_s": 3480.0,
+   "built_and_fuzzed": 42,
+   "fuzzed_stub_only": 0,
+   "failed_build": 97,
+   "unsupported_params": 88,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 0
+  },
+  "js": {
+   "projects": 30,
+   "measured": 28,
+   "no_targets": 4,
+   "majority_built": 9,
+   "discovered_total": 4782,
+   "attempted": 228,
+   "findings": 10,
+   "wall_s": 489.7800000000001,
+   "built_and_fuzzed": 107,
+   "fuzzed_stub_only": 0,
+   "failed_build": 7,
+   "unsupported_params": 114,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 0
+  },
+  "lua": {
+   "projects": 20,
+   "measured": 19,
+   "no_targets": 0,
+   "majority_built": 5,
+   "discovered_total": 10733,
+   "attempted": 173,
+   "findings": 1,
+   "wall_s": 321.03999999999996,
+   "built_and_fuzzed": 54,
+   "fuzzed_stub_only": 0,
+   "failed_build": 3,
+   "unsupported_params": 114,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 2
+  },
+  "perl": {
+   "projects": 20,
+   "measured": 14,
+   "no_targets": 1,
+   "majority_built": 6,
+   "discovered_total": 40161,
+   "attempted": 124,
+   "findings": 1,
+   "wall_s": 952.13,
+   "built_and_fuzzed": 68,
+   "fuzzed_stub_only": 0,
+   "failed_build": 3,
+   "unsupported_params": 43,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 10
+  },
+  "php": {
+   "projects": 22,
+   "measured": 21,
+   "no_targets": 0,
+   "majority_built": 9,
+   "discovered_total": 24842,
+   "attempted": 206,
+   "findings": 0,
+   "wall_s": 509.48000000000013,
+   "built_and_fuzzed": 109,
+   "fuzzed_stub_only": 0,
+   "failed_build": 0,
+   "unsupported_params": 97,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 0
+  },
+  "python": {
+   "projects": 40,
+   "measured": 36,
+   "no_targets": 0,
+   "majority_built": 11,
+   "discovered_total": 32958,
+   "attempted": 354,
+   "findings": 11,
+   "wall_s": 1045.3399999999997,
+   "built_and_fuzzed": 125,
+   "fuzzed_stub_only": 0,
+   "failed_build": 0,
+   "unsupported_params": 226,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 3
+  },
+  "ruby": {
+   "projects": 22,
+   "measured": 20,
+   "no_targets": 0,
+   "majority_built": 3,
+   "discovered_total": 38942,
+   "attempted": 191,
+   "findings": 0,
+   "wall_s": 662.77,
+   "built_and_fuzzed": 53,
+   "fuzzed_stub_only": 0,
+   "failed_build": 7,
+   "unsupported_params": 123,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 8
+  },
+  "rust": {
+   "projects": 40,
+   "measured": 40,
+   "no_targets": 0,
+   "majority_built": 3,
+   "discovered_total": 139262,
+   "attempted": 236,
+   "findings": 10,
+   "wall_s": 5092.050000000003,
+   "built_and_fuzzed": 56,
+   "fuzzed_stub_only": 0,
+   "failed_build": 57,
+   "unsupported_params": 121,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 2
+  },
+  "ts": {
+   "projects": 25,
+   "measured": 25,
+   "no_targets": 1,
+   "majority_built": 5,
+   "discovered_total": 12624,
+   "attempted": 210,
+   "findings": 2,
+   "wall_s": 1026.1700000000003,
+   "built_and_fuzzed": 55,
+   "fuzzed_stub_only": 0,
+   "failed_build": 20,
+   "unsupported_params": 135,
+   "unrecoverable_link": 0,
+   "unrecoverable_runtime": 0,
+   "skipped": 0,
+   "report_only": 0
+  }
+ },
+ "problems": [
+  {
+   "repo": "AdaCore/gnat-llvm",
+   "lane": "ada",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "PatrikFehrenbach/amass-tools",
+   "lane": "ada",
+   "status": "rejected_lane",
+   "why": "too little ada code (ada: 4 files / 44 lines; top=ada(44))"
+  },
+  {
+   "repo": "jrmarino/synth",
+   "lane": "ada",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "DeusData/codebase-memory-mcp",
+   "lane": "c",
+   "status": "timeout:auto",
+   "why": "510.31s"
+  },
+  {
+   "repo": "ExistentialAudio/BlackHole",
+   "lane": "c",
+   "status": "rejected_lane",
+   "why": "too few c files (c: 2 files / 3935 lines; top=c(3935))"
+  },
+  {
+   "repo": "NVIDIA/open-gpu-kernel-modules",
+   "lane": "c",
+   "status": "timeout:auto",
+   "why": "510.05s"
+  },
+  {
+   "repo": "arendst/Tasmota",
+   "lane": "c",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota/auto/missing-deps.txt\ngovfuzz auto: work-direc"
+  },
+  {
+   "repo": "iovisor/bcc",
+   "lane": "c",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc/auto/missing-deps.txt\ngovfuzz auto: work-directory"
+  },
+  {
+   "repo": "jart/cosmopolitan",
+   "lane": "c",
+   "status": "timeout:auto",
+   "why": "510.08s"
+  },
+  {
+   "repo": "redis/redis",
+   "lane": "c",
+   "status": "timeout:auto",
+   "why": "510.12s"
+  },
+  {
+   "repo": "sumatrapdfreader/sumatrapdf",
+   "lane": "c",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/c__sumatrapdfreader__sumatrapdf/auto/missing-deps.txt\ngovfuzz auto"
+  },
+  {
+   "repo": "woltapp/blurhash",
+   "lane": "c",
+   "status": "rejected_lane",
+   "why": "too little c code (c: 4 files / 266 lines; top=ts(439))"
+  },
+  {
+   "repo": "IonicaBizau/node.cobol",
+   "lane": "cobol",
+   "status": "rejected_lane",
+   "why": "too little cobol code (cobol: 3 files / 55 lines; top=cobol(55))"
+  },
+  {
+   "repo": "cloudflare/cobweb",
+   "lane": "cobol",
+   "status": "rejected_lane",
+   "why": "too few cobol files (cobol: 1 files / 68 lines; top=cobol(68))"
+  },
+  {
+   "repo": "icitry/FPS.cob",
+   "lane": "cobol",
+   "status": "rejected_lane",
+   "why": "too few cobol files (cobol: 1 files / 2752 lines; top=cobol(2752))"
+  },
+  {
+   "repo": "moxon6/cobol-js-emscripten",
+   "lane": "cobol",
+   "status": "rejected_lane",
+   "why": "too few cobol files (cobol: 1 files / 127 lines; top=cobol(127))"
+  },
+  {
+   "repo": "LizardByte/Sunshine",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__LizardByte__Sunshine/auto/missing-deps.txt\ngovfuzz auto: work"
+  },
+  {
+   "repo": "SerenityOS/serenity",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "ValveSoftware/Proton",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "WerWolv/ImHex",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/auto/missing-deps.txt\ngovfuzz auto: work-direc"
+  },
+  {
+   "repo": "bitcoin/bitcoin",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/auto/missing-deps.txt\ngovfuzz auto: work-dir"
+  },
+  {
+   "repo": "carbon-language/carbon-lang",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-9 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang/auto/missing-deps.txt\ngovfuzz au"
+  },
+  {
+   "repo": "deskflow/deskflow",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__deskflow__deskflow/auto/missing-deps.txt\ngovfuzz auto: work-d"
+  },
+  {
+   "repo": "dmlc/xgboost",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost/auto/missing-deps.txt\ngovfuzz auto: work-direct"
+  },
+  {
+   "repo": "dragonflydb/dragonfly",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/auto/missing-deps.txt\ngovfuzz auto: wo"
+  },
+  {
+   "repo": "envoyproxy/envoy",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/auto/missing-deps.txt\ngovfuzz auto: work-di"
+  },
+  {
+   "repo": "facebook/folly",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly/auto/missing-deps.txt\ngovfuzz auto: work-dire"
+  },
+  {
+   "repo": "facebook/rocksdb",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/auto/missing-deps.txt\ngovfuzz auto: work-di"
+  },
+  {
+   "repo": "flameshot-org/flameshot",
+   "lane": "cpp",
+   "status": "rejected_lane",
+   "why": "mislabelled by GitHub (cpp: 113 files / 17321 lines; top=ts(157674))"
+  },
+  {
+   "repo": "keepassxreboot/keepassxc",
+   "lane": "cpp",
+   "status": "rejected_lane",
+   "why": "mislabelled by GitHub (cpp: 390 files / 98426 lines; top=ts(471810))"
+  },
+  {
+   "repo": "microsoft/BitNet",
+   "lane": "cpp",
+   "status": "rejected_lane",
+   "why": "too few cpp files (cpp: 2 files / 1035 lines; top=python(9296))"
+  },
+  {
+   "repo": "microsoft/WSL",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/auto/missing-deps.txt\ngovfuzz auto: work-direc"
+  },
+  {
+   "repo": "microsoft/winget-cli",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli/auto/missing-deps.txt\ngovfuzz auto: wor"
+  },
+  {
+   "repo": "mozilla-ai/llamafile",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.1s"
+  },
+  {
+   "repo": "notepad-plus-plus/notepad-plus-plus",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus/auto/missing-deps.txt\ngo"
+  },
+  {
+   "repo": "ocornut/imgui",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "protocolbuffers/protobuf",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "qbittorrent/qBittorrent",
+   "lane": "cpp",
+   "status": "rejected_lane",
+   "why": "mislabelled by GitHub (cpp: 260 files / 76139 lines; top=ts(1149650))"
+  },
+  {
+   "repo": "rethinkdb/rethinkdb",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/auto/missing-deps.txt\ngovfuzz auto: work"
+  },
+  {
+   "repo": "shadps4-emu/shadPS4",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "taichi-dev/taichi",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/auto/missing-deps.txt\ngovfuzz auto: work-d"
+  },
+  {
+   "repo": "telegramdesktop/tdesktop",
+   "lane": "cpp",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "x64dbg/x64dbg",
+   "lane": "cpp",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/auto/missing-deps.txt\ngovfuzz auto: work-direc"
+  },
+  {
+   "repo": "wrf-model/WRF",
+   "lane": "fortran",
+   "status": "timeout:auto",
+   "why": "510.11s"
+  },
+  {
+   "repo": "milvus-io/milvus",
+   "lane": "go",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/auto/missing-deps.txt\ngovfuzz auto: work-dir"
+  },
+  {
+   "repo": "doocs/advanced-java",
+   "lane": "java",
+   "status": "rejected_lane",
+   "why": "too few java files (java: 1 files / 8 lines; top=ts(41))"
+  },
+  {
+   "repo": "termux/termux-app",
+   "lane": "java",
+   "status": "clone_failed",
+   "why": "clone failed: fatal: unable to access 'https://github.com/termux/termux-app.git/': SSL connection timeout"
+  },
+  {
+   "repo": "ryanmcdermott/clean-code-javascript",
+   "lane": "js",
+   "status": "rejected_lane",
+   "why": "no recognised source files"
+  },
+  {
+   "repo": "typicode/json-server",
+   "lane": "js",
+   "status": "rejected_lane",
+   "why": "too few js files (js: 0 files / 0 lines; top=ts(1407))"
+  },
+  {
+   "repo": "jcjohnson/neural-style",
+   "lane": "lua",
+   "status": "rejected_lane",
+   "why": "too few lua files (lua: 1 files / 531 lines; top=lua(531))"
+  },
+  {
+   "repo": "Jack000/Expose",
+   "lane": "perl",
+   "status": "rejected_lane",
+   "why": "too few perl files (perl: 1 files / 1174 lines; top=perl(1174))"
+  },
+  {
+   "repo": "adrienverge/openfortivpn",
+   "lane": "perl",
+   "status": "rejected_lane",
+   "why": "too few perl files (perl: 1 files / 6848 lines; top=perl(6848))"
+  },
+  {
+   "repo": "curl/trurl",
+   "lane": "perl",
+   "status": "rejected_lane",
+   "why": "too few perl files (perl: 2 files / 1238 lines; top=c(1990))"
+  },
+  {
+   "repo": "darold/pgbadger",
+   "lane": "perl",
+   "status": "rejected_lane",
+   "why": "mislabelled by GitHub (perl: 9 files / 574 lines; top=js(28332))"
+  },
+  {
+   "repo": "jimsalterjrs/sanoid",
+   "lane": "perl",
+   "status": "rejected_lane",
+   "why": "no recognised source files"
+  },
+  {
+   "repo": "so-fancy/diff-so-fancy",
+   "lane": "perl",
+   "status": "rejected_lane",
+   "why": "too few perl files (perl: 2 files / 488 lines; top=perl(488))"
+  },
+  {
+   "repo": "easychen/howto-make-more-money",
+   "lane": "php",
+   "status": "rejected_lane",
+   "why": "too few php files (php: 2 files / 36 lines; top=js(579))"
+  },
+  {
+   "repo": "521xueweihan/HelloGitHub",
+   "lane": "python",
+   "status": "rejected_lane",
+   "why": "too few python files (python: 2 files / 261 lines; top=python(261))"
+  },
+  {
+   "repo": "fighting41love/funNLP",
+   "lane": "python",
+   "status": "rejected_lane",
+   "why": "too few python files (python: 1 files / 15 lines; top=python(15))"
+  },
+  {
+   "repo": "karpathy/autoresearch",
+   "lane": "python",
+   "status": "rejected_lane",
+   "why": "too few python files (python: 2 files / 870 lines; top=python(870))"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "lane": "python",
+   "status": "exit:auto",
+   "why": "exit=-6 govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/python__vllm-project__vllm/auto/missing-deps.txt\ngovfuzz auto: wor"
+  },
+  {
+   "repo": "hashicorp/vagrant",
+   "lane": "ruby",
+   "status": "clone_failed",
+   "why": "clone failed: fatal: unable to access 'https://github.com/hashicorp/vagrant.git/': SSL connection timeout"
+  },
+  {
+   "repo": "lewagon/setup",
+   "lane": "ruby",
+   "status": "rejected_lane",
+   "why": "too little ruby code (ruby: 10 files / 254 lines; top=ruby(254))"
+  }
+ ],
+ "blockers": [
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\"); run \"X\"",
+   "count": 176
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "ModuleNotFoundError: No module named \"X\"",
+   "count": 167
+  },
+  {
+   "language": "php",
+   "category": "unsupported_params",
+   "detail": "target \"X\"",
+   "count": 76
+  },
+  {
+   "language": "java",
+   "category": "unsupported_params",
+   "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+   "count": 66
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "unsupported Go parameter type \"X\"",
+   "count": 58
+  },
+  {
+   "language": "cpp",
+   "category": "report_only",
+   "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation",
+   "count": 53
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+   "count": 47
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\"); run \"X\"",
+   "count": 44
+  },
+  {
+   "language": "cpp",
+   "category": "unsupported_params",
+   "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggr",
+   "count": 35
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "in-crate cargo build failed: error: failed to parse manifest at \"X\"",
+   "count": 32
+  },
+  {
+   "language": "csharp",
+   "category": "unsupported_params",
+   "detail": "instance method \"X\"",
+   "count": 31
+  },
+  {
+   "language": "ada",
+   "category": "unrecoverable_link",
+   "detail": "1 undefined symbol(s) after repair",
+   "count": 28
+  },
+  {
+   "language": "c",
+   "category": "unsupported_params",
+   "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"",
+   "count": 28
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"",
+   "count": 27
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "instance method \"X\"",
+   "count": 27
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "missing type",
+   "count": 25
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "missing header",
+   "count": 25
+  },
+  {
+   "language": "cpp",
+   "category": "unsupported_params",
+   "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public const",
+   "count": 25
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "Go method \"X\"",
+   "count": 24
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: window is not defined",
+   "count": 23
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"vim\"X\"",
+   "count": 23
+  },
+  {
+   "language": "c",
+   "category": "unsupported_params",
+   "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer par",
+   "count": 22
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "missing header",
+   "count": 22
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error CS0246: The type or namespace name \"X\" could not be found (are you missing a using directive or an assem",
+   "count": 22
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "missing Ada symbol",
+   "count": 21
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skippe",
+   "count": 21
+  },
+  {
+   "language": "typescript",
+   "category": "built_not_fuzzed",
+   "detail": "built, no fuzz pass ran",
+   "count": 20
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c_knr] K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+   "count": 20
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"torch\"X\"",
+   "count": 19
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "undeclared function",
+   "count": 18
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac (/h",
+   "count": 18
+  },
+  {
+   "language": "javascript",
+   "category": "built_not_fuzzed",
+   "detail": "built, no fuzz pass ran",
+   "count": 18
+  },
+  {
+   "language": "python",
+   "category": "report_only",
+   "detail": "[python2] Python N: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+   "count": 17
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error MSB3644: The reference assemblies for .NETFramework,Version=v4.N.N were not found. To resolve this, inst",
+   "count": 17
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "missing macro",
+   "count": 16
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" is an \"X\"",
+   "count": 16
+  },
+  {
+   "language": "cpp",
+   "category": "report_only",
+   "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.",
+   "count": 15
+  },
+  {
+   "language": "c",
+   "category": "unsupported_params",
+   "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter",
+   "count": 13
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "target is not inside a Go module (no go.mod found); only module-based Go targets are supported (skipped cleanl",
+   "count": 13
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error MSB3644: The reference assemblies for .NETFramework,Version=v4.N were not found. To resolve this, instal",
+   "count": 13
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: golang.org/x/sys@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 13
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "fatal error: auto_types.h: No such file or directory",
+   "count": 12
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\"",
+   "count": 12
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "in-crate build: target crate inherits \"X\"s [workspace.dependencies], which the detached copy can\"X\"",
+   "count": 12
+  },
+  {
+   "language": "java",
+   "category": "unsupported_params",
+   "detail": "Java target \"X\" is an instance method and no no-arg constructor was found to build a receiver; not auto-harnes",
+   "count": 11
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a di",
+   "count": 11
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C harness translation uni",
+   "count": 11
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" is a static method of a non-in-crate trait impl (callable only by UFCS with an in-crate trait)",
+   "count": 11
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error NETSDK1045: The current .NET SDK does not support targeting .NET N.N. Either target .NET N.N or lower, o",
+   "count": 10
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error : The BaseOutputPath/OutputPath property is not set for project \"X\". Please check to make sure that you ",
+   "count": 10
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/caddyserver/caddy/v2: version \"X\" invalid: should be v2, not v0",
+   "count": 10
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/hashicorp/terraform-registry-address@v0.N.N requires go >= N.N.N (running go N",
+   "count": 10
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/Blankj__AndroidUtilCode/lib/utildebug-no-op/src/main",
+   "count": 10
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "unnamed variables are a preview feature and are disabled by default.",
+   "count": 10
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/anuraghaz",
+   "count": 10
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/sveltejs_",
+   "count": 10
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "/usr/bin/lua: ...us-N/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:N: attempt to index a nil value (globa",
+   "count": 10
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "TypeError: type \"X\" is not subscriptable",
+   "count": 10
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- active_support/core_ext/object/try (LoadError)",
+   "count": 10
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "unit \"X\" cannot belong to several projects",
+   "count": 9
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a di",
+   "count": 9
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require charm.land/bubbletea/v2: version \"X\" invalid: should be v2, not v0",
+   "count": 9
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/TeamNewPipe__NewPipe/app/src/debug/java/org/schabi/n",
+   "count": 9
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "TypeError: Cannot read properties of undefined (reading \"X\")",
+   "count": 9
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+   "count": 9
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "undefined symbol",
+   "count": 8
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "use of undeclared identifier \"X\"",
+   "count": 8
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error NU1010: The following PackageReference items do not define a corresponding PackageVersion item: Microsof",
+   "count": 8
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/alist-org/alist/v3: version \"X\" invalid: should be v3, not v0",
+   "count": 8
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: tailscale.com@v1.N.N-pre requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 8
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/bumptech__glide/integration/okhttp4/src/main/java/co",
+   "count": 8
+  },
+  {
+   "language": "c",
+   "category": "unsupported_params",
+   "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: pointer parameter \"X\" of type \"",
+   "count": 7
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "expected identifier or \"X\"",
+   "count": 7
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "clang++: error: linker command failed with exit code N (use -v to see invocation)",
+   "count": 7
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/cli/cli/v2: version \"X\" invalid: should be v2, not v0",
+   "count": 7
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: golang.org/x/text@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 7
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"class\"X\"",
+   "count": 7
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" is generic over type parameter \"X\"",
+   "count": 7
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "cargo build failed: unresolved path \"X\"",
+   "count": 6
+  },
+  {
+   "language": "java",
+   "category": "unsupported_params",
+   "detail": "Java target \"X\" constructs the abstract class/interface \"X\", which cannot be instantiated; not auto-harnessabl",
+   "count": 6
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "undefined symbol",
+   "count": 6
+  },
+  {
+   "language": "cpp",
+   "category": "unsupported_params",
+   "detail": "refusing to generate harness: compile flag \"X\" contains a shell/make metacharacter and could inject commands i",
+   "count": 6
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"string.buffer\"X\"",
+   "count": 6
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"torch\"X\"",
+   "count": 6
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"plenary.log\"X\"",
+   "count": 6
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"gradio\"X\"",
+   "count": 6
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\" called for Bundler:Module (NoMethodError)",
+   "count": 6
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "typedef redefinition with different types (\"X\" vs \"X\")",
+   "count": 5
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "undefined external reference \"X\"",
+   "count": 5
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/c/Genymobile__scrcpy/server/src/main/java/com/genymobile/",
+   "count": 5
+  },
+  {
+   "language": "c",
+   "category": "unsupported_params",
+   "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: decoder for parameter \"X\" excee",
+   "count": 5
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "expected expression",
+   "count": 5
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "undefined symbol",
+   "count": 5
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/cobol/opensourcecobol__opensourcecobol4j/libcobj/app/src/",
+   "count": 5
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"aiohttp\"X\"",
+   "count": 5
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error NETSDK1100: To build a project targeting Windows on this operating system, set the EnableWindowsTargetin",
+   "count": 5
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: navigator is not defined",
+   "count": 5
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "incomplete type",
+   "count": 5
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/prometheus/client_golang@v1.N.N requires go >= N.N.N (running go N.N.N; GOTOOL",
+   "count": 5
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/grpc-ecosystem/grpc-gateway/v2@v2.N.N requires go >= N.N.N (running go N.N.N; ",
+   "count": 5
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException) AND javac (/home",
+   "count": 5
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/geekxh__hello-algorithm/\u7b97\u6cd5\u8bfb\u7269/\u5251\u6307offer/N_MirrorOfBinar",
+   "count": 5
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/halo-dev__halo/api/src/main/java/run/halo/app/securi",
+   "count": 5
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/chartjs__Chart.js/src/core/core.animator",
+   "count": 5
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: self is not defined",
+   "count": 5
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "/usr/bin/lua: ...-corpus-N/lua/folke__lazy.nvim/lua/lazy/core/cache.lua:N: attempt to index a nil value (globa",
+   "count": 5
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"jit\"X\"",
+   "count": 5
+  },
+  {
+   "language": "go",
+   "category": "built_not_fuzzed",
+   "detail": "built, no fuzz pass ran",
+   "count": 5
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/perl/Difegue",
+   "count": 5
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"",
+   "count": 5
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/php/livewire",
+   "count": 5
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"loguru\"X\"",
+   "count": 5
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- gemojione (LoadError)",
+   "count": 5
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "uninitialized constant RSpec (NameError)",
+   "count": 5
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/ChatGPTNextWeb__NextChat/app/icons/",
+   "count": 5
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/mermaid-js__mermaid/packages/mermai",
+   "count": 5
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Lsp.Json_Streams.Json_Stream is not declared in the parsed source set and has no synthesizable cons",
+   "count": 4
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "subunit cannot depend on \"X\" (parent has wrong categorization)",
+   "count": 4
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "expected \"X\" after expression",
+   "count": 4
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "missing macro",
+   "count": 4
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (event) \u2014 an external SDK/framework type",
+   "count": 4
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "use of undeclared identifier \"X\"",
+   "count": 4
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (const enum CBLAS_ORDER) \u2014 an external S",
+   "count": 4
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: Cannot open included file \u2018SIZE\u2019",
+   "count": 4
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "function cannot return function type \"X\" (aka \"X\")",
+   "count": 4
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "ImportError: cannot import name \"X\" from \"X\" (/home/ubuntu/.local/lib/python3.N/site-packages/numpy/__init__.p",
+   "count": 4
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/mhsanaei/Nx-ui/v3: version \"X\" invalid: should be v3, not v0",
+   "count": 4
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: ../../../../govfuzz-corpus-N/go/coreybutler__nvm-windows/src/utility/logging.go:N:N: undefine",
+   "count": 4
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException) AND javac (/home/ubunt",
+   "count": 4
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/skylot__jadx/jadx-core/src/main/java/jadx/api/JavaMe",
+   "count": 4
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"tiktoken\"X\"",
+   "count": 4
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: govfuzz_harness.go:N:N: use of internal package github.com/santifer/career-ops/dashboard/inte",
+   "count": 4
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"cv2\"X\"",
+   "count": 4
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t locate Module/Build.pm in @INC (you may need to install the Module::Build module) (@INC ent",
+   "count": 4
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"autocontrib\"X\"",
+   "count": 4
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/php/koel__koel/resources/assets/img/co",
+   "count": 4
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "ImportError: cannot import name \"X\" from partially initialized module \"X\" (most likely due to a circular impor",
+   "count": 4
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/ruby/fastlane__fastlane/screengrab/screengrab-lib/src/mai",
+   "count": 4
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"e3\"X\"",
+   "count": 3
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "implicit declaration of function \u2018lseek\u2019; did you mean \u2018fseek\u2019? [-Wimplicit-function-declaration]",
+   "count": 3
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "missing Ada unit",
+   "count": 3
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a pub",
+   "count": 3
+  },
+  {
+   "language": "c",
+   "category": "built_not_fuzzed",
+   "detail": "built, no fuzz pass ran",
+   "count": 3
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "conflicting types for \"X\"",
+   "count": 3
+  },
+  {
+   "language": "c",
+   "category": "unrecoverable_link",
+   "detail": "1 undefined symbol(s) after repair",
+   "count": 3
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"NoneType\"X\"str\"X\"",
+   "count": 3
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (harness) failed: /home/ubuntu/govfuzz-sweep-work/cobol__eclipse-che4z__che-che4z-lsp-for-cobol/harnesse",
+   "count": 3
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "called object type \"X\" is not a function or function pointer",
+   "count": 3
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "- If none of the above instruction sets are supported on your system, you can execute \"X\" without setting the ",
+   "count": 3
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "TypeError: globalThis.getDotnetRuntime is not a function",
+   "count": 3
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error CS0579: Duplicate \"X\" attribute [/home/ubuntu/govfuzz-sweep-work/csharp__QL-Win__QuickLook/harnesses/H-S",
+   "count": 3
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: Cannot open module file \u2018fpm_environment.mod\u2019 for reading at (N): No suc",
+   "count": 3
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: Cannot open module file \u2018stdlib_kinds.mod\u2019 for reading at (N): No such f",
+   "count": 3
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"fypp\"X\"",
+   "count": 3
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "Fortran harness build failed: unresolved external symbol(s): sqlite3_finalize_c_, sqlite3_reset_c_",
+   "count": 3
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "Fortran harness build failed: unresolved external symbol(s): andf_, bldpk_, bldpkn_, complf_, dbmdia_, dsiodd_",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: gvisor.dev/gvisor@v0.N.N-N-Na5d21be8f0 requires go >= N.N.N (running go N.N.N; GOTOOLCHAI",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: golang.org/x/sync@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 3
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"pandas\"X\"",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require go.etcd.io/etcd/server/v3: version \"X\" invalid: should be v3, not v0",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: golang.org/x/net@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_REQUIRE_ASYNC_MODULE]: require() cannot be used on an ESM graph with top-level await. Use import() ",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/moby/moby/v2: version \"X\" invalid: should be v2, not v0",
+   "count": 3
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u25b2 [WARNING] Cannot find base config file \"X\" [tsconfig.json]",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/traefik/traefik/v3: version \"X\" invalid: should be v3, not v0",
+   "count": 3
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: govfuzz_harness.go:N:N: use of internal package github.com/wagoodman/dive/internal/log not al",
+   "count": 3
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/conductor-oss__conductor/common/src/main/java/com/ne",
+   "count": 3
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/spring-projects__spring-boot/buildpack/spring-boot-b",
+   "count": 3
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/yuliskov__SmartTube/filepicker-lib/src/main/java/art",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/asgeirtj_",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/axios__ax",
+   "count": 3
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-har",
+   "count": 3
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"scipy\"X\"",
+   "count": 3
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"ReadableLogRecord\"X\"opentelemetry.sdk._logs\"X\"",
+   "count": 3
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t locate Redis.pm in @INC (you may need to install the Redis module) (@INC entries checked: /",
+   "count": 3
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t locate DBI.pm in @INC (you may need to install the DBI module) (@INC entries checked: /home",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension \"X\" for /home/ubuntu/govfuzz-corpus-N/php/BookS",
+   "count": 3
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\": cannot load such file -- gh_inspector (LoadError)",
+   "count": 3
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "CompilerConstants>\"X\"",
+   "count": 3
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": uninitialized constant AbstractDownloadStrategy::T (NameError)",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ruby/chatwoo",
+   "count": 3
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": undefined method \"X\" for Api::OpenidConnect::AuthorizationPoint::Endpoint:Class (NoMethodError)",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: HTMLElement is not defined",
+   "count": 3
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- rails_helper (LoadError)",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ruby/mastodo",
+   "count": 3
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- mail (LoadError)",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ruby/spree__",
+   "count": 3
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: error: failed to select a version for the requirement \"X\"",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ts/clash-ver",
+   "count": 3
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u25b2 [WARNING] \"X\" is not available with the \"X\" output format and will be empty [empty-import-meta]",
+   "count": 3
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ts/mermaid-js__mermaid/packages/mermaid/src",
+   "count": 3
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: __DEV__ is not defined",
+   "count": 3
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type St7735r_Bitmap_Buffer is not declared in the parsed source set and has no synthesizable constructor",
+   "count": 2
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "\"X\" is not visible",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "importlib.metadata.PackageNotFoundError: No package metadata was found for RecordFlux",
+   "count": 2
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a di",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"rtoml\"X\"",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "malformed function declaration",
+   "count": 2
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- plist (LoadError)",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "incomplete type",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "incompatible pointer to integer conversion initializing \"X\" (aka \"X\") with an expression of type \"X\" [-Wint-co",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "array subscript is not an integer",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"sentencepiece\"X\"",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (pl_chroma_location, pl_color_levels, pl",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "missing type",
+   "count": 2
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"obs\"X\"",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "type specifier missing, defaults to \"X\"; ISO C99 and later do not support implicit int [-Wimplicit-int]",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "cannot initialize a parameter of type \"X\" (vector of N \"X\" values) with an rvalue of type \"X\" (aka \"X\")",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"_libwebp\"X\"",
+   "count": 2
+  },
+  {
+   "language": "cobol",
+   "category": "failed_build",
+   "detail": "cobc -C failed: /home/ubuntu/govfuzz-corpus-N/cobol/Apress__beg-cobol-for-programmers/N-N-N-N-N_Coughlan_Ch16/",
+   "count": 2
+  },
+  {
+   "language": "cobol",
+   "category": "failed_build",
+   "detail": "cobc -C failed: /home/ubuntu/govfuzz-corpus-N/cobol/aws-samples__aws-mainframe-modernization-carddemo/app/app-",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "unsupported_params",
+   "detail": "refusing to generate harness: compile flag \"X\"lcdwiki-es3c35p\"X\"-DBOARD_TYPE=\\\"X\" contains a shell/make metach",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"dmgbuild\"X\"",
+   "count": 2
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "Error: No such binding was linked: electron_common_net",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: compilation terminated.",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "\"X\" is a private member of \"X\"",
+   "count": 2
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error MSB4019: The imported project \"X\" was not found. Confirm that the expression in the Import declaration \"",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"pefile\"X\"",
+   "count": 2
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "dotnet build failed:",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "parameter \"X\" was not declared, defaults to \"X\"; ISO C99 and later do not support implicit int [-Wimplicit-int",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"calcderivs\"X\"",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "report_only",
+   "detail": "[cpp_pre98] legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: golang.org/x/crypto@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "called object type \"X\" (aka \"X\") is not a function or function pointer",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/cockroachdb/errors@v1.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "unsupported_params",
+   "detail": "C++ target \"X\" is a member of class \"X\" defined only in a .cpp translation unit (not declared in any header) \u2014",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/cli/go-gh/v2@v2.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/gdamore/tcell/v3@v3.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=lo",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/mudler/xlog@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 2
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/go/prometheus__prometheus/web/ui/module/lez",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/klauspost/compress@v1.N.N requires go >= N.N (running go N.N.N; GOTOOLCHAIN=lo",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require github.com/router-for-me/CLIProxyAPI/v7: version \"X\" invalid: should be v7,",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/spf13/afero@v1.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 2
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/PluginExecutionException) AND javac (/home/u",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "invalid operands to binary expression (\"X\" (aka \"X\") and \"X\")",
+   "count": 2
+  },
+  {
+   "language": "java",
+   "category": "built_not_fuzzed",
+   "detail": "built, no fuzz pass ran",
+   "count": 2
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/kestra-io__kestra/worker/src/main/java/io/kestra/wor",
+   "count": 2
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException) AND javac (/home/u",
+   "count": 2
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: govfuzz_harness.go:N:N: import \"X\" is a program, not an importable package",
+   "count": 2
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"ngx.ssl\"X\"",
+   "count": 2
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "/usr/bin/lua: ...-N/lua/NvChad__NvChad/lua/nvchad/configs/lspconfig.lua:N: attempt to index a nil value (globa",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"docs/en/latest/config.json\"X\"",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"zhon\"X\"",
+   "count": 2
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\"pl.import_into\"X\"",
+   "count": 2
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"device/generic/powerd\"X\"",
+   "count": 2
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"ui/widget/keyvaluepage\"X\"",
+   "count": 2
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t match executable \"X\" version (N.N.N) at /home/ubuntu/govfuzz-corpus-N/perl/holzschu__a-shel",
+   "count": 2
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/php/matomo-org__matomo/plugins/CoreHom",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"modules\"X\"",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"babel_cdn\"X\"",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"BaseHTTPServer\"X\"",
+   "count": 2
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": undefined method \"X\" for ActsAsTaggableOn::Tag:Class (NoMethodError)",
+   "count": 2
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- faraday (LoadError)",
+   "count": 2
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "LogAdapter>\"X\"",
+   "count": 2
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "Base>\"X\" for AbstractController::Base:Class (NoMethodError)",
+   "count": 2
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": undefined method \"X\" for AbstractController::Base:Class (NoMethodError)",
+   "count": 2
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling zmij v1.N.N",
+   "count": 2
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "in-crate cargo build failed: error: failed to run custom build command for \"X\"",
+   "count": 2
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: error: failed to get \"X\"",
+   "count": 2
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/ChatGPTNextWeb__NextChat/app/compon",
+   "count": 2
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "expected \"X\" after top level declarator",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "\"X\" attributes are not enabled; use \"X\" or \"X\" to enable support for __declspec attributes",
+   "count": 2
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "ImportError: cannot import name \"X\" from \"X\" (unknown location)",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "expected \"X\" after top level declarator",
+   "count": 2
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/ts/immich-app__immich/mobile/android/app/src/main/kotlin/",
+   "count": 2
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ts/mermaid-j",
+   "count": 2
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "redefinition of \"X\" as different kind of symbol",
+   "count": 2
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: Cc is not defined",
+   "count": 2
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "uncompilable Ada body",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Hal.Audio.Audio_Stream is not declared in the parsed source set and has no synthesizable constructo",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Native_Fs_Driver is not declared in the parsed source set and has no synthesizable constructor. Add",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "tagged type Gtkada.Macro.Macro_Item has no constructor with synthesizable parameters. Add a public constructor",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"GPS\"X\"",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "statement expected",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "Ada target \"X\" is a project main executable (declared in blink.gpr \"X\"",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Asm_Output_Operand is not declared in the parsed source set and has no synthesizable constructor. A",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type System.Machine_Code.Asm_Output_Operand_List is not declared in the parsed source set and has no syn",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "initialization of limited object requires aggregate or function call",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "blocked_by_generic: generic subprogram \"X\" has a parameter without a default; it cannot be called from a no-ar",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "Ada target \"X\" is a project main executable (declared in version_patcher.gpr \"X\"",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "alire.optional.string. Add a public constructor function returning \"X\" to the parsed source set, include the n",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Crash_Audit_Types.Fpu_Init_Context_Type is not declared in the parsed source set and has no synthes",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Crash_Audit_Types.Mce_Context_Type is not declared in the parsed source set and has no synthesizabl",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Crash_Audit_Types.Mce_Init_Context_Type is not declared in the parsed source set and has no synthes",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Crash_Audit_Types.System_Init_Context_Type is not declared in the parsed source set and has no synt",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Crash_Audit_Types.Vtd_Init_Context_Type is not declared in the parsed source set and has no synthes",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "\"X\" conflicts with declaration at gl.ads:N",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "unit in with clause is private child unit",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type C.Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a p",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "named type Interfaces.C.Char_Array is not declared in the parsed source set and has no synthesizable construct",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "Ada target \"X\" is a project main executable (declared in powerjoular.gpr \"X\"",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "failed_build",
+   "detail": "Setup",
+   "count": 1
+  },
+  {
+   "language": "ada",
+   "category": "unsupported_params",
+   "detail": "Ada target \"X\" is a project main executable (declared in stressall.gpr \"X\"",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "malformed function declaration",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"firebase_admin\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"coli\"X\"",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "typedef redefinition with different types (\"X\" vs \"X\")",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"module\"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "\"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "unterminated /* comment",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (pthread_mutex_t) \u2014 an external SDK/fram",
+   "count": 1
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t locate XML/Simple.pm in @INC (you may need to install the XML::Simple module) (@INC entries",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "Exactly one of IEEE_N, IEEE_MC68k, VAX, or IBM should be defined.",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/c/julycoding__The-Art-Of-Programming-By-July-Nnd/ebook/co",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\"mp.utils\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"mp.msg\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"mp.utils\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"bit\"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "expected \"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (wl_output_subpixel) \u2014 an external SDK/f",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "typedef redefinition with different types (\"X\" vs \"X\" (aka \"X\"))",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/c/xiaojieonly__Ehviewer_CN_SXJ/app/src/main/java/com/hipp",
+   "count": 1
+  },
+  {
+   "language": "cobol",
+   "category": "unsupported_params",
+   "detail": "CHECKQUERY: nested COBOL program (cobc compiles it as a static C function, not externally callable)",
+   "count": 1
+  },
+  {
+   "language": "cobol",
+   "category": "unsupported_params",
+   "detail": "GETQUERY: nested COBOL program (cobc compiles it as a static C function, not externally callable)",
+   "count": 1
+  },
+  {
+   "language": "cobol",
+   "category": "failed_build",
+   "detail": "cobc -C failed: /home/ubuntu/govfuzz-corpus-N/cobol/neopragma__cobol-unit-test/src/main/cobol/copy/DFHEIBLK.CP",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/cpp/argotorg__solidity/scripts/AntlrBatchTestRig.java:N: ",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"bytecodecompare\"X\"",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "expected \"X\" at end of declaration list",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "report_only",
+   "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (omp_lock_t) \u2014 an external SDK/framewo",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "no namespace named \"X\"; did you mean \"X\"?",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "package com.sun.jna does not exist",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"/home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp/harnesses/H-P0037-C34BE7DF/models/",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"gdb\"X\"",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "no member named \"X\" in namespace \"X\"",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/cpp/tesseract-ocr__tesseract/java/com/google/scrollview/S",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "variable type \"X\" is an abstract class",
+   "count": 1
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "CSC : error CS0006: Metadata file \"X\" could not be found [/home/ubuntu/govfuzz-corpus-N/csharp/DevToys-app__De",
+   "count": 1
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "warning CA1305: The behavior of \"X\" could vary based on the current user\"X\"OrganizationEditModel.FourteenDayEx",
+   "count": 1
+  },
+  {
+   "language": "csharp",
+   "category": "unsupported_params",
+   "detail": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-N/csharp/dotnet__aspnetcore/src/Servers/Kestrel/shared",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/csharp/dotne",
+   "count": 1
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error : /usr/bin/sh: N: /tmp/MSBuildTempVRIPnP/tmpe4283ed07a45432bbbfd56af425cd3de.exec.cmd: pwsh: not found",
+   "count": 1
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error : /usr/bin/sh: N: /tmp/MSBuildTempiVsM6Q/tmpf65ce1f86c1b441b95ac2a98cc947bc8.exec.cmd: pwsh: not found",
+   "count": 1
+  },
+  {
+   "language": "csharp",
+   "category": "failed_build",
+   "detail": "error : /usr/bin/sh: N: /tmp/MSBuildTempxx7JZG/tmp7182da16328b4f17b93957dd59c220f7.exec.cmd: pwsh: not found",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (CBLAS_ORDER, CBLAS_TRANSPOSE) \u2014 an exte",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "Fortran harness build failed: unresolved external symbol(s): adstack_showstack_, adstack_showstacksize_, barri",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: /home/ubuntu/govfuzz-corpus-N/fortran/MITgcm__MITgcm/model/src/packages_error_msg.F:N",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: PACKAGES_CONFIG.h: No such file or directory",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: Cannot open included file \u2018mpif.h\u2019",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: implicit_f.inc: No such file or directory",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"TESTING\"X\"",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Error: Non-numeric character in statement label at (N); Error: Non-numeric character ",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Error: invalid preprocessing directive #!; Error: invalid preprocessing directive #!;",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Error: invalid preprocessing directive #:; Error: invalid preprocessing directive #:;",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Error: invalid preprocessing directive #:; Fatal Error: Cannot open module file \u2018dftb",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"capitalize_ford_comments\"X\"",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "Fortran harness build failed: unresolved external symbol(s): __parent, __with_c_MOD_c_isdir, my_isdir, omp_get",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: f951: Fatal Error: Module file \u2018stdlib_system.smod\u2019 has not been generated, either be",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "Fortran harness build failed: unresolved external symbol(s): bangl_, close_file_, constrpot_, generic_header_,",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Error: Different CHARACTER lengths (N/N) in array constructor at (N); Error: Differen",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Error: Symbol \u2018int_var\u2019 at (N) conflicts with symbol from module \u2018scope_mod\u2019, use-ass",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: mafdecls.fh: No such file or directory",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "gfortran compile failed: Fatal Error: rtdb.fh: No such file or directory",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/fortran/nwchemgit__nwchem/src/java/whichjava.java:N: erro",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "Python headers needed to compile C extensions, please install development version of Python.",
+   "count": 1
+  },
+  {
+   "language": "fortran",
+   "category": "failed_build",
+   "detail": "Fortran harness build failed: /home/ubuntu/govfuzz-corpus-N/fortran/pymc-devs__pymc2/lapack/double/dbdsqr.f:N:",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: imports golang.org/x/sys/windows: build constraints exclude all Go files in /home/ubuntu/go/p",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require go.etcd.io/etcd/cache/v3: version \"X\" invalid: should be v3, not v0",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: go.mod:N: require go.etcd.io/etcd/client/pkg/v3: version \"X\" invalid: should be v3, not v0",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/quic-go/quic-go@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=loc",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/Nwim/httpsig@v1.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "TypeError: Cannot destructure property \"X\" of \"X\" as it is undefined.",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "clang++: error: no such file or directory: \"X\"",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: ./govfuzz_harness.go:N:N: cannot use a0 (variable of type *bytes.Reader) as io.ReadCloser val",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/go/mudler__LocalAI/core/http/react-ui/src/u",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"backend_pb2\"X\"",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: govfuzz_harness.go:N:N: use of internal package github.com/multica-ai/multica/server/internal",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/jackc/pgx/v5@v5.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "unsupported_params",
+   "detail": "opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "failed_build",
+   "detail": "\"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "built_not_entered",
+   "detail": "decode_or_bailout",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "report_only",
+   "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, ggml_type,",
+   "count": 1
+  },
+  {
+   "language": "cpp",
+   "category": "report_only",
+   "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (ggml_type) \u2014 an external SDK/framewor",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "failed_build",
+   "detail": "go build failed: imports iter: build constraints exclude all Go files in /usr/lib/go-N.N/src/iter",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/go/pocketbase__pocketbase/ui/src/collection",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/go/pocketbase__pocketbase/ui/src/settings/b",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/Azure/azure-sdk-for-go/sdk/azcore@v1.N.N requires go >= N.N.N (running go N.N.",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeproc",
+   "count": 1
+  },
+  {
+   "language": "go",
+   "category": "unsupported_params",
+   "detail": "go build failed: go: github.com/prometheus/common@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=l",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"[\"X\", \"X\"]\"X\"",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "govfuzz: subprocess exceeded its wall-clock timeout) AND javac (/home/ubuntu/govfuzz-corpus-N/java/alibaba__dr",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "MessageGenerator: processed N Kafka message JSON file(s).",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: navigator is not defined",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/java/lenve__",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/lysine-dev__retrofit/retrofit/src/main/java16/retrof",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (harness) failed: /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing/harnesses/H-J002B-NA4B8427/harness-",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (harness) failed: /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing/harnesses/H-J0036-NAE56C14/harness-",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/santifer_",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\"astrocore\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"ngx\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "/usr/bin/lua: ...a/LazyVim__LazyVim/lua/lazyvim/plugins/extras/vscode.lua:N: attempt to index a nil value (glo",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\"lazy.core.util\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\"nn\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"ffi/blitbuffer\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"plenary.job\"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "report_only",
+   "detail": "[c99] requires type(s) the generated harness cannot construct offline (lua_Integer, lua_KContext, lua_State) \u2014",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"base/bit\"X\"",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"base/string\"X\"",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "no Cargo.toml found above the Rust target source",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: error: You can enable only one of the features: lua54, lua53, lua52, lua51, luajit, luajit",
+   "count": 1
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t locate Mojo/Base.pm in @INC (you may need to install the Mojo::Base module) (@INC entries c",
+   "count": 1
+  },
+  {
+   "language": "perl",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"t locate Mojo/JSON.pm in @INC (you may need to install the Mojo::JSON module) (@INC entries c",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/php/firefly-",
+   "count": 1
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/php/koel__koel/resources/assets/js/com",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: jQuery is not defined",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/php/monicahq",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"lark\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"comfy\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"github\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"integrations\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"yfinance\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"imageio\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "RuntimeError: Directory \"X\" does not exist",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"azure\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"open_webui\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"future\"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"pydantic[email]\"X\"",
+   "count": 1
+  },
+  {
+   "language": "c",
+   "category": "failed_build",
+   "detail": "redefinition of \"X\"",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- bacon (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "APIHashable>\"X\" for APIHashable:Module (NoMethodError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": undefined method \"X\" for AbstractFileDownloadStrategy:Class (NoMethodError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": uninitialized constant CompilerConstants::T (NameError)",
+   "count": 1
+  },
+  {
+   "language": "javascript",
+   "category": "unsupported_params",
+   "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ruby/docusea",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": uninitialized constant Ability::CanCan (NameError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- colored (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- googleauth (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "unsupported_params",
+   "detail": "no .java sources under /home/ubuntu/govfuzz-corpus-N/ruby/github-linguist__linguist",
+   "count": 1
+  },
+  {
+   "language": "lua",
+   "category": "unsupported_params",
+   "detail": "target \"X\"set_policy\"X\"",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\": cannot load such file -- charlock_holmes (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "ReferenceError: window is not defined",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- i18n (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- octicons (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\": cannot load such file -- rufus-scheduler (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": cannot load such file -- liquid (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "Document>\"X\"",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "StaticFile>\"X\"",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "missing module \"X\": cannot load such file -- pathutil (LoadError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "target \"X\": uninitialized constant Jekyll::Tags::Liquid (NameError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "No such file or directory @ rb_sysopen - /home/ubuntu/govfuzz-corpus-N/ruby/mame__quine-relay/src/lazyk-boot.d",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "uninitialized constant SimpleForm (NameError)",
+   "count": 1
+  },
+  {
+   "language": "ruby",
+   "category": "unsupported_params",
+   "detail": "Caching>\"X\"",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling funty v2.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling simd-adler32 v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: error[E0425]: cannot find function \"X\"",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" (in-crate) is a &self method with no usable, override-free receiver constructor; skipped",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling ryu v1.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling owo-colors v4.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling crossbeam-channel v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling typed-arena v2.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling slab v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling arc-swap v1.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling openssl-sys v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling lean_string v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "throw new ERR_INVALID_ARG_VALUE(\"X\", filename, createRequireError);",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "in-crate cargo build failed: Compiling serde_spanned v1.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "in-crate cargo build failed: Compiling num-modular v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling typst-utils v0.N.N (/home/ubuntu/govfuzz-corpus-N/rust/typst__typst/crates/typst",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling bitflags v2.N.N",
+   "count": 1
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "TypeError [ERR_INVALID_ARG_TYPE]: The \"X\" argument must be of type string or an instance of URL. Received unde",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: Compiling cfg_aliases v0.N.N",
+   "count": 1
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/Eugeny__tabby/locale/zh-TW.po",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "unsupported_params",
+   "detail": "Rust target \"X\" is a trait method whose trait is not a \"X\"",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "ImportError: attempted relative import beyond top-level package",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"storage\"X\"google.cloud\"X\"",
+   "count": 1
+  },
+  {
+   "language": "rust",
+   "category": "failed_build",
+   "detail": "cargo build failed: error: failed to run custom build command for \"X\"",
+   "count": 1
+  },
+  {
+   "language": "java",
+   "category": "failed_build",
+   "detail": "javac (harness) failed: /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright/harnesses/H-J0014-FA2839AC/h",
+   "count": 1
+  },
+  {
+   "language": "python",
+   "category": "unsupported_params",
+   "detail": "target module \"X\"black\"X\"",
+   "count": 1
+  },
+  {
+   "language": "typescript",
+   "category": "unsupported_params",
+   "detail": "\u2718 [ERROR] Could not resolve \"X\"",
+   "count": 1
+  }
+ ]
+}

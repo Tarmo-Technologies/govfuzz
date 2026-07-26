@@ -2,12 +2,12 @@
  "lane": "cpp",
  "repo": "bitcoin/bitcoin",
  "stars": 89696,
- "wave": "FULL",
+ "wave": "FIXED",
  "surfaces": {
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --json --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.38,
+   "wall_s": 0.21,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -24,7 +24,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --format json --top 100000",
    "exit": 0,
-   "wall_s": 78.63,
+   "wall_s": 43.93,
    "timed_out": false,
    "panic": false,
    "count": 11459,
@@ -37,7 +37,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 177.8,
+   "wall_s": 249.31,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -70,23 +70,23 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/sbom",
    "exit": 0,
-   "wall_s": 0.96,
+   "wall_s": 1.9,
    "timed_out": false,
    "panic": false,
    "components": 43
   },
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
-   "exit": -6,
-   "wall_s": 6.2,
+   "exit": -9,
+   "wall_s": 36.88,
    "timed_out": false,
    "panic": false,
-   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint d53a6888f6bd9124-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2404853) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint d53a6888f6bd9124-pp:auto). Pass --no-discovery-cache to disable caching.\n",
    "findings_detail": []
   }
  },
  "sha": "e34b8d5a7dcd45e4faa3bb5fdeae64bf049037f6",
- "clone_s": 3.8,
+ "clone_s": 2.2,
  "lane_check": "cpp: 843 files / 231507 lines; top=ts(294126)",
  "status": "done"
 }

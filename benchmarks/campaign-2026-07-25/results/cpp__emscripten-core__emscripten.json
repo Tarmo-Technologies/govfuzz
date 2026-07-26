@@ -1,0 +1,91 @@
+{
+ "lane": "cpp",
+ "repo": "emscripten-core/emscripten",
+ "stars": 27528,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/emscripten-core__emscripten --json --out /home/ubuntu/govfuzz-sweep-work/cpp__emscripten-core__emscripten.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.31,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 853860,
+   "sloc_by_lang": {
+    "cpp": 471599,
+    "c": 283908,
+    "javascript": 64942,
+    "python": 31818,
+    "config": 1584,
+    "rust": 9
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/emscripten-core__emscripten --format json --top 100000",
+   "exit": 0,
+   "wall_s": 347.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 48531,
+   "by_language": {
+    "cpp": 30113,
+    "c": 18416,
+    "rust": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/emscripten-core__emscripten --out /home/ubuntu/govfuzz-sweep-work/cpp__emscripten-core__emscripten/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 29.06,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 995,
+   "by_severity": {
+    "low": 31,
+    "critical": 13,
+    "high": 530,
+    "medium": 421
+   },
+   "top_rules": {
+    "GF-424": 259,
+    "GF-405": 154,
+    "GF-407": 115,
+    "GF-406": 98,
+    "GF-401": 95,
+    "GF-403": 94,
+    "GF-408": 37,
+    "GF-546": 31,
+    "GF-425": 28,
+    "GF-547": 13,
+    "GF-507": 12,
+    "GF-436": 12,
+    "GF-422": 11,
+    "GF-404": 10,
+    "GF-544": 6
+   },
+   "gaps": 539
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/emscripten-core__emscripten --out /home/ubuntu/govfuzz-sweep-work/cpp__emscripten-core__emscripten/sbom",
+   "exit": 0,
+   "wall_s": 3.26,
+   "timed_out": false,
+   "panic": false,
+   "components": 428
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/emscripten-core__emscripten --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__emscripten-core__emscripten --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "34cf5496e5eda1cf07d38b609181a6e4896b0721",
+ "clone_s": 5.0,
+ "lane_check": "cpp: 1221 files / 186484 lines; top=cpp(186484)",
+ "status": "done"
+}

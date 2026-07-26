@@ -6,7 +6,7 @@ reports the opposite: govfuzz run over 500 open-source projects picked by
 star rank rather than by suitability, across all sixteen languages it supports,
 with every failure counted.
 
-The sweep was run to find defects. It found nineteen, listed below with the
+The sweep was run to find defects. It found twenty-one, listed below with the
 project that exposed each one. The measurements come after the fixes, from a
 single pinned binary over the whole corpus.
 
@@ -69,8 +69,12 @@ a regression test:
 | core | parsing recurses, and a main thread's 8 MiB is not enough for real source | vllm and milvus **aborted the whole run** during discovery |
 | report | a file's static findings were keyed by the target being harnessed | one Fortran project reported **120 findings for 24 real weaknesses** |
 | report | a compiler `note:` was read as the blocker | Ventoy's histogram named a deprecation notice as what stopped the build |
+| sloc, static | the file walk admitted ten of the sixteen fuzzed lanes | a 217-file PHP project measured **333 lines**, all of it config; Ruby, Lua, C#, COBOL and Fortran were equally invisible |
+| sbom | the gemspec parser required parentheses | every gemspec-driven Ruby project reported **zero** components |
 
-Two of those were caused during this campaign and caught by it: a repair-loop
+The last two were found by running govfuzz against cloc and syft rather than
+against projects — the comparison was worth as much as the sweep. Two others
+were caused during this campaign and caught by it: a repair-loop
 `break` that reached an `unreachable!`, and a binary rebuilt mid-sweep that would
 have made the corpus numbers unattributable. Both are in the table's spirit —
 the sweep is the thing that notices.

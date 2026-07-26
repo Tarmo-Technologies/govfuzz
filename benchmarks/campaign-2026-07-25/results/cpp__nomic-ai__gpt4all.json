@@ -1,0 +1,155 @@
+{
+ "lane": "cpp",
+ "repo": "nomic-ai/gpt4all",
+ "stars": 77396,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --json --out /home/ubuntu/govfuzz-sweep-work/cpp__nomic-ai__gpt4all.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 59665,
+   "sloc_by_lang": {
+    "javascript": 24382,
+    "cpp": 19285,
+    "qml": 11281,
+    "config": 2459,
+    "python": 2153,
+    "c": 105
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.32,
+   "timed_out": false,
+   "panic": false,
+   "count": 971,
+   "by_language": {
+    "cpp": 968,
+    "c": 3
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --out /home/ubuntu/govfuzz-sweep-work/cpp__nomic-ai__gpt4all/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 11.92,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 40,
+   "by_severity": {
+    "high": 27,
+    "medium": 4,
+    "low": 7,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-405": 23,
+    "GF-546": 7,
+    "GF-406": 2,
+    "GF-506": 2,
+    "GF-500": 1,
+    "GF-472": 1,
+    "GF-422": 1,
+    "GF-404": 1,
+    "GF-429": 1,
+    "GF-421": 1
+   },
+   "gaps": 14
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --out /home/ubuntu/govfuzz-sweep-work/cpp__nomic-ai__gpt4all/sbom",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "components": 612
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__nomic-ai__gpt4all --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 122.35,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 2,
+    "discovered_total": 827,
+    "dropped_by_cap": 825,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 1,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "LLamaModel::loadModel",
+     "source": "llamamodel.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "refusing to generate harness: compile flag \"-DLLAMA_VERSIONS=>=3\" contains a shell/make metacharacter and could inject commands into the build recipe; sequence generation also failed first: refusing to generate harness: compile flag \"-DLLAMA_VERSIONS=>=3\" contains a shell/make metacharacter and could inject commands into the build recipe",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llmodel_loadModel",
+     "source": "llmodel_c.cpp",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 2,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "no member named \"X\" in namespace \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "refusing to generate harness: compile flag \"X\" contains a shell/make metacharacter and could inject commands into the build recipe; sequence generation also fai\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b666d16db5aeab8b91aaf7963adcee9c643734d7",
+ "clone_s": 2.1,
+ "lane_check": "cpp: 34 files / 15721 lines; top=ts(23836)",
+ "status": "done"
+}

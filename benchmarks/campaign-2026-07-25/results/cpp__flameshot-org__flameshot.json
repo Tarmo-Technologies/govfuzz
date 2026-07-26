@@ -1,0 +1,11 @@
+{
+ "lane": "cpp",
+ "repo": "flameshot-org/flameshot",
+ "stars": 30467,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "8b77c278b4e22723214d07b0f21b47c80654c03f",
+ "clone_s": 1.7,
+ "lane_check": "mislabelled by GitHub (cpp: 113 files / 17321 lines; top=ts(157674))",
+ "status": "rejected_lane"
+}

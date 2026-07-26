@@ -1,0 +1,11 @@
+{
+ "lane": "cpp",
+ "repo": "microsoft/BitNet",
+ "stars": 39788,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "16da220ae2b510caff437d403288882687f44ae5",
+ "clone_s": 0.9,
+ "lane_check": "too few cpp files (cpp: 2 files / 1035 lines; top=python(9296))",
+ "status": "rejected_lane"
+}

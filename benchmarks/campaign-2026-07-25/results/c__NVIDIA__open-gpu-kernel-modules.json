@@ -1,0 +1,77 @@
+{
+ "lane": "c",
+ "repo": "NVIDIA/open-gpu-kernel-modules",
+ "stars": 17188,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --json --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.67,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 1766818,
+   "sloc_by_lang": {
+    "c": 1561776,
+    "cpp": 204352,
+    "python": 515,
+    "config": 175
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --format json --top 100000",
+   "exit": 0,
+   "wall_s": 161.3,
+   "timed_out": false,
+   "panic": false,
+   "count": 40970,
+   "by_language": {
+    "c": 29903,
+    "cpp": 11067
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 39.45,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 38,
+   "by_severity": {
+    "high": 29,
+    "medium": 9
+   },
+   "top_rules": {
+    "GF-401": 16,
+    "GF-403": 8,
+    "GF-424": 7,
+    "GF-408": 5,
+    "GF-428": 1,
+    "GF-425": 1
+   },
+   "gaps": 33
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules/sbom",
+   "exit": 0,
+   "wall_s": 1.1,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --work-dir /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.05,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "452cec62d827034798072827d3866d1881662b77",
+ "clone_s": 6.6,
+ "lane_check": "c: 1496 files / 1476068 lines; top=c(1476068)",
+ "status": "done"
+}

@@ -1,0 +1,92 @@
+{
+ "lane": "cpp",
+ "repo": "facebook/rocksdb",
+ "stars": 31906,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --json --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.26,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 684576,
+   "sloc_by_lang": {
+    "cpp": 605423,
+    "java": 43394,
+    "c": 16508,
+    "python": 15077,
+    "config": 3512,
+    "javascript": 662
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --format json --top 100000",
+   "exit": 0,
+   "wall_s": 52.57,
+   "timed_out": false,
+   "panic": false,
+   "count": 30765,
+   "by_language": {
+    "cpp": 27157,
+    "java": 3446,
+    "c": 162
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 22.08,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 293,
+   "by_severity": {
+    "high": 83,
+    "medium": 179,
+    "low": 14,
+    "critical": 17
+   },
+   "top_rules": {
+    "GF-424": 96,
+    "GF-406": 43,
+    "GF-497": 30,
+    "GF-407": 27,
+    "GF-405": 26,
+    "GF-408": 15,
+    "GF-546": 14,
+    "GF-404": 12,
+    "GF-472": 11,
+    "GF-477": 4,
+    "GF-420": 4,
+    "GF-544": 3,
+    "GF-550": 2,
+    "GF-549": 2,
+    "GF-401": 1
+   },
+   "gaps": 441
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/sbom",
+   "exit": 0,
+   "wall_s": 0.3,
+   "timed_out": false,
+   "panic": false,
+   "components": 28
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -6,
+   "wall_s": 23.53,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/facebook__rocksdb\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__facebook__rocksdb/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 65e3cecb588d3cfa-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2439685) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "14a7646fb598835bacdd6f9fe8db107d8078e24b",
+ "clone_s": 3.2,
+ "lane_check": "cpp: 751 files / 571254 lines; top=cpp(571254)",
+ "status": "done"
+}

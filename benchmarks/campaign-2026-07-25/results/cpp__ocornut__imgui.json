@@ -1,0 +1,82 @@
+{
+ "lane": "cpp",
+ "repo": "ocornut/imgui",
+ "stars": 75063,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ocornut__imgui --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ocornut__imgui.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 70373,
+   "sloc_by_lang": {
+    "cpp": 66142,
+    "c": 3474,
+    "config": 661,
+    "python": 96
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/ocornut__imgui --format json --top 100000",
+   "exit": 0,
+   "wall_s": 8.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 2671,
+   "by_language": {
+    "cpp": 2591,
+    "c": 80
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/ocornut__imgui --out /home/ubuntu/govfuzz-sweep-work/cpp__ocornut__imgui/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.18,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 59,
+   "by_severity": {
+    "medium": 8,
+    "high": 49,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-403": 36,
+    "GF-500": 5,
+    "GF-405": 5,
+    "GF-401": 4,
+    "GF-425": 3,
+    "GF-408": 2,
+    "GF-472": 1,
+    "GF-404": 1,
+    "GF-429": 1,
+    "GF-407": 1
+   },
+   "gaps": 4
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/ocornut__imgui --out /home/ubuntu/govfuzz-sweep-work/cpp__ocornut__imgui/sbom",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "components": 33
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/ocornut__imgui --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__ocornut__imgui --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "01380c579715e62fb9a8d6ec0502c4ea83bfde6e",
+ "clone_s": 0.8,
+ "lane_check": "cpp: 53 files / 68617 lines; top=cpp(68617)",
+ "status": "done"
+}

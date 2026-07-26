@@ -408,25 +408,34 @@ fn parse_gemspec(path: &Path, relative: &str) -> Result<Vec<DeclaredGem>, Catalo
 
     for line in source.lines() {
         let trimmed = line.trim();
-        // Match add_dependency, add_runtime_dependency, add_development_dependency.
-        for prefix in &[
-            "spec.add_dependency(",
-            "spec.add_runtime_dependency(",
-            "spec.add_development_dependency(",
-            "s.add_dependency(",
-            "s.add_runtime_dependency(",
-            "s.add_development_dependency(",
+        // `add_dependency`, `add_runtime_dependency`, `add_development_dependency`
+        // — with or without parentheses, on any receiver name. Requiring
+        // `s.add_dependency(` missed the idiomatic Ruby form,
+        // `s.add_dependency "erubi", "~> 1.13"`, which is what real gemspecs are
+        // written in: tmuxinator reported ZERO dependencies.
+        for method in &[
+            "add_runtime_dependency",
+            "add_development_dependency",
+            "add_dependency",
         ] {
-            if let Some(rest) = trimmed.strip_prefix(prefix) {
-                let name = extract_first_string(rest.trim_start());
-                if !name.is_empty() {
-                    out.push(DeclaredGem {
-                        name,
-                        relative: relative.to_owned(),
-                    });
-                }
-                break;
+            let Some(at) = trimmed.find(method) else {
+                continue;
+            };
+            // Must be a method call on something (`s.`, `spec.`, `gem.`), not a
+            // word inside a comment or a string.
+            if !trimmed[..at].ends_with('.') {
+                continue;
             }
+            let rest = trimmed[at + method.len()..].trim_start();
+            let rest = rest.strip_prefix('(').unwrap_or(rest).trim_start();
+            let name = extract_first_string(rest);
+            if !name.is_empty() {
+                out.push(DeclaredGem {
+                    name,
+                    relative: relative.to_owned(),
+                });
+            }
+            break;
         }
     }
 
@@ -460,6 +469,34 @@ fn relative_path(root: &Path, path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_gemspec_declares_dependencies_without_parentheses() {
+        // The idiomatic Ruby form has no parentheses. Requiring them made
+        // tmuxinator — whose Gemfile is just `gemspec` — report zero
+        // dependencies, and every gemspec-driven project with it.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("tmuxinator.gemspec");
+        std::fs::write(
+            &path,
+            "Gem::Specification.new do |s|\n\
+             \x20 s.add_dependency \"erubi\", \"~> 1.13\"\n\
+             \x20 s.add_dependency \"thor\", \"~> 1.4.0\"\n\
+             \x20 s.add_development_dependency \"rspec\"\n\
+             \x20 spec.add_runtime_dependency(\"paren-style\", \">= 1\")\n\
+             \x20 # add_dependency \"in-a-comment\"\n\
+             end\n",
+        )
+        .expect("write gemspec");
+
+        let gems = parse_gemspec(&path, "tmuxinator.gemspec").expect("parse");
+        let names: Vec<&str> = gems.iter().map(|g| g.name.as_str()).collect();
+        assert!(names.contains(&"erubi"), "{names:?}");
+        assert!(names.contains(&"thor"), "{names:?}");
+        assert!(names.contains(&"rspec"), "{names:?}");
+        assert!(names.contains(&"paren-style"), "{names:?}");
+        assert!(!names.contains(&"in-a-comment"), "{names:?}");
+    }
+
     use super::*;
     use crate::evidence::{top_rung, EvidenceKind};
     use std::path::PathBuf;

@@ -1,0 +1,259 @@
+{
+ "lane": "cpp",
+ "repo": "BVLC/caffe",
+ "stars": 34574,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe --json --out /home/ubuntu/govfuzz-sweep-work/cpp__BVLC__caffe.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 67026,
+   "sloc_by_lang": {
+    "cpp": 61577,
+    "python": 5329,
+    "config": 120
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe --format json --top 100000",
+   "exit": 0,
+   "wall_s": 8.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 1545,
+   "by_language": {
+    "cpp": 1545
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe --out /home/ubuntu/govfuzz-sweep-work/cpp__BVLC__caffe/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.34,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 29,
+   "by_severity": {
+    "medium": 9,
+    "critical": 1,
+    "high": 18,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-405": 10,
+    "GF-407": 5,
+    "GF-477": 2,
+    "GF-422": 2,
+    "GF-421": 2,
+    "GF-406": 2,
+    "GF-420": 1,
+    "GF-544": 1,
+    "GF-449": 1,
+    "GF-550": 1,
+    "GF-546": 1,
+    "GF-425": 1
+   },
+   "gaps": 77
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe --out /home/ubuntu/govfuzz-sweep-work/cpp__BVLC__caffe/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 32
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__BVLC__caffe --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 45.87,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 285,
+    "dropped_by_cap": 275,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Transformer.preprocess",
+     "source": "io.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Transformer.preprocess` needs a receiver, but `Transformer.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Transformer.deprocess",
+     "source": "io.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Transformer.deprocess` needs a receiver, but `Transformer.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "caffe::ReadProtoFromTextFile",
+     "source": "io.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'proto' of type 'Message *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'Message' for pointer parameter 'proto' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "caffe::ReadProtoFromBinaryFile",
+     "source": "io.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'proto' of type 'Message *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'Message' for pointer parameter 'proto' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "caffe::ReadProtoFromTextFileOrDie(const char *, Message *)",
+     "source": "io.hpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe/include/caffe/util/io.hpp' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe/include/caffe/util/io.hpp:4:10: fatal error: 'boost/filesystem.hpp' file not found |     4 | #include <boost/filesystem.hpp> |       |          ^~~~~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "caffe::ReadProtoFromBinaryFileOrDie(const char *, Message *)",
+     "source": "io.hpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe/include/caffe/util/io.hpp' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/cpp/BVLC__caffe/include/caffe/util/io.hpp:4:10: fatal error: 'boost/filesystem.hpp' file not found |     4 | #include <boost/filesystem.hpp> |       |          ^~~~~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "caffe::matchExt",
+     "source": "io.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "blobproto_to_array",
+     "source": "io.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `caffe.io` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'caffe._caffe'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "assign_proto",
+     "source": "net_spec.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `caffe.net_spec` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'caffe._caffe'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "coord_map_from_to",
+     "source": "coord_map.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `caffe.coord_map` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'caffe._caffe'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "instance method \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9b891540183ddc834a02b2bd81b31afae71b2153",
+ "clone_s": 1.3,
+ "lane_check": "cpp: 293 files / 56195 lines; top=cpp(56195)",
+ "status": "done"
+}

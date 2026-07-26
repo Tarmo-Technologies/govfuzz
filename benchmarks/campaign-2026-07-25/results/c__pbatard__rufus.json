@@ -22,7 +22,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus --format json --top 100000",
    "exit": 0,
-   "wall_s": 5.61,
+   "wall_s": 5.3,
    "timed_out": false,
    "panic": false,
    "count": 3998,
@@ -34,7 +34,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus --out /home/ubuntu/govfuzz-sweep-work/c__pbatard__rufus/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 1.77,
+   "wall_s": 1.95,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -70,7 +70,7 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/pbatard__rufus --work-dir /home/ubuntu/govfuzz-sweep-work/c__pbatard__rufus --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 0,
-   "wall_s": 139.77,
+   "wall_s": 172.05,
    "timed_out": false,
    "panic": false,
    "summary": {
@@ -393,7 +393,7 @@
   }
  },
  "sha": "6d8fbf98305ff37eb531c45cbd6ff44563c53917",
- "clone_s": 1.7,
+ "clone_s": 1.4,
  "lane_check": "c: 221 files / 122845 lines; top=c(122845)",
  "status": "done"
 }

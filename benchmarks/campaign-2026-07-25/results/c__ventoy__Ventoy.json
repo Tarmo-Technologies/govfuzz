@@ -7,7 +7,7 @@
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ventoy__Ventoy --json --out /home/ubuntu/govfuzz-sweep-work/c__ventoy__Ventoy.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "languages": 6,
@@ -24,7 +24,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/ventoy__Ventoy --format json --top 100000",
    "exit": 0,
-   "wall_s": 6.59,
+   "wall_s": 9.25,
    "timed_out": false,
    "panic": false,
    "count": 6047,
@@ -36,7 +36,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/ventoy__Ventoy --out /home/ubuntu/govfuzz-sweep-work/c__ventoy__Ventoy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 7.86,
+   "wall_s": 9.01,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -68,7 +68,7 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/ventoy__Ventoy --out /home/ubuntu/govfuzz-sweep-work/c__ventoy__Ventoy/sbom",
    "exit": 0,
-   "wall_s": 0.32,
+   "wall_s": 0.43,
    "timed_out": false,
    "panic": false,
    "components": 15
@@ -76,7 +76,7 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/ventoy__Ventoy --work-dir /home/ubuntu/govfuzz-sweep-work/c__ventoy__Ventoy --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 1,
-   "wall_s": 225.34,
+   "wall_s": 266.6,
    "timed_out": false,
    "panic": false,
    "summary": {
@@ -215,7 +215,7 @@
   }
  },
  "sha": "7cbdc5cf69935bcf1f085ae67f40e70ea7e74bae",
- "clone_s": 0.0,
+ "clone_s": 4.3,
  "lane_check": "c: 408 files / 238221 lines; top=c(238221)",
  "status": "done"
 }

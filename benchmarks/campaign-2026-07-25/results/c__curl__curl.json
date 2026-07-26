@@ -7,7 +7,7 @@
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/curl__curl --json --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.12,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -23,7 +23,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/curl__curl --format json --top 100000",
    "exit": 0,
-   "wall_s": 3.91,
+   "wall_s": 3.52,
    "timed_out": false,
    "panic": false,
    "count": 5585,
@@ -35,7 +35,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/curl__curl --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 3.25,
+   "wall_s": 6.26,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -65,7 +65,7 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/curl__curl --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl/sbom",
    "exit": 0,
-   "wall_s": 0.16,
+   "wall_s": 0.31,
    "timed_out": false,
    "panic": false,
    "components": 61
@@ -73,7 +73,7 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/curl__curl --work-dir /home/ubuntu/govfuzz-sweep-work/c__curl__curl --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 0,
-   "wall_s": 178.99,
+   "wall_s": 196.85,
    "timed_out": false,
    "panic": false,
    "summary": {
@@ -101,7 +101,7 @@
     "stubbed_ada_symbols": 0,
     "missing_libraries": 0,
     "missing_gpr_imports": 0,
-    "environment_variables_faked": 2,
+    "environment_variables_faked": 0,
     "missing_files": 0,
     "network_endpoints": 0,
     "dlopen_failures": 0,
@@ -224,7 +224,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 2483.800964956325,
+     "execs_per_sec": 2857.725240434602,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -235,7 +235,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 3589.6152898148075,
+     "execs_per_sec": 2215.223567235298,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -246,7 +246,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 1787.3747389909167,
+     "execs_per_sec": 2802.6038624254993,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -256,8 +256,8 @@
      "source": "cleancmd.pl",
      "outcome": "built_and_fuzzed",
      "retries": 0,
-     "repairs": 2,
-     "execs_per_sec": 2507.512376216546,
+     "repairs": 0,
+     "execs_per_sec": 2781.8025865976397,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -268,7 +268,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 2987.0767293869276,
+     "execs_per_sec": 2668.243408372634,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -279,7 +279,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 3839.0196300295515,
+     "execs_per_sec": 5817.531784382767,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -290,7 +290,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 3023.316504339744,
+     "execs_per_sec": 5184.237660725595,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -301,7 +301,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 0.17008155774838649,
+     "execs_per_sec": 0.2038448885723063,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -312,7 +312,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 2285.0866328726274,
+     "execs_per_sec": 2989.0648565755178,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -323,7 +323,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 0,
      "repairs": 0,
-     "execs_per_sec": 1812.2529541303563,
+     "execs_per_sec": 2297.5400438981683,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -371,7 +371,7 @@
   }
  },
  "sha": "c5d683b961d49dbfa297c61c53b58466b960e202",
- "clone_s": 1.5,
+ "clone_s": 1.8,
  "lane_check": "c: 757 files / 228651 lines; top=c(228651)",
  "status": "done"
 }

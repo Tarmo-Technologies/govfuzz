@@ -7,7 +7,7 @@
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/tmux__tmux --json --out /home/ubuntu/govfuzz-sweep-work/c__tmux__tmux.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.02,
+   "wall_s": 0.06,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -22,7 +22,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/tmux__tmux --format json --top 100000",
    "exit": 0,
-   "wall_s": 1.58,
+   "wall_s": 2.37,
    "timed_out": false,
    "panic": false,
    "count": 2968,
@@ -34,7 +34,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/tmux__tmux --out /home/ubuntu/govfuzz-sweep-work/c__tmux__tmux/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 0.97,
+   "wall_s": 1.54,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -55,7 +55,7 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/tmux__tmux --out /home/ubuntu/govfuzz-sweep-work/c__tmux__tmux/sbom",
    "exit": 0,
-   "wall_s": 0.06,
+   "wall_s": 0.07,
    "timed_out": false,
    "panic": false,
    "components": 4
@@ -63,7 +63,7 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/tmux__tmux --work-dir /home/ubuntu/govfuzz-sweep-work/c__tmux__tmux --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 0,
-   "wall_s": 167.65,
+   "wall_s": 167.15,
    "timed_out": false,
    "panic": false,
    "summary": {
@@ -389,7 +389,7 @@
   }
  },
  "sha": "29bf7fe2f70559d574c84c068d90d173891907d0",
- "clone_s": 0.7,
+ "clone_s": 1.0,
  "lane_check": "c: 198 files / 91783 lines; top=c(91783)",
  "status": "done"
 }

@@ -240,6 +240,16 @@ struct PersistedResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     attempt_trace: Option<AttemptTrace>,
     harness_dir: String,
+    /// Whether this attempt ran with `--force` (a fabricated value for a
+    /// parameter govfuzz could not construct, stubs for whatever the compiler
+    /// reported missing). `--resume` needs it to decide whether a prior result is
+    /// still the best available answer: an unforced non-success can be RETRIED
+    /// with force, while a forced result must not be inherited by an unforced run
+    /// whose report would then carry stub-heavy findings it never asked for.
+    /// Absent in work dirs written before this field existed — those predate
+    /// forcing being a separate phase, so `false` is the correct reading.
+    #[serde(default)]
+    forced: bool,
 }
 
 fn lang_tag(l: Lang) -> &'static str {
@@ -307,7 +317,7 @@ fn reach_from_tag(s: &str) -> Option<target_rank::InputReachability> {
 /// its attempt finishes, so a `--resume` re-run (or one after a mid-sweep
 /// interrupt) reloads it instead of re-attempting. Best-effort: a write failure
 /// never aborts the run (resume is an optimization, not a correctness input).
-pub fn persist_target_result(work_dir: &Path, result: &AttemptResult) {
+pub fn persist_target_result(work_dir: &Path, result: &AttemptResult, forced: bool) {
     let dir = crate::auto::layout::harness_dir(work_dir, &result.candidate.harness_id);
     if std::fs::create_dir_all(&dir).is_err() {
         return;
@@ -326,6 +336,7 @@ pub fn persist_target_result(work_dir: &Path, result: &AttemptResult) {
         outcome: result.outcome.clone(),
         attempt_trace: Some(result.attempt_trace()),
         harness_dir: result.harness_dir.to_string_lossy().into_owned(),
+        forced,
     };
     if let Ok(bytes) = serde_json::to_vec(&dto) {
         let _ = atomic_write(&dir.join("result.json"), &bytes);
@@ -406,7 +417,7 @@ pub fn target_already_complete(work_dir: &Path, harness_id: &str) -> bool {
 /// Load a prior target's persisted result back into a real [`AttemptResult`], so
 /// `--resume` re-integrates it fully into the new report. `None` if absent,
 /// corrupt, or carrying an unrecognized language tag (treated as "re-attempt").
-pub fn load_resumed_result(work_dir: &Path, harness_id: &str) -> Option<AttemptResult> {
+pub fn load_resumed_result(work_dir: &Path, harness_id: &str) -> Option<(AttemptResult, bool)> {
     let p = [
         crate::auto::layout::harness_dir(work_dir, harness_id),
         crate::auto::layout::legacy_auto_harness_dir(work_dir, harness_id),
@@ -416,6 +427,7 @@ pub fn load_resumed_result(work_dir: &Path, harness_id: &str) -> Option<AttemptR
     .find(|path| path.is_file())?;
     let text = std::fs::read_to_string(p).ok()?;
     let dto: PersistedResult = serde_json::from_str(&text).ok()?;
+    let forced = dto.forced;
     Some(AttemptResult {
         candidate: Candidate {
             harness_id: dto.harness_id,
@@ -432,6 +444,7 @@ pub fn load_resumed_result(work_dir: &Path, harness_id: &str) -> Option<AttemptR
         outcome: dto.outcome,
         harness_dir: PathBuf::from(dto.harness_dir),
     })
+    .map(|result| (result, forced))
 }
 
 /// Collapse the per-target `"<kind> harness cannot initialize parameter '<p>' of
@@ -3560,7 +3573,7 @@ mod tests {
             },
             harness_dir: PathBuf::from("/work/harnesses/H-C0009"),
         };
-        persist_target_result(&work, &result);
+        persist_target_result(&work, &result, false);
         assert!(target_already_complete(&work, "H-C0009"));
         let persisted: serde_json::Value = serde_json::from_slice(
             &std::fs::read(work.join("harnesses/H-C0009/result.json")).unwrap(),
@@ -3571,7 +3584,8 @@ mod tests {
         assert_eq!(persisted["attempt_trace"]["repair_count"], 1);
 
         // Reload reconstructs a real AttemptResult, full fidelity.
-        let back = load_resumed_result(&work, "H-C0009").expect("reload");
+        let (back, back_forced) = load_resumed_result(&work, "H-C0009").expect("reload");
+        assert!(!back_forced, "this attempt was not forced");
         assert_eq!(back.candidate.harness_id, "H-C0009");
         assert_eq!(back.candidate.lang, Lang::C);
         assert_eq!(

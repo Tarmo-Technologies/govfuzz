@@ -178,6 +178,14 @@ worth building next, in that order.
   compiled lane `--force` will drive past a missing type or symbol, and what it
   produces is recorded as stub-only; for an interpreted lane a missing package
   cannot be forced past at all, and govfuzz says so instead of implying it can.
+- `--force` is worth less than it sounds. Measured over the 126 corpus projects
+  that had at least one undrivable target, applying it from the start of the
+  sweep reached **13 fewer** targets than not passing it (214 → 201) for **one**
+  extra fuzz finding, because a forced attempt costs ~36% more and the campaign
+  budget ran out before the viable targets were reached. It is now a second pass
+  that runs after the normal one and only ever adds reach — but the honest
+  summary of the lever is that it converts unbuildable targets into static
+  analysis, not into fuzzing.
 - Interpreted lanes execute the target's module to load it. That is the same
   exposure as fuzzing it, and it is bounded, but it is not free.
 - The per-project budget bounds how many targets are attempted. A project with

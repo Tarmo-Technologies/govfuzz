@@ -10,6 +10,25 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Serializes fuzz-bearing tests inside one test binary.
+///
+/// A test that asserts a planted bug is FOUND is budgeted in wall-clock seconds,
+/// so how many executions it gets — and therefore whether it finds the bug —
+/// depends on how much of the machine it has. `cargo test` runs a binary's tests
+/// concurrently, so seven fuzz tests on a six-core box each got ~6 executions
+/// where the same test alone gets ~32, and the planted OOB went unfound. The
+/// assertion was right; the budget was being spent on contention. Hold this
+/// guard around the fuzz run and the budget means what it says.
+///
+/// Recovers from poisoning: a panic in one fuzz test (which is how a failure
+/// reports) must not turn every later test in the binary into a lock error.
+pub fn fuzz_serial_guard() -> std::sync::MutexGuard<'static, ()> {
+    static FUZZ_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    FUZZ_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 #[allow(dead_code)]
 pub fn govfuzz_cargo_command() -> Command {
     let mut cmd = Command::new(env!("CARGO"));

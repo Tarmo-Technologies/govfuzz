@@ -1,0 +1,90 @@
+{
+ "lane": "c",
+ "repo": "arendst/Tasmota",
+ "stars": 24591,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota --json --out /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.54,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 1514212,
+   "sloc_by_lang": {
+    "c": 995426,
+    "cpp": 471596,
+    "python": 44188,
+    "config": 2662,
+    "perl": 340
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota --format json --top 100000",
+   "exit": 0,
+   "wall_s": 137.15,
+   "timed_out": false,
+   "panic": false,
+   "count": 35080,
+   "by_language": {
+    "cpp": 20398,
+    "c": 14682
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota --out /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 21.71,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 808,
+   "by_severity": {
+    "medium": 329,
+    "high": 451,
+    "critical": 5,
+    "low": 23
+   },
+   "top_rules": {
+    "GF-425": 208,
+    "GF-405": 137,
+    "GF-401": 82,
+    "GF-408": 76,
+    "GF-424": 75,
+    "GF-403": 72,
+    "GF-407": 60,
+    "GF-472": 24,
+    "GF-500": 23,
+    "GF-546": 23,
+    "GF-406": 10,
+    "GF-422": 7,
+    "GF-436": 5,
+    "GF-404": 5,
+    "GF-477": 1
+   },
+   "gaps": 2205
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota --out /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota/sbom",
+   "exit": 0,
+   "wall_s": 1.21,
+   "timed_out": false,
+   "panic": false,
+   "components": 78
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota --work-dir /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
+   "exit": -6,
+   "wall_s": 163.13,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/c/arendst__Tasmota\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/c__arendst__Tasmota/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 38602b7065bbb0d5-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (1790452) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "2f136a32900196ec09318559e7ed8ecdd9c82706",
+ "clone_s": 6.5,
+ "lane_check": "c: 1351 files / 755072 lines; top=c(755072)",
+ "status": "done"
+}

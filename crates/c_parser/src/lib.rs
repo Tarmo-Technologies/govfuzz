@@ -215,7 +215,12 @@ pub fn parse_c_functions(source: &str) -> Result<Vec<CFunction>, CParseError> {
 /// `int`, K&R implicit-int). Only top-level definitions are considered (brace
 /// depth 0), so calls and prototypes inside bodies are ignored.
 pub fn parse_knr_functions(source: &str) -> Vec<CFunction> {
-    let lines: Vec<&str> = source.lines().collect();
+    // Comments are not code. redis' module.c documents its API with example
+    // calls inside a block comment; scanning those matched a "K&R definition"
+    // whose parameter type read `// Set`, which classified the whole modern C99
+    // file as legacy and routed every real target in it to report-only.
+    let decommented = strip_c_comments(source);
+    let lines: Vec<&str> = decommented.lines().collect();
     let mut out = Vec::new();
     let mut depth: i32 = 0;
     let mut i = 0;
@@ -230,6 +235,83 @@ pub fn parse_knr_functions(source: &str) -> Vec<CFunction> {
             depth = 0;
         }
         i += 1;
+    }
+    out
+}
+
+/// Blank out comment spans, keeping every byte position and line break so the
+/// reported line numbers stay the source's own.
+fn strip_c_comments(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let mut out = String::with_capacity(source.len());
+    let mut i = 0;
+    let (mut in_block, mut in_line, mut in_str, mut in_char) = (false, false, false, false);
+    while i < bytes.len() {
+        let b = bytes[i];
+        let next = bytes.get(i + 1).copied();
+        if in_block {
+            if b == b'*' && next == Some(b'/') {
+                out.push_str("  ");
+                i += 2;
+                in_block = false;
+                continue;
+            }
+            out.push(if b == b'\n' { '\n' } else { ' ' });
+            i += 1;
+            continue;
+        }
+        if in_line {
+            if b == b'\n' {
+                out.push('\n');
+                in_line = false;
+            } else {
+                out.push(' ');
+            }
+            i += 1;
+            continue;
+        }
+        if in_str || in_char {
+            out.push(b as char);
+            if b == b'\\' {
+                if let Some(n) = next {
+                    out.push(n as char);
+                    i += 2;
+                    continue;
+                }
+            }
+            if (in_str && b == b'"') || (in_char && b == b'\'') {
+                in_str = false;
+                in_char = false;
+            }
+            i += 1;
+            continue;
+        }
+        match (b, next) {
+            (b'/', Some(b'*')) => {
+                out.push_str("  ");
+                i += 2;
+                in_block = true;
+            }
+            (b'/', Some(b'/')) => {
+                out.push_str("  ");
+                i += 2;
+                in_line = true;
+            }
+            (b'"', _) => {
+                in_str = true;
+                out.push('"');
+                i += 1;
+            }
+            (b'\'', _) => {
+                in_char = true;
+                out.push('\'');
+                i += 1;
+            }
+            _ => {
+                out.push(b as char);
+                i += 1;
+            }
+        }
     }
     out
 }
@@ -315,6 +397,13 @@ fn knr_def_at(lines: &[&str], start: usize) -> Option<CFunction> {
         let p = raw.trim();
         if p.is_empty() || !p.chars().all(|c| c.is_alphanumeric() || c == '_') {
             return None; // a type token / `*` / `[` means this is an ANSI prototype
+        }
+        // `f(void)` is the ANSI spelling for "no parameters", and no keyword can
+        // be a parameter NAME. Reading `void` as one let a run of ordinary
+        // prototypes (redis' sentinel.c) look like a K&R definition, classifying
+        // a modern file as legacy so none of it was ever fuzzed.
+        if is_c_keyword(p) {
+            return None;
         }
         param_names.push(p.to_owned());
     }
@@ -4049,6 +4138,62 @@ mod tests {
         // A call inside a body must not be mistaken for a header.
         let call = "int g(void) {\n    int r;\n    r = add(1, 2);\n    return r;\n}\n";
         assert!(parse_knr_functions(call).is_empty());
+    }
+
+    #[test]
+    fn ansi_void_prototypes_are_never_a_knr_definition() {
+        // redis' sentinel.c: a block of ordinary ANSI prototypes. Reading the
+        // `void` in `f(void)` as a K&R parameter name made the following
+        // prototype look like the parameter-declaration block, so the whole
+        // modern file classified as K&R and every target in it became
+        // report-only — discovered, never fuzzed.
+        let src = "int sentinelFlushConfig(void);\n\
+                   void sentinelGenerateInitialMonitorEvents(void);\n\
+                   int sentinelSendPing(sentinelRedisInstance *ri);\n\
+                   void sentinelSimFailureCrash(void);\n\
+                   \n\
+                   void releaseSentinelRedisInstance(sentinelRedisInstance *ri) {\n\
+                   \x20   free(ri);\n\
+                   }\n";
+        assert!(
+            parse_knr_functions(src).is_empty(),
+            "ANSI prototypes are not K&R: {:?}",
+            parse_knr_functions(src)
+        );
+    }
+
+    #[test]
+    fn code_inside_a_comment_is_not_a_knr_definition() {
+        // redis' module.c documents its API with example calls inside a block
+        // comment. Scanning comment text produced a "K&R definition" whose
+        // parameter type was `// Set`, classifying a C99 file as legacy.
+        let src = "/* Usage:\n\
+                   \x20 *\n\
+                   \x20 *      RedisModule_ReplyWithLongLong(ctx,10);\n\
+                   \x20 *      RedisModule_ReplySetArrayLength(ctx,3); // Set len\n\
+                   \x20 */\n\
+                   int RedisModule_ReplyWithLongLong(RedisModuleCtx *ctx, long long ll) {\n\
+                   \x20   return 0;\n\
+                   }\n";
+        assert!(
+            parse_knr_functions(src).is_empty(),
+            "comment text is not code: {:?}",
+            parse_knr_functions(src)
+        );
+
+        // A real K&R definition still parses when a comment sits beside it.
+        let knr = "/* legacy helper */\n\
+                   int add(a, b) /* two ints */\n\
+                   \x20   int a;\n\
+                   \x20   int b;\n\
+                   {\n\
+                   \x20   return a + b;\n\
+                   }\n";
+        let found = parse_knr_functions(knr);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].name, "add");
+        assert_eq!(found[0].params.len(), 2);
+        assert_eq!(found[0].params[0].c_type, "int");
     }
 
     #[test]

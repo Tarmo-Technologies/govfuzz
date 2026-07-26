@@ -1,0 +1,248 @@
+{
+ "lane": "java",
+ "repo": "kestra-io/kestra",
+ "stars": 27469,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --json --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 356255,
+   "sloc_by_lang": {
+    "java": 199118,
+    "javascript": 144677,
+    "config": 12460
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.2,
+   "timed_out": false,
+   "panic": false,
+   "count": 5276,
+   "by_language": {
+    "java": 5276
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 47.29,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 118,
+   "by_severity": {
+    "medium": 31,
+    "high": 72,
+    "critical": 15
+   },
+   "top_rules": {
+    "GF-472": 52,
+    "GF-500": 17,
+    "GF-544": 11,
+    "GF-429": 10,
+    "GF-458": 5,
+    "GF-419": 4,
+    "GF-405": 3,
+    "GF-454": 2,
+    "GF-426": 2,
+    "GF-477": 1,
+    "GF-479": 1,
+    "GF-503": 1,
+    "GF-456": 1,
+    "GF-459": 1,
+    "GF-457": 1
+   },
+   "gaps": 1658
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/sbom",
+   "exit": 0,
+   "wall_s": 0.27,
+   "timed_out": false,
+   "panic": false,
+   "components": 1814
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --work-dir /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 21.41,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 4948,
+    "dropped_by_cap": 4938,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loadClass",
+     "source": "PluginClassLoader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "downloadFileFromExecution",
+     "source": "ExecutionController.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'downloadFileFromExecution' parameter #1 has an unsupported type `URI`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "killExecution",
+     "source": "ExecutionController.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "executeSqlScript",
+     "source": "AbstractSQLMigrationScript.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'executeSqlScript' parameter #0 has an unsupported type `DataSource`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "executeSqlScript",
+     "source": "AbstractSQLMigrationScript.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'executeSqlScript' parameter #0 has an unsupported type `DataSource`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "symlinkAlias",
+     "source": "vite-plugin-symlink-alias.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 620.6401704139988,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Me#getNamespacesForAction",
+     "source": "auth.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/harnesses/H-T0020-2E889D71/target.js requires an npm dependency that is not installed (Error: Cannot find module 'pinia'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FlowAutoCompletion#nestedFieldAutoCompletion",
+     "source": "flowAutoCompletionProvider.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/harnesses/H-T00C6-83FB4543/target.js requires an npm dependency that is not installed (Error: Cannot find module '@kestra-io/topology'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FlowAutoCompletion#valueAutoCompletion",
+     "source": "flowAutoCompletionProvider.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/harnesses/H-T0110-6CB7206C/target.js requires an npm dependency that is not installed (Error: Cannot find module '@kestra-io/topology'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FlowAutoCompletion#functionAutoCompletion",
+     "source": "flowAutoCompletionProvider.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/harnesses/H-T014D-67590C10/target.js requires an npm dependency that is not installed (Error: Cannot find module '@kestra-io/topology'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/java/kestra-io__kestra/worker/src/main/java/io/kestra/worker/services/ExecutionKilledManager.java:N: error:\u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "0b9c48eed42d9c415dc4fa8dcb82ffa906d91aea",
+ "clone_s": 2.3,
+ "lane_check": "java: 2449 files / 224323 lines; top=java(224323)",
+ "status": "done"
+}

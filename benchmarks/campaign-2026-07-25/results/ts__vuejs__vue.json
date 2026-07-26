@@ -1,0 +1,234 @@
+{
+ "lane": "ts",
+ "repo": "vuejs/vue",
+ "stars": 210144,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --json --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 69651,
+   "sloc_by_lang": {
+    "javascript": 63470,
+    "config": 6181
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 10.88,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 21,
+   "by_severity": {
+    "medium": 5,
+    "high": 15,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-507": 10,
+    "GF-500": 5,
+    "GF-472": 5,
+    "GF-429": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 940
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --work-dir /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 22.31,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 150,
+    "dropped_by_cap": 140,
+    "built": 6,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "sfc",
+     "source": "alias.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "server",
+     "source": "alias.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compiler",
+     "source": "alias.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "core",
+     "source": "alias.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getBuild",
+     "source": "config.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/config.js requires an npm dependency that is not installed (Error: Cannot find module '@rollup/plugin-alias'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bindObjectListeners",
+     "source": "bind-object-listeners.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0004-DFADFC6C/target.js failed to load: ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "baseWarn",
+     "source": "helpers.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 711.7814109796464,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "EffectScope#stop",
+     "source": "effectScope.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T004F-51118860/target.js failed to load: ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cloneVNode",
+     "source": "vnode.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 682.3675978596701,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "activateChildComponent",
+     "source": "lifecycle.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0168-835BC880/target.js failed to load: ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "built_not_fuzzed",
+     "count": 4,
+     "detail": "built, no fuzz pass ran",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "ReferenceError: __DEV__ is not defined",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9e88707940088cb1f4cd7dd210c9168a50dc347c",
+ "clone_s": 0.8,
+ "lane_check": "ts: 391 files / 66960 lines; top=ts(66960)",
+ "status": "done"
+}

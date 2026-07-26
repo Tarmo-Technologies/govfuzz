@@ -1,0 +1,273 @@
+{
+ "lane": "csharp",
+ "repo": "dotnet/aspnetcore",
+ "stars": 38238,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore --json --out /home/ubuntu/govfuzz-sweep-work/csharp__dotnet__aspnetcore.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 99006,
+   "sloc_by_lang": {
+    "cpp": 34602,
+    "javascript": 33187,
+    "config": 19698,
+    "java": 9378,
+    "c": 1849,
+    "python": 292
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 1156,
+   "by_language": {
+    "java": 140,
+    "cpp": 989,
+    "c": 27
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore --out /home/ubuntu/govfuzz-sweep-work/csharp__dotnet__aspnetcore/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 24.42,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 27,
+   "by_severity": {
+    "medium": 7,
+    "critical": 12,
+    "high": 8
+   },
+   "top_rules": {
+    "GF-429": 12,
+    "GF-477": 3,
+    "GF-500": 2,
+    "GF-408": 2,
+    "GF-407": 2,
+    "GF-548": 2,
+    "GF-475": 1,
+    "GF-476": 1,
+    "GF-405": 1,
+    "GF-505": 1
+   },
+   "gaps": 35
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore --out /home/ubuntu/govfuzz-sweep-work/csharp__dotnet__aspnetcore/sbom",
+   "exit": 0,
+   "wall_s": 0.57,
+   "timed_out": false,
+   "panic": false,
+   "components": 1242
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__dotnet__aspnetcore --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 30.14,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1490,
+    "dropped_by_cap": 1480,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse_release_file",
+     "source": "install-debs.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `install-debs` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_package_index",
+     "source": "install-debs.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `install-debs` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ScheduleHttpListenerCA",
+     "source": "httpapi.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'hInstall' of type 'IN' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'IN' for parameter 'hInstall' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "invoke",
+     "source": "HubConnection.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'invoke' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "invoke",
+     "source": "HubConnection.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'invoke' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ProcessSection",
+     "source": "defaults.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'ProcessSection' return type 'HRESULT' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WriteRefTraceLog",
+     "source": "reftrace.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'Log' of type 'IN' has no byte-buffer decoder after struct synthesis: opaque type 'IN' for parameter 'Log' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Dropdown.clearMenus",
+     "source": "bootstrap.esm.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore/src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWebCSharp.1/wwwroot/lib/bootstrap/dist/js/bootstrap.esm.js failed to load: Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@popperjs/core' imported from /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore/src/ProjectTemplates/Web.ProjectTemplates/content/BlazorWeb-CSharp/BlazorWebCSharp.1/wwwroot/lib/bootstrap/dist/js/bootstrap.esm.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CodeGenerator.KnownHeaders.KnownHeader.EqualIgnoreCaseBytes",
+     "source": "KnownHeaders.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-500/csharp/dotnet__aspnetcore/src/Servers/Kestrel/shared/KnownHeaders.cs \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AccessTokenHttpClient#getCookieString",
+     "source": "AccessTokenHttpClient.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 591.9506830100632,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-N/csharp/dotnet__aspnetcore/src/Servers/Kestrel/shared/KnownHeaders.cs \u2014 the C# lane builds through a pr\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Java target \"X\" is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/csharp/dotnet__aspnetcore/src/ProjectTemplates/Web.ProjectTemp\u2026",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target module \"X\"aiohttp\"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "6058c72bf2431b8cc25b5f1a788ee809f9bea8de",
+ "clone_s": 7.1,
+ "lane_check": "csharp: 10540 files / 1467951 lines; top=csharp(1467951)",
+ "status": "done"
+}

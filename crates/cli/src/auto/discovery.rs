@@ -639,6 +639,41 @@ pub fn discover_with_options(
     filter: &DirFilter,
     preprocess: PreprocessMode,
 ) -> Result<Vec<Candidate>> {
+    // Parsing is recursive over the syntax tree, and real source contains
+    // expressions deep enough to exhaust the 8 MiB a main thread gets: vllm's
+    // `csrc/cpu/cpu_types_arm.hpp` aborted the whole run with "fatal runtime
+    // error: stack overflow" during discovery, taking milvus with it. A tool
+    // pointed at an estate has to survive every tree in it, so discovery runs on
+    // a thread with room to recurse. The stack is reserved, not committed, so
+    // the cost is address space rather than memory.
+    const DISCOVERY_STACK_BYTES: usize = 256 * 1024 * 1024;
+    std::thread::scope(|scope| {
+        match std::thread::Builder::new()
+            .name("govfuzz-discovery".to_owned())
+            .stack_size(DISCOVERY_STACK_BYTES)
+            .spawn_scoped(scope, || discover_on_this_stack(root, filter, preprocess))
+        {
+            Ok(handle) => match handle.join() {
+                Ok(result) => result,
+                // A panic inside discovery is already reported by the panic hook;
+                // surface it as an error rather than re-panicking the caller.
+                Err(_) => Err(anyhow::anyhow!(
+                    "discovery panicked while indexing {}",
+                    root.display()
+                )),
+            },
+            // If the thread cannot be spawned, index on this stack instead of
+            // failing the run outright.
+            Err(_) => discover_on_this_stack(root, filter, preprocess),
+        }
+    })
+}
+
+fn discover_on_this_stack(
+    root: &Path,
+    filter: &DirFilter,
+    preprocess: PreprocessMode,
+) -> Result<Vec<Candidate>> {
     let mut out = Vec::new();
     walk(root, &mut out, filter, preprocess)?;
     // The organizational-directory heuristic (`app/`, `tools/`, `cli/`, `bin/`)

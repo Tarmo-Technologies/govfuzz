@@ -1,0 +1,11 @@
+{
+ "lane": "js",
+ "repo": "ryanmcdermott/clean-code-javascript",
+ "stars": 94744,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "5311f64b03fc0c2450ab17a45ee9818669c8b9b5",
+ "clone_s": 0.6,
+ "lane_check": "no recognised source files",
+ "status": "rejected_lane"
+}

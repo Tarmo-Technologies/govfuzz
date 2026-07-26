@@ -1,0 +1,247 @@
+{
+ "lane": "js",
+ "repo": "Mintplex-Labs/anything-llm",
+ "stars": 63842,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm --json --out /home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 212426,
+   "sloc_by_lang": {
+    "javascript": 210103,
+    "config": 1664,
+    "python": 659
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm --out /home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 63.92,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 51,
+   "by_severity": {
+    "high": 23,
+    "medium": 13,
+    "critical": 1,
+    "low": 14
+   },
+   "top_rules": {
+    "GF-546": 14,
+    "GF-472": 10,
+    "GF-477": 5,
+    "GF-512": 5,
+    "GF-500": 4,
+    "GF-503": 2,
+    "GF-505": 2,
+    "GF-467": 1,
+    "GF-457": 1,
+    "GF-458": 1,
+    "GF-426": 1,
+    "GF-485": 1,
+    "GF-429": 1,
+    "GF-506": 1,
+    "GF-510": 1
+   },
+   "gaps": 3
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm --out /home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm/sbom",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "components": 1814
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm --work-dir /home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 4.3,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 881,
+    "dropped_by_cap": 871,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "AWSBedrockLLM#getChatCompletion",
+     "source": "index.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm/server/utils/AiProviders/bedrock/index.js requires an npm dependency that is not installed (Error: Cannot find module 'openai'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWSBedrockLLM#embedTextInput",
+     "source": "index.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm/server/utils/AiProviders/bedrock/index.js requires an npm dependency that is not installed (Error: Cannot find module 'openai'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWSBedrockLLM#embedChunks",
+     "source": "index.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm/server/utils/AiProviders/bedrock/index.js requires an npm dependency that is not installed (Error: Cannot find module 'openai'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWSBedrockLLM#compressMessages",
+     "source": "index.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/Mintplex-Labs__anything-llm/server/utils/AiProviders/bedrock/index.js requires an npm dependency that is not installed (Error: Cannot find module 'openai'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "plan-review.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm/harnesses/H-T0004-861F4079/target.js requires an npm dependency that is not installed (Error: Cannot find module 'typebox'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "visible-bash.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm/harnesses/H-T0012-66525B04/target.js requires an npm dependency that is not installed (Error: Cannot find module 'typebox'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "desktop-apps.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__Mintplex-Labs__anything-llm/harnesses/H-T005F-271730C1/target.js requires an npm dependency that is not installed (Error: Cannot find module 'typebox'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "do_set_text",
+     "source": "a11y-action.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `a11y-action` is not importable under this interpreter (skipped cleanly): ValueError: Namespace Atspi not available",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "do_type",
+     "source": "a11y-action.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `a11y-action` is not importable under this interpreter (skipped cleanly): ValueError: Namespace Atspi not available",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "do_set_value",
+     "source": "a11y-action.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `a11y-action` is not importable under this interpreter (skipped cleanly): ValueError: Namespace Atspi not available",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target module \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "633fc1960914298009134b40c25007cb422c7884",
+ "clone_s": 3.8,
+ "lane_check": "js: 1147 files / 224087 lines; top=js(224087)",
+ "status": "done"
+}

@@ -1,0 +1,249 @@
+{
+ "lane": "ruby",
+ "repo": "fastlane/fastlane",
+ "stars": 41884,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/fastlane__fastlane --json --out /home/ubuntu/govfuzz-sweep-work/ruby__fastlane__fastlane.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 2254,
+   "sloc_by_lang": {
+    "config": 1114,
+    "java": 978,
+    "c": 159,
+    "javascript": 3
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/fastlane__fastlane --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 75,
+   "by_language": {
+    "java": 74,
+    "c": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/fastlane__fastlane --out /home/ubuntu/govfuzz-sweep-work/ruby__fastlane__fastlane/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 19,
+   "by_severity": {
+    "high": 17,
+    "medium": 2
+   },
+   "top_rules": {
+    "GF-472": 16,
+    "GF-500": 2,
+    "GF-492": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/fastlane__fastlane --out /home/ubuntu/govfuzz-sweep-work/ruby__fastlane__fastlane/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 188
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/fastlane__fastlane --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__fastlane__fastlane --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 32.18,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1968,
+    "dropped_by_cap": 1958,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "localeFromString",
+     "source": "LocaleUtil.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ClientStubbing#client_read_fixture_file",
+     "source": "client_stubbing.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1891.4792240594231,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CommandsGenerator#initialize",
+     "source": "fastlane_runner_spec.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CommandsGenerator#initialize` is not loadable (skipped cleanly): uninitialized constant Commander (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ConnectAPIStubbing::Provisioning#read_binary_fixture_file",
+     "source": "provisioning_stubbing.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1383.8849355031527,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Client#begin_edit",
+     "source": "client.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Client#begin_edit` is not loadable (skipped cleanly): missing module `googleauth` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- googleauth (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Cert::Runner#store_certificate",
+     "source": "runner.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Cert::Runner#store_certificate` is not loadable (skipped cleanly): missing module `colored` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- colored (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LocaleTestRule",
+     "source": "LocaleTestRule.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FileWritingScreenshotCallback",
+     "source": "FileWritingScreenshotCallback.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'FileWritingScreenshotCallback' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "localePartsFrom",
+     "source": "LocaleUtil.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "screenshot",
+     "source": "Screengrab.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/ruby/fastlane__fastlane/screengrab/screengrab-lib/src/main/java/tools.fastlane.screengrab/Screengrab.java:N\u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\": cannot load such file -- colored (LoadError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\": cannot load such file -- googleauth (LoadError)",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "fee990660dc425fc818524cecb7850e65c5af580",
+ "clone_s": 5.3,
+ "lane_check": "ruby: 1292 files / 140614 lines; top=ruby(140614)",
+ "status": "done"
+}

@@ -1,0 +1,272 @@
+{
+ "lane": "java",
+ "repo": "alibaba/arthas",
+ "stars": 37452,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__arthas --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__arthas.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 104674,
+   "sloc_by_lang": {
+    "java": 81988,
+    "javascript": 20506,
+    "c": 962,
+    "config": 703,
+    "python": 279,
+    "cpp": 236
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/alibaba__arthas --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.7,
+   "timed_out": false,
+   "panic": false,
+   "count": 5839,
+   "by_language": {
+    "java": 5788,
+    "c": 32,
+    "cpp": 19
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/alibaba__arthas --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__arthas/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 9.81,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 114,
+   "by_severity": {
+    "medium": 49,
+    "high": 52,
+    "critical": 12,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-405": 35,
+    "GF-544": 23,
+    "GF-500": 18,
+    "GF-472": 10,
+    "GF-404": 8,
+    "GF-548": 6,
+    "GF-401": 4,
+    "GF-304": 3,
+    "GF-477": 1,
+    "GF-429": 1,
+    "GF-423": 1,
+    "GF-546": 1,
+    "GF-421": 1,
+    "GF-447": 1,
+    "GF-452": 1
+   },
+   "gaps": 778
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/alibaba__arthas --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__arthas/sbom",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "components": 1579
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/alibaba__arthas --work-dir /home/ubuntu/govfuzz-sweep-work/java__alibaba__arthas --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 29.84,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 5371,
+    "dropped_by_cap": 5361,
+    "built": 3,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 5,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "deserializeJsonRpcMessage",
+     "source": "McpSchema.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'deserializeJsonRpcMessage' parameter #0 has an unsupported type `ObjectMapper`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadClass",
+     "source": "ClassLoader_Instrument.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'loadClass' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "flame-graph-core.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "flame-graph-core.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "analyzeJFRFile",
+     "source": "jfrService.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/java__alibaba__arthas/harnesses/H-T002B-1A63E29E/target.js requires an npm dependency that is not installed (Error: Cannot find module 'axios'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "colorForDepth",
+     "source": "color.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 598.2275581264615,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sb_append_bytes",
+     "source": "heap_analyzer.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sb_append_cstr",
+     "source": "heap_analyzer.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Agent_OnLoad",
+     "source": "jni-library.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'vm' of type 'JavaVM *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'JavaVM' for pointer parameter 'vm' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "JNI_OnLoad",
+     "source": "jni-library.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'vm' of type 'JavaVM *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'JavaVM' for pointer parameter 'vm' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "invalid operands to binary expression (\"X\" (aka \"X\") and \"X\")",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 2,
+     "detail": "built, no fuzz pass ran",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "a960592c79ba5da5182fb82fd9dca7b3b4c85292",
+ "clone_s": 1.9,
+ "lane_check": "java: 1014 files / 97988 lines; top=java(97988)",
+ "status": "done"
+}

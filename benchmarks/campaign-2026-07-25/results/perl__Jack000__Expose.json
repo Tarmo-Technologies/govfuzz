@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "Jack000/Expose",
+ "stars": 4435,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "257d6b1bf39493e65a3b955fca50231516495875",
+ "clone_s": 0.9,
+ "lane_check": "too few perl files (perl: 1 files / 1174 lines; top=perl(1174))",
+ "status": "rejected_lane"
+}

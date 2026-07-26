@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "so-fancy/diff-so-fancy",
+ "stars": 18076,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "891755ae1ed8c1debd1dc7d984b43fab67e90847",
+ "clone_s": 0.6,
+ "lane_check": "too few perl files (perl: 2 files / 488 lines; top=perl(488))",
+ "status": "rejected_lane"
+}

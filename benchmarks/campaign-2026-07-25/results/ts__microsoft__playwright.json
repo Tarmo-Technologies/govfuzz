@@ -1,0 +1,271 @@
+{
+ "lane": "ts",
+ "repo": "microsoft/playwright",
+ "stars": 93461,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright --json --out /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.2,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 427492,
+   "sloc_by_lang": {
+    "javascript": 417747,
+    "config": 6931,
+    "cpp": 2034,
+    "java": 466,
+    "c": 245,
+    "python": 69
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.31,
+   "timed_out": false,
+   "panic": false,
+   "count": 125,
+   "by_language": {
+    "cpp": 115,
+    "c": 8,
+    "java": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright --out /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 170.8,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 58,
+   "by_severity": {
+    "medium": 11,
+    "high": 47
+   },
+   "top_rules": {
+    "GF-505": 19,
+    "GF-507": 17,
+    "GF-422": 7,
+    "GF-472": 4,
+    "GF-506": 4,
+    "GF-500": 2,
+    "GF-407": 2,
+    "GF-548": 2,
+    "GF-405": 1
+   },
+   "gaps": 1
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright --out /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright/sbom",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "components": 766
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright --work-dir /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 88.2,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 865,
+    "dropped_by_cap": 855,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 7,
+    "synthesized_types": 4,
+    "synthesized_macros": 4,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "webp_decode_rgba",
+     "source": "webp_wasm.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mozilla::ReadBytes",
+     "source": "nsRemoteDebuggingPipe.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Helper#addMessageListener",
+     "source": "Helper.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright/browser_patches/firefox/juggler/Helper.js failed to load: ReferenceError: Cc is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Helper#addEventListener",
+     "source": "Helper.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright/browser_patches/firefox/juggler/Helper.js failed to load: ReferenceError: Cc is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "APIRequestContext.from",
+     "source": "fetch.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright/harnesses/H-T0066-3C7A87B7/target.js requires an npm dependency that is not installed (Error: Cannot find module 'debug'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "APIRequestContext.findResponseBody",
+     "source": "fetch.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/microsoft__playwright/packages/playwright-core/src/server/fetch.ts: \u2718 [ERROR] Could not resolve \"../generated/storageScriptSource\"",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mozilla::WriteBytes",
+     "source": "nsRemoteDebuggingPipe.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check_code_snippet",
+     "source": "main.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `main` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'black'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "webp_encode_rgba",
+     "source": "webp_wasm.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main",
+     "source": "JavaSyntaxChecker.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "redefinition of \"X\" as different kind of symbol",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (harness) failed: /home/ubuntu/govfuzz-sweep-work/ts__microsoft__playwright/harnesses/H-J0014-FA2839AC/harness-src/govfuzzgen/Harness.java:N: error: canno\u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "ReferenceError: Cc is not defined",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target module \"X\"black\"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "\u2718 [ERROR] Could not resolve \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "3827650d171cc1b035cbefb7e00bf5948d6809df",
+ "clone_s": 4.3,
+ "lane_check": "ts: 1440 files / 421131 lines; top=ts(421131)",
+ "status": "done"
+}

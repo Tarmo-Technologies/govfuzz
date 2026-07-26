@@ -1,0 +1,234 @@
+{
+ "lane": "ruby",
+ "repo": "spree/spree",
+ "stars": 15572,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree --json --out /home/ubuntu/govfuzz-sweep-work/ruby__spree__spree.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 171593,
+   "sloc_by_lang": {
+    "config": 86450,
+    "javascript": 85143
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree --out /home/ubuntu/govfuzz-sweep-work/ruby__spree__spree/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 34.0,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 36,
+   "by_severity": {
+    "high": 26,
+    "medium": 3,
+    "critical": 7
+   },
+   "top_rules": {
+    "GF-472": 24,
+    "GF-429": 7,
+    "GF-497": 3,
+    "GF-505": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree --out /home/ubuntu/govfuzz-sweep-work/ruby__spree__spree/sbom",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "components": 826
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__spree__spree --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 5.36,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 660,
+    "dropped_by_cap": 650,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "default#addBlock",
+     "source": "block_form_controller.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/ruby/spree__spree/spree/admin/app/javascript/spree/admin/controllers/block_form_controller.js failed to load: Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@hotwired/stimulus' imported from /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree/spree/admin/app/javascript/spree/admin/controllers/block_form_controller.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#add",
+     "source": "stock_transfer_controller.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/ruby/spree__spree/spree/admin/app/javascript/spree/admin/controllers/stock_transfer_controller.js failed to load: Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@stimulus-components/rails-nested-form' imported from /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree/spree/admin/app/javascript/spree/admin/controllers/stock_transfer_controller.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#addFilter",
+     "source": "query_builder_controller.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/ruby/spree__spree/spree/admin/app/javascript/spree/admin/controllers/query_builder_controller.js failed to load: Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@hotwired/stimulus' imported from /home/ubuntu/govfuzz-corpus-500/ruby/spree__spree/spree/admin/app/javascript/spree/admin/controllers/query_builder_controller.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AddProductsTask",
+     "source": "add-products-task.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ruby__spree__spree/harnesses/H-T000B-6FBF7061/target.js requires an npm dependency that is not installed (Error: Cannot find module '@spree/dashboard-core'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BackButton",
+     "source": "back-button.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ruby__spree__spree/harnesses/H-T0013-74BB24FF/target.js requires an npm dependency that is not installed (Error: Cannot find module '@tanstack/react-router'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AdjustmentActionEditor",
+     "source": "action-adjustment.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ruby__spree__spree/harnesses/H-T0019-EF8B3B23/target.js requires an npm dependency that is not installed (Error: Cannot find module '@spree/dashboard-core'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Can",
+     "source": "can.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ruby__spree__spree/harnesses/H-T001B-F57B4FA0/target.js requires an npm dependency that is not installed (Error: Cannot find module 'react'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CodeSamplesHelper.admin_cli_example",
+     "source": "code_samples_helper.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CodeSamplesHelper.admin_cli_example` is not loadable (skipped cleanly): uninitialized constant RSpec (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CodeSamplesHelper.admin_scope",
+     "source": "code_samples_helper.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CodeSamplesHelper.admin_scope` is not loadable (skipped cleanly): uninitialized constant RSpec (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CodeSamplesHelper.admin_scope_note",
+     "source": "code_samples_helper.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CodeSamplesHelper.admin_scope_note` is not loadable (skipped cleanly): uninitialized constant RSpec (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/ruby/spree__spree/spree/admin/app/javascript/spree/admin/contr\u2026",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "uninitialized constant RSpec (NameError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9d80cbc04bf2cd4dead8fa4b9401b181938865fc",
+ "clone_s": 8.4,
+ "lane_check": "ruby: 2334 files / 183496 lines; top=ruby(183496)",
+ "status": "done"
+}

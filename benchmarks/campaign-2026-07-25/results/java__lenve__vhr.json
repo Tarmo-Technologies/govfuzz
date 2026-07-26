@@ -1,0 +1,235 @@
+{
+ "lane": "java",
+ "repo": "lenve/vhr",
+ "stars": 28081,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr --json --out /home/ubuntu/govfuzz-sweep-work/java__lenve__vhr.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 11956,
+   "sloc_by_lang": {
+    "javascript": 8166,
+    "java": 3732,
+    "config": 58
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 498,
+   "by_language": {
+    "java": 498
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr --out /home/ubuntu/govfuzz-sweep-work/java__lenve__vhr/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 9.52,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 5,
+   "by_severity": {
+    "medium": 2,
+    "high": 3
+   },
+   "top_rules": {
+    "GF-507": 3,
+    "GF-446": 1,
+    "GF-548": 1
+   },
+   "gaps": 20
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr --out /home/ubuntu/govfuzz-sweep-work/java__lenve__vhr/sbom",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "components": 1137
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr --work-dir /home/ubuntu/govfuzz-sweep-work/java__lenve__vhr --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 83.82,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 514,
+    "dropped_by_cap": 504,
+    "built": 8,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loadUserByUsername",
+     "source": "HrService.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deleteRequest",
+     "source": "api.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/java/lenve__vhr/vuehr/src/utils/api.js failed to load: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'axios' imported from /home/ubuntu/govfuzz-corpus-500/java/lenve__vhr/vuehr/src/utils/api.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "sockjs.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 594.8207717774254,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "_getReceiver",
+     "source": "sockjs.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "enable",
+     "source": "sockjs.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "coerce",
+     "source": "sockjs.js",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Department",
+     "source": "Department.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4261.679143859497,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Nation",
+     "source": "Nation.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4481.088954159825,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Politicsstatus",
+     "source": "Politicsstatus.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5294.184528811084,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "JobLevel",
+     "source": "JobLevel.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4334.530433093965,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac (/home/ubuntu/govfuzz-corpus-N/java/lenve__vhr/vhr/vh\u2026",
+     "language": "java"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 3,
+     "detail": "built, no fuzz pass ran",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/java/lenve__vhr/vuehr/src/utils/api.js",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "03abbd35af24e55368ce4e09f4038dc2aba3ff5f",
+ "clone_s": 0.8,
+ "lane_check": "java: 92 files / 4119 lines; top=js(5928)",
+ "status": "done"
+}

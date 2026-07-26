@@ -1,0 +1,216 @@
+{
+ "lane": "csharp",
+ "repo": "PowerShell/PowerShell",
+ "stars": 54539,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/PowerShell__PowerShell --json --out /home/ubuntu/govfuzz-sweep-work/csharp__PowerShell__PowerShell.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 1,
+   "sloc_total": 11107,
+   "sloc_by_lang": {
+    "config": 11107
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/PowerShell__PowerShell --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/PowerShell__PowerShell --out /home/ubuntu/govfuzz-sweep-work/csharp__PowerShell__PowerShell/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.25,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 13,
+   "by_severity": {
+    "medium": 13
+   },
+   "top_rules": {
+    "GF-500": 13
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/PowerShell__PowerShell --out /home/ubuntu/govfuzz-sweep-work/csharp__PowerShell__PowerShell/sbom",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "components": 81
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/PowerShell__PowerShell --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__PowerShell__PowerShell --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 27.15,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 159,
+    "dropped_by_cap": 149,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 10,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Microsoft.Management.UI.Internal.SearchTextParser.Parse",
+     "source": "SearchTextParser.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.BaseCsvWritingCommand.WriteCsvLine",
+     "source": "CsvCommands.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.Management.UI.Internal.Utilities.NullCheckTrim",
+     "source": "Utilities.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.MatchInfo.RelativePath",
+     "source": "MatchString.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.MatchInfo.ToString",
+     "source": "MatchString.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.MatchInfo.ToEmphasizedString",
+     "source": "MatchString.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.ExportCsvCommand.WriteCsvLine",
+     "source": "CsvCommands.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.ConvertToCsvCommand.WriteCsvLine",
+     "source": "CsvCommands.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.SessionStateProviderBase.ClearContent",
+     "source": "SessionStateProviderBase.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Microsoft.PowerShell.Commands.SessionStateProviderBase.ClearContentDynamicParameters",
+     "source": "SessionStateProviderBase.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 10,
+     "detail": "error NETSDK1045: The current .NET SDK does not support targeting .NET N.N. Either target .NET N.N or lower, or use a version of the .NET SDK that supports .NET\u2026",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "463ef4374ad598f396e9438580761157ea840376",
+ "clone_s": 4.7,
+ "lane_check": "csharp: 1275 files / 648183 lines; top=csharp(648183)",
+ "status": "done"
+}

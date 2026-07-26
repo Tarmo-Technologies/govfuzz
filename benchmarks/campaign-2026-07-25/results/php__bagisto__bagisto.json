@@ -1,0 +1,223 @@
+{
+ "lane": "php",
+ "repo": "bagisto/bagisto",
+ "stars": 27834,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto --json --out /home/ubuntu/govfuzz-sweep-work/php__bagisto__bagisto.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 35076,
+   "sloc_by_lang": {
+    "javascript": 34197,
+    "config": 879
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto --out /home/ubuntu/govfuzz-sweep-work/php__bagisto__bagisto/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 14.9,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 16,
+   "by_severity": {
+    "medium": 6,
+    "high": 9,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-472": 8,
+    "GF-497": 3,
+    "GF-477": 3,
+    "GF-475": 1,
+    "GF-429": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto --out /home/ubuntu/govfuzz-sweep-work/php__bagisto__bagisto/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 239
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto --work-dir /home/ubuntu/govfuzz-sweep-work/php__bagisto__bagisto --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 37.89,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1172,
+    "dropped_by_cap": 1162,
+    "built": 8,
+    "built_and_fuzzed": 8,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getAverageSalesStats",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 25.898495113023365,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Exports\\ProductDataGridExport#map",
+     "source": "ProductDataGridExport.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Admin\\Exports\\ProductDataGridExport#map` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto/packages/Webkul/Admin/src/Exports/ProductDataGridExport.php on line 15",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getAbandonedCartsStats",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 25.289775951369382,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getRefundsStats",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 36.166484417226236,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\DataGrids\\Catalog\\ProductDataGrid#getFilterValue",
+     "source": "ProductDataGrid.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Admin\\DataGrids\\Catalog\\ProductDataGrid#getFilterValue` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/bagisto__bagisto/packages/Webkul/Admin/src/DataGrids/Catalog/ProductDataGrid.php on line 15",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getCustomersWithMostSales",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16.144005318164822,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getCustomersWithMostOrders",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 18.537715978567537,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getCustomersWithMostReviews",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 30.667310891239243,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getProductsWithMostReviews",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 21.29582490464687,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting#getLastSearchTerms",
+     "source": "Reporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 25.848457704199973,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\"",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "fd6be0662c2fb6935c826d1af79e44ff96c42244",
+ "clone_s": 6.8,
+ "lane_check": "php: 2582 files / 424574 lines; top=php(424574)",
+ "status": "done"
+}

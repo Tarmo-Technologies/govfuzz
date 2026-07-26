@@ -89,8 +89,9 @@ def style(ax, title: str, xlabel: str = "", ylabel: str = "") -> None:
 
 
 def chart_reach(per_lane: dict[str, dict], out: Path) -> None:
-    lanes = sorted(per_lane, key=lambda k: -(per_lane[k]["built_and_fuzzed"]))
-    lanes = [k for k in lanes if per_lane[k]["attempted"]]
+    # Sorted by the number the chart shows, so the bars read top to bottom.
+    lanes = [k for k in per_lane if per_lane[k]["attempted"]]
+    lanes.sort(key=lambda k: -per_lane[k]["built_and_fuzzed"] / per_lane[k]["attempted"])
     ratios = [
         per_lane[k]["built_and_fuzzed"] / per_lane[k]["attempted"] * 100 for k in lanes
     ]

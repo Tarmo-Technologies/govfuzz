@@ -149,13 +149,20 @@ def distil_run(work: Path) -> dict:
         for entry in sorted(findings_dir.iterdir())[:200]:
             meta = read_json(entry / "finding.json") or read_json(entry / "meta.json")
             if isinstance(meta, dict):
+                # The CWE, severity and confidence live under `actionability`;
+                # reading them off the top level silently produced null for every
+                # finding in the corpus.
+                act = meta.get("actionability") or {}
+                cwe = act.get("cwe") or meta.get("cwe")
                 findings.append(
                     {
                         "id": entry.name,
                         "rule": meta.get("rule_id") or meta.get("rule"),
-                        "cwe": meta.get("cwe"),
+                        "cwe": cwe if isinstance(cwe, list) else ([cwe] if cwe else []),
+                        "cwe_name": act.get("cwe_name"),
                         "kind": meta.get("kind"),
-                        "severity": meta.get("severity"),
+                        "severity": act.get("severity") or meta.get("severity"),
+                        "confidence": act.get("confidence"),
                         "tier": meta.get("finding_tier") or meta.get("tier"),
                         "harness": meta.get("harness_id"),
                     }

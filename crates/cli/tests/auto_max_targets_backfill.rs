@@ -45,9 +45,15 @@ fn have_clang() -> bool {
     which::which("clang").is_ok() || which::which("cc").is_ok()
 }
 
-/// A tree mixing UNSUPPORTED endpoints (function-pointer params auto can't drive
-/// from bytes) with viable byte-buffer endpoints. `--max-targets 2` must fuzz
-/// BOTH viable ones — the unsupported candidates never consume the success cap.
+/// A tree mixing UNSUPPORTED endpoints with viable byte-buffer endpoints.
+/// `--max-targets 2` must fuzz BOTH viable ones — the unsupported candidates
+/// never consume the success cap.
+///
+/// The unsupported endpoints used to be function-pointer params. They are not
+/// unsupported any more: govfuzz drives C callbacks, so every function in the
+/// old fixture built and fuzzed and the tree had nothing non-viable left in it.
+/// A pointer to a type the tree never defines has no byte-buffer decoder and no
+/// constructor to find, which is what "cannot be driven" means today.
 fn write_mixed_tree(root: &Path) {
     std::fs::write(
         root.join("lib.c"),
@@ -55,11 +61,15 @@ fn write_mixed_tree(root: &Path) {
 #include <stddef.h>
 #include <stdint.h>
 
-/* Unsupported: a function-pointer parameter cannot be driven from a byte buffer,
- * so auto reports UnsupportedParams for these — they must NOT consume the cap. */
-int parse_with_cb_a(int (*cb)(int)) { return cb ? cb(1) : 0; }
-int parse_with_cb_b(void (*cb)(void)) { if (cb) cb(); return 0; }
-int parse_with_cb_c(int (*cb)(const char *)) { return cb ? cb("x") : 0; }
+/* Unsupported: an incomplete type has no byte-buffer decoder and no in-tree
+ * constructor, so auto reports UnsupportedParams — these must NOT consume the
+ * cap. (A function-POINTER parameter no longer belongs here: govfuzz drives
+ * those, and using them left this fixture with nothing non-viable in it.) */
+struct opaque_handle;
+union opaque_variant;
+int parse_with_handle_a(struct opaque_handle *h) { return h ? 1 : 0; }
+int parse_with_handle_b(union opaque_variant *v) { return v ? 2 : 0; }
+int parse_with_handle_c(struct opaque_handle *h, size_t n) { return h ? (int)n : 0; }
 
 /* Viable: a byte-buffer endpoint auto can drive directly. */
 int decode_alpha(const uint8_t *data, size_t len) {
@@ -97,15 +107,37 @@ fn max_targets_backfills_past_unsupported_and_fuzzes_the_viable_ones() {
     write_mixed_tree(&root);
     let work = tmpdir("backfill-work");
 
-    let run = run_auto(&root, &work, &["--max-targets", "2"]);
-    // Both viable byte-buffer endpoints must reach the fuzz phase; the unsupported
-    // function-pointer candidates never consume the success cap.
+    // `--jobs 1`: the cap is only EXACT when attempts are serial. A parallel
+    // sweep stops handing out candidates once the cap is reached but lets the
+    // up-to `jobs-1` attempts already in flight finish, so it can fuzz a few
+    // more — documented and deliberate. Asserting an exact count without
+    // pinning jobs was asserting the serial contract against a parallel run,
+    // and on a multi-core box it read 4 where it wanted 2.
+    let run = run_auto(&root, &work, &["--max-targets", "2", "--jobs", "1"]);
+    // Both viable byte-buffer endpoints must reach the fuzz phase; the
+    // unsupported candidates never consume the success cap.
     let fuzzed = count_outcome(&run, "built_and_fuzzed");
     assert_eq!(
         fuzzed, 2,
-        "--max-targets 2 must fuzz both viable endpoints; run.json targets: {}",
+        "--max-targets 2 must fuzz exactly two targets; run.json targets: {}",
         run["targets"]
     );
+    // ...and they must be the VIABLE ones, not an unsupported candidate counted
+    // as a success. This is the property #94 is about.
+    let fuzzed_names: Vec<&str> = run["targets"]
+        .as_array()
+        .expect("targets array")
+        .iter()
+        .filter(|t| t["outcome"]["outcome"] == "built_and_fuzzed")
+        .filter_map(|t| t["name"].as_str())
+        .collect();
+    for viable in ["decode_alpha", "decode_beta"] {
+        assert!(
+            fuzzed_names.contains(&viable),
+            "the viable endpoint '{viable}' must be one of the {fuzzed} fuzzed \
+             targets, got {fuzzed_names:?}"
+        );
+    }
     let _ = std::fs::remove_dir_all(&root);
     let _ = std::fs::remove_dir_all(&work);
 }

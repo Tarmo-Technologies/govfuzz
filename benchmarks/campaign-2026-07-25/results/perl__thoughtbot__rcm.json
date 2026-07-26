@@ -1,0 +1,149 @@
+{
+ "lane": "perl",
+ "repo": "thoughtbot/rcm",
+ "stars": 3247,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/thoughtbot__rcm --json --out /home/ubuntu/govfuzz-sweep-work/perl__thoughtbot__rcm.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 1,
+   "sloc_total": 32,
+   "sloc_by_lang": {
+    "config": 32
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/thoughtbot__rcm --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/thoughtbot__rcm --out /home/ubuntu/govfuzz-sweep-work/perl__thoughtbot__rcm/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "high": 2
+   },
+   "top_rules": {
+    "GF-472": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/thoughtbot__rcm --out /home/ubuntu/govfuzz-sweep-work/perl__thoughtbot__rcm/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/thoughtbot__rcm --work-dir /home/ubuntu/govfuzz-sweep-work/perl__thoughtbot__rcm --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 2.9,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 4,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "BlockTemplate.process_contribs",
+     "source": "autocontrib",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `autocontrib` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'autocontrib'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BlockTemplate.load_shortlog",
+     "source": "autocontrib",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `autocontrib` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'autocontrib'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main",
+     "source": "autocontrib",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `autocontrib` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'autocontrib'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BlockTemplate.raw_contributors",
+     "source": "autocontrib",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `autocontrib` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'autocontrib'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "target module \"X\"autocontrib\"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f1e5b2de10803e194335ed5a8d1078edaede936f",
+ "clone_s": 0.5,
+ "lane_check": "perl: 47 files / 773 lines; top=perl(773)",
+ "status": "done"
+}

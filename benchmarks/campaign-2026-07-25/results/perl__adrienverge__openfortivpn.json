@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "adrienverge/openfortivpn",
+ "stars": 3368,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "6df5f8f78120cdd6fa77b25b5a2f9aa8c7f43d8c",
+ "clone_s": 0.5,
+ "lane_check": "too few perl files (perl: 1 files / 6848 lines; top=perl(6848))",
+ "status": "rejected_lane"
+}

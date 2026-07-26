@@ -1,0 +1,219 @@
+{
+ "lane": "php",
+ "repo": "symfony/symfony",
+ "stars": 31110,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --json --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 11844,
+   "sloc_by_lang": {
+    "config": 10846,
+    "javascript": 998
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 16.62,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 18,
+   "by_severity": {
+    "high": 1,
+    "medium": 17
+   },
+   "top_rules": {
+    "GF-497": 17,
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony/sbom",
+   "exit": 0,
+   "wall_s": 0.52,
+   "timed_out": false,
+   "panic": false,
+   "components": 139
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --work-dir /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 19.38,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 7167,
+    "dropped_by_cap": 7157,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#dispatchEvent",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#dispatchEvent` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\CacheWarmer\\ProxyCacheWarmer#warmUp",
+     "source": "ProxyCacheWarmer.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\CacheWarmer\\ProxyCacheWarmer#warmUp` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/CacheWarmer/ProxyCacheWarmer.php on line 25",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolver#resolve",
+     "source": "EntityValueResolver.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolver#resolve` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolverTrait\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ArgumentResolver/EntityValueResolver.php on line 30",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ArgumentResolver\\Console\\EntityValueResolver#resolve",
+     "source": "EntityValueResolver.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ArgumentResolver\\Console\\EntityValueResolver#resolve` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolverTrait\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ArgumentResolver/Console/EntityValueResolver.php on line 35",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Attribute\\MapEntity#withDefaults",
+     "source": "MapEntity.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Attribute\\MapEntity#withDefaults` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Attribute/MapEntity.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#getListeners",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#getListeners` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#hasListeners",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#hasListeners` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventListener",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventListener` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#removeEventListener",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#removeEventListener` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventSubscriber",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventSubscriber` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "target \"X\"",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b2ec790993c5e61a3ba0d5ef3c97fa921bbd2459",
+ "clone_s": 12.5,
+ "lane_check": "php: 10774 files / 1834164 lines; top=php(1834164)",
+ "status": "done"
+}

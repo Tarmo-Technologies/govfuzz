@@ -1,0 +1,218 @@
+{
+ "lane": "ts",
+ "repo": "Eugeny/tabby",
+ "stars": 73504,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby --json --out /home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 26096,
+   "sloc_by_lang": {
+    "javascript": 24811,
+    "config": 1285
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 10,
+   "by_language": {
+    "cpp": 10
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby --out /home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 14.1,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "medium": 1,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-500": 1,
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby --out /home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby/sbom",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "components": 1560
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby --work-dir /home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 125.95,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 8,
+    "discovered_total": 374,
+    "dropped_by_cap": 366,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 3,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "AppService#addTabRaw",
+     "source": "app.service.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby/harnesses/H-T007A-17C3E078/target.js requires an npm dependency that is not installed (Error: Cannot find module '@angular/core'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AppRootComponent#onTabsReordered",
+     "source": "appRoot.component.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/Eugeny__tabby/tabby-core/src/components/appRoot.component.ts: \u2718 [ERROR] No loader is configured for \".po\" files: ../../govfuzz-corpus-500/ts/Eugeny__tabby/locale/zh-TW.po",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AppService#clampTabIndexToBounds",
+     "source": "app.service.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby/harnesses/H-T0178-4F296A35/target.js requires an npm dependency that is not installed (Error: Cannot find module '@angular/core'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AppService#closeTab",
+     "source": "app.service.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby/harnesses/H-T019B-D6679CF1/target.js requires an npm dependency that is not installed (Error: Cannot find module '@angular/core'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AppService#combineTabsInto",
+     "source": "app.service.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__Eugeny__tabby/harnesses/H-T0216-200FD0EB/target.js requires an npm dependency that is not installed (Error: Cannot find module '@angular/core'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "e()",
+     "source": "UAC.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "e()",
+     "source": "UAC.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "e()",
+     "source": "UAC.cpp",
+     "outcome": "failed_build",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "expected \"X\" after top level declarator",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/Eugeny__tabby/locale/zh-TW.po",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "14e2d60b9b6dee84a53c37f05eefeb803787de04",
+ "clone_s": 2.5,
+ "lane_check": "ts: 284 files / 25293 lines; top=ts(25293)",
+ "status": "done"
+}

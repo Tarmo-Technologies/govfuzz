@@ -1,0 +1,11 @@
+{
+ "lane": "ruby",
+ "repo": "lewagon/setup",
+ "stars": 19626,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "1f0548561f99a7497e39a5ccb8e3af293bbc672d",
+ "clone_s": 4.6,
+ "lane_check": "too little ruby code (ruby: 10 files / 254 lines; top=ruby(254))",
+ "status": "rejected_lane"
+}

@@ -1,0 +1,160 @@
+{
+ "lane": "java",
+ "repo": "wuyouzhuguli/SpringAll",
+ "stars": 28966,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/wuyouzhuguli__SpringAll --json --out /home/ubuntu/govfuzz-sweep-work/java__wuyouzhuguli__SpringAll.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 19903,
+   "sloc_by_lang": {
+    "java": 18026,
+    "config": 1834,
+    "javascript": 43
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/wuyouzhuguli__SpringAll --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "count": 1689,
+   "by_language": {
+    "java": 1689
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/wuyouzhuguli__SpringAll --out /home/ubuntu/govfuzz-sweep-work/java__wuyouzhuguli__SpringAll/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.59,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 35,
+   "by_severity": {
+    "high": 14,
+    "medium": 21
+   },
+   "top_rules": {
+    "GF-507": 14,
+    "GF-544": 12,
+    "GF-446": 9
+   },
+   "gaps": 417
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/wuyouzhuguli__SpringAll --out /home/ubuntu/govfuzz-sweep-work/java__wuyouzhuguli__SpringAll/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 147
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/wuyouzhuguli__SpringAll --work-dir /home/ubuntu/govfuzz-sweep-work/java__wuyouzhuguli__SpringAll --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 131.73,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 1495,
+    "dropped_by_cap": 1490,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loadUserByUsername",
+     "source": "UserDetailService.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3064.4864227687385,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "loadUserByUsername",
+     "source": "UserDetailService.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3875.4305736256333,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "loadUserByUsername",
+     "source": "UserDetailService.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 740.0508135082373,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "loadUserByUsername",
+     "source": "UserDetailService.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2468.77504521788,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "loadUserByUsername",
+     "source": "UserDetailService.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6995.691039969013,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "614d2578d9495acf53cc02f2dee9c6131cc5e51a",
+ "clone_s": 0.8,
+ "lane_check": "java: 661 files / 19507 lines; top=java(19507)",
+ "status": "done"
+}

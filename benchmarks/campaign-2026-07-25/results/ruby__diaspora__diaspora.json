@@ -1,0 +1,228 @@
+{
+ "lane": "ruby",
+ "repo": "diaspora/diaspora",
+ "stars": 13655,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/diaspora__diaspora --json --out /home/ubuntu/govfuzz-sweep-work/ruby__diaspora__diaspora.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 103295,
+   "sloc_by_lang": {
+    "config": 86083,
+    "javascript": 17212
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/diaspora__diaspora --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/diaspora__diaspora --out /home/ubuntu/govfuzz-sweep-work/ruby__diaspora__diaspora/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.94,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 6,
+   "by_severity": {
+    "medium": 3,
+    "high": 3
+   },
+   "top_rules": {
+    "GF-472": 2,
+    "GF-500": 1,
+    "GF-497": 1,
+    "GF-507": 1,
+    "GF-477": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/diaspora__diaspora --out /home/ubuntu/govfuzz-sweep-work/ruby__diaspora__diaspora/sbom",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "components": 323
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/diaspora__diaspora --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__diaspora__diaspora --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 21.28,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 336,
+    "dropped_by_cap": 326,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Api::OpenidConnect::AuthorizationPoint::Endpoint#initialize",
+     "source": "endpoint.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Api::OpenidConnect::AuthorizationPoint::Endpoint#initialize` is not loadable (skipped cleanly): Endpoint>': undefined method `delegate' for Api::OpenidConnect::AuthorizationPoint::Endpoint:Class (NoMethodError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActsAsTaggableOn::Tag.autocomplete",
+     "source": "acts_as_taggable_on.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ActsAsTaggableOn::Tag.autocomplete` is not loadable (skipped cleanly): Tag>': undefined method `include_root_in_json=' for ActsAsTaggableOn::Tag:Class (NoMethodError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActsAsTaggableOn::Tag.normalize",
+     "source": "acts_as_taggable_on.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ActsAsTaggableOn::Tag.normalize` is not loadable (skipped cleanly): Tag>': undefined method `include_root_in_json=' for ActsAsTaggableOn::Tag:Class (NoMethodError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AccountDeleter#initialize",
+     "source": "account_deleter.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3041.5641489267323,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Api::OpenidConnect::AuthorizationPoint::Endpoint#build_attributes",
+     "source": "endpoint.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Api::OpenidConnect::AuthorizationPoint::Endpoint#build_attributes` is not loadable (skipped cleanly): Endpoint>': undefined method `delegate' for Api::OpenidConnect::AuthorizationPoint::Endpoint:Class (NoMethodError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Api::OpenidConnect::AuthorizationPoint::EndpointConfirmationPoint#build_from_request_object",
+     "source": "endpoint_confirmation_point.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11072.823300637401,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Api::OpenidConnect::AuthorizationPoint::Endpoint#handle_response_type",
+     "source": "endpoint.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Api::OpenidConnect::AuthorizationPoint::Endpoint#handle_response_type` is not loadable (skipped cleanly): Endpoint>': undefined method `delegate' for Api::OpenidConnect::AuthorizationPoint::Endpoint:Class (NoMethodError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Api.next_page",
+     "source": "time_paginator.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3513.0624410885007,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Api.previous_page",
+     "source": "time_paginator.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5088.849085239513,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Api.filter_parameters",
+     "source": "time_paginator.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3434.576841618363,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\": undefined method \"X\" for Api::OpenidConnect::AuthorizationPoint::Endpoint:Class (NoMethodError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\": undefined method \"X\" for ActsAsTaggableOn::Tag:Class (NoMethodError)",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b7bf1dc33566c036a3d788dd8876e97c30905842",
+ "clone_s": 1.9,
+ "lane_check": "ruby: 861 files / 54218 lines; top=ruby(54218)",
+ "status": "done"
+}

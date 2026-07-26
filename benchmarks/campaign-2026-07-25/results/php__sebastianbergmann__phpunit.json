@@ -1,0 +1,212 @@
+{
+ "lane": "php",
+ "repo": "sebastianbergmann/phpunit",
+ "stars": 20044,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit --json --out /home/ubuntu/govfuzz-sweep-work/php__sebastianbergmann__phpunit.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 1,
+   "sloc_total": 740,
+   "sloc_by_lang": {
+    "config": 740
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit --out /home/ubuntu/govfuzz-sweep-work/php__sebastianbergmann__phpunit/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit --out /home/ubuntu/govfuzz-sweep-work/php__sebastianbergmann__phpunit/sbom",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "components": 53
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit --work-dir /home/ubuntu/govfuzz-sweep-work/php__sebastianbergmann__phpunit --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 9.99,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1065,
+    "dropped_by_cap": 1055,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "PHPUnit\\Event\\Application\\FinishedSubscriber#notify",
+     "source": "FinishedSubscriber.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\Application\\FinishedSubscriber#notify` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Events/Application/FinishedSubscriber.php on line 17",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\Application\\StartedSubscriber#notify",
+     "source": "StartedSubscriber.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\Application\\StartedSubscriber#notify` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Events/Application/StartedSubscriber.php on line 17",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\Code\\ComparisonFailureBuilder::from",
+     "source": "ComparisonFailureBuilder.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 526.8951972082724,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPUnit\\Event\\Code\\ThrowableBuilder::from",
+     "source": "ThrowableBuilder.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1040.8217741896153,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPUnit\\Event\\DeferringDispatcher#registerTracer",
+     "source": "DeferringDispatcher.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\DeferringDispatcher#registerTracer` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Dispatcher/DeferringDispatcher.php on line 19",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\CollectingDispatcher#dispatch",
+     "source": "CollectingDispatcher.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\CollectingDispatcher#dispatch` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Dispatcher/CollectingDispatcher.php on line 20",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\DeferringDispatcher#registerSubscriber",
+     "source": "DeferringDispatcher.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\DeferringDispatcher#registerSubscriber` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Dispatcher/DeferringDispatcher.php on line 19",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\DeferringDispatcher#dispatch",
+     "source": "DeferringDispatcher.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\DeferringDispatcher#dispatch` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Dispatcher/DeferringDispatcher.php on line 19",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\DirectDispatcher#dispatch",
+     "source": "DirectDispatcher.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\DirectDispatcher#dispatch` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Dispatcher/DirectDispatcher.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PHPUnit\\Event\\DirectDispatcher#handleThrowable",
+     "source": "DirectDispatcher.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `PHPUnit\\Event\\DirectDispatcher#handleThrowable` is not loadable (skipped cleanly):   thrown in /home/ubuntu/govfuzz-corpus-500/php/sebastianbergmann__phpunit/src/Event/Dispatcher/DirectDispatcher.php on line 24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "target \"X\"",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f9954d54fa3791e97eb915da8397971145e41cbd",
+ "clone_s": 4.1,
+ "lane_check": "php: 2743 files / 175767 lines; top=php(175767)",
+ "status": "done"
+}

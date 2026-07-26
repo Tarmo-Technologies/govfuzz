@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "darold/pgbadger",
+ "stars": 4047,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "a1ad95a035a0c2d246fe632eb1c361d4bde0ddae",
+ "clone_s": 1.6,
+ "lane_check": "mislabelled by GitHub (perl: 9 files / 574 lines; top=js(28332))",
+ "status": "rejected_lane"
+}

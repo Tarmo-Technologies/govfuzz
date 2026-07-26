@@ -1,0 +1,223 @@
+{
+ "lane": "js",
+ "repo": "hakimel/reveal.js",
+ "stars": 72023,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js --json --out /home/ubuntu/govfuzz-sweep-work/js__hakimel__reveal.js.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 10517,
+   "sloc_by_lang": {
+    "javascript": 10472,
+    "config": 45
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js --out /home/ubuntu/govfuzz-sweep-work/js__hakimel__reveal.js/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.75,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1,
+   "by_severity": {
+    "high": 1
+   },
+   "top_rules": {
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js --out /home/ubuntu/govfuzz-sweep-work/js__hakimel__reveal.js/sbom",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "components": 494
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js --work-dir /home/ubuntu/govfuzz-sweep-work/js__hakimel__reveal.js --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 14.61,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 37,
+    "dropped_by_cap": 27,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "a",
+     "source": "highlight.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js/dist/plugin/highlight.mjs failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "_",
+     "source": "highlight.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js/dist/plugin/highlight.mjs failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "$pattern",
+     "source": "highlight.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js/dist/plugin/highlight.mjs failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "A",
+     "source": "highlight.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js/dist/plugin/highlight.mjs failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "N",
+     "source": "highlight.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/hakimel__reveal.js/dist/plugin/highlight.mjs failed to load: ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Stack",
+     "source": "stack.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__hakimel__reveal.js/harnesses/H-T0003-9666F4E9/target.js requires an npm dependency that is not installed (Error: Cannot find module 'react/jsx-runtime'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createPluginDts",
+     "source": "vite-plugin-dts.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__hakimel__reveal.js/harnesses/H-T0005-A8E16261/target.js requires an npm dependency that is not installed (Error: Cannot find module 'vite-plugin-dts'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extend",
+     "source": "util.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 910.170378855824,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "colorToRgb",
+     "source": "color.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 578.5987741516573,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "colorBrightness",
+     "source": "color.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 595.5689437291497,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "ReferenceError: window is not defined",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "a3b940695648aa1c5b0680bc9a5b905cf43020e5",
+ "clone_s": 1.0,
+ "lane_check": "js: 40 files / 9188 lines; top=js(9188)",
+ "status": "done"
+}

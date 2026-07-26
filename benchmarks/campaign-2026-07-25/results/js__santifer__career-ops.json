@@ -1,0 +1,234 @@
+{
+ "lane": "js",
+ "repo": "santifer/career-ops",
+ "stars": 61559,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops --json --out /home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 22319,
+   "sloc_by_lang": {
+    "javascript": 12630,
+    "go": 7232,
+    "config": 2457
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops --out /home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.99,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 24,
+   "by_severity": {
+    "high": 22,
+    "medium": 2
+   },
+   "top_rules": {
+    "GF-405": 20,
+    "GF-472": 2,
+    "GF-500": 1,
+    "GF-477": 1
+   },
+   "gaps": 19
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops --out /home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 243
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops --work-dir /home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 10.6,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 517,
+    "dropped_by_cap": 507,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadPDFEntriesByPath",
+     "source": "pdf.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadPDFManifest",
+     "source": "pdf.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadReportSummary",
+     "source": "career.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadReportDiscardReasons",
+     "source": "career.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TokenAccumulator#record",
+     "source": "token-tracker.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 547.1656396752257,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "TokenAccumulator#recordZeroToken",
+     "source": "token-tracker.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 433.22436166588926,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "acquireTrackerLock",
+     "source": "tracker-utils.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops/tracker-utils.mjs failed to load: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'js-yaml' imported from /home/ubuntu/govfuzz-corpus-500/js/santifer__career-ops/tracker-utils.mjs",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ApplyButton",
+     "source": "apply-button.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops/harnesses/H-T000C-92146488/target.js requires an npm dependency that is not installed (Error: Cannot find module 'next/navigation'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CostBadge",
+     "source": "cost-badge.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops/harnesses/H-T000C-AE77DB9E/target.js requires an npm dependency that is not installed (Error: Cannot find module 'lucide-react'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ApplyBackdrop",
+     "source": "apply-backdrop.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/js__santifer__career-ops/harnesses/H-T002E-E0693D41/target.js requires an npm dependency that is not installed (Error: Cannot find module 'react/jsx-runtime'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "go build failed: govfuzz_harness.go:N:N: use of internal package github.com/santifer/career-ops/dashboard/internal/data not allowed",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from /home/ubuntu/govfuzz-corpus-N/js/santifer__career-ops/tracker-utils.mjs",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "adc04fb0586e5b50d9d2dbacea3526f90c2174f3",
+ "clone_s": 2.7,
+ "lane_check": "js: 258 files / 60700 lines; top=js(60700)",
+ "status": "done"
+}

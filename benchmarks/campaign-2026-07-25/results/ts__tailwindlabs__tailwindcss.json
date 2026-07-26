@@ -1,0 +1,220 @@
+{
+ "lane": "ts",
+ "repo": "tailwindlabs/tailwindcss",
+ "stars": 96078,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/tailwindlabs__tailwindcss --json --out /home/ubuntu/govfuzz-sweep-work/ts__tailwindlabs__tailwindcss.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 130080,
+   "sloc_by_lang": {
+    "javascript": 109611,
+    "rust": 14789,
+    "config": 5680
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/tailwindlabs__tailwindcss --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.4,
+   "timed_out": false,
+   "panic": false,
+   "count": 251,
+   "by_language": {
+    "rust": 251
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/tailwindlabs__tailwindcss --out /home/ubuntu/govfuzz-sweep-work/ts__tailwindlabs__tailwindcss/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 32.52,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 9,
+   "by_severity": {
+    "low": 5,
+    "high": 4
+   },
+   "top_rules": {
+    "GF-553": 5,
+    "GF-505": 3,
+    "GF-506": 1
+   },
+   "gaps": 97
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/tailwindlabs__tailwindcss --out /home/ubuntu/govfuzz-sweep-work/ts__tailwindlabs__tailwindcss/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 740
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/tailwindlabs__tailwindcss --work-dir /home/ubuntu/govfuzz-sweep-work/ts__tailwindlabs__tailwindcss --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 125.87,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 7,
+    "discovered_total": 416,
+    "dropped_by_cap": 409,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Instrumentation#end",
+     "source": "instrumentation.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 414.4190732346199,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Instrumentation#hit",
+     "source": "instrumentation.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 453.24940526418044,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Instrumentation#hit",
+     "source": "instrumentation.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 436.1769865648531,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Instrumentation#error",
+     "source": "instrumentation.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3.99897989088868,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Instrumentation#end",
+     "source": "instrumentation.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 811.2884763821858,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "has_valid_boundaries",
+     "source": "boundary.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&Span' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "new",
+     "source": "mod.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undefined symbol",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-69b080de",
+     "rule": "GF-210",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-T0016-AA1182C3"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/ts__tailwindlabs__tailwindcss/findings --out /home/ubuntu/govfuzz-sweep-work/ts__tailwindlabs__tailwindcss/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "094bf62605870311a8def6ae45c87d578b198ebf",
+ "clone_s": 0.9,
+ "lane_check": "ts: 305 files / 117680 lines; top=ts(117680)",
+ "status": "done"
+}

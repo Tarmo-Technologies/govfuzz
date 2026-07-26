@@ -1,0 +1,11 @@
+{
+ "lane": "js",
+ "repo": "typicode/json-server",
+ "stars": 75676,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "89a34a44b7a6a5311dc84f3b8a1b8b45c0905aea",
+ "clone_s": 0.4,
+ "lane_check": "too few js files (js: 0 files / 0 lines; top=ts(1407))",
+ "status": "rejected_lane"
+}

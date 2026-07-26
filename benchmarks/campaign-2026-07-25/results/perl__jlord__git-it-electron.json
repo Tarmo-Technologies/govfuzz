@@ -1,0 +1,232 @@
+{
+ "lane": "perl",
+ "repo": "jlord/git-it-electron",
+ "stars": 4887,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron --json --out /home/ubuntu/govfuzz-sweep-work/perl__jlord__git-it-electron.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 493306,
+   "sloc_by_lang": {
+    "perl": 490905,
+    "javascript": 2300,
+    "config": 101
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron --out /home/ubuntu/govfuzz-sweep-work/perl__jlord__git-it-electron/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 9.04,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 426,
+   "by_severity": {
+    "critical": 399,
+    "high": 7,
+    "medium": 20
+   },
+   "top_rules": {
+    "GF-420": 251,
+    "GF-404": 146,
+    "GF-422": 20,
+    "GF-423": 5,
+    "GF-304": 2,
+    "GF-505": 2
+   },
+   "gaps": 91
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron --out /home/ubuntu/govfuzz-sweep-work/perl__jlord__git-it-electron/sbom",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "components": 526
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron --work-dir /home/ubuntu/govfuzz-sweep-work/perl__jlord__git-it-electron --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 59.63,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 6371,
+    "dropped_by_cap": 6361,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "P4Submit.separate_jobs_from_description",
+     "source": "git-p4",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "darwin-menu.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 547.8811030434393,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "addToList",
+     "source": "helpers.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron/lib/helpers.js requires an npm dependency that is not installed (Error: Cannot find module 'electron'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "completed",
+     "source": "challenge-completed.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/perl/jlord__git-it-electron/lib/challenge-completed.js requires an npm dependency that is not installed (Error: Cannot find module 'electron'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "die",
+     "source": "git-p4",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "p4_integrate",
+     "source": "git-p4",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "p4_move",
+     "source": "git-p4",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AutoSplit::autosplit",
+     "source": "AutoSplit.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 753.3313029578252,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AutoSplit::autosplit_file",
+     "source": "AutoSplit.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1184.1826488543595,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Archive::Tar::can_handle_compressed_files",
+     "source": "Tar.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1812.5599654908049,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "report_only",
+     "count": 4,
+     "detail": "[python2] Python N: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "e7551c58366787dbc62ee7ef6079fc8cc6c7acb9",
+ "clone_s": 7.1,
+ "lane_check": "perl: 1260 files / 648448 lines; top=perl(648448)",
+ "status": "done"
+}

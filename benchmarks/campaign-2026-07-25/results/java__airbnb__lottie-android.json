@@ -1,0 +1,223 @@
+{
+ "lane": "java",
+ "repo": "airbnb/lottie-android",
+ "stars": 35676,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/airbnb__lottie-android --json --out /home/ubuntu/govfuzz-sweep-work/java__airbnb__lottie-android.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 20425,
+   "sloc_by_lang": {
+    "java": 20119,
+    "config": 277,
+    "javascript": 29
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/airbnb__lottie-android --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "count": 1197,
+   "by_language": {
+    "java": 1197
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/airbnb__lottie-android --out /home/ubuntu/govfuzz-sweep-work/java__airbnb__lottie-android/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.44,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 17,
+   "by_severity": {
+    "medium": 8,
+    "high": 9
+   },
+   "top_rules": {
+    "GF-472": 9,
+    "GF-500": 7,
+    "GF-422": 1
+   },
+   "gaps": 17
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/airbnb__lottie-android --out /home/ubuntu/govfuzz-sweep-work/java__airbnb__lottie-android/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/airbnb__lottie-android --work-dir /home/ubuntu/govfuzz-sweep-work/java__airbnb__lottie-android --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 7.32,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1031,
+    "dropped_by_cap": 1021,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "fromAsset",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromAsset' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromAsset",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromAsset' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromAsset",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromAsset' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromAssetSync",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromAssetSync' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromAssetSync",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromAssetSync' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromInputStream",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromInputStream' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromAssetFileName",
+     "source": "LottieComposition.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromAssetFileName' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromInputStreamSync",
+     "source": "LottieCompositionFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromInputStreamSync' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromInputStream",
+     "source": "LottieComposition.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromInputStream' parameter #1 has an unsupported type `OnCompositionLoadedListener`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromFileSync",
+     "source": "LottieComposition.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'fromFileSync' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "05ea92e90381eb8a8ae06855ea2b74f322bebbec",
+ "clone_s": 4.8,
+ "lane_check": "java: 235 files / 23953 lines; top=java(23953)",
+ "status": "done"
+}

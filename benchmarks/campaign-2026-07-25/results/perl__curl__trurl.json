@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "curl/trurl",
+ "stars": 3346,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "f748e9b7797b7987f934b785a4bbf8819fb110ba",
+ "clone_s": 0.4,
+ "lane_check": "too few perl files (perl: 2 files / 1238 lines; top=c(1990))",
+ "status": "rejected_lane"
+}

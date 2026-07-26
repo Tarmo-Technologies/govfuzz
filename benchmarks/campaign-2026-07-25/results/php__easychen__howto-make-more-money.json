@@ -1,0 +1,11 @@
+{
+ "lane": "php",
+ "repo": "easychen/howto-make-more-money",
+ "stars": 18614,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "3d22c65c7b34c90ef351530023090205af3ad572",
+ "clone_s": 1.5,
+ "lane_check": "too few php files (php: 2 files / 36 lines; top=js(579))",
+ "status": "rejected_lane"
+}

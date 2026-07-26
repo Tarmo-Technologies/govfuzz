@@ -1,0 +1,9 @@
+{
+ "lane": "ruby",
+ "repo": "hashicorp/vagrant",
+ "stars": 27196,
+ "wave": "FULL",
+ "surfaces": {},
+ "status": "clone_failed",
+ "error": "clone failed: fatal: unable to access 'https://github.com/hashicorp/vagrant.git/': SSL connection timeout"
+}

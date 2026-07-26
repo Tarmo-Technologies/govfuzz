@@ -1,0 +1,229 @@
+{
+ "lane": "ts",
+ "repo": "modelcontextprotocol/servers",
+ "stars": 88892,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/modelcontextprotocol__servers --json --out /home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 11616,
+   "sloc_by_lang": {
+    "javascript": 8935,
+    "python": 2090,
+    "config": 591
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/modelcontextprotocol__servers --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/modelcontextprotocol__servers --out /home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.57,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 29,
+   "by_severity": {
+    "high": 7,
+    "medium": 21,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-477": 14,
+    "GF-472": 7,
+    "GF-500": 7,
+    "GF-546": 1
+   },
+   "gaps": 4
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/modelcontextprotocol__servers --out /home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers/sbom",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "components": 356
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/modelcontextprotocol__servers --work-dir /home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 15.6,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 59,
+    "dropped_by_cap": 49,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "extract_content_from_html",
+     "source": "server.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `mcp_server_fetch.server` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'markdownify'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "convertToWindowsPath",
+     "source": "path-utils.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 345.2611064361724,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SequentialThinkingServer#processThought",
+     "source": "lib.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers/harnesses/H-T0034-E3429F52/target.js requires an npm dependency that is not installed (Error: Cannot find module 'chalk'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createUnifiedDiff",
+     "source": "lib.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers/harnesses/H-T003C-E69E5DAC/target.js requires an npm dependency that is not installed (Error: Cannot find module 'diff'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "blobResource",
+     "source": "templates.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers/harnesses/H-T0065-AAA36691/target.js requires an npm dependency that is not installed (Error: Cannot find module 'zod'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "blobResourceUri",
+     "source": "templates.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-sweep-work/ts__modelcontextprotocol__servers/harnesses/H-T007E-67197374/target.js requires an npm dependency that is not installed (Error: Cannot find module 'zod'); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check_may_autonomously_fetch_url",
+     "source": "server.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `mcp_server_fetch.server` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'markdownify'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "git_commit",
+     "source": "server.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `mcp_server_git.server` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'git'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "git_create_branch",
+     "source": "server.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `mcp_server_git.server` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'git'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "git_checkout",
+     "source": "server.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `mcp_server_git.server` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'git'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Cannot find module \"X\"); run \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "d31124c982401739917fd817c2a59db344529c16",
+ "clone_s": 0.9,
+ "lane_check": "ts: 65 files / 10555 lines; top=ts(10555)",
+ "status": "done"
+}

@@ -1,0 +1,164 @@
+{
+ "lane": "js",
+ "repo": "jgraph/drawio-desktop",
+ "stars": 62296,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/jgraph__drawio-desktop --json --out /home/ubuntu/govfuzz-sweep-work/js__jgraph__drawio-desktop.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 5042,
+   "sloc_by_lang": {
+    "javascript": 4485,
+    "config": 557
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/jgraph__drawio-desktop --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/jgraph__drawio-desktop --out /home/ubuntu/govfuzz-sweep-work/js__jgraph__drawio-desktop/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.89,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1,
+   "by_severity": {
+    "high": 1
+   },
+   "top_rules": {
+    "GF-505": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/jgraph__drawio-desktop --out /home/ubuntu/govfuzz-sweep-work/js__jgraph__drawio-desktop/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 339
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/jgraph__drawio-desktop --work-dir /home/ubuntu/govfuzz-sweep-work/js__jgraph__drawio-desktop --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 21.41,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 6,
+    "discovered_total": 6,
+    "built": 6,
+    "built_and_fuzzed": 6,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parseBool",
+     "source": "args.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 559.787266284343,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "argsRange",
+     "source": "args.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 420.89685108930144,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parseLastWinSize",
+     "source": "window-bounds.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 638.583705703124,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "placeWindowOnDisplays",
+     "source": "window-bounds.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 660.3032499172672,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "formatHelp",
+     "source": "args.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 392.89706319585935,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parseDrawioArgs",
+     "source": "args.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 568.0730899616524,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "aa55e7c093a00033262cdddcfe0b9ff1754861c0",
+ "clone_s": 0.6,
+ "lane_check": "js: 11 files / 4950 lines; top=js(4950)",
+ "status": "done"
+}

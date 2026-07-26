@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "jimsalterjrs/sanoid",
+ "stars": 3825,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "d39b51a013081e86bb26a6859866c34d98c39ea3",
+ "clone_s": 0.7,
+ "lane_check": "no recognised source files",
+ "status": "rejected_lane"
+}

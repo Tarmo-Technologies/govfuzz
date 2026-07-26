@@ -1,0 +1,89 @@
+{
+ "lane": "c",
+ "repo": "iovisor/bcc",
+ "stars": 22576,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc --json --out /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.21,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 947178,
+   "sloc_by_lang": {
+    "cpp": 884398,
+    "c": 35471,
+    "python": 26565,
+    "config": 744
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc --format json --top 100000",
+   "exit": 0,
+   "wall_s": 152.43,
+   "timed_out": false,
+   "panic": false,
+   "count": 2485,
+   "by_language": {
+    "cpp": 1175,
+    "c": 1310
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc --out /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 22.77,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 239,
+   "by_severity": {
+    "high": 153,
+    "medium": 31,
+    "low": 33,
+    "critical": 22
+   },
+   "top_rules": {
+    "GF-405": 54,
+    "GF-408": 41,
+    "GF-546": 33,
+    "GF-404": 21,
+    "GF-424": 17,
+    "GF-407": 16,
+    "GF-547": 16,
+    "GF-401": 13,
+    "GF-406": 11,
+    "GF-403": 9,
+    "GF-472": 3,
+    "GF-477": 2,
+    "GF-500": 1,
+    "GF-427": 1,
+    "GF-304": 1
+   },
+   "gaps": 72
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc --out /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc/sbom",
+   "exit": 0,
+   "wall_s": 0.35,
+   "timed_out": false,
+   "panic": false,
+   "components": 19
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc --work-dir /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -6,
+   "wall_s": 2.08,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/c/iovisor__bcc\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/c__iovisor__bcc/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint e8beb752866221c1-pp:auto). Pass --no-discovery-cache to disable caching.\n\nthread 'main' (2334633) has overflowed its stack\nfatal runtime error: stack overflow, aborting\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "6485e12983cfae6a54be8e3191db236b417a0acb",
+ "clone_s": 1.6,
+ "lane_check": "c: 157 files / 35136 lines; top=python(48562)",
+ "status": "done"
+}

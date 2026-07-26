@@ -1,0 +1,278 @@
+{
+ "lane": "c",
+ "repo": "bilibili/ijkplayer",
+ "stars": 33185,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --json --out /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 38775,
+   "sloc_by_lang": {
+    "c": 29968,
+    "java": 8225,
+    "cpp": 267,
+    "python": 245,
+    "config": 70
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 1979,
+   "by_language": {
+    "c": 1362,
+    "java": 606,
+    "cpp": 11
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --out /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.58,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 50,
+   "by_severity": {
+    "high": 47,
+    "medium": 3
+   },
+   "top_rules": {
+    "GF-401": 26,
+    "GF-403": 8,
+    "GF-405": 8,
+    "GF-406": 3,
+    "GF-407": 3,
+    "GF-408": 2
+   },
+   "gaps": 8
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --out /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 14
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --work-dir /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 88.51,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1981,
+    "dropped_by_cap": 1971,
+    "built": 6,
+    "built_and_fuzzed": 6,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 7,
+    "stubbed_symbols_declared": 5,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ijkio_manager_io_open",
+     "source": "ijkiomanager.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ijkio_cache_open",
+     "source": "ijkiocache.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 15,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ijk_av_fifo_generic_read",
+     "source": "ijkfifo.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": 1.8679003495125164,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CRCopyright.scan_line",
+     "source": "CRCopyright.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17.315553570898352,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ExtractorRendererBuilder",
+     "source": "ExtractorRendererBuilder.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'ExtractorRendererBuilder' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DashRendererBuilder",
+     "source": "DashRendererBuilder.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'DashRendererBuilder' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CRFile.load_from_file",
+     "source": "CRFile.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3836.0873365607013,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ijk_map_max_size",
+     "source": "ijkstl.cpp",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 2,
+     "execs_per_sec": 9858.868780150124,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CRFile.update_path",
+     "source": "CRFile.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5773.181130587222,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ijk_map_get_min_key",
+     "source": "ijkstl.cpp",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 2,
+     "execs_per_sec": 8042.989141347378,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "incompatible pointer to integer conversion initializing \"X\" (aka \"X\") with an expression of type \"X\" [-Wint-conversion]",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-1320bd96",
+     "rule": "GF-204",
+     "cwe": [
+      "CWE-415"
+     ],
+     "cwe_name": "Double free (AddressSanitizer)",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C00D7-F38C2C70"
+    },
+    {
+     "id": "F-0001-01be4d02",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P003D-E14F8794"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer/findings --out /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "30eb9441945da795079492041a791c121d2b8206",
+ "clone_s": 0.8,
+ "lane_check": "c: 94 files / 27586 lines; top=c(27586)",
+ "status": "done"
+}

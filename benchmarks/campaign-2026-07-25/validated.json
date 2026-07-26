@@ -19,5 +19,7 @@
  "cloudflare/cobweb": "rejected_lane",
  "IonicaBizau/node.cobol": "rejected_lane",
  "moxon6/cobol-js-emscripten": "rejected_lane",
- "icitry/FPS.cob": "rejected_lane"
+ "icitry/FPS.cob": "rejected_lane",
+ "ExistentialAudio/BlackHole": "rejected_lane",
+ "woltapp/blurhash": "rejected_lane"
 }

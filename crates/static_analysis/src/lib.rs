@@ -1496,6 +1496,14 @@ fn strip_comments_for_language(source: &str, language: &str) -> String {
         "perl" => strip_hash_comments(&strip_perl_pod(source)),
         "python" => strip_hash_comments(&strip_python_triple_quoted_strings(source)),
         "config" => strip_config_comments(source),
+        // Comment syntax decides what counts as code. Ruby and Lua would
+        // otherwise be stripped as C, leaving their comments counted as code.
+        "ruby" => strip_hash_comments(source),
+        "lua" => strip_lua_comments(source),
+        "fortran" => strip_fortran_comments(source),
+        "cobol" => strip_cobol_comments(source),
+        // PHP takes C-family comments plus `#`, and C# is C-family.
+        "php" => strip_hash_comments(&strip_c_family_comments(source)),
         _ => strip_c_family_comments(source),
     }
 }
@@ -2122,6 +2130,91 @@ fn ada_comment_start(line: &str) -> Option<usize> {
         }
     }
     None
+}
+
+/// Blank Lua comments (`--` to end of line, and `--[[ ... ]]` blocks),
+/// preserving line structure.
+fn strip_lua_comments(source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut in_block = false;
+    for line in source.split_inclusive('\n') {
+        if in_block {
+            if let Some(end) = line.find("]]") {
+                in_block = false;
+                out.push_str(&" ".repeat(end + 2));
+                out.push_str(&line[end + 2..]);
+            } else {
+                out.push_str(&blank_but_newline(line));
+            }
+            continue;
+        }
+        match line.find("--") {
+            Some(at) if line[at..].starts_with("--[[") => {
+                in_block = !line[at..].contains("]]");
+                out.push_str(&line[..at]);
+                out.push_str(&blank_but_newline(&line[at..]));
+            }
+            Some(at) => {
+                out.push_str(&line[..at]);
+                out.push_str(&blank_but_newline(&line[at..]));
+            }
+            None => out.push_str(line),
+        }
+    }
+    out
+}
+
+/// Blank Fortran comments: `!` to end of line in free form, and a `c`/`C`/`*`
+/// in column 1 in fixed form.
+fn strip_fortran_comments(source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    for line in source.split_inclusive('\n') {
+        let fixed_form_comment = matches!(line.chars().next(), Some('c' | 'C' | '*' | '!'));
+        if fixed_form_comment {
+            out.push_str(&blank_but_newline(line));
+            continue;
+        }
+        match line.find('!') {
+            Some(at) => {
+                out.push_str(&line[..at]);
+                out.push_str(&blank_but_newline(&line[at..]));
+            }
+            None => out.push_str(line),
+        }
+    }
+    out
+}
+
+/// Blank COBOL comments: a `*` or `/` in the indicator column (column 7 in
+/// fixed format, or column 1 in the free format modern compilers accept).
+fn strip_cobol_comments(source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    for line in source.split_inclusive('\n') {
+        let indicator = line.chars().nth(6);
+        let first = line.trim_start().chars().next();
+        if matches!(indicator, Some('*' | '/')) || matches!(first, Some('*')) {
+            out.push_str(&blank_but_newline(line));
+        } else {
+            out.push_str(line);
+        }
+    }
+    out
+}
+
+/// Replace a span with spaces, keeping any trailing newline so line numbers and
+/// line counts are unchanged.
+fn blank_but_newline(span: &str) -> String {
+    let newline = span.ends_with('\n');
+    let body = if newline {
+        &span[..span.len() - 1]
+    } else {
+        span
+    };
+    let mut out = " ".repeat(body.chars().count());
+    if newline {
+        out.push('\n');
+    }
+    out
 }
 
 fn strip_c_family_comments(source: &str) -> String {
@@ -29610,6 +29703,13 @@ fn is_supported_file(path: &Path) -> bool {
                 | "py" | "pyi" | "pl" | "pm" | "go" | "rs" | "java"
                 // JavaScript / TypeScript.
                 | "js" | "jsx" | "ts" | "tsx" | "vue" | "svelte"
+                // PHP / Ruby / Lua / C# / COBOL / Fortran — fuzzed lanes that
+                // this walk did not admit, so their files were invisible to both
+                // the SLOC counter and the scanner: a 217-file PHP project
+                // measured 333 lines, all of them config.
+                | "php" | "phtml" | "rb" | "rake" | "gemspec" | "lua" | "cs"
+                | "cob" | "cbl" | "cpy" | "cobol" | "cble"
+                | "f" | "for" | "f77" | "f90" | "f95" | "f03" | "f08" | "ftn"
                 // Qt Quick / QML.
                 | "qml"
                 // Framework configuration and IaC files.
@@ -29653,6 +29753,16 @@ fn language_for_path_and_source(path: &Path, source: &str) -> Option<&'static st
         "rs" => Some("rust"),
         "js" | "jsx" | "ts" | "tsx" | "vue" | "svelte" => Some("javascript"),
         "java" => Some("java"),
+        // The lanes govfuzz fuzzes but this map did not name. Without them a
+        // 217-file PHP project measured 333 lines of "config" and nothing else,
+        // and the same held for Ruby, Lua, C#, COBOL and Fortran: the SLOC
+        // surface reported a fraction of what the fuzzer reads.
+        "php" | "phtml" => Some("php"),
+        "rb" | "rake" | "gemspec" => Some("ruby"),
+        "lua" => Some("lua"),
+        "cs" => Some("csharp"),
+        "cob" | "cbl" | "cpy" | "cobol" | "cble" => Some("cobol"),
+        "f" | "for" | "f77" | "f90" | "f95" | "f03" | "f08" | "ftn" => Some("fortran"),
         "qml" => Some("qml"),
         "properties" | "yml" | "yaml" | "tf" => Some("config"),
         _ => None,
@@ -29768,6 +29878,43 @@ mod tests {
         assert_eq!(comments, 2);
         assert_eq!(code, 4, "trailing-comment line counts as code, not comment");
         assert_eq!(blanks + comments + code, total);
+    }
+
+    #[test]
+    fn every_fuzzed_lane_is_counted_by_sloc() {
+        // govfuzz fuzzes sixteen languages; this walk admitted ten, so a
+        // 217-file PHP project measured 333 lines (all of it config) and Ruby,
+        // Lua, C#, COBOL and Fortran were equally invisible.
+        for (name, language) in [
+            ("a.php", "php"),
+            ("a.rb", "ruby"),
+            ("a.lua", "lua"),
+            ("a.cs", "csharp"),
+            ("a.cob", "cobol"),
+            ("a.f90", "fortran"),
+        ] {
+            let path = Path::new(name);
+            assert!(is_supported_file(path), "{name} must be walked");
+            assert_eq!(
+                language_for_path_and_source(path, ""),
+                Some(language),
+                "{name} must be counted as {language}"
+            );
+        }
+    }
+
+    #[test]
+    fn comment_syntax_decides_what_counts_as_code() {
+        // Stripping Ruby or Lua as C would leave their comments counted as code.
+        let (_, comments, _, code) = count_source_lines("# just a comment\nx = 1\n", "ruby");
+        assert_eq!((comments, code), (1, 1));
+        let (_, comments, _, code) = count_source_lines("-- a comment\nlocal x = 1\n", "lua");
+        assert_eq!((comments, code), (1, 1));
+        let (_, comments, _, code) = count_source_lines("! a comment\n      x = 1\n", "fortran");
+        assert_eq!((comments, code), (1, 1));
+        let (_, comments, _, code) =
+            count_source_lines("      * a comment\n       DISPLAY \"X\".\n", "cobol");
+        assert_eq!((comments, code), (1, 1));
     }
 
     #[test]

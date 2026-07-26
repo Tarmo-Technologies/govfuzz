@@ -1,0 +1,224 @@
+{
+ "lane": "c",
+ "repo": "SamyPesse/How-to-Make-a-Computer-Operating-System",
+ "stars": 22428,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/SamyPesse__How-to-Make-a-Computer-Operating-System --json --out /home/ubuntu/govfuzz-sweep-work/c__SamyPesse__How-to-Make-a-Computer-Operating-System.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 20040,
+   "sloc_by_lang": {
+    "c": 16646,
+    "cpp": 3394
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/SamyPesse__How-to-Make-a-Computer-Operating-System --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.57,
+   "timed_out": false,
+   "panic": false,
+   "count": 791,
+   "by_language": {
+    "cpp": 334,
+    "c": 457
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/SamyPesse__How-to-Make-a-Computer-Operating-System --out /home/ubuntu/govfuzz-sweep-work/c__SamyPesse__How-to-Make-a-Computer-Operating-System/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.41,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 85,
+   "by_severity": {
+    "high": 76,
+    "medium": 9
+   },
+   "top_rules": {
+    "GF-405": 37,
+    "GF-401": 20,
+    "GF-408": 8,
+    "GF-407": 6,
+    "GF-424": 6,
+    "GF-403": 5,
+    "GF-406": 3
+   },
+   "gaps": 17
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/SamyPesse__How-to-Make-a-Computer-Operating-System --out /home/ubuntu/govfuzz-sweep-work/c__SamyPesse__How-to-Make-a-Computer-Operating-System/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/SamyPesse__How-to-Make-a-Computer-Operating-System --work-dir /home/ubuntu/govfuzz-sweep-work/c__SamyPesse__How-to-Make-a-Computer-Operating-System --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 98.45,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 7,
+    "discovered_total": 786,
+    "dropped_by_cap": 779,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 5,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "support_vsprintf",
+     "source": "support_pf.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ap' of type 'va_list' has no byte-buffer decoder after struct synthesis: opaque type '__builtin_va_list' for parameter 'ap' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "support_vfprintf",
+     "source": "support_pf.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ap' of type 'va_list' has no byte-buffer decoder after struct synthesis: opaque type '__builtin_va_list' for parameter 'ap' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vsscanf",
+     "source": "sscanf.c",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bl_read",
+     "source": "ide.cc",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Process::create",
+     "source": "process.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pread",
+     "source": "pread.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 9,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read",
+     "source": "read.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 9,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "conflicting types for \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing macro",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "typedef redefinition with different types (\"X\" vs \"X\")",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "eb30f8802fac9f0f1c28d3a96bb3d402bdfc4687",
+ "clone_s": 0.7,
+ "lane_check": "c: 239 files / 15584 lines; top=c(15584)",
+ "status": "done"
+}

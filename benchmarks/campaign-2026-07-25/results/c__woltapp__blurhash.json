@@ -1,0 +1,11 @@
+{
+ "lane": "c",
+ "repo": "woltapp/blurhash",
+ "stars": 17047,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "712a47f946b98c30097eb1ada086ea00b18681ec",
+ "clone_s": 1.1,
+ "lane_check": "too little c code (c: 4 files / 266 lines; top=ts(439))",
+ "status": "rejected_lane"
+}

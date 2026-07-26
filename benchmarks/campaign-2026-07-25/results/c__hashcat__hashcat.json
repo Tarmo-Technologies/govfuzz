@@ -1,0 +1,251 @@
+{
+ "lane": "c",
+ "repo": "hashcat/hashcat",
+ "stars": 26414,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat --json --out /home/ubuntu/govfuzz-sweep-work/c__hashcat__hashcat.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.26,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 605607,
+   "sloc_by_lang": {
+    "c": 525458,
+    "cpp": 40013,
+    "perl": 31485,
+    "python": 3917,
+    "rust": 1772,
+    "ada": 1682,
+    "config": 1280
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat --format json --top 100000",
+   "exit": 0,
+   "wall_s": 50.66,
+   "timed_out": false,
+   "panic": false,
+   "count": 17759,
+   "by_language": {
+    "cpp": 2476,
+    "c": 15081,
+    "rust": 31,
+    "ada": 171
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat --out /home/ubuntu/govfuzz-sweep-work/c__hashcat__hashcat/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.47,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 456,
+   "by_severity": {
+    "medium": 233,
+    "high": 160,
+    "critical": 63
+   },
+   "top_rules": {
+    "GF-422": 132,
+    "GF-404": 60,
+    "GF-405": 55,
+    "GF-425": 54,
+    "GF-401": 45,
+    "GF-403": 24,
+    "GF-424": 19,
+    "GF-500": 13,
+    "GF-407": 11,
+    "GF-472": 10,
+    "GF-408": 8,
+    "GF-436": 7,
+    "GF-562": 5,
+    "GF-429": 3,
+    "GF-421": 2
+   },
+   "gaps": 111
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat --out /home/ubuntu/govfuzz-sweep-work/c__hashcat__hashcat/sbom",
+   "exit": 0,
+   "wall_s": 0.45,
+   "timed_out": false,
+   "panic": false,
+   "components": 99
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat --work-dir /home/ubuntu/govfuzz-sweep-work/c__hashcat__hashcat --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 251.58,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 9,
+    "discovered_total": 13331,
+    "dropped_by_cap": 13322,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "hashcat_session_init",
+     "source": "hashcat.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'hashcat_ctx' of type 'hashcat_ctx_t *' has no byte-buffer decoder after struct synthesis: decoder for parameter 'hashcat_ctx' exceeds 65536 bytes after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "brain_server",
+     "source": "brain.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse",
+     "source": "parse.rs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 127.25281093140237,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "calc_hash",
+     "source": "generic_hash_sp.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2370.5299177632587,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "calc_hash",
+     "source": "generic_hash_mp.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5258.047709171041,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::read_bytes",
+     "source": "aescrypt2hashcat.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4864.671665472168,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::handlefile",
+     "source": "recursivefiles2sha256sum.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `main` is not loadable (skipped cleanly): missing module `XML/Simple.pm` (not in the project and not installed) \u2014 Can't locate XML/Simple.pm in @INC (you may need to install the XML::Simple module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/c__hashcat__hashcat/harnesses/H-L0026-748300E6 /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat/tools /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat/tools /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat/tools/recursivefiles2sha256sum.pl line 19.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "new",
+     "source": "parse.rs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 878.0680215683443,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "operator !=(const u32x, const u32)",
+     "source": "inc_types.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat/OpenCL/inc_types.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat/OpenCL/inc_types.h:78:9: error: unknown type name 'uint8_t' |    78 | typedef uint8_t  u8; |       |         ^ | /home/ubuntu/govfuzz-corpus-500/c/hashcat__hashcat/OpenCL/inc_types.h:79:9: error: unknown type name 'uint16_t' |    79 | typedef uint16_t u16;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: decoder for parameter \"X\" exceeds N bytes after struct synthesis",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target module \"X\"t locate XML/Simple.pm in @INC (you may need to install the XML::Simple module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/c__hashc\u2026",
+     "language": "perl"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2d71af3718ef76f69c675e933cb4900c40788c58",
+ "clone_s": 3.6,
+ "lane_check": "c: 699 files / 210504 lines; top=c(210504)",
+ "status": "done"
+}

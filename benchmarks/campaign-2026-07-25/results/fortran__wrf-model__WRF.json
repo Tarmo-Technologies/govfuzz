@@ -1,0 +1,86 @@
+{
+ "lane": "fortran",
+ "repo": "wrf-model/WRF",
+ "stars": 1714,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --json --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 80944,
+   "sloc_by_lang": {
+    "c": 74988,
+    "python": 2707,
+    "cpp": 1788,
+    "perl": 1146,
+    "config": 315
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.7,
+   "timed_out": false,
+   "panic": false,
+   "count": 1527,
+   "by_language": {
+    "c": 1527
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.83,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2143,
+   "by_severity": {
+    "high": 2097,
+    "critical": 22,
+    "medium": 22,
+    "low": 2
+   },
+   "top_rules": {
+    "GF-403": 1022,
+    "GF-401": 786,
+    "GF-405": 210,
+    "GF-407": 53,
+    "GF-404": 22,
+    "GF-408": 15,
+    "GF-547": 10,
+    "GF-406": 9,
+    "GF-436": 7,
+    "GF-544": 3,
+    "GF-424": 3,
+    "GF-546": 2,
+    "GF-473": 1
+   },
+   "gaps": 156
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF/sbom",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "components": 19
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "06d4240ae989cc3e50af412bb472df3d9048783c",
+ "clone_s": 9.0,
+ "lane_check": "fortran: 1045 files / 1429206 lines; top=fortran(1429206)",
+ "status": "done"
+}

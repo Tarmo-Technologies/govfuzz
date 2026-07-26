@@ -15,5 +15,9 @@
  "adrienverge/openfortivpn": "rejected_lane",
  "curl/trurl": "rejected_lane",
  "PatrikFehrenbach/amass-tools": "rejected_lane",
- "jcjohnson/neural-style": "rejected_lane"
+ "jcjohnson/neural-style": "rejected_lane",
+ "cloudflare/cobweb": "rejected_lane",
+ "IonicaBizau/node.cobol": "rejected_lane",
+ "moxon6/cobol-js-emscripten": "rejected_lane",
+ "icitry/FPS.cob": "rejected_lane"
 }

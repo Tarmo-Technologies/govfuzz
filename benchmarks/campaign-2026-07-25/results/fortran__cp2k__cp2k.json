@@ -1,0 +1,255 @@
+{
+ "lane": "fortran",
+ "repo": "cp2k/cp2k",
+ "stars": 1174,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --json --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 81133,
+   "sloc_by_lang": {
+    "c": 63112,
+    "python": 10219,
+    "config": 4258,
+    "cpp": 3051,
+    "perl": 493
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 901,
+   "by_language": {
+    "c": 746,
+    "cpp": 155
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.72,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 80,
+   "by_severity": {
+    "medium": 26,
+    "high": 44,
+    "critical": 7,
+    "low": 3
+   },
+   "top_rules": {
+    "GF-406": 20,
+    "GF-407": 19,
+    "GF-405": 14,
+    "GF-401": 7,
+    "GF-420": 5,
+    "GF-550": 3,
+    "GF-546": 3,
+    "GF-403": 2,
+    "GF-404": 2,
+    "GF-421": 2,
+    "GF-477": 2,
+    "GF-422": 1
+   },
+   "gaps": 120
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 91
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 338.22,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 7,
+    "discovered_total": 1376,
+    "dropped_by_cap": 1369,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "grid_replay",
+     "source": "grid_replay.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 24,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "offload_host_malloc",
+     "source": "offload_library.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15.342723366648853,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_args",
+     "source": "analyze_gfortran_ast.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.59476566002637,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "load_configuration",
+     "source": "main.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3382.7947658415565,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "torch_c_model_read_metadata",
+     "source": "torch_c_api.cpp",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "openPMD_Mesh_set_axis_labels",
+     "source": "openpmd_c_api.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'mesh_param' of type 'openPMD_Mesh' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'struct openPMD_Mesh_opaque' for pointer parameter 'mesh_param' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "A2S",
+     "source": "string_utilities.F",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undeclared function",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing macro",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: Non-numeric character in statement label at (N); Error: Non-numeric character in statement label at (N); Error: Non-numeric char\u2026",
+     "language": "fortran"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-9500ef04",
+     "rule": "GF-208",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-C00AF-93DAFF96"
+    },
+    {
+     "id": "F-0001-74ca1e45",
+     "rule": "GF-201",
+     "cwe": null,
+     "kind": null,
+     "severity": null,
+     "tier": null,
+     "harness": "H-P00CB-E03CF414"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/findings --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "71c3ab0c0b558fd9ed8ea010a76e5cd388a72f96",
+ "clone_s": 12.4,
+ "lane_check": "fortran: 1351 files / 1245629 lines; top=fortran(1245629)",
+ "status": "done"
+}

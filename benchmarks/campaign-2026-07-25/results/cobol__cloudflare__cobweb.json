@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "cloudflare/cobweb",
+ "stars": 396,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "28aed919ce2d7471084bd7ef22b2fe1f232b3b78",
+ "clone_s": 1.0,
+ "lane_check": "too few cobol files (cobol: 1 files / 68 lines; top=cobol(68))",
+ "status": "rejected_lane"
+}

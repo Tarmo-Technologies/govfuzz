@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "IonicaBizau/node.cobol",
+ "stars": 164,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "520113c8f51d0b879e75e9cdf40eb92ee6515ec5",
+ "clone_s": 0.4,
+ "lane_check": "too little cobol code (cobol: 3 files / 55 lines; top=cobol(55))",
+ "status": "rejected_lane"
+}

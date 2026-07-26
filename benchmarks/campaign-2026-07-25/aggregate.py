@@ -36,14 +36,18 @@ STATUSES = [
 ]
 
 
-def load() -> list[dict]:
+def load_from(results: Path) -> list[dict]:
     rows = []
-    for path in sorted(RESULTS.glob("*.json")):
+    for path in sorted(results.glob("*.json")):
         try:
             rows.append(json.loads(path.read_text()))
         except json.JSONDecodeError:
             print(f"unreadable result: {path}")
     return rows
+
+
+def load() -> list[dict]:
+    return load_from(RESULTS)
 
 
 def auto_of(row: dict) -> dict:
@@ -184,12 +188,39 @@ def render(agg: dict, top_blockers: int) -> None:
         print(f"  {n:5d}  {lang:8s} {cat:22s} {detail[:96]}")
 
 
+def compare(before_dir: Path, after_dir: Path) -> None:
+    """Per-lane built ratio in two result sets, for a fix-verification delta."""
+    before = summarize(load_from(before_dir))["per_lane"]
+    after = summarize(load_from(after_dir))["per_lane"]
+
+    def ratio(bucket: dict) -> float:
+        att = bucket["attempted"]
+        return bucket["built_and_fuzzed"] / att * 100 if att else 0.0
+
+    print(f"{'lane':9s} {'before':>19s} {'after':>19s} {'delta':>9s}")
+    for lane in sorted(set(before) | set(after)):
+        b, a = before.get(lane), after.get(lane)
+        if not b or not a or not (b["attempted"] or a["attempted"]):
+            continue
+        print(
+            f"{lane:9s} {b['built_and_fuzzed']:5d}/{b['attempted']:<5d}{ratio(b):6.1f}% "
+            f"{a['built_and_fuzzed']:5d}/{a['attempted']:<5d}{ratio(a):6.1f}% "
+            f"{ratio(a) - ratio(b):+8.1f}pp"
+        )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--blockers", type=int, default=25)
     ap.add_argument("--json", type=Path)
+    ap.add_argument("--results", type=Path, default=RESULTS)
+    ap.add_argument("--compare", type=Path,
+                    help="second result dir; prints a per-lane before/after delta")
     args = ap.parse_args()
-    rows = load()
+    if args.compare:
+        compare(args.results, args.compare)
+        return
+    rows = load_from(args.results)
     agg = summarize(rows)
     render(agg, args.blockers)
     if args.json:

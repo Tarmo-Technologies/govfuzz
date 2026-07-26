@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "icitry/FPS.cob",
+ "stars": 97,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "7c557fe5d53be9f75027674a662001aba38f1359",
+ "clone_s": 0.4,
+ "lane_check": "too few cobol files (cobol: 1 files / 2752 lines; top=cobol(2752))",
+ "status": "rejected_lane"
+}

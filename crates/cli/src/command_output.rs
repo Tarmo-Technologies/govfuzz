@@ -98,10 +98,54 @@ fn read_head_tail(mut reader: impl Read, cap: usize) -> (Vec<u8>, bool) {
     (head, truncated)
 }
 
+/// A whole-run deadline that every subprocess is clamped to.
+///
+/// Build steps carry generous individual timeouts (30 minutes for a compile),
+/// which is right for one target and wrong for a bounded sweep: a single slow
+/// build outlasted a `--campaign-time 150` run by minutes, so the budget the
+/// operator set did not describe the run. Setting this makes every child
+/// inherit "whatever is left", so the campaign ends when it was asked to.
+static CAMPAIGN_DEADLINE: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+
+/// Work already in flight when the budget runs out gets this much longer to
+/// finish, so the last target is cut off cleanly rather than mid-link.
+const CAMPAIGN_GRACE: Duration = Duration::from_secs(120);
+
+/// Bound every subsequent subprocess by `deadline`. Idempotent: the first
+/// deadline set for a process wins, so nested code cannot extend it.
+pub(crate) fn set_campaign_deadline(deadline: Instant) {
+    let _ = CAMPAIGN_DEADLINE.set(deadline);
+}
+
+/// Has the operator's budget passed? Callers use this to stop starting work
+/// that cannot finish, and to report an honest "budget exhausted" instead of a
+/// mystery build failure. Deliberately the REAL deadline, not the grace-padded
+/// one the subprocess clamp uses: work already running gets the grace, new
+/// rounds do not.
+pub(crate) fn campaign_budget_exhausted() -> bool {
+    CAMPAIGN_DEADLINE
+        .get()
+        .is_some_and(|deadline| Instant::now() >= *deadline)
+}
+
+/// The effective timeout: the caller's, or the time left in the campaign (plus
+/// the grace) when that is shorter. A floor keeps a nearly-expired budget from
+/// spawning processes that are killed before they can do anything.
+fn clamp_to_campaign(timeout: Duration) -> Duration {
+    let Some(deadline) = CAMPAIGN_DEADLINE.get() else {
+        return timeout;
+    };
+    let remaining = (*deadline + CAMPAIGN_GRACE)
+        .saturating_duration_since(Instant::now())
+        .max(Duration::from_secs(5));
+    timeout.min(remaining)
+}
+
 /// Run a command with bounded stdout/stderr and a wall-clock timeout. Both pipes
 /// are drained concurrently so a noisy child cannot deadlock on a full pipe.
 pub(crate) fn output_with_timeout(command: &mut Command, timeout: Duration) -> io::Result<Output> {
-    capture_with_timeout(command, timeout, max_stream_bytes()).map(|captured| captured.output)
+    capture_with_timeout(command, clamp_to_campaign(timeout), max_stream_bytes())
+        .map(|captured| captured.output)
 }
 
 /// Variant for consumers (notably external analyzer JSON) that need to reject a
@@ -201,5 +245,34 @@ mod tests {
         assert!(truncated);
         assert!(bytes.starts_with(b"0123"));
         assert!(bytes.ends_with(b"cdef"));
+    }
+
+    #[test]
+    fn a_campaign_deadline_clamps_subprocess_timeouts_but_grants_a_grace() {
+        // Without a deadline the caller's timeout is used verbatim.
+        assert_eq!(
+            clamp_to_campaign(Duration::from_secs(1800)),
+            Duration::from_secs(1800)
+        );
+
+        // With one, a generous build timeout is cut to what is left plus the
+        // grace: a 30-minute compile must not outlive a two-minute campaign.
+        set_campaign_deadline(Instant::now() + Duration::from_secs(60));
+        let clamped = clamp_to_campaign(Duration::from_secs(1800));
+        assert!(
+            clamped <= Duration::from_secs(60) + CAMPAIGN_GRACE,
+            "clamped to {clamped:?}"
+        );
+        assert!(
+            clamped >= Duration::from_secs(5),
+            "a floor keeps work possible"
+        );
+        // A timeout shorter than the remaining budget is left alone.
+        assert_eq!(
+            clamp_to_campaign(Duration::from_secs(3)),
+            Duration::from_secs(3)
+        );
+        // The budget itself has not passed yet, so new work may still start.
+        assert!(!campaign_budget_exhausted());
     }
 }

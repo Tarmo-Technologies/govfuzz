@@ -1,0 +1,382 @@
+{
+ "lane": "php",
+ "repo": "coollabsio/coolify",
+ "stars": 59534,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/coollabsio__coolify --json --out /home/ubuntu/govfuzz-sweep-work/php__coollabsio__coolify.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 62947,
+   "sloc_by_lang": {
+    "config": 35451,
+    "javascript": 27496
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/coollabsio__coolify --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/coollabsio__coolify --out /home/ubuntu/govfuzz-sweep-work/php__coollabsio__coolify/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 78.53,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 68,
+   "by_severity": {
+    "high": 61,
+    "medium": 5,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-472": 57,
+    "GF-479": 3,
+    "GF-475": 2,
+    "GF-477": 2,
+    "GF-429": 2,
+    "GF-480": 1,
+    "GF-507": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/coollabsio__coolify --out /home/ubuntu/govfuzz-sweep-work/php__coollabsio__coolify/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 360
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/coollabsio__coolify --work-dir /home/ubuntu/govfuzz-sweep-work/php__coollabsio__coolify --campaign-time 180 --per-target-time 5 --max-attempts 25 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 132.45,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 25,
+    "discovered_total": 219,
+    "dropped_by_cap": 194,
+    "built": 25,
+    "built_and_fuzzed": 25,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 8,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "collectRegex",
+     "source": "services.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 166.13088490021673,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "auditLog",
+     "source": "audit.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 789.4288301992628,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "calculateDuration",
+     "source": "timezone.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 1430.8204823943406,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "collectProxyDockerNetworksByServer",
+     "source": "proxy.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 185.66083658318107,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "collectDockerNetworksByServer",
+     "source": "proxy.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 219.33404778716874,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "auditLogWebhookFailure",
+     "source": "audit.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 779.7390432765006,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "checkDomainUsage",
+     "source": "domains.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 265.30026614848725,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "connectProxyToNetworks",
+     "source": "proxy.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 184.79696286191535,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "assertGithubClockInSync",
+     "source": "github.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 184.00344211343324,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "checkMinimumDockerEngineVersion",
+     "source": "docker.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 76.29224995300557,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "buildContainerStatusCommand",
+     "source": "docker.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 49.88532196567262,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "checkIfDomainIsAlreadyUsedViaAPI",
+     "source": "domains.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 219.63193399821446,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "clone_application",
+     "source": "applications.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 205.20525315569455,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "confineFileMountPath",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 17.491060734271407,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "confinePathToBase",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 18.084869395712687,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "applicationParser",
+     "source": "parsers.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 23.87822020777314,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "checkRequiredCommands",
+     "source": "remoteProcess.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 214.102680911008,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "applyServiceApplicationPrerequisites",
+     "source": "services.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 137.10401490504674,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "base_url",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 14.338968700516947,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "convertDockerRunToCompose",
+     "source": "docker.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 57.98212878305577,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "buildContainerLogsCommand",
+     "source": "docker.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 48.48991618479475,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "checkIPAgainstAllowlist",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 17.565349986368847,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "add_coolify_default_environment_variables",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 17.642189426496422,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "convertGitUrl",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 21.921230735343183,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "addPreviewDeploymentSuffix",
+     "source": "shared.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 17.77375144304364,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2180a5e7effdf8a994eaeb871d0ac77fa0be8fea",
+ "clone_s": 2.0,
+ "lane_check": "php: 2004 files / 236368 lines; top=php(236368)",
+ "status": "done"
+}

@@ -113,20 +113,14 @@ fn js_module_load_error(module_abs: &Path) -> Option<String> {
         return None;
     }
     let stderr = String::from_utf8_lossy(&out.stderr);
-    let first = stderr
-        .lines()
-        .find(|l| l.contains("Error") || l.contains("Cannot find module"))
-        .unwrap_or_else(|| stderr.lines().next().unwrap_or(""))
-        .trim();
-    if stderr.contains("Cannot find module") {
-        Some(format!(
-            "{} requires an npm dependency that is not installed ({first}); run \
-             `npm install` in the project to fuzz it",
-            module_abs.display()
-        ))
-    } else {
-        Some(format!("{} failed to load: {first}", module_abs.display()))
-    }
+    // Shared wording so the uninstalled npm package is recorded as a named
+    // requirement: the prose form said `npm install` but carried no marker, so
+    // the run reported "no dependencies were missing" for a tree where every
+    // target skipped on one.
+    Some(crate::auto::script_load_roots::unloadable_reason(
+        &module_abs.display().to_string(),
+        &stderr,
+    ))
 }
 
 /// Copy the driver and emit the `node` launcher pointing at `module_abs` (the target

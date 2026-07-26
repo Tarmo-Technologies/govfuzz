@@ -117,19 +117,10 @@ pub fn build_lua_harness(
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            let detail = crate::auto::script_load_roots::interpreter_error_line(&stderr);
-            let reason = match crate::auto::script_load_roots::missing_module_name(&stderr) {
-                Some(module) => format!(
-                    "target `{}` is not loadable (skipped cleanly): missing module `{module}` \
-                     (not in the project and not installed) — {detail}",
-                    candidate.name,
-                ),
-                None => format!(
-                    "target `{}` is not loadable (skipped cleanly): {detail}",
-                    candidate.name,
-                ),
-            };
+            let reason = crate::auto::script_load_roots::unloadable_reason(
+                &candidate.name,
+                &String::from_utf8_lossy(&out.stderr),
+            );
             return LuaBuildResult::Failed { reason, skip: true };
         }
         Err(e) => {

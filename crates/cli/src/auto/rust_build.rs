@@ -5702,7 +5702,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn prepare_incrate_manifest_points_the_lib_at_main_for_a_binary_crate() {
         // vaultwarden and most Rust applications are binary-only: no
         // `src/lib.rs`. Declaring a [lib] without a path made cargo refuse the

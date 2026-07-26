@@ -212,6 +212,43 @@ fn strip_location_prefix(line: &str) -> String {
     rest.trim().to_owned()
 }
 
+/// The marker every lane puts in an unloadable-target reason when the cause is a
+/// package that is not installed. The run reads it back to record the package as
+/// an offline requirement, and the triage reads it to stop advising `--force` —
+/// forcing a parameter cannot install a package.
+pub(crate) const MISSING_MODULE_MARKER: &str = "missing module `";
+
+/// True when a skip reason says the target could not be loaded because a package
+/// is missing, rather than because its signature could not be driven.
+pub(crate) fn is_missing_package_reason(reason: &str) -> bool {
+    reason.contains(MISSING_MODULE_MARKER)
+}
+
+/// The canonical "this target could not be loaded" skip reason.
+///
+/// One builder for all six interpreted lanes: when the interpreter named the
+/// package it could not resolve, the reason carries [`MISSING_MODULE_MARKER`] so
+/// the package becomes a named requirement instead of an unreadable stderr line.
+/// Lanes that skipped this wording had their largest blocker class filed as
+/// "a parameter couldn't be driven" and left `missing-deps` empty.
+pub(crate) fn unloadable_reason(subject: &str, stderr: &str) -> String {
+    let detail = interpreter_error_line(stderr);
+    match missing_module_name(stderr) {
+        Some(module) => format!(
+            "target `{subject}` is not loadable (skipped cleanly): \
+             {MISSING_MODULE_MARKER}{module}` (not in the project and not installed) — {detail}"
+        ),
+        None => format!("target `{subject}` is not loadable (skipped cleanly): {detail}"),
+    }
+}
+
+/// PHP's phrasing when a `require` cannot be opened — `require 'vendor/autoload.php'`
+/// with no `vendor/`, the shape of every Composer project whose dependencies were
+/// never installed. Unlike the other needles it yields a filesystem path, so it is
+/// named here and handled separately. Left unmatched it produced an unreadable
+/// histogram row and recorded no requirement, on the majority of real PHP trees.
+const PHP_REQUIRED_PATH_NEEDLE: &str = "Failed opening required ";
+
 /// The module an interpreter says it could not find, if it named one. Lets a
 /// lane report `missing gem "concurrent-ruby"` instead of a raw stderr line,
 /// and lets the run record it as an offline requirement.
@@ -223,25 +260,134 @@ pub(crate) fn missing_module_name(stderr: &str) -> Option<String> {
         "Cannot find module '",      // node
         "No module named ",          // python
         "Class \"",                  // php
+        PHP_REQUIRED_PATH_NEEDLE,
     ] {
         if let Some(at) = stderr.find(needle) {
-            let rest = &stderr[at + needle.len()..];
+            // Some interpreters quote the name after the phrase (CPython:
+            // `No module named 'werkzeug'`). Without skipping that opening quote
+            // the extractor stopped immediately and returned nothing, so the
+            // Python needle never fired despite being listed here.
+            let rest = &stderr[at + needle.len()..].trim_start_matches(['\'', '"']);
             let name: String = rest
                 .chars()
                 .take_while(|c| !matches!(c, '\'' | '"' | ' ' | '\n' | '(' | ')'))
                 .collect();
             let name = name.trim_end_matches(&[',', '.'][..]).to_owned();
             if !name.is_empty() {
-                return Some(name);
+                // Only the required-file needle yields a filesystem path; module
+                // names like `Foo/Bar/Baz.pm` must survive intact.
+                return Some(if needle == PHP_REQUIRED_PATH_NEEDLE {
+                    shorten_required_path(&name)
+                } else {
+                    name
+                });
             }
         }
     }
     None
 }
 
+/// Reduce an absolute required-file path to its last two components.
+///
+/// PHP reports the resolved absolute path (`/home/me/proj/vendor/autoload.php`),
+/// which names the same requirement differently on every host and in every
+/// checkout — so the manifest and the histogram would never group. `vendor/
+/// autoload.php` is the requirement; the prefix is where this box happened to
+/// put it. Anything that isn't a path is returned unchanged.
+fn shorten_required_path(name: &str) -> String {
+    if !name.contains('/') {
+        return name.to_owned();
+    }
+    let parts: Vec<&str> = name.rsplit('/').filter(|p| !p.is_empty()).take(2).collect();
+    if parts.len() < 2 {
+        return name.trim_start_matches('/').to_owned();
+    }
+    format!("{}/{}", parts[1], parts[0])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every interpreted lane must render the same marker when the interpreter
+    /// named a package it could not resolve. Python, Node and PHP described the
+    /// cause in prose without it, so across a 534-project sweep their largest
+    /// blocker class was filed as "a parameter couldn't be driven" and their
+    /// `missing-deps` manifests reported no missing dependency at all.
+    #[test]
+    fn every_interpreter_dialect_yields_the_named_package_marker() {
+        let cases = [
+            // python
+            (
+                "flask.cli",
+                "ModuleNotFoundError: No module named 'werkzeug'",
+                "werkzeug",
+            ),
+            // node
+            (
+                "src/index.js",
+                "Error: Cannot find module 'lodash'\n    at Module._resolveFilename",
+                "lodash",
+            ),
+            // php
+            (
+                "App\\Kernel",
+                "PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Console\" not found",
+                "Symfony\\Component\\Console",
+            ),
+            // ruby
+            (
+                "Rails::Command",
+                "-e:1:in 'require': cannot load such file -- concurrent/map (LoadError)",
+                "concurrent/map",
+            ),
+            // lua
+            ("mod.init", "lua: module 'socket' not found:", "socket"),
+            // perl — a multi-component module path must survive intact
+            (
+                "My::Thing",
+                "Can't locate JSON/PP/Boolean.pm in @INC (you may need to install it)",
+                "JSON/PP/Boolean.pm",
+            ),
+            // php composer: the resolved ABSOLUTE path reduces to the requirement,
+            // so the same missing vendor/ groups across hosts and checkouts.
+            (
+                "parse.php",
+                "PHP Fatal error:  Uncaught Error: Failed opening required \
+                 '/home/me/proj/vendor/autoload.php' (include_path='.:/usr/share/php')",
+                "vendor/autoload.php",
+            ),
+        ];
+        for (subject, stderr, package) in cases {
+            let reason = unloadable_reason(subject, stderr);
+            assert!(
+                is_missing_package_reason(&reason),
+                "no package marker for {subject}: {reason}"
+            );
+            assert_eq!(
+                missing_module_name(stderr).as_deref(),
+                Some(package),
+                "wrong package extracted from: {stderr}"
+            );
+            assert!(
+                reason.contains(package),
+                "the reason must name the package: {reason}"
+            );
+            assert!(
+                reason.contains(subject),
+                "the reason must name the target: {reason}"
+            );
+        }
+    }
+
+    /// A load failure that is NOT a missing package must not claim to be one —
+    /// otherwise it would be recorded as a phantom offline requirement.
+    #[test]
+    fn a_load_error_that_names_no_package_carries_no_package_marker() {
+        let reason = unloadable_reason("thing.py", "TypeError: unsupported operand type(s)");
+        assert!(!is_missing_package_reason(&reason), "{reason}");
+        assert!(reason.contains("TypeError"), "{reason}");
+    }
 
     /// Build a rails-shaped monorepo: two packages, each with a `lib` root.
     fn rails_shaped() -> tempfile::TempDir {

@@ -815,12 +815,9 @@ mod tests {
         // An older capsule without the field is treated as reproducing, so its
         // failure is still reported as a failure.
         let legacy = serde_json::json!({"finding_id": "F-2"});
-        assert_eq!(
-            legacy
-                .get("reproduced")
-                .and_then(Value::as_bool)
-                .unwrap_or(true),
-            true
-        );
+        assert!(legacy
+            .get("reproduced")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),);
     }
 }

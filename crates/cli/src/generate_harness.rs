@@ -5564,8 +5564,8 @@ fn try_compile_database_flags_for_source(source_path: &Path) -> Result<Vec<Strin
         let entries: Vec<CompileCommandEntry> = serde_json::from_slice(&bytes)
             .with_context(|| format!("parse compile database {}", db_path.display()))?;
         for entry in &entries {
-            if compile_command_matches_source(&entry, source_path) {
-                return Ok(extract_compile_database_flags(&entry, source_path));
+            if compile_command_matches_source(entry, source_path) {
+                return Ok(extract_compile_database_flags(entry, source_path));
             }
         }
         if is_c_family_header(source_path) {
@@ -9407,8 +9407,7 @@ impl CppBuildContext {
         let recovered_standard = flags
             .iter()
             .filter_map(|flag| flag.strip_prefix("-std="))
-            .filter(|standard| standard.contains("++"))
-            .last()
+            .rfind(|standard| standard.contains("++"))
             .map(str::to_owned);
         flags.retain(|flag| {
             !flag

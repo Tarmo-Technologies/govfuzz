@@ -1999,6 +1999,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             built_and_fuzzed: summary.built_and_fuzzed,
             failed_build: summary.failed_build,
             skipped: summary.skipped,
+            skipped_missing_package: summary.skipped_missing_package,
             report_only: summary.report_only,
             findings: summary.findings,
             preflight: &preflight,
@@ -2457,6 +2458,10 @@ struct AutoSummary {
     /// can never inflate the fuzz-success headline.
     built_not_entered: usize,
     skipped: usize,
+    /// Of `skipped`, the subset an interpreted lane could not LOAD because a
+    /// package is not installed. Same outcome, different remedy: these need the
+    /// package, not `--force`, so the triage has to tell them apart.
+    skipped_missing_package: usize,
     failed_build: usize,
     link_errors: usize,
     runtime_errors: usize,
@@ -2509,6 +2514,7 @@ impl AutoSummary {
         let mut built = 0;
         let mut built_not_entered = 0;
         let mut skipped = 0;
+        let mut skipped_missing_package = 0;
         let mut failed_build = 0;
         let mut link_errors = 0;
         let mut runtime_errors = 0;
@@ -2559,7 +2565,16 @@ impl AutoSummary {
                     coverage_edges = coverage_edges
                         .max(passes.iter().map(|p| p.coverage_edges).max().unwrap_or(0));
                 }
-                UnsupportedParams { .. } => skipped += 1,
+                UnsupportedParams { reason } => {
+                    skipped += 1;
+                    // An interpreted target that could not LOAD because a package
+                    // is not installed shares this outcome, but not its remedy:
+                    // `--force` drives an undrivable parameter, and cannot install
+                    // a package. Count the two apart so the triage says which.
+                    if crate::auto::script_load_roots::is_missing_package_reason(reason) {
+                        skipped_missing_package += 1;
+                    }
+                }
                 FailedBuild { .. } => failed_build += 1,
                 UnrecoverableLink { .. } => link_errors += 1,
                 UnrecoverableRuntime { .. } => runtime_errors += 1,
@@ -2614,6 +2629,7 @@ impl AutoSummary {
             built,
             built_not_entered,
             skipped,
+            skipped_missing_package,
             failed_build,
             link_errors,
             runtime_errors,
@@ -4634,6 +4650,7 @@ mod tests {
             built: 0,
             built_not_entered: 0,
             skipped: 171,
+            skipped_missing_package: 0,
             failed_build: 8,
             link_errors: 0,
             runtime_errors: 0,
@@ -4686,6 +4703,7 @@ mod tests {
             built: 0,
             built_not_entered: 0,
             skipped: 5,
+            skipped_missing_package: 0,
             failed_build: 0,
             link_errors: 0,
             runtime_errors: 0,
@@ -4722,6 +4740,7 @@ mod tests {
             built: 0,
             built_not_entered: 0,
             skipped: 0,
+            skipped_missing_package: 0,
             failed_build: 0,
             link_errors: 0,
             runtime_errors: 0,

@@ -12,6 +12,10 @@ pub struct TriageInputs<'a> {
     pub built_and_fuzzed: usize,
     pub failed_build: usize,
     pub skipped: usize,
+    /// Of `skipped`, those an interpreted lane could not load because a package
+    /// is not installed. `--force` cannot install a package, so these get the
+    /// install action instead of the force one.
+    pub skipped_missing_package: usize,
     pub report_only: usize,
     pub findings: usize,
     pub preflight: &'a PreflightReport,
@@ -69,11 +73,26 @@ pub fn render_triage(inputs: &TriageInputs) -> String {
         actions.push(s);
     }
 
-    // 3. Skipped (a parameter couldn't be driven).
-    if inputs.skipped > 0 {
+    // 3a. Skipped because a package isn't installed. Named separately because the
+    // remedy is the package manager, not --force: advertising --force here sent
+    // operators after the one lever that provably cannot help, on what was the
+    // single largest skip cause across a 534-project corpus.
+    if inputs.skipped_missing_package > 0 {
         actions.push(format!(
-            "{} target(s) were skipped (a parameter couldn't be driven — opaque handle, callback, unknown type). Attempt them anyway with --force.",
-            inputs.skipped
+            "{} target(s) could not be loaded because a package they import is not installed — \
+             each one is named in auto/missing-deps.txt. Install them (or run --install-deps) \
+             and re-run; --force cannot substitute for a missing package.",
+            inputs.skipped_missing_package
+        ));
+    }
+
+    // 3b. Skipped (a parameter couldn't be driven) — what --force is actually for.
+    let undrivable = inputs
+        .skipped
+        .saturating_sub(inputs.skipped_missing_package);
+    if undrivable > 0 {
+        actions.push(format!(
+            "{undrivable} target(s) were skipped (a parameter couldn't be driven — opaque handle, callback, unknown type). Attempt them anyway with --force.",
         ));
     }
 
@@ -203,6 +222,7 @@ mod tests {
             built_and_fuzzed: 5,
             failed_build: 0,
             skipped: 0,
+            skipped_missing_package: 0,
             report_only: 0,
             findings: 2,
             preflight: &healthy(),
@@ -217,6 +237,7 @@ mod tests {
             built_and_fuzzed: 0,
             failed_build: 3,
             skipped: 2,
+            skipped_missing_package: 0,
             report_only: 0,
             findings: 0,
             preflight: &healthy(),
@@ -228,6 +249,59 @@ mod tests {
         assert!(text.contains("--build-command \"./build.sh\""));
         assert!(text.contains("--cxx-std"));
         assert!(text.contains("2 target(s) were skipped") && text.contains("--force"));
+    }
+
+    /// A target that skipped because a package isn't installed must be told to
+    /// install it, not to run `--force`. Across a 534-project sweep this was the
+    /// largest skip cause in the corpus, and every one of them was pointed at the
+    /// one lever that cannot install a package.
+    #[test]
+    fn a_skip_for_a_missing_package_asks_for_the_package_not_force() {
+        let inputs = TriageInputs {
+            built_and_fuzzed: 0,
+            failed_build: 0,
+            skipped: 4,
+            skipped_missing_package: 4,
+            report_only: 0,
+            findings: 0,
+            preflight: &healthy(),
+            custom_build: None,
+        };
+        let text = render_triage(&inputs);
+        assert!(
+            text.contains("4 target(s) could not be loaded because a package"),
+            "missing-package skips must be named as such:\n{text}"
+        );
+        assert!(
+            text.contains("missing-deps.txt"),
+            "point at the manifest:\n{text}"
+        );
+        assert!(
+            !text.contains("were skipped (a parameter couldn't be driven"),
+            "no undrivable-parameter action when every skip was a missing package:\n{text}"
+        );
+    }
+
+    /// The two causes are counted apart, so a run with both gets both actions and
+    /// neither count is inflated by the other.
+    #[test]
+    fn mixed_skips_split_between_the_package_action_and_the_force_action() {
+        let inputs = TriageInputs {
+            built_and_fuzzed: 1,
+            failed_build: 0,
+            skipped: 7,
+            skipped_missing_package: 5,
+            report_only: 0,
+            findings: 0,
+            preflight: &healthy(),
+            custom_build: None,
+        };
+        let text = render_triage(&inputs);
+        assert!(text.contains("5 target(s) could not be loaded"), "{text}");
+        assert!(
+            text.contains("2 target(s) were skipped (a parameter couldn't be driven"),
+            "the force action must count only the undrivable ones:\n{text}"
+        );
     }
 
     #[test]

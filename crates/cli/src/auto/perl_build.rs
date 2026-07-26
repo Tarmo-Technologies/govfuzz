@@ -192,19 +192,10 @@ pub fn build_perl_harness(
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            let detail = crate::auto::script_load_roots::interpreter_error_line(&stderr);
-            let reason = match crate::auto::script_load_roots::missing_module_name(&stderr) {
-                Some(module) => format!(
-                    "target module `{}` is not loadable (skipped cleanly): missing module \
-                     `{module}` (not in the project and not installed) — {detail}",
-                    sub.package,
-                ),
-                None => format!(
-                    "target module `{}` is not loadable (skipped cleanly): {detail}",
-                    sub.package,
-                ),
-            };
+            let reason = crate::auto::script_load_roots::unloadable_reason(
+                &sub.package,
+                &String::from_utf8_lossy(&out.stderr),
+            );
             return PerlBuildResult::Failed { reason, skip: true };
         }
         Err(e) => {

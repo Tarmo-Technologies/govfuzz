@@ -2540,6 +2540,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
             &target_includes_dirs,
             &compile_flags,
             false,
+            args.force,
         )?;
     }
     // A deleted private umbrella header can hide an otherwise surviving public
@@ -7421,6 +7422,7 @@ fn standalone_header_include_plan(
     include_dirs: &[PathBuf],
     compile_flags: &[String],
     cpp: bool,
+    force: bool,
 ) -> Result<Vec<String>> {
     debug_assert!(is_c_family_header(target));
     match preflight_header_includes(direct_includes, include_dirs, compile_flags, cpp) {
@@ -7449,6 +7451,23 @@ fn standalone_header_include_plan(
                 "preflight unavailable".to_owned()
             }
         };
+    // `--force` means "attempt it anyway". Refusing here made the flag a no-op for
+    // this whole class: 42 C++ targets in the measured corpus came back
+    // `blocked_by_non_self_contained_header` WITH forcing on, because the gate ran
+    // before the build and never let the repair loop see a single compiler error.
+    // Forcing proceeds with the direct includes and lets the diagnostic-driven
+    // stubbing work on the real errors — which is exactly what the flag promises.
+    // The preflight verdict is still reported, so a forced build that fails anyway
+    // says why it was unpromising.
+    if force {
+        eprintln!(
+            "govfuzz generate-harness: --force: '{}' is not self-contained ({}), \
+             attempting it anyway — the repair loop will work on the real compiler errors",
+            target.display(),
+            diagnostic.lines().next().unwrap_or("preflight failed")
+        );
+        return Ok(direct_includes.to_vec());
+    }
     bail!(
         "{BLOCKED_BY_NON_SELF_CONTAINED_HEADER} '{}' cannot be included by an independent {} \
          harness translation unit under its recovered build flags, and no compiling project \
@@ -7833,6 +7852,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             &target_includes_dirs,
             &compile_flags,
             true,
+            args.force,
         )?;
     }
     // Read the included header texts once, so `<X>_NAMESPACE_BEGIN` macros can be

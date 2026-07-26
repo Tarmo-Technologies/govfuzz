@@ -1,0 +1,218 @@
+{
+ "lane": "c",
+ "repo": "bilibili/ijkplayer",
+ "stars": 33185,
+ "wave": "PLAIN2",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/bilibili__ijkplayer --work-dir /home/ubuntu/govfuzz-sweep-work/c__bilibili__ijkplayer --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 83.73,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1981,
+    "dropped_by_cap": 1971,
+    "built": 6,
+    "built_and_fuzzed": 6,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 3
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 7,
+    "stubbed_symbols_declared": 5,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ijkio_manager_io_open",
+     "source": "ijkiomanager.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ijkio_cache_open",
+     "source": "ijkiocache.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 15,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ijk_av_fifo_generic_read",
+     "source": "ijkfifo.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": 1.8906122422372118,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CRCopyright.scan_line",
+     "source": "CRCopyright.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17.440484493921414,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ExtractorRendererBuilder",
+     "source": "ExtractorRendererBuilder.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'ExtractorRendererBuilder' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DashRendererBuilder",
+     "source": "DashRendererBuilder.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'DashRendererBuilder' parameter #0 has an unsupported type `Context`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CRFile.load_from_file",
+     "source": "CRFile.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4045.59531505504,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ijk_map_max_size",
+     "source": "ijkstl.cpp",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 2,
+     "execs_per_sec": 8849.757084350704,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CRFile.update_path",
+     "source": "CRFile.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5602.748309295538,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ijk_map_get_min_key",
+     "source": "ijkstl.cpp",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 2,
+     "execs_per_sec": 10765.832151549183,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "incompatible pointer to integer conversion initializing \"X\" (aka \"X\") with an expression of type \"X\" [-Wint-conversion]",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-1320bd96",
+     "rule": "GF-204",
+     "cwe": [
+      "CWE-415"
+     ],
+     "cwe_name": "Double free (AddressSanitizer)",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C00D7-F38C2C70"
+    },
+    {
+     "id": "F-0001-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C00D7-F38C2C70"
+    },
+    {
+     "id": "F-0002-01be4d02",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P003D-E14F8794"
+    }
+   ]
+  }
+ },
+ "sha": "30eb9441945da795079492041a791c121d2b8206",
+ "clone_s": 0.6,
+ "lane_check": "c: 94 files / 27586 lines; top=c(27586)",
+ "status": "done"
+}

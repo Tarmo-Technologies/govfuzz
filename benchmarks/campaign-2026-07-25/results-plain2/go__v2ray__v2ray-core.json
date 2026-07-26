@@ -1,0 +1,211 @@
+{
+ "lane": "go",
+ "repo": "v2ray/v2ray-core",
+ "stars": 46926,
+ "wave": "PLAIN2",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/v2ray__v2ray-core --work-dir /home/ubuntu/govfuzz-sweep-work/go__v2ray__v2ray-core --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 24.73,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1936,
+    "dropped_by_cap": 1926,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 3
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadConfig",
+     "source": "confloader.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7734.48669563412,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DecodeJSONConfig",
+     "source": "loader.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 51.65974069689118,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DecodeHeaderAddons",
+     "source": "addons.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*buf.Buffer` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewAuthIDDecoder",
+     "source": "authid.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 52.26795324968227,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "LoadConfig",
+     "source": "config.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13305.484647430258,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "LoadJSONConfig",
+     "source": "loader.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 52.69986392818901,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "NewChunkStreamReader",
+     "source": "chunk.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `ChunkSizeDecoder` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewChunkStreamReaderWithChunkCount",
+     "source": "chunk.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `ChunkSizeDecoder` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeBodyAddons",
+     "source": "addons.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*protocol.RequestHeader` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeResponseHeader",
+     "source": "encoding.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*protocol.RequestHeader` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-da387e92",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-119"
+     ],
+     "cwe_name": "Reachable crash (fatal signal, no sanitizer report)",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G002B-22CA48BC"
+    },
+    {
+     "id": "F-0001-da387e92",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-119"
+     ],
+     "cwe_name": "Reachable crash (fatal signal, no sanitizer report)",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G0046-3D993C21"
+    },
+    {
+     "id": "F-0002-99ad8edf",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-119"
+     ],
+     "cwe_name": "Reachable crash (fatal signal, no sanitizer report)",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G002E-970481F1"
+    }
+   ]
+  }
+ },
+ "sha": "d80440f3d57b45c829dbf513306f7adf9a0f3f76",
+ "clone_s": 1.4,
+ "lane_check": "go: 641 files / 68307 lines; top=go(68307)",
+ "status": "done"
+}

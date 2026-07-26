@@ -1834,10 +1834,38 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 fuzzed_in_phase_one,
                 &mut dependency_checkpoint,
             )?;
+            // Report why forcing FAILED, before folding the results away. The merge
+            // keeps phase 1's outcome when forcing did not fuzz — which is right,
+            // because an unforced `failed_build` names a real error where a forced
+            // `report_only` names nothing — but it means the run's residual-blocker
+            // table shows the UNFORCED reason. For a flag whose whole purpose is
+            // "make this target fuzz", the forced attempt's own reason is the
+            // actionable one, and without this it was invisible.
+            let unrescued: Vec<crate::auto::attempt::AttemptResult> = forced_results
+                .iter()
+                .filter(|r| !reached_fuzz(&r.outcome))
+                .map(|r| crate::auto::attempt::AttemptResult {
+                    candidate: r.candidate.clone(),
+                    outcome: r.outcome.clone(),
+                    harness_dir: r.harness_dir.clone(),
+                })
+                .collect();
             let rescued = merge_forced_retry(&mut results, forced_results);
             eprintln!(
                 "govfuzz auto: --force: phase 2 rescued {rescued} target(s) that phase 1 could not fuzz"
             );
+            if !unrescued.is_empty() {
+                let forced_blockers =
+                    crate::auto::blocker_histogram::BlockerHistogram::from_results(&unrescued);
+                if !forced_blockers.is_empty() {
+                    eprintln!(
+                        "\ngovfuzz auto: what stopped the FORCED retry ({} target(s) forcing could \
+                         not fuzz — these are the reasons to act on, not the unforced ones above)",
+                        unrescued.len()
+                    );
+                    eprint!("{}", forced_blockers.render());
+                }
+            }
         }
     }
 

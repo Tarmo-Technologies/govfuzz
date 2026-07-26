@@ -1,0 +1,218 @@
+{
+ "lane": "go",
+ "repo": "jesseduffield/lazydocker",
+ "stars": 52161,
+ "wave": "PLAIN2",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/jesseduffield__lazydocker --work-dir /home/ubuntu/govfuzz-sweep-work/go__jesseduffield__lazydocker --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 21.9,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 204,
+    "dropped_by_cap": 194,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 3
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "NewTranslationSetFromConfig",
+     "source": "i18n.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*logrus.Entry` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExecutableFromString",
+     "source": "os.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `ExecutableFromString` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExecutableFromStringContext",
+     "source": "os.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `ExecutableFromStringContext` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ColoredString",
+     "source": "utils.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `color.Attribute` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ColoredYamlString",
+     "source": "utils.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5767.964262449382,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ColoredStringDirect",
+     "source": "utils.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*color.Color` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Decolorise",
+     "source": "utils.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6544.493183540379,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ApplyTemplate",
+     "source": "utils.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 229.01893705262322,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "FormatMapItem",
+     "source": "utils.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9.303567864248791,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "IsValidHexValue",
+     "source": "utils.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8993.63173037259,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Go method \"X\" needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-46dc18cb",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-119"
+     ],
+     "cwe_name": "Reachable crash (fatal signal, no sanitizer report)",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G00F0-9D660050"
+    },
+    {
+     "id": "F-0001-ab842a67",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-119"
+     ],
+     "cwe_name": "Reachable crash (fatal signal, no sanitizer report)",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G0130-5DB88EB5"
+    },
+    {
+     "id": "F-0002-b35d61a1",
+     "rule": "GF-209",
+     "cwe": [
+      "CWE-789",
+      "CWE-400"
+     ],
+     "cwe_name": "Memory Allocation with Excessive Size Value",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G0130-5DB88EB5"
+    }
+   ]
+  }
+ },
+ "sha": "7e7aadc2071d58031bf2daafca1fbd4093efc23f",
+ "clone_s": 14.3,
+ "lane_check": "go: 87 files / 10829 lines; top=go(10829)",
+ "status": "done"
+}

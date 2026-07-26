@@ -100,18 +100,68 @@ fn xml_element<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
 /// highest framework the host can reference wins. Returns `None` for a TFM the
 /// net8.0 SDK/host cannot build or load (a newer preview like `net10.0`, or a
 /// .NET Framework TFM like `net48` on a non-Windows host).
-fn tfm_rank(tfm: &str) -> Option<u32> {
+/// The highest .NET major version the installed SDK can target.
+///
+/// Hardcoding net8.0 as the ceiling both under-uses a newer SDK and mis-reports
+/// what a host can do. `dotnet --list-sdks` prints one `8.0.129 [path]` line per
+/// installed SDK; the highest major wins.
+fn host_max_net_major() -> u32 {
+    use std::sync::OnceLock;
+    static MAX: OnceLock<u32> = OnceLock::new();
+    *MAX.get_or_init(|| {
+        let Ok(out) = Command::new("dotnet").arg("--list-sdks").output() else {
+            return 8;
+        };
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .filter_map(|line| line.split('.').next()?.trim().parse::<u32>().ok())
+            .max()
+            .unwrap_or(8)
+    })
+}
+
+/// Split `net8.0-windows10.0.19041.0` into its framework and platform parts.
+fn split_tfm(tfm: &str) -> (String, Option<String>) {
     let t = tfm.trim().to_ascii_lowercase();
-    match t.as_str() {
-        "net8.0" => Some(100),
-        "net7.0" => Some(90),
-        "net6.0" => Some(80),
-        "net5.0" => Some(70),
+    match t.split_once('-') {
+        Some((base, platform)) => (base.to_owned(), Some(platform.to_owned())),
+        None => (t, None),
+    }
+}
+
+/// Rank a target framework by how well this host can build it; `None` means it
+/// cannot. Platform-specific TFMs (`-windows`, `-android`, `-ios`) need either
+/// that OS or an installed workload, so on Linux they are unbuildable however
+/// new the SDK is — the harness must not reference a project pinned to one.
+fn tfm_rank(tfm: &str) -> Option<u32> {
+    let (base, platform) = split_tfm(tfm);
+    if let Some(platform) = platform {
+        let usable = cfg!(target_os = "windows") && platform.starts_with("windows");
+        if !usable {
+            return None;
+        }
+    }
+    if let Some(version) = base.strip_prefix("net") {
+        if let Some((major, minor)) = version.split_once('.') {
+            if let (Ok(major), Ok(minor)) = (major.parse::<u32>(), minor.parse::<u32>()) {
+                // `net5.0`+ are the modern line; a version past the installed
+                // SDK cannot be built at all.
+                if major >= 5 {
+                    if major > host_max_net_major() {
+                        return None;
+                    }
+                    return Some(1000 + major * 10 + minor);
+                }
+            }
+        }
+    }
+    match base.as_str() {
         "netcoreapp3.1" => Some(60),
         "netcoreapp3.0" => Some(55),
         "netstandard2.1" => Some(50),
         "netstandard2.0" => Some(40),
         "netstandard1.6" => Some(30),
+        // .NET Framework (`net48`) needs Mono/Windows; not buildable here.
         _ => None,
     }
 }
@@ -122,15 +172,49 @@ fn tfm_rank(tfm: &str) -> Option<u32> {
 /// build (a preview `net10.0`), failing the whole harness. Parse the declared
 /// `<TargetFramework(s)>` and return the highest one the net8.0 host supports.
 fn choose_target_framework(csproj: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(csproj).ok()?;
-    let raw =
-        xml_element(&text, "TargetFrameworks").or_else(|| xml_element(&text, "TargetFramework"))?;
-    raw.split(';')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .filter_map(|tfm| tfm_rank(tfm).map(|r| (r, tfm.to_owned())))
+    declared_target_frameworks(csproj)
+        .into_iter()
+        .filter_map(|tfm| tfm_rank(&tfm).map(|r| (r, tfm)))
         .max_by_key(|(r, _)| *r)
         .map(|(_, tfm)| tfm)
+}
+
+/// Every framework the project says it targets, buildable here or not.
+///
+/// Modern .NET repos hoist the TFM into a `Directory.Build.props` that MSBuild
+/// imports into every project beneath it, so a `.csproj` that declares nothing
+/// is not a project without a framework — reading only the `.csproj` made an
+/// unbuildable `net10.0` look like "unspecified" and the harness referenced it
+/// anyway.
+fn declared_target_frameworks(csproj: &Path) -> Vec<String> {
+    if let Some(found) = target_frameworks_in_file(csproj) {
+        return found;
+    }
+    let mut dir = csproj.parent();
+    // Bounded walk: MSBuild stops at the first Directory.Build.props it finds.
+    for _ in 0..12 {
+        let Some(current) = dir else { break };
+        for name in ["Directory.Build.props", "Directory.Build.targets"] {
+            if let Some(found) = target_frameworks_in_file(&current.join(name)) {
+                return found;
+            }
+        }
+        dir = current.parent();
+    }
+    Vec::new()
+}
+
+fn target_frameworks_in_file(path: &Path) -> Option<Vec<String>> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let raw =
+        xml_element(&text, "TargetFrameworks").or_else(|| xml_element(&text, "TargetFramework"))?;
+    let list: Vec<String> = raw
+        .split(';')
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && !s.contains('$'))
+        .map(str::to_owned)
+        .collect();
+    (!list.is_empty()).then_some(list)
 }
 
 /// The assembly name a project builds: its `<AssemblyName>` if set, else the
@@ -287,27 +371,214 @@ fn generate_entry(method: &CSharpMethod) -> String {
 /// the fixed Driver.cs + the generated GovfuzzEntry.cs. When the target project
 /// multi-targets, the reference is pinned to `pinned_tfm` (via `SetTargetFramework`)
 /// so the SDK never tries to build a framework it doesn't support.
-fn generate_csproj(target_csproj: &Path, pinned_tfm: Option<&str>) -> String {
-    let reference = match pinned_tfm {
-        Some(tfm) => format!(
+/// How the harness gets at the target's code.
+enum TargetLinkage {
+    /// Reference the project and let the SDK build it. Pinned to one TFM when
+    /// the project multi-targets, so the SDK never builds a framework it can't.
+    ProjectReference { pinned_tfm: Option<String> },
+    /// Compile the project's own `.cs` into the harness assembly.
+    ///
+    /// Used when NO declared TFM is buildable here — a project targeting
+    /// `net10.0-windows` on a host with the .NET 8 SDK, which is otherwise a
+    /// hard zero: the reference fails, so every target in the project fails.
+    /// Most library types are ordinary C# that compiles fine against a
+    /// supported framework, and a type that genuinely needs the newer BCL now
+    /// fails with a real compiler diagnostic instead of an SDK banner.
+    ///
+    /// `excluded` holds files ejected because they could not compile — a UI
+    /// view model needing a source generator, say — while the target's own file
+    /// is never ejected.
+    SourceInclusion { excluded: Vec<PathBuf> },
+}
+
+/// `<PackageReference>` entries declared by the target project, so
+/// source-inclusion still resolves the types those packages provide. Entries
+/// without a version come from central package management, which the harness
+/// project does not inherit; they are skipped rather than guessed at.
+fn target_package_references(csproj_text: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for chunk in csproj_text.split("<PackageReference").skip(1) {
+        let Some(end) = chunk.find('>') else { continue };
+        let attrs = &chunk[..end];
+        let include = xml_attribute(attrs, "Include");
+        let version = xml_attribute(attrs, "Version");
+        if let (Some(include), Some(version)) = (include, version) {
+            if include != "SharpFuzz" {
+                out.push((include, version));
+            }
+        }
+    }
+    out
+}
+
+/// Packages the project gets from its own file AND from the
+/// `Directory.Build.props` MSBuild would import for it.
+fn effective_package_references(csproj: &Path) -> Vec<(String, String)> {
+    let mut out = std::fs::read_to_string(csproj)
+        .map(|text| target_package_references(&text))
+        .unwrap_or_default();
+    let mut dir = csproj.parent();
+    for _ in 0..12 {
+        let Some(current) = dir else { break };
+        for name in ["Directory.Build.props", "Directory.Build.targets"] {
+            if let Ok(text) = std::fs::read_to_string(current.join(name)) {
+                for entry in target_package_references(&text) {
+                    if !out.iter().any(|(name, _)| *name == entry.0) {
+                        out.push(entry);
+                    }
+                }
+            }
+        }
+        dir = current.parent();
+    }
+    out
+}
+
+/// Copy the harness's build output (`bin/Release/<tfm>/`) into `out_dir`, which
+/// the rest of the lane treats as the single place the assemblies live.
+fn collect_build_output(proj_dir: &Path, out_dir: &Path) -> Result<(), String> {
+    let release = proj_dir.join("bin").join("Release");
+    let tfm_dir = std::fs::read_dir(&release)
+        .map_err(|e| format!("read {}: {e}", release.display()))?
+        .flatten()
+        .map(|e| e.path())
+        .find(|p| p.is_dir())
+        .ok_or_else(|| format!("no framework directory under {}", release.display()))?;
+    std::fs::create_dir_all(out_dir).map_err(|e| format!("create {}: {e}", out_dir.display()))?;
+    for entry in std::fs::read_dir(&tfm_dir)
+        .map_err(|e| format!("read {}: {e}", tfm_dir.display()))?
+        .flatten()
+    {
+        let from = entry.path();
+        if from.is_dir() {
+            continue; // satellite/runtime subdirectories are not needed to load
+        }
+        let to = out_dir.join(entry.file_name());
+        std::fs::copy(&from, &to).map_err(|e| format!("copy {}: {e}", from.display()))?;
+    }
+    Ok(())
+}
+
+/// Line numbers MSBuild reported errors on, within one specific file.
+fn error_lines_in_file(build_output: &str, file: &Path) -> Vec<usize> {
+    let prefix = file.display().to_string();
+    let mut out = Vec::new();
+    for line in build_output.lines() {
+        let Some(rest) = line.strip_prefix(prefix.as_str()) else {
+            continue;
+        };
+        if !rest.contains("): error CS") {
+            continue;
+        }
+        let number: String = rest
+            .trim_start_matches('(')
+            .chars()
+            .take_while(char::is_ascii_digit)
+            .collect();
+        if let Ok(n) = number.parse::<usize>() {
+            if !out.contains(&n) {
+                out.push(n);
+            }
+        }
+    }
+    out
+}
+
+/// Source files MSBuild named in `error CSxxxx` diagnostics.
+///
+/// Compiling a whole project into the harness drags in every file, including
+/// ones that need a source generator or a UI framework the harness has no
+/// business building (v2rayN's ReactiveUI view models produced 2008 errors
+/// while the target sat in a plain `Common/` helper). Ejecting the files that
+/// fail — never the target's own — converges on the subset that compiles.
+fn error_source_files(build_output: &str) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    for line in build_output.lines() {
+        let Some(paren) = line.find('(') else {
+            continue;
+        };
+        let rest = &line[paren..];
+        if !rest.contains("): error CS") {
+            continue;
+        }
+        let path = PathBuf::from(line[..paren].trim());
+        if path.extension().and_then(|e| e.to_str()) != Some("cs") {
+            continue;
+        }
+        if !out.contains(&path) {
+            out.push(path);
+        }
+    }
+    out
+}
+
+fn xml_attribute(attrs: &str, name: &str) -> Option<String> {
+    let needle = format!("{name}=\"");
+    let at = attrs.find(&needle)?;
+    let rest = &attrs[at + needle.len()..];
+    let end = rest.find('"')?;
+    let value = rest[..end].trim();
+    (!value.is_empty()).then(|| value.to_owned())
+}
+
+fn generate_csproj(target_csproj: &Path, linkage: &TargetLinkage) -> String {
+    let reference = match linkage {
+        TargetLinkage::ProjectReference {
+            pinned_tfm: Some(tfm),
+        } => format!(
             "<ProjectReference Include=\"{target}\" \
              SetTargetFramework=\"TargetFramework={tfm}\" />",
             target = target_csproj.display(),
         ),
-        None => format!(
+        TargetLinkage::ProjectReference { pinned_tfm: None } => format!(
             "<ProjectReference Include=\"{target}\" />",
             target = target_csproj.display(),
         ),
+        TargetLinkage::SourceInclusion { excluded } => {
+            let dir = target_csproj
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_default();
+            let packages: String = effective_package_references(target_csproj)
+                .into_iter()
+                .map(|(name, version)| {
+                    format!(
+                        "\n\x20   <PackageReference Include=\"{name}\" Version=\"{version}\" />"
+                    )
+                })
+                .collect();
+            let mut exclude = format!("{dir}/bin/**/*.cs;{dir}/obj/**/*.cs", dir = dir.display());
+            for path in excluded {
+                exclude.push(';');
+                exclude.push_str(&path.display().to_string());
+            }
+            format!(
+                "<Compile Include=\"{dir}/**/*.cs\" Exclude=\"{exclude}\" />{packages}",
+                dir = dir.display(),
+                exclude = exclude,
+                packages = packages,
+            )
+        }
+    };
+    let target_framework = format!("net{}.0", host_max_net_major());
+    // A project's own sources are written against the implicit-usings default
+    // of a modern SDK; compiling them with usings disabled fails on types the
+    // author never had to import.
+    let implicit_usings = match linkage {
+        TargetLinkage::SourceInclusion { .. } => "enable",
+        TargetLinkage::ProjectReference { .. } => "disable",
     };
     format!(
         "<Project Sdk=\"Microsoft.NET.Sdk\">\n\
          \x20 <PropertyGroup>\n\
          \x20   <OutputType>Exe</OutputType>\n\
-         \x20   <TargetFramework>net8.0</TargetFramework>\n\
+         \x20   <TargetFramework>{target_framework}</TargetFramework>\n\
+         \x20   <LangVersion>latest</LangVersion>\n\
+         \x20   <EnableDefaultCompileItems>true</EnableDefaultCompileItems>\n\
          \x20   <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n\
          \x20   <Nullable>disable</Nullable>\n\
          \x20   <AssemblyName>govfuzz_harness</AssemblyName>\n\
-         \x20   <ImplicitUsings>disable</ImplicitUsings>\n\
+         \x20   <ImplicitUsings>{implicit_usings}</ImplicitUsings>\n\
          \x20   <GenerateDocumentationFile>false</GenerateDocumentationFile>\n\
          \x20   <NoWarn>$(NoWarn);CS0618;CS0612;CS8032</NoWarn>\n\
          \x20   <SatelliteResourceLanguages>en</SatelliteResourceLanguages>\n\
@@ -393,45 +664,153 @@ pub fn build_csharp_harness(
     if let Err(e) = std::fs::write(proj_dir.join("GovfuzzEntry.cs"), generate_entry(&method)) {
         return CSharpBuildResult::Failed(format!("write GovfuzzEntry.cs: {e}"));
     }
+    // Prefer referencing the project. When the project declares only TFMs this
+    // host cannot build (a newer .NET than the installed SDK, or a
+    // platform-specific `-windows` framework), referencing it fails every
+    // target in the project, so compile its sources into the harness instead.
     let pinned_tfm = choose_target_framework(&target_csproj);
+    let declares_tfm = declared_target_frameworks(&target_csproj);
+    let linkage = if pinned_tfm.is_none() && !declares_tfm.is_empty() {
+        eprintln!(
+            "govfuzz auto: C# project {} targets {} which the installed .NET SDK \
+             (max net{}.0) cannot build; compiling its sources into the harness instead",
+            target_csproj.display(),
+            declares_tfm.join(";"),
+            host_max_net_major(),
+        );
+        TargetLinkage::SourceInclusion {
+            excluded: Vec::new(),
+        }
+    } else {
+        TargetLinkage::ProjectReference { pinned_tfm }
+    };
     if let Err(e) = std::fs::write(
         proj_dir.join("govfuzz_harness.csproj"),
-        generate_csproj(&target_csproj, pinned_tfm.as_deref()),
+        generate_csproj(&target_csproj, &linkage),
     ) {
         return CSharpBuildResult::Failed(format!("write harness csproj: {e}"));
     }
 
     // Build. `--nologo`, restore from the local NuGet cache; keep the CLI quiet.
-    let build = crate::command_output::output_with_timeout(
-        Command::new("dotnet")
-            .arg("build")
-            .arg(proj_dir.join("govfuzz_harness.csproj"))
-            .arg("-c")
-            .arg("Release")
-            .arg("-o")
-            .arg(&out_dir)
-            .arg("--nologo")
-            .arg("-v")
-            .arg("quiet")
-            .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
-            .env("DOTNET_NOLOGO", "1"),
-        std::time::Duration::from_secs(30 * 60),
-    );
-    match build {
-        Ok(o) if o.status.success() => {}
-        Ok(o) => {
-            let mut msg = String::from_utf8_lossy(&o.stdout).to_string();
-            msg.push_str(&String::from_utf8_lossy(&o.stderr));
+    // Under source-inclusion the first build often fails on project files that
+    // are nothing to do with the target (view models needing a source
+    // generator); those get ejected and the build retried until the compiling
+    // subset is found, or the target's own file is what fails.
+    const MAX_EJECT_ROUNDS: usize = 6;
+    let mut linkage = linkage;
+    let mut recovered_usings: Vec<String> = Vec::new();
+    for round in 0..=MAX_EJECT_ROUNDS {
+        // No `-o`: forcing one output directory across a project GRAPH also
+        // redirects the referenced project's output, and the second harness to
+        // build the same project hits MSB4018 in GetAssemblyAttributes because
+        // its `obj/` still describes the first harness's layout. Build into the
+        // default per-project locations and copy the harness's own output out.
+        let build = crate::command_output::output_with_timeout(
+            Command::new("dotnet")
+                .arg("build")
+                .arg(proj_dir.join("govfuzz_harness.csproj"))
+                .arg("-c")
+                .arg("Release")
+                .arg("--nologo")
+                .arg("-v")
+                .arg("quiet")
+                .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+                .env("DOTNET_NOLOGO", "1"),
+            std::time::Duration::from_secs(30 * 60),
+        );
+        let output = match build {
+            Ok(o) if o.status.success() => {
+                if let Err(e) = collect_build_output(&proj_dir, &out_dir) {
+                    return CSharpBuildResult::Failed(e);
+                }
+                break;
+            }
+            Ok(o) => {
+                let mut msg = String::from_utf8_lossy(&o.stdout).to_string();
+                msg.push_str(&String::from_utf8_lossy(&o.stderr));
+                msg
+            }
+            Err(e) => return CSharpBuildResult::Failed(format!("spawn dotnet build: {e}")),
+        };
+
+        let TargetLinkage::SourceInclusion { excluded } = &mut linkage else {
             return CSharpBuildResult::Failed(format!(
                 "dotnet build failed:\n{}",
-                tail(&msg, 4000)
+                tail(&output, 4000)
+            ));
+        };
+        // A `global using` the compiler rejected takes only that line with it.
+        // Ejecting the whole GlobalUsings.cs would strip EVERY project-wide
+        // using — including `System.Collections.Concurrent` — and break files
+        // that were compiling fine.
+        let recovered_path = proj_dir.join("GovfuzzRecoveredUsings.cs");
+        let rejected_usings = error_lines_in_file(&output, &recovered_path);
+        if !rejected_usings.is_empty() {
+            recovered_usings = recovered_usings
+                .into_iter()
+                .enumerate()
+                .filter(|(index, _)| !rejected_usings.contains(&(index + 1)))
+                .map(|(_, line)| line)
+                .collect();
+            if let Err(e) = std::fs::write(&recovered_path, recovered_usings.join("\n") + "\n") {
+                return CSharpBuildResult::Failed(format!("write recovered usings: {e}"));
+            }
+            continue;
+        }
+        let failing: Vec<PathBuf> = error_source_files(&output)
+            .into_iter()
+            .filter(|p| *p != candidate.source_path && !excluded.contains(p))
+            .filter(|p| *p != recovered_path)
+            .collect();
+        // Keep the project-wide usings the ejected files declared.
+        let mut new_usings = Vec::new();
+        for path in &failing {
+            if let Ok(text) = std::fs::read_to_string(path) {
+                for line in text.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("global using")
+                        && !recovered_usings.iter().any(|u| u == trimmed)
+                    {
+                        new_usings.push(trimmed.to_owned());
+                    }
+                }
+            }
+        }
+        if !new_usings.is_empty() {
+            recovered_usings.extend(new_usings);
+            if let Err(e) = std::fs::write(&recovered_path, recovered_usings.join("\n") + "\n") {
+                return CSharpBuildResult::Failed(format!("write recovered usings: {e}"));
+            }
+        }
+        if failing.is_empty() || round == MAX_EJECT_ROUNDS {
+            // Either the target's own file is what fails, or ejecting stopped
+            // helping: report the real diagnostic.
+            return CSharpBuildResult::Failed(format!(
+                "dotnet build failed:\n{}",
+                tail(&output, 4000)
             ));
         }
-        Err(e) => return CSharpBuildResult::Failed(format!("spawn dotnet build: {e}")),
+        eprintln!(
+            "govfuzz auto: C# source-inclusion: ejecting {} file(s) that do not compile \
+             into the harness (round {})",
+            failing.len(),
+            round + 1,
+        );
+        excluded.extend(failing);
+        if let Err(e) = std::fs::write(
+            proj_dir.join("govfuzz_harness.csproj"),
+            generate_csproj(&target_csproj, &linkage),
+        ) {
+            return CSharpBuildResult::Failed(format!("rewrite harness csproj: {e}"));
+        }
     }
 
-    // Instrument the target assembly's IL (edge coverage into the shared map).
-    let asm = target_assembly_name(&target_csproj);
+    // Instrument the assembly the target's IL actually landed in: its own when
+    // the project was referenced, the harness itself under source-inclusion.
+    let asm = match linkage {
+        TargetLinkage::SourceInclusion { .. } => "govfuzz_harness".to_owned(),
+        TargetLinkage::ProjectReference { .. } => target_assembly_name(&target_csproj),
+    };
     let target_dll = out_dir.join(format!("{asm}.dll"));
     if !target_dll.is_file() {
         return CSharpBuildResult::Failed(format!(
@@ -655,10 +1034,103 @@ mod tests {
     fn csproj_pins_tfm_when_supplied() {
         let dir = std::env::temp_dir();
         let csproj = dir.join("Target.csproj");
-        let out = generate_csproj(&csproj, Some("net8.0"));
+        let out = generate_csproj(
+            &csproj,
+            &TargetLinkage::ProjectReference {
+                pinned_tfm: Some("net8.0".to_owned()),
+            },
+        );
         assert!(out.contains("SetTargetFramework=\"TargetFramework=net8.0\""));
-        let out_none = generate_csproj(&csproj, None);
+        let out_none = generate_csproj(
+            &csproj,
+            &TargetLinkage::ProjectReference { pinned_tfm: None },
+        );
         assert!(!out_none.contains("SetTargetFramework"));
+    }
+
+    #[test]
+    fn a_platform_or_too_new_framework_is_not_buildable_here() {
+        // A `-windows` TFM needs Windows however new the SDK is, so it must not
+        // be chosen on Linux — referencing it fails every target in the project.
+        if !cfg!(target_os = "windows") {
+            assert_eq!(tfm_rank("net8.0-windows10.0.19041.0"), None);
+            assert_eq!(tfm_rank("net6.0-android"), None);
+        }
+        // Past the installed SDK: unbuildable. At or below it: fine, and newer
+        // ranks higher so a multi-target project picks the best one.
+        let host = host_max_net_major();
+        assert_eq!(tfm_rank(&format!("net{}.0", host + 1)), None);
+        assert!(tfm_rank(&format!("net{host}.0")).is_some());
+        assert!(tfm_rank("netstandard2.0").is_some());
+        assert!(
+            tfm_rank("net48").is_none(),
+            ".NET Framework is not buildable"
+        );
+        if host >= 8 {
+            assert!(tfm_rank("net8.0") > tfm_rank("net6.0"));
+            assert!(tfm_rank("net6.0") > tfm_rank("netstandard2.0"));
+        }
+    }
+
+    #[test]
+    fn an_unbuildable_project_falls_back_to_compiling_its_sources() {
+        // v2rayN targets net10.0-windows; on a .NET 8 host the ProjectReference
+        // is a guaranteed failure for every target in the project, while its
+        // ordinary C# types compile fine into the harness assembly.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let csproj = dir.path().join("ServiceLib.csproj");
+        std::fs::write(
+            &csproj,
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>\
+             <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework></PropertyGroup>\
+             <ItemGroup><PackageReference Include=\"YamlDotNet\" Version=\"15.1.0\" />\
+             <PackageReference Include=\"Central\" /></ItemGroup></Project>",
+        )
+        .expect("write csproj");
+
+        assert_eq!(choose_target_framework(&csproj), None);
+        assert_eq!(
+            declared_target_frameworks(&csproj),
+            vec!["net10.0-windows10.0.19041.0".to_owned()]
+        );
+
+        // v2rayN hoists its TFM into Directory.Build.props, which MSBuild
+        // imports into every project beneath it; a csproj that declares nothing
+        // is still pinned to net10.0 and must be recognised as unbuildable.
+        let nested = dir.path().join("src/ServiceLib");
+        std::fs::create_dir_all(&nested).expect("mkdir");
+        std::fs::write(
+            dir.path().join("src/Directory.Build.props"),
+            "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework>\
+             </PropertyGroup></Project>",
+        )
+        .expect("write props");
+        let bare = nested.join("ServiceLib.csproj");
+        std::fs::write(&bare, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>").expect("write");
+        assert_eq!(
+            declared_target_frameworks(&bare),
+            vec!["net10.0".to_owned()]
+        );
+        assert_eq!(choose_target_framework(&bare), None);
+
+        let out = generate_csproj(
+            &csproj,
+            &TargetLinkage::SourceInclusion {
+                excluded: Vec::new(),
+            },
+        );
+        assert!(out.contains("<Compile Include="), "{out}");
+        assert!(out.contains("Exclude="), "bin/obj must be excluded: {out}");
+        assert!(!out.contains("ProjectReference"), "{out}");
+        // Packages the project declares carry over so its types still resolve;
+        // a centrally-versioned entry has no version to copy and is skipped.
+        assert!(
+            out.contains("Include=\"YamlDotNet\" Version=\"15.1.0\""),
+            "{out}"
+        );
+        assert!(!out.contains("Central"), "{out}");
+        // The harness itself targets a framework this host can build.
+        assert!(out.contains(&format!("<TargetFramework>net{}.0", host_max_net_major())));
     }
 
     #[test]

@@ -103,12 +103,15 @@ pub struct AutoArgs {
     #[arg(long = "per-target-finding-count", value_name = "N")]
     pub per_target_finding_count: Option<usize>,
 
-    /// Whole-run budget in seconds across ALL targets. Default mode: a hard OUTER
-    /// wall-clock cap — once exceeded, `auto` stops STARTING new (ranked) targets
-    /// (the in-flight one finishes) and reports how many of the N discovered were
-    /// reached. With `--min-target-time`, switches to SPLIT mode: this becomes the
-    /// total fuzz budget DIVIDED across the attempted targets. Unset (default) =
-    /// run every target with its own `--per-target-time`.
+    /// Budget in seconds for the SWEEP across ALL targets, charged from the first
+    /// build attempt — discovery and preflight are not billed to it, so a large
+    /// tree whose indexing takes minutes still fuzzes (libFuzzer `-max_total_time`
+    /// / AFL `-V` semantics). Default mode: a hard OUTER wall-clock cap — once
+    /// exceeded, `auto` stops STARTING new (ranked) targets (the in-flight one
+    /// finishes) and reports how many of the N discovered were reached. With
+    /// `--min-target-time`, switches to SPLIT mode: this becomes the total fuzz
+    /// budget DIVIDED across the attempted targets. Unset (default) = run every
+    /// target with its own `--per-target-time`.
     #[arg(long)]
     pub campaign_time: Option<u64>,
 
@@ -1394,7 +1397,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 "govfuzz auto: --max-attempts {cap}: inspecting at most {cap} of {} ranked candidate(s)",
                 candidates.len()
             );
-            candidates.truncate(cap);
+            candidates = cap_candidates_across_languages(candidates, cap);
         }
     }
     if let Some(cap) = success_cap {
@@ -1566,11 +1569,18 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // finishes). In SPLIT mode the per-target budgets already bound the run, so the
     // guillotine is disabled (build/repair overhead must not cut off targets the
     // split intended to fuzz).
+    // Charged from HERE — the start of the sweep — not from process start.
+    // Discovery on a large tree (gnatstudio: 8606 Ada candidates) can outlast the
+    // whole budget, and billing it to the campaign made the run attempt zero
+    // targets and report "0 discovered" for a tree it had just indexed. The
+    // budget is a fuzzing budget, as in libFuzzer's `-max_total_time` and AFL's
+    // `-V`; indexing is not fuzzing.
+    let sweep_start = std::time::Instant::now();
     let campaign_deadline = if split_mode {
         None
     } else {
         args.campaign_time
-            .map(|secs| run_start + std::time::Duration::from_secs(secs))
+            .map(|secs| sweep_start + std::time::Duration::from_secs(secs))
     };
 
     let results = if jobs <= 1 {
@@ -2788,6 +2798,67 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
 /// the dry-run plan and the real sweep cannot disagree about the cap.
 fn capped_target_count(total: usize, max_targets: Option<usize>) -> usize {
     max_targets.map_or(total, |cap| total.min(cap))
+}
+
+/// Apply `--max-attempts` by taking the best candidates of EVERY language rather
+/// than the top of one flat ranking.
+///
+/// Scores are comparable within a language, not across them, so a flat prefix
+/// can be entirely one lane. scrcpy is a C project whose Android server is
+/// Java: the top 25 candidates were all Java, all of them needed an SDK that is
+/// not installed, all of them failed, and the 876 C targets underneath — the
+/// reason anyone fuzzes scrcpy — were never inspected. Round-robin by language,
+/// preserving rank order inside each, so a budget can never be spent entirely on
+/// one lane's doomed prefix. With a single language present this is exactly the
+/// old truncation.
+fn cap_candidates_across_languages(
+    candidates: Vec<crate::auto::candidate::Candidate>,
+    cap: usize,
+) -> Vec<crate::auto::candidate::Candidate> {
+    use std::collections::BTreeMap;
+    if candidates.len() <= cap {
+        return candidates;
+    }
+    // Preserve overall rank as the tiebreak: remember where each candidate sat.
+    let mut by_language: BTreeMap<String, Vec<(usize, crate::auto::candidate::Candidate)>> =
+        BTreeMap::new();
+    for (rank, candidate) in candidates.into_iter().enumerate() {
+        by_language
+            .entry(format!("{:?}", candidate.lang))
+            .or_default()
+            .push((rank, candidate));
+    }
+    let mut queues: Vec<std::vec::IntoIter<(usize, crate::auto::candidate::Candidate)>> =
+        by_language.into_values().map(Vec::into_iter).collect();
+    // Start with the lane holding the overall top-ranked candidate so the single
+    // best target is still attempted first.
+    queues.sort_by_key(|q| {
+        q.as_slice()
+            .first()
+            .map(|(rank, _)| *rank)
+            .unwrap_or(usize::MAX)
+    });
+
+    let mut picked: Vec<(usize, crate::auto::candidate::Candidate)> = Vec::with_capacity(cap);
+    while picked.len() < cap {
+        let mut progressed = false;
+        for queue in &mut queues {
+            if picked.len() >= cap {
+                break;
+            }
+            if let Some(next) = queue.next() {
+                picked.push(next);
+                progressed = true;
+            }
+        }
+        if !progressed {
+            break;
+        }
+    }
+    // Attempt them in the original ranked order; the round-robin decided WHICH
+    // candidates survive the cap, not the order they are tried in.
+    picked.sort_by_key(|(rank, _)| *rank);
+    picked.into_iter().map(|(_, candidate)| candidate).collect()
 }
 
 /// Default candidate concurrency: half the host's parallelism, at least 1.
@@ -4058,6 +4129,56 @@ mod tests {
             input_reachability: None,
             dialect: None,
         }
+    }
+
+    #[test]
+    fn the_attempt_cap_is_spread_across_languages_not_spent_on_one() {
+        // scrcpy: a C project whose Android server is Java. Java scored higher,
+        // so a flat prefix cap gave all 25 attempts to Java targets needing an
+        // SDK that is not installed — every one failed and the C targets, the
+        // reason to fuzz scrcpy at all, were never inspected.
+        let mut candidates = Vec::new();
+        for i in 0..40 {
+            let mut java = candidate("/p/server/Foo.java", i + 1, &format!("H-J{i:04}"));
+            java.lang = Lang::Java;
+            java.score = 900 - i as i32; // every Java target outranks every C one
+            candidates.push(java);
+        }
+        for i in 0..40 {
+            let mut c = candidate("/p/app/src/parse.c", i + 1, &format!("H-C{i:04}"));
+            c.score = 100 - i as i32;
+            candidates.push(c);
+        }
+
+        let capped = cap_candidates_across_languages(candidates.clone(), 10);
+        assert_eq!(capped.len(), 10);
+        let java = capped.iter().filter(|c| c.lang == Lang::Java).count();
+        let c = capped.iter().filter(|c| c.lang == Lang::C).count();
+        assert_eq!((java, c), (5, 5), "both lanes must get attempts");
+        // Rank order within a lane is preserved, and the sweep still attempts in
+        // overall rank order.
+        assert!(capped.windows(2).all(|w| w[0].score >= w[1].score));
+        assert_eq!(
+            capped[0].lang,
+            Lang::Java,
+            "the top-ranked target still leads"
+        );
+
+        // One language present: identical to the old truncation.
+        let single: Vec<_> = candidates
+            .iter()
+            .filter(|c| c.lang == Lang::C)
+            .cloned()
+            .collect();
+        let capped = cap_candidates_across_languages(single.clone(), 7);
+        let ids = |cs: &[Candidate]| cs.iter().map(|c| c.harness_id.clone()).collect::<Vec<_>>();
+        assert_eq!(ids(&capped), ids(&single[..7]));
+
+        // A cap at or above the candidate count changes nothing.
+        assert_eq!(
+            cap_candidates_across_languages(single.clone(), 999).len(),
+            single.len()
+        );
     }
 
     #[test]

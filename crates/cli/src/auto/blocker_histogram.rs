@@ -33,13 +33,13 @@ pub(crate) struct BlockerKey {
 /// nothing. Quoted and backticked spans become `X` and bare integers become `N`,
 /// which is what the hand-rolled `sed 's/"[^"]*"/"X"/g'` pipeline did.
 pub(crate) fn normalize_detail(raw: &str) -> String {
-    // Only the first line carries the proximate cause; GNAT and clang both
-    // continue with context lines that vary per instance.
-    let first = raw
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("")
-        .trim();
+    // Usually the first line carries the proximate cause; GNAT and clang both
+    // continue with context lines that vary per instance. Some build tools lead
+    // with a banner instead — MSBuild prints "Build FAILED." and only then the
+    // `error NETSDK1045: ...` that says what to fix — so a banner is skipped in
+    // favour of the first line that names an error. Without this, every C#
+    // failure in a sweep collapsed into one uninformative row.
+    let first = first_informative_line(raw);
     // Drop a leading `path/file.ext:12:34:` location prefix — the location is
     // per-instance, the message after it is the class.
     let without_location = strip_location_prefix(first);
@@ -59,10 +59,32 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
                 out.push_str("\"X\"");
             }
             c if c.is_ascii_digit() => {
-                while chars.peek().is_some_and(char::is_ascii_digit) {
-                    chars.next();
+                // A digit run glued to the end of a word is part of an
+                // identifier, not a per-instance number: diagnostic codes
+                // (`NETSDK1045`, `CS0618`, `C2065`, `E0308`) are exactly what an
+                // operator searches for, and collapsing them to `N` erased the
+                // one token that names the problem. Only free-standing numbers
+                // — line numbers, counts, offsets — collapse.
+                let glued_to_word = out
+                    .chars()
+                    .last()
+                    .is_some_and(|p| p.is_ascii_alphanumeric());
+                if glued_to_word {
+                    out.push(c);
+                    while let Some(next) = chars.peek() {
+                        if next.is_ascii_digit() {
+                            out.push(*next);
+                            chars.next();
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    while chars.peek().is_some_and(char::is_ascii_digit) {
+                        chars.next();
+                    }
+                    out.push('N');
                 }
-                out.push('N');
             }
             c => out.push(c),
         }
@@ -75,6 +97,43 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
     } else {
         collapsed
     }
+}
+
+/// Lines that announce a failure without describing it. Keying the histogram on
+/// one of these merges every distinct cause into a single row.
+fn is_banner_line(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    let lower = lower.trim().trim_end_matches('.');
+    matches!(
+        lower,
+        "build failed"
+            | "build failed:"
+            | "compilation failed"
+            | "error"
+            | "make: *** [all] error 1"
+            | "gprbuild: *** compilation phase failed"
+            | "failed"
+    ) || lower.starts_with("error: could not compile")
+        || lower.starts_with("error: build failed")
+}
+
+/// The first line that actually describes the failure, skipping banners.
+fn first_informative_line(raw: &str) -> &str {
+    let mut fallback = "";
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if fallback.is_empty() {
+            fallback = trimmed;
+        }
+        if is_banner_line(trimmed) {
+            continue;
+        }
+        return trimmed;
+    }
+    fallback
 }
 
 /// Strip a `file:line:col:` / `file:line:` prefix. Deliberately conservative: it
@@ -292,6 +351,35 @@ impl BlockerHistogram {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_build_banner_never_becomes_the_histogram_key() {
+        // MSBuild's real diagnostic is two lines below its banner. Keying on the
+        // banner collapsed every C# failure in a 500-project sweep into one row
+        // that said nothing about what to fix.
+        let msbuild = "Build FAILED.\n\n/usr/lib/dotnet/sdk/8.0.129/Sdks/Microsoft.NET.Sdk/\
+                       targets/Microsoft.NET.TargetFrameworkInference.targets(166,5): error \
+                       NETSDK1045: The current .NET SDK does not support targeting .NET 10.0.";
+        let detail = normalize_detail(msbuild);
+        assert!(
+            detail.contains("NETSDK1045"),
+            "the actionable diagnostic must survive, code intact: {detail}"
+        );
+        assert!(!detail.starts_with("Build FAILED"), "{detail}");
+        // A per-instance number still collapses so instances group.
+        assert!(
+            !detail.contains("166"),
+            "line numbers still collapse: {detail}"
+        );
+
+        // A transcript that is nothing BUT a banner still yields that banner
+        // rather than an empty key.
+        assert_eq!(normalize_detail("Build FAILED.\n"), "Build FAILED.");
+
+        // A first line that is already informative is still preferred.
+        let gnat = "spat.adb:31:07: error: \"Foo\" is undefined\ncompilation failed";
+        assert!(normalize_detail(gnat).contains("is undefined"));
+    }
 
     #[test]
     fn quoted_spans_and_numbers_collapse_so_instances_group() {

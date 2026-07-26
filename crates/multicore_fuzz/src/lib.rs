@@ -508,15 +508,14 @@ pub fn sanitizer_options_key(s: Sanitizer) -> &'static str {
 /// engine saves as a finding (instead of a printed-and-ignored warning), and
 /// `detect_leaks` arms LSan. These MUST win over any operator value.
 ///
-/// `symbolize=0` is required, not merely preferred: AFL++ v4 refuses to start at
-/// all when it inherits a custom `ASAN_OPTIONS` without it —
-/// "PROGRAM ABORT: Custom ASAN_OPTIONS set without symbolize=0 - please fix!"
-/// (afl-fuzz-init.c). Without it every `--engine afl++` run died in AFL's
-/// pre-flight check, so no afl++ pass was ever recorded. It is also what we want
-/// regardless: a fuzz child must not fork llvm-symbolizer in the hot loop, and
-/// crashes are re-symbolized on replay.
-const REQUIRED_SANITIZER_OPTIONS: &str =
-    "abort_on_error=1:halt_on_error=1:detect_leaks=1:symbolize=0";
+/// `symbolize=0` deliberately does NOT belong here. AFL++ v4 refuses to start
+/// when it inherits a custom `ASAN_OPTIONS` without it, so the afl-fuzz
+/// invocation sets it on its own child env — but a BUILTIN-engine child must
+/// keep symbolizing, because the file and line in a sanitizer report are what
+/// join a crash to the static finding at the same line. Setting it globally to
+/// appease AFL silently downgraded every fuzz-confirmed static finding to
+/// `fuzz_exercised`, which is the one result govfuzz exists to produce.
+const REQUIRED_SANITIZER_OPTIONS: &str = "abort_on_error=1:halt_on_error=1:detect_leaks=1";
 
 /// Merge an operator-provided `<SAN>_OPTIONS` (from the inherited environment)
 /// with the keys govfuzz requires (#435). govfuzz's keys go LAST so they win on
@@ -656,32 +655,58 @@ fn unique_finding_count(per_worker: &[WorkerReport]) -> usize {
 
 #[cfg(test)]
 mod tests {
+    /// The builtin engine and AFL++ want OPPOSITE symbolization, and satisfying
+    /// AFL globally is what broke the product's differentiator.
+    ///
+    /// AFL++ v4 aborts in pre-flight on a custom `ASAN_OPTIONS` without
+    /// `symbolize=0`, so the afl-fuzz spawn sets it on that child. Putting it
+    /// here instead stripped file:line from every builtin child's sanitizer
+    /// report — and file:line is exactly what joins a crash to the static finding
+    /// on the same line, so every `fuzz_confirmed` static finding silently
+    /// downgraded to `fuzz_exercised`.
     #[test]
-    fn required_sanitizer_options_satisfy_afl_preflight() {
-        // AFL++ v4 aborts before fuzzing anything when it inherits a custom
-        // ASAN_OPTIONS without symbolize=0, so every `--engine afl++` run died
-        // in its pre-flight check and no afl++ pass was ever recorded.
+    fn builtin_children_keep_symbolization_for_the_fuzz_confirmation_join() {
         assert!(
-            REQUIRED_SANITIZER_OPTIONS.contains("symbolize=0"),
-            "AFL++ refuses to start without it: {REQUIRED_SANITIZER_OPTIONS}"
+            !REQUIRED_SANITIZER_OPTIONS.contains("symbolize"),
+            "a builtin fuzz child must symbolize so a crash carries file:line: \
+             {REQUIRED_SANITIZER_OPTIONS}"
         );
         // The keys that make a sanitizer report a saved finding stay required.
-        for key in ["abort_on_error=1", "halt_on_error=1"] {
+        for key in ["abort_on_error=1", "halt_on_error=1", "detect_leaks=1"] {
             assert!(
                 REQUIRED_SANITIZER_OPTIONS.contains(key),
                 "{key} is required"
             );
         }
-        // And an operator value cannot drop symbolize=0, because govfuzz's keys
-        // are merged last.
+        // An operator asking for no symbolization is still honoured — govfuzz
+        // does not force it on — and their other keys survive the merge.
         let merged = merge_sanitizer_options(
-            Some("symbolize=1:suppressions=/x.supp"),
+            Some("symbolize=0:suppressions=/x.supp"),
             REQUIRED_SANITIZER_OPTIONS,
         );
         assert!(merged.contains("symbolize=0"), "{merged}");
         assert!(
             merged.contains("suppressions=/x.supp"),
             "operator keys survive: {merged}"
+        );
+        assert!(merged.contains("abort_on_error=1"), "{merged}");
+    }
+
+    /// The AFL child's own env is built by merging `symbolize=0` LAST, so it wins
+    /// over whatever the builtin path put in `extra_env`. That ordering is the
+    /// whole fix: applying `extra_env` after the explicit value silently undid it
+    /// and AFL went back to aborting in pre-flight.
+    #[test]
+    fn the_afl_child_env_forces_symbolize_off_over_an_inherited_value() {
+        let builtin = merge_sanitizer_options(None, REQUIRED_SANITIZER_OPTIONS);
+        let afl = merge_sanitizer_options(Some(&builtin), "symbolize=0");
+        assert!(
+            afl.contains("symbolize=0"),
+            "AFL++ will not start without it: {afl}"
+        );
+        assert!(
+            afl.contains("abort_on_error=1"),
+            "and it must not lose the keys that save a finding: {afl}"
         );
     }
 

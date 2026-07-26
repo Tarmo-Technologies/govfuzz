@@ -3058,6 +3058,26 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
     for (k, v) in &prepared.extra_env {
         afl_cmd.env(k, v);
     }
+    // `symbolize=0` must be re-asserted AFTER `extra_env`, because that map
+    // carries the builtin engine's sanitizer options — which deliberately keep
+    // symbolization so a crash's file:line can be joined to the static finding at
+    // the same line — and it would otherwise overwrite the value set above. AFL++
+    // v4 aborts in pre-flight on a custom `ASAN_OPTIONS` without it ("Custom
+    // ASAN_OPTIONS set without symbolize=0 - please fix!", afl-fuzz-init.c), so
+    // this is the one child that needs the opposite setting. Merging keeps every
+    // other key the operator or the builtin path supplied.
+    for key in ["ASAN_OPTIONS", "UBSAN_OPTIONS", "LSAN_OPTIONS"] {
+        let inherited = prepared
+            .extra_env
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.clone())
+            .or_else(|| std::env::var(key).ok());
+        afl_cmd.env(
+            key,
+            multicore_fuzz::merge_sanitizer_options(inherited.as_deref(), "symbolize=0"),
+        );
+    }
     apply_runaway_rlimits(&mut afl_cmd);
     // Run afl-fuzz in its own process group so a hard-deadline kill can take down
     // the WHOLE group — afl-fuzz plus the persistent harness it forked — instead
@@ -3839,20 +3859,20 @@ fn apply_fuzz_child_env_overrides(extra_env: &mut Vec<(String, String)>) {
     // aborts by default; arming it too is belt-and-suspenders and harmless for
     // non-sanitized (interpreted-lane) children, which ignore the vars.
     //
-    // `symbolize=0` is not optional here: AFL++ v4 refuses to start when it
-    // inherits a custom `ASAN_OPTIONS` without it ("PROGRAM ABORT: Custom
-    // ASAN_OPTIONS set without symbolize=0 - please fix!", afl-fuzz-init.c), so
-    // every `--engine afl++` run died in AFL's pre-flight check and no afl++
-    // pass was ever recorded. It is also what a fuzz child wants: no
-    // llvm-symbolizer fork in the hot loop, and crashes are re-symbolized on
-    // replay.
+    // `symbolize=0` is deliberately NOT set here. AFL++ v4 refuses to start when
+    // it inherits a custom `ASAN_OPTIONS` without it, and the afl-fuzz spawn sets
+    // it on its own child env for that reason — but this env goes to BUILTIN
+    // children, whose sanitizer reports must stay symbolized: the file and line
+    // in the report are what join a crash to the static finding on the same line.
+    // Adding it here to appease AFL turned every `fuzz_confirmed` static finding
+    // into `fuzz_exercised`.
     for key in ["ASAN_OPTIONS", "UBSAN_OPTIONS"] {
         if !extra_env.iter().any(|(k, _)| k == key) {
             extra_env.push((
                 key.to_owned(),
                 multicore_fuzz::merge_sanitizer_options(
                     std::env::var(key).ok().as_deref(),
-                    "abort_on_error=1:halt_on_error=1:symbolize=0",
+                    "abort_on_error=1:halt_on_error=1",
                 ),
             ));
         }
@@ -5954,6 +5974,15 @@ mod fuzz_child_env_tests {
             assert!(
                 value.1.contains("halt_on_error=1") && value.1.contains("abort_on_error=1"),
                 "{key} must halt+abort on a sanitizer report: {}",
+                value.1
+            );
+            // ...but NOT symbolize=0. AFL++ needs that on its own child; setting
+            // it here stripped file:line from every builtin child's report, and
+            // file:line is what joins a crash to the static finding at the same
+            // line, so fuzz_confirmed silently became fuzz_exercised.
+            assert!(
+                !value.1.contains("symbolize"),
+                "{key} must leave symbolization on for the fuzz-confirmation join: {}",
                 value.1
             );
         }

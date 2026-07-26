@@ -1,0 +1,11 @@
+{
+ "lane": "c",
+ "repo": "ExistentialAudio/BlackHole",
+ "stars": 19440,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "e2b22aaaba4e507a097131704bf96dabc004d9cf",
+ "clone_s": 0.5,
+ "lane_check": "too few c files (c: 2 files / 3935 lines; top=c(3935))",
+ "status": "rejected_lane"
+}

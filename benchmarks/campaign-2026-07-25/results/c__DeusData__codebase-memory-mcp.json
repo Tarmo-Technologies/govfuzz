@@ -1,0 +1,55 @@
+{
+ "lane": "c",
+ "repo": "DeusData/codebase-memory-mcp",
+ "stars": 35355,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --json --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp.cwd/sloc.json",
+   "exit": 1,
+   "wall_s": 4.13,
+   "timed_out": false,
+   "panic": false
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --format json --top 100000",
+   "exit": 0,
+   "wall_s": 388.24,
+   "timed_out": false,
+   "panic": false,
+   "count": 27045,
+   "by_language": {
+    "c": 26145,
+    "cpp": 900
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 1,
+   "wall_s": 7.72,
+   "timed_out": false,
+   "panic": false,
+   "sarif": false
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp/sbom",
+   "exit": 0,
+   "wall_s": 1.61,
+   "timed_out": false,
+   "panic": false,
+   "components": 422
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --work-dir /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.31,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "97ce23f9827177fff3858831156e9795c6832b18",
+ "clone_s": 18.1,
+ "lane_check": "c: 819 files / 37958470 lines; top=c(37958470)",
+ "status": "done"
+}

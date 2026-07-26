@@ -6,7 +6,7 @@ reports the opposite: govfuzz run over 500 open-source projects picked by
 star rank rather than by suitability, across all sixteen languages it supports,
 with every failure counted.
 
-The sweep was run to find defects. It found fourteen, listed below with the
+The sweep was run to find defects. It found nineteen, listed below with the
 project that exposed each one. The measurements come after the fixes, from a
 single pinned binary over the whole corpus.
 
@@ -63,6 +63,12 @@ a regression test:
 | core | `--campaign-time` was billed from process start | discovery on a large tree consumed the budget: 8606 candidates, **0** attempted |
 | core | the budget did not bound work already running | a 150-second budget took ten minutes |
 | triage | `verify-poc` on a capsule packaged as non-reproducing | reported FAIL, reading as a regression rather than a known limitation |
+| Rust | a binary-only crate has no `src/lib.rs`, and the generated manifest did not say where the library was | cargo refused the manifest: "can't find library `vaultwarden`" |
+| Rust | a path dependency inside the crate was pinned back to the original tree, which the copy also contained | "package collision in the lockfile" |
+| C# | an old-style project declares `<TargetFrameworkVersion>`, not `<TargetFramework>` | .NET Framework projects were referenced anyway and died on reference assemblies that do not exist off Windows — 28 targets |
+| core | parsing recurses, and a main thread's 8 MiB is not enough for real source | vllm and milvus **aborted the whole run** during discovery |
+| report | a file's static findings were keyed by the target being harnessed | one Fortran project reported **120 findings for 24 real weaknesses** |
+| report | a compiler `note:` was read as the blocker | Ventoy's histogram named a deprecation notice as what stopped the build |
 
 Two of those were caused during this campaign and caught by it: a repair-loop
 `break` that reached an `unreachable!`, and a binary rebuilt mid-sweep that would

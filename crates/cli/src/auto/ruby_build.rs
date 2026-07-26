@@ -160,13 +160,84 @@ pub fn build_ruby_harness(
     // Build gate 2: require smoke-test — actually load the harness (which requires
     // the target) so an un-loadable target (missing gem, load-time error) is a CLEAN
     // SKIP, not a silent zero-exec run.
-    let smoke = crate::command_output::output_with_timeout(
-        Command::new(&ruby)
-            .arg("-e")
-            .arg(format!("require '{}'", harness_path.display()))
-            .env("RUBYLIB", &load_paths),
-        Duration::from_secs(30),
-    );
+    //
+    // A Rails-shaped project resolves constants through an autoloader that only
+    // exists once the framework has booted, so loading one file directly stops
+    // at `uninitialized constant ActiveSupport::OrderedOptions` even with every
+    // load path right. The file that defines it is in the tree, under the name
+    // the autoloader would use, so each such constant is resolved to its file
+    // and pre-required, one layer per round.
+    const MAX_AUTOLOAD_ROUNDS: usize = 10;
+    let mut preludes: Vec<String> = Vec::new();
+    let mut smoke_result = None;
+    for _ in 0..=MAX_AUTOLOAD_ROUNDS {
+        let attempt = crate::command_output::output_with_timeout(
+            Command::new(&ruby)
+                .arg("-e")
+                .arg(format!("require '{}'", harness_path.display()))
+                .env("RUBYLIB", &load_paths),
+            Duration::from_secs(30),
+        );
+        let Ok(out) = attempt else {
+            smoke_result = Some(attempt);
+            break;
+        };
+        if out.status.success() {
+            smoke_result = Some(Ok(out));
+            break;
+        }
+        let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+        let Some(constant) = uninitialized_constant(&stderr) else {
+            smoke_result = Some(Ok(out));
+            break;
+        };
+        let Some(require_path) = resolve_constant_file(&constant, &roots) else {
+            smoke_result = Some(Ok(out));
+            break;
+        };
+        if preludes.contains(&require_path) {
+            // The file that defines the constant IS in the tree and was already
+            // required, so something inside it failed. Load it on its own to
+            // surface that cause — usually an uninstalled gem — instead of
+            // reporting the downstream NameError, which names nothing to fix.
+            let probe = crate::command_output::output_with_timeout(
+                Command::new(&ruby)
+                    .arg("-e")
+                    .arg(format!("require '{require_path}'"))
+                    .env("RUBYLIB", &load_paths),
+                Duration::from_secs(30),
+            );
+            if let Ok(probe) = probe {
+                if !probe.status.success() {
+                    let probe_err = String::from_utf8_lossy(&probe.stderr);
+                    if let Some(module) =
+                        crate::auto::script_load_roots::missing_module_name(&probe_err)
+                    {
+                        return RubyBuildResult::Failed {
+                            reason: format!(
+                                "target `{}` is not loadable (skipped cleanly): missing module \
+                                 `{module}` (not in the project and not installed), needed by \
+                                 `{require_path}` which defines `{constant}`",
+                                candidate.name,
+                            ),
+                            skip: true,
+                        };
+                    }
+                }
+            }
+            smoke_result = Some(Ok(out));
+            break;
+        }
+        preludes.push(require_path);
+        let harness_src = generate_harness_with_preludes(&target_abs, &roots, &call, &preludes);
+        if let Err(e) = std::fs::write(&harness_path, &harness_src) {
+            return RubyBuildResult::Failed {
+                reason: format!("write harness {}: {e}", harness_path.display()),
+                skip: false,
+            };
+        }
+    }
+    let smoke = smoke_result.expect("the retry loop always records an outcome");
     match smoke {
         Ok(out) if out.status.success() => {}
         Ok(out) => {
@@ -272,7 +343,70 @@ fn resolve_target(candidate: &Candidate) -> Result<(RubyMethod, String), String>
 
 /// Emit `govfuzzgen.rb` defining a global `govfuzz_run_one(data)` that loads the
 /// target and passes the fuzz bytes as a `String`.
+/// The constant ruby said was missing, from `uninitialized constant A::B`.
+fn uninitialized_constant(stderr: &str) -> Option<String> {
+    let at = stderr.find("uninitialized constant ")?;
+    let rest = &stderr[at + "uninitialized constant ".len()..];
+    let name: String = rest
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == ':')
+        .collect();
+    (!name.is_empty()).then_some(name)
+}
+
+/// `ActiveSupport::OrderedOptions` -> `active_support/ordered_options`, the path
+/// every Ruby autoloader (Zeitwerk and the classic convention before it) maps a
+/// constant to. Returns the first such file that exists under a load root.
+fn resolve_constant_file(constant: &str, roots: &[std::path::PathBuf]) -> Option<String> {
+    let relative: String = constant
+        .split("::")
+        .filter(|part| !part.is_empty())
+        .map(underscore)
+        .collect::<Vec<_>>()
+        .join("/");
+    if relative.is_empty() {
+        return None;
+    }
+    for root in roots {
+        let candidate = root.join(format!("{relative}.rb"));
+        if candidate.is_file() {
+            return Some(relative);
+        }
+    }
+    None
+}
+
+/// ActiveSupport's `underscore`: CamelCase to snake_case, acronym-aware
+/// (`HTTPResponse` -> `http_response`).
+fn underscore(name: &str) -> String {
+    let chars: Vec<char> = name.chars().collect();
+    let mut out = String::with_capacity(name.len() + 4);
+    for (index, ch) in chars.iter().enumerate() {
+        if ch.is_uppercase() && index > 0 {
+            let prev = chars[index - 1];
+            let next_is_lower = chars.get(index + 1).is_some_and(|c| c.is_lowercase());
+            if prev.is_lowercase()
+                || prev.is_ascii_digit()
+                || (prev.is_uppercase() && next_is_lower)
+            {
+                out.push('_');
+            }
+        }
+        out.extend(ch.to_lowercase());
+    }
+    out
+}
+
 fn generate_harness(target_abs: &Path, load_roots: &[std::path::PathBuf], call: &str) -> String {
+    generate_harness_with_preludes(target_abs, load_roots, call, &[])
+}
+
+fn generate_harness_with_preludes(
+    target_abs: &Path,
+    load_roots: &[std::path::PathBuf],
+    call: &str,
+    preludes: &[String],
+) -> String {
     // Pushed in reverse so the FIRST root ends up first after the unshifts: the
     // target's own package root must beat a sibling package that defines the
     // same module name.
@@ -284,17 +418,26 @@ fn generate_harness(target_abs: &Path, load_roots: &[std::path::PathBuf], call: 
             format!("$LOAD_PATH.unshift('{dir}') unless $LOAD_PATH.include?('{dir}')\n")
         })
         .collect();
+    // Constants the project's autoloader would have resolved, required up front
+    // because nothing booted that autoloader here. Best-effort: a file that
+    // fails on its own is not fatal, the target require below decides.
+    let prelude_setup: String = preludes
+        .iter()
+        .map(|path| format!("begin; require '{path}'; rescue Exception; end\n"))
+        .collect();
     format!(
         "# SPDX-License-Identifier: Apache-2.0\n\
          # Generated by govfuzz (native Ruby lane). Loads the target and passes the\n\
          # fuzz bytes as a String. Do not edit.\n\
          {path_setup}\
+         {prelude_setup}\
          require '{target}'\n\
          \n\
          def govfuzz_run_one(data)\n\
          \x20 {call}\n\
          end\n",
         path_setup = path_setup,
+        prelude_setup = prelude_setup,
         target = target_abs.display(),
         call = call,
     )
@@ -338,6 +481,57 @@ mod tests {
         assert!(
             lib_at > root_at,
             "the package root must be unshifted last so it searches first"
+        );
+    }
+
+    #[test]
+    fn an_autoloaded_constant_resolves_to_the_file_that_defines_it() {
+        // Rails resolves constants through an autoloader that is not running
+        // when one file is loaded directly, so the load stops at
+        // `uninitialized constant ActiveSupport::OrderedOptions` even though
+        // the file defining it is right there under the load root.
+        assert_eq!(
+            uninitialized_constant(
+                "x.rb:3:in `<main>': uninitialized constant ActiveSupport::OrderedOptions (NameError)"
+            )
+            .as_deref(),
+            Some("ActiveSupport::OrderedOptions")
+        );
+        assert_eq!(uninitialized_constant("some other failure"), None);
+
+        assert_eq!(underscore("ActiveSupport"), "active_support");
+        assert_eq!(underscore("OrderedOptions"), "ordered_options");
+        assert_eq!(underscore("HTTPResponse"), "http_response");
+        assert_eq!(underscore("Base64"), "base64");
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().join("activesupport/lib");
+        std::fs::create_dir_all(root.join("active_support")).expect("mkdir");
+        std::fs::write(root.join("active_support/ordered_options.rb"), "").expect("write");
+        assert_eq!(
+            resolve_constant_file("ActiveSupport::OrderedOptions", &[root.clone()]).as_deref(),
+            Some("active_support/ordered_options")
+        );
+        // A constant with no matching file is not guessed at.
+        assert_eq!(resolve_constant_file("Nope::Missing", &[root]), None);
+    }
+
+    #[test]
+    fn preludes_are_required_before_the_target_and_never_abort_the_load() {
+        let h = generate_harness_with_preludes(
+            Path::new("/proj/lib/x.rb"),
+            &[std::path::PathBuf::from("/proj/lib")],
+            "X.parse(data)",
+            &["active_support/ordered_options".to_owned()],
+        );
+        let prelude_at = h
+            .find("require 'active_support/ordered_options'")
+            .expect("prelude present");
+        let target_at = h.find("require '/proj/lib/x.rb'").expect("target present");
+        assert!(prelude_at < target_at, "preludes come first: {h}");
+        assert!(
+            h.contains("begin; require 'active_support/ordered_options'; rescue Exception; end"),
+            "a prelude that fails must not abort the load: {h}"
         );
     }
 

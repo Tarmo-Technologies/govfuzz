@@ -204,10 +204,7 @@ fn defined_symbols(source: &str) -> Vec<String> {
             // are not definitions. Only a prefix of type/attribute words may
             // precede the keyword.
             let before = trimmed[..at].trim();
-            if !before
-                .split_whitespace()
-                .all(is_procedure_prefix_word)
-            {
+            if !before.split_whitespace().all(is_procedure_prefix_word) {
                 continue;
             }
             let rest = trimmed[at + keyword.len()..].trim_start();

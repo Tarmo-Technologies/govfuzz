@@ -1989,6 +1989,25 @@ pub fn dependency_manifest_pointer(work_dir: &Path) -> String {
     }
 }
 
+/// The ecosystem package an interpreted lane reported as unresolvable, from the
+/// `missing module \`NAME\`` marker those lanes put in their skip reason.
+fn missing_language_package(outcome: &Outcome) -> Option<String> {
+    let reason = match outcome {
+        Outcome::UnsupportedParams { reason } => reason.as_str(),
+        Outcome::FailedBuild { .. }
+        | Outcome::BuiltAndFuzzed { .. }
+        | Outcome::BuiltNotEntered { .. }
+        | Outcome::Built { .. }
+        | Outcome::UnrecoverableLink { .. }
+        | Outcome::UnrecoverableRuntime { .. }
+        | Outcome::ReportOnly { .. } => return None,
+    };
+    let at = reason.find("missing module `")?;
+    let rest = &reason[at + "missing module `".len()..];
+    let name = rest.split('`').next()?.trim();
+    (!name.is_empty()).then(|| name.to_owned())
+}
+
 fn add_checkpoint_result(
     manifest: &mut crate::auto::dep_manifest::DependencyManifest,
     source_root: &Path,
@@ -2006,6 +2025,24 @@ fn add_checkpoint_result(
         | Outcome::UnrecoverableRuntime { repairs, .. } => repairs,
         Outcome::UnsupportedParams { .. } | Outcome::ReportOnly { .. } => &[],
     };
+    // An interpreted target that could not load because a package is not
+    // installed is a missing DEPENDENCY, not an unsupported signature. Without
+    // this the manifest claimed "no external dependencies were missing" for a
+    // tree where every target skipped on an uninstalled gem.
+    if let Some(package) = missing_language_package(&result.outcome) {
+        manifest.push_merge_detailed(
+            DepKind::LanguagePackage,
+            package.clone(),
+            vec![id.clone()],
+            false,
+            crate::auto::dep_manifest::acquisition_hint(DepKind::LanguagePackage, &package),
+            RequirementBasis::Observed,
+            Some(format!(
+                "the {:?} target could not be loaded: its runtime could not resolve `{package}`",
+                result.candidate.lang,
+            )),
+        );
+    }
     for repair in repairs {
         match repair {
             Repair::HeaderPlaceholder { virtual_path } => {

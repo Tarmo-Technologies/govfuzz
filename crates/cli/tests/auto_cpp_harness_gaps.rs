@@ -251,6 +251,9 @@ public:
 "#;
 
 fn assert_built_and_found(root: &Path, target_needle: &str) {
+    // One fuzz campaign at a time: this assertion depends on getting the whole
+    // wall-clock budget, not a seventh of it.
+    let _serial = support::fuzz_serial_guard();
     let status = run_auto(root, "8");
     assert!(status.success() || status.code() == Some(1));
     let run_json = read_run_json(root);

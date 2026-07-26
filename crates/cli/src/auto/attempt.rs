@@ -1584,7 +1584,7 @@ fn undefined_external_types_for_lang(
             // failed_build so the dependency manifest still surfaces it.
             BuildErrorKind::Other { tail }
                 if !external_placeholders.is_empty()
-                    && other_error_is_placeholder_class_misuse(tail) =>
+                    && other_error_is_placeholder_class_misuse(tail, &external_placeholders) =>
             {
                 saw_placeholder_class_misuse = true;
             }
@@ -1606,20 +1606,95 @@ fn undefined_external_types_for_lang(
     Some(names)
 }
 
-/// Whether an `Other` build diagnostic is the residue of placeholdering an
-/// external CLASS type as an opaque scalar/`void *`: the compiler rejects the
-/// class-shaped use of what is now a scalar. These phrasings only arise when a
-/// value type is used with member/call/construction syntax it does not support,
-/// so they are a reliable signal that the failure is downstream of an
-/// unsuppliable external type — not a genuine govfuzz codegen bug (those carry
-/// "no member named"/"use of undeclared identifier", handled by
-/// `is_codegen_error`).
-fn other_error_is_placeholder_class_misuse(tail: &str) -> bool {
-    let lower = tail.to_ascii_lowercase();
-    lower.contains("is not a function or function pointer")
-        || lower.contains("is not a structure or union")
-        || lower.contains("member reference base type")
-        || lower.contains("cannot initialize a member subobject")
+/// Whether an `Other` build diagnostic is the residue of standing in for an
+/// external CLASS type: the compiler rejects the class-shaped use of whatever
+/// govfuzz substituted.
+///
+/// Matching on wording alone was wrong, because the substitution's shape is not
+/// fixed. It used to be an opaque scalar, which produces "called object type
+/// '…' is not a function"; today the repair loop infers members from usage and
+/// synthesizes `struct CString { void *(*GetLength)(); … }`, which produces
+/// arity mismatches, `void *` return-type mismatches and pointer/integer
+/// comparisons instead — none of the old phrasings. So the decision is made on
+/// PROVENANCE as well: a diagnostic in the project's own source, or one naming a
+/// type we substituted, is the substitution's fault; a diagnostic in the
+/// generated harness that names nothing we substituted, or a line with no source
+/// location at all (a link error), keeps its `failed_build` so the dependency
+/// manifest still surfaces it.
+fn other_error_is_placeholder_class_misuse(tail: &str, placeholders: &[&String]) -> bool {
+    let mut accepted = false;
+    for line in tail.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let lower = line.to_ascii_lowercase();
+        // The phrasings an OPAQUE scalar placeholder produces. Kept as a direct
+        // match because they can arrive without any source location at all.
+        if lower.contains("is not a function or function pointer")
+            || lower.contains("is not a structure or union")
+            || lower.contains("member reference base type")
+            || lower.contains("cannot initialize a member subobject")
+        {
+            accepted = true;
+            continue;
+        }
+        // A diagnostic that NAMES a type we placeholdered is that placeholder's
+        // doing wherever it appears, including inside the generated harness —
+        // "no matching constructor for initialization of 'CString'" is the
+        // harness trying to construct a class it was handed a stand-in for.
+        if placeholders.iter().any(|name| line.contains(name.as_str())) {
+            accepted = true;
+            continue;
+        }
+        match diagnostic_source_file(line) {
+            // A diagnostic in the PROJECT's own source cannot be a govfuzz
+            // codegen bug: govfuzz did not write that code, and it compiled
+            // before a placeholder type was injected under it. This is what
+            // makes the check independent of the placeholder's exact shape —
+            // the member-inferred struct govfuzz synthesizes today yields
+            // arity, return-type and comparison mismatches that share no
+            // wording at all with the scalar phrasings above.
+            Some(file) if !is_generated_harness_file(file) => accepted = true,
+            // Our own generated harness, or a line with no source location (a
+            // link error): not attributable to the placeholder.
+            _ => return false,
+        }
+    }
+    accepted
+}
+
+/// The file a `path:line[:col]: error: ...` diagnostic points at, if the line
+/// really has that shape. Deliberately strict: a link error (`ld: undefined
+/// reference to ...`) must NOT read as a diagnostic about a source file, or it
+/// would be excused as placeholder residue.
+fn diagnostic_source_file(line: &str) -> Option<&str> {
+    let (path, rest) = line.split_once(':')?;
+    let (line_no, rest) = rest.split_once(':')?;
+    if !is_ascii_number(line_no) {
+        return None;
+    }
+    // The column is optional in some compilers' output.
+    let message = match rest.split_once(':') {
+        Some((column, tail)) if is_ascii_number(column) => tail,
+        _ => rest,
+    };
+    if !message.to_ascii_lowercase().contains("error") {
+        return None;
+    }
+    let path = path.trim();
+    Some(path.rsplit('/').next().unwrap_or(path))
+}
+
+fn is_ascii_number(s: &str) -> bool {
+    let s = s.trim();
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Whether a diagnostic's file is the harness govfuzz generated, as opposed to
+/// the project's own source.
+fn is_generated_harness_file(file: &str) -> bool {
+    matches!(file, "main.cpp" | "main.c" | "main.cc" | "main.cxx")
 }
 
 /// Clear and recreate a harness's `repairs/` directory at the start of an
@@ -7783,6 +7858,65 @@ mod undefined_external_types_tests {
             undefined_external_types(&errors, &idx, &BTreeSet::new()),
             None
         );
+    }
+
+    /// The residue of the placeholder govfuzz ACTUALLY synthesizes today. The
+    /// repair loop stopped emitting an opaque scalar for a field-accessed type
+    /// and started inferring members from usage — `struct CString { void
+    /// *(*GetAt)(); void *(*GetLength)(); }` — so clang reports arity, return
+    /// type and pointer/integer mismatches, sharing no wording with the scalar
+    /// phrasings. Matching on wording alone left this a bare `failed_build`.
+    #[test]
+    fn member_inferred_struct_residue_also_degrades_to_report_only() {
+        let idx = DeclarationIndex::default();
+        let errors = vec![BuildErrorKind::Other {
+            tail: "/tmp/srcroot/handler.cpp:10:25: error: comparison between pointer and \
+                   integer ('void *' and 'int')\n/tmp/srcroot/handler.cpp:10:43: error: too many \
+                   arguments to function call, expected 0, have 1\n/tmp/srcroot/handler.cpp:14:12: \
+                   error: cannot initialize return object of type 'int' with an rvalue of type \
+                   'void *'\nmain.cpp:106:55: error: no matching constructor for initialization \
+                   of 'CString'"
+                .to_owned(),
+        }];
+        let synthesized = BTreeSet::from(["CString".to_owned()]);
+        assert_eq!(
+            undefined_external_types(&errors, &idx, &synthesized),
+            Some(vec!["CString".to_owned()]),
+            "the project's own source cannot hold a govfuzz codegen bug, and the \
+             harness diagnostic names the substituted type"
+        );
+    }
+
+    /// Provenance is what separates the two: a diagnostic in the GENERATED
+    /// harness that names nothing govfuzz substituted is govfuzz's own bug and
+    /// must keep its failed_build, even though a placeholder exists.
+    #[test]
+    fn a_codegen_bug_in_the_generated_harness_stays_failed_build() {
+        let idx = DeclarationIndex::default();
+        let errors = vec![BuildErrorKind::Other {
+            tail: "main.cpp:88:9: error: use of undeclared identifier 'gf_decode_widget'"
+                .to_owned(),
+        }];
+        let synthesized = BTreeSet::from(["CString".to_owned()]);
+        assert_eq!(
+            undefined_external_types(&errors, &idx, &synthesized),
+            None,
+            "a fault in govfuzz's own generated code must stay visible"
+        );
+    }
+
+    /// One excusable line does not excuse the rest: a harness codegen bug
+    /// alongside placeholder residue still keeps the failed_build.
+    #[test]
+    fn mixed_residue_and_codegen_bug_stays_failed_build() {
+        let idx = DeclarationIndex::default();
+        let errors = vec![BuildErrorKind::Other {
+            tail: "handler.cpp:10:43: error: too many arguments to function call, expected 0, \
+                   have 1\nmain.cpp:88:9: error: use of undeclared identifier 'gf_decode_widget'"
+                .to_owned(),
+        }];
+        let synthesized = BTreeSet::from(["CString".to_owned()]);
+        assert_eq!(undefined_external_types(&errors, &idx, &synthesized), None);
     }
 
     #[test]

@@ -126,6 +126,23 @@ Across 534 projects and 3204 surface invocations: **0 panics**, **17 timeouts**.
 | 38 | cpp | C++ parameter "X" of type "X" has no byte-buffer decoder (auto-harness |
 | 34 | csharp | instance method "X" |
 
+## Reading the blocker table
+
+The largest single class is not a govfuzz limitation: it is uninstalled
+dependencies. TypeScript's 179 and Python's 171 top entries are "cannot find
+module" — the corpus was cloned and measured without running `npm install` or
+`pip install` for 500 projects, so a target whose module graph reaches a package
+that is not on the machine cannot be loaded. govfuzz now names the package and
+records it as an acquirable requirement (`missing-deps.json`, actionable with
+`--install-deps`) rather than skipping silently, which is what the campaign
+changed. Install the dependencies and those targets move.
+
+What IS a govfuzz limit is the next tier: parameters whose types the project
+never defines (80 in C, 38 in C++, 47 in Rust, 58 in Go), C++ headers that
+cannot be included outside their owning translation unit (53), and instance
+methods whose receiver cannot be constructed (34 in C#). Those are the levers
+worth building next, in that order.
+
 ## Honest limits
 
 - A target whose parameters are types the project does not define — an external

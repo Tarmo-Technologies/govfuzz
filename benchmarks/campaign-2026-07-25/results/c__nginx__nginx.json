@@ -1,0 +1,368 @@
+{
+ "lane": "c",
+ "repo": "nginx/nginx",
+ "stars": 31224,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx --json --out /home/ubuntu/govfuzz-sweep-work/c__nginx__nginx.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 179470,
+   "sloc_by_lang": {
+    "c": 178812,
+    "config": 418,
+    "perl": 221,
+    "cpp": 19
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.33,
+   "timed_out": false,
+   "panic": false,
+   "count": 3286,
+   "by_language": {
+    "c": 3278,
+    "cpp": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx --out /home/ubuntu/govfuzz-sweep-work/c__nginx__nginx/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.26,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 102,
+   "by_severity": {
+    "high": 86,
+    "medium": 16
+   },
+   "top_rules": {
+    "GF-407": 81,
+    "GF-406": 8,
+    "GF-422": 8,
+    "GF-405": 3,
+    "GF-472": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx --out /home/ubuntu/govfuzz-sweep-work/c__nginx__nginx/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 8
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx --work-dir /home/ubuntu/govfuzz-sweep-work/c__nginx__nginx --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 77.1,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 20,
+    "discovered_total": 3240,
+    "dropped_by_cap": 3220,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 6,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 0,
+    "synthesized_macros": 9,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 1,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ngx_file_aio_read",
+     "source": "ngx_linux_aio_read.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'file' of type 'ngx_file_t *' has no byte-buffer decoder after struct synthesis: opaque type 'struct ngx_file_s' for pointer parameter 'file' needs lifecycle support (Phase C); sequence generation also failed first: C sequence handle 'ngx_file_t' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_file_aio_read",
+     "source": "ngx_file_aio_read.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'file' of type 'ngx_file_t *' has no byte-buffer decoder after struct synthesis: opaque type 'struct ngx_file_s' for pointer parameter 'file' needs lifecycle support (Phase C); sequence generation also failed first: C sequence handle 'ngx_file_t' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_read_file",
+     "source": "ngx_files.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'file' of type 'ngx_file_t *' has no byte-buffer decoder after struct synthesis: opaque type 'struct ngx_file_s' for pointer parameter 'file' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_read_file",
+     "source": "ngx_files.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'file' of type 'ngx_file_t *' has no byte-buffer decoder after struct synthesis: opaque type 'struct ngx_file_s' for pointer parameter 'file' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_parse_addr",
+     "source": "ngx_inet.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 14,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_parse_addr_port",
+     "source": "ngx_inet.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_thread_read",
+     "source": "ngx_files.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'file' of type 'ngx_file_t *' has no byte-buffer decoder after struct synthesis: opaque type 'struct ngx_file_s' for pointer parameter 'file' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_resolver_process_srv",
+     "source": "ngx_resolver.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ident' of type 'ngx_uint_t' has no byte-buffer decoder after struct synthesis: opaque type 'uintptr_t' for parameter 'ident' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_resolver_process_ptr",
+     "source": "ngx_resolver.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ident' of type 'ngx_uint_t' has no byte-buffer decoder after struct synthesis: opaque type 'uintptr_t' for parameter 'ident' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_quic_add_handshake_data",
+     "source": "ngx_event_quic_ssl.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ssl_conn' of type 'ngx_ssl_conn_t *' has no byte-buffer decoder after struct synthesis: opaque type 'ngx_ssl_conn_t' for pointer parameter 'ssl_conn' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_bpf_map_delete",
+     "source": "ngx_bpf.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_bpf_map_lookup",
+     "source": "ngx_bpf.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SSL_provide_quic_data",
+     "source": "ngx_event_quic_openssl_compat.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ssl' of type 'SSL *' has no byte-buffer decoder after struct synthesis: opaque type 'SSL' for pointer parameter 'ssl' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "nginx::rflush",
+     "source": "nginx.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2131.378918495019,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ngx_stream_upstream_rr_peer_free_locked",
+     "source": "ngx_stream_upstream_round_robin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/stream/ngx_stream_upstream_round_robin.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/stream/ngx_stream_upstream_round_robin.h:12:10: fatal error: 'ngx_config.h' file not found |    12 | #include <ngx_config.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_http_upstream_rr_peer_free_locked",
+     "source": "ngx_http_upstream_round_robin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/http/ngx_http_upstream_round_robin.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/http/ngx_http_upstream_round_robin.h:12:10: fatal error: 'ngx_config.h' file not found |    12 | #include <ngx_config.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_stream_upstream_rr_peer_free",
+     "source": "ngx_stream_upstream_round_robin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/stream/ngx_stream_upstream_round_robin.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/stream/ngx_stream_upstream_round_robin.h:12:10: fatal error: 'ngx_config.h' file not found |    12 | #include <ngx_config.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_stream_upstream_rr_peer_unref",
+     "source": "ngx_stream_upstream_round_robin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/stream/ngx_stream_upstream_round_robin.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/stream/ngx_stream_upstream_round_robin.h:12:10: fatal error: 'ngx_config.h' file not found |    12 | #include <ngx_config.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_http_upstream_rr_peer_free",
+     "source": "ngx_http_upstream_round_robin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/http/ngx_http_upstream_round_robin.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/http/ngx_http_upstream_round_robin.h:12:10: fatal error: 'ngx_config.h' file not found |    12 | #include <ngx_config.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ngx_http_upstream_rr_peer_unref",
+     "source": "ngx_http_upstream_round_robin.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/http/ngx_http_upstream_round_robin.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/nginx__nginx/src/http/ngx_http_upstream_round_robin.h:12:10: fatal error: 'ngx_config.h' file not found |    12 | #include <ngx_config.h> |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing macro",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "undefined symbol",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C); sequ\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 6,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "33eedb5ae66a4b492749f5747327d0867d5f5d0b",
+ "clone_s": 0.0,
+ "lane_check": "c: 264 files / 174763 lines; top=c(174763)",
+ "status": "done"
+}

@@ -2566,7 +2566,22 @@ fn run_attempt(
                  round(s); abandoning this target",
                 candidate.harness_id
             );
-            break;
+            return Ok(AttemptResult {
+                candidate: candidate.clone(),
+                outcome: Outcome::FailedBuild {
+                    repairs: manifest.repairs.clone(),
+                    retries: retry,
+                    last_errors: vec![build_classifier::BuildErrorKind::Other {
+                        tail: format!(
+                            "build abandoned after {retry} repair round(s): the \
+                             --campaign-time budget was exhausted. This is a cut-off, \
+                             not a diagnosis: re-run with a larger --campaign-time to \
+                             see whether the target builds."
+                        ),
+                    }],
+                },
+                harness_dir,
+            });
         }
         progress.update(&ProgressUpdate::phase(Phase::Build { retry }));
         // Round 0 always builds outright, so a target that compiles as-is never

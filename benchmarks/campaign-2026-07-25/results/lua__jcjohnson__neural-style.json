@@ -1,0 +1,11 @@
+{
+ "lane": "lua",
+ "repo": "jcjohnson/neural-style",
+ "stars": 18285,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "07c4b8299f8fbdafec0c514fc820ff1d7ff62e46",
+ "clone_s": 1.4,
+ "lane_check": "too few lua files (lua: 1 files / 531 lines; top=lua(531))",
+ "status": "rejected_lane"
+}

@@ -1,0 +1,202 @@
+{
+ "lane": "go",
+ "repo": "mudler/LocalAI",
+ "stars": 47853,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/mudler__LocalAI --work-dir /home/ubuntu/govfuzz-sweep-work/go__mudler__LocalAI --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 42.89,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 4391,
+    "dropped_by_cap": 4381,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "omni_load",
+     "source": "gomnivoicecpp.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (3 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "qt3_load",
+     "source": "goqwen3ttscpp.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (5 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ContentTypeFromExtension",
+     "source": "identify.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/mudler/xlog@v0.0.6 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CapabilityFromGPU",
+     "source": "capabilities.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/mudler/xlog@v0.0.6 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_tool_calls",
+     "source": "mlx_utils.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4287.949138807762,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sherpa_shim_diarize_config_set_segmentation_num_threads",
+     "source": "shim.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sherpa_shim_diarize_config_set_embedding_num_threads",
+     "source": "shim.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BackendServicer.load_audio_from_base64",
+     "source": "backend.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target module `backend` is not importable under this interpreter (skipped cleanly): ModuleNotFoundError: No module named 'backend_pb2'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "addClientMCPServer",
+     "source": "mcpClientStorage.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "/home/ubuntu/govfuzz-corpus-500/go/mudler__LocalAI/core/http/react-ui/src/utils/mcpClientStorage.js requires an npm dependency that is not installed (Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/go/mudler__LocalAI/core/http/react-ui/src/utils/format' imported from /home/ubuntu/govfuzz-corpus-500/go/mudler__LocalAI/core/http/react-ui/src/utils/mcpClientStorage.js); run `npm install` in the project to fuzz it",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "audio_decode",
+     "source": "service.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'audio_decode' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "go build failed: go: github.com/mudler/xlog@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Cannot find module \"X\" imported from /home/ubuntu/govfuzz-corpus-N/go/mudler__LocalAI/core/http/react-ui/src/utils/mcpClientStorage.js); run \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target module \"X\"backend_pb2\"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "90355cd44420e0cdbd9b79d7ce763341990a6851",
+ "clone_s": 2.4,
+ "lane_check": "go: 1494 files / 509913 lines; top=go(509913)",
+ "status": "done"
+}

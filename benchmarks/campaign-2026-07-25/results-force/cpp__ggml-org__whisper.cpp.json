@@ -1,0 +1,644 @@
+{
+ "lane": "cpp",
+ "repo": "ggml-org/whisper.cpp",
+ "stars": 52299,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 409.41,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 2,
+    "discovered_total": 6993,
+    "dropped_by_cap": 6991,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 43
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ggml_backend_rpc_start_server",
+     "source": "ggml-rpc.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ggml_backend_opencl_buffer_set_tensor",
+     "source": "ggml-opencl.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (7 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-405-9EC29C83",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-06575F5A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-0EA7F841",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-139B9499",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1650F916",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1816F8BD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1B6D9F3F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1BCE0EB7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1F61EEB1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-2A7EB084",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-32367E5D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-32371AC5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-38F513BD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-674730A7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-6B34CFDA",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-8D33169A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-91F8F5C4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-95E6FE24",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-A1E1FB72",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-A3F38B3B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-A81C3504",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-ABD74389",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-AD91C8A6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-ADE4292E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-B43DB8F6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-CB971579",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-CCA26D0D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X069F-CE47C592"
+    },
+    {
+     "id": "F-RO-GF-406-D347AC83",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-D5199DF7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-E42E3CCB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-E78D12E5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-EB307351",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-F8383737",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-FF2B8AC5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-08090F67",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-20414413",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-3C1557A9",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-496CAD1D",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-564CC35E",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-6E94E1C6",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-BA42CD4A",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-EA54F6D4",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-424-3BFAE161",
+     "rule": "GF-424",
+     "cwe": [
+      "CWE-457"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X069F-CE47C592"
+    }
+   ]
+  }
+ },
+ "sha": "080bbbe85230f624f0b52127f1ae1218247989f9",
+ "clone_s": 1.7,
+ "lane_check": "cpp: 484 files / 266150 lines; top=cpp(266150)",
+ "status": "done"
+}

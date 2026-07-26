@@ -1,0 +1,218 @@
+{
+ "lane": "go",
+ "repo": "ollama/ollama",
+ "stars": 176895,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --work-dir /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 157.01,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3715,
+    "dropped_by_cap": 3705,
+    "built": 5,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "built_not_entered": 1,
+    "failed_build": 0,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "DecodeFloatTensor",
+     "source": "dtype.go",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 0 repair round(s) (1 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeImage",
+     "source": "image.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/sync@v0.17.0 requires go >= 1.24.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExtractRawFromSafetensors",
+     "source": "extractor.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8579.75043366862,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "llama_ollama_compat::detail::read_at",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (4 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::register_concat_load",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (4 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::decode_base64",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (14 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mlx_dynamic_load",
+     "source": "dynamic.c",
+     "outcome": "built_not_entered",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2174.1385174773363,
+     "reason": "harness executed 6523 time(s) but no pass reached the target-entry checkpoint \u2014 inputs were decode-rejected or the harness bailed before the endpoint",
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_array_new_data_managed_payload",
+     "source": "mlx.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": 1.1886040209902313,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Chat#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 759.8841156802032,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ChatEvent#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 756.9418527361286,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "built_not_entered",
+     "count": 1,
+     "detail": "decode_or_bailout",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "go build failed: go: golang.org/x/sync@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0EE5-91AE6F69"
+    },
+    {
+     "id": "F-RO-GF-406-A573C662",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X01CA-457ADCEE"
+    }
+   ]
+  }
+ },
+ "sha": "64ee2f9847ccaedd8f05a139c30f086e9e0abe73",
+ "clone_s": 5.1,
+ "lane_check": "go: 763 files / 264932 lines; top=go(264932)",
+ "status": "done"
+}

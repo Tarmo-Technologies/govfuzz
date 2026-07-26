@@ -1,0 +1,162 @@
+{
+ "lane": "c",
+ "repo": "robertdavidgraham/masscan",
+ "stars": 25884,
+ "wave": "FORCE",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/robertdavidgraham__masscan --work-dir /home/ubuntu/govfuzz-sweep-work/c__robertdavidgraham__masscan --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 111.75,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 978,
+    "dropped_by_cap": 975,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 5
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 2,
+    "stubbed_symbols_blind": 13,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "readscan_report",
+     "source": "in-report.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 9,
+     "execs_per_sec": 10.409326848458294,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "memcached_udp_parse",
+     "source": "proto-memcached.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 3,
+     "repairs": 36,
+     "execs_per_sec": 1562.8007459348005,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.3611111111111111
+    },
+    {
+     "name": "rawsock_selftest_if",
+     "source": "rawsock.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "forced: unbuildable after 4 repair round(s) (7 residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] forced: unbuildable after N repair round(s) (N residual build error(s) the diagnostic-driven stubbing could not resolve); statically analyzed, not fuzzed",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-93bf7a41",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-122",
+      "CWE-125"
+     ],
+     "cwe_name": "Heap-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0148-942B2A61"
+    },
+    {
+     "id": "F-0001-4485bb7d",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-125"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0148-942B2A61"
+    },
+    {
+     "id": "F-RO-GF-405-1D483BFC",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0365-C10E919F"
+    },
+    {
+     "id": "F-RO-GF-407-B8AF1421",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0365-C10E919F"
+    },
+    {
+     "id": "F-RO-GF-407-CC50FFF8",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0365-C10E919F"
+    }
+   ]
+  }
+ },
+ "sha": "94e118ccd26c2fb263fb2fe731043f7b3240723c",
+ "clone_s": 0.6,
+ "lane_check": "c: 115 files / 47067 lines; top=c(47067)",
+ "status": "done"
+}

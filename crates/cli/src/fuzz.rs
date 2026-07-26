@@ -3838,13 +3838,21 @@ fn apply_fuzz_child_env_overrides(extra_env: &mut Vec<(String, String)>) {
     // explicit selection or MSan/TSan build is not overridden here). ASan already
     // aborts by default; arming it too is belt-and-suspenders and harmless for
     // non-sanitized (interpreted-lane) children, which ignore the vars.
+    //
+    // `symbolize=0` is not optional here: AFL++ v4 refuses to start when it
+    // inherits a custom `ASAN_OPTIONS` without it ("PROGRAM ABORT: Custom
+    // ASAN_OPTIONS set without symbolize=0 - please fix!", afl-fuzz-init.c), so
+    // every `--engine afl++` run died in AFL's pre-flight check and no afl++
+    // pass was ever recorded. It is also what a fuzz child wants: no
+    // llvm-symbolizer fork in the hot loop, and crashes are re-symbolized on
+    // replay.
     for key in ["ASAN_OPTIONS", "UBSAN_OPTIONS"] {
         if !extra_env.iter().any(|(k, _)| k == key) {
             extra_env.push((
                 key.to_owned(),
                 multicore_fuzz::merge_sanitizer_options(
                     std::env::var(key).ok().as_deref(),
-                    "abort_on_error=1:halt_on_error=1",
+                    "abort_on_error=1:halt_on_error=1:symbolize=0",
                 ),
             ));
         }

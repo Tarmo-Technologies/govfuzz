@@ -1,0 +1,246 @@
+{
+ "lane": "ada",
+ "repo": "flyx/OpenGLAda",
+ "stars": 105,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/flyx__OpenGLAda --json --out /home/ubuntu/govfuzz-sweep-work/ada__flyx__OpenGLAda.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 1,
+   "sloc_total": 15192,
+   "sloc_by_lang": {
+    "ada": 15192
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/flyx__OpenGLAda --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.31,
+   "timed_out": false,
+   "panic": false,
+   "count": 1853,
+   "by_language": {
+    "ada": 1853
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/flyx__OpenGLAda --out /home/ubuntu/govfuzz-sweep-work/ada__flyx__OpenGLAda/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 27,
+   "by_severity": {
+    "medium": 25,
+    "high": 2
+   },
+   "top_rules": {
+    "GF-409": 18,
+    "GF-410": 4,
+    "GF-402": 3,
+    "GF-405": 2
+   },
+   "gaps": 1
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/flyx__OpenGLAda --out /home/ubuntu/govfuzz-sweep-work/ada__flyx__OpenGLAda/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/flyx__OpenGLAda --work-dir /home/ubuntu/govfuzz-sweep-work/ada__flyx__OpenGLAda --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 71.57,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 978,
+    "dropped_by_cap": 968,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 7,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 121,
+    "stubbed_ada_units": 1,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "gl.raise_exception_on_opengl_error",
+     "source": "gl-raise_exception_on_opengl_error.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "set_stream",
+     "source": "gl-debug.ads",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 56,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gl.api.subprogram_reference",
+     "source": "gl-api-subprogram_reference.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "tokenize",
+     "source": "tokenization.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4702.053261800199,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "has_extension",
+     "source": "gl-context.ads",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 57,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extension_supported",
+     "source": "glfw.ads",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 120,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "supports_shading_language_version",
+     "source": "gl-context.ads",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 57,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_proc_address",
+     "source": "gl-glx.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Name' of target 'Gl.Glx.Get_Proc_Address' with type 'Interfaces.C.Char_Array': named type Interfaces.C.Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Interfaces.C.Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "invalidate_data",
+     "source": "gl-objects-buffers.ads",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 56,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extension_supported",
+     "source": "glfw-api.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Name' of target 'Glfw.API.Extension_Supported' with type 'C.Char_Array': named type C.Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'C.Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "fatal error: auto_types.h: No such file or directory",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "\"X\" conflicts with declaration at gl.ads:N",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "unit in with clause is private child unit",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type C.Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\" to the pa\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Interfaces.C.Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\u2026",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "16c42a07e6375e6f38a4177d138ff2bcb7aab6e4",
+ "clone_s": 0.5,
+ "lane_check": "ada: 165 files / 15982 lines; top=ada(15982)",
+ "status": "done"
+}

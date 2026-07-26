@@ -1,0 +1,11 @@
+{
+ "lane": "ada",
+ "repo": "PatrikFehrenbach/amass-tools",
+ "stars": 107,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "3f6bc3a0bd5f42c7e689b6647d9bee17b9669f72",
+ "clone_s": 0.4,
+ "lane_check": "too little ada code (ada: 4 files / 44 lines; top=ada(44))",
+ "status": "rejected_lane"
+}

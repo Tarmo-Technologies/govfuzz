@@ -13,5 +13,6 @@
  "darold/pgbadger": "rejected_lane",
  "jimsalterjrs/sanoid": "rejected_lane",
  "adrienverge/openfortivpn": "rejected_lane",
- "curl/trurl": "rejected_lane"
+ "curl/trurl": "rejected_lane",
+ "PatrikFehrenbach/amass-tools": "rejected_lane"
 }

@@ -2514,6 +2514,10 @@ impl AutoSummary {
         let mut runtime_errors = 0;
         let mut report_only = 0;
         let mut findings = 0;
+        // Report-only findings are file-level: collect their ids so the
+        // headline counts each weakness once, however many targets saw it.
+        let mut report_only_finding_ids: std::collections::BTreeSet<String> =
+            std::collections::BTreeSet::new();
         let mut executions = 0;
         let mut total_elapsed_secs = 0.0;
         let mut coverage_edges = 0;
@@ -2559,19 +2563,22 @@ impl AutoSummary {
                 FailedBuild { .. } => failed_build += 1,
                 UnrecoverableLink { .. } => link_errors += 1,
                 UnrecoverableRuntime { .. } => runtime_errors += 1,
-                ReportOnly {
-                    static_findings, ..
-                } => {
+                ReportOnly { finding_ids, .. } => {
                     report_only += 1;
                     // M22 (campaign fix): report-only static findings are real
                     // CWE-tagged findings — surface them in the headline count.
-                    findings += static_findings;
+                    // Counted by IDENTITY, not per target: a file's weaknesses
+                    // belong to the file, and every report-only target in one
+                    // translation unit reports the same set. Summing them turned
+                    // 24 findings into 120 on one Fortran project.
+                    report_only_finding_ids.extend(finding_ids.iter().cloned());
                 }
             }
             if is_built(&r.outcome) {
                 files_fuzzed.insert(r.candidate.source_path.as_path());
             }
         }
+        findings += report_only_finding_ids.len();
         // `--static`: whole-tree static findings live in the findings dir (not on
         // any result) — fold their count into the headline total shown on the CLI.
         findings += crate::auto::report::tree_static_finding_ids(work).len();

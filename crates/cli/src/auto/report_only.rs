@@ -61,13 +61,22 @@ fn write_static_findings(candidate: &Candidate, findings_root: &Path) -> Option<
     let source_canon = std::fs::canonicalize(source).ok();
     let findings_dir = findings_root.join("findings");
     let mut written: Vec<String> = Vec::new();
-    for (i, f) in report
+    for f in report
         .findings
         .iter()
         .filter(|f| same_file(&f.location.path, source, source_canon.as_deref()))
-        .enumerate()
     {
-        let id = format!("F-RO-{}-{:03}", candidate.harness_id, i);
+        // The id is derived from WHAT was found, not from which target was being
+        // harnessed when it was found. A file's static findings belong to the
+        // file: keying them by harness meant every report-only target in the same
+        // translation unit re-reported all of them, and one 281-target Fortran
+        // project turned 24 real findings into 120 rows. Content-addressing makes
+        // the repeats land on the same directory and collapse.
+        let id = format!(
+            "F-RO-{}-{:08X}",
+            f.rule_id,
+            static_finding_fingerprint(&f.location.path, f.location.line)
+        );
         let dir = findings_dir.join(&id);
         if std::fs::create_dir_all(&dir).is_err() {
             continue;
@@ -94,6 +103,16 @@ fn write_static_findings(candidate: &Candidate, findings_root: &Path) -> Option<
         }
     }
     Some(written)
+}
+
+/// A stable identity for a static finding: the rule plus where it is. Two
+/// targets in one file report the same weakness, and it is one weakness.
+fn static_finding_fingerprint(path: &str, line: u32) -> u32 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    line.hash(&mut hasher);
+    (hasher.finish() >> 32) as u32
 }
 
 /// The corpus-format `finding.json` record for one static-scan hit. Shared by the
@@ -421,6 +440,27 @@ mod tests {
         }
         assert!(saw_taint, "expected a taint finding with a data_flow");
         assert!(saw_pattern, "expected a GF-401 pattern finding with none");
+    }
+
+    #[test]
+    fn two_targets_in_one_file_do_not_double_report_its_static_findings() {
+        // A file's static weaknesses belong to the file. Keying the finding id by
+        // harness made every report-only target in a translation unit re-report
+        // all of them: one Fortran project turned 24 real findings into 120 rows,
+        // which is exactly the per-crash duplication the report is meant to avoid.
+        let a = static_finding_fingerprint("flemon.c", 1319);
+        let b = static_finding_fingerprint("flemon.c", 1319);
+        assert_eq!(a, b, "the same weakness has one identity");
+        assert_ne!(
+            a,
+            static_finding_fingerprint("flemon.c", 1321),
+            "a different line is a different weakness"
+        );
+        assert_ne!(
+            a,
+            static_finding_fingerprint("other.c", 1319),
+            "a different file is a different weakness"
+        );
     }
 
     #[test]

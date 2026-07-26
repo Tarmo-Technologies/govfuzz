@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "moxon6/cobol-js-emscripten",
+ "stars": 116,
+ "wave": "FULL",
+ "surfaces": {},
+ "sha": "7dc92b5fc62b136d4d1cd393fbab627de847482b",
+ "clone_s": 0.7,
+ "lane_check": "too few cobol files (cobol: 1 files / 127 lines; top=cobol(127))",
+ "status": "rejected_lane"
+}

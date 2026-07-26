@@ -1,0 +1,118 @@
+{
+ "lane": "fortran",
+ "repo": "libprima/prima",
+ "stars": 406,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/libprima__prima --json --out /home/ubuntu/govfuzz-sweep-work/fortran__libprima__prima.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 15280,
+   "sloc_by_lang": {
+    "config": 8971,
+    "python": 4997,
+    "c": 1045,
+    "cpp": 267
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/libprima__prima --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 33,
+   "by_language": {
+    "cpp": 3,
+    "c": 30
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/libprima__prima --out /home/ubuntu/govfuzz-sweep-work/fortran__libprima__prima/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.32,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 264,
+   "by_severity": {
+    "high": 183,
+    "medium": 81
+   },
+   "top_rules": {
+    "GF-472": 182,
+    "GF-500": 81,
+    "GF-407": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/libprima__prima --out /home/ubuntu/govfuzz-sweep-work/fortran__libprima__prima/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 18
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/libprima__prima --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__libprima__prima --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 178.93,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 1,
+    "discovered_total": 155,
+    "dropped_by_cap": 154,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ASSERT",
+     "source": "debug.F90",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6196.579042356245,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "1d76fb88aeffb427cd17ed1e9d0d3b34f414913f",
+ "clone_s": 1.4,
+ "lane_check": "fortran: 493 files / 142636 lines; top=fortran(142636)",
+ "status": "done"
+}

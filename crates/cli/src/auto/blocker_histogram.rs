@@ -104,6 +104,16 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
 fn is_banner_line(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
     let lower = lower.trim().trim_end_matches('.');
+    // A `note:` is context the compiler attaches to a diagnostic — "X has been
+    // explicitly marked deprecated here" — never the diagnosis. Keying on one
+    // names a line of the project's source instead of what stopped the build.
+    if lower.starts_with("note:") || lower.contains(": note:") {
+        return true;
+    }
+    // Likewise an "In file included from ..." chain header.
+    if lower.starts_with("in file included from") || lower.starts_with("in function") {
+        return true;
+    }
     matches!(
         lower,
         "build failed"
@@ -379,6 +389,19 @@ mod tests {
         // A first line that is already informative is still preferred.
         let gnat = "spat.adb:31:07: error: \"Foo\" is undefined\ncompilation failed";
         assert!(normalize_detail(gnat).contains("is undefined"));
+
+        // A compiler NOTE is context, not a cause: keying on one reported
+        // "note: X has been explicitly marked deprecated here" as the blocker.
+        let with_note = "/p/h.h:9:1: note: 'old_api' has been explicitly marked \
+                         deprecated here\n/p/a.c:4:5: error: use of undeclared \
+                         identifier 'ctx'";
+        let detail = normalize_detail(with_note);
+        assert!(detail.contains("undeclared identifier"), "{detail}");
+        assert!(!detail.contains("deprecated"), "{detail}");
+
+        // An include-chain header is not a cause either.
+        let chain = "In file included from /p/a.c:1:\n/p/b.h:3:9: error: missing type";
+        assert!(normalize_detail(chain).contains("missing type"));
     }
 
     #[test]

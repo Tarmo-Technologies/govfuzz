@@ -1,0 +1,207 @@
+{
+ "lane": "go",
+ "repo": "prometheus/prometheus",
+ "stars": 65313,
+ "wave": "PLAIN2",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus --work-dir /home/ubuntu/govfuzz-sweep-work/go__prometheus__prometheus --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 10.2,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3665,
+    "dropped_by_cap": 3655,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Decode",
+     "source": "compression.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Type` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CloudConfigurationFromName",
+     "source": "azure.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/Azure/azure-sdk-for-go/sdk/azcore@v1.22.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Decode",
+     "source": "tombstones.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/prometheus/common@v0.69.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeWriteRequest",
+     "source": "codec.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor@v0.154.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "setupProxy.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus/web/ui/react-app/src/setupProxy.js` is not loadable (skipped cleanly): missing module `http-proxy-middleware` (not in the project and not installed) \u2014 Error: Cannot find module 'http-proxy-middleware'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "specializeIdentifier",
+     "source": "tokens.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus/web/ui/module/lezer-promql/src/tokens.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus/web/ui/module/lezer-promql/src/parser.terms.js` (not in the project and not installed) \u2014 throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extendIdentifier",
+     "source": "tokens.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus/web/ui/module/lezer-promql/src/tokens.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/go/prometheus__prometheus/web/ui/module/lezer-promql/src/parser.terms.js` (not in the project and not installed) \u2014 throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HybridLint#promQL",
+     "source": "hybrid.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__prometheus__prometheus/harnesses/H-T0015-1167A415/target.js` is not loadable (skipped cleanly): missing module `@prometheus-io/lezer-promql` (not in the project and not installed) \u2014 Error: Cannot find module '@prometheus-io/lezer-promql'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Legend#componentDidUpdate",
+     "source": "Legend.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__prometheus__prometheus/harnesses/H-T0015-C6D10706/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PromQLExtension#activateCompletion",
+     "source": "promql.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__prometheus__prometheus/harnesses/H-T003F-EF5EA6EB/target.js` is not loadable (skipped cleanly): missing module `@prometheus-io/lezer-promql` (not in the project and not installed) \u2014 Error: Cannot find module '@prometheus-io/lezer-promql'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "go build failed: go: github.com/Azure/azure-sdk-for-go/sdk/azcore@v1.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "go build failed: go: github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor@v0.N.N requires go >= N.N.N (running go N.N.\u2026",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "go build failed: go: github.com/prometheus/common@v0.N.N requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 throw error;",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "ab225f6ef5a833551ea0130be468f1d1b1968daa",
+ "clone_s": 3.0,
+ "lane_check": "go: 726 files / 331709 lines; top=go(331709)",
+ "status": "done"
+}

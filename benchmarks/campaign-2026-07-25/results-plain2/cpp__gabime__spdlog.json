@@ -1,0 +1,158 @@
+{
+ "lane": "cpp",
+ "repo": "gabime/spdlog",
+ "stars": 29265,
+ "wave": "PLAIN2",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__gabime__spdlog --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 130.76,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 7,
+    "discovered_total": 388,
+    "dropped_by_cap": 381,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 39,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "cfg::load_argv_levels(int, const char **)",
+     "source": "argv.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/cfg/argv.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/cfg/argv.h:5:10: fatal error: 'spdlog/cfg/helpers.h' file not found |     5 | #include <spdlog/cfg/helpers.h> |       |          ^~~~~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cfg::load_argv_levels(int, char **)",
+     "source": "argv.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/cfg/argv.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/cfg/argv.h:5:10: fatal error: 'spdlog/cfg/helpers.h' file not found |     5 | #include <spdlog/cfg/helpers.h> |       |          ^~~~~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "details::tcp_client::connect",
+     "source": "tcp_client-windows.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/details/tcp_client-windows.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/details/tcp_client-windows.h:14:10: fatal error: 'windows.h' file not found |    14 | #include <windows.h> |       |          ^~~~~~~~~~~ | 1 error generated.; sequence generation also failed first: blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/details/tcp_client-windows.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/cpp/gabime__spdlog/include/spdlog/details/tcp_client-windows.h:14:10: fatal error: 'windows.h' file not found |    14 | #include <windows.h> |       |          ^~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "details::tcp_client::connect",
+     "source": "tcp_client.h",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "logger::log(log_clock::time_point, source_loc, level::level_enum, wstring_view_t)",
+     "source": "logger.h",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'log_time' of type 'log_clock::time_point' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'log_clock::time_point' for parameter 'log_time' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'log_time' of type 'log_clock::time_point' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'log_clock::time_point' for parameter 'log_time' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "logger::log(source_loc, level::level_enum, wstring_view_t)",
+     "source": "logger.h",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'msg' of type 'wstring_view_t' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'msg' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'msg' of type 'wstring_view_t' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'msg' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vprint",
+     "source": "color.h",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 43,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "no namespace named \"X\"; did you mean \"X\"?",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "989d28dd768adef702538634857942db24e1058a",
+ "clone_s": 0.6,
+ "lane_check": "cpp: 40 files / 4198 lines; top=cpp(4198)",
+ "status": "done"
+}

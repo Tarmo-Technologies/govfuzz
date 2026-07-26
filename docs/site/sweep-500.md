@@ -6,7 +6,7 @@ reports the opposite: govfuzz run over 500 open-source projects picked by
 star rank rather than by suitability, across all sixteen languages it supports,
 with every failure counted.
 
-The sweep was run to find defects. It found twenty-six, listed below with the
+The sweep was run to find defects. It found twenty-eight, listed below with the
 project that exposed each one. The measurements come after the fixes, from a
 single pinned binary over the whole corpus.
 
@@ -76,6 +76,8 @@ a regression test:
 | Python | the extractor for CPython's `No module named 'x'` stopped at the opening quote | the needle was in the table but never once fired |
 | PHP | a Composer project with no `vendor/` produced no requirement at all | the shape of nearly every real PHP tree; now recorded as `vendor/autoload.php` with `composer install` as the remedy |
 | report | a backtick span was assumed to close with an apostrophe (the GNAT `` `foo' `` form) | rustc- and interpreter-style `` `foo` `` messages leaked the identifier into the grouping key, so each distinct name became its own histogram row — the opposite of what the histogram is for |
+| C++ | the check that degrades an unsuppliable external class to a report-only scan matched on the compiler's *wording*, and the substitution it was written for is no longer the one govfuzz emits | an out-of-tree MFC class stayed a bare `failed_build`; the check now decides on provenance — a diagnostic in the project's own source cannot be a govfuzz codegen bug — so it survives the next change of substitution shape |
+| tests | a fuzz assertion's budget is wall-clock, and seven of them shared six cores | a planted OOB went unfound at ~6 executions where one test alone gets ~32; the assertion was sound, the contention was not |
 
 The last two were found by running govfuzz against cloc and syft rather than
 against projects — the comparison was worth as much as the sweep. Two others

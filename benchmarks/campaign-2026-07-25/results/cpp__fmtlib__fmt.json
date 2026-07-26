@@ -1,0 +1,175 @@
+{
+ "lane": "cpp",
+ "repo": "fmtlib/fmt",
+ "stars": 23686,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/fmtlib__fmt --json --out /home/ubuntu/govfuzz-sweep-work/cpp__fmtlib__fmt.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 47966,
+   "sloc_by_lang": {
+    "cpp": 46006,
+    "python": 1076,
+    "config": 618,
+    "c": 262,
+    "javascript": 4
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/fmtlib__fmt --format json --top 100000",
+   "exit": 0,
+   "wall_s": 11.65,
+   "timed_out": false,
+   "panic": false,
+   "count": 2335,
+   "by_language": {
+    "cpp": 2320,
+    "c": 15
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/fmtlib__fmt --out /home/ubuntu/govfuzz-sweep-work/cpp__fmtlib__fmt/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.38,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 42,
+   "by_severity": {
+    "high": 39,
+    "medium": 3
+   },
+   "top_rules": {
+    "GF-403": 16,
+    "GF-408": 13,
+    "GF-405": 9,
+    "GF-406": 2,
+    "GF-472": 1,
+    "GF-424": 1
+   },
+   "gaps": 21
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/fmtlib__fmt --out /home/ubuntu/govfuzz-sweep-work/cpp__fmtlib__fmt/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/fmtlib__fmt --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__fmtlib__fmt --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 216.53,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 429,
+    "dropped_by_cap": 424,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "Argument.parse",
+     "source": "docopt.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6161.09819651197,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Tokens.from_pattern",
+     "source": "docopt.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2973.7302914089128,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_pattern",
+     "source": "docopt.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 119.3052104705108,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_section",
+     "source": "docopt.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4219.723166468238,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "file::read",
+     "source": "os.cc",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "no namespace named \"X\"; did you mean \"X\"?",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2a2d9edb257322bec0f7ac602fde3b382fe0082a",
+ "clone_s": 0.8,
+ "lane_check": "cpp: 46 files / 23251 lines; top=cpp(23251)",
+ "status": "done"
+}

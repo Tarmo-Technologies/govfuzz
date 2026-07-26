@@ -1,0 +1,92 @@
+{
+ "lane": "cpp",
+ "repo": "notepad-plus-plus/notepad-plus-plus",
+ "stars": 28813,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus --json --out /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 11,
+   "sloc_total": 335291,
+   "sloc_by_lang": {
+    "cpp": 320458,
+    "python": 6166,
+    "c": 6057,
+    "config": 1678,
+    "perl": 259,
+    "lua": 251,
+    "ruby": 235,
+    "php": 91,
+    "fortran": 41,
+    "rust": 37,
+    "cobol": 18
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus --format json --top 100000",
+   "exit": 0,
+   "wall_s": 24.98,
+   "timed_out": false,
+   "panic": false,
+   "count": 11660,
+   "by_language": {
+    "cpp": 11651,
+    "c": 9
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus --out /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 12.27,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 92,
+   "by_severity": {
+    "high": 86,
+    "medium": 2,
+    "critical": 1,
+    "low": 3
+   },
+   "top_rules": {
+    "GF-407": 27,
+    "GF-401": 22,
+    "GF-403": 14,
+    "GF-405": 12,
+    "GF-472": 5,
+    "GF-408": 5,
+    "GF-546": 3,
+    "GF-500": 1,
+    "GF-422": 1,
+    "GF-547": 1,
+    "GF-404": 1
+   },
+   "gaps": 503
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus --out /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus/sbom",
+   "exit": 0,
+   "wall_s": 0.5,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 76.73,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/notepad-plus-plus__notepad-plus-plus\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__notepad-plus-plus__notepad-plus-plus/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 6d456c203739a4cf-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "40176040e424276bf4b492febe591f5389c946e1",
+ "clone_s": 2.7,
+ "lane_check": "cpp: 534 files / 328153 lines; top=cpp(328153)",
+ "status": "done"
+}

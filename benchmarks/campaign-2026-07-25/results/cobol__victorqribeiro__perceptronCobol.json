@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "victorqribeiro/perceptronCobol",
+ "stars": 77,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "a34024f20aea08d329bf70993c3d2a75ce00f472",
+ "clone_s": 0.5,
+ "lane_check": "too few cobol files (cobol: 1 files / 84 lines; top=cobol(84))",
+ "status": "rejected_lane"
+}

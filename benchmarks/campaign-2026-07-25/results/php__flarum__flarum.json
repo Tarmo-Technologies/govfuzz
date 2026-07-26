@@ -1,0 +1,11 @@
+{
+ "lane": "php",
+ "repo": "flarum/flarum",
+ "stars": 16359,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "39ef8f8b8bd05b4f0f15d1cfc84a793cb9159bf2",
+ "clone_s": 0.4,
+ "lane_check": "too little php code (php: 3 files / 78 lines; top=php(78))",
+ "status": "rejected_lane"
+}

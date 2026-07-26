@@ -1,0 +1,11 @@
+{
+ "lane": "js",
+ "repo": "scutan90/DeepLearning-500-questions",
+ "stars": 57497,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "6087a06b112c3c28b885ab2f794535c19a9e4326",
+ "clone_s": 7.3,
+ "lane_check": "too few js files (js: 1 files / 4238 lines; top=js(4238))",
+ "status": "rejected_lane"
+}

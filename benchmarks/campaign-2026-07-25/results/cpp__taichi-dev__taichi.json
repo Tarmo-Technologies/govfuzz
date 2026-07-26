@@ -1,0 +1,89 @@
+{
+ "lane": "cpp",
+ "repo": "taichi-dev/taichi",
+ "stars": 28306,
+ "wave": "FIXED",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --json --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 206888,
+   "sloc_by_lang": {
+    "cpp": 122173,
+    "python": 64429,
+    "c": 18553,
+    "config": 1733
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --format json --top 100000",
+   "exit": 0,
+   "wall_s": 15.86,
+   "timed_out": false,
+   "panic": false,
+   "count": 6625,
+   "by_language": {
+    "c": 484,
+    "cpp": 6141
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.63,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 204,
+   "by_severity": {
+    "medium": 97,
+    "high": 64,
+    "critical": 19,
+    "low": 24
+   },
+   "top_rules": {
+    "GF-406": 59,
+    "GF-500": 32,
+    "GF-405": 27,
+    "GF-546": 24,
+    "GF-404": 15,
+    "GF-407": 12,
+    "GF-472": 10,
+    "GF-496": 7,
+    "GF-403": 3,
+    "GF-424": 3,
+    "GF-420": 2,
+    "GF-304": 2,
+    "GF-560": 2,
+    "GF-425": 2,
+    "GF-408": 2
+   },
+   "gaps": 96
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/sbom",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "components": 52
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 53.72,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 93a1a639e21fd2e4-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "ba0e81dce559fb63a5958bf82feb1d00c55c02fe",
+ "clone_s": 1.6,
+ "lane_check": "cpp: 357 files / 76991 lines; top=cpp(76991)",
+ "status": "done"
+}

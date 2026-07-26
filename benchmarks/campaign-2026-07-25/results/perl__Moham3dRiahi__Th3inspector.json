@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "Moham3dRiahi/Th3inspector",
+ "stars": 2648,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "c1f4d1b8aa62729747551c259ed4cc813f3ae3f3",
+ "clone_s": 1.3,
+ "lane_check": "too few perl files (perl: 1 files / 946 lines; top=perl(946))",
+ "status": "rejected_lane"
+}

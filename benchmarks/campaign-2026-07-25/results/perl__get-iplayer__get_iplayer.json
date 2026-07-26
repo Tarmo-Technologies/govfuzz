@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "get-iplayer/get_iplayer",
+ "stars": 2528,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "df1bc7f3b86f2e994f9a3e1140a50cb7f5d9650f",
+ "clone_s": 1.2,
+ "lane_check": "no recognised source files",
+ "status": "rejected_lane"
+}

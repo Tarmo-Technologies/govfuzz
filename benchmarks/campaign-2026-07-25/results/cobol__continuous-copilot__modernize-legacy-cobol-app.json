@@ -1,0 +1,11 @@
+{
+ "lane": "cobol",
+ "repo": "continuous-copilot/modernize-legacy-cobol-app",
+ "stars": 44,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "abd2fcc10cca4a4922aaff7c7ab42e1021ccab80",
+ "clone_s": 0.7,
+ "lane_check": "too little cobol code (cobol: 3 files / 84 lines; top=cobol(84))",
+ "status": "rejected_lane"
+}

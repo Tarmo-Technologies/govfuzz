@@ -1,0 +1,11 @@
+{
+ "lane": "perl",
+ "repo": "jfcoz/postgresqltuner",
+ "stars": 2702,
+ "wave": "FIXED",
+ "surfaces": {},
+ "sha": "288bce8ff4ffedfbc454163924132f36a9401332",
+ "clone_s": 0.5,
+ "lane_check": "too few perl files (perl: 1 files / 1198 lines; top=perl(1198))",
+ "status": "rejected_lane"
+}

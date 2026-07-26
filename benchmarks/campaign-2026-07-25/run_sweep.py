@@ -412,6 +412,8 @@ def main() -> int:
     ap.add_argument("--surfaces", default="sloc,list,static,sbom,fuzz,report")
     ap.add_argument("--keep-clone", action="store_true")
     ap.add_argument("--keep-work", action="store_true")
+    ap.add_argument("--merge", action="store_true",
+                    help="update only the surfaces measured, keeping the rest of the row")
     ap.add_argument("--rerun", action="store_true",
                     help="re-measure projects that already have a result row")
     args = ap.parse_args()
@@ -441,7 +443,21 @@ def main() -> int:
                     "status": "runner_error",
                     "error": repr(exc)[:500],
                 }
-            (RESULTS / f"{slug}.json").write_text(json.dumps(result, indent=1))
+            out_path = RESULTS / f"{slug}.json"
+            if args.merge:
+                # Re-measuring ONE surface must not discard the others: a
+                # sloc-only pass over the corpus is minutes, a full re-run is
+                # hours, and the fuzz rows are the expensive part.
+                previous = read_json(out_path)
+                if isinstance(previous, dict):
+                    merged = dict(previous)
+                    merged.setdefault("surfaces", {})
+                    merged["surfaces"].update(result.get("surfaces") or {})
+                    for key, value in result.items():
+                        if key != "surfaces":
+                            merged[key] = value
+                    result = merged
+            out_path.write_text(json.dumps(result, indent=1))
             if result.get("status") in ("rejected_lane",):
                 verdicts[row["repo"]] = "rejected_lane"
             completed += 1

@@ -7,7 +7,7 @@
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio --json --out /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.08,
+   "wall_s": 0.13,
    "timed_out": false,
    "panic": false,
    "languages": 4,
@@ -22,7 +22,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio --format json --top 100000",
    "exit": 0,
-   "wall_s": 12.86,
+   "wall_s": 20.75,
    "timed_out": false,
    "panic": false,
    "count": 13749,
@@ -34,7 +34,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio --out /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 3.69,
+   "wall_s": 6.37,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -65,7 +65,7 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio --out /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/sbom",
    "exit": 0,
-   "wall_s": 0.38,
+   "wall_s": 0.49,
    "timed_out": false,
    "panic": false,
    "components": 94
@@ -73,10 +73,10 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio --work-dir /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 0,
-   "wall_s": 457.15,
+   "wall_s": 469.4,
    "timed_out": false,
    "panic": true,
-   "panic_excerpt": "untu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/run.json\n  requirements: /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/missing-deps.txt (80 blocking, 10 substituted; 7 target checkpoint, final)\n  harnesses: /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/harnesses/<harness-id>/\n  findings:  /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/\n  summary:   /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/summary.txt\ngovfuzz auto: the --campaign-time budget was exhausted; build steps still running were cut off, so some failures below are budget cut-offs rather than real blockers. Re-run with a larger --campaign-time to tell them apart.\n\ngovfuzz auto: residual blockers (targets that did NOT reach built_and_fuzzed)\n  c: 2 fuzzed, 2 blocked\n        1  failed_build         missing type\n        1  unsupported_params   internal error: entered unreachable code: retry loop returns before exiting at crates/cli/src/auto/attempt.rs:N:N\n  cpp: 0 fuzzed, 3 blocked\n        1  report_only          [cpp20] requires type(s) the generated harness cannot construct offline (QString, QStringList) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) una\u2026\n        1  unsupported_params   C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026\n        1  unsupported_params   cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026\n\ngovfuzz auto: top findings (7 shown of 7)\n  [HIGH] GF-405 \u2014 Path-like value reaches a file-open call\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-RO-H-X0122-7D4A20F0-002\n  [HIGH] GF-405 \u2014 Path-like value reaches a file-open call\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-RO-H-X0122-7D4A20F0-000\n  [HIGH] GF-405 \u2014 Path-like value reaches a file-open call\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-RO-H-X0122-7D4A20F0-001\n  [UNKNOWN] GF-208 \u2014 ==1551415==ERROR: LeakSanitizer: detected memory leaks\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0000-056158c9\n  [UNKNOWN] GF-205 \u2014 /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio/plugins/obs-outputs/librtmp/amf.\u2026\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0001-f39e45d5\n  [UNKNOWN] GF-208 \u2014 ==1552170==ERROR: LeakSanitizer: detected memory leaks\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0002-056158c9\n  [UNKNOWN] GF-208 \u2014 ==1552247==ERROR: LeakSanitizer: detected memory leaks\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0003-565d97ea\n\ngovfuzz auto: next steps\n  1. 1 target(s) failed to build (per-target reason in run.json \u2192 targets[].outcome.reason). Try:\n      - if the tree has its own build, recover its flags: --build-command \"<your build>\"\n      - old C++: the dialect ladder runs automatically; pin it with --cxx-std <std> if it still fails\n      - missing dependency headers: --extra-include <dir> / --extra-source <file>\n      - force past undefined symbols/types (stub-heavy, Low-confidence): --force\n  2. 3 target(s) were skipped (a parameter couldn't be driven \u2014 opaque handle, callback, unknown type). Attempt them anyway with --force.\n  3. 1 target(s) are report-only (statically analyzed, not fuzzed \u2014 e.g. Ada 83, or an unbuildable unit). Expected for legacy dialects.\ngovfuzz auto: requirements: /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/missing-deps.txt (80 blocking, 10 substituted; 7 target checkpoint, final)\n",
+   "panic_excerpt": "untu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/run.json\n  requirements: /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/missing-deps.txt (80 blocking, 10 substituted; 7 target checkpoint, final)\n  harnesses: /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/harnesses/<harness-id>/\n  findings:  /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/\n  summary:   /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/summary.txt\ngovfuzz auto: the --campaign-time budget was exhausted; build steps still running were cut off, so some failures below are budget cut-offs rather than real blockers. Re-run with a larger --campaign-time to tell them apart.\n\ngovfuzz auto: residual blockers (targets that did NOT reach built_and_fuzzed)\n  c: 2 fuzzed, 2 blocked\n        1  failed_build         missing type\n        1  unsupported_params   internal error: entered unreachable code: retry loop returns before exiting at crates/cli/src/auto/attempt.rs:N:N\n  cpp: 0 fuzzed, 3 blocked\n        1  report_only          [cpp20] requires type(s) the generated harness cannot construct offline (QString, QStringList) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) una\u2026\n        1  unsupported_params   C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026\n        1  unsupported_params   cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026\n\ngovfuzz auto: top findings (7 shown of 7)\n  [HIGH] GF-405 \u2014 Path-like value reaches a file-open call\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-RO-H-X0122-7D4A20F0-002\n  [HIGH] GF-405 \u2014 Path-like value reaches a file-open call\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-RO-H-X0122-7D4A20F0-000\n  [HIGH] GF-405 \u2014 Path-like value reaches a file-open call\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-RO-H-X0122-7D4A20F0-001\n  [UNKNOWN] GF-208 \u2014 ==1625467==ERROR: LeakSanitizer: detected memory leaks\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0000-056158c9\n  [UNKNOWN] GF-205 \u2014 /home/ubuntu/govfuzz-corpus-500/c/obsproject__obs-studio/plugins/obs-outputs/librtmp/amf.\u2026\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0001-f39e45d5\n  [UNKNOWN] GF-208 \u2014 ==1626219==ERROR: LeakSanitizer: detected memory leaks\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0002-056158c9\n  [UNKNOWN] GF-208 \u2014 ==1626325==ERROR: LeakSanitizer: detected memory leaks\n      reproduce: govfuzz replay --finding /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/findings/F-0003-565d97ea\n\ngovfuzz auto: next steps\n  1. 1 target(s) failed to build (per-target reason in run.json \u2192 targets[].outcome.reason). Try:\n      - if the tree has its own build, recover its flags: --build-command \"<your build>\"\n      - old C++: the dialect ladder runs automatically; pin it with --cxx-std <std> if it still fails\n      - missing dependency headers: --extra-include <dir> / --extra-source <file>\n      - force past undefined symbols/types (stub-heavy, Low-confidence): --force\n  2. 3 target(s) were skipped (a parameter couldn't be driven \u2014 opaque handle, callback, unknown type). Attempt them anyway with --force.\n  3. 1 target(s) are report-only (statically analyzed, not fuzzed \u2014 e.g. Ada 83, or an unbuildable unit). Expected for legacy dialects.\ngovfuzz auto: requirements: /home/ubuntu/govfuzz-sweep-work/c__obsproject__obs-studio/auto/missing-deps.txt (80 blocking, 10 substituted; 7 target checkpoint, final)\n",
    "summary": {
     "discovered": 7,
     "discovered_total": 11190,
@@ -116,7 +116,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 3,
      "repairs": 3,
-     "execs_per_sec": 149.46142821504296,
+     "execs_per_sec": 135.01875625295122,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -127,7 +127,7 @@
      "outcome": "built_and_fuzzed",
      "retries": 3,
      "repairs": 3,
-     "execs_per_sec": 30.392750715531196,
+     "execs_per_sec": 29.676833583108202,
      "reason": null,
      "stub_only": false,
      "blind_stub_fraction": 0.0
@@ -161,7 +161,7 @@
      "retries": null,
      "repairs": 0,
      "execs_per_sec": null,
-     "reason": "govfuzz internal error (see bug-report.json): internal error: entered unreachable code: retry loop returns before exiting at crates/cli/src/auto/attempt.rs:3546:5",
+     "reason": "govfuzz internal error (see bug-report.json): internal error: entered unreachable code: retry loop returns before exiting at crates/cli/src/auto/attempt.rs:3547:5",
      "stub_only": null,
      "blind_stub_fraction": null
     },
@@ -302,7 +302,7 @@
   }
  },
  "sha": "0052d024fd6a5ff1aa04c76cbdffd3085a5dfacc",
- "clone_s": 0.0,
+ "clone_s": 3.2,
  "lane_check": "c: 330 files / 149684 lines; top=c(149684)",
  "status": "done"
 }

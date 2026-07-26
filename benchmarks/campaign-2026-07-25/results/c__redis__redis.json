@@ -7,7 +7,7 @@
   "sloc": {
    "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/redis__redis --json --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis.cwd/sloc.json",
    "exit": 0,
-   "wall_s": 0.05,
+   "wall_s": 0.11,
    "timed_out": false,
    "panic": false,
    "languages": 5,
@@ -23,7 +23,7 @@
   "list_targets": {
    "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/redis__redis --format json --top 100000",
    "exit": 0,
-   "wall_s": 8.34,
+   "wall_s": 10.73,
    "timed_out": false,
    "panic": false,
    "count": 11469,
@@ -35,7 +35,7 @@
   "static_scan": {
    "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/redis__redis --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
    "exit": 0,
-   "wall_s": 4.98,
+   "wall_s": 9.52,
    "timed_out": false,
    "panic": false,
    "sarif": true,
@@ -68,7 +68,7 @@
   "sbom": {
    "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/redis__redis --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis/sbom",
    "exit": 0,
-   "wall_s": 0.11,
+   "wall_s": 0.23,
    "timed_out": false,
    "panic": false,
    "components": 20
@@ -76,17 +76,17 @@
   "auto": {
    "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/redis__redis --work-dir /home/ubuntu/govfuzz-sweep-work/c__redis__redis --campaign-time 180 --per-target-time 4 --max-attempts 20 --max-repair-rounds 6 --jobs 1 --profile external-tools --single-pass",
    "exit": 1,
-   "wall_s": 205.57,
+   "wall_s": 228.01,
    "timed_out": false,
    "panic": false,
    "summary": {
-    "discovered": 4,
+    "discovered": 2,
     "discovered_total": 5940,
-    "dropped_by_cap": 5936,
+    "dropped_by_cap": 5938,
     "built": 0,
     "built_and_fuzzed": 0,
     "fuzzed_stub_only": 0,
-    "failed_build": 4,
+    "failed_build": 2,
     "unsupported_params": 0,
     "unrecoverable_link": 0,
     "unrecoverable_runtime": 0,
@@ -96,7 +96,7 @@
    "partial": false,
    "needed_for_build": {
     "synthesized_headers": 1,
-    "synthesized_types": 1,
+    "synthesized_types": 0,
     "synthesized_macros": 2,
     "stubbed_symbols_declared": 77,
     "stubbed_symbols_blind": 13,
@@ -132,37 +132,9 @@
      "reason": null,
      "stub_only": null,
      "blind_stub_fraction": null
-    },
-    {
-     "name": "moduleUnload",
-     "source": "module.c",
-     "outcome": "failed_build",
-     "retries": 6,
-     "repairs": 0,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
-    },
-    {
-     "name": "ACLSetSelector",
-     "source": "acl.c",
-     "outcome": "failed_build",
-     "retries": 5,
-     "repairs": 6,
-     "execs_per_sec": null,
-     "reason": null,
-     "stub_only": null,
-     "blind_stub_fraction": null
     }
    ],
    "blockers": [
-    {
-     "category": "failed_build",
-     "count": 2,
-     "detail": "undeclared function",
-     "language": "c"
-    },
     {
      "category": "failed_build",
      "count": 1,
@@ -172,7 +144,7 @@
     {
      "category": "failed_build",
      "count": 1,
-     "detail": "missing type",
+     "detail": "undeclared function",
      "language": "c"
     }
    ],
@@ -180,7 +152,7 @@
   }
  },
  "sha": "b53f65d9b471ee264293976805ad6c896171e3ed",
- "clone_s": 0.0,
+ "clone_s": 1.8,
  "lane_check": "c: 191 files / 191129 lines; top=c(191129)",
  "status": "done"
 }

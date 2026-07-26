@@ -507,16 +507,37 @@ pub fn run_verify(args: VerifyPocArgs) -> i32 {
     let _ = std::fs::remove_file(root.join("poc"));
 
     if !reproduced {
-        println!("verify-poc: FAIL — the capsule did not rebuild+crash as expected");
-        println!(
-            "  finding:  {}",
-            manifest
-                .get("finding_id")
-                .and_then(Value::as_str)
-                .unwrap_or("?")
-        );
-        println!("  expected: {expected}");
-        println!("  observed: <no crash>");
+        // A capsule records whether the crash fired when it was PACKAGED. If it
+        // did not, this run is not a regression — the capsule never demonstrated
+        // the crash — and saying "did not rebuild+crash as expected" sends the
+        // reader hunting for an environment difference that does not exist.
+        let packaged_reproducing = manifest
+            .get("reproduced")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+        let finding = manifest
+            .get("finding_id")
+            .and_then(Value::as_str)
+            .unwrap_or("?");
+        if packaged_reproducing {
+            println!("verify-poc: FAIL — the capsule did not rebuild+crash as expected");
+            println!("  finding:  {finding}");
+            println!("  expected: {expected}");
+            println!("  observed: <no crash>");
+        } else {
+            println!(
+                "verify-poc: NOT REPRODUCIBLE — this capsule was recorded as \
+                 non-reproducing when it was packaged, so there is nothing for it \
+                 to verify"
+            );
+            println!("  finding:  {finding}");
+            println!(
+                "  note:     the finding fired during fuzzing but not on a standalone \
+                 replay (a warm fork-server state, an environment the shim faked, or \
+                 a timing-dependent crash). `govfuzz explain --finding-id {finding}` \
+                 shows what the run depended on."
+            );
+        }
         return 1;
     }
     // Signature match is best-effort: if the manifest recorded one, require the class
@@ -757,5 +778,49 @@ mod tests {
             "AddressSanitizer:heap-use-after-free",
             "AddressSanitizer:stack-buffer-overflow"
         ));
+    }
+
+    #[test]
+    fn a_capsule_packaged_as_non_reproducing_verifies_as_such_not_as_a_failure() {
+        // `capsule` writes a package even when the reconstruction did not fire,
+        // marking `reproduced: false`. Running verify-poc on one then printed
+        // "did not rebuild+crash as expected", which reads as a regression and
+        // sends the reader looking for an environment difference that never
+        // existed. The manifest already knows better.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let manifest = serde_json::json!({
+            "schema": "govfuzz.capsule/v1",
+            "finding_id": "F-0000-a3531355",
+            "expected_signature": "",
+            "reproduced": false,
+        });
+        std::fs::write(
+            dir.path().join("manifest.json"),
+            serde_json::to_vec_pretty(&manifest).expect("serialize"),
+        )
+        .expect("write manifest");
+
+        let parsed = read_json(&dir.path().join("manifest.json")).expect("read back");
+        assert_eq!(
+            parsed.get("reproduced").and_then(Value::as_bool),
+            Some(false),
+            "the packaged verdict is what verify-poc must report"
+        );
+        // A capsule that WAS reproducing when packaged keeps the strict reading.
+        let strict = serde_json::json!({"finding_id": "F-1", "reproduced": true});
+        assert_eq!(
+            strict.get("reproduced").and_then(Value::as_bool),
+            Some(true)
+        );
+        // An older capsule without the field is treated as reproducing, so its
+        // failure is still reported as a failure.
+        let legacy = serde_json::json!({"finding_id": "F-2"});
+        assert_eq!(
+            legacy
+                .get("reproduced")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
+            true
+        );
     }
 }

@@ -58,11 +58,16 @@ fn unsafe_search_and_run_recovers_flags_from_build_sh() {
     let _ = std::fs::remove_dir_all(&tmp);
     let src = tmp.join("src");
     std::fs::create_dir_all(&src).unwrap();
-    // The target only compiles when the define its build.sh sets is present.
+    // The target only compiles when the define its build.sh sets is present, with
+    // the VALUE build.sh gives it. A bare `#ifndef X / #error` would no longer be a
+    // negative control: GovFuzz repairs that shape by defining what the guard tests
+    // (see `auto_config_guard.rs`). A compound condition names no single macro whose
+    // definition decides it, so GovFuzz refuses to guess and only the real flag —
+    // recovered from build.sh — satisfies it.
     std::fs::write(
         src.join("gt.c"),
-        "#ifndef GOVFUZZ_NEEDS_THIS\n\
-         #error \"needs -DGOVFUZZ_NEEDS_THIS, set only by build.sh\"\n\
+        "#if !defined(GOVFUZZ_NEEDS_THIS) || GOVFUZZ_NEEDS_THIS != 7\n\
+         #error \"needs -DGOVFUZZ_NEEDS_THIS=7, set only by build.sh\"\n\
          #endif\n\
          int process(const char *data, unsigned long len) {\n\
          \x20   if (len >= 4 && data[0] == 'Q') return 1;\n\
@@ -73,7 +78,7 @@ fn unsafe_search_and_run_recovers_flags_from_build_sh() {
     let build_sh = src.join("build.sh");
     std::fs::write(
         &build_sh,
-        "#!/bin/sh\ncc -DGOVFUZZ_NEEDS_THIS -c gt.c -o gt.o\n",
+        "#!/bin/sh\ncc -DGOVFUZZ_NEEDS_THIS=7 -c gt.c -o gt.o\n",
     )
     .unwrap();
     #[cfg(unix)]

@@ -196,9 +196,18 @@ fn static_dynamic_flag_adds_scan_type_column() {
     let csv =
         std::fs::read_to_string(work_dir.join("auto/findings.csv")).expect("read findings.csv");
     let header = csv.lines().next().expect("header");
-    assert!(
-        header.ends_with(",scan_type"),
-        "--static-dynamic must append a scan_type column: {header}"
+    // `scan_type` sits between the base columns and the stub-accounting block,
+    // which is where `render_issue_row` writes it. (It used to be asserted as the
+    // LAST column, which is what let the header and the rows disagree.)
+    let columns: Vec<&str> = header.split(',').collect();
+    let scan_type = columns
+        .iter()
+        .position(|c| *c == "scan_type")
+        .unwrap_or_else(|| panic!("--static-dynamic must add a scan_type column: {header}"));
+    assert_eq!(
+        columns.get(scan_type + 1).copied(),
+        Some("stub_total"),
+        "scan_type must precede the stub block: {header}"
     );
     // The weak.c static finding (fuzz-confirmed, clustered under the crash) is a
     // static-scan result, so its row's scan_type is `static-dynamic`. (The row is
@@ -208,8 +217,9 @@ fn static_dynamic_flag_adds_scan_type_column() {
         .skip(1)
         .find(|l| l.contains("F-STATIC-"))
         .expect("a row referencing the static finding");
-    assert!(
-        static_row.ends_with(",static-dynamic"),
+    assert_eq!(
+        static_row.split(',').nth(scan_type),
+        Some("static-dynamic"),
         "a static-scan result's scan_type must be static-dynamic: {static_row}"
     );
 }

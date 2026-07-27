@@ -27,8 +27,19 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub enum GoBuildResult {
-    Built,
-    Failed { reason: String, skip: bool },
+    Built {
+        /// Under `--force`: what the generator had to synthesize to make the call
+        /// compile (an undrivable parameter's zero value, a zero-valued receiver).
+        /// `None` for every normal build. The attempt loop records it as
+        /// [`crate::auto::repair::Repair::ForcedSyntheticParams`] so the report
+        /// floors the target's findings — a nil map or zero receiver can panic on
+        /// its own account, and that must never read as a confirmed defect.
+        forced: Option<String>,
+    },
+    Failed {
+        reason: String,
+        skip: bool,
+    },
 }
 
 fn probe_go() -> Option<PathBuf> {
@@ -40,6 +51,7 @@ pub fn build_go_harness(
     work_dir: &Path,
     harness_id: &str,
     _source_root: &Path,
+    force: bool,
 ) -> GoBuildResult {
     let Some(go) = probe_go() else {
         return GoBuildResult::Failed {
@@ -54,16 +66,14 @@ pub fn build_go_harness(
         Ok(f) => f,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
     };
-    if func.is_method {
-        return GoBuildResult::Failed {
-            reason: format!(
-                "Go method `{}` needs a receiver value; receiver synthesis is not yet \
-                 supported (skipped cleanly)",
-                func.name
-            ),
-            skip: true,
-        };
-    }
+    // A method needs a receiver value. Under `--force` synthesize a zero one; the
+    // Go zero value exists for every type, and taking its address satisfies a
+    // pointer receiver without passing nil (which would panic on first field
+    // access — our fault, not the target's).
+    let receiver = match receiver_synthesis(&func, force) {
+        Ok(r) => r,
+        Err(reason) => return GoBuildResult::Failed { reason, skip: true },
+    };
 
     // Locate the enclosing Go module (go.mod) so the harness can import the target
     // package by its module import path.
@@ -81,11 +91,14 @@ pub fn build_go_harness(
     };
     let import_path = compute_import_path(&module_path, &mod_root, &target_abs);
 
-    // Build the decode/call body; an unsupported required param type skips cleanly.
-    let body = match generate_call(&func) {
-        Ok(b) => b,
+    // Build the decode/call body; an unsupported required param type skips cleanly
+    // (unforced) or is synthesized as its zero value (forced).
+    let call = match generate_call(&func, receiver.as_deref(), force) {
+        Ok(c) => c,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
     };
+    let body = call.body;
+    let forced = call.forced_detail;
 
     let auto_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
     if let Err(e) = std::fs::create_dir_all(&auto_dir) {
@@ -180,7 +193,7 @@ pub fn build_go_harness(
         }
     }
     match build {
-        Ok(out) if out.status.success() && bin.is_file() => GoBuildResult::Built,
+        Ok(out) if out.status.success() && bin.is_file() => GoBuildResult::Built { forced },
         Ok(out) => {
             let stderr = String::from_utf8_lossy(&out.stderr);
             // A target needing external modules we can't fetch offline, or a newer Go
@@ -332,21 +345,215 @@ fn compute_import_path(module_path: &str, mod_root: &Path, target_abs: &Path) ->
     }
 }
 
+/// A generated call body plus, under `--force`, what had to be synthesized for it.
+struct GoCall {
+    body: String,
+    /// `Some(detail)` when at least one parameter or the receiver is a forced zero
+    /// value rather than a decode of the fuzz bytes.
+    forced_detail: Option<String>,
+}
+
+/// The receiver expression for a method target, or `None` for a plain function.
+///
+/// Unforced, a method is a clean skip: govfuzz has no value to call it on. Forced,
+/// declare the receiver's zero value and take its address — `(&r).M()` is valid for
+/// BOTH a value and a pointer receiver when `r` is addressable, and unlike a nil
+/// `*T` it does not panic the moment the method touches a field.
+///
+/// Refused even under force when the receiver type is not nameable from the harness
+/// package: unexported (`*decoder` — inaccessible by Go's visibility rules, so the
+/// method is uncallable from anywhere outside its package) or generic (`Tree[T]`
+/// needs a type argument govfuzz cannot choose).
+fn receiver_synthesis(func: &GoFunc, force: bool) -> Result<Option<String>, String> {
+    if !func.is_method {
+        return Ok(None);
+    }
+    let unsupported = || {
+        format!(
+            "Go method `{}` needs a receiver value; pass --force to call it on a \
+             zero-valued receiver (skipped cleanly)",
+            func.name
+        )
+    };
+    if !force {
+        return Err(unsupported());
+    }
+    let raw = func.receiver_type.as_deref().unwrap_or("").trim();
+    let bare = raw.trim_start_matches('*').trim();
+    if bare.is_empty()
+        || bare.contains('[')
+        || bare.contains('.')
+        || !bare.starts_with(|c: char| c.is_ascii_uppercase())
+    {
+        return Err(format!(
+            "forced: Go receiver type `{raw}` of method `{}` is not nameable from the \
+             harness package (unexported or generic); skipped cleanly",
+            func.name
+        ));
+    }
+    Ok(Some(format!("tgt.{bare}")))
+}
+
 /// Build the decode lines + the call statement for the target's params. Returns an
 /// error (clean skip) if a required parameter type can't be synthesized.
-fn generate_call(func: &GoFunc) -> Result<String, String> {
+fn generate_call(func: &GoFunc, receiver: Option<&str>, force: bool) -> Result<GoCall, String> {
     let n = func.params.len();
     let mut lines = String::new();
     let mut args = Vec::new();
+    let mut forced: Vec<String> = Vec::new();
+    if let Some(receiver_type) = receiver {
+        lines.push_str(&format!("\tvar recv {receiver_type}\n"));
+        forced.push(format!("receiver {receiver_type}"));
+    }
     for (i, p) in func.params.iter().enumerate() {
         let last = i + 1 == n;
-        let expr = decode_for_type(&p.ty, last)
-            .ok_or_else(|| format!("unsupported Go parameter type `{}` (skipped)", p.ty))?;
+        let expr = match decode_for_type(&p.ty, last) {
+            Some(expr) => expr,
+            None if force => {
+                // No decoder for this type. The Go zero value exists for EVERY type,
+                // so declaring one always compiles as long as the type is nameable
+                // from the harness package — which is the only thing that can fail.
+                let ty = harness_visible_go_type(&p.ty).ok_or_else(|| {
+                    format!(
+                        "forced: Go parameter type `{}` is not nameable from the harness \
+                         package (unexported, generic, variadic or an inline literal); \
+                         skipped cleanly",
+                        p.ty
+                    )
+                })?;
+                lines.push_str(&format!("\tvar z{i} {ty}\n"));
+                forced.push(format!("{} {}", p.name, p.ty));
+                format!("z{i}")
+            }
+            None => {
+                return Err(format!(
+                    "unsupported Go parameter type `{}` (skipped)",
+                    p.ty
+                ))
+            }
+        };
         lines.push_str(&format!("\ta{i} := {expr}\n"));
         args.push(format!("a{i}"));
     }
-    lines.push_str(&format!("\ttgt.{}({})\n", func.name, args.join(", ")));
-    Ok(lines)
+    let callee = if receiver.is_some() {
+        format!("(&recv).{}", func.name)
+    } else {
+        format!("tgt.{}", func.name)
+    };
+    lines.push_str(&format!("\t{callee}({})\n", args.join(", ")));
+    Ok(GoCall {
+        body: lines,
+        forced_detail: (!forced.is_empty())
+            .then(|| format!("go: synthesized zero value for {}", forced.join(", "))),
+    })
+}
+
+/// Go's predeclared type names — usable in the harness package unqualified.
+const GO_PREDECLARED_TYPES: &[&str] = &[
+    "any",
+    "bool",
+    "byte",
+    "complex64",
+    "complex128",
+    "error",
+    "float32",
+    "float64",
+    "int",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "rune",
+    "string",
+    "uint",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uintptr",
+];
+
+/// Type-syntax keywords that carry no package scope.
+const GO_TYPE_KEYWORDS: &[&str] = &["chan", "map", "struct", "interface", "func"];
+
+/// The packages the generated harness already imports, so a qualified type naming
+/// one of them resolves without touching the import block.
+const GO_HARNESS_IMPORTS: &[&str] = &["bytes", "fmt", "io", "math", "os", "syscall"];
+
+/// Rewrite a Go type spelling from the TARGET package into one valid in the
+/// harness package, where the target is imported as `tgt`. `None` when the
+/// spelling names something the harness cannot reach.
+///
+/// A bare exported name is the target's own type, so it gains the `tgt.` qualifier
+/// (`[]Record` -> `[]tgt.Record`); a predeclared name and a qualifier naming a
+/// package the harness already imports are kept. Everything else is refused rather
+/// than guessed: an unexported name is inaccessible by Go's visibility rules, a
+/// foreign qualifier would need an import path only the type-checker knows, a
+/// generic instantiation needs a type argument, and an inline `struct{...}` /
+/// `func(...)` literal contains FIELD and PARAMETER names this identifier walk
+/// would happily mistake for types.
+fn harness_visible_go_type(ty: &str) -> Option<String> {
+    let t = ty.trim();
+    if t.is_empty()
+        || t.starts_with("...")
+        || t.contains("struct{")
+        || t.contains("struct {")
+        || t.contains("func(")
+        || t.contains("func (")
+    {
+        return None;
+    }
+    // `interface{}` is the only interface literal with no method names in it.
+    let scan = t.replace("interface{}", "any");
+    if scan.contains("interface{") {
+        return None;
+    }
+    let bytes = scan.as_bytes();
+    let mut out = String::new();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        let ch = bytes[i] as char;
+        if !(ch.is_ascii_alphabetic() || ch == '_') {
+            out.push(ch);
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < bytes.len() {
+            let c = bytes[i] as char;
+            if c.is_ascii_alphanumeric() || c == '_' || c == '.' {
+                i += 1;
+            } else {
+                break;
+            }
+        }
+        let word = &scan[start..i];
+        if GO_PREDECLARED_TYPES.contains(&word) || GO_TYPE_KEYWORDS.contains(&word) {
+            // `map[K]V` / `chan T` keep their brackets; only a NAMED type followed by
+            // `[` is a generic instantiation.
+            out.push_str(word);
+            continue;
+        }
+        // A generic instantiation (`Tree[T]`) needs a type argument we cannot choose.
+        if scan[i..].starts_with('[') {
+            return None;
+        }
+        if let Some((pkg, name)) = word.split_once('.') {
+            if !GO_HARNESS_IMPORTS.contains(&pkg)
+                || !name.starts_with(|c: char| c.is_ascii_uppercase())
+            {
+                return None;
+            }
+            out.push_str(word);
+            continue;
+        }
+        if !word.starts_with(|c: char| c.is_ascii_uppercase()) {
+            return None;
+        }
+        out.push_str("tgt.");
+        out.push_str(word);
+    }
+    Some(out)
 }
 
 /// Map a Go parameter type to a decode expression over the cursor `c`. `None` for
@@ -672,24 +879,29 @@ mod tests {
         }
     }
 
+    fn plain(f: &GoFunc) -> Result<GoCall, String> {
+        generate_call(f, None, false)
+    }
+
     #[test]
     fn generates_typed_call_for_bytes() {
-        let body = generate_call(&func("ParseRecord", &[("data", "[]byte")], false)).unwrap();
-        assert!(body.contains("a0 := c.rest()"));
-        assert!(body.contains("tgt.ParseRecord(a0)"));
+        let call = plain(&func("ParseRecord", &[("data", "[]byte")], false)).unwrap();
+        assert!(call.body.contains("a0 := c.rest()"));
+        assert!(call.body.contains("tgt.ParseRecord(a0)"));
+        assert!(call.forced_detail.is_none(), "nothing synthesized");
     }
 
     #[test]
     fn typed_params_decode_by_type() {
-        let body = generate_call(&func("Decode", &[("s", "string"), ("n", "int")], false)).unwrap();
-        assert!(body.contains("a0 := string(c.bytesField())"));
-        assert!(body.contains("a1 := int(c.i64())"));
-        assert!(body.contains("tgt.Decode(a0, a1)"));
+        let call = plain(&func("Decode", &[("s", "string"), ("n", "int")], false)).unwrap();
+        assert!(call.body.contains("a0 := string(c.bytesField())"));
+        assert!(call.body.contains("a1 := int(c.i64())"));
+        assert!(call.body.contains("tgt.Decode(a0, a1)"));
     }
 
     #[test]
     fn unsupported_param_type_is_skip() {
-        let e = generate_call(&func("F", &[("m", "map[string]int")], false));
+        let e = plain(&func("F", &[("m", "map[string]int")], false));
         assert!(e.is_err(), "map param -> clean skip");
     }
 
@@ -697,19 +909,110 @@ mod tests {
     fn interface_param_synthesized_as_unmarshal_target() {
         // `Unmarshal(in []byte, out interface{})` — the canonical Go parser API — is
         // now fuzzable: the interface{} out-param becomes a fresh *interface{}.
-        let body = generate_call(&func(
+        let call = plain(&func(
             "Unmarshal",
             &[("in", "[]byte"), ("out", "interface{}")],
             false,
         ))
         .unwrap();
-        assert!(body.contains("a0 := c.bytesField()"));
-        assert!(body.contains("a1 := new(interface{})"));
-        assert!(body.contains("tgt.Unmarshal(a0, a1)"));
+        assert!(call.body.contains("a0 := c.bytesField()"));
+        assert!(call.body.contains("a1 := new(interface{})"));
+        assert!(call.body.contains("tgt.Unmarshal(a0, a1)"));
         // `any` (the Go 1.18 alias) works too.
-        let anybody =
-            generate_call(&func("Decode", &[("data", "[]byte"), ("v", "any")], false)).unwrap();
-        assert!(anybody.contains("a1 := new(interface{})"));
+        let anycall = plain(&func("Decode", &[("data", "[]byte"), ("v", "any")], false)).unwrap();
+        assert!(anycall.body.contains("a1 := new(interface{})"));
+    }
+
+    #[test]
+    fn forced_undrivable_param_becomes_its_zero_value() {
+        // The largest residual Go blocker: a parameter no decoder covers. Unforced it
+        // is still a clean skip (asserted above); forced it is the type's zero value,
+        // qualified into the harness package.
+        let target = func(
+            "Render",
+            &[("data", "[]byte"), ("opts", "map[string]Option")],
+            false,
+        );
+        let call = generate_call(&target, None, true).unwrap();
+        assert!(
+            call.body.contains("var z1 map[string]tgt.Option"),
+            "{}",
+            call.body
+        );
+        assert!(call.body.contains("a1 := z1"), "{}", call.body);
+        assert!(call.body.contains("tgt.Render(a0, a1)"), "{}", call.body);
+        let detail = call.forced_detail.expect("forced params are recorded");
+        assert!(detail.contains("opts"), "{detail}");
+    }
+
+    #[test]
+    fn forced_method_is_called_on_an_addressable_zero_receiver() {
+        // 23 of the residual Go targets are methods. A nil `*T` would panic the moment
+        // the method touched a field — our fault — so the receiver is a zero VALUE
+        // whose address satisfies both a pointer and a value receiver.
+        let mut method = func("Feed", &[("data", "[]byte")], true);
+        method.receiver_type = Some("*Decoder".to_owned());
+        assert!(
+            receiver_synthesis(&method, false).is_err(),
+            "unforced, a method is still a clean skip"
+        );
+        let receiver = receiver_synthesis(&method, true).unwrap().unwrap();
+        assert_eq!(receiver, "tgt.Decoder");
+        let call = generate_call(&method, Some(&receiver), true).unwrap();
+        assert!(call.body.contains("var recv tgt.Decoder"), "{}", call.body);
+        assert!(call.body.contains("(&recv).Feed(a0)"), "{}", call.body);
+        assert!(
+            call.forced_detail.is_some(),
+            "receiver is recorded as forced"
+        );
+    }
+
+    #[test]
+    fn forced_receiver_refuses_what_the_harness_cannot_name() {
+        for receiver_type in ["*decoder", "Tree[T]", "other.Decoder", ""] {
+            let mut method = func("Feed", &[("data", "[]byte")], true);
+            method.receiver_type = Some(receiver_type.to_owned());
+            assert!(
+                receiver_synthesis(&method, true).is_err(),
+                "`{receiver_type}` is not nameable from the harness package"
+            );
+        }
+    }
+
+    #[test]
+    fn harness_visible_type_qualifies_only_what_it_can_reach() {
+        assert_eq!(
+            harness_visible_go_type("[]Record").as_deref(),
+            Some("[]tgt.Record")
+        );
+        assert_eq!(
+            harness_visible_go_type("map[string]int").as_deref(),
+            Some("map[string]int")
+        );
+        assert_eq!(
+            harness_visible_go_type("*Node").as_deref(),
+            Some("*tgt.Node")
+        );
+        assert_eq!(
+            harness_visible_go_type("io.Writer").as_deref(),
+            Some("io.Writer")
+        );
+        assert_eq!(
+            harness_visible_go_type("chan int").as_deref(),
+            Some("chan int")
+        );
+        for unreachable in [
+            "config",          // unexported: inaccessible from any other package
+            "[]config",        // ... including inside a composite
+            "net.Conn",        // a package the harness does not import
+            "Tree[string]",    // generic instantiation
+            "...string",       // variadic
+            "struct{a int}",   // inline literal: `a` is a field, not a type
+            "func(r int) int", // inline literal: `r` is a parameter, not a type
+            "interface{ Read() }",
+        ] {
+            assert_eq!(harness_visible_go_type(unreachable), None, "{unreachable}");
+        }
     }
 
     #[test]

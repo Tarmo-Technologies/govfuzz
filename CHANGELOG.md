@@ -54,9 +54,37 @@ Reach release: the targets `--force` was supposed to rescue and did not.
   carried its left neighbour's value and `forced` read out `linked_real`. With
   neither flag the header is unchanged.
 
+- **A libc function is never defined away.** btop's build died inside glibc —
+  `/usr/include/unistd.h:1091: error: expected identifier or '('` on its own
+  declaration of `syscall` — because a vendored header calls `syscall()` from a
+  `static inline` without including `<unistd.h>`, and the undeclared-call repair
+  answered with `#define syscall`. That define is force-included ahead of every
+  translation unit, so it erased the declaration too, in a file no repair can
+  reach. Such names now route to their declaring header (`#include <unistd.h>`),
+  and the neutral-macro fallback refuses outright for anything the C runtime
+  owns. btop: 4 of 10 attempted targets built+fuzzed → 5, and zero unbuilt
+  harnesses in the sweep.
+
+- **A C++ free function no header declares gets declared.** The forward-
+  declaration gate was "does the target have any includes at all", but a
+  header-less `.cpp` still pulls in whatever headers the file includes — none of
+  which need declare the target. The harness then called a name nothing had
+  declared. It now searches those headers for an actual declarator, and strips
+  export/constant-evaluation decoration macros (`JNIEXPORT jstring`,
+  `utf8_constexpr14_impl int`) from the declaration it emits, so it cannot
+  manufacture an `unknown type name` the target never had.
+
+- **Getting started.** `docs/recommended-sweep.md` gives the one command to
+  start from and what every flag buys; `govfuzz auto --help` prints the same
+  command, and a distribution ships it as `RECOMMENDED-SWEEP.md`.
+
 - **Tooling.** `benchmarks/campaign-2026-07-25/residual_errors.py` sweeps the
   corpus forced and histograms the actual compiler errors behind every harness
-  that did not fuzz — the worklist that produced the `#error`-guard fix.
+  that did not fuzz — the worklist that produced the `#error`-guard fix. It only
+  counts harnesses GovFuzz gave up on: the repair loop reaches the link stage
+  with symbols still undefined on its way to resolving them, so harvesting every
+  harness (the first cut) ranked the loop working as designed as the largest
+  defect class.
 
 ## 0.2.20 - 2026-07-24
 

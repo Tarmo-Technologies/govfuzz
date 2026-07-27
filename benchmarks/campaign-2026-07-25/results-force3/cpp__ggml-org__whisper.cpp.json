@@ -1,0 +1,747 @@
+{
+ "lane": "cpp",
+ "repo": "ggml-org/whisper.cpp",
+ "stars": 52299,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 387.91,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 6993,
+    "dropped_by_cap": 6983,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 4,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 1,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ggml_backend_rpc_start_server",
+     "source": "ggml-rpc.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'devices' of type 'ggml_backend_dev_t *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): pointer parameter 'devices' of type 'ggml_backend_dev_t *' is not safely drivable after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ggml_backend_opencl_buffer_set_tensor",
+     "source": "ggml-opencl.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'buffer' of type 'ggml_backend_buffer_t' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'struct ggml_backend_buffer' for pointer parameter 'buffer' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ggml_vec_dot_q6_K_q8_K",
+     "source": "quants.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 6,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hmx_mm_2d_f32",
+     "source": "matmul-ops.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Whisper_tokenize",
+     "source": "whisper.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `Whisper_tokenize` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Options#initialize",
+     "source": "options.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 67.61268388849788,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Dependencies#initialize",
+     "source": "dependencies.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4788.954535011205,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "New",
+     "source": "model.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "convert_hf_whisper",
+     "source": "convert-h5-to-coreml.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `convert-h5-to-coreml` is not loadable (skipped cleanly): FileNotFoundError: [Errno 2] No such file or directory: '/home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp/harnesses/H-P0037-C34BE7DF/models/convert-whisper-to-coreml.py'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WhisperSegment",
+     "source": "WhisperSegment.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undefined symbol",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): pointer parameter \"X\" of type \"X\" i\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "go build failed: compilation terminated.",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Go method \"X\" needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "language": "go"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "package com.sun.jna does not exist",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): FileNotFoundError: [Errno N] No such file or directory: \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-405-9EC29C83",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-06575F5A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-0EA7F841",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-139B9499",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1650F916",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1816F8BD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1B6D9F3F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1BCE0EB7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-1F61EEB1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-2A7EB084",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-32367E5D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-32371AC5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-38F513BD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-674730A7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-6B34CFDA",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-8D33169A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-91F8F5C4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-95E6FE24",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-A1E1FB72",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-A3F38B3B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-A81C3504",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-ABD74389",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-AD91C8A6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-ADE4292E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-B43DB8F6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-CB971579",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-D347AC83",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-D5199DF7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-E42E3CCB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-E78D12E5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-EB307351",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-F8383737",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-406-FF2B8AC5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-08090F67",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-20414413",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-3C1557A9",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-496CAD1D",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-564CC35E",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-6E94E1C6",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-BA42CD4A",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    },
+    {
+     "id": "F-RO-GF-407-EA54F6D4",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X1BF6-7BEDB1FF"
+    }
+   ]
+  }
+ },
+ "sha": "080bbbe85230f624f0b52127f1ae1218247989f9",
+ "clone_s": 1.6,
+ "lane_check": "cpp: 484 files / 266150 lines; top=cpp(266150)",
+ "status": "done"
+}

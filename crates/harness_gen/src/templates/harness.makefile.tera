@@ -30,6 +30,15 @@ endif
 # at all and behaves exactly as it always has. The repair loop sets it (`make
 # C_STD=gnu89`) when a modern default rejects pre-standard C, mirroring CXX_STD
 # on the C++ side.
+#
+# C_STD_FLAG is spliced AFTER COMPILE_DB_FLAGS in every recipe, and the order is
+# load-bearing: a recovered compile database routinely carries the project's own
+# `-std=` (clay's build pins `-std=c99`), and only C++ standards are lifted out of
+# COMPILE_DB_FLAGS. With C_STD_FLAG first, that recovered `-std=` came later on the
+# command line and won, so every rung of the C dialect ladder was silently a no-op
+# — `make C_STD=gnu11` still compiled as c99, and a C11-only construct
+# (`U'\u2580'`, a UTF-32 literal) could never build no matter how many rungs ran.
+# Last one wins, so the ladder's choice has to be last.
 C_STD ?=
 C_STD_FLAG := $(if $(C_STD),-std=$(C_STD),)
 
@@ -123,7 +132,7 @@ govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
 	$(CC) $(GOVFUZZ_DRIVER_CFLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
 
 main: main.c govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS)
-	$(CC) $(CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 # Semantic check only: the same translation units under the same flags as
 # `main`, minus code generation and the link. The repair loop reads compiler
@@ -134,27 +143,27 @@ main: main.c govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJE
 # this mode — they are found by the real build, which still runs before any
 # target is called successful.
 syntaxcheck: main.c
-	$(CC) $(CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -fsyntax-only main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES)
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -fsyntax-only main.c{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES)
 
 afl: main_afl
 
 main_afl: main.c $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS)
-	$(AFLPP_CC) $(AFLPP_CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS) $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(AFLPP_CC) $(AFLPP_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS) $(AUTO_EXTRA_SOURCES) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 msan: main_msan
 
 main_msan: main.c govfuzz_driver.o $(CONTEXT_MSAN_OBJECTS) $(REPAIR_CONTEXT_MSAN_OBJECTS)
-	$(MSAN_CC) $(MSAN_CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MSAN_OBJECTS) $(REPAIR_CONTEXT_MSAN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(MSAN_CC) $(MSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MSAN_OBJECTS) $(REPAIR_CONTEXT_MSAN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 tsan: main_tsan
 
 main_tsan: main.c govfuzz_driver.o $(CONTEXT_TSAN_OBJECTS) $(REPAIR_CONTEXT_TSAN_OBJECTS)
-	$(TSAN_CC) $(TSAN_CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_TSAN_OBJECTS) $(REPAIR_CONTEXT_TSAN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(TSAN_CC) $(TSAN_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_TSAN_OBJECTS) $(REPAIR_CONTEXT_TSAN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 cov: main_cov
 
 main_cov: main.c govfuzz_driver.o $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS)
-	$(COV_CC) $(COV_CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(COV_CC) $(COV_CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 diff: main_diff
 
@@ -170,7 +179,7 @@ main_diff: main.c govfuzz_driver.o $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DIFF
 prov: main_prov
 
 main_prov: main.c govfuzz_driver.o $(CONTEXT_PROV_OBJECTS) $(REPAIR_CONTEXT_PROV_OBJECTS)
-	$(CC) $(CFLAGS) $(C_STD_FLAG) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_PROV_OBJECTS) $(REPAIR_CONTEXT_PROV_OBJECTS) $(AUTO_PROV_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(CC) $(CFLAGS) $(SECTION_FLAGS) $(C_COMPAT_FLAGS) $(COMPILE_DB_FLAGS) $(C_STD_FLAG) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.c{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_PROV_OBJECTS) $(REPAIR_CONTEXT_PROV_OBJECTS) $(AUTO_PROV_SOURCES) govfuzz_driver.o $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
 	rm -f main main_afl main_msan main_tsan main_cov main_prov main_diff govfuzz_driver.o

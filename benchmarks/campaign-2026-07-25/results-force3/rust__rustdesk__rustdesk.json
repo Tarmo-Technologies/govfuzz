@@ -1,0 +1,203 @@
+{
+ "lane": "rust",
+ "repo": "rustdesk/rustdesk",
+ "stars": 118862,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --work-dir /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 99.49,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3301,
+    "dropped_by_cap": 3291,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 7,
+    "synthesized_types": 6,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse_rules",
+     "source": "device-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.14093149368361074,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_rules",
+     "source": "user-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.0832416508819367,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Java_ffi_FFI_startServer",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_startServer' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Java_ffi_FFI_getLocalOption",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_getLocalOption' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Java_ffi_FFI_getBuildinOption",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_getBuildinOption' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handleMask",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "build_portable",
+     "source": "generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 465.800912308911,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "wf_cliprdr_process_filename",
+     "source": "wf_cliprdr.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'wFileName' of type 'WCHAR *' has no byte-buffer decoder after struct synthesis: opaque type 'WCHAR' for pointer parameter 'wFileName' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "drawOutline",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SetLastMsg",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 10,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Rust target \"X\" is an \"X\" with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-d7011d1b",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0044-A827C038"
+    }
+   ]
+  }
+ },
+ "sha": "eefd22b2057ba057305b10a6b5bf93c79b686eb9",
+ "clone_s": 0.9,
+ "lane_check": "rust: 250 files / 136560 lines; top=rust(136560)",
+ "status": "done"
+}

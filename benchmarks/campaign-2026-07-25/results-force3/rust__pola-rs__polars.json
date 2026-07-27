@@ -1,0 +1,211 @@
+{
+ "lane": "rust",
+ "repo": "pola-rs/polars",
+ "stars": 39106,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/pola-rs__polars --work-dir /home/ubuntu/govfuzz-sweep-work/rust__pola-rs__polars --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 126.65,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 16529,
+    "dropped_by_cap": 16519,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 3
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Config.load",
+     "source": "config.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.09811356726334802,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DataFrame.deserialize",
+     "source": "frame.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.14263660651096208,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Expr.deserialize",
+     "source": "expr.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.12288610586447449,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BaseExtension.ext_from_params",
+     "source": "classes.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.09381054813328693,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Expr.from_json",
+     "source": "expr.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.09206326832724568,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decode_uleb_bmi2",
+     "source": "uleb128.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'decode_uleb_bmi2' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_rows",
+     "source": "decode.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'decode_rows' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_str",
+     "source": "utf8.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'decode_str' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_str_as_cat",
+     "source": "utf8.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'decode_str_as_cat' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode",
+     "source": "decimal.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'decode' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "Rust target \"X\" is an \"X\" with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-dc51bf33",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P01F3-079BF66F"
+    },
+    {
+     "id": "F-0001-c937ee48",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P3028-599F5C45"
+    },
+    {
+     "id": "F-0002-dc51bf33",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0214-21831317"
+    }
+   ]
+  }
+ },
+ "sha": "a3e282a0f9003952a721f09eed5b54f425860773",
+ "clone_s": 5.8,
+ "lane_check": "rust: 2101 files / 426005 lines; top=rust(426005)",
+ "status": "done"
+}

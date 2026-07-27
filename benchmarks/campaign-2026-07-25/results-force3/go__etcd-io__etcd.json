@@ -1,0 +1,216 @@
+{
+ "lane": "go",
+ "repo": "etcd-io/etcd",
+ "stars": 52026,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --work-dir /home/ubuntu/govfuzz-sweep-work/go__etcd-io__etcd --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 1,
+   "wall_s": 4.11,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3454,
+    "dropped_by_cap": 3444,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "IDFromString",
+     "source": "id.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromKey",
+     "source": "predicate.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshal",
+     "source": "pbutil.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Unmarshaler` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MaybeUnmarshal",
+     "source": "pbutil.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Unmarshaler` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustParseMemberIDFromKey",
+     "source": "store.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*zap.Logger` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshalMessage",
+     "source": "pbutil.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `proto.Message` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewClusterFromURLsMap",
+     "source": "cluster.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*zap.Logger` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshalEntry",
+     "source": "decoder.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshalState",
+     "source": "decoder.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ConfigFromFile",
+     "source": "config.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "go build failed: go.mod:N: require go.etcd.io/etcd/server/v3: version \"X\" invalid: should be v3, not v0",
+     "language": "go"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "go build failed: go.mod:N: require go.etcd.io/etcd/cache/v3: version \"X\" invalid: should be v3, not v0",
+     "language": "go"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "go build failed: go.mod:N: require go.etcd.io/etcd/client/pkg/v3: version \"X\" invalid: should be v3, not v0",
+     "language": "go"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-405-28A0E4D6",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-G0306-AEEC1501"
+    },
+    {
+     "id": "F-RO-GF-423-AB4A689C",
+     "rule": "GF-423",
+     "cwe": [
+      "CWE-798"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-G0306-AEEC1501"
+    }
+   ]
+  }
+ },
+ "sha": "3e3b4c181c69eaaee169d33cbdb9a94a369207bf",
+ "clone_s": 1.2,
+ "lane_check": "go: 1107 files / 195983 lines; top=go(195983)",
+ "status": "done"
+}

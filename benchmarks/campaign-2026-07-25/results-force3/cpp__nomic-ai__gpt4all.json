@@ -1,0 +1,208 @@
+{
+ "lane": "cpp",
+ "repo": "nomic-ai/gpt4all",
+ "stars": 77396,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__nomic-ai__gpt4all --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 135.99,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 827,
+    "dropped_by_cap": 817,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 4,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LLamaModel::loadModel",
+     "source": "llamamodel.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "refusing to generate harness: compile flag \"-DLLAMA_VERSIONS=>=3\" contains a shell/make metacharacter and could inject commands into the build recipe; sequence generation also failed first: refusing to generate harness: compile flag \"-DLLAMA_VERSIONS=>=3\" contains a shell/make metacharacter and could inject commands into the build recipe",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llmodel_loadModel",
+     "source": "llmodel_c.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (PromptCallback) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadJinjaTemplate",
+     "source": "chatllm.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GPT4All.download_model",
+     "source": "gpt4all.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gpt4all.gpt4all` is not loadable (skipped cleanly): OSError: /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-bindings/python/gpt4all/llmodel_DO_NOT_MODIFY/build/libllmodel.so: cannot open shared object file: No such file or directory",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "appendBinSuffixIfMissing",
+     "source": "util.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-bindings/typescript/src/util.js` is not loadable (skipped cleanly): missing module `md5-file` (not in the project and not installed) \u2014 Error: Cannot find module 'md5-file'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createEmbedding",
+     "source": "gpt4all.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-bindings/typescript/src/gpt4all.js` is not loadable (skipped cleanly): missing module `node-gyp-build` (not in the project and not installed) \u2014 Error: Cannot find module 'node-gyp-build'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "rank0_print",
+     "source": "inference.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `inference` is not loadable (skipped cleanly): missing module `transformers` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'transformers'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "empty_response_callback",
+     "source": "_pyllmodel.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gpt4all._pyllmodel` is not loadable (skipped cleanly): OSError: /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-bindings/python/gpt4all/llmodel_DO_NOT_MODIFY/build/libllmodel.so: cannot open shared object file: No such file or directory",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getSystemTotalRAMInBytes",
+     "source": "sysinfo.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-backend/include/gpt4all-backend/sysinfo.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-backend/include/gpt4all-backend/sysinfo.h:4:10: fatal error: 'fstream' file not found |     4 | #include <fstream> |       |          ^~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getSystemTotalRAMInGB",
+     "source": "sysinfo.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-backend/include/gpt4all-backend/sysinfo.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/cpp/nomic-ai__gpt4all/gpt4all-backend/include/gpt4all-backend/sysinfo.h:4:10: fatal error: 'fstream' file not found |     4 | #include <fstream> |       |          ^~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling proj\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (PromptCallback) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailab\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "refusing to generate harness: compile flag \"X\" contains a shell/make metacharacter and could inject commands into the build recipe; sequence generation also fai\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "OSError: /home/ubuntu/govfuzz-corpus-N/cpp/nomic-ai__gpt4all/gpt4all-bindings/python/gpt4all/llmodel_DO_NOT_MODIFY/build/libllmodel.so: cannot open shared objec\u2026",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b666d16db5aeab8b91aaf7963adcee9c643734d7",
+ "clone_s": 2.0,
+ "lane_check": "cpp: 34 files / 15721 lines; top=ts(23836)",
+ "status": "done"
+}

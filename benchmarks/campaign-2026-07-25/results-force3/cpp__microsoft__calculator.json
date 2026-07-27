@@ -1,0 +1,196 @@
+{
+ "lane": "cpp",
+ "repo": "microsoft/calculator",
+ "stars": 30991,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__calculator --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 66.65,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1046,
+    "dropped_by_cap": 1036,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "StringToRat",
+     "source": "conv.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'StringToRat' return type 'PRAT' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CalculatorApp::EngineResourceProvider::GetCEngineString",
+     "source": "EngineResourceProvider.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'id' of type 'wstring_view' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'id' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHistoryCollector::CompleteEquation",
+     "source": "History.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'CHistoryCollector' to harness 'CompleteEquation': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CHistoryCollector' was found. Add a small wrapper or factory harness that constructs the object and calls 'CompleteEquation', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'CHistoryCollector' to harness 'CompleteEquation': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CHistoryCollector' was found. Add a small wrapper or factory harness that constructs the object and calls 'CompleteEquation', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnitConverter::RestoreUserPreferences",
+     "source": "UnitConverter.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'UnitConverter' to harness 'RestoreUserPreferences': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'UnitConverter' was found. Add a small wrapper or factory harness that constructs the object and calls 'RestoreUserPreferences', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'UnitConverter' to harness 'RestoreUserPreferences': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'UnitConverter' was found. Add a small wrapper or factory harness that constructs the object and calls 'RestoreUserPreferences', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHistoryCollector::CompleteHistoryLine",
+     "source": "History.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'CHistoryCollector' to harness 'CompleteHistoryLine': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CHistoryCollector' was found. Add a small wrapper or factory harness that constructs the object and calls 'CompleteHistoryLine', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'CHistoryCollector' to harness 'CompleteHistoryLine': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CHistoryCollector' was found. Add a small wrapper or factory harness that constructs the object and calls 'CompleteHistoryLine', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CalculatorApp.Controls.MathRichEditBox.InsertText",
+     "source": "MathRichEditBox.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CalculatorApp.Controls.EquationTextBox.SetEquationText",
+     "source": "EquationTextBox.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CCalcEngine::GetString(std::wstring_view)",
+     "source": "CalcEngine.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/CalcEngine.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:6: | In file included from /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/../ExpressionCommand.h:6: | In file included from /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/../Header Files/CalcEngine.h:23: | /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/../Header Files/History.h:7:10: fatal error: 'ExpressionCommand.h' file not found |     7 | #include \"ExpressionCommand.h\" |       |          ^~~~~~~~~~~~~~~~~~~~~; sequence generation also failed first: blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/CalcEngine.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:6: | In file included from /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/../ExpressionCommand.h:6: | In file included from /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/../Header Files/CalcEngine.h:23: | /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__calculator/src/CalcManager/Header Files/../Header Files/History.h:7:10: fatal error: 'ExpressionCommand.h' file not found |     7 | #include \"ExpressionCommand.h\" |       |          ^~~~~~~~~~~~~~~~~~~~~",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CCalcEngine::GroupDigitsPerRadix",
+     "source": "scidisp.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'CCalcEngine' to harness 'GroupDigitsPerRadix': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CCalcEngine' was found. Add a small wrapper or factory harness that constructs the object and calls 'GroupDigitsPerRadix', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'CCalcEngine' to harness 'GroupDigitsPerRadix': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CCalcEngine' was found. Add a small wrapper or factory harness that constructs the object and calls 'GroupDigitsPerRadix', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHistoryCollector::ClearHistoryLine",
+     "source": "History.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'CHistoryCollector' to harness 'ClearHistoryLine': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CHistoryCollector' was found. Add a small wrapper or factory harness that constructs the object and calls 'ClearHistoryLine', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'CHistoryCollector' to harness 'ClearHistoryLine': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CHistoryCollector' was found. Add a small wrapper or factory harness that constructs the object and calls 'ClearHistoryLine', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error MSB4019: The imported project \"X\" was not found. Confirm that the expression in the Import declaration \"X\", which evaluated to \"X\", is correct, and that t\u2026",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9f186049101f9a26e99a6e6cdff614d5558b5d27",
+ "clone_s": 1.4,
+ "lane_check": "cpp: 101 files / 31057 lines; top=cpp(31057)",
+ "status": "done"
+}

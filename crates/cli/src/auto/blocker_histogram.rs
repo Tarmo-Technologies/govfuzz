@@ -43,10 +43,23 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
     // Drop a leading `path/file.ext:12:34:` location prefix — the location is
     // per-instance, the message after it is the class.
     let without_location = strip_location_prefix(first);
+    let chars: Vec<char> = without_location.chars().collect();
     let mut out = String::with_capacity(without_location.len());
-    let mut chars = without_location.chars().peekable();
-    while let Some(ch) = chars.next() {
+    let mut index = 0;
+    while index < chars.len() {
+        let ch = chars[index];
         match ch {
+            // An apostrophe inside a word is a contraction, not a delimiter.
+            // Perl's most common failure begins "Can't locate Foo.pm in @INC",
+            // and treating that apostrophe as a quote either opened a span that
+            // swallowed the whole diagnostic (`Can"X"`) or closed a backtick
+            // span early — every interpreted-lane row that carries an English
+            // contraction was mangled. Ada attributes (`Foo'Length`) have the
+            // same shape and the same answer.
+            '\'' if word_internal_apostrophe(&chars, index) => {
+                out.push(ch);
+                index += 1;
+            }
             '"' | '`' | '\'' => {
                 // Consume through the closing delimiter. An unterminated quote
                 // (truncated compiler tail) just ends the span at end of line.
@@ -58,21 +71,22 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
                 // apostrophe on the line, so the quoted identifier leaked into
                 // the key and each distinct name became its own histogram row —
                 // the exact grouping this function exists to produce.
-                let closes = |c: char| {
+                let closes = |chars: &[char], at: usize| {
+                    let c = chars[at];
                     if ch == '`' {
-                        c == '`' || c == '\''
+                        c == '`' || (c == '\'' && !word_internal_apostrophe(chars, at))
                     } else {
                         c == ch
                     }
                 };
-                for inner in chars.by_ref() {
-                    if closes(inner) {
-                        break;
-                    }
+                let mut scan = index + 1;
+                while scan < chars.len() && !closes(&chars, scan) {
+                    scan += 1;
                 }
                 out.push_str("\"X\"");
+                index = (scan + 1).min(chars.len());
             }
-            c if c.is_ascii_digit() => {
+            _ if ch.is_ascii_digit() => {
                 // A digit run glued to the end of a word is part of an
                 // identifier, not a per-instance number: diagnostic codes
                 // (`NETSDK1045`, `CS0618`, `C2065`, `E0308`) are exactly what an
@@ -83,27 +97,34 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
                     .chars()
                     .last()
                     .is_some_and(|p| p.is_ascii_alphanumeric());
+                let mut scan = index;
+                while scan < chars.len() && chars[scan].is_ascii_digit() {
+                    scan += 1;
+                }
                 if glued_to_word {
-                    out.push(c);
-                    while let Some(next) = chars.peek() {
-                        if next.is_ascii_digit() {
-                            out.push(*next);
-                            chars.next();
-                        } else {
-                            break;
-                        }
-                    }
+                    out.extend(&chars[index..scan]);
                 } else {
-                    while chars.peek().is_some_and(char::is_ascii_digit) {
-                        chars.next();
-                    }
                     out.push('N');
                 }
+                index = scan;
             }
-            c => out.push(c),
+            other => {
+                out.push(other);
+                index += 1;
+            }
         }
     }
-    let collapsed = out.split_whitespace().collect::<Vec<_>>().join(" ");
+    let collapsed = out
+        .split_whitespace()
+        .map(|token| {
+            if looks_like_path(token) {
+                "PATH"
+            } else {
+                token
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
     // Long `Other` tails are whole compiler transcripts; keep the head, which is
     // where the proximate cause sits.
     if collapsed.chars().count() > 160 {
@@ -111,6 +132,53 @@ pub(crate) fn normalize_detail(raw: &str) -> String {
     } else {
         collapsed
     }
+}
+
+/// Whether the apostrophe at `at` sits between two letters — an English
+/// contraction (`Can't`, `doesn't`, `isn't`) or an Ada attribute (`Obj'Length`)
+/// rather than a quote delimiter. GNAT's closing form is `Foo', whose apostrophe
+/// is followed by a space or punctuation, so this never misreads one.
+fn word_internal_apostrophe(chars: &[char], at: usize) -> bool {
+    let before = at
+        .checked_sub(1)
+        .and_then(|i| chars.get(i))
+        .is_some_and(char::is_ascii_alphabetic);
+    let after = chars.get(at + 1).is_some_and(char::is_ascii_alphabetic);
+    before && after
+}
+
+/// Whether a whitespace-delimited token names a file on THIS host.
+///
+/// A path is per-instance in exactly the way a quoted identifier is: every
+/// project, checkout and harness produces a different one, so a diagnostic that
+/// embeds one never groups. `strip_location_prefix` only handles a LEADING
+/// `file:line:col:`; a path in the MIDDLE of a message (`javac (target) failed:
+/// /home/…/Options.java:37: error: …`) survived it, and across the 500-project
+/// sweep 176 of 1109 distinct blocker rows — 456 targets — were one-off rows for
+/// that reason alone.
+///
+/// Deliberately narrow. Prose uses slashes too (`read/write`, `and/or`, `N/A`),
+/// so a bare slash is not enough: the token must be explicitly rooted, or its
+/// final segment must carry an extension.
+fn looks_like_path(token: &str) -> bool {
+    if !token.contains('/') {
+        return false;
+    }
+    // Rooted: absolute, explicitly relative, home-relative, or the leading
+    // ellipsis Lua puts on a truncated chunk name (`...ins/frontend/x.lua:9:`).
+    if token.starts_with('/')
+        || token.starts_with("./")
+        || token.starts_with("../")
+        || token.starts_with("~/")
+        || token.starts_with("...")
+    {
+        return true;
+    }
+    // Otherwise the last segment must look like a filename. Trailing punctuation
+    // (`:12:`, `,`, `)`) belongs to the sentence, not the name.
+    let last = token.rsplit('/').next().unwrap_or_default();
+    let last = last.trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
+    last.contains('.') && !last.starts_with('.')
 }
 
 /// Lines that announce a failure without describing it. Keying the histogram on
@@ -412,6 +480,86 @@ mod tests {
             normalize_detail("error[E0425]: cannot find value `alpha` in this scope"),
             normalize_detail("error[E0425]: cannot find value `beta` in this scope"),
         );
+    }
+
+    /// An apostrophe inside a word is a contraction, not a quote. Perl's most
+    /// common failure opens with one, and reading it as a delimiter either ate
+    /// the rest of the diagnostic or closed a backtick span early — the whole
+    /// message was destroyed on the lane where it fires most.
+    #[test]
+    fn a_contraction_is_not_a_quote_delimiter() {
+        let perl =
+            normalize_detail("Can't locate Try/Tiny.pm in @INC (you may need to install it)");
+        assert!(
+            perl.starts_with("Can't locate"),
+            "the contraction must survive intact: {perl}"
+        );
+        assert!(
+            perl.contains("you may need to install it"),
+            "the apostrophe must not swallow the rest of the line: {perl}"
+        );
+
+        // …and it must not close a backtick span early either: everything
+        // between the backticks is one span, contraction or not.
+        let early = normalize_detail("module `Foo::Bar` isn't installed");
+        assert_eq!(early, "module \"X\" isn't installed");
+
+        // GNAT's `Foo' form still closes — its apostrophe is followed by a
+        // space, not a letter.
+        assert_eq!(
+            normalize_detail("error: `Foo' is undefined here"),
+            "error: \"X\" is undefined here"
+        );
+
+        // An Ada attribute reads the same way as a contraction and gets the
+        // same answer.
+        assert_eq!(
+            normalize_detail("expected type for Obj'Length here"),
+            "expected type for Obj'Length here"
+        );
+    }
+
+    /// A path in the MIDDLE of a diagnostic is per-instance noise exactly like a
+    /// quoted identifier. Two projects failing the same way must produce ONE row.
+    #[test]
+    fn a_host_path_collapses_so_the_row_groups() {
+        let one = normalize_detail(
+            "javac (target) failed: /home/u/corpus/a__b/src/main/java/com/x/Options.java:37: \
+             error: package android.graphics does not exist",
+        );
+        let two = normalize_detail(
+            "javac (target) failed: /home/u/corpus/c__d/app/src/main/java/com/y/Builder.java:9: \
+             error: package android.graphics does not exist",
+        );
+        assert_eq!(one, two, "distinct files must group into one row");
+        assert!(
+            one.contains("PATH"),
+            "the path must be named as such: {one}"
+        );
+        assert!(
+            one.contains("package android.graphics does not exist"),
+            "the class must survive: {one}"
+        );
+
+        // Lua's truncated chunk name and a Go module path are the same problem.
+        assert!(
+            normalize_detail("/usr/bin/lua: ...s/frontend/countdown.lua:9: boom").contains("PATH")
+        );
+        assert!(normalize_detail(
+            "go build failed: go: github.com/hashicorp/terraform-registry-address@v0.2.5 \
+             requires go >= 1.24"
+        )
+        .contains("PATH"));
+
+        // Prose is not a path. A bare slash between words must be left alone, or
+        // the message stops being readable.
+        for prose in [
+            "read/write mismatch on the handle",
+            "expected true/false for the flag",
+            "and/or is not a valid operator",
+        ] {
+            assert_eq!(normalize_detail(prose), prose, "prose must survive");
+        }
     }
 
     #[test]

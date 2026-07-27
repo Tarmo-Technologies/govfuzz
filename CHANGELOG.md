@@ -74,6 +74,50 @@ Reach release: the targets `--force` was supposed to rescue and did not.
   `utf8_constexpr14_impl int`) from the declaration it emits, so it cannot
   manufacture an `unknown type name` the target never had.
 
+- **`--force` no longer empties the missing-dependency manifest.** Forcing
+  degrades a residual failed build to a report-only static scan — the right
+  floor — but a report-only outcome carries no diagnostics for the manifest to
+  mine, and the degradation replaced them with a bare COUNT of residual errors.
+  The dependency evidence went with them, so the run that most needs the manifest
+  produced none: tmux, whose every target embeds libevent's `struct event` by
+  value, reported "4 still blocking" unforced and **"No external dependencies
+  were missing — the tree built against its own sources"** forced. The forced
+  degradation now carries the unresolved type names across, and a regression test
+  pins that forcing can never empty the manifest.
+
+- **Macro templates and macro invocations are no longer discovered as targets.**
+  Two shapes parse as function definitions but are not functions:
+  - A body inside a backslash-continued `#define` — BSD `<sys/tree.h>`'s
+    `RB_GENERATE_INSERT(name, type, field, cmp, attr)` defines a whole function
+    whose return type is `attr struct type *`, where `attr`/`type`/`name` are
+    macro PARAMETERS. The harness emitted `attr struct type * R = ...`, which
+    clang rejects with "cannot combine with previous 'type-name' declaration
+    specifier" and no repair can fix, because nothing is missing. tmux's
+    compat/tree.h alone produced seven such dead targets — seven slots in the
+    ranked cap that real functions should have had.
+  - A multi-segment ALL-CAPS invocation at file scope — Linux's
+    `TRACE_EVENT(mcu_cmd_info, TP_PROTO(...), ...)`, which parses as a function
+    whose parameter *types* are the macro's arguments. Single-word ALL-CAPS names
+    are kept, because BLAS/LAPACK really do export `DGEMM`.
+
+  On lede this removed 139 pseudo-targets from the ranked list and gave the slots
+  back to real functions.
+
+- **The synthesized Win32 pack no longer redefines the tree's own typedefs.**
+  Win32-style scalar names are not exclusive to Windows: lede's MediaTek mt7603
+  Linux driver declares its own `typedef signed char CHAR;` and `union
+  _LARGE_INTEGER`. GovFuzz force-included its `windows.h` placeholder over them
+  and produced `typedef redefinition with different types ('signed char' vs
+  'char')` — its own error. When the tree defines the name, the ordinary type
+  repairs run instead.
+
+- **A CamelCase export macro no longer leaks into the generated C harness.**
+  `strip_type_decoration` recognised the ALL-CAPS convention (`WREN_API`,
+  `STBIDEF`) but not the CamelCase one, so ImageMagick's `ModuleExport size_t f()`
+  reached the harness as `extern ModuleExport size_t f(...)`: "unknown type name
+  'ModuleExport'" plus an `expected ';'` cascade, on a line GovFuzz wrote itself.
+  The same shape was fixed for C++ above; this is its C twin.
+
 - **Getting started.** `docs/recommended-sweep.md` gives the one command to
   start from and what every flag buys; `govfuzz auto --help` prints the same
   command, and a distribution ships it as `RECOMMENDED-SWEEP.md`.

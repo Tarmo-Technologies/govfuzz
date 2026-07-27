@@ -2,6 +2,62 @@
 
 # Changelog
 
+## 0.2.21 - 2026-07-27
+
+Reach release: the targets `--force` was supposed to rescue and did not.
+
+- **`--force` now works outside C/C++/Ada.** The forced sweep's residual
+  blockers showed 116 Go targets and 31 C# targets ending `unsupported_params`
+  however hard you forced them — Go's undrivable count was identical between the
+  forced and unforced arms, because nothing attempted it. Both lanes now have
+  the C-family's best-effort driver:
+  - **Go** drives an undrivable parameter as its type's zero value, qualifying
+    the spelling into the harness package, and calls a method on an addressable
+    zero receiver (not a nil pointer, which would panic on first field access).
+    An unexported, generic, variadic, or inline-literal type is still refused
+    rather than guessed.
+  - **C#** allocates a receiver whose type has no accessible parameterless
+    constructor without running one, via the runtime's own
+    `GetUninitializedObject`, resolved by reflection so the shim compiles on any
+    target framework. An abstract type or interface is still refused.
+  - A target built on a fabricated value is recorded as such, so the report
+    floors its findings to Low with the forced caveat and counts it separately —
+    a forced nil-map panic never reads as a confirmed defect.
+
+- **A function returning a struct by value can be stubbed.** Twenty raylib
+  symbols in one clay harness stubbed fine and one did not, because it returns
+  an aggregate by value and the stub generator had no way to name the type. It
+  now constructs a zeroed return value where the type is complete (the
+  header-backed path), which is exactly as neutral as the `return 0;` its
+  siblings get. clay: 3 of 6 attempted targets fuzzed, now 4.
+
+- **A configure-style `#error` guard no longer ends the build.** Sweeping what
+  `--force` still cannot build, ten of 104 sampled unbuilt harnesses died on a
+  header's own `#error` — libssh's "no strtoull function found", ImageMagick's
+  "you should set MAGICKCORE_QUANTUM_DEPTH" — where nothing is missing from the
+  tree at all and a real `./configure` would have defined the macro the guard
+  tests. GovFuzz now reads the conditional that owns the `#error` and defines
+  that macro, with the value the guard itself requires — preferring the outermost
+  feature-test wrapper, so libssh's guard defines `HAVE_STRTOULL` and leaves the
+  real libc function alone rather than taking the inner branch and aliasing
+  `strtoull` to a symbol this host lacks. Undecidable guards (a comparison, a
+  compound condition, an error that fires *because* a macro is defined) are
+  refused rather than guessed. Measured on the two corpus projects that carry the
+  class: the guard errors are gone from every build log and more targets reach
+  the report-only floor (WindTerm 3 → 6, ImageMagick 1 → 4); neither converts a
+  target to fuzzing inside a 90-second campaign, because what remains behind them
+  is a different class.
+
+- **`findings.csv` columns line up again.** The optional `scan_type`/`forced`
+  columns are written before the stub-accounting block but their names were
+  appended after it, so under `--force` or `--static-dynamic` every stub column
+  carried its left neighbour's value and `forced` read out `linked_real`. With
+  neither flag the header is unchanged.
+
+- **Tooling.** `benchmarks/campaign-2026-07-25/residual_errors.py` sweeps the
+  corpus forced and histograms the actual compiler errors behind every harness
+  that did not fuzz — the worklist that produced the `#error`-guard fix.
+
 ## 0.2.20 - 2026-07-24
 
 - **More real legacy Ada/C/C++ targets reach the fuzzer.** A focused audit of

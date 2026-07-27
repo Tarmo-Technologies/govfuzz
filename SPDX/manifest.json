@@ -1131,6 +1131,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/script_load_roots.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/shim_path.rs",
       "license": "Apache-2.0"
     },
@@ -1515,6 +1519,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_config_guard.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_cpp_amalgamation.rs",
       "license": "Apache-2.0"
     },
@@ -1591,6 +1599,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_force_non_self_contained.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_force_params.rs",
       "license": "Apache-2.0"
     },
@@ -1600,6 +1612,10 @@
     },
     {
       "path": "crates/cli/tests/auto_force_static.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_force_two_phase.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1616,6 +1632,10 @@
     },
     {
       "path": "crates/cli/tests/auto_full_tu_link.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_go_force.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3267,6 +3287,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/open-defects-force-and-reach.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/release-packaging.md",
       "license": "Apache-2.0"
     },
@@ -3396,6 +3420,10 @@
     },
     {
       "path": "docs/site/static-cwe-coverage.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/sweep-500.md",
       "license": "Apache-2.0"
     },
     {
@@ -3812,6 +3840,10 @@
     },
     {
       "path": "tests/fixtures/c_restrict_macro/restrict_macro.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/config_guard/parser.c",
       "license": "Apache-2.0"
     },
     {

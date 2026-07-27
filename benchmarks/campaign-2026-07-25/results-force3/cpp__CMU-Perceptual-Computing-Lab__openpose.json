@@ -1,0 +1,198 @@
+{
+ "lane": "cpp",
+ "repo": "CMU-Perceptual-Computing-Lab/openpose",
+ "stars": 34317,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/CMU-Perceptual-Computing-Lab__openpose --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__CMU-Perceptual-Computing-Lab__openpose --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 120.84,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 759,
+    "dropped_by_cap": 749,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "op::CameraParameterReader::readParameters(const std::string &, const std::vector<std::string> &)",
+     "source": "cameraParameterReader.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'op::CameraParameterReader' to harness 'readParameters': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'op::CameraParameterReader' was found. Add a small wrapper or factory harness that constructs the object and calls 'readParameters', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'op::CameraParameterReader' to harness 'readParameters': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'op::CameraParameterReader' was found. Add a small wrapper or factory harness that constructs the object and calls 'readParameters', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "op::loadData(const std::vector<std::string> &, const std::string &, const DataFormat)",
+     "source": "fileStream.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "op::CameraParameterReader::writeParameters",
+     "source": "cameraParameterReader.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'op::CameraParameterReader' to harness 'writeParameters': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'op::CameraParameterReader' was found. Add a small wrapper or factory harness that constructs the object and calls 'writeParameters', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'op::CameraParameterReader' to harness 'writeParameters': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'op::CameraParameterReader' was found. Add a small wrapper or factory harness that constructs the object and calls 'writeParameters', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "op::loadImage",
+     "source": "fileStream.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "op::loadHandDetectorTxt",
+     "source": "fileStream.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "op::getFilesOnDirectory(const std::string &, const std::vector<std::string> &)",
+     "source": "fileSystem.cpp",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 387.2052117752195,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "op::loadData(const std::string &, const std::string &, const DataFormat)",
+     "source": "fileStream.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "display",
+     "source": "12_asynchronous_custom_output.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `12_asynchronous_custom_output` is not loadable (skipped cleanly): missing module `cv2` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'cv2'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "printKeypoints",
+     "source": "12_asynchronous_custom_output.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `12_asynchronous_custom_output` is not loadable (skipped cleanly): missing module `cv2` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'cv2'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_sample_heatmaps",
+     "source": "09_keypoints_from_heatmaps.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `09_keypoints_from_heatmaps` is not loadable (skipped cleanly): missing module `cv2` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'cv2'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-405-74B28A01",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X0114-73254C5D"
+    }
+   ]
+  }
+ },
+ "sha": "5c5d96523ef917bd30301245fdc8343937cae48d",
+ "clone_s": 2.5,
+ "lane_check": "cpp: 350 files / 57103 lines; top=cpp(57103)",
+ "status": "done"
+}

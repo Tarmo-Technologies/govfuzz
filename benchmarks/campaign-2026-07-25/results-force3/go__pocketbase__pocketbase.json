@@ -1,0 +1,217 @@
+{
+ "lane": "go",
+ "repo": "pocketbase/pocketbase",
+ "stars": 60256,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/pocketbase__pocketbase --work-dir /home/ubuntu/govfuzz-sweep-work/go__pocketbase__pocketbase --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 13.74,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 805,
+    "dropped_by_cap": 795,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 3
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Read",
+     "source": "middlewares_body_limit.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `Read` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnmarshalJSON",
+     "source": "fields_list.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `UnmarshalJSON` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnmarshalJSON",
+     "source": "fields_list.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `UnmarshalJSON` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnmarshalJSON",
+     "source": "collection_model.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `UnmarshalJSON` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnmarshalJSON",
+     "source": "record_model.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `UnmarshalJSON` needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "backupUploadButton",
+     "source": "backupUploadButton.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7.69102435615128,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "backupsForm",
+     "source": "backupsForm.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7.920134067673424,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "batchAccordion",
+     "source": "batchAccordion.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7.561050659798814,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "backupsList",
+     "source": "backupsList.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/pocketbase__pocketbase/ui/src/settings/backups/backupsList.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/go/pocketbase__pocketbase/ui/src/settings/backups/backupCreateModal` (not in the project and not installed) \u2014 throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "collectionAuthOptionsTab",
+     "source": "collectionAuthOptionsTab.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/pocketbase__pocketbase/ui/src/collections/collectionAuthOptionsTab.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/go/pocketbase__pocketbase/ui/src/collections/emailTemplateAccordion` (not in the project and not installed) \u2014 throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "Go method \"X\" needs a receiver value; receiver synthesis is not yet supported (skipped cleanly)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 throw error;",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-e37b3360",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0001-804E35A3"
+    },
+    {
+     "id": "F-0001-dcb5ee4a",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0001-93F3D6A3"
+    },
+    {
+     "id": "F-0002-44a815ef",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0001-ABBC1C32"
+    }
+   ]
+  }
+ },
+ "sha": "0cbfc046c7548421268582db4bfb9a03a158361a",
+ "clone_s": 1.5,
+ "lane_check": "go: 453 files / 109492 lines; top=go(109492)",
+ "status": "done"
+}

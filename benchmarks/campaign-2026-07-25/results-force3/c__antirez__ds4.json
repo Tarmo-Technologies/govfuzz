@@ -1,0 +1,2786 @@
+{
+ "lane": "c",
+ "repo": "antirez/ds4",
+ "stars": 19220,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4 --work-dir /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4 --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 255.04,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3513,
+    "dropped_by_cap": 3503,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ds4_session_save_payload",
+     "source": "ds4.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'ds4_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_session' for parameter 's' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_dist_session_save_payload",
+     "source": "ds4_distributed.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'd' of type 'ds4_dist_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_dist_session' for parameter 'd' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_dist_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_dist_session_load_payload",
+     "source": "ds4_distributed.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'd' of type 'ds4_dist_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_dist_session' for parameter 'd' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_dist_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_session_load_layer_payload",
+     "source": "ds4.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'ds4_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_session' for parameter 's' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_exact",
+     "source": "splice_mixed_expert_layers_gguf.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4349.563959112808,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_layer_set",
+     "source": "splice_mixed_expert_layers_gguf.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3121.530667459045,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "c_scan_string_end",
+     "source": "build_ds4_imatrix_dataset.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3.377614163090806,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ds4_precise_expf",
+     "source": "ds4_rocm.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h:3:10: fatal error: 'hip/hip_runtime.h' file not found |     3 | #include <hip/hip_runtime.h> |       |          ^~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_precise_log1pf",
+     "source": "ds4_rocm.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h:3:10: fatal error: 'hip/hip_runtime.h' file not found |     3 | #include <hip/hip_runtime.h> |       |          ^~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_precise_sqrtf",
+     "source": "ds4_rocm.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h:3:10: fatal error: 'hip/hip_runtime.h' file not found |     3 | #include <hip/hip_runtime.h> |       |          ^~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"ds4_dist_sessi\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"ds4_session\"X\"",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-e4134e3d",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0341-9D342E10"
+    },
+    {
+     "id": "F-RO-GF-405-06035F72",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-4D5D62CD",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-57B76DD4",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-6CB0CAD6",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-74B5D1F5",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-9021A974",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-916AE01B",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-97D7CB2F",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-9BDC7C52",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-A537E59B",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-B33B3E73",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-B7459E7F",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-E28BCE60",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-EB45E919",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-F15D2635",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-405-F1E24865",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-02BF4051",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-053A6458",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-0604CAC9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-067907C3",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-093186F2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-0BD006F1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-0C7B64FE",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-0C86EDA5",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-0FA7D25D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-10CC39EB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-11C2EA91",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-128BEF98",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-14AC7CFF",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-16B5047B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-16FF0AA9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-17EF5890",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1816B7E8",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-18570403",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-18D3663D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1912F461",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1ACAD137",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1D029ED4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1D7FA832",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1E1DAF48",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1E6F41E8",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1F83496F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-1FAB3C49",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-22002F07",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-259DFD04",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-25C680EF",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-25F43444",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-26084C9E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2681D681",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-26AFA04A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-27AE9A1E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-286791D6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2940E960",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-29CC9062",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-29DA2B84",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2A549737",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2AD659C4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2B1EFE12",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2B3747D3",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2DBA6E32",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2F040484",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-2F8DCAC1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-303BF225",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3128A7F7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-33C63623",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-341073E8",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-342B8C91",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-34FD51AB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3765D785",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-385A9FC0",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3A1F8A57",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3BA5F8BB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3C46AD97",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3CD605CD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3D2D348B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3EE2440E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-3F7AAD45",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-418090AE",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-41F5217B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-432DE339",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-43BCC73B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-44896B5F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-45458336",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4574AB03",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-45FDF630",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4621E67C",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4689EC49",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-46B789A4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4A84355F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4A888B93",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4AE2F3B9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4C6B6F26",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4CECC3E1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4CF730D4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4D54AA10",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4E8B5015",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4EF1F3B2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4F3E1FC6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4F495F7B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-4FDFE901",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-522E9AB3",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5312E466",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5334E8BB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-54308245",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-543932FF",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-54513FE9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-54AF5460",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5854AAFE",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5A5AB1EA",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5BEAA7CA",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5C49CE11",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5DD6DF31",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5E6F95E4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-5EEDF63A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6023D957",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-60D10D4C",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-613FA291",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-642E0A08",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-646C1BF9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-650B751B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-651C0FC2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-66C17E42",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-66DD1E50",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6779A83D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-68519BD0",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6BDE0301",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6C96304B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6D0DBBCD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6DA191CE",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6E0FA0A6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6E8C019D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6E8E1CB2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6F13B624",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6F3953CC",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-6FB8EBDB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-70378268",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7058BA5C",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-70A6FAD1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-70F72AEA",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-730ED1F2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7421AF0F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-743E0743",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-74C4C09F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-759AE833",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-760FCF6E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-76A08BE4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7741A0FE",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-775DCFBB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7789CB5A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-77DEADBC",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-783DC43C",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-79E3C5B6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7A588199",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7A815F34",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7A919B2F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7B1ED1F6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7C859DCC",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-7D9103B7",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-82851EEE",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-82D2E49E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-84AAFE8F",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-84C4983E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-85501FBB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-8564C311",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-85C16402",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-86796CA4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-87FB18FB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-8B454B7B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-8BAF9766",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9032325B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-912F304A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-93E849C6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9459E989",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-94F9CA4B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-95B451A9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9692CCF8",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9827ADAB",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9A4054E4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9A63A309",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9ABFCED2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9B244D6D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9C08E1C6",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9C61604E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9CA780F0",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9CAF541B",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9E0FC600",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9E9E3AD1",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9EFB9708",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-9F2F77C4",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A1E442D2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A372C106",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A51D617A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A559B728",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A56F50B2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A5706C8A",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A6C9FA22",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A78F44CD",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A7C9895E",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    },
+    {
+     "id": "F-RO-GF-406-A8384512",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-CC106-14F18308"
+    }
+   ]
+  }
+ },
+ "sha": "0a7ad776b9068348e6cb09df8cafa9cadd285298",
+ "clone_s": 1.8,
+ "lane_check": "c: 36 files / 128956 lines; top=c(128956)",
+ "status": "done"
+}

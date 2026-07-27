@@ -1,0 +1,235 @@
+{
+ "lane": "c",
+ "repo": "curl/curl",
+ "stars": 42473,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/curl__curl --work-dir /home/ubuntu/govfuzz-sweep-work/c__curl__curl --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 122.39,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 4238,
+    "dropped_by_cap": 4228,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 11,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Curl_extract_certinfo",
+     "source": "x509asn1.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseconfig",
+     "source": "tool_parsecfg.c",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Curl_ws_accept",
+     "source": "ws.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'data' of type 'struct Curl_easy *' has no byte-buffer decoder after struct synthesis: decoder for parameter 'data' exceeds 65536 bytes after struct synthesis; sequence harness build also failed first: [{\"kind\":\"other\",\"tail\":\"/home/ubuntu/govfuzz-corpus-500/c/curl__curl/include/curl/multi.h:438:23: error: expected identifier or '('\\n/home/ubuntu/govfuzz-corpus-500/c/curl__curl/lib/curl_setup.h:906:8: error: redefinition of 'timeval'\\n/home/ubuntu/govfuzz-corpus-500/c/curl__curl/lib/curl_setup.h:958:2: error: \\\"Missing definition of macro sread\\\"\\n/home/ubuntu/govfuzz-corpus-500/c/curl__curl/lib/curl_setup.h:981:2: error: \\\"Missing definition of macro swrite\\\"\"}]",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "glob_parse",
+     "source": "tool_urlglob.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'amount' of type 'curl_off_t *' has no byte-buffer decoder after struct synthesis: opaque type 'CURL_TYPEOF_CURL_OFF_T' for pointer parameter 'amount' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getparameter",
+     "source": "tool_getparam.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 11,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::convert",
+     "source": "cdall",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3119.7938637780653,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::extract",
+     "source": "verify-synopsis.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2333.3001868728156,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::extract",
+     "source": "verify-examples.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2593.1507193377597,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::extract",
+     "source": "release-notes.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3507.738721342477,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::parse_csv_param",
+     "source": "mk-ca-bundle.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.14866708702384634,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "\"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "expected identifier or \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "unterminated /* comment",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: decoder for parameter \"X\" exceeds N bytes after struct synthesis; sequence harnes\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-406-007940B3",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0559-7DD19291"
+    },
+    {
+     "id": "F-RO-GF-406-27B8B164",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0559-7DD19291"
+    },
+    {
+     "id": "F-RO-GF-406-27E197B2",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0559-7DD19291"
+    }
+   ]
+  }
+ },
+ "sha": "6f39c854c8e9df067e0acf0cccf631035d40ca7c",
+ "clone_s": 1.3,
+ "lane_check": "c: 757 files / 228664 lines; top=c(228664)",
+ "status": "done"
+}

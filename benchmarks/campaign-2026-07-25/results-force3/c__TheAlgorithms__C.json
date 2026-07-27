@@ -1,0 +1,224 @@
+{
+ "lane": "c",
+ "repo": "TheAlgorithms/C",
+ "stars": 22280,
+ "wave": "FORCE3",
+ "surfaces": {
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/TheAlgorithms__C --work-dir /home/ubuntu/govfuzz-sweep-work/c__TheAlgorithms__C --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass --force",
+   "exit": 0,
+   "wall_s": 334.01,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1078,
+    "dropped_by_cap": 1068,
+    "built": 9,
+    "built_and_fuzzed": 9,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 4
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "testHelper",
+     "source": "mcnaughton_yamada_thompson.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.908893068632808,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "save_nd_data",
+     "source": "kohonen_som_trace.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'X' of type 'double **' has no byte-buffer decoder after struct synthesis: pointer parameter 'X' of type 'double * *' is not safely drivable after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "save_2d_data",
+     "source": "kohonen_som_topology.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.3411350774887007,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decimal_to_anybase",
+     "source": "decimal_to_any_base.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2340.7411414294925,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "malloc_dbg",
+     "source": "malloc_dbg.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.9032643613791789,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "save_u_matrix",
+     "source": "kohonen_som_topology.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.07480484824976015,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "put",
+     "source": "dynamic_array.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7539.994928518485,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "preProcessing",
+     "source": "mcnaughton_yamada_thompson.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 191.56638792042565,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "fetch_leetcode_folder_tasks",
+     "source": "leetcode_directory_md.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.17065527779420392,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "print_directory_md",
+     "source": "leetcode_directory_md.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.15379565026489378,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: pointer parameter \"X\" of type \"X\" is not safely drivable after struct synthesis",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C021C-9A56C3A9"
+    },
+    {
+     "id": "F-0001-a59d0dde",
+     "rule": "GF-202",
+     "cwe": [
+      "CWE-416"
+     ],
+     "cwe_name": "Use After Free",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0081-290852A1"
+    },
+    {
+     "id": "F-0002-9c74b538",
+     "rule": "GF-208",
+     "cwe": [
+      "CWE-401"
+     ],
+     "cwe_name": "Missing Release of Memory after Effective Lifetime",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C006D-B4C7A7D4"
+    },
+    {
+     "id": "F-0003-6297f215",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-125"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0066-03E64A5F"
+    }
+   ]
+  }
+ },
+ "sha": "e5dad3fa8def3726ec850ca66a7f51521f8ad393",
+ "clone_s": 0.8,
+ "lane_check": "c: 407 files / 33170 lines; top=c(33170)",
+ "status": "done"
+}

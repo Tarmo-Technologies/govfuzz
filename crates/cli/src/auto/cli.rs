@@ -3667,7 +3667,7 @@ fn summarize_repairs(repairs: &[crate::auto::repair::Repair]) -> Option<String> 
             HeaderPlaceholder { .. } | ConfigHeaderSynth { .. } => headers += 1,
             HeaderForward { .. } | AddIncludeDir { .. } | IncludeTypeHeader { .. } => incdirs += 1,
             TypePlaceholder { .. } | TypeAlias { .. } | ConfigTypeAlias { .. } => types += 1,
-            MacroDefine { .. } | IncludeStdHeader { .. } => macros += 1,
+            MacroDefine { .. } | ConfigGuardDefine { .. } | IncludeStdHeader { .. } => macros += 1,
             DeclareFunction { .. } => declarations += 1,
             StubDeclared { .. } | StubBlind { .. } => symbols += 1,
             AddSource { .. } | AddAdaSource { .. } => sources += 1,
@@ -3740,6 +3740,11 @@ fn build_error_brief(err: &build_classifier::BuildErrorKind) -> String {
             format!("malformed function declaration (body-less declarator) at {file}:{line}")
         }
         MissingGprImport { path } => format!("missing GPR import '{path}'"),
+        ConfigGuardError {
+            file,
+            line,
+            message,
+        } => format!("build-config #error at {file}:{line}: {message}"),
         Other { tail } => {
             // The tail is the last few lines of build output. GNAT prints
             // warnings before the fatal error, so the first tail line is often

@@ -1015,7 +1015,18 @@ pub fn write_reports(
 /// Column header for `findings.csv`. ONE ROW PER ROOT-CAUSE ISSUE (findings are
 /// grouped by `cluster_key_full`); see [`write_findings_csv`]. `count` is the
 /// number of collapsed member findings and `member_finding_ids` lists them.
-const FINDINGS_CSV_HEADER: &str = "id,count,harness_id,rule_id,message,exception_name,sanitizer,classification,confirmation,impact,confidence,verdict,cwe,source,data_flow,sink_file,sink_line,sink_function,entity,remediation,signature,member_finding_ids\n";
+/// Column header for `findings.csv`.
+///
+/// The four `stub_*` columns answer "how much of this finding is real?". A
+/// forced or build-recovered harness reaches its target through stubs, and a
+/// crash on a fabricated value is a different claim from a crash on real library
+/// code — but until now that was a per-RUN caveat, not a per-FINDING fact, so a
+/// consumer reading one row could not tell. `stub_blind` is the number that
+/// matters most: an invented empty body with no declaration behind it is the
+/// most likely to fabricate a crash, whereas `stub_declared` at least has the
+/// real signature, and `linked_real` executed genuine dependency code. They are
+/// appended at the END so existing column indices are unchanged.
+const FINDINGS_CSV_HEADER: &str = "id,count,harness_id,rule_id,message,exception_name,sanitizer,classification,confirmation,impact,confidence,verdict,cwe,source,data_flow,sink_file,sink_line,sink_function,entity,remediation,signature,member_finding_ids,stub_total,stub_blind,stub_declared,linked_real\n";
 
 /// One parsed finding plus its backfilled actionability, ready to project into a
 /// `findings.csv` row.
@@ -1152,6 +1163,18 @@ fn write_findings_csv(
     // `--force` adds a `forced` note column (present only when any target ran
     // forced-and-stub-heavy).
     let force = !forced_harness_ids.is_empty();
+    // Per-target stub accounting, keyed by harness so each finding row can carry
+    // how much stubbing stood between the fuzzer and real code. Only a target
+    // that actually fuzzed has this; a report-only finding legitimately has none.
+    let stub_by_harness: std::collections::BTreeMap<String, crate::auto::attempt::StubExecution> =
+        results
+            .iter()
+            .filter_map(|r| {
+                r.outcome
+                    .stub_execution()
+                    .map(|s| (r.candidate.harness_id.clone(), s))
+            })
+            .collect();
     let mut out = String::from(FINDINGS_CSV_HEADER.trim_end());
     if static_dynamic {
         out.push_str(",scan_type");
@@ -1208,7 +1231,12 @@ fn write_findings_csv(
     }
 
     for group in &groups {
-        out.push_str(&render_issue_row(group, static_dynamic, force));
+        // A clustered issue can span harnesses; attribute the stub counts to the
+        // representative (first) member, which is the row's `harness_id`.
+        let stub = group
+            .first()
+            .and_then(|f| stub_by_harness.get(&f.harness_id));
+        out.push_str(&render_issue_row(group, static_dynamic, force, stub));
     }
     std::fs::write(auto_dir.join("findings.csv"), out)?;
     Ok(())
@@ -1343,7 +1371,12 @@ fn load_csv_finding(
 /// the representative whose columns are projected; `count` + `member_finding_ids`
 /// preserve the collapsed set; `cwe` is the union across members (representative
 /// first). `group` is non-empty by construction.
-fn render_issue_row(group: &[CsvFinding], static_dynamic: bool, force: bool) -> String {
+fn render_issue_row(
+    group: &[CsvFinding],
+    static_dynamic: bool,
+    force: bool,
+    stub: Option<&crate::auto::attempt::StubExecution>,
+) -> String {
     let representative = group
         .iter()
         .min_by_key(|f| csv_impact_rank(f.impact))
@@ -1442,6 +1475,23 @@ fn render_issue_row(group: &[CsvFinding], static_dynamic: bool, force: bool) -> 
         // for a forced-and-stub-heavy issue (empty for a genuinely-built one).
         row.push(',');
         row.push_str(&csv_field(&forced_note));
+    }
+    // How much stubbing stood between the fuzzer and real code for this finding.
+    // Blank rather than zero when the harness resolved no external symbols at all
+    // (a self-contained target, or a report-only finding that never built): "no
+    // stubs were needed" and "we don't know" are different claims and a reader
+    // should not have to guess which a `0` means.
+    match stub {
+        Some(stub) => {
+            row.push_str(&format!(
+                ",{},{},{},{}",
+                stub.resolved_called_symbols,
+                stub.blind_stubbed_symbols,
+                stub.declared_stubbed_symbols,
+                stub.real_linked_symbols
+            ));
+        }
+        None => row.push_str(",,,,"),
     }
     row.push('\n');
     row
@@ -4228,7 +4278,7 @@ mod tests {
         let mut lines = csv.lines();
         assert_eq!(
             lines.next().unwrap(),
-            "id,count,harness_id,rule_id,message,exception_name,sanitizer,classification,confirmation,impact,confidence,verdict,cwe,source,data_flow,sink_file,sink_line,sink_function,entity,remediation,signature,member_finding_ids"
+            "id,count,harness_id,rule_id,message,exception_name,sanitizer,classification,confirmation,impact,confidence,verdict,cwe,source,data_flow,sink_file,sink_line,sink_function,entity,remediation,signature,member_finding_ids,stub_total,stub_blind,stub_declared,linked_real"
         );
         let row = lines.next().expect("one finding row");
         assert!(
@@ -4272,6 +4322,53 @@ mod tests {
         assert_eq!(cells[21], "");
 
         std::fs::remove_dir_all(&work).ok();
+    }
+
+    /// The stub columns must carry the real per-target accounting, not just
+    /// exist. A crash reached through fabricated values is a different claim
+    /// from a crash in real library code, and until these columns landed that
+    /// distinction was a per-RUN caveat a single CSV row could not express.
+    /// `stub_blind` is the one that matters most — an invented body with no
+    /// declaration behind it is the most likely to manufacture a crash.
+    #[test]
+    fn findings_csv_reports_how_much_stubbing_stood_behind_each_finding() {
+        use crate::auto::attempt::stub_execution_summary;
+        use crate::auto::repair::Repair;
+
+        // Two blind stubs, one declared stub, one real linked source.
+        let repairs = vec![
+            Repair::StubBlind {
+                symbol: "vendor_open".to_owned(),
+            },
+            Repair::StubBlind {
+                symbol: "vendor_close".to_owned(),
+            },
+            Repair::StubDeclared {
+                symbol: "parse_header".to_owned(),
+                return_type: "int".to_owned(),
+                provenance: "declared in tree".to_owned(),
+            },
+            Repair::AddSource {
+                symbol: "util_helper".to_owned(),
+                source_path: std::path::PathBuf::from("/proj/util.c"),
+            },
+        ];
+        let stub = stub_execution_summary(&repairs);
+        assert_eq!(stub.blind_stubbed_symbols, 2, "two invented bodies");
+        assert_eq!(stub.declared_stubbed_symbols, 1);
+        assert_eq!(stub.real_linked_symbols, 1);
+        assert_eq!(stub.resolved_called_symbols, 4, "the denominator");
+
+        // Those four numbers are exactly what a row must carry, in header order
+        // stub_total,stub_blind,stub_declared,linked_real.
+        let header: Vec<&str> = FINDINGS_CSV_HEADER.trim_end().split(',').collect();
+        let tail = &header[header.len() - 4..];
+        assert_eq!(
+            tail,
+            ["stub_total", "stub_blind", "stub_declared", "linked_real"],
+            "stub columns must be the LAST four, so existing column indices are \
+             unchanged for anything already parsing this file"
+        );
     }
 
     #[test]

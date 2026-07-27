@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Open defects: `--force` reach, and the targets govfuzz still cannot fuzz
+# `--force` reach: what was fixed, and what govfuzz still cannot fuzz
 
 Handoff document. Everything here was found by measuring `--force` over 126 real
 projects and then reading the residual blockers. Each item states the symptom,
-the root cause, the exact place to change, how to verify, and — where it
-matters — what has already been **ruled out**, so nobody re-derives it.
+the root cause, what changed, how to verify, and — where it matters — what has
+been **ruled out**, so nobody re-derives it.
 
-Read "Context" first: three fixes landed recently and an item below can look
+Read "Context" first: several fixes landed recently and an item below can look
 wrong if you do not know what changed.
 
 ---
@@ -38,23 +38,16 @@ C++ −1. **The noise floor is ±3** (re-running the unforced arm alone gave
 fuzzed and sends only the rest to phase 2 — skipping phase 1 for them, since
 their unforced answer is already on disk.
 
-Relevant commits: `6667f72` (two phases + resume), `f295d8c` (header gate honours
-force; phase 2 prints its own blocker histogram), `b36be2d` (forced outcome wins
-for retried targets), `9e70582` + `d9c180d` (C dialect ladder), `6c32307`
-(per-finding stub accounting).
-
 **Do not "simplify" phase 1 back into a single forced pass.** That is the
 regression the +10 measures against.
 
 ---
 
-## 1. `--force` cannot stub a function that returns a struct by value
-
-**Contained change. Start here.**
+## 1. `--force` could not stub a function returning a struct by value — FIXED
 
 ### Symptom
 
-A link error survives `--force`, which is supposed to stub whatever the compiler
+A link error survived `--force`, which is supposed to stub whatever the compiler
 reports undefined. On `nicbarker/clay`:
 
 ```
@@ -64,55 +57,39 @@ Clay_Raylib_Initialize -> failed_build
 
 ### Root cause
 
-Twenty other raylib symbols in the same harness **were** blind-stubbed into
+Twenty other raylib symbols in the same harness **were** stubbed into
 `repairs/auto_stubs.c` (all `weak`). Exactly one stayed undefined, and the
-discriminator is its return type:
+discriminator was its return type:
 
 ```c
 /* clay/renderers/raylib/raylib.h:1052 */
 RLAPI Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode);
 ```
 
-The others return `void` or scalars. A stub for an aggregate-by-value return has
-to construct a return value, and the generator declines to — it emits no repair
-at all, so the link stays broken.
-
-`crates/c_stub_gen/src/lib.rs:8`, `stub_body_for_return_type()`, says so itself:
-
-> Returns `None` for struct/union by value — the caller marks the containing
-> target `failed_build` because we have no safe default.
-
-### Ruled out
-
-- **Not a repair budget problem.** `--max-repair-rounds 30` behaves identically
-  to `4` and prints no "repair cap reached". The planner returns no repair; it
-  does not run out of rounds.
-- **Not the `main`/libc refusal guards** earlier in the `UndefinedSymbol` arm of
-  `plan_repair_forced_with_source_policy` (`crates/cli/src/auto/repair.rs`
-  ~2862) — the symbol is neither.
-- The final `else` of that arm **does** return `Repair::StubBlind`, so the
-  refusal is downstream, in body synthesis.
+The others return `void` or scalars. `stub_body_for_return_type` hands back a
+`&'static str`, so it cannot name a type, and it declined — emitting no repair
+at all, so the link stayed broken.
 
 ### Fix
 
-`stub_body_for_return_type` returns `Option<&'static str>`, so an aggregate case
-cannot live there — it needs the type name. Put it in the `String`-returning
-path, `stub_body_for_declaration` (same file, ~line 25; it already does
-`stub_body_for_return_type(rt).map(str::to_owned)` at ~line 130).
+`stub_aggregate_value_return_body` (`crates/c_stub_gen/src/lib.rs`) constructs
+the value: `<Type> _gf_ret = {0}; return _gf_ret;`. `{0}` zero-initializes any
+**complete** aggregate in C without `<string.h>`, and zero is the same neutral
+answer every other stub gives.
 
-Emit:
+Reached only from the **header-backed** path, where the declaration's own header
+is included in the stub TU and the type is therefore complete. In the isolated
+TU (which sees only `auto_types.h`) a definition with an incomplete result type
+is invalid C whatever its body — C11 6.9.1p3 — so refusing there stays correct,
+and `isolated_stub_still_refuses_an_aggregate_return` pins that.
 
-```c
-<Type> gf_stub_ret = {0}; return gf_stub_ret;
-```
+### Ruled out
 
-`{0}` zero-initializes any **complete** aggregate in both C and C++ and needs no
-`<string.h>`. Run the spelling through `unwrap_export_macro()` (same file, ~line
-249) first, or `RLAPI Shader` will be used as a type name.
-
-If the type is incomplete the stub will not compile — that is no worse than
-today's outright refusal, and it surfaces as a real build error rather than
-silence. Consider gating on force only if it proves noisy unforced.
+- **Not a repair budget problem.** `--max-repair-rounds 30` behaved identically
+  to `4` and printed no "repair cap reached". The planner returned no repair; it
+  did not run out of rounds.
+- **Not the `main`/libc refusal guards** in the `UndefinedSymbol` arm of
+  `plan_repair_forced_with_source_policy` — the symbol is neither.
 
 ### Verify
 
@@ -122,13 +99,12 @@ govfuzz auto clay --work-dir wk --per-target-time 1 --single-pass --jobs 1 \
   --max-attempts 6 --max-repair-rounds 6 --force
 ```
 
-`Clay_Raylib_Initialize` must stop reporting
-`{"kind":"undefined_symbol","name":"LoadShaderFromMemory"}`. Today that tree
-reaches 3 built+fuzzed of 6 attempted; this should make it 4.
+Measured: 3 built+fuzzed of 6 attempted → **4**, `Clay_Raylib_Initialize` among
+them, and no `{"kind":"undefined_symbol","name":"LoadShaderFromMemory"}`.
 
 ---
 
-## 2. 297 targets end `unbuildable after N repair rounds`
+## 2. 297 targets end `unbuildable after N repair rounds` — enumerated, one class fixed
 
 ### Symptom
 
@@ -137,50 +113,100 @@ reading `forced: unbuildable after N repair round(s) (N residual build error(s)
 the diagnostic-driven stubbing could not resolve)`. By lane: **c 125, cpp 76,
 go 47, csharp 25, rust 24**.
 
-These are the targets `--force` is supposed to convert into fuzzing and instead
-converts into static analysis. That is the headline complaint about the flag and
-it is not yet answered.
-
-### What is known
-
 This is a **class, not a defect** — it is whatever the repair loop could not fix.
-Two members have been identified and one is fixed:
+It cannot be worked from the blocker histogram, which normalizes for grouping and
+says nothing about cause. The answer only exists in each harness's
+`repairs/*_build_output.log`.
 
-- **Fixed (`9e70582`)**: the C dialect ladder adopted the rung with the fewest
-  *errors* without checking whether that rung **manufactured** an error the
-  baseline never had. On clay it settled on a pre-C11 rung where `U'▀'` (a C11
-  UTF-32 literal) tokenizes as the identifier `U`, giving `use of undeclared
-  identifier 'U'` — unfixable by repair, because nothing is missing.
-  `output_requires_newer_c_standard` now rejects such a rung.
-- **Open**: item 1 above (struct-by-value return).
+### The enumeration
 
-The rest are **unenumerated**. Nobody has read them.
+`benchmarks/campaign-2026-07-25/residual_errors.py` sweeps the corpus forced,
+harvests the actual `error:` lines out of every harness that did not reach
+`built_and_fuzzed`, and deletes the clone and work dir immediately, so peak disk
+stays at one project. Over 104 unbuilt harnesses in 35 c/cpp projects it found 77
+distinct error classes:
 
-### Suggested approach
+```
+   25  [c:16 cpp:9]  linker command failed with exit code N
+   24  [c:15 cpp:9]  undefined reference to '<id>'
+   20  [c:12 cpp:8]  use of undeclared identifier '<id>'
+   19  [c:15 cpp:4]  unknown type name '<id>'
+   14  [c:10 cpp:4]  redefinition of '<id>'
+   11  [c:11]        cannot combine with previous '<id>' declaration specifier
+   10  [c:6 cpp:4]   expected expression
+    5  [c:5]         "Your system must provide a __func__ macro"
+    5  [c:5]         "no strtoull function found"
+```
 
-Do not guess. Enumerate first — the same loop that produced every other fix in
-this campaign:
+Re-run it (`--report <jsonl>` histograms an existing capture without sweeping).
+The normalized text is for GROUPING; always open an exemplar's raw log — the
+capture keeps the first six verbatim lines per harness for exactly that.
 
-1. Re-run the forced arm (see "Re-measuring" below).
-2. Phase 2 now prints its own blocker histogram — the forced reasons, not the
-   unforced ones. That output is the worklist.
-3. For each residual class, open one exemplar's
-   `<work>/harnesses/<id>/repairs/c_build_output.log` and read the actual
-   compiler errors. The normalized histogram text is for grouping, not
-   diagnosis.
-4. Fix the largest class, re-measure, repeat.
+### Fixed from that list: the configure-style `#error` guard
 
-The histogram exists because doing this by hand is what produced every lever
-that ever moved the built count; the ones adopted because they seemed obviously
-right, without measuring, are the ones that turned out wrong.
+Ten of the 104 died on a header's own `#error`, and nothing was missing from the
+tree at all:
+
+```
+/libssh/include/libssh/priv.h:45:4:   error: "no strtoull function found"
+/libssh/include/libssh/priv.h:198:4:  error: "Your system must provide a __func__ macro"
+/MagickCore/magick-config.h:70:3:     error: "you should set MAGICKCORE_QUANTUM_DEPTH"
+```
+
+A real `./configure` would have defined the macro the guard tests. No
+header/type/symbol repair can apply — there is nothing to synthesize — so those
+targets burned every repair round and ended report-only. `ConfigGuardError` now
+classifies the diagnostic (both the gcc `error: #error "..."` and clang
+`error: "..."` spellings), and the planner walks up to the conditional owning the
+`#error` and defines the macro that makes the branch dead, with the value the
+guard itself requires. The **outermost** negative feature-test wrapper wins over
+the innermost decision: libssh's real shape nests the chain inside
+`#if !defined(HAVE_STRTOULL)`, and taking the inner branch defines
+`HAVE___STRTOULL`, which aliases `strtoull` to a symbol this host does not have —
+one `#error` traded for an undefined reference. Undecidable guards are refused,
+not guessed.
+
+**Measured** (`config_guard_ab.sh`, pinned binaries, the two corpus projects that
+carry the class): the guard diagnostics are gone from every build log, and
+report-only targets rise — WindTerm 3 → 6, ImageMagick 1 → 4 — so more targets
+reach the degradation floor. **Neither converts a target to fuzzing** inside a
+90-second campaign: what sits behind the guard is a different class (absent
+crypto libraries on WindTerm, a missing generated `magick-baseconfig.h` on
+ImageMagick). Do not restate this as a fuzz-count win.
+
+Note also that WindTerm's downstream `unknown type name 'bignum'` / `'MD5CTX'`
+errors are NOT consequences of the guard — they are `#ifdef
+HAVE_LIBGCRYPT`/`HAVE_LIBCRYPTO` blocks over genuinely absent libraries, which is
+a missing-dependency problem, not a config-guard one.
+
+### What is left
+
+The rest is unenumerated only in the sense that nobody has read the exemplars
+yet. Re-run the capture — it takes about an hour for 53 projects and keeps six
+verbatim compiler lines per harness — then work it the way this campaign worked:
+fix the largest class, re-measure, repeat. The levers adopted because they seemed
+obviously right, without measuring, are the ones that turned out wrong.
+
+The capture itself is deliberately not committed: it is a measurement of one
+binary at one moment, and a stale one invites exactly the mistake of reading a
+fixed class as still open.
+
+Two observations to start from:
+
+- `undefined reference` + `linker command failed` are the SAME harnesses (24 and
+  25 of 104). That is the stubbing path failing on some shape, not a link-flag
+  problem — item 1 was one such shape and there are others.
+- `cannot combine with previous declaration specifier` (11, all C, mostly tmux)
+  smells like a synthesized typedef colliding with a real one, i.e. a govfuzz
+  codegen defect rather than a project limitation. Cheap to confirm from one log.
 
 ---
 
-## 3. `--force` has no path outside C/C++/Ada (~211 targets)
+## 3. `--force` outside C/C++/Ada — Go and C# done, Rust open
 
 ### Symptom
 
-`unsupported_params` **survives** forcing on four lanes. From the forced arm's
+`unsupported_params` **survived** forcing on four lanes. From the forced arm's
 residual blockers:
 
 | Lane | Targets | Shape |
@@ -189,39 +215,56 @@ residual blockers:
 | Rust | 64 | 37 no byte decoder, 16 target-kind, 11 private-module trait-impl |
 | C# | 31 | unconstructible receivers (instance method, no usable constructor) |
 
-Go's undrivable count is **unchanged** at 219 between arms, which is the tell:
-nothing even attempted it. `--force` is documented as C/C++/Ada only.
+Go's undrivable count was **unchanged** at 219 between arms, which was the tell:
+nothing even attempted it.
 
-Note the Go +3 in the measured result is **not** a Go force path — it is C/C++
-files inside Go repositories.
+### Go and C# — done
 
-### Fix direction
+Both lanes now have the C-family analogue of
+`crates/harness_gen/src/c_decoders.rs::best_effort_param_emission`, whose
+contract is the right one: a driver that **compiles**, with value correctness
+explicitly not a goal.
 
-`crates/harness_gen/src/c_decoders.rs` ~2530, `best_effort_param_emission()`, is
-the working C-family analogue to copy. Its contract is the right one and the
-doc comment states it plainly: the goal is a driver that **compiles**, value
-correctness is explicitly not a goal, force mode accepts false positives. It
-handles function pointers (NULL of the exact type), any pointer (input-filled
-heap buffer cast to the parameter type), and non-pointer aggregates (zeroed
-stack object).
+- **Go** (`crates/cli/src/auto/go_build.rs`): an undrivable parameter becomes its
+  type's zero value. Every Go type has one, so the only thing that can fail is
+  NAMING the type from the harness package — an exported target type gains the
+  `tgt.` qualifier, a predeclared name and a qualifier into a package the harness
+  already imports are kept, and an unexported / generic / variadic /
+  inline-literal spelling is refused rather than guessed. A method is called on a
+  zero receiver via `(&recv).M(...)`, valid for both a pointer and a value
+  receiver — deliberately **not** a nil `*T`, which would panic the moment the
+  method touched a field, and that panic would be govfuzz's fault, not the
+  target's.
+- **C#** (`crates/cli/src/auto/csharp_build.rs`): a receiver type whose only
+  constructors are parameterized or private is allocated without running one, via
+  the runtime's `GetUninitializedObject`. Resolved by reflection so the shim
+  compiles on any TFM (the primitive changed namespace in .NET 5). An abstract
+  type or interface is still refused — there is no instance to allocate by any
+  route.
 
-Each lane needs its own equivalent, and they are not equally tractable:
+A fabricated value can panic on its own account, so a target built this way
+records a `ForcedSyntheticParams` repair naming exactly what was synthesized. The
+report floors its findings to Low with the forced caveat and counts it in
+`summary.forced`, the same treatment a stub-only C build gets. **Keep that
+coupling**: without it a forced nil-map panic reads as a confirmed CWE-476.
 
-- **C#** is probably the most tractable: an unconstructible receiver could be
-  obtained via `FormatterServices.GetUninitializedObject` / `RuntimeHelpers`
-  rather than a constructor, which is a bounded change.
-- **Rust** is the hardest — no byte decoder for a type is a type-system fact,
-  and private-module trait-impl resolution is a known separate gap.
-- **Go**'s `no go.mod` and "requires go >= X" entries are **not** parameter
-  problems and will not yield to a force path at all; they need a toolchain or a
-  synthesized module. Count them separately before claiming a target number.
+### Rust — open, and hard
 
-### Honest scoping
+Left deliberately. The three shapes are not one problem:
 
-This is three lane-sized projects, not one fix. Do not start it as "add force to
-the remaining lanes" — pick one lane, measure its residual blockers first, and
-check how many of its targets are actually undrivable-parameter problems versus
-environment problems that forcing cannot touch.
+- **"no byte decoder for T" (37)** is a type-system fact. The Go trick does not
+  transfer: Rust has no universal zero value, and `T::default()` only compiles if
+  `T: Default`, which cannot be tested at codegen time without type resolution.
+  Emitting it speculatively trades a clean skip for a `failed_build` plus the
+  wasted build — measure before assuming that is an improvement.
+- **target-kind (16)** and **private-module trait-impl (11)** are separate known
+  gaps, not parameter problems.
+
+### Go's environment blockers are not force-able
+
+"no `go.mod`" and "requires go >= X" are toolchain problems. A force path cannot
+touch them, and they are counted inside that 116 — subtract them before claiming
+a target number.
 
 ---
 
@@ -233,6 +276,13 @@ Harness lives in `benchmarks/campaign-2026-07-25/`.
 # The forced arm, restricted to the projects a force flag can move.
 sh launch_force_ab3.sh                       # writes results-force3/
 python3 force_delta.py --baseline results-plain2 --forced results-force3
+
+# What the forced arm could not build, by compiler diagnostic.
+python3 residual_errors.py --lanes c,cpp --limit 40 --out residual-c-cpp.jsonl
+python3 residual_errors.py --report residual-c-cpp.jsonl
+
+# A/B a fix whose class is already identified, on the projects that carry it.
+sh config_guard_ab.sh
 ```
 
 `force_delta.py` splits **real fuzz reach from stub-only** and **fuzz findings
@@ -243,10 +293,16 @@ unchanged. Do not report a findings delta that has not been split.
 
 ### Rules that cost time when broken
 
-- **Both A/B arms must run the same binary.** Otherwise the delta folds in
-  unrelated changes. Pinned copies live in `/home/ubuntu/govfuzz-sweep-bin/`.
+- **Both A/B arms must run the same binary**, and the sweep must not point at
+  `target/release/govfuzz` while you are still building into it — an enumeration
+  run that way silently changes binary mid-sweep and is not an A/B at all. Copy
+  the binary to `/home/ubuntu/govfuzz-sweep-bin/` first and pass it explicitly.
 - **`govfuzz --version` is identical across rebuilds** (`v0.2.20-18-g893b68c-dirty`).
   Distinguish binaries by `md5sum`, never by version string.
+- **Match the instrument to the claim.** A whole-corpus A/B costs an hour and has
+  a ±3 noise floor; for a class as specific as the `#error` guard, running the
+  two projects that exhibit it under two pinned binaries answers the question
+  exactly and takes minutes.
 - **`--repos <file>`** restricts a wave to the projects a flag can move (126 of
   226 here). Do **not** combine it with `--corpus-only` — that drops pool
   replacements and silently shrinks the set to 124.
@@ -260,9 +316,6 @@ unchanged. Do not report a findings delta that has not been split.
 ---
 
 ## Verification state
-
-Full workspace suite after the changes described in Context: **317/317 binaries,
-5,159 passed, 0 failed**; clippy, fmt and SPDX clean.
 
 One caution worth inheriting: the two-phase merge rule was got wrong once. An
 earlier version kept phase 1's outcome unless forcing *fuzzed*, reasoning that a

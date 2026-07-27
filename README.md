@@ -45,6 +45,44 @@ build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
 `--build-command`), fuzzes each target with a coverage-guided engine, and writes findings
 (JSON/Markdown/SARIF/JUnit/CSV) under `govfuzz_work/auto/`.
 
+### The recommended sweep
+
+For a real run on a tree you control, this is the command to start from. Each flag is
+explained in **[docs/recommended-sweep.md](docs/recommended-sweep.md)** (`RECOMMENDED-SWEEP.md`
+in a distribution), and `govfuzz auto --help` prints the same command at the end:
+
+```sh
+govfuzz auto /path/to/source-tree \
+  --work-dir govfuzz_work \
+  --jobs 4 \
+  --per-target-time 60 \
+  --campaign-time 3600 \
+  --max-targets 40 \
+  --unsafe-search-and-run-build-commands \
+  --force \
+  --static \
+  --sbom \
+  --sloc sloc.txt \
+  --debug
+```
+
+| Flag | What it buys |
+|---|---|
+| `--jobs 4` | Targets built+fuzzed concurrently. Peak RAM ≈ `jobs × --rss-limit-mb`. |
+| `--per-target-time 60` | Fuzz seconds per target (libFuzzer `-max_total_time` parity). |
+| `--campaign-time 3600` | Hard cap on the whole sweep; no new targets start after it. |
+| `--max-targets 40` | Stop once 40 targets actually **fuzzed** — failures don't consume the cap. |
+| `--unsafe-search-and-run-build-commands` | **Executes the tree's own build** to recover its real compile flags. Trusted sources only. |
+| `--force` | Second phase over what phase 1 couldn't fuzz, on fabricated inputs and stubs. Those findings are stamped low-confidence. |
+| `--static` | Analyze the whole tree statically too, so files with no fuzzable entry point are still covered. |
+| `--sbom` | Evidence-graded SBOM + VEX: components a harness actually drove are marked exercised. |
+| `--sloc sloc.txt` | Per-language SLOC breakdown (`.json` for JSON). |
+| `--debug` | Backtrace on a govfuzz-internal panic; enriches the bug report. |
+
+Read `govfuzz_work/auto/summary.txt` first: it separates **built+fuzzed** from
+**static-only**, **skipped**, and **forced**, and prints a residual-blocker histogram
+saying why anything that did not fuzz did not fuzz.
+
 ### Resume an interrupted `auto` campaign
 
 `govfuzz auto` checkpoints every completed target atomically. After a process
@@ -104,14 +142,16 @@ toolchains, offline/air-gapped install, and Windows.
 Linux has two complete installation styles. The all-in-one `govfuzz-dist-*.tar.gz`
 contains `install.sh`, the CLI, daemon, both Linux shims, harness runtimes, and a
 signed content pack. Every full bundle also contains `INSTALL.md`, `LICENSE`,
-`README.md`, and `RELEASE_NOTES.md`. The component installers/archives let you
+`README.md`, `RELEASE_NOTES.md`, `RUN-GOVFUZZ.md`, `RECOMMENDED-SWEEP.md` (the
+command to start with and how to size every flag), and
+`AUTO-OFFLINE-RUNBOOK.md`. The component installers/archives let you
 install only selected pieces. An individual component installer downloads its
 matching archive automatically, so choose the installer **or** that archive—not
 both.
 
 | What you want to do | Install or download |
 |---|---|
-| Install complete GovFuzz on Linux with one `install.sh` | `govfuzz-dist-v0.2.19-x86_64-unknown-linux-gnu.tar.gz` plus its `.sha256` file |
+| Install complete GovFuzz on Linux with one `install.sh` | `govfuzz-dist-v0.2.21-x86_64-unknown-linux-gnu.tar.gz` plus its `.sha256` file |
 | Run the CLI on Windows | `govfuzz-installer.ps1`, or `govfuzz-x86_64-pc-windows-msvc.zip` plus its `.sha256` file for a manual/offline install |
 | Run basic CLI workflows on Linux | `govfuzz-installer.sh`, or `govfuzz-x86_64-unknown-linux-gnu.tar.xz` plus its `.sha256` file |
 | Get the full Linux `govfuzz auto` runtime audit and fake-resource support | Add `govfuzz_runtrace_shim-installer.sh`, or its matching `govfuzz_runtrace_shim-*.tar.xz` archive |
@@ -131,7 +171,7 @@ manual co-location commands.
 #### Complete Linux install with `install.sh`
 
 ```sh
-VERSION=v0.2.19
+VERSION=v0.2.21
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 ARCHIVE="govfuzz-dist-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 
@@ -208,7 +248,7 @@ harness runtimes, and signed content together. The separate component
 installers remain available when you deliberately want a smaller install:
 
 ```sh
-VERSION=v0.2.19
+VERSION=v0.2.21
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 
 curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz-installer.sh" | sh
@@ -232,7 +272,7 @@ an elevated PowerShell. One Chocolatey-based setup is:
 choco install llvm make visualstudio2022buildtools `
   visualstudio2022-workload-vctools -y
 
-$Version = "v0.2.19"
+$Version = "v0.2.21"
 $Base = "https://github.com/Tarmo-Technologies/govfuzz/releases/download/$Version"
 irm "$Base/govfuzz-installer.ps1" | iex
 irm "$Base/govfuzz-daemon-installer.ps1" | iex       # optional: RPC/MCP service
@@ -386,7 +426,7 @@ off for Java, C#, JavaScript/TypeScript, and cross/emulated targets.
 | `govfuzz auto <src>` | Discover, harness, build, and fuzz a whole tree |
 | `govfuzz auto <src> --static` | Fold a whole-tree SAST pass into the run |
 | `govfuzz auto <src> --engine afl++` | Fuzz recovered native C/C++ targets with AFL++ |
-| `govfuzz auto <src> --force` | Best-effort fuzz every C/C++/Ada function (stub-heavy; Low-confidence findings) |
+| `govfuzz auto <src> --force` | Second phase over what the normal run could not fuzz — fabricated parameters and stubs across C/C++/Ada, Go, and C# (Low-confidence findings) |
 | `govfuzz auto <src> --differential clang:gcc` | Two-compiler differential (C/C++): flag inputs where the clang and gcc builds diverge (GF-301) |
 | `govfuzz ci <src> --changed-since <ref>` | PR-native: fuzz only the diff, emit SARIF, gate on confirmed findings |
 | `govfuzz static-scan <src> --sarif` | Offline SAST only (JSON/Markdown/SARIF) |
@@ -403,6 +443,7 @@ them all.
 ## Documentation
 
 - [Installation](docs/site/install.md) — from source, prebuilt binaries, offline, Windows.
+- [Recommended sweep](docs/recommended-sweep.md) — the one command to start with, what every flag buys, and how to size it.
 - [`govfuzz auto`](docs/site/auto.md) — end-to-end, scaling to large trees, force-fuzz, static integration.
 - [PR-native CI](docs/site/ci.md) — the GitHub Action, diff-scoping, and the confirmed-findings gate.
 - [C/C++ guide](docs/site/c-cpp.md) — prerequisites, supported parameter shapes, limits.

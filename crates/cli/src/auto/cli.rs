@@ -17,7 +17,45 @@ use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// The one command that covers the usual job, shown at the end of
+/// `govfuzz auto --help`. Long-form help spells out how to size each flag; the
+/// same guidance lives in `docs/recommended-sweep.md` (shipped in a distribution
+/// as `RECOMMENDED-SWEEP.md`).
+const RECOMMENDED_SWEEP: &str = "\
+RECOMMENDED SWEEP:
+  govfuzz auto /path/to/source-tree \\
+    --work-dir govfuzz_work \\
+    --jobs 4 \\
+    --per-target-time 60 \\
+    --campaign-time 3600 \\
+    --max-targets 40 \\
+    --unsafe-search-and-run-build-commands \\
+    --force \\
+    --static \\
+    --sbom \\
+    --sloc sloc.txt \\
+    --debug
+
+  --work-dir   where everything lands; keep it OUTSIDE the scanned tree
+  --jobs       targets built+fuzzed at once; peak RAM is ~jobs x --rss-limit-mb
+  --per-target-time  fuzz seconds per target (libFuzzer -max_total_time parity)
+  --campaign-time    hard cap for the whole sweep, in seconds
+  --max-targets      stop once N targets actually FUZZED (failures don't count)
+  --unsafe-search-and-run-build-commands
+                     RUNS the tree's own build to recover real compile flags —
+                     trusted sources only; drop it otherwise
+  --force      retry what phase 1 could not fuzz, on fabricated inputs/stubs;
+               those findings are stamped low-confidence
+  --static     also analyze the whole tree statically, not just what fuzzed
+  --sbom       evidence-graded SBOM + VEX at campaign end
+  --sloc FILE  per-language SLOC breakdown (.json for JSON)
+  --debug      backtrace on a govfuzz-internal panic; enriches the bug report
+
+  Read govfuzz_work/auto/summary.txt first. Full guide: RECOMMENDED-SWEEP.md
+  (docs/recommended-sweep.md in the repository).";
+
 #[derive(Debug, clap::Args)]
+#[command(after_help = RECOMMENDED_SWEEP, after_long_help = RECOMMENDED_SWEEP)]
 pub struct AutoArgs {
     /// Source root to sweep.
     pub path: PathBuf,
@@ -517,11 +555,17 @@ pub struct AutoArgs {
     #[arg(long = "external-tools")]
     pub external_tools: bool,
 
-    /// Force-fuzz mode: attempt EVERY discovered C/C++/Ada function even when a
-    /// parameter type can't be driven or a type/symbol is undefined — synthesize a
-    /// best-effort driver, stub whatever the compiler reports missing, and never
-    /// hard-fail (report-only is the floor). Findings from a forced/stub-heavy build
-    /// are stamped low-confidence. Repair persistence honors `--max-repair-rounds`.
+    /// Force-fuzz mode: a SECOND phase over the targets the normal (unforced) run
+    /// could not fuzz, so it can never lower the fuzzed count. Attempts a target
+    /// even when a parameter type can't be driven or a type/symbol is undefined —
+    /// synthesize a best-effort driver, stub whatever the compiler reports missing,
+    /// and never hard-fail (report-only is the floor). C/C++/Ada fabricate the
+    /// parameter and stub the missing symbol; Go drives an undrivable parameter as
+    /// its type's zero value and calls a method on a zero receiver; C# allocates a
+    /// receiver whose type has no accessible parameterless constructor without
+    /// running one. Findings from a forced/stub-heavy build are stamped
+    /// low-confidence with a caveat note — a fabricated value can crash on its own
+    /// account. Repair persistence honors `--max-repair-rounds`.
     #[arg(long = "force", visible_alias = "force-fuzz")]
     pub force: bool,
 

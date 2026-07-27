@@ -25,7 +25,8 @@ Usage: scripts/package-offline-dist.sh [options]
 Build a binary-only GovFuzz distribution tarball. The tarball includes
 release binaries, harness runtime support files, a signed content pack,
 install.sh, govfuzz-bug-report, INSTALL.md, LICENSE, README.md,
-RELEASE_NOTES.md, README-DIST.md, RUN-GOVFUZZ.md, and a tiny post-install smoke
+RELEASE_NOTES.md, README-DIST.md, RUN-GOVFUZZ.md, RECOMMENDED-SWEEP.md,
+AUTO-OFFLINE-RUNBOOK.md, and a tiny post-install smoke
 fixture.
 It does not include GovFuzz source.
 
@@ -344,8 +345,10 @@ run cp "$REPO_ROOT/LICENSE" "$STAGE_ROOT/LICENSE"
 run cp "$REPO_ROOT/README.md" "$STAGE_ROOT/README.md"
 run cp "$REPO_ROOT/RELEASE_NOTES.md" "$STAGE_ROOT/RELEASE_NOTES.md"
 run cp "$REPO_ROOT/docs/site/offline-auto-runbook.md" "$STAGE_ROOT/AUTO-OFFLINE-RUNBOOK.md"
+run cp "$REPO_ROOT/docs/recommended-sweep.md" "$STAGE_ROOT/RECOMMENDED-SWEEP.md"
 run mkdir -p "$TOOL_DIR/docs"
 run cp "$REPO_ROOT/docs/site/offline-auto-runbook.md" "$TOOL_DIR/docs/AUTO-OFFLINE-RUNBOOK.md"
+run cp "$REPO_ROOT/docs/recommended-sweep.md" "$TOOL_DIR/docs/RECOMMENDED-SWEEP.md"
 
 run mkdir -p "$STAGE_ROOT/smoke/c"
 if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -379,7 +382,9 @@ both Linux preload shims, harness runtime support files, a tiny post-install
 smoke fixture, a privacy-scrubbing bug-report collector, and a signed content
 pack. `INSTALL.md`, `LICENSE`, `README.md`, and `RELEASE_NOTES.md` are included
 at the archive root as the standard installation, licensing, usage, and release
-documentation.
+documentation, alongside `RUN-GOVFUZZ.md` (running it after install),
+`RECOMMENDED-SWEEP.md` (the one command to start with and how to size every
+flag), and `AUTO-OFFLINE-RUNBOOK.md` (broken or incomplete Ada/C/C++ drops).
 
 Install or update:
 
@@ -551,7 +556,31 @@ report rendering for the C lane. It requires `clang` and `make`.
 
 For most source drops, use `govfuzz auto`. It discovers targets, ranks them,
 generates harnesses, repairs build gaps where possible, fuzzes, and writes
-reports:
+reports. This is the recommended command — `RECOMMENDED-SWEEP.md` in this
+distribution explains how to size every flag, and `govfuzz auto --help` prints
+the same command at the end:
+
+```sh
+govfuzz auto /path/to/source-tree \
+  --work-dir govfuzz_work \
+  --jobs 4 \
+  --per-target-time 60 \
+  --campaign-time 3600 \
+  --max-targets 40 \
+  --unsafe-search-and-run-build-commands \
+  --force \
+  --static \
+  --sbom \
+  --sloc sloc.txt \
+  --debug
+```
+
+`--unsafe-search-and-run-build-commands` EXECUTES the scanned tree's own build
+to recover its real compile flags. Use it only on sources you trust; without it
+GovFuzz still recovers what it can from `compile_commands.json` and its probes.
+
+For a smaller first look, drop `--sbom` and use `--per-target-time 5
+--max-targets 10`:
 
 ```sh
 # --per-target-time is in seconds; 30 means 30 seconds per discovered target.

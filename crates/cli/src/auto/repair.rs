@@ -3073,6 +3073,24 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 // error for another repair round to clear any preceding syntax
                 // diagnostics; if it persists, fail honestly.
                 None
+            } else if c_stub_gen::is_standard_libc_symbol(name) {
+                // The C runtime owns this name, so the neutral macro below is not
+                // an option: it is force-included ahead of EVERY translation unit,
+                // and an empty object-like define ERASES the identifier — including
+                // in the system header that declares it. btop's build died on
+                //
+                //   /usr/include/unistd.h:1091:26: error: expected identifier or '('
+                //     extern long int syscall (long int __sysno, ...) __THROW;
+                //
+                // because GovFuzz had written `#define syscall`. That is worse than
+                // the original error and unfixable by any further repair: nothing is
+                // missing, and the broken declaration is inside /usr/include.
+                //
+                // A runtime name that reaches here has no header mapping in
+                // `c_std_symbol_header` (which the arm above already tried), so the
+                // honest answer is none — add the mapping there instead, and the
+                // call gets its real declaration via `#include`.
+                None
             } else {
                 // With no declaration or definition anywhere in the offline tree,
                 // a compile-time call most often came from a function-like macro
@@ -4803,6 +4821,60 @@ mod tests {
             repair,
             Some(Repair::MacroDefine { name, as_value: false, .. }) if name == "ProjectAssert"
         ));
+    }
+
+    #[test]
+    fn an_undeclared_runtime_function_is_never_erased_by_a_neutral_macro() {
+        // btop: a vendored header calls `syscall(__NR_perf_event_open, …)` from a
+        // `static inline` helper and leaves `<unistd.h>` to whichever .c includes
+        // it first. Compiled from a TU that does not, the call is undeclared — and
+        // the neutral-macro fallback wrote `#define syscall`, which is force-included
+        // ahead of every TU and so erased glibc's own declaration:
+        //
+        //   /usr/include/unistd.h:1091:26: error: expected identifier or '('
+        //     extern long int syscall (long int __sysno, ...) __THROW;
+        //
+        // The right repair is the declaring header.
+        let root = tmpdir();
+        let source_path = root.join("igt_perf.c");
+        fs::write(
+            &source_path,
+            "int f(void) { return syscall(298, 0, 0, 0, 0, 0); }\n",
+        )
+        .unwrap();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repair = plan_repair(
+            &BuildErrorKind::UndeclaredFunction {
+                name: "syscall".to_owned(),
+                file: source_path.display().to_string(),
+                line: 1,
+            },
+            &idx,
+        );
+        assert!(
+            matches!(&repair, Some(Repair::IncludeStdHeader { symbol, header })
+                if symbol == "syscall" && header == "unistd.h"),
+            "got: {repair:?}"
+        );
+
+        // And a runtime name with NO header mapping must fail honestly rather than
+        // fall through to the erasing define. `qsort` is on the runtime list and
+        // routes to <stdlib.h>; `ffs` is on the list with no mapping.
+        let bare = root.join("bare.c");
+        fs::write(&bare, "int f(unsigned v) { return ffs(v); }\n").unwrap();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repair = plan_repair(
+            &BuildErrorKind::UndeclaredFunction {
+                name: "ffs".to_owned(),
+                file: bare.display().to_string(),
+                line: 1,
+            },
+            &idx,
+        );
+        assert!(
+            !matches!(&repair, Some(Repair::MacroDefine { name, .. }) if name == "ffs"),
+            "a runtime name must never be defined away: {repair:?}"
+        );
     }
 
     #[test]

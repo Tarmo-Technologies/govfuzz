@@ -383,14 +383,33 @@ fn macro_used_in_if_value_context(source: &str, name: &str) -> bool {
 /// either case: a real `./configure` would have defined the macro, and offline we
 /// have to supply it ourselves or the translation unit never compiles.
 ///
-/// Walks up from the `#error` to the conditional that owns its branch, tracking
-/// nesting so an inner `#endif` cannot be mistaken for the opening directive, and
-/// then:
+/// Walks up from the `#error` through every enclosing conditional, tracking
+/// nesting so an inner `#endif` cannot be mistaken for an opening directive. At
+/// each level:
 ///
 /// * error inside a NEGATIVE branch (`#ifndef X`, `#if !defined(X)`) — define `X`,
 ///   which makes the branch dead.
 /// * error inside the `#else` of a chain — define the FIRST positively-tested
 ///   macro, which takes the chain's first branch and skips the else.
+///
+/// The OUTERMOST negative feature-test guard wins over the innermost decision,
+/// because it deletes the whole fallback block rather than steering it. libssh's
+/// real shape is nested:
+///
+/// ```c
+/// #if !defined(HAVE_STRTOULL)
+/// # if defined(HAVE___STRTOULL)
+/// #  define strtoull __strtoull
+/// # else
+/// #  error "no strtoull function found"
+/// # endif
+/// #endif
+/// ```
+///
+/// Taking the inner branch would define `HAVE___STRTOULL` and alias `strtoull` to
+/// a symbol this host does not have — trading a `#error` for an undefined
+/// reference. Defining `HAVE_STRTOULL` removes the block entirely and leaves the
+/// real libc function in place, which is exactly what a configure run would do.
 ///
 /// Anything else (a comparison, `#if 0`, a condition with no plain `defined(X)`
 /// term, an error reached because a macro IS defined) returns `None` — a wrong
@@ -403,8 +422,11 @@ fn config_guard_macro_to_define(source: &str, error_line: u32) -> Option<String>
     }
     let mut depth = 0usize;
     let mut in_else_branch = false;
-    // Conditions of the chain that owns the error's branch, opening one first.
+    // Conditions of the chain that owns the error's branch at THIS level, opening
+    // one first. Cleared on the way out to the enclosing level.
     let mut chain: Vec<&str> = Vec::new();
+    let mut innermost: Option<String> = None;
+    let mut outermost_negative_guard: Option<String> = None;
     for index in (0..error_index).rev() {
         let directive = lines[index].trim_start();
         let Some(rest) = directive.strip_prefix('#') else {
@@ -429,35 +451,51 @@ fn config_guard_macro_to_define(source: &str, error_line: u32) -> Option<String>
             in_else_branch = true;
             continue;
         }
-        if let Some(condition) = rest.strip_prefix("ifndef") {
-            chain.push(condition);
-            // `#ifndef X` is `!defined(X)`: the error sits in the branch taken when
-            // X is absent, so defining X kills it — unless it is in the `#else`,
-            // where X is already defined and no definition can help.
-            return (!in_else_branch).then(|| defined_macro_name(condition))?;
-        }
-        if let Some(condition) = rest.strip_prefix("ifdef") {
-            chain.push(condition);
-            return in_else_branch.then(|| defined_macro_name(condition))?;
-        }
-        if let Some(condition) = rest.strip_prefix("if") {
-            chain.push(condition);
-            chain.reverse();
-            // In a negative branch, define what it tests for absence. In the else,
-            // satisfy the FIRST positive condition of the chain.
-            let owning = if in_else_branch {
-                chain.first()?
-            } else {
-                chain.last()?
-            };
-            let negated = owning.trim_start().starts_with('!');
-            if in_else_branch == negated {
-                return None;
+        // An opening directive at this level: decide, then keep walking outward.
+        let opening = if let Some(condition) = rest.strip_prefix("ifndef") {
+            Some((condition, true))
+        } else if let Some(condition) = rest.strip_prefix("ifdef") {
+            Some((condition, false))
+        } else {
+            rest.strip_prefix("if").map(|condition| {
+                let owning = {
+                    chain.push(condition);
+                    chain.reverse();
+                    // In a negative branch, what the level tests for absence. In an
+                    // else, the FIRST condition of the chain — satisfying it skips
+                    // every later branch including the else.
+                    if in_else_branch {
+                        chain.first().copied().unwrap_or(condition)
+                    } else {
+                        chain.last().copied().unwrap_or(condition)
+                    }
+                };
+                let negated = owning.trim_start().starts_with('!');
+                (owning, negated)
+            })
+        };
+        let Some((condition, negated)) = opening else {
+            continue;
+        };
+        // A definition helps only when the error sits in the branch taken while the
+        // macro is ABSENT: the true branch of a negative test, or the else of a
+        // positive one. The other two shapes fire BECAUSE the macro is defined.
+        if in_else_branch != negated {
+            if let Some(name) = defined_macro_name(condition) {
+                if innermost.is_none() {
+                    innermost = Some(name.clone());
+                }
+                // A pure `#ifndef X` / `#if !defined(X)` wrapper: defining X deletes
+                // the whole block, so the outermost one is the most complete answer.
+                if negated && !in_else_branch {
+                    outermost_negative_guard = Some(name);
+                }
             }
-            return defined_macro_name(owning);
         }
+        chain.clear();
+        in_else_branch = false;
     }
-    None
+    outermost_negative_guard.or(innermost)
 }
 
 /// The macro name in a `defined(X)` / `defined X` / bare `X` preprocessor
@@ -3558,6 +3596,53 @@ mod tests {
             matches!(&repair, Some(Repair::ConfigGuardDefine { name, value })
                 if name == "MAGICKCORE_QUANTUM_DEPTH" && value == "8"),
             "got: {repair:?}"
+        );
+    }
+
+    #[test]
+    fn config_guard_prefers_the_outermost_feature_test_wrapper() {
+        // libssh's real shape: the #error is in the else of an INNER chain, wrapped
+        // in `#if !defined(HAVE_STRTOULL)`. Taking the inner branch would define
+        // HAVE___STRTOULL and alias strtoull to a symbol this host does not have —
+        // one #error traded for an undefined reference. Defining the outer guard
+        // deletes the block and leaves the real libc function alone.
+        let source = "#if !defined(HAVE_STRTOULL)\n\
+                      # if defined(HAVE___STRTOULL)\n\
+                      #  define strtoull __strtoull\n\
+                      # elif defined(HAVE__STRTOUI64)\n\
+                      #  define strtoull _strtoui64\n\
+                      # else\n\
+                      #  error \"no strtoull function found\"\n\
+                      # endif\n\
+                      #endif\n";
+        assert_eq!(
+            config_guard_macro_to_define(source, 7).as_deref(),
+            Some("HAVE_STRTOULL")
+        );
+
+        // Same for the __func__ guard, whose inner branch would alias __func__ to
+        // __FUNCTION__ when the C99 builtin is already right there.
+        let func = "#ifndef HAVE_COMPILER__FUNC__\n\
+                    # ifdef HAVE_COMPILER__FUNCTION__\n\
+                    #  define __func__ __FUNCTION__\n\
+                    # else\n\
+                    #  error \"Your system must provide a __func__ macro\"\n\
+                    # endif\n\
+                    #endif\n";
+        assert_eq!(
+            config_guard_macro_to_define(func, 5).as_deref(),
+            Some("HAVE_COMPILER__FUNC__")
+        );
+
+        // With no negative wrapper, the innermost decision still stands.
+        let bare = "#ifdef HAVE_A\n\
+                    # define x 1\n\
+                    #else\n\
+                    # error \"need A\"\n\
+                    #endif\n";
+        assert_eq!(
+            config_guard_macro_to_define(bare, 4).as_deref(),
+            Some("HAVE_A")
         );
     }
 

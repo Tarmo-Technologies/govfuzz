@@ -1825,6 +1825,22 @@ fn record_failed_build_blockers(
                 | E::MissingAdaPackageBody { .. }
                 | E::MissingAdaSymbol { .. }
                 | E::UncompilableAdaBody { .. } => {}
+                // A `#error` a build-config guard reached: the project's own build
+                // system was meant to define the macro, so the actionable step is
+                // to run that configure, not to install anything.
+                E::ConfigGuardError {
+                    file,
+                    line,
+                    message,
+                } => manifest.push_merge_with_hint(
+                    DepKind::GeneratedSource,
+                    format!("build configuration for {file}"),
+                    vec![id.clone()],
+                    false,
+                    Some(format!(
+                        "the header stops the build at line {line} with `#error {message}`;                          run the project's configure/cmake step so the macro it tests is                          defined, or pass it with --build-command"
+                    )),
+                ),
             }
         }
         // AC2 safety net: every failed target MUST leave at least one actionable
@@ -2263,6 +2279,9 @@ fn add_checkpoint_result(
             | Repair::AddSource { .. }
             | Repair::EnvVarInjection { .. }
             | Repair::AddAdaSource { .. }
+            // A recovered build-config macro is govfuzz supplying what the project's
+            // own build system would have — not a dependency to acquire.
+            | Repair::ConfigGuardDefine { .. }
             // A forced synthetic parameter is a GovFuzz limit, not a dependency the
             // operator could stage — keep it out of the missing-dependency manifest
             // (#5's rule for codegen errors). The finding-level forced caveat and the
@@ -2632,7 +2651,10 @@ fn aggregate_repairs(
                 .entry(virtual_path.clone())
                 .or_default()
                 .push(id.to_owned()),
-            Repair::MacroDefine { name, .. } => {
+            Repair::MacroDefine { name, .. }
+            // A macro recovered from a `#error` guard is the same kind of fact for
+            // the reader: a build-config define govfuzz had to supply itself.
+            | Repair::ConfigGuardDefine { name, .. } => {
                 macros.entry(name.clone()).or_default().push(id.to_owned())
             }
             // A force-included standard header for an undefined standard symbol —

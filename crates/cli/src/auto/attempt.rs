@@ -3722,7 +3722,9 @@ fn repair_key(repair: &Repair) -> String {
         Repair::TypePlaceholder { type_name } => type_name.clone(),
         Repair::TypeAlias { type_name, .. } => type_name.clone(),
         Repair::ConfigTypeAlias { type_name, .. } => format!("config-alias:{type_name}"),
-        Repair::MacroDefine { name, .. } => format!("macro:{name}"),
+        Repair::MacroDefine { name, .. } | Repair::ConfigGuardDefine { name, .. } => {
+            format!("macro:{name}")
+        }
         Repair::IncludeStdHeader { symbol, .. } => format!("stdhdr:{symbol}"),
         Repair::DeclareFunction { symbol, .. } => format!("decl:{symbol}"),
         Repair::AddSource { source_path, .. } => source_path.display().to_string(),
@@ -3864,6 +3866,7 @@ fn repair_replaces_candidate_target(repair: &Repair, candidate: &Candidate) -> b
         | Repair::TypeAlias { .. }
         | Repair::ConfigTypeAlias { .. }
         | Repair::MacroDefine { .. }
+        | Repair::ConfigGuardDefine { .. }
         | Repair::IncludeStdHeader { .. }
         | Repair::DeclareFunction { .. }
         | Repair::EnvVarInjection { .. }

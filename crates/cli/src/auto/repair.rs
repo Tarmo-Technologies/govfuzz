@@ -184,6 +184,15 @@ pub enum Repair {
     StubGprImport {
         project: String,
     },
+    /// Define a build-configuration macro whose ABSENCE a header turns into a
+    /// `#error` — the value a real `./configure` would have written. Distinct from
+    /// [`Repair::MacroDefine`], which infers its value from the TARGET's source: the
+    /// requirement here is stated by the guard's own file (`#if (DEPTH != 8) && …`),
+    /// so the value is resolved when the repair is planned and applied verbatim.
+    ConfigGuardDefine {
+        name: String,
+        value: String,
+    },
     /// Marker: this target was built STUB-ISOLATED for a foreign OS platform it
     /// can't be cross-compiled/emulated on — the platform guard macro was defined
     /// and fake platform headers/types were supplied so the foreign branch
@@ -236,7 +245,10 @@ impl RepairManifest {
             Repair::TypePlaceholder { type_name } => type_name == key,
             Repair::TypeAlias { type_name, .. } => type_name == key,
             Repair::ConfigTypeAlias { type_name, .. } => key == format!("config-alias:{type_name}"),
-            Repair::MacroDefine { name, .. } => key == format!("macro:{name}"),
+            Repair::MacroDefine { name, .. }
+            // Same key as MacroDefine: two repairs must never both define one
+            // macro, which would be a conflicting redefinition rather than a fix.
+            | Repair::ConfigGuardDefine { name, .. } => key == format!("macro:{name}"),
             Repair::IncludeStdHeader { symbol, .. } => key == format!("stdhdr:{symbol}"),
             Repair::DeclareFunction { symbol, .. } => key == format!("decl:{symbol}"),
             Repair::AddSource { source_path, .. } => source_path.display().to_string() == key,
@@ -348,6 +360,129 @@ fn macro_used_in_if_value_context(source: &str, name: &str) -> bool {
         }
         false
     })
+}
+
+/// The macro to define so that the `#error` on (1-based) `error_line` of `source`
+/// is no longer reached, or `None` when no single definition can suppress it.
+///
+/// A configure-style header states its requirement as a conditional whose dead
+/// end is a `#error` — libssh's
+///
+/// ```c
+/// #ifdef HAVE_STRTOULL
+/// ...
+/// #elif defined(HAVE___STRTOULL)
+/// ...
+/// #else
+/// # error "no strtoull function found"
+/// #endif
+/// ```
+///
+/// or ImageMagick's `#if !defined(MAGICKCORE_QUANTUM_DEPTH) / # error "you should
+/// set MAGICKCORE_QUANTUM_DEPTH" / #endif`. Nothing is MISSING from the tree in
+/// either case: a real `./configure` would have defined the macro, and offline we
+/// have to supply it ourselves or the translation unit never compiles.
+///
+/// Walks up from the `#error` to the conditional that owns its branch, tracking
+/// nesting so an inner `#endif` cannot be mistaken for the opening directive, and
+/// then:
+///
+/// * error inside a NEGATIVE branch (`#ifndef X`, `#if !defined(X)`) — define `X`,
+///   which makes the branch dead.
+/// * error inside the `#else` of a chain — define the FIRST positively-tested
+///   macro, which takes the chain's first branch and skips the else.
+///
+/// Anything else (a comparison, `#if 0`, a condition with no plain `defined(X)`
+/// term, an error reached because a macro IS defined) returns `None` — a wrong
+/// define is worse than an honest failure.
+fn config_guard_macro_to_define(source: &str, error_line: u32) -> Option<String> {
+    let lines: Vec<&str> = source.lines().collect();
+    let error_index = (error_line as usize).checked_sub(1)?;
+    if error_index >= lines.len() {
+        return None;
+    }
+    let mut depth = 0usize;
+    let mut in_else_branch = false;
+    // Conditions of the chain that owns the error's branch, opening one first.
+    let mut chain: Vec<&str> = Vec::new();
+    for index in (0..error_index).rev() {
+        let directive = lines[index].trim_start();
+        let Some(rest) = directive.strip_prefix('#') else {
+            continue;
+        };
+        let rest = rest.trim_start();
+        if rest.starts_with("endif") {
+            depth += 1;
+            continue;
+        }
+        if depth > 0 {
+            if rest.starts_with("if") {
+                depth -= 1;
+            }
+            continue;
+        }
+        if let Some(condition) = rest.strip_prefix("elif") {
+            chain.push(condition);
+            continue;
+        }
+        if rest.starts_with("else") {
+            in_else_branch = true;
+            continue;
+        }
+        if let Some(condition) = rest.strip_prefix("ifndef") {
+            chain.push(condition);
+            // `#ifndef X` is `!defined(X)`: the error sits in the branch taken when
+            // X is absent, so defining X kills it — unless it is in the `#else`,
+            // where X is already defined and no definition can help.
+            return (!in_else_branch).then(|| defined_macro_name(condition))?;
+        }
+        if let Some(condition) = rest.strip_prefix("ifdef") {
+            chain.push(condition);
+            return in_else_branch.then(|| defined_macro_name(condition))?;
+        }
+        if let Some(condition) = rest.strip_prefix("if") {
+            chain.push(condition);
+            chain.reverse();
+            // In a negative branch, define what it tests for absence. In the else,
+            // satisfy the FIRST positive condition of the chain.
+            let owning = if in_else_branch {
+                chain.first()?
+            } else {
+                chain.last()?
+            };
+            let negated = owning.trim_start().starts_with('!');
+            if in_else_branch == negated {
+                return None;
+            }
+            return defined_macro_name(owning);
+        }
+    }
+    None
+}
+
+/// The macro name in a `defined(X)` / `defined X` / bare `X` preprocessor
+/// condition, ignoring a leading `!`. `None` for a compound condition (`&&`,
+/// `||`, a comparison, an arithmetic expression) — those have no single macro
+/// whose definition decides the branch.
+fn defined_macro_name(condition: &str) -> Option<String> {
+    let text = condition.trim();
+    let text = text.strip_prefix('!').unwrap_or(text).trim();
+    let text = text.trim_start_matches('(').trim_end_matches(')').trim();
+    let text = match text.strip_prefix("defined") {
+        Some(rest) => rest
+            .trim()
+            .trim_start_matches('(')
+            .trim_end_matches(')')
+            .trim(),
+        None => text,
+    };
+    let name = text.split_whitespace().next()?;
+    let plain = !name.is_empty()
+        && name
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        && !name.starts_with(|ch: char| ch.is_ascii_digit());
+    (plain && name == text).then(|| name.to_owned())
 }
 
 /// Recover a configuration constant from a source-level compatibility guard,
@@ -1469,6 +1604,15 @@ pub fn apply_repair_with_source(
                 format!("#define {name}\n")
             };
             append_or_create(&defines_path, &body)?;
+            Ok(ApplyOutcome {
+                extra_sources: vec![],
+                extra_includes: vec![],
+            })
+        }
+        Repair::ConfigGuardDefine { name, value } => {
+            // Same destination as MacroDefine: auto_defines.h, force-included ahead
+            // of every TU, so the guard sees the definition before it decides.
+            append_or_create(&defines_path, &format!("#define {name} {value}\n"))?;
             Ok(ApplyOutcome {
                 extra_sources: vec![],
                 extra_includes: vec![],
@@ -3179,6 +3323,26 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                 })
             })
         }
+        BuildErrorKind::ConfigGuardError { file, line, .. } => {
+            // A configure-style header that stops the build because its build
+            // system never defined something. Read the conditional that owns the
+            // `#error` and define the macro that makes the branch dead. Nothing is
+            // missing from the tree, so no other repair kind applies — without this
+            // the target is unbuildable however many rounds it gets.
+            let source = std::fs::read_to_string(file).ok()?;
+            let name = config_guard_macro_to_define(&source, *line)?;
+            let key = format!("macro:{name}");
+            if attempted.already_attempted(&key) {
+                return None;
+            }
+            // A guard that compares against a value (`QUANTUM_DEPTH != 8`) states
+            // the value it needs; a plain feature-test macro only has to exist, and
+            // `1` is what a real configure writes (`0` would satisfy `#ifdef X` but
+            // fail the equally common `#if X`).
+            let value =
+                macro_required_integer_value(&source, &name).unwrap_or_else(|| "1".to_owned());
+            Some(Repair::ConfigGuardDefine { name, value })
+        }
     }
 }
 
@@ -3326,6 +3490,122 @@ mod tests {
             &stdio_declaration,
             "#include <stdio.h>\n"
         ));
+    }
+
+    #[test]
+    fn config_guard_error_defines_the_macro_the_guard_tests() {
+        // libssh's priv.h, verbatim in shape: a feature-test chain whose dead end is
+        // a `#error`. Nothing is missing from the tree — a real ./configure would
+        // have defined HAVE_STRTOULL — so this is the only repair that can apply.
+        let root = tmpdir();
+        let header = root.join("priv.h");
+        fs::write(
+            &header,
+            "#ifdef HAVE_STRTOULL\n\
+             # define ssh_strtoull strtoull\n\
+             #elif defined(HAVE___STRTOULL)\n\
+             # define ssh_strtoull __strtoull\n\
+             #else\n\
+             # error \"no strtoull function found\"\n\
+             #endif\n",
+        )
+        .unwrap();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repair = plan_repair(
+            &BuildErrorKind::ConfigGuardError {
+                file: header.display().to_string(),
+                line: 6,
+                message: "no strtoull function found".to_owned(),
+            },
+            &idx,
+        );
+        // The FIRST branch of the chain is the one to satisfy: defining it skips
+        // the else the #error lives in.
+        assert!(
+            matches!(&repair, Some(Repair::ConfigGuardDefine { name, value })
+                if name == "HAVE_STRTOULL" && value == "1"),
+            "got: {repair:?}"
+        );
+    }
+
+    #[test]
+    fn config_guard_error_takes_the_value_the_guard_requires() {
+        // ImageMagick's magick-config.h: the macro must EXIST and then be one of a
+        // listed set, so `1` would trade one #error for the next. The value the
+        // guard compares against is the one to write.
+        let root = tmpdir();
+        let header = root.join("magick-config.h");
+        fs::write(
+            &header,
+            "#if !defined(MAGICKCORE_QUANTUM_DEPTH)\n\
+             # error \"you should set MAGICKCORE_QUANTUM_DEPTH\"\n\
+             #endif\n\
+             #if (MAGICKCORE_QUANTUM_DEPTH != 8)\n\
+             # error \"MAGICKCORE_QUANTUM_DEPTH is not 8/16/32/64 bits\"\n\
+             #endif\n",
+        )
+        .unwrap();
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repair = plan_repair(
+            &BuildErrorKind::ConfigGuardError {
+                file: header.display().to_string(),
+                line: 2,
+                message: "you should set MAGICKCORE_QUANTUM_DEPTH".to_owned(),
+            },
+            &idx,
+        );
+        assert!(
+            matches!(&repair, Some(Repair::ConfigGuardDefine { name, value })
+                if name == "MAGICKCORE_QUANTUM_DEPTH" && value == "8"),
+            "got: {repair:?}"
+        );
+    }
+
+    #[test]
+    fn config_guard_walk_skips_nested_conditionals_and_refuses_the_undecidable() {
+        // An inner #endif must not be mistaken for the guard's own opening
+        // directive, or the walk defines a macro from the wrong conditional.
+        let nested = "#ifndef HAVE_ICONV\n\
+                      # ifdef __linux__\n\
+                      #  define X 1\n\
+                      # endif\n\
+                      # error \"iconv required\"\n\
+                      #endif\n";
+        assert_eq!(
+            config_guard_macro_to_define(nested, 5).as_deref(),
+            Some("HAVE_ICONV")
+        );
+
+        // Undecidable shapes: a wrong define is worse than an honest failure.
+        for (source, line, why) in [
+            (
+                "#if VERSION > 3\n# error \"too old\"\n#endif\n",
+                2,
+                "a comparison has no macro whose mere definition decides it",
+            ),
+            (
+                "#if defined(A) && defined(B)\n# error \"both\"\n#endif\n",
+                2,
+                "a compound condition names no single macro",
+            ),
+            (
+                "#ifdef HAVE_BROKEN_THING\n# error \"unsupported\"\n#endif\n",
+                2,
+                "the error fires because the macro IS defined; defining cannot help",
+            ),
+            (
+                "#ifndef HAVE_X\n# define X 1\n#else\n# error \"conflict\"\n#endif\n",
+                4,
+                "the else of an #ifndef is reached when the macro is already defined",
+            ),
+            ("# error \"top level\"\n", 1, "no enclosing conditional"),
+        ] {
+            assert_eq!(
+                config_guard_macro_to_define(source, line),
+                None,
+                "{why}: {source}"
+            );
+        }
     }
 
     #[test]

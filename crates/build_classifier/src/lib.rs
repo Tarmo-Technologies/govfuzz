@@ -87,6 +87,17 @@ pub enum BuildErrorKind {
         file: String,
         line: u32,
     },
+    /// A `#error` directive a build-configuration guard reached — the header's own
+    /// way of saying "your build system was supposed to define something"
+    /// (libssh's `#error "no strtoull function found"`, ImageMagick's `#error "you
+    /// should set MAGICKCORE_QUANTUM_DEPTH"`). Nothing is missing from the tree, so
+    /// no header/type/symbol repair can apply; the fix is to define the macro the
+    /// surrounding conditional tests, which needs the `file:line` to read the guard.
+    ConfigGuardError {
+        file: String,
+        line: u32,
+        message: String,
+    },
     Other {
         tail: String,
     },
@@ -247,6 +258,47 @@ fn tail_names_generated_syntax_error(lower: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_guard_hash_error_is_classified_with_its_location() {
+        // Both compiler spellings of a `#error` directive, from real headers in the
+        // sweep. The location is the payload: the repair has to read the guard.
+        for line in [
+            r#"/p/libssh/include/libssh/priv.h:45:4: error: "no strtoull function found""#,
+            r#"/p/libssh/include/libssh/priv.h:45:4: error: #error "no strtoull function found""#,
+        ] {
+            let hits = classify(line);
+            assert_eq!(
+                hits,
+                vec![BuildErrorKind::ConfigGuardError {
+                    file: "/p/libssh/include/libssh/priv.h".to_owned(),
+                    line: 45,
+                    message: "no strtoull function found".to_owned(),
+                }],
+                "{line}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_ordinary_diagnostic_is_never_read_as_a_hash_error() {
+        // The clang form is recognized by its operand being a QUOTED string, so an
+        // ordinary diagnostic — which starts with a bare word or a single-quoted
+        // identifier — must keep its own classification.
+        for line in [
+            "/p/src/a.c:9:1: error: unknown type name 'bignum'",
+            "/p/src/a.c:9:1: fatal error: 'zlib.h' file not found",
+            "/p/src/a.c:9:1: error: expected expression",
+        ] {
+            let hits = classify(line);
+            assert!(
+                !hits
+                    .iter()
+                    .any(|h| matches!(h, BuildErrorKind::ConfigGuardError { .. })),
+                "{line} -> {hits:?}"
+            );
+        }
+    }
 
     #[test]
     fn no_member_named_is_a_codegen_error_not_a_missing_dep() {

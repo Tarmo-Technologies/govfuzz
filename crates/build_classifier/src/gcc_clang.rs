@@ -18,6 +18,19 @@ pub fn classify_into(stderr: &str, hits: &mut Vec<BuildErrorKind>) {
             });
             continue;
         }
+        // A `#error` directive a build-config guard reached. clang renders the
+        // directive's text verbatim (`error: "no strtoull function found"`), gcc
+        // prefixes it (`error: #error "..."`). Recognized ahead of the generic
+        // patterns because the text is arbitrary prose that could otherwise
+        // resemble another diagnostic.
+        if let Some((file, error_line, message)) = config_guard_error(line) {
+            hits.push(BuildErrorKind::ConfigGuardError {
+                file,
+                line: error_line,
+                message,
+            });
+            continue;
+        }
         if let Some(caps) = missing_header().captures(line) {
             hits.push(BuildErrorKind::MissingHeader {
                 path: caps[1].to_owned(),
@@ -304,6 +317,33 @@ fn call_to_undeclared() -> &'static Regex {
     R.get_or_init(|| {
         Regex::new(r#"call to undeclared (?:library )?function '(.+?)'"#).expect("regex")
     })
+}
+
+/// Recognize a `#error` directive diagnostic and return `(file, line, message)`.
+///
+/// Two spellings: gcc keeps the directive (`error: #error "text"`), clang prints
+/// only the operand (`error: "text"`). The clang form is matched on the operand
+/// being a QUOTED string — an ordinary diagnostic starts with a bare word or a
+/// single-quoted identifier, never a double quote — so this cannot swallow one.
+fn config_guard_error(line: &str) -> Option<(String, u32, String)> {
+    let (file, error_line) = diagnostic_location(line)?;
+    let message = line.split("error:").nth(1)?.trim();
+    let message = match message.strip_prefix("#error") {
+        Some(rest) => rest.trim(),
+        // Exactly one quoted run, spanning the whole operand. GNAT reports
+        // `"To_String" not declared in "Legacy"`, which also starts and ends with a
+        // quote — counting them keeps that (and any other prose diagnostic naming
+        // two quoted things) out.
+        None if message.starts_with('"')
+            && message.ends_with('"')
+            && message.matches('"').count() == 2 =>
+        {
+            message
+        }
+        None => return None,
+    };
+    let message = message.trim_matches('"').trim();
+    (!message.is_empty()).then(|| (file, error_line, message.to_owned()))
 }
 
 fn diagnostic_location(line: &str) -> Option<(String, u32)> {

@@ -1120,6 +1120,8 @@ pub fn is_standard_libc_symbol(name: &str) -> bool {
         // process / signal / time
         | "fork" | "execv" | "execvp" | "execve" | "waitpid" | "wait" | "kill" | "signal"
         | "sigaction" | "getpid" | "getppid" | "sleep" | "usleep" | "nanosleep"
+        | "syscall" | "getuid" | "geteuid" | "getgid" | "getegid" | "mmap" | "munmap"
+        | "mprotect" | "readv" | "writev"
         | "gettimeofday" | "clock_gettime" | "time" | "clock" | "localtime" | "gmtime"
         | "mktime" | "strftime"
         // network byte order (glibc/libc; declarations in <arpa/inet.h>)
@@ -1184,7 +1186,20 @@ pub fn c_std_symbol_header(name: &str) -> Option<&'static str> {
         "close" | "read" | "write" | "lseek" | "dup" | "dup2" | "pipe" | "access" | "unlink"
         | "link" | "symlink" | "readlink" | "getcwd" | "chdir" | "rmdir" | "ftruncate"
         | "truncate" | "fsync" | "fdatasync" | "getpagesize" | "gethostname" | "getentropy"
-        | "pread" | "pwrite" => Some("unistd.h"),
+        | "pread" | "pwrite"
+        // A header that calls a POSIX function from a `static inline` helper but
+        // leaves `<unistd.h>` to whichever .c includes it first (btop's vendored
+        // igt_perf.h calls `syscall(__NR_perf_event_open, …)`). Compiled from a TU
+        // that does not, the call is undeclared — and it MUST route here: defining
+        // the name as an empty macro instead erases glibc's own declaration of it
+        // and fails the build inside /usr/include, where no repair can reach.
+        | "syscall" | "getuid" | "geteuid" | "getgid" | "getegid" | "alarm" | "sync"
+        | "fchdir" | "fchown" | "lchown" | "setuid" | "setgid" | "execvp" | "execv"
+        | "execve" | "sbrk" | "getdtablesize" => Some("unistd.h"),
+        "mmap" | "munmap" | "mprotect" | "msync" | "madvise" | "mlock" | "munlock" => {
+            Some("sys/mman.h")
+        }
+        "readv" | "writev" | "preadv" | "pwritev" => Some("sys/uio.h"),
         "ftello" | "fseeko" | "getline" | "getdelim" => Some("stdio.h"),
         "htons" | "htonl" | "ntohs" | "ntohl" => Some("arpa/inet.h"),
         // MSVC/BSD-era spellings still common in portable 1990s/2000s code.
@@ -1705,6 +1720,26 @@ mod tests {
         assert_eq!(c_std_symbol_header("htons"), Some("arpa/inet.h"));
         assert_eq!(c_std_symbol_header("stricmp"), Some("strings.h"));
         assert_eq!(c_std_symbol_header("my_func"), None);
+    }
+
+    #[test]
+    fn syscall_family_routes_to_a_header_and_is_runtime_owned() {
+        // A vendored header that calls a POSIX function from a `static inline`
+        // helper, leaving `<unistd.h>` to whichever .c includes it first, compiles
+        // from a TU that does not — btop's igt_perf.h calls `syscall(...)`. Both
+        // facts have to hold for such a name: it maps to its declaring header (so
+        // the repair is an `#include`), and it is runtime-owned (so no path can
+        // fall back to `#define syscall`, which erases glibc's own declaration).
+        for (symbol, header) in [
+            ("syscall", "unistd.h"),
+            ("getuid", "unistd.h"),
+            ("mmap", "sys/mman.h"),
+            ("munmap", "sys/mman.h"),
+            ("readv", "sys/uio.h"),
+        ] {
+            assert_eq!(c_std_symbol_header(symbol), Some(header), "{symbol}");
+            assert!(is_standard_libc_symbol(symbol), "{symbol}");
+        }
     }
 
     #[test]

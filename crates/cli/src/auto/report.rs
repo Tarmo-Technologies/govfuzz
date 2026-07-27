@@ -57,11 +57,13 @@ struct Summary {
     /// [`StubExecution::stub_only`]). Surfaced distinctly so a sweep that
     /// "built and fuzzed N" isn't read as N real fuzz campaigns.
     fuzzed_stub_only: usize,
-    /// force-fuzz Phase 2: of the swept targets, how many ran forced-and-stub-heavy
-    /// (`--force` AND [`StubExecution::stub_only`]) — a forced build that fuzzed
-    /// synthesized stubs. Their findings are floored to Low with a stub-artifact
-    /// note, and this count is surfaced next to `built_and_fuzzed` so a forced sweep
-    /// isn't read as N confirmed campaigns. 0 (omitted) for a non-force run.
+    /// force-fuzz Phase 2: of the swept targets, how many ran on synthesized inputs
+    /// — `--force` AND either [`StubExecution::stub_only`] (a forced build that
+    /// fuzzed synthesized stub bodies) or a forced synthetic parameter/receiver on a
+    /// managed lane ([`Repair::ForcedSyntheticParams`]). Their findings are floored
+    /// to Low with the forced note, and this count is surfaced next to
+    /// `built_and_fuzzed` so a forced sweep isn't read as N confirmed campaigns.
+    /// 0 (omitted) for a non-force run.
     #[serde(skip_serializing_if = "is_zero")]
     forced: usize,
     /// #95: targets whose C/C++/Ada harness built and ran fuzz passes but never
@@ -488,15 +490,21 @@ pub fn write_reports(
 
     // force-fuzz Phase 2: under `--force`, a target whose harness fuzzed only blind
     // stubs (`stub_only`) ran against synthesized bodies, so any crash is likely a
-    // stub artifact. Collect those harness ids so their findings are floored to Low
-    // with a stub-artifact note, and count them for the summary. Empty for a
-    // non-force run — the non-force path is completely unchanged.
+    // stub artifact. The managed lanes (Go, C#) have no stub ledger but reach the
+    // same place through a synthesized parameter or receiver, recorded as
+    // `ForcedSyntheticParams` — a nil map or zero-valued receiver can panic on its
+    // own account. Collect both so their findings are floored to Low with the
+    // forced note, and count them for the summary. Empty for a non-force run — the
+    // non-force path is completely unchanged.
     let forced_harness_ids: std::collections::BTreeSet<String> = if force {
         results
             .iter()
             .filter_map(|r| match &r.outcome {
                 Outcome::BuiltAndFuzzed { repairs, .. }
-                    if stub_execution_summary(repairs).stub_only =>
+                    if stub_execution_summary(repairs).stub_only
+                        || repairs.iter().any(|repair| {
+                            matches!(repair, Repair::ForcedSyntheticParams { .. })
+                        }) =>
                 {
                     Some(r.candidate.harness_id.clone())
                 }
@@ -579,12 +587,13 @@ pub fn write_reports(
                 // exercised blind stubs.
                 if stub_execution_summary(repairs).stub_only {
                     summary.fuzzed_stub_only += 1;
-                    // force-fuzz Phase 2: a forced sweep's stub-only target is a
-                    // forced-and-stub-heavy campaign — count it distinctly so N
-                    // forced targets aren't read as N confirmed campaigns.
-                    if forced_harness_ids.contains(&id) {
-                        summary.forced += 1;
-                    }
+                }
+                // force-fuzz Phase 2: a target that ran on synthesized input — stub
+                // bodies, or a forced Go/C# parameter — is counted distinctly so N
+                // forced targets aren't read as N confirmed campaigns. The set is
+                // empty unless `--force`, so a normal run is unchanged.
+                if forced_harness_ids.contains(&id) {
+                    summary.forced += 1;
                 }
                 summary.findings += passes.iter().map(|p| p.findings.len()).sum::<usize>();
                 aggregate_repairs(
@@ -2234,6 +2243,11 @@ fn add_checkpoint_result(
             | Repair::AddSource { .. }
             | Repair::EnvVarInjection { .. }
             | Repair::AddAdaSource { .. }
+            // A forced synthetic parameter is a GovFuzz limit, not a dependency the
+            // operator could stage — keep it out of the missing-dependency manifest
+            // (#5's rule for codegen errors). The finding-level forced caveat and the
+            // blocker histogram already carry it.
+            | Repair::ForcedSyntheticParams { .. }
             | Repair::Win32Pack => {}
         }
     }
@@ -2697,6 +2711,9 @@ fn aggregate_repairs(
             // a build adjustment (real underlying types), not a maintainer-must-
             // ship dependency.
             Repair::Win32Pack => {}
+            // Reduced-fidelity label for a forced Go/C# parameter or receiver;
+            // surfaced per-finding as the forced caveat, not as a dependency.
+            Repair::ForcedSyntheticParams { .. } => {}
         }
     }
 }

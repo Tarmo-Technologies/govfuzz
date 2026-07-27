@@ -3676,7 +3676,7 @@ fn summarize_repairs(repairs: &[crate::auto::repair::Repair]) -> Option<String> 
             | AdaPackageBodyStub { .. }
             | OverrideAdaBodyStub { .. }
             | StubGprImport { .. } => ada += 1,
-            PlatformStub { .. } | Win32Pack => platforms += 1,
+            PlatformStub { .. } | Win32Pack | ForcedSyntheticParams { .. } => platforms += 1,
         }
     }
     let plural = |n: usize| if n == 1 { "" } else { "s" };

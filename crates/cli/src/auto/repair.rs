@@ -194,6 +194,17 @@ pub enum Repair {
     PlatformStub {
         platform: String,
     },
+    /// Marker: under `--force`, a managed/compiled lane with no repair loop of its
+    /// own (Go, C#) drove a parameter or receiver the type-directed generator
+    /// REJECTS, using a synthesized zero value so the target builds instead of
+    /// ending `unsupported_params`. Records what was synthesized so the report
+    /// floors every finding on the target to Low with the forced caveat — a nil
+    /// map, nil interface or zero-valued receiver can panic on its own account,
+    /// and such a crash must never read as a confirmed defect. Applying it is a
+    /// no-op (it only labels); the generator already emitted the value.
+    ForcedSyntheticParams {
+        detail: String,
+    },
     /// Inject the synthesized Win32 `windows.h` placeholder header (the scalar +
     /// pointer typedef surface: `BOOL`, `DWORD`, `PUCHAR`, …) into the harness
     /// build, force-included so a stray Win32 name resolves to its real underlying
@@ -239,6 +250,7 @@ impl RepairManifest {
             Repair::AddAdaSource { unit, .. } => key == format!("ada-src:{unit}"),
             Repair::StubGprImport { project } => key == format!("gpr-stub:{project}"),
             Repair::PlatformStub { platform } => key == format!("platform-stub:{platform}"),
+            Repair::ForcedSyntheticParams { .. } => key == "forced-synthetic-params",
             Repair::Win32Pack => key == "win32-pack",
         })
     }
@@ -1812,6 +1824,14 @@ pub fn apply_repair_with_source(
             // Label-only marker: the attempt loop already wrote the fake platform
             // headers (beside the harness, resolved by the Makefile's `-I .`) and
             // the guard define (into auto_defines.h). Nothing to apply here.
+            Ok(ApplyOutcome {
+                extra_sources: vec![],
+                extra_includes: vec![],
+            })
+        }
+        Repair::ForcedSyntheticParams { .. } => {
+            // Label-only marker: the lane's own generator already emitted the
+            // synthesized value into the harness source. Nothing to apply here.
             Ok(ApplyOutcome {
                 extra_sources: vec![],
                 extra_includes: vec![],

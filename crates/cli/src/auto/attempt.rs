@@ -1781,6 +1781,14 @@ fn run_attempt(
         .max(options.per_target_time.saturating_mul(10));
     const MAX_CRASHES_PER_TARGET: usize = 5;
 
+    // force-fuzz Phase 2 on a managed lane (Go, C#): what the generator had to
+    // synthesize to make an otherwise `unsupported_params` target callable — an
+    // undrivable parameter's zero value, an unconstructible receiver. Recorded as a
+    // `ForcedSyntheticParams` marker once the repair manifest exists, so the report
+    // floors the target's findings the same way a stub-only C build is floored.
+    // Stays `None` for every non-force run and every other lane.
+    let mut forced_synthetic_params: Option<String> = None;
+
     // Step 0 (Java, M2.1b/d): the native Java lane. Compile the target with javac,
     // generate + compile a govfuzz harness, and emit `harnesses/<id>/main` — a launcher
     // that runs the target in a persistent JVM under govfuzz's own coverage agent.
@@ -2047,8 +2055,11 @@ fn run_attempt(
             work_dir,
             &candidate.harness_id,
             &source_root,
+            options.force,
         ) {
-            crate::auto::go_build::GoBuildResult::Built => {}
+            crate::auto::go_build::GoBuildResult::Built { forced } => {
+                forced_synthetic_params = forced;
+            }
             crate::auto::go_build::GoBuildResult::Failed { reason, skip } => {
                 if skip {
                     return Ok(AttemptResult {
@@ -2157,8 +2168,11 @@ fn run_attempt(
             candidate,
             work_dir,
             &candidate.harness_id,
+            options.force,
         ) {
-            crate::auto::csharp_build::CSharpBuildResult::Built => {}
+            crate::auto::csharp_build::CSharpBuildResult::Built { forced } => {
+                forced_synthetic_params = forced;
+            }
             crate::auto::csharp_build::CSharpBuildResult::Skip(reason) => {
                 return Ok(AttemptResult {
                     candidate: candidate.clone(),
@@ -2561,6 +2575,16 @@ fn run_attempt(
     // build (real ASan + coverage); leftover platform symbols get stubbed by the
     // repair loop. Record a PlatformStub marker so the report flags the target's
     // findings as reduced-fidelity.
+    // force-fuzz Phase 2: label a managed-lane target whose call was only possible
+    // because a parameter or receiver was synthesized. Purely a marker — the Go/C#
+    // generator already emitted the value — but it is what makes the report floor
+    // this target's findings to Low with the forced caveat.
+    if let Some(detail) = forced_synthetic_params.take() {
+        manifest
+            .repairs
+            .push(Repair::ForcedSyntheticParams { detail });
+    }
+
     if let ForeignStrategy::StubIsolated(stub) = &strategy {
         if let Err(error) = apply_platform_stub(stub, &harness_dir, &repairs_dir) {
             eprintln!(
@@ -3710,6 +3734,7 @@ fn repair_key(repair: &Repair) -> String {
         Repair::AddAdaSource { unit, .. } => format!("ada-src:{unit}"),
         Repair::StubGprImport { project } => format!("gpr-stub:{project}"),
         Repair::PlatformStub { platform } => format!("platform-stub:{platform}"),
+        Repair::ForcedSyntheticParams { .. } => "forced-synthetic-params".to_owned(),
         Repair::Win32Pack => "win32-pack".to_owned(),
     }
 }
@@ -3847,6 +3872,7 @@ fn repair_replaces_candidate_target(repair: &Repair, candidate: &Candidate) -> b
         | Repair::AddAdaSource { .. }
         | Repair::StubGprImport { .. }
         | Repair::PlatformStub { .. }
+        | Repair::ForcedSyntheticParams { .. }
         | Repair::Win32Pack => false,
     }
 }

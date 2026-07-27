@@ -24,7 +24,15 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub enum CSharpBuildResult {
-    Built,
+    Built {
+        /// Under `--force`: what the entry shim had to synthesize to call the
+        /// target — an uninitialized receiver for a type with no accessible
+        /// parameterless constructor. `None` for every normal build. Recorded as
+        /// [`crate::auto::repair::Repair::ForcedSyntheticParams`] so the report
+        /// floors the target's findings: an object whose constructor never ran can
+        /// throw on its own account.
+        forced: Option<String>,
+    },
     /// Not fuzzable here (no `dotnet`/`sharpfuzz`, no owning project, an instance
     /// method whose type needs constructor arguments) — skip cleanly.
     Skip(String),
@@ -282,15 +290,31 @@ fn resolve_target(candidate: &Candidate) -> Result<CSharpMethod, String> {
 /// cleanly (mirrors the Python/Java no-arg-ctor first cut). Scans the declaring
 /// file's constructors; a receiver whose ctor lives in another partial file may
 /// still slip through to a clean FailedBuild.
-fn instance_receiver_ok(method: &CSharpMethod, source: &str) -> Result<(), String> {
+fn instance_receiver_ok(
+    method: &CSharpMethod,
+    source: &str,
+    force: bool,
+) -> Result<Receiver, String> {
     if method.is_static {
-        return Ok(());
+        return Ok(Receiver::Static);
     }
     let leaf = method
         .type_name
         .rsplit('.')
         .next()
         .unwrap_or(&method.type_name);
+    // An abstract type (or an interface) has no instance to obtain by ANY route:
+    // `new T()` does not compile and `GetUninitializedObject` throws at runtime,
+    // which would make every input "crash" in the shim rather than in the target.
+    // Checked ahead of the constructor scan because an abstract class that declares
+    // no constructor at all would otherwise look default-constructible.
+    if declares_abstract_type(source, leaf) {
+        return Err(format!(
+            "instance method `{}` is declared on abstract/interface type `{leaf}`, \
+             which has no instance to allocate (skipped cleanly)",
+            method.qualified()
+        ));
+    }
     let mut has_explicit_ctor = false;
     let mut has_accessible_noarg = false;
     for access in ["public", "private", "protected", "internal"] {
@@ -309,15 +333,70 @@ fn instance_receiver_ok(method: &CSharpMethod, source: &str) -> Result<(), Strin
             from = pos + needle.len();
         }
     }
-    if has_explicit_ctor && !has_accessible_noarg {
+    if !has_explicit_ctor || has_accessible_noarg {
+        return Ok(Receiver::New);
+    }
+    // No usable constructor. Unforced this is a clean skip. Forced, allocate the
+    // receiver WITHOUT running any constructor
+    // (`RuntimeHelpers.GetUninitializedObject`, the runtime's own deserialization
+    // primitive) — the method under test is then reached with every field at its
+    // default. That is exactly the force contract: a driver that runs, with value
+    // correctness explicitly not a goal.
+    if !force {
         return Err(format!(
             "instance method `{}` needs a receiver, but `{leaf}` has no accessible \
-             parameterless constructor (only a parameterized or private one); only \
-             no-arg-constructible receivers are supported (skipped cleanly)",
+             parameterless constructor (only a parameterized or private one); pass \
+             --force to call it on an uninitialized receiver (skipped cleanly)",
             method.qualified()
         ));
     }
-    Ok(())
+    Ok(Receiver::Uninitialized)
+}
+
+/// How the entry shim obtains the receiver to call the target on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Receiver {
+    /// A static method — the type name IS the receiver.
+    Static,
+    /// `new T()`: an accessible parameterless constructor exists.
+    New,
+    /// `--force` only: allocate `T` without running a constructor.
+    Uninitialized,
+}
+
+/// Whether `leaf` is declared `abstract` (or as an `interface`) in this source.
+/// Textual, like the constructor scan above: it only inspects the line that
+/// DECLARES the type, so an `abstract`/`virtual` member never matches.
+fn declares_abstract_type(source: &str, leaf: &str) -> bool {
+    source.lines().any(|line| {
+        let line = line.trim();
+        for keyword in ["interface", "class", "record", "struct"] {
+            let Some(head) = declaration_head(line, keyword, leaf) else {
+                continue;
+            };
+            if keyword == "interface" {
+                return true;
+            }
+            if head.split_whitespace().any(|token| token == "abstract") {
+                return true;
+            }
+        }
+        false
+    })
+}
+
+/// The modifiers preceding `<keyword> <leaf>` on a declaration line, or `None`
+/// when the line does not declare that exact name (`class FooBar` must not match
+/// `Foo`).
+fn declaration_head<'a>(line: &'a str, keyword: &str, leaf: &str) -> Option<&'a str> {
+    let needle = format!("{keyword} {leaf}");
+    let at = line.find(&needle)?;
+    let after = line[at + needle.len()..].trim_start();
+    let boundary = after
+        .chars()
+        .next()
+        .is_none_or(|ch| !ch.is_alphanumeric() && ch != '_');
+    boundary.then(|| &line[..at])
 }
 
 /// The C# expression that decodes the fuzz bytes (`data`) to `param`'s type. The
@@ -363,28 +442,51 @@ fn decode_expr(kind: CSharpParamKind, raw_type: &str, name: &str) -> String {
 }
 
 /// Generate the `GovfuzzEntry.Run(byte[])` shim: a static call into the target.
-fn generate_entry(method: &CSharpMethod) -> String {
-    let receiver = if method.is_static {
-        format!("global::{}", method.type_name)
-    } else {
-        format!("new global::{}()", method.type_name)
+fn generate_entry(method: &CSharpMethod, receiver_kind: Receiver) -> String {
+    let receiver = match receiver_kind {
+        Receiver::Static => format!("global::{}", method.type_name),
+        Receiver::New => format!("new global::{}()", method.type_name),
+        Receiver::Uninitialized => format!(
+            "((global::{}) GovfuzzUninitialized(typeof(global::{})))",
+            method.type_name, method.type_name
+        ),
     };
     let args: Vec<String> = method
         .params
         .iter()
         .map(|p| decode_expr(p.kind, &p.raw_type, &p.name))
         .collect();
+    // `--force` only. Resolved by reflection rather than named directly so the shim
+    // compiles against ANY target framework: `RuntimeHelpers.GetUninitializedObject`
+    // is .NET 5+, `FormatterServices.GetUninitializedObject` is the older spelling
+    // (obsolete since .NET 5), and the harness is pinned to the TARGET's TFM, which
+    // may be either.
+    let helper = if receiver_kind == Receiver::Uninitialized {
+        "\x20   static object GovfuzzUninitialized(System.Type t) {\n\
+         \x20     var rh = typeof(System.Runtime.CompilerServices.RuntimeHelpers)\n\
+         \x20       .GetMethod(\"GetUninitializedObject\", new[] { typeof(System.Type) });\n\
+         \x20     if (rh != null) return rh.Invoke(null, new object[] { t });\n\
+         \x20     var fs = System.Type.GetType(\"System.Runtime.Serialization.FormatterServices\");\n\
+         \x20     var fm = fs?.GetMethod(\"GetUninitializedObject\", new[] { typeof(System.Type) });\n\
+         \x20     if (fm != null) return fm.Invoke(null, new object[] { t });\n\
+         \x20     throw new System.NotSupportedException(\"govfuzz: no uninitialized-object primitive\");\n\
+         \x20   }\n"
+    } else {
+        ""
+    };
     format!(
         "// SPDX-License-Identifier: Apache-2.0\n\
          // Generated by govfuzz — do not edit. Calls the discovered target with the\n\
          // fuzz bytes decoded to each parameter's static type.\n\
          namespace Govfuzzgen {{\n\
          \x20 public static class GovfuzzEntry {{\n\
+         {helper}\
          \x20   public static void Run(byte[] data) {{\n\
          \x20     {receiver}.{method}({args});\n\
          \x20   }}\n\
          \x20 }}\n\
          }}\n",
+        helper = helper,
         receiver = receiver,
         method = method.method,
         args = args.join(", "),
@@ -617,6 +719,7 @@ pub fn build_csharp_harness(
     candidate: &Candidate,
     work_dir: &Path,
     harness_id: &str,
+    force: bool,
 ) -> CSharpBuildResult {
     if !have("dotnet", "--version") {
         return CSharpBuildResult::Skip(
@@ -659,9 +762,10 @@ pub fn build_csharp_harness(
             method.qualified()
         ));
     }
-    if let Err(reason) = instance_receiver_ok(&method, &source) {
-        return CSharpBuildResult::Skip(reason);
-    }
+    let receiver_kind = match instance_receiver_ok(&method, &source, force) {
+        Ok(kind) => kind,
+        Err(reason) => return CSharpBuildResult::Skip(reason),
+    };
     let Some(target_csproj) = find_target_csproj(&candidate.source_path) else {
         return CSharpBuildResult::Skip(format!(
             "no owning .csproj found for {} — the C# lane builds through a project \
@@ -681,7 +785,10 @@ pub fn build_csharp_harness(
     if let Err(e) = std::fs::copy(runtime.join("Driver.cs"), proj_dir.join("Driver.cs")) {
         return CSharpBuildResult::Failed(format!("copy Driver.cs: {e}"));
     }
-    if let Err(e) = std::fs::write(proj_dir.join("GovfuzzEntry.cs"), generate_entry(&method)) {
+    if let Err(e) = std::fs::write(
+        proj_dir.join("GovfuzzEntry.cs"),
+        generate_entry(&method, receiver_kind),
+    ) {
         return CSharpBuildResult::Failed(format!("write GovfuzzEntry.cs: {e}"));
     }
     // Prefer referencing the project. When the project declares only TFMs this
@@ -887,7 +994,14 @@ pub fn build_csharp_harness(
     if let Err(e) = make_executable(&main_path) {
         return CSharpBuildResult::Failed(format!("chmod +x {}: {e}", main_path.display()));
     }
-    CSharpBuildResult::Built
+    CSharpBuildResult::Built {
+        forced: (receiver_kind == Receiver::Uninitialized).then(|| {
+            format!(
+                "c#: uninitialized receiver for `{}` (no accessible parameterless constructor)",
+                method.type_name
+            )
+        }),
+    }
 }
 
 /// Last `n` bytes of a diagnostic string, at a char boundary.
@@ -941,15 +1055,50 @@ mod tests {
 
     #[test]
     fn entry_static_byte_array() {
-        let src = generate_entry(&m(true, vec![p(CSharpParamKind::Bytes, "byte[]")]));
+        let src = generate_entry(
+            &m(true, vec![p(CSharpParamKind::Bytes, "byte[]")]),
+            Receiver::Static,
+        );
         assert!(src.contains("global::Acme.Parser.Parse(data)"));
+        assert!(
+            !src.contains("GovfuzzUninitialized"),
+            "no forced helper: {src}"
+        );
     }
 
     #[test]
     fn entry_instance_string() {
-        let src = generate_entry(&m(false, vec![p(CSharpParamKind::Str, "string")]));
+        let src = generate_entry(
+            &m(false, vec![p(CSharpParamKind::Str, "string")]),
+            Receiver::New,
+        );
         assert!(src.contains("new global::Acme.Parser().Parse("));
         assert!(src.contains("System.Text.Encoding.UTF8.GetString(data)"));
+        assert!(
+            !src.contains("GovfuzzUninitialized"),
+            "no forced helper: {src}"
+        );
+    }
+
+    #[test]
+    fn forced_entry_allocates_an_uninitialized_receiver() {
+        // 31 residual C# targets are instance methods on a type with no usable
+        // constructor. Forced, the receiver is allocated WITHOUT running one.
+        let src = generate_entry(
+            &m(false, vec![p(CSharpParamKind::Str, "string")]),
+            Receiver::Uninitialized,
+        );
+        assert!(
+            src.contains(
+                "((global::Acme.Parser) GovfuzzUninitialized(typeof(global::Acme.Parser))).Parse("
+            ),
+            "{src}"
+        );
+        // Resolved by reflection so the shim compiles on any TFM: the modern
+        // primitive is .NET 5+, the FormatterServices spelling covers older ones.
+        assert!(src.contains("RuntimeHelpers"), "{src}");
+        assert!(src.contains("FormatterServices"), "{src}");
+        assert!(!src.contains("new global::Acme.Parser()"), "{src}");
     }
 
     #[test]
@@ -986,14 +1135,17 @@ mod tests {
     fn instance_ctor_guard_skips_param_only_ctor() {
         let method = m(false, vec![p(CSharpParamKind::Bytes, "byte[]")]);
         let src = "public class Parser { public Parser(int cfg) { } }";
-        assert!(instance_receiver_ok(&method, src).is_err());
+        assert!(instance_receiver_ok(&method, src, false).is_err());
     }
 
     #[test]
     fn instance_ctor_guard_ok_with_noarg() {
         let method = m(false, vec![p(CSharpParamKind::Bytes, "byte[]")]);
         let src = "public class Parser { public Parser(int cfg) { } public Parser() { } }";
-        assert!(instance_receiver_ok(&method, src).is_ok());
+        assert_eq!(
+            instance_receiver_ok(&method, src, false).unwrap(),
+            Receiver::New
+        );
     }
 
     #[test]
@@ -1004,7 +1156,12 @@ mod tests {
         let src = "public sealed class Parser { private Parser() { } \
                    public static readonly Parser Instance = new Parser(); \
                    public string Apply(string v) { return v; } }";
-        assert!(instance_receiver_ok(&method, src).is_err());
+        assert!(instance_receiver_ok(&method, src, false).is_err());
+        // Forced, the singleton's private ctor is bypassed rather than skipped.
+        assert_eq!(
+            instance_receiver_ok(&method, src, true).unwrap(),
+            Receiver::Uninitialized
+        );
     }
 
     #[test]
@@ -1012,7 +1169,37 @@ mod tests {
         // No declared ctor at all => the implicit public default => constructible.
         let method = m(false, vec![p(CSharpParamKind::Bytes, "byte[]")]);
         let src = "public class Parser { public void Feed(byte[] d) { } }";
-        assert!(instance_receiver_ok(&method, src).is_ok());
+        assert_eq!(
+            instance_receiver_ok(&method, src, false).unwrap(),
+            Receiver::New
+        );
+    }
+
+    #[test]
+    fn forced_receiver_refuses_a_type_with_no_instance_to_allocate() {
+        // `new T()` does not compile and `GetUninitializedObject` throws for an
+        // abstract type or an interface, which would make every input "crash" in the
+        // shim instead of in the target — so neither arm may accept one.
+        let method = m(false, vec![p(CSharpParamKind::Bytes, "byte[]")]);
+        for src in [
+            "public abstract class Parser { protected Parser(int cfg) { } }",
+            "public abstract class Parser { public void Parse(byte[] d) { } }",
+            "public interface Parser { void Parse(byte[] d); }",
+        ] {
+            for force in [false, true] {
+                assert!(
+                    instance_receiver_ok(&method, src, force).is_err(),
+                    "force={force}: {src}"
+                );
+            }
+        }
+        // A concrete class whose name merely CONTAINS an abstract one is unaffected.
+        let src = "public abstract class ParserBase { } \
+                   public class Parser : ParserBase { public Parser(int cfg) { } }";
+        assert_eq!(
+            instance_receiver_ok(&method, src, true).unwrap(),
+            Receiver::Uninitialized
+        );
     }
 
     #[test]

@@ -341,9 +341,16 @@ struct CppTemplateContext {
     /// Static methods have no receiver object, but they are still class members
     /// and cannot be forward-declared as namespace-level free functions.
     target_is_method: bool,
-    /// True when at least one header in `target_includes` brings the target
-    /// declaration into scope, so the forward declaration block is
-    /// redundant (and would conflict for class members).
+    /// True when at least one header in `target_includes` actually DECLARES the
+    /// target, so the forward declaration block is redundant (and would conflict
+    /// for class members).
+    ///
+    /// This is a statement about the target, not about the include list. A
+    /// header-less `.cpp` free function still pulls in whatever headers the file
+    /// includes, and taking their mere presence as proof of declaration left the
+    /// harness calling a name nothing had declared — `use of undeclared
+    /// identifier`, the third-largest residual build-error class in the forced
+    /// sweep.
     has_target_header: bool,
     using_namespaces: Vec<String>,
     uses_array: bool,
@@ -1283,7 +1290,16 @@ fn build_cpp_context_common(
         }
         target_sources.retain(|source| source != input.source_path);
     }
-    let has_target_header = !target_includes.is_empty();
+    // Only a header that DECLARES the target suppresses the forward declaration.
+    // `include_source` above pulls the defining `.cpp` in as an "include", which
+    // does bring the declaration into scope, so it counts without a search.
+    let has_target_header = include_source
+        || target_header_declares(
+            &target_includes,
+            input.target_includes_dirs,
+            input.source_path,
+            &input.target.name,
+        );
     let mut using_namespaces = input.using_namespaces.to_vec();
     if include_source {
         push_cpp_target_namespace(
@@ -1622,6 +1638,54 @@ fn scoped_param_name(
         out.push_str(&param_index.to_string());
     }
     out
+}
+
+/// Whether any header the harness will include actually declares `target_name`.
+///
+/// Resolved against the target's own include directories and the directory of the
+/// source the target came from — the same places the compiler will look. A header
+/// that cannot be read is treated as NOT declaring the target: emitting a
+/// redundant forward declaration for a global free function is harmless (C++
+/// allows an identical redeclaration), while omitting a needed one is a build
+/// failure, so uncertainty resolves toward emitting.
+fn target_header_declares(
+    target_includes: &[String],
+    include_dirs: &[PathBuf],
+    source_path: &Path,
+    target_name: &str,
+) -> bool {
+    if target_includes.is_empty() {
+        return false;
+    }
+    let mut roots: Vec<PathBuf> = include_dirs.to_vec();
+    if let Some(parent) = source_path.parent() {
+        roots.push(parent.to_path_buf());
+    }
+    target_includes.iter().any(|include| {
+        roots.iter().any(|root| {
+            std::fs::read_to_string(root.join(include))
+                .ok()
+                .is_some_and(|text| declares_identifier(&text, target_name))
+        })
+    })
+}
+
+/// Crude but sufficient: the identifier appears at a word boundary followed by an
+/// opening parenthesis, i.e. as a function declarator rather than inside another
+/// name. A comment or string mentioning `foo(` also matches, which only costs a
+/// suppressed forward declaration on a header that is very likely to declare it
+/// anyway.
+fn declares_identifier(text: &str, name: &str) -> bool {
+    let bytes = text.as_bytes();
+    text.match_indices(name).any(|(start, _)| {
+        let end = start + name.len();
+        let before_ok = start == 0 || {
+            let ch = bytes[start - 1];
+            !ch.is_ascii_alphanumeric() && ch != b'_' && ch != b':' && ch != b'.'
+        };
+        let after_ok = text[end..].trim_start().starts_with('(');
+        before_ok && after_ok
+    })
 }
 
 fn is_cpp_implementation_file(path: &Path) -> bool {
@@ -2082,6 +2146,102 @@ mod tests {
             src.contains("UtilitiesLib::Extract_Minutes("),
             "still calls the qualified name:\n{src}"
         );
+    }
+
+    #[test]
+    fn global_free_function_gets_a_forward_declaration_when_no_header_declares_it() {
+        // A header-less `.cpp` free function still pulls in whatever headers the
+        // file includes. Taking their mere presence as proof the TARGET is declared
+        // left the harness calling a name nothing had declared:
+        //
+        //   main.cpp:111:13: error: use of undeclared identifier 'decode_frame'
+        //
+        // Only a header that actually declares the target may suppress the forward
+        // declaration.
+        let out = temp_dir("cpp-global-fwd");
+        fs::write(
+            out.join("sesspp.hpp"),
+            "#pragma once\nnamespace ssh { class Session { public: int readFrame(); }; }\n",
+        )
+        .unwrap();
+        let mut target = cppfunction("decode_frame");
+        target.return_type = "int".to_owned();
+        let args = |includes: Vec<String>| GenerateCppDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            harness_id: "H-GFWD01".to_owned(),
+            output_dir: out.clone(),
+            source_path: out.join("driver.cpp"),
+            target: target.clone(),
+            params: vec![CppParameter {
+                name: "data".to_owned(),
+                cpp_type: "const unsigned char *".to_owned(),
+            }],
+            return_type: "int".to_owned(),
+            target_includes: includes,
+            target_includes_dirs: vec![out.clone()],
+            target_sources: vec![out.join("driver.cpp")],
+            compile_flags: Vec::new(),
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            using_namespaces: Vec::new(),
+            result_cleanup: None,
+            constructor_params: Vec::new(),
+            type_defs: Vec::new(),
+            default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
+            receiver_class_override: None,
+            factory_plan: None,
+        };
+
+        // A header that does NOT declare it: the forward declaration is required.
+        let result = generate_cpp_direct_harness(args(vec!["sesspp.hpp".to_owned()])).unwrap();
+        let src = fs::read_to_string(&result.main_cpp).unwrap();
+        assert!(
+            src.contains("int decode_frame(const unsigned char *);"),
+            "expected a forward declaration:\n{src}"
+        );
+
+        // A header that DOES declare it: no forward declaration, as before.
+        fs::write(
+            out.join("driver.h"),
+            "#pragma once\nint decode_frame(const unsigned char *data);\n",
+        )
+        .unwrap();
+        let result = generate_cpp_direct_harness(args(vec!["driver.h".to_owned()])).unwrap();
+        let src = fs::read_to_string(&result.main_cpp).unwrap();
+        assert!(
+            !src.contains("int decode_frame(const unsigned char *);"),
+            "the declaring header makes the forward declaration redundant:\n{src}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn declares_identifier_needs_a_declarator_not_a_substring() {
+        assert!(declares_identifier(
+            "int decode_frame(const char *);",
+            "decode_frame"
+        ));
+        assert!(declares_identifier(
+            "int decode_frame (void);",
+            "decode_frame"
+        ));
+        // A longer name that merely CONTAINS the target, a member access, and a
+        // qualified name in another scope are all not declarations of it.
+        assert!(!declares_identifier(
+            "int decode_frame_v2(void);",
+            "decode_frame"
+        ));
+        assert!(!declares_identifier(
+            "int my_decode_frame(void);",
+            "decode_frame"
+        ));
+        assert!(!declares_identifier("x.decode_frame();", "decode_frame"));
+        assert!(!declares_identifier("ns::decode_frame();", "decode_frame"));
+        assert!(!declares_identifier(
+            "extern int decode_frame;",
+            "decode_frame"
+        ));
     }
 
     #[test]

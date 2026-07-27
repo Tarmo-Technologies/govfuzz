@@ -3,8 +3,9 @@
 //! Synthesise C/C++ stubs for symbols the auto-mode build couldn't resolve.
 
 /// Map a (cleaned) C return-type spelling to the body of a no-op stub.
-/// Returns `None` for struct/union by value — the caller marks the
-/// containing target `failed_build` because we have no safe default.
+/// Returns `None` for struct/union by value, which needs the type name to
+/// construct a return value: see [`stub_aggregate_value_return_body`], reachable
+/// only where the type is complete.
 pub fn stub_body_for_return_type(return_type: &str) -> Option<&'static str> {
     let trimmed = return_type.trim();
     if trimmed.is_empty() || trimmed == "void" {
@@ -20,6 +21,53 @@ pub fn stub_body_for_return_type(return_type: &str) -> Option<&'static str> {
         return Some("return 0.0;");
     }
     None
+}
+
+/// The body of a stub whose return type is an aggregate returned BY VALUE
+/// (raylib's `Shader LoadShaderFromMemory(const char *, const char *)`).
+/// [`stub_body_for_return_type`] cannot express this — it hands back a
+/// `&'static str`, and this body has to name the type — so it lives here.
+///
+/// `{0}` zero-initializes any **complete** aggregate in C and needs no
+/// `<string.h>`; zero is the same neutral answer every other stub gives
+/// (`0`, `NULL`, `0.0`).
+///
+/// The type must be COMPLETE in the stub translation unit, which is why the only
+/// caller reaches this from the header-backed path: a function DEFINITION whose
+/// result type is incomplete is invalid C whatever its body (C11 6.9.1p3), so in
+/// the isolated stub TU — which includes only `auto_types.h`, never the owning
+/// header — refusing outright remains correct.
+pub fn stub_aggregate_value_return_body(return_type: &str) -> Option<String> {
+    let unwrapped = unwrap_export_macro(return_type);
+    let ty = unwrapped.trim();
+    if ty.is_empty() || ty == "void" {
+        return None;
+    }
+    // Pointers, references, arrays, function types and parameter lists are
+    // either already answered by `stub_body_for_return_type` or are not value
+    // types a zeroed local can stand in for.
+    if ty.contains([
+        '*', '&', '[', ']', '(', ')', ',', ';', '{', '}', '<', '>', ':',
+    ]) {
+        return None;
+    }
+    // Every token must be an identifier or a type keyword. Anything else means
+    // the spelling was never parsed cleanly enough to declare a local with it,
+    // and emitting it would trade a link error for a syntax error.
+    if !ty.split_whitespace().all(is_plain_type_token) {
+        return None;
+    }
+    Some(format!("{ty} _gf_ret = {{0}};\n    return _gf_ret;"))
+}
+
+/// Whether `token` is a bare C identifier (type name, tag, or keyword) — no
+/// punctuation, digits-first, or macro-invocation syntax.
+fn is_plain_type_token(token: &str) -> bool {
+    let mut chars = token.chars();
+    chars
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic() || first == '_')
+        && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
 
 fn stub_body_for_declaration<D: DeclarationView>(decl: &D, return_type: &str) -> Option<String> {
@@ -506,15 +554,27 @@ fn synth_c_stub_impl<D: DeclarationView>(
         .map(unwrap_export_macro)
         .unwrap_or_else(|| rt_unwrapped.clone());
     let ordinary_body = stub_body_for_declaration(decl, &body_return);
-    let cpp_reference_body = (ordinary_body.is_none() && is_qualified_cpp)
+    // A struct/union returned by value has no scalar neutral answer, so
+    // `stub_body_for_declaration` declines and the containing target used to end
+    // `failed_build` on an undefined symbol even under `--force`. When the stub
+    // TU includes the declaration's own header the type is complete there, so a
+    // zeroed local is both constructible and as neutral as `return 0;`. Without
+    // it one aggregate-returning symbol keeps a whole harness unlinked while its
+    // scalar siblings stub fine (raylib: `LoadShaderFromMemory` among 20 others).
+    let aggregate_value_body = (ordinary_body.is_none() && exact_signature)
+        .then(|| stub_aggregate_value_return_body(&rt_unwrapped))
+        .flatten();
+    let synthesized_c_body = ordinary_body.is_some() || aggregate_value_body.is_some();
+    let cpp_reference_body = (!synthesized_c_body && is_qualified_cpp)
         .then(|| cpp_reference_return_body(&rt_unwrapped))
         .flatten();
-    let default_cpp_value = ordinary_body.is_none()
+    let default_cpp_value = !synthesized_c_body
         && cpp_reference_body.is_none()
         && is_qualified_cpp
         && cpp_value_return_can_default_initialize(&rt_unwrapped);
     let synthetic_cpp_return = cpp_reference_body.is_some() || default_cpp_value;
     let body = ordinary_body
+        .or(aggregate_value_body)
         .or(cpp_reference_body)
         .or_else(|| default_cpp_value.then(|| "return {};".to_owned()))?;
     let mut params = if exact_signature {
@@ -1855,6 +1915,76 @@ mod synth_tests {
         fn param_types(&self) -> &[String] {
             &self.params
         }
+    }
+
+    #[test]
+    fn header_backed_stub_zero_initialises_an_aggregate_return() {
+        // raylib's `RLAPI Shader LoadShaderFromMemory(const char *, const char *)`.
+        // Twenty of its siblings stubbed fine; this one returns a struct BY VALUE,
+        // and refusing it left `undefined reference to LoadShaderFromMemory` for
+        // the whole harness even under --force.
+        let decl = FakeDecl {
+            name: "LoadShaderFromMemory",
+            return_type: "Shader",
+            params: vec!["const char *".to_owned(), "const char *".to_owned()],
+        };
+        let stub = synth_header_backed_c_stub(&decl, "Shader")
+            .expect("an aggregate return is stubbable when its header is included");
+        assert!(
+            stub.contains("Shader LoadShaderFromMemory(const char * _gf_p0, const char * _gf_p1)"),
+            "{stub}"
+        );
+        assert!(stub.contains("Shader _gf_ret = {0};"), "{stub}");
+        assert!(stub.contains("return _gf_ret;"), "{stub}");
+    }
+
+    #[test]
+    fn isolated_stub_still_refuses_an_aggregate_return() {
+        // Without the owning header the type is INCOMPLETE in auto_stubs.c, and a
+        // definition with an incomplete result type is invalid C whatever the body
+        // is — so the honest refusal has to stay.
+        let decl = FakeDecl {
+            name: "LoadShaderFromMemory",
+            return_type: "Shader",
+            params: vec!["const char *".to_owned(), "const char *".to_owned()],
+        };
+        assert_eq!(synth_c_stub(&decl), None);
+    }
+
+    #[test]
+    fn aggregate_return_body_only_accepts_a_complete_value_spelling() {
+        for ty in ["Shader", "struct widget", "const point_t", "union tag"] {
+            let body = stub_aggregate_value_return_body(ty).unwrap_or_else(|| panic!("{ty}"));
+            assert!(body.starts_with(ty.trim()), "{ty}: {body}");
+            assert!(body.ends_with("return _gf_ret;"), "{ty}: {body}");
+        }
+        for ty in [
+            "",
+            "void",
+            "Shader *",
+            "void (*)(int)",
+            "char [16]",
+            "std::vector<int>",
+            "Ns::Type",
+            "CJSON_PUBLIC(cJSON *)",
+        ] {
+            assert_eq!(stub_aggregate_value_return_body(ty), None, "{ty}");
+        }
+    }
+
+    #[test]
+    fn qualified_cpp_value_return_keeps_its_own_default_initialiser() {
+        // The aggregate path is C-only (header-backed auto_stubs.c). A qualified
+        // C++ symbol must still take the `-> T { return {}; }` route, which works
+        // for class types the brace-zero form would reject.
+        let decl = FakeDecl {
+            name: "leveldb::DB::Open",
+            return_type: "Status",
+            params: vec!["const Options &".to_owned()],
+        };
+        let stub = synth_c_stub(&decl).expect("qualified C++ value return");
+        assert!(stub.contains("return {};"), "{stub}");
+        assert!(!stub.contains("_gf_ret"), "{stub}");
     }
 
     #[test]

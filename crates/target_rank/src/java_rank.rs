@@ -240,7 +240,13 @@ fn is_byte_channel_type(ty: &str) -> bool {
             | "InputStreamReader"
             | "BufferedReader"
             | "byte[]"
-    )
+            // A file-shaped parameter is a byte channel too: the harness writes
+            // the input to a temp file and hands the target its locator, so
+            // `parse(File)` reaches the same bytes `parse(byte[])` would.
+            | "File"
+            | "URI"
+            | "URL"
+    ) || t == "java.nio.file.Path"
 }
 
 fn name_has_parser_keyword(name: &str) -> bool {

@@ -5179,6 +5179,11 @@ fn try_build_c(
             if output_requires_newer_cxx_standard(&raw) {
                 continue;
             }
+            // Same rule on the C side: a rung that manufactures a
+            // standard-too-old error is a regression, not a smaller error count.
+            if !is_cpp && output_requires_newer_c_standard(&raw) {
+                continue;
+            }
             if best.as_ref().is_none_or(|(_, b)| errs.len() < b.len()) {
                 best = Some((std, errs));
             }
@@ -5280,9 +5285,86 @@ fn output_requires_newer_cxx_standard(output: &str) -> bool {
         || output.contains("c++0x_warning.h")
 }
 
+/// Whether a C build failed because the rung being tried is TOO OLD for this
+/// source — as opposed to failing for reasons the standard cannot affect.
+///
+/// The ladder walks newest-to-oldest and, when no rung builds, adopts the one
+/// with the fewest errors so the repair loop continues under the best available
+/// dialect. Comparing error COUNTS alone let it adopt a rung that MANUFACTURED a
+/// new error the baseline never had: on nicbarker/clay it settles on an older
+/// rung, and `U'\u2580'` — a C11 UTF-32 character literal — then parses as the
+/// identifier `U` followed by a character constant, giving "use of undeclared
+/// identifier 'U'". The repair loop cannot fix that, because nothing is missing;
+/// the standard is simply wrong for the file. The target ended
+/// `[c99] forced: unbuildable after N repair round(s)`.
+///
+/// A down-select that introduces one of these is a regression however few errors
+/// it has, exactly like [`output_requires_newer_cxx_standard`] on the C++ side.
+fn output_requires_newer_c_standard(output: &str) -> bool {
+    // A UTF-8/16/32 or wide literal prefix seen as a bare identifier is the
+    // tell: `u8"…"`, `u'…'`, `U'…'`, `L'…'` are C11 (C95 for `L`), and a
+    // pre-C11 rung tokenizes the prefix as a name. Matching the exact quoted
+    // spellings keeps this from firing on a variable that happens to be named
+    // `U` and is genuinely undeclared for its own reasons.
+    for prefix in ["'U'", "'u'", "'u8'", "'L'"] {
+        if output.contains(&format!("use of undeclared identifier {prefix}")) {
+            return true;
+        }
+    }
+    // Other constructs a too-old rung cannot parse.
+    output.contains("use of undeclared identifier '_Static_assert'")
+        || output.contains("'_Generic' undeclared")
+        || output.contains("is a C11 extension")
+        || output.contains("is a C23 extension")
+}
+
 fn output_may_require_fcommon(output: &str) -> bool {
     let lower = output.to_ascii_lowercase();
     lower.contains("multiple definition of") || lower.contains("duplicate symbol")
+}
+
+#[cfg(test)]
+mod c_dialect_downselect_tests {
+    use super::output_requires_newer_c_standard;
+
+    /// The ladder must not adopt a rung that MANUFACTURES an error the baseline
+    /// never had. clay's `U'\u2580'` (a C11 UTF-32 literal) parses as the
+    /// identifier `U` under a pre-C11 rung, and the fewest-errors heuristic
+    /// happily took that rung because it had few errors — leaving the target
+    /// `[c99] forced: unbuildable` with nothing the repair loop could fix.
+    #[test]
+    fn a_utf_literal_prefix_read_as_an_identifier_means_the_rung_is_too_old() {
+        for prefix in ["'U'", "'u'", "'u8'", "'L'"] {
+            let out = format!("masks.h:1800:22: error: use of undeclared identifier {prefix}\n");
+            assert!(
+                output_requires_newer_c_standard(&out),
+                "a {prefix} literal prefix must be read as standard-too-old: {out}"
+            );
+        }
+        assert!(output_requires_newer_c_standard(
+            "t.c:3:1: error: use of undeclared identifier '_Static_assert'"
+        ));
+    }
+
+    /// It must NOT fire on ordinary failures, or the ladder would refuse every
+    /// rung and lose the down-select it exists to perform.
+    #[test]
+    fn an_ordinary_c_failure_is_not_mistaken_for_a_too_old_rung() {
+        for out in [
+            "t.c:1:1: error: use of undeclared identifier 'my_missing_helper'",
+            "t.c:2:2: error: unknown type name 'widget_t'",
+            "ld: undefined reference to `frobnicate'",
+            "t.c:9:9: error: expected ';' after expression",
+            // A variable genuinely named U, spelled as a longer identifier —
+            // the exact-quote match must not catch it.
+            "t.c:4:4: error: use of undeclared identifier 'UART_BASE'",
+        ] {
+            assert!(
+                !output_requires_newer_c_standard(out),
+                "must not read as standard-too-old: {out}"
+            );
+        }
+    }
 }
 
 #[cfg(test)]

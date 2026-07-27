@@ -82,11 +82,46 @@ and pinned by a test that matches cells to names by position. With neither flag
 set the header is byte-identical to before, so nothing already parsing the file
 moves.
 
+## Two more build recoveries, found by reading the residual blockers
+
+- **A libc function is never defined away.** btop's build died *inside glibc* —
+  `/usr/include/unistd.h:1091: error: expected identifier or '('` on glibc's own
+  declaration of `syscall`. A vendored header calls `syscall()` from a
+  `static inline` and leaves `<unistd.h>` to whichever `.c` includes it first;
+  compiled from a TU that does not, the call is undeclared, and the neutral-macro
+  repair answered with `#define syscall`. That define is force-included ahead of
+  every translation unit, so it erased the declaration too — a worse error than
+  the original, in a file no repair can reach, where nothing was ever missing.
+  Such names now route to their declaring header, and the fallback refuses
+  outright for anything the C runtime owns. btop: 4 of 10 attempted targets
+  built+fuzzed → 5, and zero unbuilt harnesses across the sweep.
+- **A C++ free function no header declares now gets declared.** The forward-
+  declaration gate asked "does the target have any includes at all"; a
+  header-less `.cpp` still pulls in whatever headers the file includes, none of
+  which need declare the target, so the harness called a name nothing had
+  declared. It now searches those headers for a real declarator — and strips
+  export / constant-evaluation decoration macros (`JNIEXPORT jstring`,
+  `utf8_constexpr14_impl int`) from what it emits, so the fix cannot manufacture
+  an `unknown type name` the target never had. Both of those manufactured-error
+  cases were caught by re-measuring and by the test suite, not by inspection.
+
+## Getting started
+
+`docs/recommended-sweep.md` is the one command to start from — work dir, jobs,
+per-target and campaign budgets, target cap, build-command recovery, `--force`,
+static, SBOM, SLOC, debug — with what each flag buys and how to size it.
+`govfuzz auto --help` prints the same command at the end, and a distribution
+ships it as `RECOMMENDED-SWEEP.md`.
+
 ## Tooling
 
 `benchmarks/campaign-2026-07-25/residual_errors.py` sweeps the corpus forced and
 histograms the actual compiler errors behind every harness that did not fuzz,
 deleting each clone and work dir immediately so peak disk stays at one project.
+It counts only harnesses GovFuzz gave up on. The first cut did not: the repair
+loop reaches the link stage with symbols still undefined *on its way to
+resolving them*, so harvesting every harness ranked the loop working as designed
+as the largest defect class, at 25 of 104.
 The blocker histogram groups those targets; only this says *why*. It produced
 the `#error`-guard fix and leaves the remaining classes on record as the next
 worklist — see `docs/open-defects-force-and-reach.md`.

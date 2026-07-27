@@ -121,21 +121,29 @@ says nothing about cause. The answer only exists in each harness's
 ### The enumeration
 
 `benchmarks/campaign-2026-07-25/residual_errors.py` sweeps the corpus forced,
-harvests the actual `error:` lines out of every harness that did not reach
-`built_and_fuzzed`, and deletes the clone and work dir immediately, so peak disk
-stays at one project. Over 104 unbuilt harnesses in 35 c/cpp projects it found 77
-distinct error classes:
+harvests the actual `error:` lines out of every harness GovFuzz GAVE UP on, and
+deletes the clone and work dir immediately, so peak disk stays at one project.
+
+**The first cut of that filter was wrong, and it inverted the ranking.** It read
+a `status` key that does not exist on `result.json` (the outcome is nested), so
+every harness with an error in its last build log was harvested — including ones
+that ended `built_and_fuzzed`. The repair loop reaches the LINK stage with
+symbols still undefined *on its way to resolving them*, so a successful C harness
+routinely leaves `undefined reference to …` behind. That put "undefined
+reference" and "linker command failed" at the top, 25 and 24 of 104, when btop's
+four exemplars all ended `built_and_fuzzed` with `retries=1,
+repairs=[add_source]`. If a class looks huge, check the outcome before the log.
+
+Filtered to terminal outcomes, over 55 unbuilt harnesses in 26 c/cpp projects:
 
 ```
-   25  [c:16 cpp:9]  linker command failed with exit code N
-   24  [c:15 cpp:9]  undefined reference to '<id>'
-   20  [c:12 cpp:8]  use of undeclared identifier '<id>'
-   19  [c:15 cpp:4]  unknown type name '<id>'
-   14  [c:10 cpp:4]  redefinition of '<id>'
-   11  [c:11]        cannot combine with previous '<id>' declaration specifier
-   10  [c:6 cpp:4]   expected expression
-    5  [c:5]         "Your system must provide a __func__ macro"
-    5  [c:5]         "no strtoull function found"
+   17  [c:11 cpp:6]  unknown type name '<id>'
+   15  [cpp:8 c:7]   use of undeclared identifier '<id>'
+    8  [c:5 cpp:3]   expected expression
+    8  [c:5 cpp:3]   undefined reference to '<id>' / linker command failed
+    7  [c:5 cpp:2]   field has incomplete type '<id>'
+    7  [c:7]         cannot combine with previous '<id>' declaration specifier
+    5  [c:3 cpp:2]   redefinition of '<id>'
 ```
 
 Re-run it (`--report <jsonl>` histograms an existing capture without sweeping).
@@ -191,12 +199,20 @@ The capture itself is deliberately not committed: it is a measurement of one
 binary at one moment, and a stale one invites exactly the mistake of reading a
 fixed class as still open.
 
-Two observations to start from:
+Three observations to start from:
 
-- `undefined reference` + `linker command failed` are the SAME harnesses (24 and
-  25 of 104). That is the stubbing path failing on some shape, not a link-flag
-  problem — item 1 was one such shape and there are others.
-- `cannot combine with previous declaration specifier` (11, all C, mostly tmux)
+- **`unknown type name` (17) is the largest, and it splits.** Roughly half is a
+  type gated behind an absent third-party SDK — libssh's `MD5CTX`/`SHACTX`/
+  `bignum` behind `HAVE_LIBGCRYPT`, Qt's `QRect`, protobuf's `Message`, Win32's
+  `LONG`/`UINT32`/`HRESULT`. Those are missing dependencies, and the honest fix is
+  the manifest, not a repair. The other half is govfuzz's own: an export
+  decoration macro leaking into the GENERATED harness (ImageMagick's
+  `ModuleExport` at `main.c:49`), which also produces the follow-on `expected ';'
+  after top level declarator` rows. That C-side leak is the obvious next lever —
+  the C++ side of exactly this shape was fixed in 0.2.21.
+- **`use of undeclared identifier` (15) is the same family**, sharing its
+  exemplar with the above (QtScrcpy `H-X0038`).
+- `cannot combine with previous declaration specifier` (7, all C, all tmux)
   smells like a synthesized typedef colliding with a real one, i.e. a govfuzz
   codegen defect rather than a project limitation. Cheap to confirm from one log.
 

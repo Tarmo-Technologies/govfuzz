@@ -2432,33 +2432,41 @@ fn reached_fuzz(outcome: &crate::auto::attempt::Outcome) -> bool {
     )
 }
 
-/// Fold a forced retry's results back over the unforced ones, keeping the
-/// unforced outcome unless forcing actually reached the fuzz phase. Returns how
-/// many targets the retry rescued.
+/// Fold a forced retry's results back over the unforced ones. Returns how many
+/// targets the retry moved into the fuzz phase.
 ///
-/// The asymmetry is the point. Forcing fabricates parameter values and stubs
-/// whatever the compiler reports missing, so its report of a target is strictly
-/// less trustworthy than an honest attempt's: a forced `report_only` says less
-/// than an unforced `failed_build`, which at least names the real error, and a
-/// forced `failed_build` says less than an unforced `unsupported_params`, which
-/// names the type nobody could construct. Only a forced FUZZ is new information.
-/// Overwriting unconditionally would have replaced 232 real build diagnoses with
-/// "statically analyzed" across the measured corpus.
+/// The forced outcome wins for every target that was retried. It is safe to let
+/// it win — and necessary. Safe, because only targets phase 1 could NOT fuzz are
+/// ever retried, so no fuzzed result can be replaced and `--force` cannot lower
+/// the fuzzed count. Necessary, because `--force` has a documented contract for
+/// the targets it cannot fuzz either: it bypasses the pre-skip gates so a target
+/// reaches the build path instead of `unsupported_params`, and report-only is its
+/// floor rather than `failed_build`.
+///
+/// An earlier version kept the unforced outcome unless forcing FUZZED, reasoning
+/// that a forced `report_only` says less than an unforced `failed_build` which
+/// names a real error. That reasoning is not wrong about diagnostics, but it is
+/// the wrong mechanism: it silently suppressed the forced result the operator
+/// explicitly asked for, and broke both of those contracts
+/// (`force_bypasses_cpp_only_class_pre_skip_gate`,
+/// `unbuildable_target_degrades_to_report_only_under_force`). The diagnostic
+/// concern is met instead by phase 2 printing its own blocker histogram, so the
+/// unforced reason is still on screen without overriding the operator.
 fn merge_forced_retry(
     results: &mut [crate::auto::attempt::AttemptResult],
     forced: Vec<crate::auto::attempt::AttemptResult>,
 ) -> usize {
     let mut rescued = 0;
     for forced_result in forced {
-        if !reached_fuzz(&forced_result.outcome) {
-            continue;
-        }
+        let fuzzed = reached_fuzz(&forced_result.outcome);
         if let Some(slot) = results
             .iter_mut()
             .find(|r| r.candidate.harness_id == forced_result.candidate.harness_id)
         {
             *slot = forced_result;
-            rescued += 1;
+            if fuzzed {
+                rescued += 1;
+            }
         }
     }
     rescued
@@ -3954,12 +3962,22 @@ mod tests {
             ],
         );
 
-        assert_eq!(rescued, 1, "only the target that actually fuzzed counts");
-        assert!(reached_fuzz(&results[0].outcome), "H-1 untouched");
-        assert!(reached_fuzz(&results[1].outcome), "H-2 upgraded by forcing");
+        assert_eq!(
+            rescued, 1,
+            "`rescued` counts only targets forcing moved INTO the fuzz phase"
+        );
         assert!(
-            matches!(results[2].outcome, Outcome::FailedBuild { .. }),
-            "H-3 must keep its real build diagnosis, not a forced report-only: {:?}",
+            reached_fuzz(&results[0].outcome),
+            "H-1 already fuzzed in phase 1, so it is never retried and never replaced"
+        );
+        assert!(reached_fuzz(&results[1].outcome), "H-2 upgraded by forcing");
+        // H-3's forced outcome wins even though it did not fuzz: the operator
+        // asked for forcing, and `--force` promises report-only as its floor
+        // rather than a bare failed_build. Suppressing it broke two contract
+        // tests. Phase 2's own blocker histogram still shows the unforced reason.
+        assert!(
+            matches!(results[2].outcome, Outcome::ReportOnly { .. }),
+            "the forced outcome must win for a target that was retried: {:?}",
             results[2].outcome
         );
     }

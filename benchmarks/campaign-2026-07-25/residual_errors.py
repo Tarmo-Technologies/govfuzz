@@ -56,8 +56,23 @@ def normalise(message: str) -> str:
     return text[:200]
 
 
+# Outcomes that mean GovFuzz gave up on the target. Anything else — above all
+# `built_and_fuzzed` — must NOT be harvested: the repair loop reaches the link
+# stage with symbols still undefined on the way to fixing them, so a SUCCESSFUL
+# C harness routinely leaves `undefined reference to …` in its last build log.
+# Harvesting those made "undefined reference" the largest class in the histogram
+# when it was really the loop working as designed.
+TERMINAL_OUTCOMES = {
+    "report_only",
+    "failed_build",
+    "unrecoverable_link",
+    "unrecoverable_runtime",
+    "built_not_entered",
+}
+
+
 def harvest(work: Path) -> list[dict]:
-    """One record per harness that did not fuzz, with its compiler errors."""
+    """One record per harness GovFuzz GAVE UP on, with its compiler errors."""
     out = []
     harnesses = work / "harnesses"
     if not harnesses.is_dir():
@@ -67,9 +82,14 @@ def harvest(work: Path) -> list[dict]:
         status = None
         if result.is_file():
             try:
-                status = json.loads(result.read_text()).get("status")
-            except (json.JSONDecodeError, OSError):
+                # The outcome is an internally-tagged enum: {"outcome": {"outcome": ...}}.
+                status = (json.loads(result.read_text()).get("outcome") or {}).get("outcome")
+            except (json.JSONDecodeError, OSError, AttributeError):
                 pass
+        # No result.json at all means the attempt never finished — the campaign
+        # clock stopped it, which is budget, not a defect. Skip those too.
+        if status not in TERMINAL_OUTCOMES:
+            continue
         errors: list[str] = []
         raw: list[str] = []
         for log in sorted((hdir / "repairs").glob("*build_output.log")):

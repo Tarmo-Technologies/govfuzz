@@ -105,6 +105,54 @@ moves.
   an `unknown type name` the target never had. Both of those manufactured-error
   cases were caught by re-measuring and by the test suite, not by inspection.
 
+## Honest reporting: `--force` kept a missing dependency to itself
+
+Forcing degrades a residual failed build to a report-only static scan, which is
+the right floor. But a report-only outcome carries no diagnostics for the
+missing-dependency manifest to mine, and the degradation replaced them with a
+bare COUNT of residual errors — so the evidence vanished, on the run that most
+needs it. Measured on tmux, whose every target embeds libevent's `struct event`
+by value:
+
+```
+unforced:  4 external dependencies needed: 4 still blocking   (naming `event`)
+forced:    No external dependencies were missing — the tree built against
+           its own sources.
+```
+
+The second line is simply false. The degradation now carries the unresolved type
+names across, and a regression test pins that forcing can never empty the
+manifest.
+
+## Three sources of dead targets removed
+
+Each of these consumed slots in the ranked cap that real functions should have
+had, and none could ever build.
+
+- **Macro templates.** BSD `<sys/tree.h>`'s `RB_GENERATE_INSERT(name, type,
+  field, cmp, attr)` defines a whole function body inside a backslash-continued
+  `#define`. It parses as a function returning `attr struct type *` — but
+  `attr`, `type` and `name` are macro PARAMETERS, and the symbol does not exist
+  until expansion. tmux's compat/tree.h produced seven of them.
+- **Macro invocations.** Linux's `TRACE_EVENT(mcu_cmd_info, TP_PROTO(...), ...)`
+  parses as a function whose parameter *types* are the macro's arguments.
+  Single-word ALL-CAPS names are kept — BLAS/LAPACK really do export `DGEMM`.
+- On lede the two rules together removed 139 pseudo-targets from the ranked
+  list, and the freed slots went to real functions.
+
+## Two more self-inflicted build errors
+
+- **The Win32 pack redefining the tree's own types.** Win32-style scalar names
+  are not exclusive to Windows: lede's MediaTek mt7603 *Linux* driver declares
+  `typedef signed char CHAR;` and its own `union _LARGE_INTEGER`. GovFuzz
+  force-included its `windows.h` placeholder over them, producing `typedef
+  redefinition with different types ('signed char' vs 'char')`. When the tree
+  owns the name, the ordinary type repairs run instead.
+- **A CamelCase export macro in the generated C harness.** The decoration
+  stripper knew the ALL-CAPS convention (`WREN_API`, `STBIDEF`) but not the
+  CamelCase one, so ImageMagick's `ModuleExport size_t f()` reached the harness
+  as `extern ModuleExport size_t f(...)` — the C twin of the C++ leak above.
+
 ## Getting started
 
 `docs/recommended-sweep.md` is the one command to start from — work dir, jobs,

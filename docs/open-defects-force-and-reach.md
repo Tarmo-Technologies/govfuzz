@@ -199,6 +199,34 @@ The capture itself is deliberately not committed: it is a measurement of one
 binary at one moment, and a stale one invites exactly the mistake of reading a
 fixed class as still open.
 
+### Worked from that list
+
+Five more defects came out of reading the exemplars, and four of the five were
+GovFuzz's own errors rather than project limitations:
+
+- **`--force` emptied the missing-dependency manifest.** The forced degradation
+  to report-only replaced the diagnostics with a count, and a report-only outcome
+  has no `last_errors` for the manifest to mine. tmux reported "4 still blocking"
+  unforced and "No external dependencies were missing" forced. Fixed by carrying
+  the unresolved type names across the degradation; pinned by
+  `auto_force_keeps_manifest.rs`.
+- **Macro templates discovered as targets.** BSD `<sys/tree.h>`'s
+  `RB_GENERATE_INSERT` defines a function body inside a continued `#define`;
+  `attr`/`type`/`name` are macro parameters. Seven dead targets in tmux, each
+  ending `cannot combine with previous 'type-name' declaration specifier` — the
+  whole of that histogram row.
+- **Macro invocations discovered as targets.** Linux's `TRACE_EVENT(...)`. Two in
+  lede; together with the above, 139 pseudo-targets left the ranked list.
+- **The Win32 pack redefining the tree's own typedefs.** lede's MediaTek Linux
+  driver owns `CHAR` and `_LARGE_INTEGER`; the force-included pack redefined
+  them. That was the whole `redefinition of` / `typedef redefinition` row.
+- **A CamelCase export macro leaking into the C harness** (`ModuleExport`), the C
+  twin of the C++ decoration leak.
+
+What remains in `unknown type name` after those is dominated by genuinely absent
+SDKs — libevent, Qt, protobuf, JNI, Win32 — which is a manifest problem, not a
+repair one, and the manifest now reports them under `--force` too.
+
 Three observations to start from:
 
 - **`unknown type name` (17) is the largest, and it splits.** Roughly half is a

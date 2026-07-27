@@ -621,6 +621,65 @@ const ORGANIZATIONAL_DIR_NAMES: &[&str] = &[
     "util",
 ];
 
+/// Whether a C/C++ function NAME is really a macro invocation parsed as a
+/// definition — multi-segment ALL-CAPS, the universal convention for macros.
+///
+/// Linux's tracepoint headers are the clearest case: `TRACE_EVENT(mcu_cmd_info,
+/// TP_PROTO(...), TP_ARGS(...), TP_STRUCT__entry(...), ...)` at file scope parses
+/// as a function named `TRACE_EVENT` whose parameter TYPES are the macro's
+/// arguments. There is no such symbol to link, so the harness can never build —
+/// lede produced two of these among ten ranked targets.
+///
+/// Requiring an underscore keeps single-word ALL-CAPS names that really are
+/// functions: BLAS/LAPACK expose `DGEMM`/`SGEMV`, and Fortran-bound wrappers are
+/// spelled that way on purpose.
+fn is_macro_invocation_name(name: &str) -> bool {
+    name.len() >= 3
+        && name.contains('_')
+        && name.chars().any(|ch| ch.is_ascii_uppercase())
+        && name
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+}
+
+/// Source lines (1-based) that belong to a multi-line `#define` body.
+///
+/// A function declarator inside one is a macro TEMPLATE, not a function: BSD's
+/// `<sys/tree.h>` / `<sys/queue.h>` families define whole function bodies inside
+/// `RB_GENERATE_INSERT(name, type, field, cmp, attr)`, so tree-sitter sees
+///
+/// ```text
+/// attr struct type *                                          \
+/// name##_RB_INSERT(struct name *head, struct type *elm)       \
+/// ```
+///
+/// as a function returning `attr struct type *`. It is not one — `attr`, `type`
+/// and `name` are macro PARAMETERS and the symbol `name##_RB_INSERT` does not
+/// exist until expansion. Harnessing it emitted `attr struct type * R = ...`,
+/// which clang rejects with "cannot combine with previous 'type-name'
+/// declaration specifier"; no repair can fix it, because nothing is missing.
+/// tmux's compat/tree.h alone produced seven such dead targets.
+fn macro_definition_body_lines(source: &str) -> std::collections::HashSet<u32> {
+    let mut lines = std::collections::HashSet::new();
+    let mut continuing = false;
+    for (index, line) in source.lines().enumerate() {
+        let number = index as u32 + 1;
+        let starts_define = line.trim_start().starts_with('#')
+            && line
+                .trim_start()
+                .trim_start_matches('#')
+                .trim_start()
+                .starts_with("define");
+        if continuing || starts_define {
+            lines.insert(number);
+        }
+        // A trailing backslash continues the directive onto the next line. Only
+        // meaningful once we are in (or starting) a define.
+        continuing = (continuing || starts_define) && line.trim_end().ends_with('\\');
+    }
+    lines
+}
+
 pub fn discover(root: &Path) -> Result<Vec<Candidate>> {
     discover_with_dir_filter(root, &DirFilter::default())
 }
@@ -1696,6 +1755,16 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 (modern, Some(lang_profile::Dialect::C99))
             };
             let fns = dedup_c_functions(fns);
+            // A function declarator inside a multi-line `#define` is a macro
+            // template, not a target (BSD tree.h/queue.h `RB_GENERATE_*`).
+            let macro_lines = macro_definition_body_lines(&source);
+            let fns: Vec<_> = fns
+                .into_iter()
+                .filter(|function| {
+                    !macro_lines.contains(&function.line)
+                        && !is_macro_invocation_name(&function.name)
+                })
+                .collect();
             let meta: HashMap<(&str, u32), &c_parser::CFunction> =
                 fns.iter().map(|f| ((f.name.as_str(), f.line), f)).collect();
             for tgt in target_rank::rank_c_targets(&fns) {
@@ -1736,6 +1805,16 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 }
             };
             let fns = dedup_cpp_functions(fns);
+            // Same macro-template exclusion as the C lane: a C++ TU that includes
+            // a BSD tree.h/queue.h header sees the identical pseudo-functions.
+            let macro_lines = macro_definition_body_lines(&source);
+            let fns: Vec<_> = fns
+                .into_iter()
+                .filter(|function| {
+                    !macro_lines.contains(&function.line)
+                        && !is_macro_invocation_name(&function.name)
+                })
+                .collect();
             let known_blocked = crate::generate_harness::cpp_known_blocked_signatures_for_discovery(
                 path, &source, &fns,
             );
@@ -3158,6 +3237,81 @@ mod tests {
         );
     }
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn all_caps_macro_invocations_are_not_targets() {
+        // Linux tracepoint headers: `TRACE_EVENT(name, TP_PROTO(...), ...)` at file
+        // scope parses as a function whose parameter TYPES are the macro arguments.
+        // No such symbol exists, so the harness can never link.
+        assert!(is_macro_invocation_name("TRACE_EVENT"));
+        assert!(is_macro_invocation_name("RB_GENERATE_INSERT"));
+        assert!(is_macro_invocation_name("TP_ARGS"));
+        assert!(is_macro_invocation_name("MODULE_DEVICE_TABLE"));
+        // tmux's `name##_RB_INSERT` loses its pasted prefix in the parse and
+        // arrives as `_RB_INSERT` — macro-shaped by this rule as well as by the
+        // macro-body line filter. Either one is enough to keep it out.
+        assert!(is_macro_invocation_name("_RB_INSERT"));
+        // Single-word ALL-CAPS names really are functions in numerical code —
+        // BLAS/LAPACK and Fortran-bound wrappers are spelled this way on purpose.
+        assert!(!is_macro_invocation_name("DGEMM"));
+        assert!(!is_macro_invocation_name("SGEMV"));
+        // Mixed-case API names (OpenSSL's `MD5_Init`, `EVP_DigestInit`) are real
+        // functions and must survive.
+        assert!(!is_macro_invocation_name("MD5_Init"));
+        assert!(!is_macro_invocation_name("EVP_DigestInit"));
+        // Ordinary C/C++ names are untouched.
+        assert!(!is_macro_invocation_name("parse_header"));
+        assert!(!is_macro_invocation_name("Clay__HashData"));
+        assert!(!is_macro_invocation_name("session_parse"));
+    }
+
+    #[test]
+    fn macro_body_functions_are_not_targets() {
+        // tmux's compat/tree.h — the BSD RB_GENERATE family defines whole function
+        // bodies inside a backslash-continued `#define`. tree-sitter parses them as
+        // functions returning `attr struct type *`, but `attr`/`type`/`name` are
+        // macro PARAMETERS: the harness emitted `attr struct type * R = ...` and
+        // clang rejected it with "cannot combine with previous 'type-name'
+        // declaration specifier", which no repair can fix because nothing is
+        // missing. Seven dead targets from one header, each consuming a slot in the
+        // ranked cap that a real function should have had.
+        let source = "#define RB_GENERATE_INSERT(name, type, field, cmp, attr)\\\n\
+                      attr struct type *\\\n\
+                      name##_RB_INSERT(struct name *head, struct type *elm)\\\n\
+                      {\\\n\
+                      \treturn (NULL);\\\n\
+                      }\n\
+                      \n\
+                      int real_parse(const char *text, size_t len)\n\
+                      {\n\
+                      \treturn (int)len;\n\
+                      }\n";
+        let macro_lines = macro_definition_body_lines(source);
+        // The #define and every continued line belong to the macro body ...
+        for line in 1..=6 {
+            assert!(macro_lines.contains(&line), "line {line} is macro body");
+        }
+        // ... and the real function after it does not.
+        for line in 7..=11 {
+            assert!(!macro_lines.contains(&line), "line {line} is real code");
+        }
+    }
+
+    #[test]
+    fn a_single_line_define_does_not_swallow_the_code_after_it() {
+        // Only a CONTINUED define carries a body. An ordinary one-line define must
+        // not mark the following function as a macro template.
+        let source = "#define MAX_LEN 4096\n\
+                      #  define OTHER 1\n\
+                      int parse(const char *t) { return 0; }\n";
+        let macro_lines = macro_definition_body_lines(source);
+        assert!(macro_lines.contains(&1));
+        assert!(macro_lines.contains(&2), "indented `#  define` counts too");
+        assert!(
+            !macro_lines.contains(&3),
+            "the function after a one-line define is real code"
+        );
+    }
 
     fn tmpdir() -> PathBuf {
         let n = SystemTime::now()

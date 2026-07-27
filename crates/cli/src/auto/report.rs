@@ -1035,6 +1035,15 @@ pub fn write_reports(
 /// most likely to fabricate a crash, whereas `stub_declared` at least has the
 /// real signature, and `linked_real` executed genuine dependency code. They are
 /// appended at the END so existing column indices are unchanged.
+///
+/// The optional `scan_type` (`--static-dynamic`) and `forced` (`--force`) columns
+/// are inserted BETWEEN the base columns and the stub block, because that is the
+/// order [`render_issue_row`] writes them. Compose the header from the two halves
+/// — never by appending a flag column to this constant, which would leave the
+/// header and the rows disagreeing about where the stub block starts.
+const FINDINGS_CSV_BASE_HEADER: &str = "id,count,harness_id,rule_id,message,exception_name,sanitizer,classification,confirmation,impact,confidence,verdict,cwe,source,data_flow,sink_file,sink_line,sink_function,entity,remediation,signature,member_finding_ids";
+const FINDINGS_CSV_STUB_HEADER: &str = "stub_total,stub_blind,stub_declared,linked_real";
+/// The header with neither optional column — the shape a plain `auto` run writes.
 const FINDINGS_CSV_HEADER: &str = "id,count,harness_id,rule_id,message,exception_name,sanitizer,classification,confirmation,impact,confidence,verdict,cwe,source,data_flow,sink_file,sink_line,sink_function,entity,remediation,signature,member_finding_ids,stub_total,stub_blind,stub_declared,linked_real\n";
 
 /// One parsed finding plus its backfilled actionability, ready to project into a
@@ -1184,14 +1193,25 @@ fn write_findings_csv(
                     .map(|s| (r.candidate.harness_id.clone(), s))
             })
             .collect();
-    let mut out = String::from(FINDINGS_CSV_HEADER.trim_end());
+    // Build the header in the ORDER `render_issue_row` writes the row: the optional
+    // flag columns come before the stub-accounting block, not after it. Appending
+    // them to the end of the full header instead shifted every stub column by one
+    // under `--force`/`--static-dynamic`, so `forced` read as `linked_real`'s value.
+    let mut out = String::from(FINDINGS_CSV_BASE_HEADER);
     if static_dynamic {
         out.push_str(",scan_type");
     }
     if force {
         out.push_str(",forced");
     }
+    out.push(',');
+    out.push_str(FINDINGS_CSV_STUB_HEADER);
     out.push('\n');
+    debug_assert_eq!(
+        (!static_dynamic && !force).then_some(out.as_str()),
+        (!static_dynamic && !force).then_some(FINDINGS_CSV_HEADER),
+        "with both flags off the header must be byte-identical to the fixed one"
+    );
 
     // Collect unique finding ids in result order.
     let mut seen = std::collections::BTreeSet::new();
@@ -4389,6 +4409,91 @@ mod tests {
     }
 
     #[test]
+    fn optional_columns_keep_the_header_aligned_with_the_row() {
+        // The `forced` / `scan_type` columns are written by `render_issue_row`
+        // BEFORE the stub block. Appending them to the end of the fixed header
+        // instead put every stub value one column left of its name, so a forced
+        // run's `forced` column read out as `linked_real`.
+        let finding = CsvFinding {
+            id: "F-0001".to_owned(),
+            group_key: "g".to_owned(),
+            harness_id: "H-G0001-AAAA".to_owned(),
+            rule_id: "GF-201".to_owned(),
+            message: "Go panic: index out of range".to_owned(),
+            exception_name: "ASAN_GO_INDEX_OUT_OF_BOUNDS".to_owned(),
+            sanitizer: "asan".to_owned(),
+            classification: "unhandled".to_owned(),
+            confirmation: "fuzz".to_owned(),
+            impact: actionability::Impact::Critical,
+            confidence: actionability::ActionabilityConfidence::High,
+            verdict: actionability::Verdict::LikelyReachable,
+            cwe: vec!["125".to_owned()],
+            source: String::new(),
+            data_flow: String::new(),
+            sink_file: "forcelib.go".to_owned(),
+            sink_line: "42".to_owned(),
+            sink_function: "Render".to_owned(),
+            entity: String::new(),
+            remediation: String::new(),
+            signature: String::new(),
+            forced: true,
+            note: confidence_model::FORCED_STUB_NOTE.to_owned(),
+        };
+        let stub = stub_execution_summary(&[]);
+        for (static_dynamic, force) in [(false, true), (true, false), (true, true)] {
+            let mut header = String::from(FINDINGS_CSV_BASE_HEADER);
+            if static_dynamic {
+                header.push_str(",scan_type");
+            }
+            if force {
+                header.push_str(",forced");
+            }
+            header.push(',');
+            header.push_str(FINDINGS_CSV_STUB_HEADER);
+
+            let row = render_issue_row(
+                std::slice::from_ref(&finding),
+                static_dynamic,
+                force,
+                Some(&stub),
+            );
+            // Split on unquoted commas only — the forced note contains one.
+            let mut cells = Vec::new();
+            let mut cell = String::new();
+            let mut quoted = false;
+            for ch in row.trim_end().chars() {
+                match ch {
+                    '"' => quoted = !quoted,
+                    ',' if !quoted => cells.push(std::mem::take(&mut cell)),
+                    _ => cell.push(ch),
+                }
+            }
+            cells.push(cell);
+            let names: Vec<&str> = header.split(',').collect();
+            assert_eq!(
+                names.len(),
+                cells.len(),
+                "static_dynamic={static_dynamic} force={force}: header {names:?} vs row {cells:?}"
+            );
+            let column = |name: &str| {
+                names
+                    .iter()
+                    .position(|n| *n == name)
+                    .map(|index| cells[index].as_str())
+                    .unwrap_or_else(|| panic!("no {name} column"))
+            };
+            assert_eq!(column("stub_total"), "0");
+            assert_eq!(column("linked_real"), "0");
+            if force {
+                assert_eq!(column("forced"), confidence_model::FORCED_STUB_NOTE);
+            }
+            if static_dynamic {
+                assert_eq!(column("scan_type"), "dynamic");
+            }
+        }
+    }
+
+    #[test]
     fn write_reports_groups_findings_csv_by_cluster_key_full() {
         // #36: two findings that share a cluster_key_full (the cascade re-emitting
         // the same root cause across passes) must collapse to ONE issue row with
@@ -4854,10 +4959,14 @@ mod tests {
             "md missing forced summary: {md}"
         );
 
-        // findings.csv: `low` confidence + the trailing `forced` note column.
+        // findings.csv: `low` confidence + the `forced` note column, which sits
+        // immediately before the stub block because that is where the row writes it.
         let csv = std::fs::read_to_string(work.join("auto/findings.csv")).unwrap();
         let header = csv.lines().next().unwrap();
-        assert!(header.ends_with(",forced"), "header: {header}");
+        assert!(
+            header.contains(",forced,stub_total,"),
+            "the forced column must precede the stub block: {header}"
+        );
         let confidence_idx = header.split(',').position(|c| c == "confidence").unwrap();
         let row = csv.lines().nth(1).expect("one finding row");
         let cells: Vec<&str> = row.split(',').collect();

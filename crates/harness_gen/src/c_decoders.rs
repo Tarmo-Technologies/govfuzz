@@ -2080,12 +2080,32 @@ fn is_leading_decl_noise(tok: &str) -> bool {
     // with linkage cannot have an initializer"). is_leading_decl_noise is consulted
     // only for LEADING tokens that have a following type token, so a single-token
     // type that merely ends this way is never stripped.
-    tok.len() >= 4
+    if tok.len() >= 4
         && tok
             .chars()
             .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
         && [
             "DEF", "_API", "_DECL", "_EXTERN", "_EXPORT", "_IMPORT", "_PUBLIC", "_CALL",
+        ]
+        .iter()
+        .any(|s| tok.ends_with(s))
+    {
+        return true;
+    }
+    // The same convention in CamelCase. ImageMagick spells its visibility macros
+    // `ModuleExport size_t ...` / `MagickExport Image *...`, which the ALL-CAPS
+    // rule above cannot see, so the decoration reached the generated harness:
+    //
+    //   main.c:49:8:  error: unknown type name 'ModuleExport'
+    //   main.c:49:27: error: expected ';' after top level declarator
+    //
+    // Same guard as above — consulted only for a LEADING token that has a real
+    // type token after it, so a single-token return type spelled this way (a
+    // genuine `PublicKey`) is never stripped.
+    tok.len() >= 6
+        && tok.chars().any(|c| c.is_ascii_lowercase())
+        && [
+            "Export", "Import", "Public", "Private", "Extern", "Decl", "Api", "Call",
         ]
         .iter()
         .any(|s| tok.ends_with(s))
@@ -2914,9 +2934,29 @@ mod tests {
             strip_type_decoration("CJSON_PUBLIC(const char *)"),
             "const char *"
         );
+        // The same convention in CamelCase — ImageMagick spells its visibility
+        // macros this way, and the ALL-CAPS rule above could not see them, so
+        // `ModuleExport` reached the generated harness as `extern ModuleExport
+        // size_t f(...)`: "unknown type name 'ModuleExport'" plus the "expected
+        // ';' after top level declarator" cascade, on a line GovFuzz wrote itself.
+        assert_eq!(strip_type_decoration("ModuleExport size_t"), "size_t");
+        assert_eq!(strip_type_decoration("MagickExport Image *"), "Image *");
+        assert_eq!(
+            strip_type_decoration("MagickPrivate const char *"),
+            "const char *"
+        );
+        assert_eq!(strip_type_decoration("WandExport double"), "double");
         // But a single-token type that merely ends this way is NOT stripped.
         assert_eq!(strip_type_decoration("MYDEF"), "MYDEF");
         assert_eq!(strip_type_decoration("config_t"), "config_t");
+        assert_eq!(strip_type_decoration("ModuleExport"), "ModuleExport");
+        assert_eq!(strip_type_decoration("PublicKey"), "PublicKey");
+        // ... and a genuine type is never mistaken for decoration because it
+        // follows a real qualifier rather than leading.
+        assert_eq!(
+            strip_type_decoration("const PublicKey *"),
+            "const PublicKey *"
+        );
         // Lowercase `name(...)` is not a macro wrapper, and a function-pointer
         // spelling must survive (the leading token is a real type keyword).
         assert_eq!(strip_type_decoration("foo_t(int)"), "foo_t(int)");

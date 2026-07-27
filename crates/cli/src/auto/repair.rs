@@ -2814,7 +2814,23 @@ pub(crate) fn plan_repair_forced_with_source_policy(
     | BuildErrorKind::IncompleteType { name }
     | BuildErrorKind::MissingMacro { name, .. } = error
     {
-        if crate::auto::cross_target::is_win32_known_name(name) {
+        // ... unless the TREE defines the name itself. Win32-style typedefs are
+        // not exclusive to Windows: embedded and vendor drivers spell their own
+        // scalars this way, and the pack is force-included ahead of EVERY TU, so
+        // injecting it redefines what the project already owns. lede's MediaTek
+        // mt7603 Linux driver declares `typedef signed char CHAR;` and its own
+        // `union _LARGE_INTEGER` in rtmp_type.h; the pack's `typedef char CHAR;`
+        // produced
+        //
+        //   error: typedef redefinition with different types ('signed char' vs 'char')
+        //   error: redefinition of '_LARGE_INTEGER'
+        //
+        // — errors GovFuzz created. When the tree owns the name, the ordinary type
+        // repairs below run instead: they include the project's real header, or
+        // place a placeholder in the non-force-included `auto_types.h`, neither of
+        // which can collide with the project's own definition.
+        let tree_owns_the_name = tree_typedef_underlying(decl_index, name).is_some();
+        if crate::auto::cross_target::is_win32_known_name(name) && !tree_owns_the_name {
             if !attempted.already_attempted("win32-pack") {
                 return Some(Repair::Win32Pack);
             }

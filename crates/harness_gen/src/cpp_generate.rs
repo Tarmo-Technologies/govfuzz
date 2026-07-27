@@ -309,6 +309,13 @@ struct CppTemplateContext {
     target_template_suffix: String,
     target_name: String,
     forward_namespace: String,
+    /// The return type as the FORWARD DECLARATION must spell it: the target's
+    /// return type with any export/calling-convention decoration removed.
+    /// `JNIEXPORT jstring` is valid where the project's own headers define
+    /// `JNIEXPORT`, but the harness does not see them, so copying it verbatim
+    /// manufactures `unknown type name 'JNIEXPORT'` — an error the target did not
+    /// have. The C lane strips the same shape via `unwrap_export_macro`.
+    forward_return_type: String,
     /// Exact (template-substituted) parameter spellings from the parsed target
     /// declaration. Decoder emissions intentionally erase references/cv details;
     /// reusing them in a forward declaration creates a different overload.
@@ -1331,6 +1338,14 @@ fn build_cpp_context_common(
         target_template_suffix,
         target_name: input.target.name.clone(),
         forward_namespace: input.target.qualifier_path.join("::"),
+        // Compose with the result-variable stripper: that one removes a macro
+        // expanding to a constant-evaluation specifier (utf8.h's
+        // `utf8_constexpr14_impl int`), this one an export/calling-convention
+        // decoration (`JNIEXPORT jstring`). A forward declaration must survive
+        // both, since it names types the harness alone has to resolve.
+        forward_return_type: strip_declaration_decoration(
+            &strip_runtime_illegal_result_specifiers(input.return_type),
+        ),
         forward_param_types: effective_params
             .iter()
             .map(|parameter| parameter.cpp_type.clone())
@@ -1638,6 +1653,41 @@ fn scoped_param_name(
         out.push_str(&param_index.to_string());
     }
     out
+}
+
+/// Drop a leading export / calling-convention decoration macro from a return
+/// type, so a forward declaration the harness emits names only types it can see.
+///
+/// `JNIEXPORT jstring` -> `jstring`, `MAGICK_EXPORT Image *` -> `Image *`. The
+/// macro is defined by the project's own headers, which the harness does not
+/// include; copying it verbatim turns a declaration into `unknown type name
+/// 'JNIEXPORT'` plus a cascade of parse errors — errors the target never had.
+///
+/// Only a LEADING all-caps token followed by more type text is removed, and only
+/// when the token is not itself a plausible type: `UINT32 f()` keeps its return
+/// type, because there is nothing after it to be the real one.
+fn strip_declaration_decoration(return_type: &str) -> String {
+    let trimmed = return_type.trim();
+    let Some((head, rest)) = trimmed.split_once(char::is_whitespace) else {
+        return trimmed.to_owned();
+    };
+    let rest = rest.trim();
+    // Both all-caps means we cannot tell which one is the type (`WINAPI DWORD`),
+    // so nothing is stripped — the target keeps whatever it had.
+    if rest.is_empty() || !is_all_caps_token(head) || is_all_caps_token(rest) {
+        return trimmed.to_owned();
+    }
+    rest.to_owned()
+}
+
+/// An identifier of only uppercase letters, digits and underscores, with at least
+/// one letter — the shape of a macro, not of a written-out type.
+fn is_all_caps_token(text: &str) -> bool {
+    !text.is_empty()
+        && text
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+        && text.chars().any(|ch| ch.is_ascii_uppercase())
 }
 
 /// Whether any header the harness will include actually declares `target_name`.
@@ -2214,6 +2264,50 @@ mod tests {
             "the declaring header makes the forward declaration redundant:\n{src}"
         );
         let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn forward_declaration_drops_an_export_decoration_the_harness_cannot_see() {
+        // A JNI target is declared `JNIEXPORT jstring JNICALL Java_…(…)`. The macro
+        // comes from the project's own headers, which the harness does not include,
+        // so copying it into the forward declaration manufactures an error the
+        // target never had:
+        //
+        //   main.cpp:64:1: error: unknown type name 'JNIEXPORT'
+        //   main.cpp:64:16: error: expected ';' after top level declarator
+        assert_eq!(strip_declaration_decoration("JNIEXPORT jstring"), "jstring");
+        assert_eq!(
+            strip_declaration_decoration("MAGICK_EXPORT Image *"),
+            "Image *"
+        );
+        // A return type that IS an all-caps project typedef must survive: there is
+        // nothing after it to be the real type.
+        assert_eq!(strip_declaration_decoration("UINT32"), "UINT32");
+        assert_eq!(strip_declaration_decoration("HRESULT"), "HRESULT");
+        // Ordinary spellings are untouched.
+        assert_eq!(strip_declaration_decoration("int"), "int");
+        assert_eq!(strip_declaration_decoration("const char *"), "const char *");
+        assert_eq!(
+            strip_declaration_decoration("std::vector<int>"),
+            "std::vector<int>"
+        );
+        assert_eq!(
+            strip_declaration_decoration("unsigned long long"),
+            "unsigned long long"
+        );
+    }
+
+    #[test]
+    fn forward_declaration_survives_both_decoration_shapes() {
+        // The two strippers cover different macros and the forward declaration
+        // needs both: a constant-evaluation macro (utf8.h's `utf8_constexpr14_impl`,
+        // lowercase, so the all-caps rule cannot see it) and an export decoration.
+        let composed =
+            |ty: &str| strip_declaration_decoration(&strip_runtime_illegal_result_specifiers(ty));
+        assert_eq!(composed("utf8_constexpr14_impl int"), "int");
+        assert_eq!(composed("JNIEXPORT jstring"), "jstring");
+        assert_eq!(composed("static inline const char *"), "const char *");
+        assert_eq!(composed("int"), "int");
     }
 
     #[test]

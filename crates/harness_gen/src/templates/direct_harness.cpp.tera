@@ -124,7 +124,7 @@ using namespace {{ ns }};
    redeclaration matching the real one is legal C++. #}
 {%- if not passthrough_libfuzzer_entrypoint and not target_is_method and (not has_target_header or forward_namespace) %}
 {% if forward_namespace %}namespace {{ forward_namespace }} {
-{% endif %}{{ return_type }} {{ target_name }}({% for type in forward_param_types %}{{ type }}{% if not loop.last %}, {% endif %}{% endfor %});
+{% endif %}{{ forward_return_type }} {{ target_name }}({% for type in forward_param_types %}{{ type }}{% if not loop.last %}, {% endif %}{% endfor %});
 {% if forward_namespace %}}
 {% endif %}
 {%- endif %}

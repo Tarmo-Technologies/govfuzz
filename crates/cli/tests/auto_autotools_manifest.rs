@@ -27,19 +27,28 @@ fn toolchain_available() -> bool {
 /// Write a minimal autotools-shaped project: a public header that includes a
 /// configure-generated header (`gencfg.h`, materialised only from `gencfg.h.in`
 /// by `./configure`, which we deliberately never run) and `#error`s out when the
-/// generated build macro is absent. clang therefore fails the build the way a
-/// real unconfigured c-ares tree does.
+/// generated build configuration is absent. clang therefore fails the build the
+/// way a real unconfigured c-ares tree does.
+///
+/// The guard is deliberately COMPOUND. GovFuzz repairs the simple
+/// `#ifndef LIBFOO_CONFIGURED / #error` shape by defining what the guard tests
+/// (see `auto_config_guard.rs`), which would make this fixture build and leave
+/// #418 — "a failed target must not leave an empty manifest" — with no failed
+/// target to assert about. A condition naming two macros has no single definition
+/// that decides it, so GovFuzz refuses to guess and the build still fails: the
+/// unconfigured tree this regression is about.
 fn write_fixture(root: &Path) {
     std::fs::write(
         root.join("gencfg.h.in"),
-        "#define LIBFOO_CONFIGURED 1\n#define LIBFOO_SIZE_T unsigned long\n",
+        "#define LIBFOO_CONFIGURED 1\n#define LIBFOO_VERSION 3\n\
+         #define LIBFOO_SIZE_T unsigned long\n",
     )
     .unwrap();
     std::fs::write(
         root.join("foo.h"),
         "#ifndef FOO_H\n#define FOO_H\n\
          #include \"gencfg.h\"   /* configure-generated; absent without ./configure */\n\
-         #ifndef LIBFOO_CONFIGURED\n\
+         #if !defined(LIBFOO_CONFIGURED) || LIBFOO_VERSION < 3\n\
          #  error \"libfoo is not configured: run ./configure to generate the build header\"\n\
          #endif\n\
          int foo_parse(const unsigned char *data, unsigned long len);\n\

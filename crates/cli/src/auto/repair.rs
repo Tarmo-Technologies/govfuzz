@@ -482,13 +482,20 @@ fn config_guard_macro_to_define(source: &str, error_line: u32) -> Option<String>
         // positive one. The other two shapes fire BECAUSE the macro is defined.
         if in_else_branch != negated {
             if let Some(name) = defined_macro_name(condition) {
-                if innermost.is_none() {
-                    innermost = Some(name.clone());
-                }
-                // A pure `#ifndef X` / `#if !defined(X)` wrapper: defining X deletes
-                // the whole block, so the outermost one is the most complete answer.
-                if negated && !in_else_branch {
-                    outermost_negative_guard = Some(name);
+                // NEVER the header's own include guard. `#ifndef PRIV_H / #define
+                // PRIV_H` wraps the entire file, so it is always the outermost
+                // negative test — and defining it does not repair the `#error`, it
+                // deletes the whole header, declarations and all.
+                if !is_include_guard(&lines, index, &name) {
+                    if innermost.is_none() {
+                        innermost = Some(name.clone());
+                    }
+                    // A pure `#ifndef X` / `#if !defined(X)` wrapper: defining X
+                    // deletes the block the error lives in, so the outermost one is
+                    // the most complete answer.
+                    if negated && !in_else_branch {
+                        outermost_negative_guard = Some(name);
+                    }
                 }
             }
         }
@@ -496,6 +503,26 @@ fn config_guard_macro_to_define(source: &str, error_line: u32) -> Option<String>
         in_else_branch = false;
     }
     outermost_negative_guard.or(innermost)
+}
+
+/// Whether the conditional opening at `index` is the file's include guard —
+/// `#ifndef X` (or `#if !defined(X)`) whose very next directive is `#define X`.
+///
+/// It matters because an include guard wraps the WHOLE header and is therefore
+/// always the outermost negative test around any `#error` inside it. Defining its
+/// macro would not repair the guard that failed; it would preprocess the entire
+/// header away, taking every declaration with it — the target then "builds" only
+/// because everything it needed got stubbed.
+fn is_include_guard(lines: &[&str], index: usize, name: &str) -> bool {
+    lines[index + 1..]
+        .iter()
+        .map(|line| line.trim())
+        .find(|line| !line.is_empty() && !line.starts_with("//") && !line.starts_with("/*"))
+        .and_then(|line| line.strip_prefix('#'))
+        .map(str::trim_start)
+        .and_then(|directive| directive.strip_prefix("define"))
+        .and_then(|rest| rest.split_whitespace().next())
+        .is_some_and(|defined| defined == name)
 }
 
 /// The macro name in a `defined(X)` / `defined X` / bare `X` preprocessor
@@ -3644,6 +3671,36 @@ mod tests {
             config_guard_macro_to_define(bare, 4).as_deref(),
             Some("HAVE_A")
         );
+    }
+
+    #[test]
+    fn config_guard_never_defines_the_headers_include_guard() {
+        // The include guard wraps the WHOLE file, so it is always the outermost
+        // negative test around any #error inside it — and defining it does not
+        // repair the guard that failed, it preprocesses the entire header away,
+        // declarations included. The target then "builds" only because everything
+        // it needed got stubbed, which is not a repair.
+        let source = "#ifndef PRIV_H\n\
+                      #define PRIV_H\n\
+                      \n\
+                      #if !defined(HAVE_STRTOULL)\n\
+                      # error \"no strtoull function found\"\n\
+                      #endif\n\
+                      \n\
+                      int parse(const char *);\n\
+                      #endif\n";
+        assert_eq!(
+            config_guard_macro_to_define(source, 5).as_deref(),
+            Some("HAVE_STRTOULL"),
+            "the feature test is the answer, never PRIV_H"
+        );
+
+        // Nothing but the include guard means there is no repair to make.
+        let only_guard = "#ifndef PRIV_H\n\
+                          #define PRIV_H\n\
+                          # error \"needs configure\"\n\
+                          #endif\n";
+        assert_eq!(config_guard_macro_to_define(only_guard, 3), None);
     }
 
     #[test]

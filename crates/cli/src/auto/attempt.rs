@@ -1352,15 +1352,48 @@ pub fn attempt_with_progress(
         if let Outcome::FailedBuild {
             retries,
             last_errors,
+            repairs,
             ..
         } = &result.outcome
         {
+            // Carry the dependency evidence across the degradation. Without this
+            // the reason was a bare COUNT of residual errors, and since a
+            // report-only outcome has no `last_errors` for the manifest to mine,
+            // `--force` silently emptied the missing-dependency manifest: tmux,
+            // whose every target dies on libevent's `struct event` being an
+            // incomplete type, reported "4 still blocking" unforced and "No
+            // external dependencies were missing — the tree built against its own
+            // sources" forced. The forced run is the one that most needs the
+            // manifest, because report-only IS its floor.
+            let synthesized: BTreeSet<String> = repairs
+                .iter()
+                .filter_map(|r| match r {
+                    Repair::TypePlaceholder { type_name } => Some(type_name.clone()),
+                    _ => None,
+                })
+                .collect();
+            let unresolved_types = undefined_external_types_for_lang(
+                last_errors,
+                decl_index,
+                &synthesized,
+                result.candidate.lang,
+            );
+            let evidence = match &unresolved_types {
+                Some(missing) => format!(
+                    "; requires type(s) the generated harness cannot construct offline ({}) — an \
+                     external SDK/framework type unavailable here, or a type whose definition is \
+                     not visible to the harness translation unit",
+                    missing.join(", ")
+                ),
+                None => String::new(),
+            };
             let reason = format!(
                 "forced: unbuildable after {} repair round(s) ({} residual build \
-                 error(s) the diagnostic-driven stubbing could not resolve); \
+                 error(s) the diagnostic-driven stubbing could not resolve){}; \
                  statically analyzed, not fuzzed",
                 retries,
-                last_errors.len()
+                last_errors.len(),
+                evidence
             );
             let harness_dir = result.harness_dir.clone();
             let outcome =

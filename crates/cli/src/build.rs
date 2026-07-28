@@ -1409,8 +1409,58 @@ fn detect_ada_standard(_source_dir: &Path, work_dir: &Path) -> Result<AdaStandar
     // The legacy-dialect ladder (see `crate::auto::attempt`) writes the standard it
     // found buildable to this cache; honor it so the whole build (and any
     // synthesized stub bodies) compiles under the SAME `-gnatXXXX`. Absent a cache,
-    // Ada 2022 is the maximally-buildable default.
-    Ok(read_ada_dialect_cache(work_dir).unwrap_or(AdaStandard::Ada2022))
+    // Ada 2022 is the maximally-buildable default — where the compiler HAS it.
+    let chosen = read_ada_dialect_cache(work_dir).unwrap_or(AdaStandard::Ada2022);
+    Ok(clamp_ada_standard_to_compiler(chosen))
+}
+
+/// Lower `-gnat2022` to `-gnat2012` on a compiler that does not know the switch.
+///
+/// `-gnat2022` arrived in GNAT 12. On GNAT 11 — the default on Ubuntu 22.04 and
+/// every still-supported RHEL 9 derivative — `gnat1` answers `invalid switch:
+/// -gnat2022` and the build dies before it reads a line of Ada, so NO Ada target
+/// could be harnessed there at all. The whole GNAT 11 row of the nightly matrix
+/// (all four dialects, both profiles) failed this way, and so would any user on
+/// an older distribution.
+///
+/// Ada 2012 is the right fallback: it is fully supported on every GNAT this tool
+/// targets and accepts the same older code 2022 does. The only thing lost is a
+/// dependency that genuinely uses a 2022 feature, which on such a compiler could
+/// not have built regardless.
+fn clamp_ada_standard_to_compiler(standard: AdaStandard) -> AdaStandard {
+    if standard == AdaStandard::Ada2022 && !gnat_accepts_ada2022() {
+        return AdaStandard::Ada2012;
+    }
+    standard
+}
+
+/// Whether this host's GNAT accepts `-gnat2022`, probed once by compiling a
+/// trivial unit. Probed rather than parsed from a version string because vendor
+/// GNATs spell their versions freely. Any probe failure answers `true`, which is
+/// the historical behaviour — this must never turn a working build into a
+/// downgraded one.
+fn gnat_accepts_ada2022() -> bool {
+    use std::sync::OnceLock;
+    static ACCEPTS: OnceLock<bool> = OnceLock::new();
+    *ACCEPTS.get_or_init(|| {
+        let dir = std::env::temp_dir().join(format!("govfuzz-gnat-probe-{}", std::process::id()));
+        if fs::create_dir_all(&dir).is_err() {
+            return true;
+        }
+        let src = dir.join("gf_probe.adb");
+        let wrote = fs::write(&src, "procedure Gf_Probe is begin null; end Gf_Probe;\n").is_ok();
+        let accepts = wrote
+            && std::process::Command::new("gcc")
+                .arg("-c")
+                .arg("-gnat2022")
+                .arg(&src)
+                .current_dir(&dir)
+                .output()
+                .map(|out| !String::from_utf8_lossy(&out.stderr).contains("invalid switch"))
+                .unwrap_or(true);
+        let _ = fs::remove_dir_all(&dir);
+        accepts
+    })
 }
 
 /// Run-level object directory shared by every Ada harness of a sweep, so the
@@ -1791,6 +1841,32 @@ mod tests {
             project.contains(&repair_stubs.to_string_lossy().to_string()),
             "generated GPR should include auto Ada stubs dir; got:\n{project}"
         );
+    }
+
+    /// `-gnat2022` arrived in GNAT 12. On GNAT 11 — Ubuntu 22.04's default —
+    /// `gnat1` answers `invalid switch: -gnat2022` and the build dies before
+    /// reading a line of Ada, so no Ada target could be harnessed at all. The
+    /// whole GNAT 11 row of the nightly matrix failed exactly this way.
+    #[test]
+    fn ada_2022_is_lowered_on_a_compiler_that_lacks_the_switch() {
+        // Only 2022 is clamped; a standard the ladder actually found buildable
+        // is passed through untouched.
+        for standard in [
+            AdaStandard::Ada83,
+            AdaStandard::Ada95,
+            AdaStandard::Ada2005,
+            AdaStandard::Ada2012,
+        ] {
+            assert_eq!(clamp_ada_standard_to_compiler(standard), standard);
+        }
+        // On THIS host the answer follows the probe, and either answer is a
+        // legal Ada standard the writer can spell.
+        let clamped = clamp_ada_standard_to_compiler(AdaStandard::Ada2022);
+        assert!(
+            clamped == AdaStandard::Ada2022 || clamped == AdaStandard::Ada2012,
+            "unexpected clamp: {clamped:?}"
+        );
+        assert_eq!(clamped == AdaStandard::Ada2022, gnat_accepts_ada2022());
     }
 
     #[test]

@@ -47,6 +47,24 @@ built+fuzzed, 354 findings).
   `StringBuilder`) and `ClassLoader` also stopped blocking targets. Collections
   and fuzz-parsed URIs are still refused, with reasons.
 
+- **A Go `/vN` module is required at `vN`, not `v0`.** The harness `go.mod`
+  hardcoded `require <module> v0.0.0-incompatible`, which semantic import
+  versioning makes illegal for a path ending `/vN` (N ≥ 2): Go rejects the file
+  with `go: errors parsing go.mod` before any build, so every target in the
+  project failed. 51 targets across 9 of the sweep's 40 Go repos — caddy,
+  cli/cli, alist, etcd, moby, traefik, bubbletea, 3x-ui, CLIProxyAPI. `/v1` and
+  unsuffixed paths keep the v0 spelling, which is what Go wants for a module that
+  has not adopted the suffix.
+
+- **A line the interpreter echoed is not the diagnosis.** Node opens every
+  module-load failure by echoing the failing statement from its own internals and
+  underlining it with a caret; `throw error;` contains "error", so it won the
+  first-line-containing-that-word match and **77 targets reported a line of
+  Node's source, and nothing else, as their entire reason**. An echoed line (one
+  followed by a caret underline) is now ineligible, and a line that NAMES a
+  diagnostic is preferred over one that merely contains the word. Python, Lua,
+  Perl and Ruby resolve to exactly the line they did before.
+
 - **Two ways the blocker histogram destroyed its own key.** A path in the MIDDLE
   of a diagnostic was per-instance noise that never grouped — 176 of 1109
   distinct rows, 456 targets, were one-off rows for that alone; a rooted or

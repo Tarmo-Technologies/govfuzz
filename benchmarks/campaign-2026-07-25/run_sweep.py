@@ -40,8 +40,14 @@ VALIDATED = HERE / "validated.json"
 
 LANES = list(dict.fromkeys(bc.LANE.values()))
 
+# govfuzz's own panic hook CATCHES an internal panic, records it in the bug
+# report and exits cleanly, so the raw `thread '...' panicked at` line an external
+# harness greps for may never appear. Its own wording has to be in here or a
+# caught panic reads as an ordinary nonzero exit — and `auto` exits 2 for "no
+# fuzzable targets discovered" too, so the exit code alone cannot tell them apart.
 PANIC_RE = re.compile(
     r"(?:thread '[^']*' panicked at|internal error: entered unreachable code"
+    r"|run aborted by an internal panic"
     r"|attempt to (?:subtract with overflow|add with overflow|divide by zero)"
     r"|index out of bounds|called `(?:Option::unwrap|Result::unwrap)\(\)`)"
 )

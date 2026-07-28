@@ -1487,6 +1487,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_c_private_handle.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_c_restrict_macro.rs",
       "license": "Apache-2.0"
     },
@@ -3868,6 +3872,10 @@
     },
     {
       "path": "tests/fixtures/c_cdecl_macro/cdecl_macro.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/c_private_handle/parser.c",
       "license": "Apache-2.0"
     },
     {

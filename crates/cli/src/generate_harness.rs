@@ -2519,7 +2519,8 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // in the harness double-includes any without an include guard (jansson's
     // lookup3.h -> "redefinition of 'hashlittle'"). So keep the full header set
     // for type resolution but emit *only* the source there.
-    let includes_target_source = static_direct_target || static_sequence_target || direct_main_tu;
+    let includes_target_source_base =
+        static_direct_target || static_sequence_target || direct_main_tu;
     let mut header_includes =
         ordered_c_harness_headers(&source_path, &target_dir, &source, &target_includes_dirs);
     // A C harness is compiled as C; a C++-only header pulled in transitively —
@@ -2596,6 +2597,53 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
             }
         }
     }
+    // A target whose OPAQUE HANDLE parameter is defined only in its own `.c`
+    // cannot be driven from the headers alone: the lifecycle path stack-allocates
+    // the handle, and the include closure has only a forward declaration, so the
+    // target skipped with "incomplete in the harness's included headers … cannot
+    // stack-allocate it". antirez/ds4 is the worked example — `ds4.h` declares
+    // `ds4_session`, and `struct ds4_session` is defined at ds4.c:47656, beside
+    // the target at ds4.c:49621. The definition is right there in the TU the
+    // target lives in, and the whole-TU include (already used for static targets
+    // and for a TU carrying `main`) makes it complete.
+    //
+    // Gated on the headers NOT already defining it, so a target that built before
+    // still links against its source exactly as it did. The cheap half runs first:
+    // most targets take no pointer-to-aggregate defined in their own TU, and only
+    // those pay for the header closure.
+    //
+    // It also yields to a REAL lifecycle. When the tree ships a returning
+    // constructor for the handle (`widget *widget_new(void)`), that is a properly
+    // initialized object and strictly better than a zero-filled stack struct —
+    // completing the type would silently downgrade the harness to the worse of
+    // the two. So a handle that already has one is left to the lifecycle path.
+    let tree_lifecycle: &[harness_gen::c_generate::CHandleLifecycle] = args
+        .tree_type_defs
+        .as_ref()
+        .map(|tree| tree.c_lifecycle.as_slice())
+        .unwrap_or_default();
+    let private_handle_tags: Vec<String> =
+        private_aggregate_tags_in_target_tu(&invocation_function, &source)
+            .into_iter()
+            .filter(|tag| !handle_has_returning_constructor(tree_lifecycle, tag))
+            .collect();
+    let private_handle_in_target_tu = args.kind == "direct"
+        && !includes_target_source_base
+        && !is_c_family_header(&source_path)
+        && !private_handle_tags.is_empty()
+        && {
+            let header_defs = collect_c_type_defs_for_harness(
+                &source_path,
+                &source,
+                &header_includes,
+                &target_includes_dirs,
+                false,
+            );
+            private_handle_tags
+                .iter()
+                .any(|tag| !aggregate_complete_in(&header_defs, tag))
+        };
+    let includes_target_source = includes_target_source_base || private_handle_in_target_tu;
     let target_includes = if includes_target_source {
         let source_include = source_path
             .file_name()
@@ -2606,7 +2654,11 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     } else {
         header_includes.clone()
     };
-    let mut target_sources = if static_direct_target || static_sequence_target || direct_main_tu {
+    // When the harness `#include`s the target source as a whole TU, that source
+    // must NOT also be compiled and linked beside it: every function in it would
+    // then have two definitions ("multiple definition of …"). Every reason for
+    // taking the whole-TU path shares this consequence.
+    let mut target_sources = if includes_target_source {
         Vec::new()
     } else {
         target_compile_sources(&source_path)
@@ -3104,6 +3156,98 @@ fn resolve_cpp_namespace_qualified_free_functions(
         function.api.is_constructor = false;
         function.api.is_destructor = false;
     }
+}
+
+/// Struct/union tags the target takes a POINTER to and whose complete definition
+/// sits in the target's own translation unit.
+///
+/// The cheap half of the private-handle test: it parses only the target's own
+/// source, which the caller already holds, so a target that takes no such pointer
+/// never pays for the header closure.
+fn private_aggregate_tags_in_target_tu(
+    invocation: &c_parser::CFunction,
+    source: &str,
+) -> Vec<String> {
+    let Ok(defs) = c_parser::parse_c_type_defs(source) else {
+        return Vec::new();
+    };
+    let complete_here: std::collections::HashSet<&str> = defs
+        .structs
+        .iter()
+        .filter(|def| def.complete)
+        .map(|def| def.name.as_str())
+        .collect();
+    if complete_here.is_empty() {
+        return Vec::new();
+    }
+    // A typedef to the tag counts too: `ds4.h` spells the parameter `ds4_session *`
+    // while the definition is `struct ds4_session { … }`.
+    let alias_target = |name: &str| -> Option<String> {
+        defs.typedefs
+            .iter()
+            .find(|def| def.name == name)
+            .map(|def| aggregate_tag_of(&def.underlying))
+    };
+    let mut tags = Vec::new();
+    for param in &invocation.params {
+        if !param.c_type.contains('*') {
+            continue;
+        }
+        let tag = aggregate_tag_of(&param.c_type);
+        let resolved = if complete_here.contains(tag.as_str()) {
+            Some(tag)
+        } else {
+            alias_target(&tag).filter(|t| complete_here.contains(t.as_str()))
+        };
+        if let Some(tag) = resolved {
+            if !tags.contains(&tag) {
+                tags.push(tag);
+            }
+        }
+    }
+    tags
+}
+
+/// Whether the tree ships a RETURNING constructor for `tag` (`T *T_new(void)`).
+///
+/// Such a handle must be built by calling it, not by completing the type and
+/// zero-filling a stack slot: the constructor produces an initialized object,
+/// and the zero value is a fabrication. Matching ignores an elaborated `struct`/
+/// `union` keyword, which the return-type normalizer drops on one side only.
+fn handle_has_returning_constructor(
+    lifecycle: &[harness_gen::c_generate::CHandleLifecycle],
+    tag: &str,
+) -> bool {
+    lifecycle.iter().any(|entry| {
+        entry.init_returns_handle
+            && entry.init.is_some()
+            && aggregate_tag_of(&entry.handle_type) == tag
+    })
+}
+
+/// The bare aggregate tag of a type spelling: `const struct ds4_session *` ->
+/// `ds4_session`.
+fn aggregate_tag_of(spelling: &str) -> String {
+    spelling
+        .replace('*', " ")
+        .split_whitespace()
+        .rfind(|token| {
+            !matches!(
+                *token,
+                "const" | "volatile" | "struct" | "union" | "enum" | "restrict" | "__restrict"
+            )
+        })
+        .unwrap_or_default()
+        .to_owned()
+}
+
+/// Whether `tag` has a COMPLETE aggregate definition anywhere in `defs`.
+fn aggregate_complete_in(defs: &[c_parser::CTypeDefs], tag: &str) -> bool {
+    defs.iter().any(|set| {
+        set.structs
+            .iter()
+            .any(|def| def.complete && def.name == tag)
+    })
 }
 
 fn collect_c_type_defs_for_harness(

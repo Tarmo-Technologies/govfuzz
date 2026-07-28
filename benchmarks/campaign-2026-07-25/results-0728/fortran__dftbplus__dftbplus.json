@@ -1,0 +1,256 @@
+{
+ "lane": "fortran",
+ "repo": "dftbplus/dftbplus",
+ "stars": 432,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/dftbplus__dftbplus --json --out /home/ubuntu/govfuzz-sweep-work/fortran__dftbplus__dftbplus.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 172813,
+   "sloc_by_lang": {
+    "fortran": 167522,
+    "python": 3557,
+    "c": 1260,
+    "config": 285,
+    "cpp": 125,
+    "perl": 64
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/dftbplus__dftbplus --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.42,
+   "timed_out": false,
+   "panic": false,
+   "count": 174,
+   "by_language": {
+    "python": 58,
+    "c": 48,
+    "fortran": 67,
+    "cpp": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/dftbplus__dftbplus --out /home/ubuntu/govfuzz-sweep-work/fortran__dftbplus__dftbplus/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.21,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 13,
+   "by_severity": {
+    "high": 9,
+    "low": 4
+   },
+   "top_rules": {
+    "GF-408": 6,
+    "GF-546": 4,
+    "GF-472": 1,
+    "GF-403": 1,
+    "GF-401": 1
+   },
+   "gaps": 213
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/dftbplus__dftbplus --out /home/ubuntu/govfuzz-sweep-work/fortran__dftbplus__dftbplus/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 19
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/dftbplus__dftbplus --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__dftbplus__dftbplus --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 91.95,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 128,
+    "dropped_by_cap": 118,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 3,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "atoms_from_args",
+     "source": "calcderivs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `calcderivs` is not loadable (skipped cleanly): missing module `calcderivs` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'calcderivs'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ASSERTERROR",
+     "source": "assert.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHARLC",
+     "source": "linkedlist.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CGEMM",
+     "source": "blas.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "writegen",
+     "source": "derivtools.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1700.7943614892038,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "get_capitalized_content",
+     "source": "capitalize_ford_comments",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `capitalize_ford_comments` is not loadable (skipped cleanly): missing module `capitalize_ford_comments` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'capitalize_ford_comments'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "directions_from_args",
+     "source": "calcderivs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `calcderivs` is not loadable (skipped cleanly): missing module `calcderivs` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'calcderivs'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_stacksize_c",
+     "source": "envcheck.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5067.190113355284,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "dftbp_extlibs_magma_get_gpus_available",
+     "source": "magmac.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "dftbp_extlibs_magma_get_gpus_requested",
+     "source": "magmac.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: invalid preprocessing directive #!; Error: invalid preprocessing directive #!; Error: invalid preprocessing directive #!",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: invalid preprocessing directive #:; Error: invalid preprocessing directive #:; Error: invalid preprocessing directive #:",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: invalid preprocessing directive #:; Fatal Error: Cannot open module file \u2018dftbp_type_linkedlistc0.mod\u2019 for reading at (N): No su\u2026",
+     "language": "fortran"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4e002789beb82316152b1c45096272fff3857582",
+ "clone_s": 2.4,
+ "lane_check": "fortran: 366 files / 182146 lines; top=fortran(182146)",
+ "status": "done"
+}

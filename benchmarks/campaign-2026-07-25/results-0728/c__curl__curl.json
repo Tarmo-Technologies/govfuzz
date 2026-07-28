@@ -1,0 +1,245 @@
+{
+ "lane": "c",
+ "repo": "curl/curl",
+ "stars": 42473,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/curl__curl --json --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 240710,
+   "sloc_by_lang": {
+    "c": 201295,
+    "perl": 19534,
+    "python": 12317,
+    "config": 6240,
+    "cpp": 1324
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/curl__curl --format json --top 100000",
+   "exit": 0,
+   "wall_s": 13.44,
+   "timed_out": false,
+   "panic": false,
+   "count": 5675,
+   "by_language": {
+    "c": 5586,
+    "cpp": 11,
+    "perl": 78
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/curl__curl --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.38,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 264,
+   "by_severity": {
+    "high": 42,
+    "critical": 74,
+    "medium": 142,
+    "low": 6
+   },
+   "top_rules": {
+    "GF-406": 112,
+    "GF-404": 59,
+    "GF-405": 33,
+    "GF-422": 15,
+    "GF-420": 13,
+    "GF-548": 12,
+    "GF-407": 7,
+    "GF-546": 6,
+    "GF-425": 3,
+    "GF-429": 2,
+    "GF-472": 1,
+    "GF-408": 1
+   },
+   "gaps": 42
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/curl__curl --out /home/ubuntu/govfuzz-sweep-work/c__curl__curl/sbom",
+   "exit": 0,
+   "wall_s": 0.42,
+   "timed_out": false,
+   "panic": false,
+   "components": 61
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/curl__curl --work-dir /home/ubuntu/govfuzz-sweep-work/c__curl__curl --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 113.08,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 9,
+    "discovered_total": 4244,
+    "dropped_by_cap": 4235,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 13,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Curl_extract_certinfo",
+     "source": "x509asn1.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 5,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseconfig",
+     "source": "tool_parsecfg.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Curl_ws_accept",
+     "source": "ws.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'data' of type 'struct Curl_easy *' has no byte-buffer decoder after struct synthesis: decoder for parameter 'data' exceeds 65536 bytes after struct synthesis; sequence harness build also failed first: [{\"kind\":\"other\",\"tail\":\"/home/ubuntu/govfuzz-corpus-500/c/curl__curl/include/curl/multi.h:438:23: error: expected identifier or '('\\n/home/ubuntu/govfuzz-corpus-500/c/curl__curl/lib/curl_setup.h:906:8: error: redefinition of 'timeval'\"}]",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "glob_parse",
+     "source": "tool_urlglob.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'amount' of type 'curl_off_t *' has no byte-buffer decoder after struct synthesis: opaque type 'CURL_TYPEOF_CURL_OFF_T' for pointer parameter 'amount' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getparameter",
+     "source": "tool_getparam.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::convert",
+     "source": "cdall",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3295.2156878412493,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::extract",
+     "source": "verify-synopsis.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2536.175274253362,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::extract",
+     "source": "verify-examples.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3454.4793072239736,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::extract",
+     "source": "release-notes.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3352.665163742322,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "build-config #error guard",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "expected identifier or \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: decoder for parameter \"X\" exceeds N bytes after struct synthesis; sequence harnes\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "e1450d8fdaf05f27ec75eb15df303fe931755a59",
+ "clone_s": 1.2,
+ "lane_check": "c: 757 files / 229077 lines; top=c(229077)",
+ "status": "done"
+}

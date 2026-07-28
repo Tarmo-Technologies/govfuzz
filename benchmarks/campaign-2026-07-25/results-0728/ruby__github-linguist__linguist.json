@@ -1,0 +1,315 @@
+{
+ "lane": "ruby",
+ "repo": "github-linguist/linguist",
+ "stars": 13604,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist --json --out /home/ubuntu/govfuzz-sweep-work/ruby__github-linguist__linguist.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "languages": 15,
+   "sloc_total": 108291,
+   "sloc_by_lang": {
+    "c": 27779,
+    "javascript": 24372,
+    "config": 13249,
+    "cpp": 10813,
+    "ruby": 8305,
+    "perl": 6191,
+    "php": 3877,
+    "java": 3062,
+    "fortran": 2841,
+    "go": 2785,
+    "rust": 2158,
+    "lua": 1459,
+    "python": 1048,
+    "csharp": 336,
+    "cobol": 16
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist --format json --top 100000",
+   "exit": 0,
+   "wall_s": 12.57,
+   "timed_out": false,
+   "panic": false,
+   "count": 2203,
+   "by_language": {
+    "c": 682,
+    "go": 238,
+    "java": 232,
+    "cpp": 533,
+    "python": 43,
+    "javascript": 15,
+    "php": 105,
+    "ruby": 67,
+    "typescript": 9,
+    "lua": 6,
+    "perl": 193,
+    "rust": 80
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist --out /home/ubuntu/govfuzz-sweep-work/ruby__github-linguist__linguist/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 17.29,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 90,
+   "by_severity": {
+    "medium": 12,
+    "high": 64,
+    "critical": 13,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-403": 19,
+    "GF-405": 12,
+    "GF-408": 8,
+    "GF-404": 7,
+    "GF-507": 7,
+    "GF-472": 6,
+    "GF-425": 6,
+    "GF-420": 6,
+    "GF-477": 5,
+    "GF-401": 4,
+    "GF-552": 4,
+    "GF-407": 3,
+    "GF-424": 1,
+    "GF-546": 1,
+    "GF-475": 1
+   },
+   "gaps": 25
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist --out /home/ubuntu/govfuzz-sweep-work/ruby__github-linguist__linguist/sbom",
+   "exit": 0,
+   "wall_s": 0.57,
+   "timed_out": false,
+   "panic": false,
+   "components": 594
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__github-linguist__linguist --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 21.09,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1530,
+    "dropped_by_cap": 1520,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadFromFilesystem",
+     "source": "loader_fs.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseDelimitedFrom",
+     "source": "ProtocolBuffer.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no .java sources under /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "yy_scan_buffer",
+     "source": "lex.linguist_yy.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'yyscanner' of type 'yyscan_t' has no byte-buffer decoder after struct synthesis: opaque type 'void' for pointer parameter 'yyscanner' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HTTPServer.handle_stream",
+     "source": "tornado-httpserver.py",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Client",
+     "source": "http.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist/samples/JavaScript/http.js` is not loadable (skipped cleanly): missing module `freelist` (not in the project and not installed) \u2014 Error: Cannot find module 'freelist'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "blitNumberedGarden",
+     "source": "triple-slash-reference.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__github-linguist__linguist/harnesses/H-T01B0-7C4CFB5F/target.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Linguist.load_existing_stats",
+     "source": "repository.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Linguist.load_existing_stats` is not loadable (skipped cleanly): missing module `charlock_holmes` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- charlock_holmes (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compartment",
+     "source": "xmake.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `compartment` is not loadable (skipped cleanly): /usr/bin/lua: ...hub-linguist__linguist/samples/Xmake/filenames/xmake.lua:6: attempt to call a nil value (global 'set_policy')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Controller#afterScaffoldSave",
+     "source": "Controller.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Controller#afterScaffoldSave` is not loadable (skipped cleanly): missing module `App` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"App\" not found in /home/ubuntu/govfuzz-corpus-500/ruby/github-linguist__linguist/samples/PHP/Controller.php:16",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CKey::SetCompactSignature",
+     "source": "key.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'hash' of type 'uint256' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'uint256' for parameter 'hash' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'hash' of type 'uint256' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'uint256' for parameter 'hash' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "go build failed: compilation terminated.",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "no .java sources under PATH",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PATH PATH attempt to call a nil value (global \"X\")",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PHP Fatal error: Uncaught Error: Class \"X\" not found i\u2026",
+     "language": "php"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[python2] Python N: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 PATH \"X\": cannot load such file -- charlock_holmes (LoadError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "ReferenceError: window is not defined",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "af6f772786199696e4d07d618c9c5b625a1a03f0",
+ "clone_s": 3.4,
+ "lane_check": "ruby: 55 files / 10675 lines; top=c(29444)",
+ "status": "done"
+}

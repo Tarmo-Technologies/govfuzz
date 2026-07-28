@@ -1,0 +1,231 @@
+{
+ "lane": "python",
+ "repo": "abi/screenshot-to-code",
+ "stars": 73446,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/abi__screenshot-to-code --json --out /home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 39954,
+   "sloc_by_lang": {
+    "python": 16593,
+    "javascript": 16441,
+    "config": 6920
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/abi__screenshot-to-code --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.42,
+   "timed_out": false,
+   "panic": false,
+   "count": 268,
+   "by_language": {
+    "python": 243,
+    "typescript": 25
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/abi__screenshot-to-code --out /home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 6.48,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 9,
+   "by_severity": {
+    "medium": 2,
+    "low": 5,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-546": 5,
+    "GF-477": 2,
+    "GF-429": 2
+   },
+   "gaps": 34
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/abi__screenshot-to-code --out /home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code/sbom",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "components": 950
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/abi__screenshot-to-code --work-dir /home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 32.31,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 268,
+    "dropped_by_cap": 258,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "append_uploaded_asset_ids_to_prompt",
+     "source": "prompts.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.16890345771894105,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "append_uploaded_asset_ids_to_history",
+     "source": "prompts.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.147455950181349,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "extension_from_mime_type",
+     "source": "export.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `export` is not loadable (skipped cleanly): missing module `babel_cdn` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'babel_cdn'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_image",
+     "source": "run_image_generation_evals.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `run_image_generation_evals` is not loadable (skipped cleanly): missing module `aiohttp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_data_url",
+     "source": "export.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `export` is not loadable (skipped cleanly): missing module `babel_cdn` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'babel_cdn'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cn",
+     "source": "utils.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code/harnesses/H-T0004-1D68155C/target.js` is not loadable (skipped cleanly): missing module `clsx` (not in the project and not installed) \u2014 Error: Cannot find module 'clsx'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "capitalize",
+     "source": "utils.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code/harnesses/H-T0008-159A76B9/target.js` is not loadable (skipped cleanly): missing module `clsx` (not in the project and not installed) \u2014 Error: Cannot find module 'clsx'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "blobToBase64DataUrl",
+     "source": "utils.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 538.7982990607524,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "UpdateImagePreview",
+     "source": "UpdateImageUpload.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__abi__screenshot-to-code/harnesses/H-T0017-8F9F1161/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "applySelectModeCursor",
+     "source": "overlays.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 508.92655614055076,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b0d6ab882e61c7eed359178a39f909d4f41a8e89",
+ "clone_s": 0.6,
+ "lane_check": "python: 135 files / 17992 lines; top=python(17992)",
+ "status": "done"
+}

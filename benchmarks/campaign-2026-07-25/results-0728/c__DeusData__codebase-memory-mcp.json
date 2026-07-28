@@ -1,0 +1,69 @@
+{
+ "lane": "c",
+ "repo": "DeusData/codebase-memory-mcp",
+ "stars": 35355,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --json --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 5.46,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 37981344,
+   "sloc_by_lang": {
+    "c": 37878522,
+    "cpp": 86450,
+    "javascript": 6700,
+    "python": 5910,
+    "config": 2664,
+    "go": 1056,
+    "ruby": 42
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --format json --top 100000",
+   "exit": 0,
+   "wall_s": 461.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 26926,
+   "by_language": {
+    "c": 26005,
+    "cpp": 900,
+    "typescript": 16,
+    "javascript": 3,
+    "python": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 1,
+   "wall_s": 9.54,
+   "timed_out": false,
+   "panic": false,
+   "sarif": false
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp/sbom",
+   "exit": 0,
+   "wall_s": 2.4,
+   "timed_out": false,
+   "panic": false,
+   "components": 422
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --work-dir /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.39,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "61a432cad913efb347adb79c829c20f9db383471",
+ "clone_s": 27.7,
+ "lane_check": "c: 819 files / 37953272 lines; top=c(37953272)",
+ "status": "done"
+}

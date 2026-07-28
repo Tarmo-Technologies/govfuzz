@@ -1,0 +1,165 @@
+{
+ "lane": "cpp",
+ "repo": "x64dbg/x64dbg",
+ "stars": 48997,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --json --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 227901,
+   "sloc_by_lang": {
+    "cpp": 163564,
+    "c": 60397,
+    "python": 3452,
+    "config": 367,
+    "javascript": 121
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --format json --top 100000",
+   "exit": 0,
+   "wall_s": 241.44,
+   "timed_out": false,
+   "panic": false,
+   "count": 6530,
+   "by_language": {
+    "python": 24,
+    "cpp": 6049,
+    "c": 457
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 11.16,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 602,
+   "by_severity": {
+    "low": 28,
+    "medium": 9,
+    "high": 560,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-403": 261,
+    "GF-408": 239,
+    "GF-405": 29,
+    "GF-407": 29,
+    "GF-546": 28,
+    "GF-500": 7,
+    "GF-404": 5,
+    "GF-401": 2,
+    "GF-497": 1,
+    "GF-477": 1
+   },
+   "gaps": 17
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 33
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 360.27,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 4581,
+    "dropped_by_cap": 4578,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 3,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "dbglistprocesses",
+     "source": "debugger.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 9,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MODINFO::load",
+     "source": "module.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'hFile' of type 'HANDLE' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'HANDLE' for parameter 'hFile' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'hFile' of type 'HANDLE' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'HANDLE' for parameter 'hFile' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cbDebugSwitchthread",
+     "source": "cmd-thread-control.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 9,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing type",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "43892ef41f092fb13a38925e44218af5987abf08",
+ "clone_s": 2.9,
+ "lane_check": "cpp: 348 files / 116975 lines; top=cpp(116975)",
+ "status": "done"
+}

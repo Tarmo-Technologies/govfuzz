@@ -1,0 +1,95 @@
+{
+ "lane": "cpp",
+ "repo": "ggml-org/whisper.cpp",
+ "stars": 52299,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 8,
+   "sloc_total": 425557,
+   "sloc_by_lang": {
+    "cpp": 267173,
+    "c": 144885,
+    "python": 3710,
+    "ruby": 2430,
+    "config": 2202,
+    "javascript": 1770,
+    "java": 1736,
+    "go": 1651
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --format json --top 100000",
+   "exit": 0,
+   "wall_s": 420.4,
+   "timed_out": false,
+   "panic": false,
+   "count": 13529,
+   "by_language": {
+    "cpp": 10825,
+    "java": 123,
+    "c": 2402,
+    "go": 130,
+    "ruby": 10,
+    "python": 39
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --out /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.46,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 477,
+   "by_severity": {
+    "medium": 340,
+    "high": 132,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-406": 147,
+    "GF-424": 81,
+    "GF-425": 73,
+    "GF-405": 50,
+    "GF-407": 43,
+    "GF-500": 31,
+    "GF-472": 21,
+    "GF-496": 5,
+    "GF-404": 5,
+    "GF-477": 4,
+    "GF-408": 4,
+    "GF-436": 3,
+    "GF-549": 3,
+    "GF-403": 2,
+    "GF-401": 2
+   },
+   "gaps": 899
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --out /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp/sbom",
+   "exit": 0,
+   "wall_s": 0.73,
+   "timed_out": false,
+   "panic": false,
+   "components": 440
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/ggml-org__whisper.cpp --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__ggml-org__whisper.cpp --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.04,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "97c56f1dc1d1100a9d859c865a20c82d22f823ed",
+ "clone_s": 1.9,
+ "lane_check": "cpp: 484 files / 266134 lines; top=cpp(266134)",
+ "status": "done"
+}

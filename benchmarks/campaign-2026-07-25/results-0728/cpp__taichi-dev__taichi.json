@@ -1,0 +1,187 @@
+{
+ "lane": "cpp",
+ "repo": "taichi-dev/taichi",
+ "stars": 28306,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --json --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 206888,
+   "sloc_by_lang": {
+    "cpp": 122173,
+    "python": 64429,
+    "c": 18553,
+    "config": 1733
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --format json --top 100000",
+   "exit": 0,
+   "wall_s": 38.7,
+   "timed_out": false,
+   "panic": false,
+   "count": 7651,
+   "by_language": {
+    "c": 484,
+    "python": 1026,
+    "cpp": 6141
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 7.08,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 204,
+   "by_severity": {
+    "medium": 97,
+    "high": 64,
+    "critical": 19,
+    "low": 24
+   },
+   "top_rules": {
+    "GF-406": 59,
+    "GF-500": 32,
+    "GF-405": 27,
+    "GF-546": 24,
+    "GF-404": 15,
+    "GF-407": 12,
+    "GF-472": 10,
+    "GF-496": 7,
+    "GF-403": 3,
+    "GF-424": 3,
+    "GF-420": 2,
+    "GF-304": 2,
+    "GF-560": 2,
+    "GF-425": 2,
+    "GF-408": 2
+   },
+   "gaps": 96
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --out /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi/sbom",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "components": 52
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/taichi-dev__taichi --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__taichi-dev__taichi --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 142.36,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 5477,
+    "dropped_by_cap": 5473,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 1,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "taichi::lang::make_block_local_offload",
+     "source": "make_block_local.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'offload' of type 'OffloadedStmt *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'OffloadedStmt' for pointer parameter 'offload' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "taichi::lang::irpass::make_mesh_thread_local_offload",
+     "source": "make_mesh_thread_local.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'offload' of type 'OffloadedStmt *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'OffloadedStmt' for pointer parameter 'offload' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "taichi::zip::read",
+     "source": "zip.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 5,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "taichi::lang::Device::upload_data",
+     "source": "device.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'taichi::lang::Device::upload_data' return type 'RhiResult' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "ba0e81dce559fb63a5958bf82feb1d00c55c02fe",
+ "clone_s": 1.6,
+ "lane_check": "cpp: 357 files / 76991 lines; top=cpp(76991)",
+ "status": "done"
+}

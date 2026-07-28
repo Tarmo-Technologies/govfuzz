@@ -1,0 +1,132 @@
+{
+ "lane": "cpp",
+ "repo": "aristocratos/btop",
+ "stars": 33637,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/aristocratos__btop --json --out /home/ubuntu/govfuzz-sweep-work/cpp__aristocratos__btop.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 36876,
+   "sloc_by_lang": {
+    "cpp": 32482,
+    "c": 3583,
+    "config": 811
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/aristocratos__btop --format json --top 100000",
+   "exit": 0,
+   "wall_s": 5.98,
+   "timed_out": false,
+   "panic": false,
+   "count": 743,
+   "by_language": {
+    "cpp": 699,
+    "c": 44
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/aristocratos__btop --out /home/ubuntu/govfuzz-sweep-work/cpp__aristocratos__btop/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.05,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 68,
+   "by_severity": {
+    "medium": 23,
+    "critical": 3,
+    "high": 42
+   },
+   "top_rules": {
+    "GF-405": 24,
+    "GF-406": 12,
+    "GF-424": 10,
+    "GF-403": 5,
+    "GF-408": 5,
+    "GF-407": 5,
+    "GF-404": 3,
+    "GF-401": 3,
+    "GF-497": 1
+   },
+   "gaps": 17
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/aristocratos__btop --out /home/ubuntu/govfuzz-sweep-work/cpp__aristocratos__btop/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 16
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/aristocratos__btop --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__aristocratos__btop --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 243.17,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 1,
+    "discovered_total": 690,
+    "dropped_by_cap": 689,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 2,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Input::process",
+     "source": "btop_input.cpp",
+     "outcome": "failed_build",
+     "retries": 1,
+     "repairs": 2,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "20d665608bd4e4f9673285b48dda0815a644d3bc",
+ "clone_s": 1.2,
+ "lane_check": "cpp: 34 files / 20203 lines; top=cpp(20203)",
+ "status": "done"
+}

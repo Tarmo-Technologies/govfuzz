@@ -1,0 +1,230 @@
+{
+ "lane": "php",
+ "repo": "BookStackApp/BookStack",
+ "stars": 18941,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack --json --out /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 212718,
+   "sloc_by_lang": {
+    "php": 150442,
+    "javascript": 61577,
+    "config": 699
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.58,
+   "timed_out": false,
+   "panic": false,
+   "count": 446,
+   "by_language": {
+    "typescript": 336,
+    "javascript": 100,
+    "php": 10
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack --out /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 32.35,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 3,
+   "by_severity": {
+    "medium": 2,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-477": 2,
+    "GF-429": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack --out /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack/sbom",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "components": 823
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack --work-dir /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 16.23,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 446,
+    "dropped_by_cap": 436,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "AddRemoveRows#setClonedInputNames",
+     "source": "add-remove-rows.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack/resources/js/components/add-remove-rows.js` is not loadable (skipped cleanly): TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension \".ts\" for /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack/resources/js/services/dom.ts",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AjaxForm#submitRealForm",
+     "source": "ajax-form.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack/resources/js/components/ajax-form.js` is not loadable (skipped cleanly): TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension \".ts\" for /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack/resources/js/services/dom.ts",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AjaxForm#submit",
+     "source": "ajax-form.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack/resources/js/components/ajax-form.js` is not loadable (skipped cleanly): TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension \".ts\" for /home/ubuntu/govfuzz-corpus-500/php/BookStackApp__BookStack/resources/js/services/dom.ts",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "$addCaptionToTable",
+     "source": "LexicalCaptionNode.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `$addCaptionToTable` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT '' is not a function in /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack/harnesses/H-T0056-A352DECB/target.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "$clearTableSizes",
+     "source": "tables.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `$clearTableSizes` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT '' is not a function in /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack/harnesses/H-T00F4-1EBA789D/target.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "$clearTableFormatting",
+     "source": "tables.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `$clearTableFormatting` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT '' is not a function in /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack/harnesses/H-T010F-38D64FDA/target.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "$addUpdateTag",
+     "source": "LexicalUtils.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `$addUpdateTag` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT '' is not a function in /home/ubuntu/govfuzz-sweep-work/php__BookStackApp__BookStack/harnesses/H-T0502-EA87C8C0/target.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Extract_Phar::_unpack",
+     "source": "bookstack-system-cli",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 534.2469017276716,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Extract_Phar::extractFile",
+     "source": "bookstack-system-cli",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 554.4698097264212,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Extract_Phar::_removeTmpFiles",
+     "source": "bookstack-system-cli",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 581.4792979647918,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension \"X\" for PATH",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT \"X\" is not a function in PATH",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4e406c41c4c8060a5795e74c66fb96362e54f400",
+ "clone_s": 2.1,
+ "lane_check": "php: 1763 files / 169027 lines; top=php(169027)",
+ "status": "done"
+}

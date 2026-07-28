@@ -1,0 +1,240 @@
+{
+ "lane": "go",
+ "repo": "etcd-io/etcd",
+ "stars": 52026,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --json --out /home/ubuntu/govfuzz-sweep-work/go__etcd-io__etcd.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 169619,
+   "sloc_by_lang": {
+    "go": 167928,
+    "config": 1691
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 3455,
+   "by_language": {
+    "go": 3455
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --out /home/ubuntu/govfuzz-sweep-work/go__etcd-io__etcd/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.5,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 122,
+   "by_severity": {
+    "high": 91,
+    "medium": 27,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-405": 79,
+    "GF-544": 8,
+    "GF-426": 6,
+    "GF-436": 6,
+    "GF-503": 5,
+    "GF-478": 4,
+    "GF-423": 3,
+    "GF-422": 2,
+    "GF-477": 2,
+    "GF-404": 2,
+    "GF-427": 2,
+    "GF-473": 1,
+    "GF-429": 1,
+    "GF-304": 1
+   },
+   "gaps": 605
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --out /home/ubuntu/govfuzz-sweep-work/go__etcd-io__etcd/sbom",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "components": 349
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/etcd-io__etcd --work-dir /home/ubuntu/govfuzz-sweep-work/go__etcd-io__etcd --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 10.82,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3455,
+    "dropped_by_cap": 3445,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "IDFromString",
+     "source": "id.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11464.397278420416,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "FromKey",
+     "source": "predicate.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: go.etcd.io/etcd/api/v3@v3.7.0-beta.0 requires go >= 1.26 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshal",
+     "source": "pbutil.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Unmarshaler` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MaybeUnmarshal",
+     "source": "pbutil.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Unmarshaler` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustParseMemberIDFromKey",
+     "source": "store.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*zap.Logger` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshalMessage",
+     "source": "pbutil.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `proto.Message` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewClusterFromURLsMap",
+     "source": "cluster.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*zap.Logger` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshalEntry",
+     "source": "decoder.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: go.etcd.io/etcd/api/v3@v3.7.0-beta.0 requires go >= 1.26 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustUnmarshalState",
+     "source": "decoder.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: go.etcd.io/etcd/api/v3@v3.7.0-beta.0 requires go >= 1.26 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ConfigFromFile",
+     "source": "config.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: go.etcd.io/etcd/api/v3@v3.7.0-beta.0 requires go >= 1.26 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "go build failed: go: PATH requires go >= N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "3602ea922f973728ac75b9dfe866458bb1753002",
+ "clone_s": 1.5,
+ "lane_check": "go: 1109 files / 196174 lines; top=go(196174)",
+ "status": "done"
+}

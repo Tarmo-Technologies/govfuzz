@@ -1,0 +1,330 @@
+{
+ "lane": "fortran",
+ "repo": "Foadsf/Cmathtuts",
+ "stars": 440,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/Foadsf__Cmathtuts --json --out /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 39358,
+   "sloc_by_lang": {
+    "fortran": 20540,
+    "c": 18297,
+    "cpp": 507,
+    "config": 14
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/Foadsf__Cmathtuts --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 326,
+   "by_language": {
+    "c": 297,
+    "cpp": 29
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/Foadsf__Cmathtuts --out /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.86,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 31,
+   "by_severity": {
+    "high": 25,
+    "medium": 6
+   },
+   "top_rules": {
+    "GF-407": 20,
+    "GF-436": 6,
+    "GF-403": 4,
+    "GF-405": 1
+   },
+   "gaps": 19
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/Foadsf__Cmathtuts --out /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/Foadsf__Cmathtuts --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 107.02,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 8,
+    "discovered_total": 26,
+    "dropped_by_cap": 18,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 5,
+    "findings": 17
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 1,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 1,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "readMatrix",
+     "source": "blaio.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (const enum CBLAS_ORDER) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "print",
+     "source": "sample1.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": 75.37536327409519,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Xprint",
+     "source": "sample3.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (CBLAS_ORDER, CBLAS_TRANSPOSE) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "print_vector",
+     "source": "lapacke_example_aux.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 2,
+     "execs_per_sec": 1.178148958173032,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "print_matrix_colmajor",
+     "source": "lapacke_example_aux.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 2,
+     "execs_per_sec": 51.142515049145295,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "printVector",
+     "source": "blaio.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (const enum CBLAS_ORDER) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "printMatrix",
+     "source": "blaio.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (const enum CBLAS_ORDER) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "printMatrixThr",
+     "source": "blaio.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (const enum CBLAS_ORDER) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 4,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (const enum CBLAS_ORDER) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) u\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (CBLAS_ORDER, CBLAS_TRANSPOSE) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA \u2026",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-b6435264",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0011-D1849846"
+    },
+    {
+     "id": "F-0001-d111af38",
+     "rule": "GF-203",
+     "cwe": [
+      "CWE-121"
+     ],
+     "cwe_name": "Stack-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C001C-EF8A2290"
+    },
+    {
+     "id": "F-RO-GF-405-710328C4",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C002F-5C970E2E"
+    },
+    {
+     "id": "F-RO-GF-407-0CE47B76",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C002F-5C970E2E"
+    },
+    {
+     "id": "F-RO-GF-407-4649E775",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0013-970CCD36"
+    },
+    {
+     "id": "F-RO-GF-407-5ACE5499",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C002F-5C970E2E"
+    },
+    {
+     "id": "F-RO-GF-407-5C70385B",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0013-970CCD36"
+    },
+    {
+     "id": "F-RO-GF-407-73B6D06C",
+     "rule": "GF-407",
+     "cwe": [
+      "CWE-190"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0013-970CCD36"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts/findings --out /home/ubuntu/govfuzz-sweep-work/fortran__Foadsf__Cmathtuts/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "e3fbc1cacd5f9a8a0673f6741fc344d2455efe3a",
+ "clone_s": 1.2,
+ "lane_check": "fortran: 50 files / 27797 lines; top=fortran(27797)",
+ "status": "done"
+}

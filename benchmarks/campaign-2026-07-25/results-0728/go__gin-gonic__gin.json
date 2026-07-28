@@ -1,0 +1,230 @@
+{
+ "lane": "go",
+ "repo": "gin-gonic/gin",
+ "stars": 88973,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/gin-gonic__gin --json --out /home/ubuntu/govfuzz-sweep-work/go__gin-gonic__gin.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 18665,
+   "sloc_by_lang": {
+    "go": 18264,
+    "config": 401
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/gin-gonic__gin --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "count": 376,
+   "by_language": {
+    "go": 376
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/gin-gonic__gin --out /home/ubuntu/govfuzz-sweep-work/go__gin-gonic__gin/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.46,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 14,
+   "by_severity": {
+    "high": 13,
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-472": 5,
+    "GF-426": 4,
+    "GF-405": 3,
+    "GF-436": 1,
+    "GF-427": 1
+   },
+   "gaps": 27
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/gin-gonic__gin --out /home/ubuntu/govfuzz-sweep-work/go__gin-gonic__gin/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 42
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/gin-gonic__gin --work-dir /home/ubuntu/govfuzz-sweep-work/go__gin-gonic__gin --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 1.36,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 376,
+    "dropped_by_cap": 366,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadHTMLGlob",
+     "source": "gins.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/quic-go/quic-go@v0.60.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Unmarshal",
+     "source": "json.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `Unmarshal` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Unmarshal",
+     "source": "sonic.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `Unmarshal` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewDecoder",
+     "source": "json.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `NewDecoder` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewDecoder",
+     "source": "go_json.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `NewDecoder` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewDecoder",
+     "source": "sonic.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `NewDecoder` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewDecoder",
+     "source": "jsoniter.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `NewDecoder` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadHTMLGlob",
+     "source": "gin.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `LoadHTMLGlob` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SaveUploadedFile",
+     "source": "context.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `SaveUploadedFile` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FileFromFS",
+     "source": "context.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `FileFromFS` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "Go method \"X\" needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "go build failed: go: PATH requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "34dac209ffb6ef85cc78c5d217bbb7ad001d68fd",
+ "clone_s": 1.0,
+ "lane_check": "go: 99 files / 20415 lines; top=go(20415)",
+ "status": "done"
+}

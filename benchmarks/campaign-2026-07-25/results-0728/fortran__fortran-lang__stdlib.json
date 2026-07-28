@@ -1,0 +1,247 @@
+{
+ "lane": "fortran",
+ "repo": "fortran-lang/stdlib",
+ "stars": 1336,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__stdlib --json --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__stdlib.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 28550,
+   "sloc_by_lang": {
+    "fortran": 25662,
+    "c": 1255,
+    "config": 890,
+    "cpp": 623,
+    "python": 120
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__stdlib --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.43,
+   "timed_out": false,
+   "panic": false,
+   "count": 86,
+   "by_language": {
+    "c": 45,
+    "fortran": 10,
+    "cpp": 28,
+    "python": 3
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__stdlib --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__stdlib/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 31,
+   "by_severity": {
+    "high": 23,
+    "medium": 8
+   },
+   "top_rules": {
+    "GF-472": 21,
+    "GF-500": 8,
+    "GF-549": 1,
+    "GF-405": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__stdlib --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__stdlib/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 7
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__stdlib --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__stdlib --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 23.48,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 35,
+    "dropped_by_cap": 25,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ASSEMBLE_CMD",
+     "source": "stdlib_system_subprocess.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IS_DIRECTORY",
+     "source": "stdlib_system.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IS_SYMLINK",
+     "source": "stdlib_system.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IS_FILE",
+     "source": "stdlib_system.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "stdlib_make_directory",
+     "source": "stdlib_system.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2664.524395274756,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "stdlib_exists",
+     "source": "stdlib_system.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2695.484575901626,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "process_create",
+     "source": "stdlib_system_subprocess.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'pid' of type 'stdlib_pid *' has no byte-buffer decoder after struct synthesis: opaque handle 'stdlib_pid' for parameter 'pid' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pre_process_fypp",
+     "source": "fypp_deployment.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `fypp_deployment` is not loadable (skipped cleanly): missing module `fypp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'fypp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deploy_stdlib_fpm",
+     "source": "fypp_deployment.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `fypp_deployment` is not loadable (skipped cleanly): missing module `fypp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'fypp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fpm_build",
+     "source": "fypp_deployment.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `fypp_deployment` is not loadable (skipped cleanly): missing module `fypp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'fypp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness's included heade\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "gfortran compile failed: Fatal Error: Cannot open module file \u2018stdlib_kinds.mod\u2019 for reading at (N): No such file or directory",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: f951: Fatal Error: Module file \u2018stdlib_system.smod\u2019 has not been generated, either because the module does not contain a MODULE PROCEDU\u2026",
+     "language": "fortran"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9a15c7772f1a76a6c497b9f3abb793841fc81f74",
+ "clone_s": 2.6,
+ "lane_check": "fortran: 416 files / 30636 lines; top=fortran(30636)",
+ "status": "done"
+}

@@ -1,0 +1,202 @@
+{
+ "lane": "python",
+ "repo": "vllm-project/vllm",
+ "stars": 87160,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/vllm-project__vllm --json --out /home/ubuntu/govfuzz-sweep-work/python__vllm-project__vllm.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.5,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 1041044,
+   "sloc_by_lang": {
+    "python": 902322,
+    "rust": 82278,
+    "cpp": 39116,
+    "config": 16709,
+    "c": 497,
+    "javascript": 122
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/vllm-project__vllm --format json --top 100000",
+   "exit": 0,
+   "wall_s": 59.15,
+   "timed_out": false,
+   "panic": false,
+   "count": 16992,
+   "by_language": {
+    "python": 15257,
+    "cpp": 709,
+    "rust": 1005,
+    "javascript": 1,
+    "c": 20
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/vllm-project__vllm --out /home/ubuntu/govfuzz-sweep-work/python__vllm-project__vllm/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 42.02,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 369,
+   "by_severity": {
+    "low": 97,
+    "high": 100,
+    "medium": 70,
+    "critical": 102
+   },
+   "top_rules": {
+    "GF-429": 99,
+    "GF-546": 86,
+    "GF-423": 43,
+    "GF-428": 39,
+    "GF-421": 28,
+    "GF-424": 13,
+    "GF-560": 12,
+    "GF-553": 11,
+    "GF-544": 6,
+    "GF-426": 6,
+    "GF-405": 5,
+    "GF-548": 3,
+    "GF-420": 3,
+    "GF-422": 3,
+    "GF-406": 2
+   },
+   "gaps": 2248
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/vllm-project__vllm --out /home/ubuntu/govfuzz-sweep-work/python__vllm-project__vllm/sbom",
+   "exit": 0,
+   "wall_s": 0.49,
+   "timed_out": false,
+   "panic": false,
+   "components": 1090
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/vllm-project__vllm --work-dir /home/ubuntu/govfuzz-sweep-work/python__vllm-project__vllm --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 275.74,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 16623,
+    "dropped_by_cap": 16618,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "EAGLEConfig.from_pretrained",
+     "source": "eagle.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `vllm.transformers_utils.configs.eagle` is not loadable (skipped cleanly): missing module `vllm._version` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExpertTokensMetadata.make_from_list",
+     "source": "modular_kernel.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `vllm.model_executor.layers.fused_moe.modular_kernel` is not loadable (skipped cleanly): missing module `vllm._version` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ConfigSet.from_dict",
+     "source": "config_manager.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `vllm.kernels.helion.config_manager` is not loadable (skipped cleanly): missing module `vllm._version` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "unpack_B(at::BFloat16 *, const uint8_t *, int64_t, int64_t, int64_t, int64_t, const uint8_t *)",
+     "source": "gemm_fp8.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_json_str",
+     "source": "utils.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: Compiling macro_rules_attribute v0.N.N",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "8a7b3c299053efbca2669081ddf50a46b6a9d149",
+ "clone_s": 6.4,
+ "lane_check": "python: 3892 files / 1094157 lines; top=python(1094157)",
+ "status": "done"
+}

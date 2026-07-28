@@ -1,0 +1,302 @@
+{
+ "lane": "c",
+ "repo": "ggreer/the_silver_searcher",
+ "stars": 27099,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/ggreer__the_silver_searcher --json --out /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 5145,
+   "sloc_by_lang": {
+    "c": 5085,
+    "config": 42,
+    "python": 18
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/ggreer__the_silver_searcher --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.48,
+   "timed_out": false,
+   "panic": false,
+   "count": 95,
+   "by_language": {
+    "c": 95
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/ggreer__the_silver_searcher --out /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.2,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 16,
+   "by_severity": {
+    "high": 9,
+    "medium": 6,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-406": 3,
+    "GF-407": 3,
+    "GF-405": 2,
+    "GF-401": 2,
+    "GF-424": 2,
+    "GF-404": 1,
+    "GF-408": 1,
+    "GF-436": 1,
+    "GF-403": 1
+   },
+   "gaps": 18
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/ggreer__the_silver_searcher --out /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 2
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/ggreer__the_silver_searcher --work-dir /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 90.87,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 94,
+    "dropped_by_cap": 84,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 1,
+    "unrecoverable_link": 4,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 2,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 1,
+    "stubbed_symbols_blind": 1,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 1,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse_options",
+     "source": "options.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'base_paths' of type 'char ***' has no byte-buffer decoder after struct synthesis: pointer parameter 'base_paths' of type 'char * * *' is not safely drivable after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "search_buf",
+     "source": "search.c",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 2,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "search_dir",
+     "source": "search.c",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 2,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "search_file",
+     "source": "search.c",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 2,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decompress",
+     "source": "decompress.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (pcre, pcre_extra, pthread_mutex_t) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decompress_open",
+     "source": "zfile.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (pthread_mutex_t) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "search_stream",
+     "source": "search.c",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 2,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "init_ignore",
+     "source": "ignore.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "generate_find_skip",
+     "source": "util.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (pcre, pcre_extra) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_ignore_patterns",
+     "source": "ignore.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unrecoverable_link",
+     "count": 4,
+     "detail": "1 undefined symbol(s) after repair",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "undeclared function",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (pcre, pcre_extra) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavail\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (pcre, pcre_extra, pthread_mutex_t) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor C\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (pthread_mutex_t) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavaila\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: pointer parameter \"X\" of type \"X\" is not safely drivable after struct synthesis",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-403-C9970B90",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C007C-F1B8CB78"
+    },
+    {
+     "id": "F-RO-GF-436-54DCA6F9",
+     "rule": "GF-436",
+     "cwe": [
+      "CWE-789"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C007C-F1B8CB78"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher/findings --out /home/ubuntu/govfuzz-sweep-work/c__ggreer__the_silver_searcher/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "a61f1780b64266587e7bc30f0f5f71c6cca97c0f",
+ "clone_s": 0.5,
+ "lane_check": "c: 12 files / 4143 lines; top=c(4143)",
+ "status": "done"
+}

@@ -1,0 +1,132 @@
+{
+ "lane": "rust",
+ "repo": "dani-garcia/vaultwarden",
+ "stars": 64274,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/dani-garcia__vaultwarden --json --out /home/ubuntu/govfuzz-sweep-work/rust__dani-garcia__vaultwarden.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 49551,
+   "sloc_by_lang": {
+    "rust": 28039,
+    "javascript": 20369,
+    "config": 1091,
+    "python": 52
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/dani-garcia__vaultwarden --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.61,
+   "timed_out": false,
+   "panic": false,
+   "count": 771,
+   "by_language": {
+    "rust": 760,
+    "typescript": 10,
+    "javascript": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/dani-garcia__vaultwarden --out /home/ubuntu/govfuzz-sweep-work/rust__dani-garcia__vaultwarden/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 17.91,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 49,
+   "by_severity": {
+    "medium": 5,
+    "high": 9,
+    "low": 27,
+    "critical": 8
+   },
+   "top_rules": {
+    "GF-553": 27,
+    "GF-429": 8,
+    "GF-477": 5,
+    "GF-482": 4,
+    "GF-505": 4,
+    "GF-480": 1
+   },
+   "gaps": 340
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/dani-garcia__vaultwarden --out /home/ubuntu/govfuzz-sweep-work/rust__dani-garcia__vaultwarden/sbom",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "components": 829
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/dani-garcia__vaultwarden --work-dir /home/ubuntu/govfuzz-sweep-work/rust__dani-garcia__vaultwarden --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 212.51,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 1,
+    "discovered_total": 771,
+    "dropped_by_cap": 770,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "decode_2fa_remember",
+     "source": "auth.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "in-crate cargo build failed: Compiling opendal-core v0.N.N",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "46ae59eaf444f0ae0a799070cf2bd6c415284a51",
+ "clone_s": 1.0,
+ "lane_check": "rust: 62 files / 30325 lines; top=rust(30325)",
+ "status": "done"
+}

@@ -1,0 +1,231 @@
+{
+ "lane": "php",
+ "repo": "koel/koel",
+ "stars": 17196,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/koel__koel --json --out /home/ubuntu/govfuzz-sweep-work/php__koel__koel.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 115353,
+   "sloc_by_lang": {
+    "php": 54763,
+    "javascript": 52510,
+    "config": 8080
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/koel__koel --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.54,
+   "timed_out": false,
+   "panic": false,
+   "count": 58,
+   "by_language": {
+    "typescript": 57,
+    "php": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/koel__koel --out /home/ubuntu/govfuzz-sweep-work/php__koel__koel/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 21.39,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 27,
+   "by_severity": {
+    "medium": 7,
+    "high": 18,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-472": 18,
+    "GF-500": 7,
+    "GF-429": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/koel__koel --out /home/ubuntu/govfuzz-sweep-work/php__koel__koel/sbom",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "components": 1006
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/koel__koel --work-dir /home/ubuntu/govfuzz-sweep-work/php__koel__koel --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 19.84,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 58,
+    "dropped_by_cap": 48,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Cache#has",
+     "source": "cache.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 360.1550561003569,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Cache#hit",
+     "source": "cache.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 437.40993124037806,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Cache#miss",
+     "source": "cache.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 344.96025057528647,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Cache#remove",
+     "source": "cache.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 303.90470026858367,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "QueuePlaybackService#preload",
+     "source": "QueuePlaybackService.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/php__koel__koel/harnesses/H-T0044-EF8D1F67/target.js` is not loadable (skipped cleanly): missing module `vue` (not in the project and not installed) \u2014 Error: Cannot find module 'vue'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "QueuePlaybackService#play",
+     "source": "QueuePlaybackService.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/php__koel__koel/harnesses/H-T0054-69D1CE50/target.js` is not loadable (skipped cleanly): missing module `vue` (not in the project and not installed) \u2014 Error: Cannot find module 'vue'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "QueuePlaybackService#queueAndPlay",
+     "source": "QueuePlaybackService.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/php__koel__koel/harnesses/H-T0150-07F34147/target.js` is not loadable (skipped cleanly): missing module `vue` (not in the project and not installed) \u2014 Error: Cannot find module 'vue'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "QueuePlaybackService#forward",
+     "source": "QueuePlaybackService.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/php__koel__koel/harnesses/H-T0173-960B1863/target.js` is not loadable (skipped cleanly): missing module `vue` (not in the project and not installed) \u2014 Error: Cannot find module 'vue'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "QueuePlaybackService#fastSeek",
+     "source": "QueuePlaybackService.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/php__koel__koel/harnesses/H-T01DE-97DCF675/target.js` is not loadable (skipped cleanly): missing module `vue` (not in the project and not installed) \u2014 Error: Cannot find module 'vue'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "guessMimeType",
+     "source": "2025_06_17_125054_add_mime_type_to_songs_table.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `guessMimeType` is not loadable (skipped cleanly): missing module `Illuminate\\Database\\Migrations\\Migration` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Illuminate\\Database\\Migrations\\Migration\" not found in /home/ubuntu/govfuzz-corpus-500/php/koel__koel/database/migrations/2025_06_17_125054_add_mime_type_to_songs_table.php:10",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PHP Fatal error: Uncaught Error: Class \"X\" not found i\u2026",
+     "language": "php"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "d1a5f3d0ef229bf1d0ceb7586c5c81da5eb4c287",
+ "clone_s": 2.2,
+ "lane_check": "php: 1405 files / 60761 lines; top=php(60761)",
+ "status": "done"
+}

@@ -1,0 +1,249 @@
+{
+ "lane": "go",
+ "repo": "MHSanaei/3x-ui",
+ "stars": 43663,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --json --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 160788,
+   "sloc_by_lang": {
+    "go": 85336,
+    "javascript": 65729,
+    "config": 9723
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.99,
+   "timed_out": false,
+   "panic": false,
+   "count": 1236,
+   "by_language": {
+    "go": 978,
+    "typescript": 258
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 23.37,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 103,
+   "by_severity": {
+    "medium": 7,
+    "high": 82,
+    "critical": 14
+   },
+   "top_rules": {
+    "GF-405": 49,
+    "GF-472": 16,
+    "GF-419": 8,
+    "GF-490": 5,
+    "GF-495": 5,
+    "GF-426": 4,
+    "GF-477": 3,
+    "GF-429": 3,
+    "GF-485": 2,
+    "GF-304": 2,
+    "GF-497": 1,
+    "GF-563": 1,
+    "GF-548": 1,
+    "GF-422": 1,
+    "GF-436": 1
+   },
+   "gaps": 1014
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --out /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 1518
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/MHSanaei__3x-ui --work-dir /home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 13.93,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1236,
+    "dropped_by_cap": 1226,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ParseInboundSettingsClients",
+     "source": "inbound_settings_clients.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/xtls/xray-core@v1.260327.1-0.20260728075948-5ca6f4b7d4dc requires go >= 1.26 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseSubscriptionBody",
+     "source": "outbound.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9243.369445066566,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParseLink",
+     "source": "outbound.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7605.3458530377,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DecodeCertPin",
+     "source": "tls_client.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/xtls/xray-core@v1.260327.1-0.20260728075948-5ca6f4b7d4dc requires go >= 1.26 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CreateHostsFromExternalProxy",
+     "source": "db.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*gorm.DB` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64.encode",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T0277-DECA7BDE/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64.alternativeEncode",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T0281-7969E20B/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64.decode",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T0285-0181E2F0/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CPUFormatter.cpuSpeedFormat",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T02A6-C81C821C/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CPUFormatter.cpuCoreFormat",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__MHSanaei__3x-ui/harnesses/H-T02AA-F1DDD082/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "go build failed: go: PATH requires go >= N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4605f00a157cd404f5e41a252d99b8619f65dae0",
+ "clone_s": 11.7,
+ "lane_check": "go: 459 files / 92707 lines; top=go(92707)",
+ "status": "done"
+}

@@ -1,0 +1,78 @@
+{
+ "lane": "ada",
+ "repo": "AdaCore/gnat-llvm",
+ "stars": 231,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnat-llvm --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnat-llvm.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 44134,
+   "sloc_by_lang": {
+    "ada": 42527,
+    "cpp": 1466,
+    "config": 119,
+    "c": 22
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnat-llvm --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.83,
+   "timed_out": false,
+   "panic": false,
+   "count": 3969,
+   "by_language": {
+    "cpp": 145,
+    "ada": 3816,
+    "c": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnat-llvm --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnat-llvm/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.6,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 29,
+   "by_severity": {
+    "medium": 26,
+    "high": 3
+   },
+   "top_rules": {
+    "GF-409": 14,
+    "GF-410": 6,
+    "GF-412": 4,
+    "GF-401": 3,
+    "GF-402": 1,
+    "GF-550": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnat-llvm --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnat-llvm/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 65
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnat-llvm --work-dir /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnat-llvm --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "4d6429589665392925b9ff19dbfde0bc40e1076a",
+ "clone_s": 0.8,
+ "lane_check": "ada: 96 files / 58451 lines; top=ada(58451)",
+ "status": "done"
+}

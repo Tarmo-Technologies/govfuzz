@@ -1,0 +1,219 @@
+{
+ "lane": "php",
+ "repo": "composer/composer",
+ "stars": 29494,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/composer__composer --json --out /home/ubuntu/govfuzz-sweep-work/php__composer__composer.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 89808,
+   "sloc_by_lang": {
+    "php": 89264,
+    "config": 544
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/composer__composer --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "count": 1006,
+   "by_language": {
+    "php": 1006
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/composer__composer --out /home/ubuntu/govfuzz-sweep-work/php__composer__composer/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.85,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 11,
+   "by_severity": {
+    "critical": 11
+   },
+   "top_rules": {
+    "GF-429": 11
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/composer__composer --out /home/ubuntu/govfuzz-sweep-work/php__composer__composer/sbom",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "components": 52
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/composer__composer --work-dir /home/ubuntu/govfuzz-sweep-work/php__composer__composer --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 31.08,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1006,
+    "dropped_by_cap": 996,
+    "built": 9,
+    "built_and_fuzzed": 9,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Composer\\Advisory\\PartialSecurityAdvisory::create",
+     "source": "PartialSecurityAdvisory.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 751.0905513242503,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Advisory\\Auditor#audit",
+     "source": "Auditor.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3143.117808697485,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Advisory\\SecurityAdvisory#toIgnoredAdvisory",
+     "source": "SecurityAdvisory.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Composer\\Advisory\\SecurityAdvisory#toIgnoredAdvisory` is not loadable (skipped cleanly): missing module `Composer\\Advisory\\PartialSecurityAdvisory` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Composer\\Advisory\\PartialSecurityAdvisory\" not found in /home/ubuntu/govfuzz-corpus-500/php/composer__composer/src/Composer/Advisory/SecurityAdvisory.php:18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Composer\\Autoload\\AutoloadGenerator#setApcu",
+     "source": "AutoloadGenerator.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 28.020586313356283,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Advisory\\Auditor#needsCompleteAdvisoryLoad",
+     "source": "Auditor.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2846.777355246181,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Advisory\\Auditor#filterAbandonedPackages",
+     "source": "Auditor.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2315.5947936493126,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Advisory\\Auditor#processAdvisories",
+     "source": "Auditor.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2424.110361238196,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Autoload\\AutoloadGenerator#buildPackageMap",
+     "source": "AutoloadGenerator.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 31.891998332334182,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Autoload\\AutoloadGenerator#parseAutoloads",
+     "source": "AutoloadGenerator.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 26.763127683939228,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Composer\\Autoload\\AutoloadGenerator#createLoader",
+     "source": "AutoloadGenerator.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 33.6392081318779,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PHP Fatal error: Uncaught Error: Class \"X\" not found i\u2026",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "1fcf791133c76ae550635c947d7ba3ca729c8a56",
+ "clone_s": 1.3,
+ "lane_check": "php: 589 files / 111768 lines; top=php(111768)",
+ "status": "done"
+}

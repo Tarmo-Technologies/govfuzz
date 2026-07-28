@@ -1,0 +1,175 @@
+{
+ "lane": "cpp",
+ "repo": "WerWolv/ImHex",
+ "stars": 54277,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --json --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 81359,
+   "sloc_by_lang": {
+    "cpp": 79292,
+    "config": 1561,
+    "csharp": 430,
+    "python": 76
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --format json --top 100000",
+   "exit": 0,
+   "wall_s": 83.33,
+   "timed_out": false,
+   "panic": false,
+   "count": 13720,
+   "by_language": {
+    "cpp": 13341,
+    "c": 363,
+    "csharp": 7,
+    "python": 9
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.36,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 135,
+   "by_severity": {
+    "high": 109,
+    "medium": 16,
+    "critical": 9,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-405": 69,
+    "GF-472": 36,
+    "GF-404": 9,
+    "GF-425": 8,
+    "GF-500": 3,
+    "GF-497": 2,
+    "GF-401": 2,
+    "GF-424": 2,
+    "GF-406": 1,
+    "GF-408": 1,
+    "GF-438": 1,
+    "GF-546": 1
+   },
+   "gaps": 168
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --out /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex/sbom",
+   "exit": 0,
+   "wall_s": 0.38,
+   "timed_out": false,
+   "panic": false,
+   "components": 87
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/WerWolv__ImHex --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__WerWolv__ImHex --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 174.18,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 3292,
+    "dropped_by_cap": 3289,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "downloadUpdate",
+     "source": "main.cpp",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hex::plugin::builtin::KeybindingWidget::draw",
+     "source": "settings_entries.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (u32, u64) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hex::plugin::builtin::ToolbarIconsWidget::draw",
+     "source": "settings_entries.cpp",
+     "outcome": "failed_build",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing macro",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (u32, u64) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable her\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2305e0f87f84242f593048b28cb0d2cee4382b31",
+ "clone_s": 2.0,
+ "lane_check": "cpp: 464 files / 83393 lines; top=cpp(83393)",
+ "status": "done"
+}

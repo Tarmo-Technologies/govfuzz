@@ -1,0 +1,164 @@
+{
+ "lane": "go",
+ "repo": "milvus-io/milvus",
+ "stars": 45382,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --json --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.49,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 1661024,
+   "sloc_by_lang": {
+    "go": 1122756,
+    "cpp": 288378,
+    "python": 220338,
+    "rust": 13568,
+    "config": 12169,
+    "c": 2397,
+    "javascript": 1418
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --format json --top 100000",
+   "exit": 0,
+   "wall_s": 130.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 44711,
+   "by_language": {
+    "cpp": 8186,
+    "go": 35862,
+    "python": 153,
+    "c": 29,
+    "rust": 481
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 83.79,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 665,
+   "by_severity": {
+    "medium": 251,
+    "high": 200,
+    "critical": 123,
+    "low": 91
+   },
+   "top_rules": {
+    "GF-405": 96,
+    "GF-546": 87,
+    "GF-436": 72,
+    "GF-424": 71,
+    "GF-420": 62,
+    "GF-429": 48,
+    "GF-472": 43,
+    "GF-544": 27,
+    "GF-428": 25,
+    "GF-500": 22,
+    "GF-456": 19,
+    "GF-406": 16,
+    "GF-404": 12,
+    "GF-423": 10,
+    "GF-454": 9
+   },
+   "gaps": 3821
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/sbom",
+   "exit": 0,
+   "wall_s": 1.63,
+   "timed_out": false,
+   "panic": false,
+   "components": 1145
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --work-dir /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 239.05,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 2,
+    "discovered_total": 40127,
+    "dropped_by_cap": 40125,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "FinishLoadIndexInfo",
+     "source": "load_index_c.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'FinishLoadIndexInfo' return type 'CStatus' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "milvus::index::JsonStatsMeta::Deserialize",
+     "source": "utils.cpp",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "66969850be051186811eccbc0005bde340bbc273",
+ "clone_s": 6.9,
+ "lane_check": "go: 3407 files / 1227833 lines; top=go(1227833)",
+ "status": "done"
+}

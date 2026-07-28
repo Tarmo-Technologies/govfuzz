@@ -1,0 +1,91 @@
+{
+ "lane": "cpp",
+ "repo": "SerenityOS/serenity",
+ "stars": 33659,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/SerenityOS__serenity --json --out /home/ubuntu/govfuzz-sweep-work/cpp__SerenityOS__serenity.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.27,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 1001932,
+   "sloc_by_lang": {
+    "cpp": 928051,
+    "javascript": 59595,
+    "c": 9136,
+    "python": 3958,
+    "config": 1164,
+    "lua": 28
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/SerenityOS__serenity --format json --top 100000",
+   "exit": 0,
+   "wall_s": 586.45,
+   "timed_out": false,
+   "panic": false,
+   "count": 52113,
+   "by_language": {
+    "cpp": 51850,
+    "python": 165,
+    "lua": 1,
+    "c": 97
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/SerenityOS__serenity --out /home/ubuntu/govfuzz-sweep-work/cpp__SerenityOS__serenity/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 62.79,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 811,
+   "by_severity": {
+    "high": 551,
+    "medium": 241,
+    "critical": 19
+   },
+   "top_rules": {
+    "GF-405": 492,
+    "GF-425": 117,
+    "GF-406": 90,
+    "GF-404": 15,
+    "GF-408": 12,
+    "GF-424": 11,
+    "GF-401": 11,
+    "GF-422": 11,
+    "GF-500": 8,
+    "GF-403": 8,
+    "GF-407": 8,
+    "GF-507": 7,
+    "GF-472": 6,
+    "GF-477": 4,
+    "GF-547": 4
+   },
+   "gaps": 509
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/SerenityOS__serenity --out /home/ubuntu/govfuzz-sweep-work/cpp__SerenityOS__serenity/sbom",
+   "exit": 0,
+   "wall_s": 49.94,
+   "timed_out": false,
+   "panic": false,
+   "components": 53
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/SerenityOS__serenity --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__SerenityOS__serenity --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.1,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "90fb619ca4f88835377b02e1660cc6eaa6940598",
+ "clone_s": 8.5,
+ "lane_check": "cpp: 3732 files / 791452 lines; top=cpp(791452)",
+ "status": "done"
+}

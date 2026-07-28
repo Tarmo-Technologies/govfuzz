@@ -1,0 +1,268 @@
+{
+ "lane": "fortran",
+ "repo": "cp2k/cp2k",
+ "stars": 1174,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --json --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.36,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 1127322,
+   "sloc_by_lang": {
+    "fortran": 1046201,
+    "c": 63112,
+    "python": 10216,
+    "config": 4249,
+    "cpp": 3051,
+    "perl": 493
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --format json --top 100000",
+   "exit": 0,
+   "wall_s": 14.58,
+   "timed_out": false,
+   "panic": false,
+   "count": 1380,
+   "by_language": {
+    "c": 746,
+    "python": 323,
+    "cpp": 155,
+    "fortran": 148,
+    "perl": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 9.49,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 80,
+   "by_severity": {
+    "medium": 26,
+    "high": 44,
+    "critical": 7,
+    "low": 3
+   },
+   "top_rules": {
+    "GF-406": 20,
+    "GF-407": 19,
+    "GF-405": 14,
+    "GF-401": 7,
+    "GF-420": 5,
+    "GF-550": 3,
+    "GF-546": 3,
+    "GF-403": 2,
+    "GF-404": 2,
+    "GF-421": 2,
+    "GF-477": 2,
+    "GF-422": 1
+   },
+   "gaps": 120
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/sbom",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "components": 92
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/cp2k__cp2k --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 393.27,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 7,
+    "discovered_total": 1374,
+    "dropped_by_cap": 1367,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 1,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "grid_replay",
+     "source": "grid_replay.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 24,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "offload_host_malloc",
+     "source": "offload_library.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.894635591078733,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_args",
+     "source": "analyze_gfortran_ast.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3.115248694292341,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "load_configuration",
+     "source": "main.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2331.439704120057,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "torch_c_model_read_metadata",
+     "source": "torch_c_api.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "openPMD_Mesh_set_axis_labels",
+     "source": "openpmd_c_api.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'mesh_param' of type 'openPMD_Mesh' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'struct openPMD_Mesh_opaque' for pointer parameter 'mesh_param' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "A2S",
+     "source": "string_utilities.F",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build-config #error guard",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undefined symbol",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: Non-numeric character in statement label at (N); Error: Non-numeric character in statement label at (N); Error: Non-numeric char\u2026",
+     "language": "fortran"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-9500ef04",
+     "rule": "GF-208",
+     "cwe": [
+      "CWE-401"
+     ],
+     "cwe_name": "Missing Release of Memory after Effective Lifetime",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C00AF-93DAFF96"
+    },
+    {
+     "id": "F-0001-74ca1e45",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P00CB-E03CF414"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/findings --out /home/ubuntu/govfuzz-sweep-work/fortran__cp2k__cp2k/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "9cbee8b47c1da0f8cb9f698eee35879e16dacdd6",
+ "clone_s": 15.3,
+ "lane_check": "fortran: 1353 files / 1251045 lines; top=fortran(1251045)",
+ "status": "done"
+}

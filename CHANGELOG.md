@@ -2,6 +2,75 @@
 
 # Changelog
 
+## 0.2.23 - 2026-07-28
+
+Follow-up to 0.2.22, from a second full 500-project sweep (`results-0728/`: 482
+measured, **1,212,086 targets discovered, 3,638 attempted, 1,069 built+fuzzed —
+29.4%**, 366 findings, all 16 lanes).
+
+The headline defect is a crash, not a gap. **carbon-language/carbon-lang was
+SIGKILLed during discovery in BOTH `list targets` and `auto`** — govfuzz
+produced no target list at all, which is worse than any residual blocker,
+because a hard kill leaves nothing to act on and is indistinguishable from a
+hang.
+
+- **Recursive C/C++ types no longer explode type resolution.** Resolving one
+  1205-line header from carbon-lang's `toolchain/sem_ir` took **13.0 GiB and
+  88 seconds**. `MAX_RESOLVE_DEPTH` bounds recursion DEPTH but not BREADTH: a
+  struct with F fields expands F subtrees, each expanding F more, so a
+  self-referential type unrolled to the 16-deep limit materializes on the order
+  of F^16 field vectors.
+
+  Two changes, both needed. Resolved shapes are memoized on (spelling, depth) —
+  keying on depth as well as spelling keeps results byte-identical to the
+  uncached walk, including the `Opaque` truncation at the limit. That halved the
+  time but not the memory, because a cache hit still CLONES the subtree:
+  memoization avoids recomputation, not materialization. So resolution now also
+  stops at a cycle — a type that transitively contains itself resolves to
+  `Opaque` at the point of recurrence instead of unrolling. Nothing is lost: a
+  decoder cannot build an infinitely nested value, so the unroll and the
+  `Opaque` are equally undrivable, but the shape is now the size of the type
+  rather than exponential in the depth limit.
+
+  carbon-lang, whole tree: **12.9 GiB and SIGKILLed with no output → 52 MiB,
+  exit 0, 5,092 targets listed and 4,040 fuzzable**. The single header: 13.0 GiB
+  / 88s → **77 MiB / 1.2s**. The same fix took `simdjson` from a 900-second
+  `list targets` timeout to completing in 481s with 14,690 targets.
+
+- **Discovery degrades under memory pressure instead of being OOM-killed.** The
+  static scan already survived these trees by stopping at an RSS ceiling;
+  discovery had no memory bound at all. Both discovery surfaces now share that
+  watchdog and report a PARTIAL target list rather than dying silently.
+  `list targets` parses five lanes itself and defers the other eleven to `auto`,
+  so guarding only the shared walk would have left C++ — carbon-lang's own
+  language — unguarded. Honest note: this guard did **not** save carbon-lang on
+  its own, because a single file crossed the ceiling and blew past it between
+  two 500ms samples; the type-resolution fix above is the real one. This is the
+  backstop for trees that grow past memory gradually.
+
+- **A C++ target in a header that cannot compile standalone is now driven
+  through its owner translation unit.** `blocked_by_non_self_contained_header`
+  was the largest C++ residual class in the sweep (49 targets, plus 10 in C).
+  Such a header routinely compiles as part of the `.cpp` that owns it — the same
+  move the C lane already makes for a static target or a private handle, one
+  step further out. A candidate is adopted only when it PREFLIGHT-COMPILES, so a
+  wrong guess is rejected rather than baked in, and a header no translation unit
+  can make compile is still rejected.
+
+- **A repair no longer breaks the code it was meant to unblock.** The loop
+  answered an undeclared identifier with `#define ScannerLimit …`, which is
+  force-included ahead of every translation unit and rewrote the enumerator's
+  own definition — `enum : size_t { ScannerLimit = 4 }` became
+  `enum : size_t { 1 = 4 }`, "expected identifier", in a source that compiled
+  fine before. Same hazard as the existing tree-function and tree-type vetoes,
+  one construct over, and it now gets the same veto and the same
+  reserved-identifier escape hatch.
+
+- **An opaque C handle whose struct is defined in the target's own translation
+  unit is now drivable** rather than reported as incomplete.
+
+`docs/expected-gaps.md` is re-measured against this sweep.
+
 ## 0.2.22 - 2026-07-28
 
 Correctness release. Nineteen defects, found by re-running the full 500-project

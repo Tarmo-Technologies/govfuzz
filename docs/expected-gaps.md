@@ -141,11 +141,27 @@ with one symbol unresolved.
 
 ### Ada-2. `missing Ada symbol` — 19 — **GAP**
 
-### Ada-3. `unit X cannot belong to several projects` — 9 — **GAP**
+### Ada-3. `unit X cannot belong to several projects` — 9 — **GAP, mechanism known**
 
-A GPR-structure conflict in the synthesized project: the same unit is reachable
-through two project paths. This is GovFuzz's own project synthesis, not the
-target's.
+GovFuzz's own project synthesis, not the target's. Reproduced on
+mk270/whitakers-words (4 targets attempted, 3 die this way).
+
+The synthesized project is `project Govfuzz_Build extends "<tree>/commands.gpr"`
+with `Source_Dirs` pointing at `<work>/src_instrumented`. That work dir holds
+INSTRUMENTED COPIES of the tree's units. `commands.gpr` `with`s sibling library
+projects (`support_utils.gpr`, `latin_utils.gpr`, …) that own `src/<Name>`, so
+`support_utils.uniques_package` is owned by both `govfuzz_build` (the copy) and
+`support_utils` (the original), and gprbuild refuses.
+
+**`extends all` does NOT fix it — tested.** The obvious GPR answer for overriding
+units across a withed closure leaves the identical diagnostic on this project.
+Do not spend the experiment again.
+
+What is left to try: build purely from the staged sources without `extends`
+(losing the user project's compiler settings and link flags), or drop from
+`src_instrumented` any unit the extended closure already owns (losing coverage
+instrumentation on exactly those units). Both are trade-offs, so measure the
+built count before choosing.
 
 ### Ada-4. `predefined unit depends on itself` — 9 — **GAP**
 
@@ -264,9 +280,13 @@ the package; `--install-deps` fixes it where the network allows.
 
 Only no-arg-constructible receivers are supported.
 
-### Py-3. `type X is not subscriptable` — 10 — **GAP**
+### Py-3. `type X is not subscriptable` — 10 — **DEPENDENCY**
 
-A `from __future__ import annotations` / generics-at-runtime issue in the loader.
+Checked, and it is not ours: the project's OWN module fails to import because it
+subscripts a class that is not generic on the installed library version
+(spec-kit's `Choice[...]`). Correctly reported as "not loadable (skipped
+cleanly)" with the interpreter's real message. I had this filed as a loader gap
+from inspection; reading an exemplar corrected it.
 
 ### Py-4. Python 2 — 20 — **BY DESIGN**
 

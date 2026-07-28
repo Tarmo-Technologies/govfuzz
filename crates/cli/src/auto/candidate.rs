@@ -166,6 +166,30 @@ impl LangSelector {
     }
 }
 
+/// The lowercase tag a language is reported under, everywhere a report, a
+/// histogram or a listing names one. One table so two surfaces cannot disagree
+/// about what to call the same lane.
+pub(crate) fn lang_tag(lang: Lang) -> &'static str {
+    match lang {
+        Lang::Ada => "ada",
+        Lang::C => "c",
+        Lang::Cpp => "cpp",
+        Lang::Rust => "rust",
+        Lang::Java => "java",
+        Lang::Python => "python",
+        Lang::Perl => "perl",
+        Lang::Go => "go",
+        Lang::Cobol => "cobol",
+        Lang::Fortran => "fortran",
+        Lang::CSharp => "csharp",
+        Lang::Js => "javascript",
+        Lang::Ts => "typescript",
+        Lang::Ruby => "ruby",
+        Lang::Lua => "lua",
+        Lang::Php => "php",
+    }
+}
+
 /// A discovered, fuzz-eligible target. Constructed by
 /// `discovery::discover()` and consumed by `attempt::attempt()`.
 /// The `harness_id` is stable across runs (derived from source path,

@@ -45,6 +45,15 @@ pub enum OutputFormat {
     Json,
 }
 
+/// The five lanes this command parses and ranks ITSELF, plus `Other` for the
+/// eleven it defers to `auto`'s discovery for.
+///
+/// The split is historical, not principled: this surface was written when there
+/// were five lanes and never revisited, so `list targets` reported NOTHING on a
+/// Go, Python, JS/TS, C#, Ruby, PHP, Perl, Lua, Fortran or COBOL tree — 11 of 16
+/// languages, silently, on the one command whose job is to answer "what can this
+/// tool see here?". Across the 500-project sweep it listed 2.0M targets and every
+/// one of them was in these five.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 enum SourceLanguage {
@@ -53,6 +62,9 @@ enum SourceLanguage {
     Cpp,
     Java,
     Rust,
+    /// A lane discovered by `auto` and rendered here under its own tag.
+    #[serde(untagged)]
+    Other(&'static str),
 }
 
 impl SourceLanguage {
@@ -63,6 +75,7 @@ impl SourceLanguage {
             SourceLanguage::Cpp => "cpp",
             SourceLanguage::Java => "java",
             SourceLanguage::Rust => "rust",
+            SourceLanguage::Other(tag) => tag,
         }
     }
 }
@@ -220,6 +233,41 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
                     ));
                 }
             }
+            // `detect_language` never yields this: it is the tag the deferred pass
+            // below attaches to a candidate `auto` discovered.
+            SourceLanguage::Other(_) => {}
+        }
+    }
+
+    // The eleven lanes this command does not parse itself. `auto`'s discovery
+    // already covers all sixteen, so defer to it rather than growing a second
+    // copy that drifts — the two surfaces disagreeing about the same tree is the
+    // failure mode worth designing out. Gated on a cheap extension scan, so a
+    // C/C++/Ada/Java/Rust-only tree pays exactly what it paid before.
+    if tree_has_deferred_lane_sources(&args.path) {
+        for candidate in deferred_lane_targets(&args.path) {
+            if path_is_excluded(&candidate.source_path, &args) {
+                continue;
+            }
+            if let Some(changed) = changed_set.as_ref() {
+                if !path_in_changed_set(&candidate.source_path, changed) {
+                    continue;
+                }
+            }
+            all_targets.push((
+                candidate.source_path.clone(),
+                ListedTarget {
+                    harness_id: candidate.harness_id,
+                    name: candidate.name,
+                    score: candidate.score,
+                    language: SourceLanguage::Other(crate::auto::candidate::lang_tag(
+                        candidate.lang,
+                    )),
+                    line: Some(candidate.line),
+                    breakdown: None,
+                    metadata: None,
+                },
+            ));
         }
     }
 
@@ -233,6 +281,74 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
     });
     all_targets.truncate(args.top);
     Ok(all_targets)
+}
+
+/// Extensions belonging to a lane this command defers to `auto` for. Matching one
+/// is the only thing that makes the deferred pass run at all, so a tree without
+/// any keeps this command exactly as cheap as it was.
+const DEFERRED_LANE_EXTENSIONS: &[&str] = &[
+    "go", "py", "pl", "pm", "cs", "js", "mjs", "cjs", "jsx", "ts", "tsx", "mts", "cts", "rb",
+    "php", "lua", "f", "for", "f77", "f90", "f95", "f03", "f08", "cob", "cbl", "cpy",
+];
+
+fn tree_has_deferred_lane_sources(root: &Path) -> bool {
+    fn is_deferred(path: &Path) -> bool {
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .map(str::to_ascii_lowercase)
+            .is_some_and(|extension| DEFERRED_LANE_EXTENSIONS.contains(&extension.as_str()))
+    }
+    if root.is_file() {
+        return is_deferred(root);
+    }
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            match entry.file_type() {
+                Ok(file_type) if file_type.is_dir() => {
+                    // A dot-directory is never library source, and `.git` alone
+                    // would dominate the walk.
+                    let hidden = path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .is_some_and(|name| name.starts_with('.'));
+                    if !hidden {
+                        stack.push(path);
+                    }
+                }
+                Ok(_) if is_deferred(&path) => return true,
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
+/// Candidates from `auto`'s discovery for the lanes this command does not parse
+/// itself. A discovery failure yields nothing rather than failing the listing:
+/// the five native lanes above have already produced their rows, and a listing
+/// that errors out is worse than one that is short.
+fn deferred_lane_targets(root: &Path) -> Vec<crate::auto::candidate::Candidate> {
+    let Ok(candidates) = crate::auto::discovery::discover(root) else {
+        return Vec::new();
+    };
+    candidates
+        .into_iter()
+        .filter(|candidate| {
+            !matches!(
+                candidate.lang,
+                crate::auto::candidate::Lang::Ada
+                    | crate::auto::candidate::Lang::C
+                    | crate::auto::candidate::Lang::Cpp
+                    | crate::auto::candidate::Lang::Java
+                    | crate::auto::candidate::Lang::Rust
+            )
+        })
+        .collect()
 }
 
 fn cpp_listed_target_name(function: &cpp_parser::CppFunction) -> String {
@@ -548,6 +664,9 @@ fn c_family_listed_target(
         // not `CTarget`), so this arm is never reached; keep the correct prefixes.
         SourceLanguage::Java => "H-J",
         SourceLanguage::Rust => "H-R",
+        // Deferred lanes arrive as ready-made `Candidate`s carrying their own
+        // harness id, so they never reach a `CTarget` renderer.
+        SourceLanguage::Other(_) => "H-?",
     };
     let harness_id =
         crate::auto::discovery::stable_harness_id(prefix, source_path, target.line, &target.name);
@@ -788,8 +907,9 @@ fn json_output(rows: &[(PathBuf, ListedTarget)]) -> serde_json::Result<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        json_output, print_table, ranked_targets, walk_targetable_files, ExcludeCategory,
-        ListTargetsArgs, ListedTarget, OutputFormat, SourceLanguage,
+        deferred_lane_targets, json_output, print_table, ranked_targets,
+        tree_has_deferred_lane_sources, walk_targetable_files, ExcludeCategory, ListTargetsArgs,
+        ListedTarget, OutputFormat, SourceLanguage,
     };
     use std::fs;
     use std::path::PathBuf;
@@ -1150,6 +1270,55 @@ mod tests {
         assert_eq!(first["target"]["name"], "Target");
         assert_eq!(first["target"]["score"], 25);
         assert_eq!(first["target"]["language"], "ada");
+    }
+
+    /// `list targets` reported NOTHING on 11 of the 16 supported lanes: its own
+    /// language enum was written when there were five and never revisited, so a
+    /// Go, Python, JS/TS, C#, Ruby, PHP, Perl, Lua, Fortran or COBOL tree got an
+    /// empty listing from the one command whose job is to say what the tool can
+    /// see. The deferred pass hands those lanes to `auto`'s discovery, which
+    /// already covers all sixteen.
+    #[test]
+    fn a_lane_this_command_does_not_parse_is_still_listed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::write(
+            root.join("lib.go"),
+            "package lib\n\nfunc ParseRecord(data []byte) int { return len(data) }\n",
+        )
+        .expect("write go source");
+
+        assert!(
+            tree_has_deferred_lane_sources(root),
+            "a .go file must arm the deferred pass"
+        );
+        let listed = deferred_lane_targets(root);
+        assert!(
+            listed.iter().any(|c| c.name == "ParseRecord"),
+            "the Go target must be listed: {:?}",
+            listed.iter().map(|c| &c.name).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            SourceLanguage::Other(crate::auto::candidate::lang_tag(
+                crate::auto::candidate::Lang::Go
+            ))
+            .as_str(),
+            "go"
+        );
+    }
+
+    /// …and a tree with none of them must not pay for the pass. The five native
+    /// lanes keep exactly the cost they had.
+    #[test]
+    fn a_tree_without_a_deferred_lane_never_arms_the_pass() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::write(root.join("a.c"), "int f(const char *s) { return 0; }\n").unwrap();
+        std::fs::write(root.join("b.adb"), "procedure B is begin null; end B;\n").unwrap();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        // A dot-directory is skipped, so a stray `.git` object cannot arm it.
+        std::fs::write(root.join(".git/hook.py"), "def f(): pass\n").unwrap();
+        assert!(!tree_has_deferred_lane_sources(root));
     }
 
     // The git-diff helpers moved to `crate::git_diff`; their unit tests live

@@ -167,7 +167,48 @@ fn emit_js_harness(
     if let Err(e) = make_executable(&main_path) {
         return JsBuildResult::Failed(format!("chmod +x {}: {e}", main_path.display()));
     }
+    // Build gate 3: the driver must be able to PREPARE the target — resolve the
+    // export, and construct a receiver for a `Class#method` — before the engine
+    // spends a budget on it. A class whose constructor needs an environment that
+    // is not here (gstack's `BrowseClient` wants a live daemon port and token)
+    // builds perfectly and then dies in the driver's load path, so the engine
+    // recorded a harness that ran ZERO inputs and the run reported `built, no
+    // fuzz pass ran` — a row naming nothing, on 58 targets across the
+    // 500-project sweep. Now it says what could not be prepared, and skips.
+    if let Some(reason) = js_export_load_error(&main_path, &func.export_path) {
+        return JsBuildResult::Skip(reason);
+    }
     JsBuildResult::Built
+}
+
+/// Run the emitted launcher in LOAD-ONLY mode: the driver resolves the export,
+/// constructs any receiver, and exits without running an input. A nonzero exit
+/// therefore means the target could not be prepared, and stderr carries why.
+///
+/// Load-only rather than "run it once with no input" because a finding halts the
+/// driver with a nonzero code — so a target that legitimately crashes on the
+/// empty input would be indistinguishable from one that could never load, and
+/// gating on that would skip exactly the most interesting targets.
+///
+/// A TIMEOUT is deliberately not a failure. A module that blocks on load (a
+/// server, a watch loop) is a different problem, and refusing it here would turn
+/// a hang into a false skip.
+fn js_export_load_error(main_path: &Path, export_path: &str) -> Option<String> {
+    let out = crate::command_output::output_with_timeout(
+        Command::new(main_path)
+            .env("GOVFUZZ_JS_LOAD_ONLY", "1")
+            .stdin(std::process::Stdio::null()),
+        Duration::from_secs(30),
+    )
+    .ok()?;
+    if out.status.success() {
+        return None;
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    Some(crate::auto::script_load_roots::unloadable_reason(
+        export_path,
+        &stderr,
+    ))
 }
 
 /// Resolve the TypeScript transpiler: `esbuild` on PATH (preferred — a single fast

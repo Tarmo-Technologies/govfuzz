@@ -452,6 +452,14 @@ function main() {
   covInit();
   installSinkGuards();
   runOne = loadRunOne();
+  // GOVFUZZ_JS_LOAD_ONLY: prove the target can be PREPARED, then stop. The build
+  // gate uses this to tell "the export resolves and any receiver constructs"
+  // apart from "the target crashed on an input", which running one input cannot
+  // do — a finding halts with a nonzero code, so a target that crashes on the
+  // empty input looks identical to one that could never load.
+  if (process.env.GOVFUZZ_JS_LOAD_ONLY !== undefined) {
+    process.exit(0);
+  }
   if (process.env.GOVFUZZ_FRAMED !== undefined) {
     framedLoop().then(() => process.exit(0));
     return;

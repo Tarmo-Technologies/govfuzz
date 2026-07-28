@@ -34,7 +34,13 @@ jobs:
       - name: Install GNAT
         run: |
           sudo apt-get update
-          sudo apt-get install -y gprbuild gnat-${{ matrix.gnat }}
+          # `gcc-N` so the matrix cell has a C compiler of the SAME major as its
+          # Ada one: the runner image only ships the default gcc, and
+          # run-gnat-fixture-matrix.sh now asks gprconfig for `C,,,,gcc-N` by
+          # name. Without both halves the generated config has no C driver and
+          # every cell dies on `adafuzz_runtime.gpr:2:09: no compiler for
+          # language "C"` — which this matrix had been doing on every nightly.
+          sudo apt-get install -y gprbuild gnat-${{ matrix.gnat }} gcc-${{ matrix.gnat }}
 
       - name: Run fixture matrix cell
         env:

@@ -909,11 +909,13 @@ struct CppContextInput<'a> {
 /// flags/paths/include dirs that could inject commands into the
 /// generated Makefile recipe.
 fn validate_cpp_build_inputs(input: &CppContextInput<'_>) -> Result<(), HarnessGenError> {
-    use crate::build_safety::{ensure_all_build_inputs_safe, ensure_build_input_safe};
-    ensure_all_build_inputs_safe(
-        "compile flag",
-        input.compile_flags.iter().map(String::as_str),
-    )?;
+    use crate::build_safety::{
+        ensure_all_build_inputs_safe, ensure_all_compile_flags_safe, ensure_build_input_safe,
+    };
+    // Flags are recipe-only, so one that is safe once single-quoted is allowed;
+    // paths and include names below stay strict (a path is also a make target,
+    // and an include name is interpolated into an `#include "..."` line).
+    ensure_all_compile_flags_safe(input.compile_flags.iter().map(String::as_str))?;
     ensure_all_build_inputs_safe(
         "include name",
         input.target_includes.iter().map(String::as_str),
@@ -1518,6 +1520,14 @@ impl CppBuildContextRender {
 /// not a string literal — breaking compilation. Backslash-escaping the quotes makes
 /// the shell pass them through literally so the macro stays a string.
 pub(crate) fn escape_makefile_recipe_flag(flag: &str) -> String {
+    // A flag that is unsafe BARE but safe single-quoted gets the quotes. A CMake
+    // version-comparison define (`-DLLAMA_VERSIONS=>=3`, gpt4all;
+    // `-D_LIBCPP_HARDENING_MODE=..._DEBUG>`, btop) is legitimate, and its `>`
+    // would redirect if emitted bare — refusing it cost every target in those
+    // projects. `validate_*` has already rejected anything no quoting can save.
+    if let Some(quoted) = crate::build_safety::quoted_build_input(flag) {
+        return quoted;
+    }
     if flag.contains('"') {
         flag.replace('"', "\\\"")
     } else {

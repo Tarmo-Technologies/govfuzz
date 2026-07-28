@@ -37,6 +37,22 @@ fn has_jdk() -> bool {
         && Command::new("java").arg("-version").output().is_ok()
 }
 
+/// The JDK feature version of `javac` (`javac 21.0.11` -> 21).
+fn javac_major() -> Option<u32> {
+    let out = Command::new("javac").arg("-version").output().ok()?;
+    let text = if out.stdout.is_empty() {
+        String::from_utf8_lossy(&out.stderr).into_owned()
+    } else {
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    text.split_whitespace()
+        .nth(1)?
+        .split('.')
+        .next()?
+        .parse()
+        .ok()
+}
+
 /// Whether this JDK actually needs the flag for the fixture. On JDK 22+ unnamed
 /// variables are standard, so the fixture compiles either way and the test has
 /// nothing to prove — it still must PASS there, just without exercising the
@@ -51,6 +67,22 @@ fn a_preview_language_feature_is_compiled_and_run_with_the_flag_it_asks_for() {
     if !has_jdk() {
         eprintln!("skip: no JDK (native Java lane needs javac/java)");
         return;
+    }
+    // Unnamed variables arrived in JDK 21 (preview) and became standard in 22.
+    // On an older JDK `var _ = …` is not a preview feature at all — javac says
+    // "as of release 9, '_' is a keyword", which `--enable-preview` cannot fix
+    // because there is nothing to enable. The fixture is then untestable rather
+    // than broken, so skip: the GNAT-less rule.
+    match javac_major() {
+        Some(major) if major >= 21 => {}
+        Some(major) => {
+            eprintln!("skip: JDK {major} predates unnamed variables (needs 21+)");
+            return;
+        }
+        None => {
+            eprintln!("skip: could not determine the javac version");
+            return;
+        }
     }
 
     let tmp = std::env::temp_dir().join(format!("govfuzz-java-preview-{}", std::process::id()));

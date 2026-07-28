@@ -47,6 +47,25 @@ built+fuzzed, 354 findings).
   `StringBuilder`) and `ClassLoader` also stopped blocking targets. Collections
   and fuzz-parsed URIs are still refused, with reasons.
 
+- **`list targets` covers all sixteen lanes, not the five it was written for.**
+  The command had its own five-variant language enum — Ada, C, C++, Java, Rust —
+  written when there were five lanes and never revisited, so on a Go, Python,
+  JS/TS, C#, Ruby, PHP, Perl, Lua, Fortran or COBOL tree it printed nothing at
+  all. Across the sweep it listed 2.0M targets and every one was in those five,
+  while `auto` discovered targets in all sixteen. The eleven are now deferred to
+  `auto`'s discovery rather than given a second parser here, gated on a cheap
+  extension scan so a C/C++/Ada/Java/Rust-only tree pays what it always did.
+
+- **A JS/TS harness that cannot be prepared says so** (58 targets). The harness
+  built — module loads, export resolves — and then died constructing the receiver
+  for a `Class#method`, because the class wants an environment that is not here
+  (gstack's `BrowseClient` looks for a live daemon port). The engine recorded a
+  harness that ran zero inputs and the run said `built, no fuzz pass ran`, naming
+  nothing. A third build gate now runs the launcher in a LOAD-ONLY mode and takes
+  the driver's own error as the skip reason. Load-only rather than "run one
+  input" because a finding halts the driver with a nonzero exit — gating on that
+  would have skipped exactly the targets that crash.
+
 - **Discovery on an amalgamated single header finishes.** simdjson's
   `singleheader/` took over 1500 seconds and was still going, where `list
   targets` over the same two files takes 145 — so the whole difference was work

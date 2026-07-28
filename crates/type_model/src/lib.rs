@@ -326,6 +326,21 @@ pub struct TypeRegistry {
 /// total even on adversarial inputs (`typedef a b; typedef b a;`).
 const MAX_RESOLVE_DEPTH: usize = 16;
 
+/// Per-call state for [`TypeRegistry::resolve`]: a shape cache plus the set of
+/// aggregate tags currently being expanded on this path. Threaded by `&mut`
+/// rather than held in the registry so `TypeRegistry` stays immutably shareable
+/// across threads, and so nothing is retained between calls.
+#[derive(Default)]
+struct ResolveMemo {
+    shapes: std::collections::HashMap<(String, usize), TypeShape>,
+    /// Aggregate tags on the current expansion path, innermost last.
+    active: Vec<String>,
+    /// Whether the subtree computed so far truncated at a cycle. Such a shape
+    /// depends on the PATH that reached it, not only on (spelling, depth), so it
+    /// must not be cached for reuse under a different path.
+    cycle_truncated: bool,
+}
+
 impl TypeRegistry {
     /// Build from one or more translation units' definitions (the
     /// target TU first, then headers; first definition of a name wins
@@ -411,7 +426,20 @@ impl TypeRegistry {
 
     /// Resolve a raw C type string to a shape. Never fails.
     pub fn resolve(&self, raw: &str) -> TypeShape {
-        self.resolve_inner(raw, 0)
+        // The memo is what keeps this from exploding. `MAX_RESOLVE_DEPTH` bounds
+        // recursion DEPTH but not BREADTH: a struct with F fields expands F
+        // subtrees, each of which expands F more, so a 16-deep walk over
+        // carbon-lang's `toolchain/sem_ir` types materialized on the order of
+        // F^16 `Field` vectors — 13 GiB of RSS, and govfuzz SIGKILLed during
+        // discovery before it listed a single target.
+        //
+        // Field types repeat constantly (the same handle/id struct appears in
+        // sibling after sibling), so caching on (spelling, depth) collapses that
+        // exponential tree into a DAG walk. Keying on depth as well as spelling
+        // keeps results BYTE-IDENTICAL to the uncached resolve, including the
+        // `Opaque` truncation at the depth limit.
+        let mut memo = ResolveMemo::default();
+        self.resolve_inner(raw, 0, &mut memo)
     }
 
     /// Return the raw pointee spelling for direct pointers or typedefs to
@@ -553,10 +581,26 @@ impl TypeRegistry {
         None
     }
 
-    fn resolve_inner(&self, raw: &str, depth: usize) -> TypeShape {
+    fn resolve_inner(&self, raw: &str, depth: usize, memo: &mut ResolveMemo) -> TypeShape {
         if depth > MAX_RESOLVE_DEPTH {
             return TypeShape::Opaque(raw.trim().to_owned());
         }
+        let memo_key = (raw.to_owned(), depth);
+        if let Some(hit) = memo.shapes.get(&memo_key) {
+            return hit.clone();
+        }
+        let outer_truncated = std::mem::replace(&mut memo.cycle_truncated, false);
+        let shape = self.resolve_uncached(raw, depth, memo);
+        // Only cacheable when nothing beneath it was cut short by the cycle
+        // guard — otherwise the entry is path-dependent.
+        if !memo.cycle_truncated {
+            memo.shapes.insert(memo_key, shape.clone());
+        }
+        memo.cycle_truncated |= outer_truncated;
+        shape
+    }
+
+    fn resolve_uncached(&self, raw: &str, depth: usize, memo: &mut ResolveMemo) -> TypeShape {
         // Function-pointer spellings (`T (*)(...)`, `T (*name)(...)`)
         // checked on the raw text — normalization respaces `*`.
         if raw.contains("(*") {
@@ -579,7 +623,7 @@ impl TypeRegistry {
 
         // Fixed-size array suffix: `char[16]`.
         if let Some((base, len)) = split_array(&normalized) {
-            let elem = self.resolve_inner(base, depth + 1);
+            let elem = self.resolve_inner(base, depth + 1, memo);
             return TypeShape::Array {
                 elem: Box::new(elem),
                 len,
@@ -596,7 +640,7 @@ impl TypeRegistry {
             if matches!(base, "char" | "gchar") {
                 return TypeShape::CString;
             }
-            return TypeShape::Pointer(Box::new(self.resolve_inner(base, depth + 1)));
+            return TypeShape::Pointer(Box::new(self.resolve_inner(base, depth + 1, memo)));
         }
 
         if normalized == "void" {
@@ -614,24 +658,24 @@ impl TypeRegistry {
             // redefining a Linux driver's own `CHAR`.) A tree declaration that
             // itself dead-ends — a vendored `typedef __u_int u_int` whose
             // `__u_int` is nowhere — resolves Opaque, and the table still wins.
-            return match self.named_shape(&normalized, raw, depth) {
+            return match self.named_shape(&normalized, raw, depth, memo) {
                 Some(shape) if !matches!(shape, TypeShape::Opaque(_)) => shape,
                 _ => TypeShape::Scalar(kind),
             };
         }
 
         if let Some(tag) = normalized.strip_prefix("struct ") {
-            return self.struct_shape(tag.trim(), raw, depth);
+            return self.struct_shape(tag.trim(), raw, depth, memo);
         }
         if let Some(tag) = normalized.strip_prefix("union ") {
-            return self.union_shape(tag.trim(), raw, depth);
+            return self.union_shape(tag.trim(), raw, depth, memo);
         }
         if let Some(tag) = normalized.strip_prefix("enum ") {
             return self.enum_shape(tag.trim(), raw);
         }
 
         // Bare name: enum, struct-by-alias, or typedef chain.
-        if let Some(shape) = self.named_shape(&normalized, raw, depth) {
+        if let Some(shape) = self.named_shape(&normalized, raw, depth, memo) {
             return shape;
         }
 
@@ -648,38 +692,75 @@ impl TypeRegistry {
     /// The shape a BARE name has because the scanned tree declares it — as an
     /// enum, as a struct/union by alias, or through a typedef chain. `None` when
     /// the tree says nothing about the name.
-    fn named_shape(&self, normalized: &str, raw: &str, depth: usize) -> Option<TypeShape> {
+    fn named_shape(
+        &self,
+        normalized: &str,
+        raw: &str,
+        depth: usize,
+        memo: &mut ResolveMemo,
+    ) -> Option<TypeShape> {
         if let Some(def) = self.lookup_named(&self.enums, normalized) {
             return Some(enum_shape_for_spelling(def, normalized));
         }
         if self.lookup_named(&self.structs, normalized).is_some() {
-            return Some(self.struct_shape(normalized, raw, depth));
+            return Some(self.struct_shape(normalized, raw, depth, memo));
         }
         if let Some(underlying) = self.lookup_named(&self.typedefs, normalized) {
-            return Some(self.resolve_inner(&underlying.clone(), depth + 1));
+            return Some(self.resolve_inner(&underlying.clone(), depth + 1, memo));
         }
         None
     }
 
-    fn struct_shape(&self, tag: &str, raw: &str, depth: usize) -> TypeShape {
+    fn struct_shape(
+        &self,
+        tag: &str,
+        raw: &str,
+        depth: usize,
+        memo: &mut ResolveMemo,
+    ) -> TypeShape {
+        if memo.active.iter().any(|active| active == tag) {
+            // A type that (transitively) contains itself. Unrolling it to the
+            // depth limit is what made discovery unsurvivable — carbon-lang's
+            // `toolchain/sem_ir` needed 13 GiB and was SIGKILLed — and the result
+            // is useless anyway: a decoder cannot build an infinitely nested
+            // value, so the 16-deep unroll and this `Opaque` are equally
+            // undrivable. Stopping at the recurrence keeps the shape the size of
+            // the type rather than exponential in the depth limit.
+            memo.cycle_truncated = true;
+            return TypeShape::Opaque(normalize(raw));
+        }
         match self.lookup_named(&self.structs, tag) {
-            Some(def) if def.complete => TypeShape::Struct {
-                name: def.name.clone(),
-                fields: self.fields_of(def, depth),
-            },
+            Some(def) if def.complete => {
+                memo.active.push(tag.to_owned());
+                let fields = self.fields_of(def, depth, memo);
+                memo.active.pop();
+                TypeShape::Struct {
+                    name: def.name.clone(),
+                    fields,
+                }
+            }
             _ => TypeShape::Opaque(normalize(raw)),
         }
     }
 
-    fn union_shape(&self, tag: &str, raw: &str, depth: usize) -> TypeShape {
+    fn union_shape(&self, tag: &str, raw: &str, depth: usize, memo: &mut ResolveMemo) -> TypeShape {
+        if memo.active.iter().any(|active| active == tag) {
+            memo.cycle_truncated = true;
+            return TypeShape::Opaque(normalize(raw));
+        }
         match self
             .lookup_named(&self.unions, tag)
             .or_else(|| self.lookup_named(&self.structs, tag))
         {
-            Some(def) if def.complete => TypeShape::Union {
-                name: def.name.clone(),
-                fields: self.fields_of(def, depth),
-            },
+            Some(def) if def.complete => {
+                memo.active.push(tag.to_owned());
+                let fields = self.fields_of(def, depth, memo);
+                memo.active.pop();
+                TypeShape::Union {
+                    name: def.name.clone(),
+                    fields,
+                }
+            }
             _ => TypeShape::Opaque(normalize(raw)),
         }
     }
@@ -691,12 +772,17 @@ impl TypeRegistry {
         }
     }
 
-    fn fields_of(&self, def: &c_parser::CStructDef, depth: usize) -> Vec<Field> {
+    fn fields_of(
+        &self,
+        def: &c_parser::CStructDef,
+        depth: usize,
+        memo: &mut ResolveMemo,
+    ) -> Vec<Field> {
         def.fields
             .iter()
             .map(|f| Field {
                 name: f.name.clone(),
-                shape: self.resolve_inner(&f.c_type, depth + 1),
+                shape: self.resolve_inner(&f.c_type, depth + 1, memo),
                 c_type: f.c_type.clone(),
             })
             .collect()

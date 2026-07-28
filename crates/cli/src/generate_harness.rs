@@ -7588,6 +7588,30 @@ fn standalone_header_include_plan(
         }
     }
 
+    // Last: the OWNER translation unit. The diagnostic this function ends with
+    // says the header "likely depends on declarations or macro state established
+    // by an owning source file before inclusion" — so try that source. A header
+    // that cannot compile alone routinely compiles as part of the `.cpp` that
+    // owns it, which is the same move the C lane makes for a static target or a
+    // private handle, one step further out.
+    //
+    // `blocked_by_non_self_contained_header` was the largest C++ residual class
+    // in the 500-project sweep (49 report-only targets, plus 10 in C).
+    //
+    // Adopted only when it PREFLIGHT-COMPILES, so a wrong candidate is rejected
+    // rather than guessed at — which is what makes widening the search safe.
+    for owner in owner_sources_for_target(target, include_dirs) {
+        match preflight_header_includes(
+            std::slice::from_ref(&owner),
+            include_dirs,
+            compile_flags,
+            cpp,
+        ) {
+            HeaderPreflight::Passed => return Ok(vec![owner]),
+            HeaderPreflight::Failed(_) | HeaderPreflight::Unavailable => {}
+        }
+    }
+
     let diagnostic =
         match preflight_header_includes(direct_includes, include_dirs, compile_flags, cpp) {
             HeaderPreflight::Failed(diagnostic) => diagnostic,
@@ -7732,31 +7756,89 @@ fn preflight_header_includes(
 /// target header. Returning spellings relative to an actual include root means
 /// the exact string proven here is the one emitted in the harness.
 fn umbrella_headers_for_target(target: &Path, include_dirs: &[PathBuf]) -> Vec<String> {
-    fn collect(dir: &Path, depth: usize, remaining: &mut usize, out: &mut Vec<PathBuf>) {
-        if depth > 3 || *remaining == 0 {
+    files_including_target(target, include_dirs, is_c_family_header)
+}
+
+/// Source translation units that `#include` `target`, ranked like the umbrella
+/// headers are. A header that cannot compile standalone often can compile as part
+/// of the TU that owns it, which is what the caller falls back to.
+///
+/// A candidate defining `main` is excluded: the harness has its own, and the C++
+/// template (unlike the C one) does not rename an included TU's `main`.
+fn owner_sources_for_target(target: &Path, include_dirs: &[PathBuf]) -> Vec<String> {
+    files_including_target(target, include_dirs, |path| {
+        if !is_c_family_source(path) {
+            return false;
+        }
+        crate::source_text::read_source_text(path)
+            .map(|text| !defines_a_main(&text))
+            .unwrap_or(false)
+    })
+}
+
+/// Whether `text` defines `int main(...)` at file scope. Deliberately crude: it
+/// only has to be good enough to keep an obvious program entry point out of the
+/// candidate list, and the preflight compile rejects anything it lets through.
+fn defines_a_main(text: &str) -> bool {
+    text.lines().any(|line| {
+        let line = line.trim_start();
+        (line.starts_with("int main") || line.starts_with("int main(")) && line.contains('(')
+    })
+}
+
+fn is_c_family_source(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            matches!(
+                ext.to_ascii_lowercase().as_str(),
+                "c" | "cc" | "cpp" | "cxx" | "c++"
+            )
+        })
+}
+
+fn collect_candidate_files(
+    dir: &Path,
+    depth: usize,
+    remaining: &mut usize,
+    out: &mut Vec<PathBuf>,
+    want: &impl Fn(&Path) -> bool,
+) {
+    if depth > 3 || *remaining == 0 {
+        return;
+    }
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut entries = entries.flatten().collect::<Vec<_>>();
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        if *remaining == 0 {
             return;
         }
-        let Ok(entries) = fs::read_dir(dir) else {
-            return;
-        };
-        let mut entries = entries.flatten().collect::<Vec<_>>();
-        entries.sort_by_key(|entry| entry.file_name());
-        for entry in entries {
-            if *remaining == 0 {
-                return;
+        let path = entry.path();
+        if path.is_dir() {
+            if !entry.file_name().to_string_lossy().starts_with('.') {
+                collect_candidate_files(&path, depth + 1, remaining, out, want);
             }
-            let path = entry.path();
-            if path.is_dir() {
-                if !entry.file_name().to_string_lossy().starts_with('.') {
-                    collect(&path, depth + 1, remaining, out);
-                }
-            } else if is_c_family_header(&path) {
-                *remaining -= 1;
-                out.push(path);
-            }
+        } else if want(&path) {
+            *remaining -= 1;
+            out.push(path);
         }
     }
+}
 
+/// The shared walk behind [`umbrella_headers_for_target`] and
+/// [`owner_sources_for_target`]: files under the include dirs that directly
+/// `#include` `target`, nearest first.
+fn files_including_target(
+    target: &Path,
+    include_dirs: &[PathBuf],
+    want: impl Fn(&Path) -> bool,
+) -> Vec<String> {
+    let collect = |dir: &Path, depth: usize, remaining: &mut usize, out: &mut Vec<PathBuf>| {
+        collect_candidate_files(dir, depth, remaining, out, &want)
+    };
     let target_key = normalized_path_key(target);
     let mut matches = Vec::<(usize, String)>::new();
     let mut seen = HashSet::new();

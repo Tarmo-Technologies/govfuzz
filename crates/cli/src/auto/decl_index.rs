@@ -139,6 +139,13 @@ pub struct DeclarationIndex {
     /// struct for a type already fully defined in a source that the build compiles
     /// (libsodium/ngtcp2/blake3 `output_t`), which would be a redefinition.
     source_type_names: HashSet<String>,
+    /// Enumerator names defined anywhere in the tree, INCLUDING inside compiled
+    /// `.c`/`.cpp` sources (which `c_type_defs` — headers only — omits) and
+    /// including the members of anonymous enums, which have no type name to key
+    /// on. Purely for collision detection, like `source_type_names`: the repair
+    /// loop must never `#define` a name the project already defines as an
+    /// enumerator. See `DeclIndex::defines_enumerator`.
+    enumerator_names: HashSet<String>,
     /// Leaf names of C++ classes/structs/unions that appear (declared, forward-
     /// declared, or defined) in any HEADER (`.h`/`.hpp`/`.hh`/`.hxx`/…) in the
     /// tree. A member of such a class is reachable from a harness that `#include`s
@@ -356,6 +363,9 @@ impl DeclarationIndex {
                         for t in &defs.typedefs {
                             self.source_type_names.insert(t.name.clone());
                         }
+                        for e in &defs.enums {
+                            self.enumerator_names.extend(e.members.iter().cloned());
+                        }
                     }
                 } else {
                     if cpp_source_uses_module_unit(&source) {
@@ -424,6 +434,7 @@ impl DeclarationIndex {
             .merge(recovered.c_source_scalar_type_defs.as_ref().clone());
         merge_vec_map(&mut self.header_paths, recovered.header_paths);
         self.source_type_names.extend(recovered.source_type_names);
+        self.enumerator_names.extend(recovered.enumerator_names);
         self.cpp_header_class_names
             .extend(recovered.cpp_header_class_names);
         self.cpp_source_class_names
@@ -657,6 +668,9 @@ impl DeclarationIndex {
                                     headers.push(entry.clone());
                                 }
                             }
+                            for e in &defs.enums {
+                                idx.enumerator_names.extend(e.members.iter().cloned());
+                            }
                             for t in &defs.typedefs {
                                 idx.source_type_names.insert(t.name.clone());
                                 let headers = idx
@@ -742,6 +756,9 @@ impl DeclarationIndex {
                             for t in &defs.typedefs {
                                 idx.source_type_names.insert(t.name.clone());
                             }
+                            for e in &defs.enums {
+                                idx.enumerator_names.extend(e.members.iter().cloned());
+                            }
                             c_source_scalar_type_defs.typedefs.extend(defs.typedefs);
                         }
                         // Also index file-scope global VARIABLE definitions so a
@@ -764,6 +781,15 @@ impl DeclarationIndex {
                             continue;
                         }
                         cpp_sources.push((entry.clone(), quoted_includes(&source)));
+                        // Enumerators only — `cpp_type_defs` stays headers-only by
+                        // design (a source-local type is not necessarily public),
+                        // but the repair loop still must not `#define` over an
+                        // enumerator this TU defines. See `defines_enumerator`.
+                        if let Ok(defs) = cpp_parser::parse_cpp_type_defs(&source) {
+                            for e in &defs.enums {
+                                idx.enumerator_names.extend(e.members.iter().cloned());
+                            }
+                        }
                     } else {
                         if let Ok(defs) = cpp_parser::parse_cpp_type_defs(&source) {
                             cpp_type_defs.merge(defs);
@@ -893,6 +919,26 @@ impl DeclarationIndex {
     /// target itself.
     pub fn defines_function(&self, name: &str) -> bool {
         self.c_definitions.contains_key(name) || self.cpp_definitions.contains_key(name)
+    }
+
+    /// Whether the tree defines `name` as an ENUMERATOR, in either language.
+    ///
+    /// Same hazard as [`Self::defines_function`], one construct over. A macro is
+    /// force-included ahead of every translation unit, so `#define ScannerLimit 1`
+    /// rewrites the enum's own definition —
+    ///
+    ///   enum : std::size_t { ScannerLimit = 4 };  ->  enum : std::size_t { 1 = 4 };
+    ///
+    /// — which fails to parse ("expected identifier"). The name was never missing
+    /// from the project; it was merely not visible in the harness translation unit,
+    /// and defining it destroys the real declaration for every TU that had it.
+    pub fn defines_enumerator(&self, name: &str) -> bool {
+        self.enumerator_names.contains(name)
+            || [&self.c_type_defs, &self.cpp_type_defs].iter().any(|defs| {
+                defs.enums
+                    .iter()
+                    .any(|def| def.members.iter().any(|member| member == name))
+            })
     }
 
     /// Resolve a `#include` spelling (bare `cfe_error.h` or sub-pathed

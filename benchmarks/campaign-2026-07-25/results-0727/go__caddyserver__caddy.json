@@ -1,0 +1,230 @@
+{
+ "lane": "go",
+ "repo": "caddyserver/caddy",
+ "stars": 74363,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/caddyserver__caddy --json --out /home/ubuntu/govfuzz-sweep-work/go__caddyserver__caddy.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 72872,
+   "sloc_by_lang": {
+    "go": 71244,
+    "config": 1624,
+    "php": 3,
+    "javascript": 1
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/caddyserver__caddy --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/caddyserver__caddy --out /home/ubuntu/govfuzz-sweep-work/go__caddyserver__caddy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.27,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 48,
+   "by_severity": {
+    "critical": 1,
+    "high": 39,
+    "medium": 8
+   },
+   "top_rules": {
+    "GF-405": 30,
+    "GF-427": 5,
+    "GF-422": 5,
+    "GF-423": 2,
+    "GF-429": 1,
+    "GF-544": 1,
+    "GF-436": 1,
+    "GF-426": 1,
+    "GF-507": 1,
+    "GF-548": 1
+   },
+   "gaps": 236
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/caddyserver__caddy --out /home/ubuntu/govfuzz-sweep-work/go__caddyserver__caddy/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 222
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/caddyserver__caddy --work-dir /home/ubuntu/govfuzz-sweep-work/go__caddyserver__caddy --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 4.46,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1172,
+    "dropped_by_cap": 1162,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 10,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "FuzzParseNetworkAddress",
+     "source": "listeners_fuzz.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FuzzParseDuration",
+     "source": "duration_fuzz.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FuzzParseAddress",
+     "source": "addresses_fuzz.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FuzzTokenize",
+     "source": "lexer_fuzz.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Parse",
+     "source": "parse.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadConfig",
+     "source": "main.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeHash",
+     "source": "argon2id.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Load",
+     "source": "caddy.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseAddress",
+     "source": "addresses.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseDuration",
+     "source": "caddy.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 10,
+     "detail": "go build failed: go.mod:N: require github.com/caddyserver/caddy/v2: version \"X\" invalid: should be v2, not v0",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "c96bca12693419ac5be751a0cbbae2c3cbf89c58",
+ "clone_s": 1.1,
+ "lane_check": "go: 322 files / 89762 lines; top=go(89762)",
+ "status": "done"
+}

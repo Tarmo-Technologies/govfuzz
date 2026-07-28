@@ -1,0 +1,175 @@
+{
+ "lane": "java",
+ "repo": "spring-projects/spring-framework",
+ "stars": 60139,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/spring-projects__spring-framework --json --out /home/ubuntu/govfuzz-sweep-work/java__spring-projects__spring-framework.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.39,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 855163,
+   "sloc_by_lang": {
+    "java": 853735,
+    "config": 1378,
+    "ruby": 32,
+    "javascript": 10,
+    "python": 8
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/spring-projects__spring-framework --format json --top 100000",
+   "exit": 0,
+   "wall_s": 15.67,
+   "timed_out": false,
+   "panic": false,
+   "count": 26411,
+   "by_language": {
+    "java": 26411
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/spring-projects__spring-framework --out /home/ubuntu/govfuzz-sweep-work/java__spring-projects__spring-framework/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 63.53,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 94,
+   "by_severity": {
+    "medium": 54,
+    "high": 34,
+    "critical": 6
+   },
+   "top_rules": {
+    "GF-544": 25,
+    "GF-421": 16,
+    "GF-548": 14,
+    "GF-500": 11,
+    "GF-551": 7,
+    "GF-419": 4,
+    "GF-436": 4,
+    "GF-405": 4,
+    "GF-427": 3,
+    "GF-404": 2,
+    "GF-426": 2,
+    "GF-439": 2
+   },
+   "gaps": 3521
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/spring-projects__spring-framework --out /home/ubuntu/govfuzz-sweep-work/java__spring-projects__spring-framework/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 26
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/spring-projects__spring-framework --work-dir /home/ubuntu/govfuzz-sweep-work/java__spring-projects__spring-framework --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 100.12,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 20690,
+    "dropped_by_cap": 20686,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loadClass",
+     "source": "ReflectUtils.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'loadClass' parameter #1 has an unsupported type `ClassLoader`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TemplateParserContext",
+     "source": "TemplateParserContext.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "VirtualThreadTaskExecutor",
+     "source": "VirtualThreadTaskExecutor.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SpringTemplateLoader",
+     "source": "SpringTemplateLoader.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'SpringTemplateLoader' parameter #0 has an unsupported type `ResourceLoader`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "unnamed variables are a preview feature and are disabled by default.",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "16d9965fe3f1a9796a349543a9a48f65d629ef16",
+ "clone_s": 7.4,
+ "lane_check": "java: 9177 files / 1271343 lines; top=java(1271343)",
+ "status": "done"
+}

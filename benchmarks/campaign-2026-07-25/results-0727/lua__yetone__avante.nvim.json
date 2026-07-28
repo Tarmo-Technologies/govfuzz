@@ -1,0 +1,255 @@
+{
+ "lane": "lua",
+ "repo": "yetone/avante.nvim",
+ "stars": 18073,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/yetone__avante.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__yetone__avante.nvim.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 31770,
+   "sloc_by_lang": {
+    "lua": 27353,
+    "rust": 2205,
+    "python": 1710,
+    "config": 502
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/yetone__avante.nvim --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 2,
+   "by_language": {
+    "rust": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/yetone__avante.nvim --out /home/ubuntu/govfuzz-sweep-work/lua__yetone__avante.nvim/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.34,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 31,
+   "by_severity": {
+    "medium": 12,
+    "high": 11,
+    "low": 4,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-472": 10,
+    "GF-500": 5,
+    "GF-553": 4,
+    "GF-544": 4,
+    "GF-429": 4,
+    "GF-497": 2,
+    "GF-477": 1,
+    "GF-475": 1
+   },
+   "gaps": 27
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/yetone__avante.nvim --out /home/ubuntu/govfuzz-sweep-work/lua__yetone__avante.nvim/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 513
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/yetone__avante.nvim --work-dir /home/ubuntu/govfuzz-sweep-work/lua__yetone__avante.nvim --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 35.94,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 550,
+    "dropped_by_cap": 540,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse_positive_int",
+     "source": "main.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `main` is not loadable (skipped cleanly): ImportError: cannot import name 'ReadableLogRecord' from 'opentelemetry.sdk._logs' (/home/ubuntu/.local/lib/python3.12/site-packages/opentelemetry/sdk/_logs/__init__.py)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACPClient:_debug_log",
+     "source": "acp_client.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACPClient:_debug_log` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/yetone__avante.nvim/lua/avante/utils/init.lua:5: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACPClient:_create_error",
+     "source": "acp_client.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACPClient:_create_error` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/yetone__avante.nvim/lua/avante/utils/init.lua:5: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACPClient:_handle_message",
+     "source": "acp_client.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACPClient:_handle_message` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/yetone__avante.nvim/lua/avante/utils/init.lua:5: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACPClient:_convert_legacy_session_fields",
+     "source": "acp_client.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACPClient:_convert_legacy_session_fields` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/yetone__avante.nvim/lua/avante/utils/init.lua:5: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "initialize_embed_model",
+     "source": "openai_like.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `providers.openai_like` is not loadable (skipped cleanly): missing module `llama_index` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'llama_index'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fetch_markdown",
+     "source": "main.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `main` is not loadable (skipped cleanly): ImportError: cannot import name 'ReadableLogRecord' from 'opentelemetry.sdk._logs' (/home/ubuntu/.local/lib/python3.12/site-packages/opentelemetry/sdk/_logs/__init__.py)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clean_text",
+     "source": "main.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `main` is not loadable (skipped cleanly): ImportError: cannot import name 'ReadableLogRecord' from 'opentelemetry.sdk._logs' (/home/ubuntu/.local/lib/python3.12/site-packages/opentelemetry/sdk/_logs/__init__.py)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_definitions_string",
+     "source": "lib.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fmt",
+     "source": "lib.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'fmt' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "target \"X\" is not loadable (skipped cleanly): /usr/bin/lua: ...us-N/lua/yetone__avante.nvim/lua/avante/utils/init.lua:N: attempt to index a nil value (global \"X\u2026",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): ImportError: cannot import name \"X\" from \"X\" (/home/ubuntu/.local/lib/python3.N/site-packages/opentelemetry/sdk/_l\u2026",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: error: You can enable only one of the features: lua54, lua53, lua52, lua51, luajit, luajit52, luau",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "d8dd379113a799ebc0f11292b6e7d8d7bab715ed",
+ "clone_s": 0.8,
+ "lane_check": "lua: 129 files / 32643 lines; top=lua(32643)",
+ "status": "done"
+}

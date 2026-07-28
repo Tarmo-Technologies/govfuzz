@@ -1,0 +1,273 @@
+{
+ "lane": "rust",
+ "repo": "spacedriveapp/spacedrive",
+ "stars": 38650,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/spacedriveapp__spacedrive --json --out /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 245169,
+   "sloc_by_lang": {
+    "rust": 183811,
+    "javascript": 57900,
+    "python": 1919,
+    "config": 1539,
+    "c": 0
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/spacedriveapp__spacedrive --format json --top 100000",
+   "exit": 0,
+   "wall_s": 4.47,
+   "timed_out": false,
+   "panic": false,
+   "count": 5007,
+   "by_language": {
+    "rust": 5007
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/spacedriveapp__spacedrive --out /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 62.16,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 104,
+   "by_severity": {
+    "high": 27,
+    "medium": 8,
+    "low": 67,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-553": 59,
+    "GF-472": 22,
+    "GF-546": 8,
+    "GF-500": 6,
+    "GF-552": 3,
+    "GF-477": 2,
+    "GF-404": 2,
+    "GF-475": 1,
+    "GF-405": 1
+   },
+   "gaps": 267
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/spacedriveapp__spacedrive --out /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive/sbom",
+   "exit": 0,
+   "wall_s": 0.93,
+   "timed_out": false,
+   "panic": false,
+   "components": 1860
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/spacedriveapp__spacedrive --work-dir /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 44.55,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 4689,
+    "dropped_by_cap": 4679,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "load_json",
+     "source": "sync.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 369.88212263621915,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decode_header",
+     "source": "sync.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 262.71288940241357,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_date",
+     "source": "sync.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 413.4721113347206,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_ios_deps",
+     "source": "native_deps.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&Path' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_android_deps",
+     "source": "native_deps.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&Path' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "base64_decode",
+     "source": "cookie.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "babel.config.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 248.7698692960842,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "spawn.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.9455263680505783,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Breadcrumb",
+     "source": "Breadcrumb.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive/harnesses/H-T0031-C58A3619/target.js` is not loadable (skipped cleanly): missing module `clsx` (not in the project and not installed) \u2014 Error: Cannot find module 'clsx'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AudioPlayer",
+     "source": "AudioPlayer.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive/harnesses/H-T0043-8C55CABE/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: error: failed to select a version for the requirement \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-670dcb87",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0009-F2DA3CD8"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive/findings --out /home/ubuntu/govfuzz-sweep-work/rust__spacedriveapp__spacedrive/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "60369e9f00b5abe07f4518626bf36f6a7453476f",
+ "clone_s": 6.2,
+ "lane_check": "rust: 1166 files / 209259 lines; top=rust(209259)",
+ "status": "done"
+}

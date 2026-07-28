@@ -1,0 +1,80 @@
+{
+ "lane": "cpp",
+ "repo": "microsoft/winget-cli",
+ "stars": 26232,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 203490,
+   "sloc_by_lang": {
+    "cpp": 143252,
+    "csharp": 39731,
+    "config": 15644,
+    "c": 3716,
+    "javascript": 1147
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli --format json --top 100000",
+   "exit": 0,
+   "wall_s": 8.88,
+   "timed_out": false,
+   "panic": false,
+   "count": 6117,
+   "by_language": {
+    "cpp": 6044,
+    "c": 73
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.49,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 14,
+   "by_severity": {
+    "high": 7,
+    "medium": 5,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-472": 3,
+    "GF-424": 3,
+    "GF-500": 2,
+    "GF-405": 2,
+    "GF-429": 2,
+    "GF-407": 2
+   },
+   "gaps": 14
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli/sbom",
+   "exit": 0,
+   "wall_s": 0.34,
+   "timed_out": false,
+   "panic": false,
+   "components": 355
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 49.29,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/samples/WinGetUWPCaller/WinGetUWPCaller/App.idl: expected declaration, found 'namespace' at line 1, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/samples/WinGetUWPCaller/WinGetUWPCaller/MainPage.idl: unexpected character '.' at line 6, column 45\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/src/Microsoft.Management.Configuration/Microsoft.Management.Configuration.idl: unexpected character '.' at line 3, column 20\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/src/Microsoft.Management.Deployment/PackageManager.idl: unexpected character '.' at line 3, column 20\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/src/WinGetServer/WinGetServer.idl: expected ';' at line 17, column 2\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/tools/SampleWinGetUWPCaller/AppInstallerCaller/App.idl: expected declaration, found 'namespace' at line 1, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli/tools/SampleWinGetUWPCaller/AppInstallerCaller/MainPage.idl: unexpected character '.' at line 6, column 49\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__winget-cli\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__winget-cli/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint ef055fc677387111-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "12dad5ca26ddfe4e64be3f68eb31a54389162ce4",
+ "clone_s": 2.3,
+ "lane_check": "cpp: 521 files / 128541 lines; top=cpp(128541)",
+ "status": "done"
+}

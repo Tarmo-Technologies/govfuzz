@@ -1,0 +1,66 @@
+{
+ "lane": "c",
+ "repo": "DeusData/codebase-memory-mcp",
+ "stars": 35355,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --json --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 3.58,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 37989991,
+   "sloc_by_lang": {
+    "c": 37885876,
+    "cpp": 86450,
+    "python": 7168,
+    "javascript": 6730,
+    "config": 2669,
+    "go": 1056,
+    "ruby": 42
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --format json --top 100000",
+   "exit": 0,
+   "wall_s": 405.88,
+   "timed_out": false,
+   "panic": false,
+   "count": 27130,
+   "by_language": {
+    "c": 26230,
+    "cpp": 900
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 1,
+   "wall_s": 7.57,
+   "timed_out": false,
+   "panic": false,
+   "sarif": false
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --out /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp/sbom",
+   "exit": 0,
+   "wall_s": 1.78,
+   "timed_out": false,
+   "panic": false,
+   "components": 422
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/DeusData__codebase-memory-mcp --work-dir /home/ubuntu/govfuzz-sweep-work/c__DeusData__codebase-memory-mcp --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.85,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "0abd5c6f9ba80371417b5be968c4dade4a2c589a",
+ "clone_s": 24.0,
+ "lane_check": "c: 822 files / 37960904 lines; top=c(37960904)",
+ "status": "done"
+}

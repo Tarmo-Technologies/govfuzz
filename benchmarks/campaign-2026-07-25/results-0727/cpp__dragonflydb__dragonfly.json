@@ -1,0 +1,91 @@
+{
+ "lane": "cpp",
+ "repo": "dragonflydb/dragonfly",
+ "stars": 30913,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --json --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 207176,
+   "sloc_by_lang": {
+    "cpp": 154369,
+    "python": 30020,
+    "c": 14454,
+    "config": 6885,
+    "go": 1049,
+    "lua": 399
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --format json --top 100000",
+   "exit": 0,
+   "wall_s": 16.7,
+   "timed_out": false,
+   "panic": false,
+   "count": 8547,
+   "by_language": {
+    "cpp": 7953,
+    "c": 594
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 7.07,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 236,
+   "by_severity": {
+    "medium": 111,
+    "high": 68,
+    "critical": 9,
+    "low": 48
+   },
+   "top_rules": {
+    "GF-424": 53,
+    "GF-546": 48,
+    "GF-472": 31,
+    "GF-497": 19,
+    "GF-500": 18,
+    "GF-403": 10,
+    "GF-407": 8,
+    "GF-408": 6,
+    "GF-406": 6,
+    "GF-405": 5,
+    "GF-477": 5,
+    "GF-478": 4,
+    "GF-429": 4,
+    "GF-404": 4,
+    "GF-503": 3
+   },
+   "gaps": 193
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --out /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/sbom",
+   "exit": 0,
+   "wall_s": 0.31,
+   "timed_out": false,
+   "panic": false,
+   "components": 270
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 54.43,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/dragonflydb__dragonfly\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__dragonflydb__dragonfly/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 31afbb4f2a33ea43-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "ed8b25bfa7941ea69a0b01d94ec6d7067a9ae3f6",
+ "clone_s": 1.6,
+ "lane_check": "cpp: 268 files / 143589 lines; top=cpp(143589)",
+ "status": "done"
+}

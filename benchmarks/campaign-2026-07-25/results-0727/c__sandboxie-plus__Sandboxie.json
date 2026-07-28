@@ -1,0 +1,297 @@
+{
+ "lane": "c",
+ "repo": "sandboxie-plus/Sandboxie",
+ "stars": 19004,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/sandboxie-plus__Sandboxie --json --out /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 550722,
+   "sloc_by_lang": {
+    "javascript": 296126,
+    "cpp": 135722,
+    "c": 117325,
+    "config": 1549
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/sandboxie-plus__Sandboxie --format json --top 100000",
+   "exit": 0,
+   "wall_s": 14.26,
+   "timed_out": false,
+   "panic": false,
+   "count": 8199,
+   "by_language": {
+    "c": 2825,
+    "cpp": 5374
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/sandboxie-plus__Sandboxie --out /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 124.63,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 99,
+   "by_severity": {
+    "high": 83,
+    "critical": 3,
+    "medium": 13
+   },
+   "top_rules": {
+    "GF-405": 50,
+    "GF-401": 16,
+    "GF-472": 11,
+    "GF-424": 11,
+    "GF-403": 5,
+    "GF-404": 3,
+    "GF-406": 2,
+    "GF-507": 1
+   },
+   "gaps": 13
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/sandboxie-plus__Sandboxie --out /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie/sbom",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "components": 8
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/sandboxie-plus__Sandboxie --work-dir /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 201.84,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 4726,
+    "dropped_by_cap": 4716,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 4
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 3,
+    "synthesized_macros": 4,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Proc_CreateProcessInternalW",
+     "source": "proc.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'hToken' of type 'HANDLE' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'hToken' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WSA_connect",
+     "source": "net.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'SOCKET' has no byte-buffer decoder after struct synthesis: opaque type 'SOCKET' for parameter 's' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WSA_WSAConnect",
+     "source": "net.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'SOCKET' has no byte-buffer decoder after struct synthesis: opaque type 'SOCKET' for parameter 's' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WSA_ConnectEx",
+     "source": "net.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'SOCKET' has no byte-buffer decoder after struct synthesis: opaque type 'SOCKET' for parameter 's' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Process_CreateForceData",
+     "source": "process_force.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'boxes' of type 'LIST *' has no byte-buffer decoder after struct synthesis: opaque handle 'LIST' for parameter 'boxes' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MountManager::AcquireBoxRoot",
+     "source": "MountManager.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ComServer::RunSlave",
+     "source": "comserver.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CCryptoIO::SetData",
+     "source": "CryptoIO.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'CCryptoIO' to harness 'SetData': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CCryptoIO' was found. Add a small wrapper or factory harness that constructs the object and calls 'SetData', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'CCryptoIO' to harness 'SetData': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'CCryptoIO' was found. Add a small wrapper or factory harness that constructs the object and calls 'SetData', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "C7zFileEngine::read",
+     "source": "ArchiveFS.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'C7zFileEngine::read' return type 'qint64' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "C7zFileEngine::readLine",
+     "source": "ArchiveFS.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'C7zFileEngine::readLine' return type 'qint64' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing type",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-405-510B445A",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X011A-B1B7A6F1"
+    },
+    {
+     "id": "F-RO-GF-405-54BF28D1",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X011A-B1B7A6F1"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie/findings --out /home/ubuntu/govfuzz-sweep-work/c__sandboxie-plus__Sandboxie/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "592f4ace9d39d9f70873cfe4b4cfd2f6dcb7132b",
+ "clone_s": 2.5,
+ "lane_check": "c: 199 files / 135169 lines; top=ts(295623)",
+ "status": "done"
+}

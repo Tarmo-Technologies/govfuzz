@@ -1,0 +1,219 @@
+{
+ "lane": "js",
+ "repo": "expressjs/express",
+ "stars": 69249,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/expressjs__express --json --out /home/ubuntu/govfuzz-sweep-work/js__expressjs__express.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 16066,
+   "sloc_by_lang": {
+    "javascript": 15788,
+    "config": 278
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/expressjs__express --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/expressjs__express --out /home/ubuntu/govfuzz-sweep-work/js__expressjs__express/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.57,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 5,
+   "by_severity": {
+    "medium": 4,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-442": 4,
+    "GF-509": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/expressjs__express --out /home/ubuntu/govfuzz-sweep-work/js__expressjs__express/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 45
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/expressjs__express --work-dir /home/ubuntu/govfuzz-sweep-work/js__expressjs__express --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 3.29,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 29,
+    "dropped_by_cap": 19,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "default",
+     "source": "view.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/view.js` is not loadable (skipped cleanly): missing module `debug` (not in the project and not installed) \u2014 Error: Cannot find module 'debug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compileETag",
+     "source": "utils.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/utils.js` is not loadable (skipped cleanly): missing module `content-type` (not in the project and not installed) \u2014 Error: Cannot find module 'content-type'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compileQueryParser",
+     "source": "utils.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/utils.js` is not loadable (skipped cleanly): missing module `content-type` (not in the project and not installed) \u2014 Error: Cannot find module 'content-type'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "acceptsCharsets",
+     "source": "request.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/request.js` is not loadable (skipped cleanly): missing module `accepts` (not in the project and not installed) \u2014 Error: Cannot find module 'accepts'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "acceptsLanguages",
+     "source": "request.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/request.js` is not loadable (skipped cleanly): missing module `accepts` (not in the project and not installed) \u2014 Error: Cannot find module 'accepts'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compileTrust",
+     "source": "utils.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/utils.js` is not loadable (skipped cleanly): missing module `content-type` (not in the project and not installed) \u2014 Error: Cannot find module 'content-type'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "attachment",
+     "source": "response.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/response.js` is not loadable (skipped cleanly): missing module `content-disposition` (not in the project and not installed) \u2014 Error: Cannot find module 'content-disposition'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "append",
+     "source": "response.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/response.js` is not loadable (skipped cleanly): missing module `content-disposition` (not in the project and not installed) \u2014 Error: Cannot find module 'content-disposition'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clearCookie",
+     "source": "response.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/response.js` is not loadable (skipped cleanly): missing module `content-disposition` (not in the project and not installed) \u2014 Error: Cannot find module 'content-disposition'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cookie",
+     "source": "response.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/expressjs__express/lib/response.js` is not loadable (skipped cleanly): missing module `content-disposition` (not in the project and not installed) \u2014 Error: Cannot find module 'content-disposition'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "a3714473feb3d2908add734d340e7755fd85e0a3",
+ "clone_s": 0.7,
+ "lane_check": "js: 141 files / 17541 lines; top=js(17541)",
+ "status": "done"
+}

@@ -1,0 +1,92 @@
+{
+ "lane": "cpp",
+ "repo": "facebook/folly",
+ "stars": 30474,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/facebook__folly --json --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 473697,
+   "sloc_by_lang": {
+    "cpp": 464549,
+    "rust": 4424,
+    "python": 2581,
+    "c": 1306,
+    "config": 765,
+    "ruby": 72
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/facebook__folly --format json --top 100000",
+   "exit": 0,
+   "wall_s": 81.64,
+   "timed_out": false,
+   "panic": false,
+   "count": 20547,
+   "by_language": {
+    "cpp": 20255,
+    "rust": 285,
+    "c": 7
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/facebook__folly --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.72,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 326,
+   "by_severity": {
+    "high": 86,
+    "medium": 230,
+    "critical": 7,
+    "low": 3
+   },
+   "top_rules": {
+    "GF-424": 172,
+    "GF-405": 48,
+    "GF-406": 40,
+    "GF-472": 15,
+    "GF-425": 9,
+    "GF-401": 8,
+    "GF-404": 5,
+    "GF-422": 5,
+    "GF-500": 4,
+    "GF-549": 4,
+    "GF-407": 4,
+    "GF-408": 4,
+    "GF-403": 3,
+    "GF-546": 3,
+    "GF-429": 2
+   },
+   "gaps": 274
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/facebook__folly --out /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly/sbom",
+   "exit": 0,
+   "wall_s": 1.64,
+   "timed_out": false,
+   "panic": false,
+   "components": 29
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/facebook__folly --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 69.31,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/facebook__folly\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__facebook__folly/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 7e850a8ba8dbefc9-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "e923aadc6888e8c390a28d4a12f65f7830cae59c",
+ "clone_s": 2.4,
+ "lane_check": "cpp: 1220 files / 338117 lines; top=cpp(338117)",
+ "status": "done"
+}

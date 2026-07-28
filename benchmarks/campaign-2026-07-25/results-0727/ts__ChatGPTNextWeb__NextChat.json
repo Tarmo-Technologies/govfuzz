@@ -1,0 +1,248 @@
+{
+ "lane": "ts",
+ "repo": "ChatGPTNextWeb/NextChat",
+ "stars": 88549,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat --json --out /home/ubuntu/govfuzz-sweep-work/ts__ChatGPTNextWeb__NextChat.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 39268,
+   "sloc_by_lang": {
+    "javascript": 38521,
+    "config": 621,
+    "rust": 126
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 1,
+   "by_language": {
+    "rust": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat --out /home/ubuntu/govfuzz-sweep-work/ts__ChatGPTNextWeb__NextChat/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 20.08,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 25,
+   "by_severity": {
+    "high": 18,
+    "critical": 1,
+    "medium": 5,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-472": 13,
+    "GF-474": 4,
+    "GF-500": 3,
+    "GF-471": 1,
+    "GF-494": 1,
+    "GF-477": 1,
+    "GF-428": 1,
+    "GF-553": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat --out /home/ubuntu/govfuzz-sweep-work/ts__ChatGPTNextWeb__NextChat/sbom",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "components": 1612
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat --work-dir /home/ubuntu/govfuzz-sweep-work/ts__ChatGPTNextWeb__NextChat --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 9.9,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 98,
+    "dropped_by_cap": 88,
+    "built": 2,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Ai302Api#path",
+     "source": "ai302.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/ai302.ts: \u2718 [ERROR] No loader is configured for \".png\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/chatgpt.png",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Ai302Api#extractMessage",
+     "source": "ai302.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/ai302.ts: \u2718 [ERROR] No loader is configured for \".png\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/chatgpt.png",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ClaudeApi#extractMessage",
+     "source": "anthropic.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/anthropic.ts: \u2718 [ERROR] No loader is configured for \".png\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/chatgpt.png",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChatGPTApi#path",
+     "source": "openai.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/openai.ts: \u2718 [ERROR] No loader is configured for \".png\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/chatgpt.png",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AudioHandler#playChunk",
+     "source": "audio.ts",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChatGLMApi#path",
+     "source": "glm.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/glm.ts: \u2718 [ERROR] No loader is configured for \".svg\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/llm-icons/chatglm.svg",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChatGPTApi#extractMessage",
+     "source": "openai.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/openai.ts: \u2718 [ERROR] No loader is configured for \".svg\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/llm-icons/chatglm.svg",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChatGLMApi#extractMessage",
+     "source": "glm.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/client/platforms/glm.ts: \u2718 [ERROR] No loader is configured for \".png\" files: ../../govfuzz-corpus-500/ts/ChatGPTNextWeb__NextChat/app/icons/chatgpt.png",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AudioHandler#_saveData",
+     "source": "audio.ts",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "stream_fetch",
+     "source": "stream.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'tauri::Window' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/ChatGPTNextWeb__NextChat/app/icons/chatgpt.png",
+     "language": "typescript"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 2,
+     "detail": "built, no fuzz pass ran",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "\u2718 [ERROR] No loader is configured for \"X\" files: ../../govfuzz-corpus-N/ts/ChatGPTNextWeb__NextChat/app/icons/llm-icons/chatglm.svg",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "706a18b95b714ab29b2a4842d3b9ff4f887935d5",
+ "clone_s": 1.2,
+ "lane_check": "ts: 183 files / 39540 lines; top=ts(39540)",
+ "status": "done"
+}

@@ -1,0 +1,209 @@
+{
+ "lane": "rust",
+ "repo": "typst/typst",
+ "stars": 55099,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/typst__typst --json --out /home/ubuntu/govfuzz-sweep-work/rust__typst__typst.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 107590,
+   "sloc_by_lang": {
+    "rust": 105188,
+    "javascript": 1933,
+    "config": 469
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/typst__typst --format json --top 100000",
+   "exit": 0,
+   "wall_s": 6.17,
+   "timed_out": false,
+   "panic": false,
+   "count": 4509,
+   "by_language": {
+    "rust": 4509
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/typst__typst --out /home/ubuntu/govfuzz-sweep-work/rust__typst__typst/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 8.84,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 36,
+   "by_severity": {
+    "medium": 3,
+    "low": 27,
+    "high": 6
+   },
+   "top_rules": {
+    "GF-553": 27,
+    "GF-552": 6,
+    "GF-477": 3
+   },
+   "gaps": 32
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/typst__typst --out /home/ubuntu/govfuzz-sweep-work/rust__typst__typst/sbom",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "components": 431
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/typst__typst --work-dir /home/ubuntu/govfuzz-sweep-work/rust__typst__typst --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 216.8,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 7,
+    "discovered_total": 4279,
+    "dropped_by_cap": 4272,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "from_bytes",
+     "source": "tag.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&[u8; 4]' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_bytes_lossy",
+     "source": "tag.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `typst-assets`, `typst-macros`, `typst-syntax`, `typst-timing`, `typst-utils`, `arrayvec`, `az`, `bitflags`, `bumpalo`, `ciborium`, `codex`, `comemo`, `csv`, `ecow`, `either`, `flate2`, `fontdb`, `glidesort`, `hayagriva`, `hayro-syntax`, `icu_properties`, `image`, `indexmap`, `kamadak-exif`, `kurbo`, `libm`, `lipsum`, `memchr`, `moxcms`, `palette`, `percent-encoding`, `phf`, `png`, `rayon`, `regex`, `regex-syntax`, `roxmltree`, `rust_decimal`, `rustc-hash`, `rustybuzz`, `serde`, `serde_json`, `serde_yaml`, `siphasher`, `smallvec`, `syntect`, `time`, `toml`, `ttf-parser`, `two-face`, `typed-arena`, `unicode-math-class`, `unicode-normalization`, `unicode-segmentation`, `unscanny`, `usvg`, `utf8_iter`, `wasmi`, `xmlwriter`, `typst-dev-assets` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_bytes",
+     "source": "float.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'Bytes' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_str",
+     "source": "util.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'from_str' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_bytes",
+     "source": "int.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'Bytes' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_str",
+     "source": "decimal.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_data",
+     "source": "bibliography.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&Bytes' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: Compiling wasmparser v0.N.N",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "in-crate build: target crate inherits \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\u2026",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "bc8de171e7a3f0dabc211ac36f76568ad804d53a",
+ "clone_s": 2.4,
+ "lane_check": "rust: 405 files / 140508 lines; top=rust(140508)",
+ "status": "done"
+}

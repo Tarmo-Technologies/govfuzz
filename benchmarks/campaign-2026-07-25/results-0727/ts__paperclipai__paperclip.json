@@ -1,0 +1,234 @@
+{
+ "lane": "ts",
+ "repo": "paperclipai/paperclip",
+ "stars": 74742,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/paperclipai__paperclip --json --out /home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.25,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 932737,
+   "sloc_by_lang": {
+    "javascript": 915948,
+    "config": 16706,
+    "go": 83
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/paperclipai__paperclip --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/paperclipai__paperclip --out /home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 318.66,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 91,
+   "by_severity": {
+    "high": 48,
+    "medium": 21,
+    "critical": 22
+   },
+   "top_rules": {
+    "GF-472": 28,
+    "GF-429": 21,
+    "GF-500": 11,
+    "GF-512": 6,
+    "GF-511": 6,
+    "GF-477": 5,
+    "GF-514": 3,
+    "GF-507": 2,
+    "GF-548": 2,
+    "GF-428": 2,
+    "GF-562": 1,
+    "GF-422": 1,
+    "GF-505": 1,
+    "GF-419": 1,
+    "GF-405": 1
+   },
+   "gaps": 10
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/paperclipai__paperclip --out /home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/sbom",
+   "exit": 0,
+   "wall_s": 0.37,
+   "timed_out": false,
+   "panic": false,
+   "components": 1583
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/paperclipai__paperclip --work-dir /home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 15.76,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1351,
+    "dropped_by_cap": 1341,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parseStdoutLine",
+     "source": "gateway-ui-parser.cjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 406.87525733547926,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parseStdoutLine",
+     "source": "ui-parser.cjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 115.57152772275917,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ArtifactGroupCard",
+     "source": "ArtifactGroupCard.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T0015-947B6F05/target.js` is not loadable (skipped cleanly): missing module `lucide-react` (not in the project and not installed) \u2014 Error: Cannot find module 'lucide-react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentIcon",
+     "source": "AgentIconPicker.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T0016-123A0D28/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentProperties",
+     "source": "AgentProperties.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T001D-CFFAC089/target.js` is not loadable (skipped cleanly): missing module `@tanstack/react-query` (not in the project and not installed) \u2014 Error: Cannot find module '@tanstack/react-query'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentSkillsTab",
+     "source": "AgentSkillsTab.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T001E-EE782593/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActivityRow",
+     "source": "ActivityRow.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T001F-D9FA01BF/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentIconPicker",
+     "source": "AgentIconPicker.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T0021-C119B95D/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentSecretAccessEditor",
+     "source": "AgentSecretAccessEditor.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T00AC-664F3D74/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentToolsTab",
+     "source": "AgentToolsTab.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__paperclipai__paperclip/harnesses/H-T00E5-47872DD1/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "030dd9d15c6b27fd9776a0e9b972c745323caea5",
+ "clone_s": 5.1,
+ "lane_check": "ts: 2947 files / 949803 lines; top=ts(949803)",
+ "status": "done"
+}

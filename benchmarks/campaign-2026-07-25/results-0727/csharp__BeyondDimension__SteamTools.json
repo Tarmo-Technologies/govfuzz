@@ -1,0 +1,237 @@
+{
+ "lane": "csharp",
+ "repo": "BeyondDimension/SteamTools",
+ "stars": 26280,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/BeyondDimension__SteamTools --json --out /home/ubuntu/govfuzz-sweep-work/csharp__BeyondDimension__SteamTools.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 70114,
+   "sloc_by_lang": {
+    "csharp": 69553,
+    "config": 561
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/BeyondDimension__SteamTools --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/BeyondDimension__SteamTools --out /home/ubuntu/govfuzz-sweep-work/csharp__BeyondDimension__SteamTools/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.67,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 10,
+   "by_severity": {
+    "high": 9,
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-472": 9,
+    "GF-500": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/BeyondDimension__SteamTools --out /home/ubuntu/govfuzz-sweep-work/csharp__BeyondDimension__SteamTools/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 107
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/BeyondDimension__SteamTools --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__BeyondDimension__SteamTools --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 48.78,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 46,
+    "dropped_by_cap": 36,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 8,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "BD.WTTS.PathHelper.RecursiveDelete",
+     "source": "PathHelper.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.RegexHelper.ExpandRegex",
+     "source": "RegexHelper.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.Logging.NSLoggerProvider.CreateLogger",
+     "source": "NSLoggerProvider.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `BD.WTTS.Logging.NSLoggerProvider.CreateLogger` needs a receiver, but `NSLoggerProvider` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.Diagnostics.StartWatchTrace.Record",
+     "source": "StartWatchTrace.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.Logging.OSLogLoggerProvider.CreateLogger",
+     "source": "OSLogLoggerProvider.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.JTokenHelper.ReadDict",
+     "source": "JTokenHelper.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.Models.ArchiSteamFarmCommandHistory.AddCommandToHistory",
+     "source": "ArchiSteamFarmCommandHistory.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.Models.PlatformAccount.RegJsonPath",
+     "source": "PlatformAccount.props.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.JTokenHelper.ReadRegJson",
+     "source": "JTokenHelper.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BD.WTTS.Models.PlatformAccount.CurrnetUserAdd",
+     "source": "PlatformAccount.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `BD.WTTS.Models.PlatformAccount.CurrnetUserAdd` needs a receiver, but `PlatformAccount` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "error NU1010: The following PackageReference items do not define a corresponding PackageVersion item: Microsoft.SourceLink.GitHub, AutoMapper, SharpZipLib, NLog\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error NU1010: The following PackageReference items do not define a corresponding PackageVersion item: Microsoft.SourceLink.GitHub, Avalonia. Projects using Cent\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an u\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "error NU1010: The following PackageReference items do not define a corresponding PackageVersion item: Microsoft.SourceLink.GitHub, BD.Common, Avalonia. Projects\u2026",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "c16ffa08e03b192d23ada290c4969e77f9201f3d",
+ "clone_s": 3.3,
+ "lane_check": "csharp: 933 files / 93527 lines; top=csharp(93527)",
+ "status": "done"
+}

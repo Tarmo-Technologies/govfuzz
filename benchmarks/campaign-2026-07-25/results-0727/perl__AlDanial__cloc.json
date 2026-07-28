@@ -1,0 +1,231 @@
+{
+ "lane": "perl",
+ "repo": "AlDanial/cloc",
+ "stars": 23336,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/AlDanial__cloc --json --out /home/ubuntu/govfuzz-sweep-work/perl__AlDanial__cloc.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 14,
+   "sloc_total": 15785,
+   "sloc_by_lang": {
+    "config": 11845,
+    "cpp": 1279,
+    "javascript": 626,
+    "python": 578,
+    "c": 435,
+    "fortran": 360,
+    "csharp": 192,
+    "java": 120,
+    "ruby": 110,
+    "perl": 94,
+    "go": 46,
+    "php": 38,
+    "cobol": 35,
+    "lua": 27
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/AlDanial__cloc --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "count": 64,
+   "by_language": {
+    "cpp": 33,
+    "java": 3,
+    "c": 28
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/AlDanial__cloc --out /home/ubuntu/govfuzz-sweep-work/perl__AlDanial__cloc/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.41,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 15,
+   "by_severity": {
+    "medium": 6,
+    "high": 3,
+    "low": 6
+   },
+   "top_rules": {
+    "GF-546": 6,
+    "GF-477": 4,
+    "GF-500": 2,
+    "GF-472": 2,
+    "GF-473": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/AlDanial__cloc --out /home/ubuntu/govfuzz-sweep-work/perl__AlDanial__cloc/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 2
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/AlDanial__cloc --work-dir /home/ubuntu/govfuzz-sweep-work/perl__AlDanial__cloc --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 57.67,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 380,
+    "dropped_by_cap": 370,
+    "built": 10,
+    "built_and_fuzzed": 10,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "main::find_preprocessor",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2533.4131581455836,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::find_preprocessor",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1970.4281581606904,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::can_read",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1916.8906057231816,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::can_read",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2650.521146403833,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::file_pairs_from_file",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1136.7887535441594,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::file_pairs_from_file",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1083.9131286983873,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::call_parse_civet",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2499.8071698745302,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::call_parse_civet",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1889.4110199086178,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::align_from_git",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 85.27723708558032,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::align_from_git",
+     "source": "cloc",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 101.9666009361836,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f2f5076fe0fe575a622754b4ec274d8b6ac60a2c",
+ "clone_s": 0.8,
+ "lane_check": "perl: 8 files / 3081 lines; top=perl(3081)",
+ "status": "done"
+}

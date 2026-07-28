@@ -1,0 +1,230 @@
+{
+ "lane": "java",
+ "repo": "ReactiveX/RxJava",
+ "stars": 48226,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/ReactiveX__RxJava --json --out /home/ubuntu/govfuzz-sweep-work/java__ReactiveX__RxJava.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 298456,
+   "sloc_by_lang": {
+    "java": 297837,
+    "config": 552,
+    "python": 67
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/ReactiveX__RxJava --format json --top 100000",
+   "exit": 0,
+   "wall_s": 3.55,
+   "timed_out": false,
+   "panic": false,
+   "count": 17449,
+   "by_language": {
+    "java": 17449
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/ReactiveX__RxJava --out /home/ubuntu/govfuzz-sweep-work/java__ReactiveX__RxJava/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.67,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 3,
+   "by_severity": {
+    "low": 1,
+    "critical": 1,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-546": 1,
+    "GF-471": 1,
+    "GF-494": 1
+   },
+   "gaps": 1301
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/ReactiveX__RxJava --out /home/ubuntu/govfuzz-sweep-work/java__ReactiveX__RxJava/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 10
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/ReactiveX__RxJava --work-dir /home/ubuntu/govfuzz-sweep-work/java__ReactiveX__RxJava --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 73.52,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 4177,
+    "dropped_by_cap": 4167,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 9,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "RxThreadFactory",
+     "source": "RxThreadFactory.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RxThreadFactory",
+     "source": "RxThreadFactory.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RxThreadFactory",
+     "source": "RxThreadFactory.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "shannon_entropy",
+     "source": "compute-entropy.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `compute-entropy` is not loadable (skipped cleanly): error: Could not access 'HEAD~1'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParallelSchedulerConfig",
+     "source": "ParallelSchedulerConfig.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParallelSchedulerConfig",
+     "source": "ParallelSchedulerConfig.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "composeMessage",
+     "source": "EndConsumerHelper.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "nullWarning",
+     "source": "ExceptionHelper.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createNullPointerException",
+     "source": "ExceptionHelper.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "nullCheck",
+     "source": "ExceptionHelper.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 9,
+     "detail": "unnamed variables are a preview feature and are disabled by default.",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): error: Could not access \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f611947621e4c409fb2d748092ba68ee55b10ef0",
+ "clone_s": 1.2,
+ "lane_check": "java: 2054 files / 378053 lines; top=java(378053)",
+ "status": "done"
+}

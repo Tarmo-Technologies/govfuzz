@@ -1,0 +1,150 @@
+{
+ "lane": "csharp",
+ "repo": "rocksdanister/lively",
+ "stars": 19257,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/rocksdanister__lively --json --out /home/ubuntu/govfuzz-sweep-work/csharp__rocksdanister__lively.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 34536,
+   "sloc_by_lang": {
+    "csharp": 34415,
+    "config": 121
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/rocksdanister__lively --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/rocksdanister__lively --out /home/ubuntu/govfuzz-sweep-work/csharp__rocksdanister__lively/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.51,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/rocksdanister__lively --out /home/ubuntu/govfuzz-sweep-work/csharp__rocksdanister__lively/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 54
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/rocksdanister__lively --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__rocksdanister__lively --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 119.26,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 87,
+    "dropped_by_cap": 82,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Lively.Common.Factories.ApplicationsRulesFactory.CreateAppMusicExclusionRule",
+     "source": "ApplicationsRulesFactory.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4521.661134656806,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Lively.Common.Factories.WallpaperLibraryFactory.GetMetadata",
+     "source": "WallpaperLibraryFactory.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2668.494979567461,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Lively.Common.Factories.WallpaperLibraryFactory.CreateFromDirectory",
+     "source": "WallpaperLibraryFactory.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1111.0467869990769,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Lively.Common.FileTypes.GetFileType",
+     "source": "FileTypes.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1982.1502870400593,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Lively.Common.Factories.ApplicationsFactory.CreateApp",
+     "source": "ApplicationsFactory.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2718.8037286525605,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "c1036feb664960722e34bf4309042c247d6a909d",
+ "clone_s": 4.4,
+ "lane_check": "csharp: 430 files / 40853 lines; top=csharp(40853)",
+ "status": "done"
+}

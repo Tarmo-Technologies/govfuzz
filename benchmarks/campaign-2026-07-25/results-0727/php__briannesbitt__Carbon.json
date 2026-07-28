@@ -1,0 +1,220 @@
+{
+ "lane": "php",
+ "repo": "briannesbitt/Carbon",
+ "stars": 16611,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon --json --out /home/ubuntu/govfuzz-sweep-work/php__briannesbitt__Carbon.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 170353,
+   "sloc_by_lang": {
+    "php": 169863,
+    "config": 490
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon --out /home/ubuntu/govfuzz-sweep-work/php__briannesbitt__Carbon/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.96,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 30,
+   "by_severity": {
+    "high": 18,
+    "medium": 12
+   },
+   "top_rules": {
+    "GF-472": 18,
+    "GF-500": 7,
+    "GF-497": 5
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon --out /home/ubuntu/govfuzz-sweep-work/php__briannesbitt__Carbon/sbom",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "components": 14
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon --work-dir /home/ubuntu/govfuzz-sweep-work/php__briannesbitt__Carbon --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 2.01,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 671,
+    "dropped_by_cap": 661,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Carbon\\AbstractTranslator#setDirectories",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#setDirectories` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#addDirectory",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#addDirectory` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#removeDirectory",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#removeDirectory` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#resetMessages",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#resetMessages` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#getLocalesFiles",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#getLocalesFiles` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#getAvailableLocales",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#getAvailableLocales` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#setMessages",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#setMessages` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#setTranslations",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#setTranslations` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#getMessages",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#getMessages` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Carbon\\AbstractTranslator#setLocale",
+     "source": "AbstractTranslator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Carbon\\AbstractTranslator#setLocale` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Translation\\Translator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Translation\\Translator\" not found in /home/ubuntu/govfuzz-corpus-500/php/briannesbitt__Carbon/src/Carbon/AbstractTranslator.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PHP Fatal error: Uncaught Error: Class \"X\" not found i\u2026",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "72600759478f55464d9529b8a59e706e3ea159ea",
+ "clone_s": 1.2,
+ "lane_check": "php: 2004 files / 301001 lines; top=php(301001)",
+ "status": "done"
+}

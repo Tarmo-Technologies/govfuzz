@@ -1,0 +1,91 @@
+{
+ "lane": "cpp",
+ "repo": "simdjson/simdjson",
+ "stars": 24068,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson --json --out /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 231603,
+   "sloc_by_lang": {
+    "cpp": 226407,
+    "config": 2069,
+    "c": 1775,
+    "python": 1012,
+    "rust": 302,
+    "ruby": 25,
+    "javascript": 13
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson --format json --top 100000",
+   "exit": 0,
+   "wall_s": 186.91,
+   "timed_out": false,
+   "panic": false,
+   "count": 14665,
+   "by_language": {
+    "cpp": 14624,
+    "c": 29,
+    "rust": 12
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson --out /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 15.82,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 827,
+   "by_severity": {
+    "medium": 773,
+    "high": 52,
+    "critical": 1,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-424": 720,
+    "GF-500": 29,
+    "GF-408": 21,
+    "GF-406": 14,
+    "GF-472": 10,
+    "GF-401": 8,
+    "GF-405": 8,
+    "GF-407": 5,
+    "GF-436": 5,
+    "GF-477": 3,
+    "GF-497": 2,
+    "GF-404": 1,
+    "GF-546": 1
+   },
+   "gaps": 339
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson --out /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 26
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 51.86,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/simdjson__simdjson\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__simdjson__simdjson/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint ec68844100547505-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "8e6bac94877f2d3d026000d36ce81e0aaf38d26f",
+ "clone_s": 1.8,
+ "lane_check": "cpp: 165 files / 100342 lines; top=cpp(100342)",
+ "status": "done"
+}

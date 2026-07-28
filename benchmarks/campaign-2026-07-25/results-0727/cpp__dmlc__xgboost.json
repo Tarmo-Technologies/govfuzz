@@ -1,0 +1,91 @@
+{
+ "lane": "cpp",
+ "repo": "dmlc/xgboost",
+ "stars": 28601,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost --json --out /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 118350,
+   "sloc_by_lang": {
+    "cpp": 73761,
+    "python": 36925,
+    "java": 4712,
+    "config": 2333,
+    "c": 600,
+    "javascript": 19
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost --format json --top 100000",
+   "exit": 0,
+   "wall_s": 11.4,
+   "timed_out": false,
+   "panic": false,
+   "count": 3946,
+   "by_language": {
+    "java": 275,
+    "cpp": 3597,
+    "c": 74
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost --out /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.85,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 128,
+   "by_severity": {
+    "high": 83,
+    "medium": 22,
+    "critical": 5,
+    "low": 18
+   },
+   "top_rules": {
+    "GF-472": 49,
+    "GF-546": 18,
+    "GF-421": 16,
+    "GF-424": 11,
+    "GF-406": 8,
+    "GF-408": 5,
+    "GF-403": 4,
+    "GF-404": 4,
+    "GF-405": 4,
+    "GF-407": 3,
+    "GF-497": 2,
+    "GF-542": 2,
+    "GF-436": 1,
+    "GF-304": 1
+   },
+   "gaps": 114
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost --out /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost/sbom",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "components": 80
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 77.55,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/dmlc__xgboost\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__dmlc__xgboost/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint ea394bb27a5f3e69-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "9ed38391bb1089524e910fcf22597a2828798c9a",
+ "clone_s": 1.3,
+ "lane_check": "cpp: 268 files / 49288 lines; top=cpp(49288)",
+ "status": "done"
+}

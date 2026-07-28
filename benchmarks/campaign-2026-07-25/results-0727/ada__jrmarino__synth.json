@@ -1,0 +1,231 @@
+{
+ "lane": "ada",
+ "repo": "jrmarino/synth",
+ "stars": 271,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/jrmarino__synth --json --out /home/ubuntu/govfuzz-sweep-work/ada__jrmarino__synth.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 14109,
+   "sloc_by_lang": {
+    "ada": 13593,
+    "c": 286,
+    "javascript": 230
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/jrmarino__synth --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 1064,
+   "by_language": {
+    "ada": 1051,
+    "c": 13
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/jrmarino__synth --out /home/ubuntu/govfuzz-sweep-work/ada__jrmarino__synth/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.3,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 37,
+   "by_severity": {
+    "medium": 36,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-402": 24,
+    "GF-411": 8,
+    "GF-412": 4,
+    "GF-405": 1
+   },
+   "gaps": 150
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/jrmarino__synth --out /home/ubuntu/govfuzz-sweep-work/ada__jrmarino__synth/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 5
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/jrmarino__synth --work-dir /home/ubuntu/govfuzz-sweep-work/ada__jrmarino__synth --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 28.15,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 207,
+    "dropped_by_cap": 197,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 3,
+    "unrecoverable_link": 5,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 2,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "external_command",
+     "source": "unix.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "dynamically_linked",
+     "source": "replicant-platform.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "contains",
+     "source": "johnnytext.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "leads",
+     "source": "johnnytext.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "head",
+     "source": "johnnytext.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "start_new_log_file",
+     "source": "synexec.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6157.320635509152,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "kill_process_tree",
+     "source": "synthexec.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'reaper_pid' of type 'pid_t' has no byte-buffer decoder after struct synthesis: opaque type 'pid_t' for parameter 'reaper_pid' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "synexec",
+     "source": "synexec.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 310.31091960846123,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "reap_process",
+     "source": "synthexec.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'dead_pid_walking' of type 'pid_t' has no byte-buffer decoder after struct synthesis: opaque type 'pid_t' for parameter 'dead_pid_walking' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handler",
+     "source": "synthexec.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter '__unused' of type 'int signo' has no byte-buffer decoder after struct synthesis: opaque type 'int signo' for parameter '__unused' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unrecoverable_link",
+     "count": 5,
+     "detail": "1 undefined symbol(s) after repair",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "e5459102e15b55aef369f1353ce3484656e370f8",
+ "clone_s": 0.7,
+ "lane_check": "ada: 33 files / 15665 lines; top=ada(15665)",
+ "status": "done"
+}

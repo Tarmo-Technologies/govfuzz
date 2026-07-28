@@ -1,0 +1,93 @@
+{
+ "lane": "go",
+ "repo": "milvus-io/milvus",
+ "stars": 45382,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --json --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.34,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 1651554,
+   "sloc_by_lang": {
+    "go": 1116522,
+    "cpp": 285184,
+    "python": 220298,
+    "rust": 13568,
+    "config": 12167,
+    "c": 2397,
+    "javascript": 1418
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --format json --top 100000",
+   "exit": 0,
+   "wall_s": 25.19,
+   "timed_out": false,
+   "panic": false,
+   "count": 8598,
+   "by_language": {
+    "cpp": 8088,
+    "c": 29,
+    "rust": 481
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 93.05,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 658,
+   "by_severity": {
+    "medium": 247,
+    "high": 197,
+    "critical": 123,
+    "low": 91
+   },
+   "top_rules": {
+    "GF-405": 93,
+    "GF-546": 87,
+    "GF-436": 72,
+    "GF-424": 70,
+    "GF-420": 62,
+    "GF-429": 48,
+    "GF-472": 43,
+    "GF-544": 27,
+    "GF-428": 25,
+    "GF-500": 22,
+    "GF-456": 19,
+    "GF-406": 13,
+    "GF-404": 12,
+    "GF-423": 10,
+    "GF-454": 9
+   },
+   "gaps": 3821
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --out /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/sbom",
+   "exit": 0,
+   "wall_s": 2.47,
+   "timed_out": false,
+   "panic": false,
+   "components": 1145
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus --work-dir /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 61.41,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/go/milvus-io__milvus\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/go__milvus-io__milvus/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 8443cbe2122ff89a-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "2aa532b493b96cf71c97ea07a5f61e51efedd90c",
+ "clone_s": 6.1,
+ "lane_check": "go: 3398 files / 1220672 lines; top=go(1220672)",
+ "status": "done"
+}

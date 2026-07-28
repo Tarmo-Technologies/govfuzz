@@ -1,0 +1,241 @@
+{
+ "lane": "python",
+ "repo": "bytedance/deer-flow",
+ "stars": 77861,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/bytedance__deer-flow --json --out /home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 296510,
+   "sloc_by_lang": {
+    "python": 210646,
+    "javascript": 72177,
+    "config": 13687
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/bytedance__deer-flow --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/bytedance__deer-flow --out /home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 25.61,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 252,
+   "by_severity": {
+    "high": 40,
+    "medium": 64,
+    "low": 98,
+    "critical": 50
+   },
+   "top_rules": {
+    "GF-546": 98,
+    "GF-544": 47,
+    "GF-429": 42,
+    "GF-562": 15,
+    "GF-472": 8,
+    "GF-477": 7,
+    "GF-423": 7,
+    "GF-419": 7,
+    "GF-405": 5,
+    "GF-503": 5,
+    "GF-422": 3,
+    "GF-448": 2,
+    "GF-497": 1,
+    "GF-500": 1,
+    "GF-420": 1
+   },
+   "gaps": 1615
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/bytedance__deer-flow --out /home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow/sbom",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "components": 1491
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/bytedance__deer-flow --work-dir /home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 66.62,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1566,
+    "dropped_by_cap": 1556,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ChannelCredentialCipher.from_key",
+     "source": "sql.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 718.9251356895618,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ExtensionsConfig.from_file",
+     "source": "extensions_config.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 51.654039010365956,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AppConfig.from_file",
+     "source": "app_config.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 29.66036233687839,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "InstalledSkillReader.from_target",
+     "source": "readers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `deerflow.skills.review.readers` is not loadable (skipped cleanly): missing module `langchain_core` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseAllowedDevOrigins",
+     "source": "dev-origins.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 752.9136570021793,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "getAllowedDevOrigins",
+     "source": "dev-origins.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 937.8096171452426,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Header",
+     "source": "header.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow/harnesses/H-T0013-85F12D44/target.js` is not loadable (skipped cleanly): missing module `@radix-ui/react-icons` (not in the project and not installed) \u2014 Error: Cannot find module '@radix-ui/react-icons'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Message",
+     "source": "message.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow/harnesses/H-T001C-26D25056/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AuthProvider",
+     "source": "AuthProvider.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow/harnesses/H-T002F-EB252A60/target.js` is not loadable (skipped cleanly): missing module `next/navigation` (not in the project and not installed) \u2014 Error: Cannot find module 'next/navigation'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Loader",
+     "source": "loader.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/python__bytedance__deer-flow/harnesses/H-T0056-D676B652/target.js` is not loadable (skipped cleanly): missing module `clsx` (not in the project and not installed) \u2014 Error: Cannot find module 'clsx'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "6456c35675dfbfdfc25ec5346e52ed8a8de1c5ef",
+ "clone_s": 2.7,
+ "lane_check": "python: 1048 files / 274760 lines; top=python(274760)",
+ "status": "done"
+}

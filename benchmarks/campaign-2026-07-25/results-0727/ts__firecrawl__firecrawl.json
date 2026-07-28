@@ -1,0 +1,212 @@
+{
+ "lane": "ts",
+ "repo": "firecrawl/firecrawl",
+ "stars": 156037,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --json --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 9,
+   "sloc_total": 261661,
+   "sloc_by_lang": {
+    "javascript": 178166,
+    "python": 31007,
+    "config": 24635,
+    "rust": 10344,
+    "java": 4702,
+    "php": 4577,
+    "csharp": 3003,
+    "go": 2923,
+    "ruby": 2304
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 768,
+   "by_language": {
+    "java": 660,
+    "rust": 108
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 45.33,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 90,
+   "by_severity": {
+    "high": 13,
+    "medium": 63,
+    "critical": 1,
+    "low": 13
+   },
+   "top_rules": {
+    "GF-500": 29,
+    "GF-503": 16,
+    "GF-546": 13,
+    "GF-472": 8,
+    "GF-477": 5,
+    "GF-478": 5,
+    "GF-548": 4,
+    "GF-405": 2,
+    "GF-497": 2,
+    "GF-475": 1,
+    "GF-436": 1,
+    "GF-429": 1,
+    "GF-507": 1,
+    "GF-422": 1,
+    "GF-427": 1
+   },
+   "gaps": 299
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl/sbom",
+   "exit": 0,
+   "wall_s": 0.52,
+   "timed_out": false,
+   "panic": false,
+   "components": 2460
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --work-dir /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 103.91,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 6,
+    "discovered_total": 2009,
+    "dropped_by_cap": 2003,
+    "built": 4,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "NewParseFileFromPath",
+     "source": "parse.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7116.861779560969,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "NewParseFileFromBytes",
+     "source": "parse.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8899.548150121076,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "handle_response_error",
+     "source": "error_handler.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `firecrawl.v2.utils.error_handler` is not loadable (skipped cleanly): missing module `aiohttp` (not in the project and not installed) \u2014 import firecrawl.v2.utils.error_handler as _t",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_paper",
+     "source": "research.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `aio.research` is not loadable (skipped cleanly): ImportError: attempted relative import beyond top-level package",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "browserExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "browserExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "built_not_fuzzed",
+     "count": 2,
+     "detail": "built, no fuzz pass ran",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "ImportError: attempted relative import beyond top-level package",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 import firecrawl.v2.utils.error_handler as _t",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "35d9146f93d8fe59cebe68bbbe18b5a523a0073a",
+ "clone_s": 2.2,
+ "lane_check": "ts: 777 files / 188033 lines; top=ts(188033)",
+ "status": "done"
+}

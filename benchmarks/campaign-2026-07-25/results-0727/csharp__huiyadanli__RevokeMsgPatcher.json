@@ -1,0 +1,243 @@
+{
+ "lane": "csharp",
+ "repo": "huiyadanli/RevokeMsgPatcher",
+ "stars": 38257,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/huiyadanli__RevokeMsgPatcher --json --out /home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 6707,
+   "sloc_by_lang": {
+    "csharp": 6615,
+    "config": 92
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/huiyadanli__RevokeMsgPatcher --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/huiyadanli__RevokeMsgPatcher --out /home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "medium": 1,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-500": 1,
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/huiyadanli__RevokeMsgPatcher --out /home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/huiyadanli__RevokeMsgPatcher --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 55.23,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 11,
+    "dropped_by_cap": 1,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 8,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "RevokeMsgPatcher.Utils.ByteUtil.HexStringToByteArray",
+     "source": "ByteUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Utils.FileUtil.GetFileVersion",
+     "source": "FileUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Utils.ByteUtil.ByteArrayToHexString",
+     "source": "ByteUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Utils.FileUtil.ComputeFileSHA1",
+     "source": "FileUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Model.TargetInfo.GetAbsolutePath",
+     "source": "TargetInfo.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Utils.PathUtil.FindInstallPathFromRegistry",
+     "source": "PathUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Utils.PathUtil.FindInstallPathFromRegistryWOW6432Node",
+     "source": "PathUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Utils.PathUtil.GetDefaultInstallPaths",
+     "source": "PathUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Modifier.AppModifier.IsAllFilesExist",
+     "source": "AppModifier.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `RevokeMsgPatcher.Modifier.AppModifier.IsAllFilesExist` is declared on abstract/interface type `AppModifier`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RevokeMsgPatcher.Modifier.AppModifier.InitEditors",
+     "source": "AppModifier.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `RevokeMsgPatcher.Modifier.AppModifier.InitEditors` is declared on abstract/interface type `AppModifier`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "error CS0579: Duplicate \"X\" attribute [/home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher/harnesses/H-S0026-NC33DC50/proj/govfuzz_harness.cspr\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error CS0579: Duplicate \"X\" attribute [/home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher/harnesses/H-S0015-NF95E5/proj/govfuzz_harness.csproj\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error CS0579: Duplicate \"X\" attribute [/home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher/harnesses/H-S0024-NC/proj/govfuzz_harness.csproj]",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "instance method \"X\" is declared on abstract/interface type \"X\", which has no instance to allocate (skipped cleanly)",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "error CS0579: Duplicate \"X\" attribute [/home/ubuntu/govfuzz-sweep-work/csharp__huiyadanli__RevokeMsgPatcher/harnesses/H-S0024-NE2FEE6/proj/govfuzz_harness.cspro\u2026",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "11a71a9744b20a89727ec7744902d9e75b26c61a",
+ "clone_s": 0.8,
+ "lane_check": "csharp: 64 files / 7714 lines; top=csharp(7714)",
+ "status": "done"
+}

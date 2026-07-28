@@ -1,0 +1,219 @@
+{
+ "lane": "ada",
+ "repo": "joular/powerjoular",
+ "stars": 111,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/joular__powerjoular --json --out /home/ubuntu/govfuzz-sweep-work/ada__joular__powerjoular.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 1576,
+   "sloc_by_lang": {
+    "ada": 1558,
+    "config": 18
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/joular__powerjoular --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 57,
+   "by_language": {
+    "ada": 57
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/joular__powerjoular --out /home/ubuntu/govfuzz-sweep-work/ada__joular__powerjoular/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "high": 2
+   },
+   "top_rules": {
+    "GF-405": 2
+   },
+   "gaps": 14
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/joular__powerjoular --out /home/ubuntu/govfuzz-sweep-work/ada__joular__powerjoular/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/joular__powerjoular --work-dir /home/ubuntu/govfuzz-sweep-work/ada__joular__powerjoular --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 45.45,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 23,
+    "dropped_by_cap": 13,
+    "built": 9,
+    "built_and_fuzzed": 9,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "read_vm_power",
+     "source": "virtual_machine.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 21.401555750865057,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "check_intel_supported_system",
+     "source": "os_utils.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3617.6364022181224,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "check_raspberry_pi_supported_system",
+     "source": "os_utils.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3749.929492176532,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "powerjoular",
+     "source": "powerjoular.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Ada target 'powerjoular' is a project main executable (declared in powerjoular.gpr `for Main`) \u2014 an entry point, not a library subprogram; not auto-harnessable as a direct call.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_nvidia_smi_power",
+     "source": "nvidia_smi.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4025.7635105483364,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "show_help",
+     "source": "help_info.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4713.808815881344,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "check_nvidia_supported_system",
+     "source": "nvidia_smi.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4021.3858800998983,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "show_version",
+     "source": "help_info.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5124.885244116899,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "get_platform_name",
+     "source": "os_utils.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5607.367732285491,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "get_os_name",
+     "source": "os_utils.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 509.6204200616315,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Ada target \"X\" is a project main executable (declared in powerjoular.gpr \"X\") \u2014 an entry point, not a library subprogram; not auto-harnessable as a direct call.",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "382ef395cb16549e1c6163dc727a428de4e2b3e8",
+ "clone_s": 0.6,
+ "lane_check": "ada: 23 files / 1975 lines; top=ada(1975)",
+ "status": "done"
+}

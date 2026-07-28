@@ -1,0 +1,230 @@
+{
+ "lane": "perl",
+ "repo": "ovh/the-bastion",
+ "stars": 2162,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion --json --out /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 7616,
+   "sloc_by_lang": {
+    "perl": 7307,
+    "config": 271,
+    "python": 38
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion --out /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 26,
+   "by_severity": {
+    "medium": 7,
+    "high": 6,
+    "critical": 13
+   },
+   "top_rules": {
+    "GF-404": 13,
+    "GF-472": 6,
+    "GF-422": 4,
+    "GF-500": 2,
+    "GF-477": 1
+   },
+   "gaps": 3
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion --out /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion --work-dir /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 1.62,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 69,
+    "dropped_by_cap": 59,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "OVH::Bastion::ProxyHTTP::process_http_request",
+     "source": "ProxyHTTP.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "OO method `OVH::Bastion::ProxyHTTP::process_http_request` needs a receiver, but `OVH::Bastion::ProxyHTTP` has no `new` constructor; only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::is_plugin_readonly_proof",
+     "source": "Bastion.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L0494-67793CBD /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::get_user_from_env",
+     "source": "Bastion.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L0521-8F84C7EE /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::get_home_from_env",
+     "source": "Bastion.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L0526-A98F363D /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::Plugin::ACL::check",
+     "source": "ACL.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion::Plugin::ACL` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L000A-2A4B7427 /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Plugin /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Plugin/ACL.pm line 3.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::Plugin::generateEgressKey::ask_passphrase",
+     "source": "generateEgressKey.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion::Plugin::generateEgressKey` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L000C-F1DAE7B5 /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Plugin /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Plugin/generateEgressKey.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::Helper::HEXIT",
+     "source": "Helper.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion::Helper` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L0019-452476BB /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Helper.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::Helper::check_spurious_args",
+     "source": "Helper.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion::Helper` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L002C-8325B43B /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Helper.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::Plugin::begin",
+     "source": "Plugin.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion::Plugin` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L0065-914B4520 /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Plugin.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OVH::Bastion::Helper::acquire_lock",
+     "source": "Helper.pm",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `OVH::Bastion::Helper` is not loadable (skipped cleanly): missing module `common/sense.pm` (not in the project and not installed) \u2014 Can't locate common/sense.pm in @INC (you may need to install the common::sense module) (@INC entries checked: /home/ubuntu/govfuzz-sweep-work/perl__ovh__the-bastion/harnesses/H-L0091-687A8365 /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.38.2 /usr/local/share/perl/5.38.2 /usr/lib/x86_64-linux-gnu/perl5/5.38 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.38 /usr/share/perl/5.38 /usr/local/lib/site_perl) at /home/ubuntu/govfuzz-corpus-500/perl/ovh__the-bastion/lib/perl/OVH/Bastion/Helper.pm line 4.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 Can\"X\"",
+     "language": "perl"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "OO method \"X\" needs a receiver, but \"X\" has no \"X\" constructor; only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "perl"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "6d0fa2ee45c36baa4228242193b0c4ac162e92fc",
+ "clone_s": 0.8,
+ "lane_check": "perl: 33 files / 10079 lines; top=perl(10079)",
+ "status": "done"
+}

@@ -1,0 +1,246 @@
+{
+ "lane": "c",
+ "repo": "NVIDIA/open-gpu-kernel-modules",
+ "stars": 17188,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --json --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.59,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 1766818,
+   "sloc_by_lang": {
+    "c": 1561776,
+    "cpp": 204352,
+    "python": 515,
+    "config": 175
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --format json --top 100000",
+   "exit": 0,
+   "wall_s": 76.21,
+   "timed_out": false,
+   "panic": false,
+   "count": 40970,
+   "by_language": {
+    "c": 29903,
+    "cpp": 11067
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 30.83,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 38,
+   "by_severity": {
+    "high": 29,
+    "medium": 9
+   },
+   "top_rules": {
+    "GF-401": 16,
+    "GF-403": 8,
+    "GF-424": 7,
+    "GF-408": 5,
+    "GF-428": 1,
+    "GF-425": 1
+   },
+   "gaps": 33
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --out /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules/sbom",
+   "exit": 0,
+   "wall_s": 1.29,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/NVIDIA__open-gpu-kernel-modules --work-dir /home/ubuntu/govfuzz-sweep-work/c__NVIDIA__open-gpu-kernel-modules --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 474.45,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 39887,
+    "dropped_by_cap": 39877,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 2,
+    "stubbed_symbols_declared": 3,
+    "stubbed_symbols_blind": 2,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "libspdm_verify_key_exchange_rsp_signature",
+     "source": "libspdm_req_key_exchange.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 29,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "libspdm_verify_challenge_auth_signature",
+     "source": "libspdm_com_crypto_service.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 16,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "libspdm_append_message_f",
+     "source": "libspdm_com_context_data.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 20,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "libspdm_verify_finish_rsp_hmac",
+     "source": "libspdm_req_finish.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 24,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ConnectorImpl::expired",
+     "source": "dp_connectorimpl.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'ConnectorImpl' to harness 'expired': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'ConnectorImpl' was found. Add a small wrapper or factory harness that constructs the object and calls 'expired', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'ConnectorImpl' to harness 'expired': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'ConnectorImpl' was found. Add a small wrapper or factory harness that constructs the object and calls 'expired', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MessageManager::Message::expired",
+     "source": "dp_messages.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct abstract C++ class 'Message' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Message *' were found; harness a concrete subclass or a factory that returns 'Message'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DiscoveryManager::BranchDetection::expired",
+     "source": "dp_discovery.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'BranchDetection' to harness 'expired': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'BranchDetection' was found. Add a small wrapper or factory harness that constructs the object and calls 'expired', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sizes",
+     "source": "extract-firmware-nouveau.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4012.6237763947256,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "symlink",
+     "source": "extract-firmware-nouveau.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2062.8353135427433,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "write_padded",
+     "source": "extract-firmware-nouveau.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2249.1681956557945,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "cannot construct abstract C++ class \"X\" (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public con\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "452cec62d827034798072827d3866d1881662b77",
+ "clone_s": 7.5,
+ "lane_check": "c: 1496 files / 1476068 lines; top=c(1476068)",
+ "status": "done"
+}

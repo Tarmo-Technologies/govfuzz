@@ -1,0 +1,236 @@
+{
+ "lane": "perl",
+ "repo": "GuidoBartoli/sherloq",
+ "stars": 3169,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/GuidoBartoli__sherloq --json --out /home/ubuntu/govfuzz-sweep-work/perl__GuidoBartoli__sherloq.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 313934,
+   "sloc_by_lang": {
+    "perl": 302665,
+    "python": 8624,
+    "cpp": 2610,
+    "config": 35
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/GuidoBartoli__sherloq --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.72,
+   "timed_out": false,
+   "panic": false,
+   "count": 68,
+   "by_language": {
+    "cpp": 68
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/GuidoBartoli__sherloq --out /home/ubuntu/govfuzz-sweep-work/perl__GuidoBartoli__sherloq/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.85,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 106,
+   "by_severity": {
+    "high": 4,
+    "medium": 22,
+    "low": 2,
+    "critical": 78
+   },
+   "top_rules": {
+    "GF-420": 72,
+    "GF-422": 20,
+    "GF-404": 6,
+    "GF-405": 2,
+    "GF-424": 2,
+    "GF-546": 2,
+    "GF-423": 2
+   },
+   "gaps": 49
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/GuidoBartoli__sherloq --out /home/ubuntu/govfuzz-sweep-work/perl__GuidoBartoli__sherloq/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 36
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/GuidoBartoli__sherloq --work-dir /home/ubuntu/govfuzz-sweep-work/perl__GuidoBartoli__sherloq --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 54.35,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1432,
+    "dropped_by_cap": 1422,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 6,
+    "synthesized_macros": 16,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "imread2f_pil",
+     "source": "utilityRead.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gui.noiseprint.utility.utilityRead` is not loadable (skipped cleanly): missing module `scipy` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'scipy'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "imread2f_raw",
+     "source": "utilityRead.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gui.noiseprint.utility.utilityRead` is not loadable (skipped cleanly): missing module `scipy` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'scipy'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "imread2f",
+     "source": "utilityRead.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gui.noiseprint.utility.utilityRead` is not loadable (skipped cleanly): missing module `scipy` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'scipy'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "butteraugli::ReadImageOrDie",
+     "source": "butteraugli_main.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 24,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clip_value",
+     "source": "utility.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gui.sherloq_app.core.utility` is not loadable (skipped cleanly): missing module `rawpy` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'rawpy'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "File::RandomAccess::Read",
+     "source": "RandomAccess.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1478.7280887933427,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ExtractHeaderInfo",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2666.4961335729404,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::Process7Z",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1085.939333999106,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "butteraugli::ReadPNG",
+     "source": "butteraugli_main.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "butteraugli::ReadJPEG",
+     "source": "butteraugli_main.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "incomplete type",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "3fe95fcb56037e47e2eefbc2d3785804a31a74f5",
+ "clone_s": 13.5,
+ "lane_check": "perl: 354 files / 342986 lines; top=perl(342986)",
+ "status": "done"
+}

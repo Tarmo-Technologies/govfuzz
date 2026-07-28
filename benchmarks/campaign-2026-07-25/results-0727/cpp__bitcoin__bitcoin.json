@@ -1,0 +1,92 @@
+{
+ "lane": "cpp",
+ "repo": "bitcoin/bitcoin",
+ "stars": 89696,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --json --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.2,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 665478,
+   "sloc_by_lang": {
+    "javascript": 294123,
+    "cpp": 248403,
+    "python": 61701,
+    "c": 57753,
+    "config": 2384,
+    "rust": 1114
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --format json --top 100000",
+   "exit": 0,
+   "wall_s": 51.0,
+   "timed_out": false,
+   "panic": false,
+   "count": 11459,
+   "by_language": {
+    "cpp": 10389,
+    "c": 1048,
+    "rust": 22
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 159.3,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 246,
+   "by_severity": {
+    "critical": 14,
+    "high": 103,
+    "medium": 110,
+    "low": 19
+   },
+   "top_rules": {
+    "GF-405": 79,
+    "GF-500": 35,
+    "GF-424": 32,
+    "GF-406": 27,
+    "GF-546": 19,
+    "GF-403": 10,
+    "GF-472": 7,
+    "GF-419": 7,
+    "GF-404": 4,
+    "GF-425": 4,
+    "GF-436": 4,
+    "GF-407": 3,
+    "GF-408": 3,
+    "GF-420": 2,
+    "GF-422": 2
+   },
+   "gaps": 414
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/sbom",
+   "exit": 0,
+   "wall_s": 0.9,
+   "timed_out": false,
+   "panic": false,
+   "components": 43
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 44.13,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint a6f4a038ac83955f-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "7dea464d6b51a69bd99a0451be8aaf3a26313eb6",
+ "clone_s": 5.1,
+ "lane_check": "cpp: 843 files / 231508 lines; top=ts(294126)",
+ "status": "done"
+}

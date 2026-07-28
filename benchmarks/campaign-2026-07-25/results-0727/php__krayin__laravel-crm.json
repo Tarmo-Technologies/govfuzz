@@ -1,0 +1,222 @@
+{
+ "lane": "php",
+ "repo": "krayin/laravel-crm",
+ "stars": 23495,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm --json --out /home/ubuntu/govfuzz-sweep-work/php__krayin__laravel-crm.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 95159,
+   "sloc_by_lang": {
+    "php": 92536,
+    "javascript": 2406,
+    "config": 217
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm --out /home/ubuntu/govfuzz-sweep-work/php__krayin__laravel-crm/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.51,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 8,
+   "by_severity": {
+    "medium": 3,
+    "high": 5
+   },
+   "top_rules": {
+    "GF-472": 4,
+    "GF-497": 2,
+    "GF-500": 1,
+    "GF-505": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm --out /home/ubuntu/govfuzz-sweep-work/php__krayin__laravel-crm/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 202
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm --work-dir /home/ubuntu/govfuzz-sweep-work/php__krayin__laravel-crm --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 17.62,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 480,
+    "dropped_by_cap": 470,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Webkul\\Admin\\Bouncer#hasPermission",
+     "source": "Bouncer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1252.3415008306902,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Activity\\Repositories\\ActivityRepository#create",
+     "source": "ActivityRepository.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Activity\\Repositories\\ActivityRepository#create` is not loadable (skipped cleanly): missing module `Webkul\\Core\\Eloquent\\Repository` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Webkul\\Core\\Eloquent\\Repository\" not found in /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm/packages/Webkul/Activity/src/Repositories/ActivityRepository.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Admin\\Bouncer::allow",
+     "source": "Bouncer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 869.4773485974782,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Activity\\Providers\\ActivityServiceProvider#boot",
+     "source": "ActivityServiceProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Activity\\Providers\\ActivityServiceProvider#boot` is not loadable (skipped cleanly): missing module `Illuminate\\Support\\ServiceProvider` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Illuminate\\Support\\ServiceProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm/packages/Webkul/Activity/src/Providers/ActivityServiceProvider.php:14",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Admin\\Exceptions\\Handler#render",
+     "source": "Handler.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Admin\\Exceptions\\Handler#render` is not loadable (skipped cleanly): missing module `Illuminate\\Foundation\\Exceptions\\Handler` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Illuminate\\Foundation\\Exceptions\\Handler\" not found in /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm/packages/Webkul/Admin/src/Exceptions/Handler.php:16",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Activity\\Repositories\\ActivityRepository#update",
+     "source": "ActivityRepository.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Activity\\Repositories\\ActivityRepository#update` is not loadable (skipped cleanly): missing module `Webkul\\Core\\Eloquent\\Repository` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Webkul\\Core\\Eloquent\\Repository\" not found in /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm/packages/Webkul/Activity/src/Repositories/ActivityRepository.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Activity\\Repositories\\ActivityRepository#getActivities",
+     "source": "ActivityRepository.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Activity\\Repositories\\ActivityRepository#getActivities` is not loadable (skipped cleanly): missing module `Webkul\\Core\\Eloquent\\Repository` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Webkul\\Core\\Eloquent\\Repository\" not found in /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm/packages/Webkul/Activity/src/Repositories/ActivityRepository.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Activity\\Repositories\\ActivityRepository#isDurationOverlapping",
+     "source": "ActivityRepository.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Webkul\\Activity\\Repositories\\ActivityRepository#isDurationOverlapping` is not loadable (skipped cleanly): missing module `Webkul\\Core\\Eloquent\\Repository` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Webkul\\Core\\Eloquent\\Repository\" not found in /home/ubuntu/govfuzz-corpus-500/php/krayin__laravel-crm/packages/Webkul/Activity/src/Repositories/ActivityRepository.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting\\AbstractReporting#getMonthsInterval",
+     "source": "AbstractReporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3580.2935651160797,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Webkul\\Admin\\Helpers\\Reporting\\AbstractReporting#getDaysInterval",
+     "source": "AbstractReporting.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3174.922997666725,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PHP Fatal error: Uncaught Error: Class \"X\" not found i\u2026",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "5b09780e38d73f0e72c4749889e71a06876dccd2",
+ "clone_s": 18.6,
+ "lane_check": "php: 918 files / 103569 lines; top=php(103569)",
+ "status": "done"
+}

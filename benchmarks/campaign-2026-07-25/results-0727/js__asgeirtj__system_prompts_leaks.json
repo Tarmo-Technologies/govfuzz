@@ -1,0 +1,214 @@
+{
+ "lane": "js",
+ "repo": "asgeirtj/system_prompts_leaks",
+ "stars": 60510,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks --json --out /home/ubuntu/govfuzz-sweep-work/js__asgeirtj__system_prompts_leaks.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 5392,
+   "sloc_by_lang": {
+    "javascript": 5194,
+    "python": 197,
+    "config": 1
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks --out /home/ubuntu/govfuzz-sweep-work/js__asgeirtj__system_prompts_leaks/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.94,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks --out /home/ubuntu/govfuzz-sweep-work/js__asgeirtj__system_prompts_leaks/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks --work-dir /home/ubuntu/govfuzz-sweep-work/js__asgeirtj__system_prompts_leaks --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 26.32,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 83,
+    "dropped_by_cap": 73,
+    "built": 7,
+    "built_and_fuzzed": 7,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "auxShaFor",
+     "source": "sync-hashes.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 283.86039310614433,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "buildPreviews",
+     "source": "previews.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks/Anthropic/Claude Code/bundled-skills/design-sync/lib/previews.mjs` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bundleToIife",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks/Anthropic/Claude Code/bundled-skills/design-sync/lib/bundle.mjs` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bundlePreviewDecorators",
+     "source": "source-storybook.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 569.8958013914652,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "bundleExportEvidence",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/asgeirtj__system_prompts_leaks/Anthropic/Claude Code/bundled-skills/design-sync/lib/bundle.mjs` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "split_colors",
+     "source": "validate_palette.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3595.299853802216,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lin2oklab",
+     "source": "validate_palette.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2774.7115761308924,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lin2oklch",
+     "source": "validate_palette.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3806.2315703225167,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "contrast",
+     "source": "validate_palette.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3270.6075063853864,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "deltaE",
+     "source": "validate_palette.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3141.4809067120113,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "throw error;",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "87578587f873183f90dc8205d665527d5e4ee560",
+ "clone_s": 1.1,
+ "lane_check": "js: 35 files / 13945 lines; top=js(13945)",
+ "status": "done"
+}

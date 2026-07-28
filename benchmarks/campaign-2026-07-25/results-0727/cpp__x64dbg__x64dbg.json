@@ -1,0 +1,85 @@
+{
+ "lane": "cpp",
+ "repo": "x64dbg/x64dbg",
+ "stars": 48997,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --json --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 227901,
+   "sloc_by_lang": {
+    "cpp": 163564,
+    "c": 60397,
+    "python": 3452,
+    "config": 367,
+    "javascript": 121
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --format json --top 100000",
+   "exit": 0,
+   "wall_s": 23.87,
+   "timed_out": false,
+   "panic": false,
+   "count": 6506,
+   "by_language": {
+    "cpp": 6049,
+    "c": 457
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 7.03,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 602,
+   "by_severity": {
+    "low": 28,
+    "medium": 9,
+    "high": 560,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-403": 261,
+    "GF-408": 239,
+    "GF-405": 29,
+    "GF-407": 29,
+    "GF-546": 28,
+    "GF-500": 7,
+    "GF-404": 5,
+    "GF-401": 2,
+    "GF-497": 1,
+    "GF-477": 1
+   },
+   "gaps": 17
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --out /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/sbom",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "components": 33
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 137.34,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/x64dbg__x64dbg\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__x64dbg__x64dbg/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 1c92411d47785654-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "43892ef41f092fb13a38925e44218af5987abf08",
+ "clone_s": 1.4,
+ "lane_check": "cpp: 348 files / 116975 lines; top=cpp(116975)",
+ "status": "done"
+}

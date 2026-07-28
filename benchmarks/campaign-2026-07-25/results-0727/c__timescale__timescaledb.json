@@ -1,0 +1,261 @@
+{
+ "lane": "c",
+ "repo": "timescale/timescaledb",
+ "stars": 23180,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb --json --out /home/ubuntu/govfuzz-sweep-work/c__timescale__timescaledb.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 131870,
+   "sloc_by_lang": {
+    "c": 122893,
+    "config": 5514,
+    "python": 1612,
+    "cpp": 1158,
+    "perl": 693
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb --format json --top 100000",
+   "exit": 0,
+   "wall_s": 5.69,
+   "timed_out": false,
+   "panic": false,
+   "count": 3772,
+   "by_language": {
+    "c": 3739,
+    "cpp": 33
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb --out /home/ubuntu/govfuzz-sweep-work/c__timescale__timescaledb/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.97,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 18,
+   "by_severity": {
+    "medium": 2,
+    "critical": 5,
+    "high": 10,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-408": 8,
+    "GF-404": 5,
+    "GF-500": 2,
+    "GF-405": 2,
+    "GF-546": 1
+   },
+   "gaps": 7
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb --out /home/ubuntu/govfuzz-sweep-work/c__timescale__timescaledb/sbom",
+   "exit": 0,
+   "wall_s": 0.89,
+   "timed_out": false,
+   "panic": false,
+   "components": 22
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb --work-dir /home/ubuntu/govfuzz-sweep-work/c__timescale__timescaledb --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 17.55,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3412,
+    "dropped_by_cap": 3402,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "orderby_sparse_metadata_names",
+     "source": "create.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'settings' of type 'const CompressionSettings *' has no byte-buffer decoder after struct synthesis: opaque handle 'CompressionSettings' for parameter 'settings' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ts_telemetry_main",
+     "source": "telemetry.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ts_catalog_scan_one",
+     "source": "catalog.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'scankey' of type 'ScanKeyData *' has no byte-buffer decoder after struct synthesis: opaque type 'ScanKeyData' for pointer parameter 'scankey' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ts_catalog_scan_all",
+     "source": "catalog.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'scankey' of type 'ScanKeyData *' has no byte-buffer decoder after struct synthesis: opaque type 'ScanKeyData' for pointer parameter 'scankey' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "initReadOnlyStringInfo",
+     "source": "compat.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb/src/compat/compat.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb/src/compat/compat.h:8:10: fatal error: 'postgres.h' file not found |     8 | #include <postgres.h> |       |          ^~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_reindex_options",
+     "source": "compat.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb/src/compat/compat.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/timescale__timescaledb/src/compat/compat.h:8:10: fatal error: 'postgres.h' file not found |     8 | #include <postgres.h> |       |          ^~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "build_debug_config",
+     "source": "gh_matrix_builder.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gh_matrix_builder` is not loadable (skipped cleanly): IndexError: list index out of range",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "build_release_config",
+     "source": "gh_matrix_builder.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gh_matrix_builder` is not loadable (skipped cleanly): IndexError: list index out of range",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "build_apache_config",
+     "source": "gh_matrix_builder.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gh_matrix_builder` is not loadable (skipped cleanly): IndexError: list index out of range",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "murmurhash64",
+     "source": "compat.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'murmurhash64' return type 'uint64' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c_knr] K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): IndexError: list index out of range",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "ca6925dc2392a9e17774d27e97fc6489649f847d",
+ "clone_s": 3.5,
+ "lane_check": "c: 281 files / 138640 lines; top=c(138640)",
+ "status": "done"
+}

@@ -1,0 +1,258 @@
+{
+ "lane": "fortran",
+ "repo": "Nek5000/Nek5000",
+ "stars": 479,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/Nek5000__Nek5000 --json --out /home/ubuntu/govfuzz-sweep-work/fortran__Nek5000__Nek5000.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 206925,
+   "sloc_by_lang": {
+    "fortran": 187486,
+    "c": 16588,
+    "python": 2569,
+    "config": 282
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/Nek5000__Nek5000 --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.64,
+   "timed_out": false,
+   "panic": false,
+   "count": 575,
+   "by_language": {
+    "c": 542,
+    "fortran": 33
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/Nek5000__Nek5000 --out /home/ubuntu/govfuzz-sweep-work/fortran__Nek5000__Nek5000/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.38,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 76,
+   "by_severity": {
+    "medium": 5,
+    "high": 65,
+    "low": 3,
+    "critical": 3
+   },
+   "top_rules": {
+    "GF-403": 35,
+    "GF-405": 18,
+    "GF-547": 4,
+    "GF-401": 4,
+    "GF-500": 3,
+    "GF-546": 3,
+    "GF-404": 3,
+    "GF-406": 2,
+    "GF-407": 2,
+    "GF-408": 2
+   },
+   "gaps": 7
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/Nek5000__Nek5000 --out /home/ubuntu/govfuzz-sweep-work/fortran__Nek5000__Nek5000/sbom",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/Nek5000__Nek5000 --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__Nek5000__Nek5000 --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 16.53,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 141,
+    "dropped_by_cap": 131,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 6,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 1,
+    "synthesized_macros": 9,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "read_data_mpiio",
+     "source": "crs_amg.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ids' of type 'struct array *' has no byte-buffer decoder after struct synthesis: opaque type 'struct array' for pointer parameter 'ids' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fNEK_File_read",
+     "source": "nekio.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'count' of type 'long long int *' has no byte-buffer decoder after struct synthesis: opaque type 'long long int' for pointer parameter 'count' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NEK_File_read",
+     "source": "nekio.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'count' of type 'long long int' has no byte-buffer decoder after struct synthesis: opaque type 'long long int' for parameter 'count' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_data",
+     "source": "crs_amg.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'ids' of type 'struct array *' has no byte-buffer decoder after struct synthesis: opaque type 'struct array' for pointer parameter 'ids' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BYTE_OPEN_MPI",
+     "source": "byte_mpi.f",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHCOPY",
+     "source": "math.f",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CAPIT",
+     "source": "ic.f",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ADD_TEMP",
+     "source": "navier5.f",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ADD_TEMP_1",
+     "source": "navier5.f",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "amg_setup_aux",
+     "source": "crs_amg.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 11,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "incomplete type",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "gfortran compile failed: Fatal Error: Cannot open included file \u2018SIZE\u2019",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Fatal Error: Cannot open included file \u2018mpif.h\u2019",
+     "language": "fortran"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "41d17942b3f4ef4e045665d30adc81a167611122",
+ "clone_s": 4.8,
+ "lane_check": "fortran: 327 files / 263723 lines; top=fortran(263723)",
+ "status": "done"
+}

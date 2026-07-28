@@ -1,0 +1,221 @@
+{
+ "lane": "js",
+ "repo": "juliangarnier/anime",
+ "stars": 71491,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime --json --out /home/ubuntu/govfuzz-sweep-work/js__juliangarnier__anime.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 31274,
+   "sloc_by_lang": {
+    "javascript": 31272,
+    "config": 2
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "count": 294,
+   "by_language": {
+    "javascript": 294
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime --out /home/ubuntu/govfuzz-sweep-work/js__juliangarnier__anime/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 10.36,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime --out /home/ubuntu/govfuzz-sweep-work/js__juliangarnier__anime/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 231
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime --work-dir /home/ubuntu/govfuzz-sweep-work/js__juliangarnier__anime --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 26.84,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 294,
+    "dropped_by_cap": 284,
+    "built": 6,
+    "built_and_fuzzed": 6,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Clock#requestTick",
+     "source": "clock.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 449.5127230932519,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Clock#requestTick",
+     "source": "clock.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 325.25266199975306,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Clock#computeDeltaTime",
+     "source": "clock.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 438.97055019740486,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Clock#computeDeltaTime",
+     "source": "clock.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 298.3924633883229,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Scope#add",
+     "source": "scope.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 413.24610796209004,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Scope#add",
+     "source": "scope.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 437.49439828907055,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "JSAnimation#stretch",
+     "source": "animation.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `JSAnimation#stretch` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'keyframes')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "JSAnimation#stretch",
+     "source": "animation.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `JSAnimation#stretch` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'keyframes')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "$",
+     "source": "anime.umd.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `$` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT '$' is not a function in /home/ubuntu/govfuzz-corpus-500/js/juliangarnier__anime/dist/bundles/anime.umd.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "JSAnimation#stretch",
+     "source": "anime.esm.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `JSAnimation#stretch` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'keyframes')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading \"X\")",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT \"X\" is not a function in PATH",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2c9cf8ea00329f6768c7d7902252ed977d75ce42",
+ "clone_s": 1.2,
+ "lane_check": "js: 177 files / 37838 lines; top=js(37838)",
+ "status": "done"
+}

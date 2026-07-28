@@ -1,0 +1,258 @@
+{
+ "lane": "python",
+ "repo": "TauricResearch/TradingAgents",
+ "stars": 94531,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/TauricResearch__TradingAgents --json --out /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 10674,
+   "sloc_by_lang": {
+    "python": 10570,
+    "config": 104
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/TauricResearch__TradingAgents --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "count": 145,
+   "by_language": {
+    "python": 145
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/TauricResearch__TradingAgents --out /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.63,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 9,
+   "by_severity": {
+    "medium": 5,
+    "low": 3,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-500": 3,
+    "GF-546": 3,
+    "GF-477": 2,
+    "GF-419": 1
+   },
+   "gaps": 5
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/TauricResearch__TradingAgents --out /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 28
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/TauricResearch__TradingAgents --work-dir /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 20.31,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 145,
+    "dropped_by_cap": 135,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "thread_id",
+     "source": "checkpointer.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `tradingagents.graph.checkpointer` is not loadable (skipped cleanly): missing module `langchain_core` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_rating",
+     "source": "rating.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1341.0259414581665,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sync_analyst_tracker_from_chunk",
+     "source": "analyst_execution.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `tradingagents.graph.analyst_execution` is not loadable (skipped cleanly): missing module `langchain_core` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_ohlcv",
+     "source": "stockstats_utils.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `tradingagents.dataflows.stockstats_utils` is not loadable (skipped cleanly): missing module `pandas` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'pandas'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SignalProcessor.process_signal",
+     "source": "signal_processing.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `tradingagents.graph.signal_processing` is not loadable (skipped cleanly): missing module `langchain_core` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_llm_client",
+     "source": "factory.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.5803465283863116,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "bind_structured",
+     "source": "structured.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 578.2936733749196,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "clear_all_checkpoints",
+     "source": "checkpointer.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `tradingagents.graph.checkpointer` is not loadable (skipped cleanly): missing module `langchain_core` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "crypto_base",
+     "source": "symbol_utils.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3223.6575701982633,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "build_instrument_context",
+     "source": "agent_utils.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `agent_utils` is not loadable (skipped cleanly): missing module `yfinance` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'yfinance'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-91b743ea",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0005-5D074E0C"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents/findings --out /home/ubuntu/govfuzz-sweep-work/python__TauricResearch__TradingAgents/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "a33fd4c0f134485a43553a2c23a63cb14adbd88f",
+ "clone_s": 1.6,
+ "lane_check": "python: 137 files / 13733 lines; top=python(13733)",
+ "status": "done"
+}

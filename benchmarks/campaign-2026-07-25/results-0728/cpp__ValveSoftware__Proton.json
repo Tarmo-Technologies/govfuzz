@@ -1,0 +1,79 @@
+{
+ "lane": "cpp",
+ "repo": "ValveSoftware/Proton",
+ "stars": 32338,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/ValveSoftware__Proton --json --out /home/ubuntu/govfuzz-sweep-work/cpp__ValveSoftware__Proton.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.31,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 1168368,
+   "sloc_by_lang": {
+    "cpp": 715265,
+    "c": 428416,
+    "csharp": 21141,
+    "python": 3545,
+    "config": 1
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/ValveSoftware__Proton --format json --top 100000",
+   "exit": -9,
+   "wall_s": 900.16,
+   "timed_out": true,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/ValveSoftware__Proton --out /home/ubuntu/govfuzz-sweep-work/cpp__ValveSoftware__Proton/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 46.36,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 61,
+   "by_severity": {
+    "low": 5,
+    "high": 42,
+    "medium": 14
+   },
+   "top_rules": {
+    "GF-401": 19,
+    "GF-406": 11,
+    "GF-403": 10,
+    "GF-405": 8,
+    "GF-546": 5,
+    "GF-408": 4,
+    "GF-424": 2,
+    "GF-407": 1,
+    "GF-550": 1
+   },
+   "gaps": 4
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/ValveSoftware__Proton --out /home/ubuntu/govfuzz-sweep-work/cpp__ValveSoftware__Proton/sbom",
+   "exit": 0,
+   "wall_s": 0.53,
+   "timed_out": false,
+   "panic": false,
+   "components": 5
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/ValveSoftware__Proton --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__ValveSoftware__Proton --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.12,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "0745bfbc4cf4365e8cf048b003990c59def29948",
+ "clone_s": 5.2,
+ "lane_check": "cpp: 345 files / 227875 lines; top=cpp(227875)",
+ "status": "done"
+}

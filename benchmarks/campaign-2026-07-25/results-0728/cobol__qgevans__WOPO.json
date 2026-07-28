@@ -1,0 +1,234 @@
+{
+ "lane": "cobol",
+ "repo": "qgevans/WOPO",
+ "stars": 38,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/qgevans__WOPO --json --out /home/ubuntu/govfuzz-sweep-work/cobol__qgevans__WOPO.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 3038,
+   "sloc_by_lang": {
+    "cobol": 2818,
+    "c": 220
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/qgevans__WOPO --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 10,
+   "by_language": {
+    "cobol": 2,
+    "c": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cobol/qgevans__WOPO --out /home/ubuntu/govfuzz-sweep-work/cobol__qgevans__WOPO/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cobol/qgevans__WOPO --out /home/ubuntu/govfuzz-sweep-work/cobol__qgevans__WOPO/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cobol/qgevans__WOPO --work-dir /home/ubuntu/govfuzz-sweep-work/cobol__qgevans__WOPO --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 52.95,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 6,
+    "discovered_total": 6,
+    "built": 6,
+    "built_and_fuzzed": 6,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 5
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "\"RE-ESCAPE\"",
+     "source": "REESCAPE.COB",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 636.5521019290178,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "\"BF-RUN\"",
+     "source": "BF-RUN.COB",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.9173654037256427,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "channel_string_to_cobol",
+     "source": "channel.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.0167401489385888,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "channel_set_status",
+     "source": "channel.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.2089660232853747,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "channel_from_cobol",
+     "source": "channel.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.0008050999144378,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "channel_to_cobol",
+     "source": "channel.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3.2456138810892936,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0001-f0da5a65",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-122",
+      "CWE-787"
+     ],
+     "cwe_name": "Heap-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0059-7D313008"
+    },
+    {
+     "id": "F-0002-579ea27d",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-122",
+      "CWE-125"
+     ],
+     "cwe_name": "Heap-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C002A-8848CF80"
+    },
+    {
+     "id": "F-0003-bafe1cce",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-122",
+      "CWE-787"
+     ],
+     "cwe_name": "Heap-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0021-579CA854"
+    },
+    {
+     "id": "F-0004-891b5cc6",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-122",
+      "CWE-787"
+     ],
+     "cwe_name": "Heap-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0048-82E84405"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/cobol__qgevans__WOPO/findings --out /home/ubuntu/govfuzz-sweep-work/cobol__qgevans__WOPO/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "22de00773352049da589fcb6cd0e4c5607728443",
+ "clone_s": 0.6,
+ "lane_check": "cobol: 10 files / 2840 lines; top=cobol(2840)",
+ "status": "done"
+}

@@ -1,0 +1,80 @@
+{
+ "lane": "cpp",
+ "repo": "carbon-language/carbon-lang",
+ "stars": 33821,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang --json --out /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 116160,
+   "sloc_by_lang": {
+    "cpp": 107918,
+    "python": 5407,
+    "config": 1531,
+    "javascript": 1129,
+    "c": 156,
+    "lua": 19
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang --format json --top 100000",
+   "exit": -9,
+   "wall_s": 121.89,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "ee-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\nwarning: /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang/toolchain/sem_ir/named_constraint.cpp: parser found 0 targets and 1 tree-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\nwarning: /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang/toolchain/sem_ir/observe.cpp: parser found 0 targets and 3 tree-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\nwarning: /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang/toolchain/sem_ir/require_impls.cpp: parser found 0 targets and 3 tree-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\nwarning: /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang/toolchain/sem_ir/specific_interface.cpp: parser found 0 targets and 2 tree-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\nwarning: /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang/toolchain/sem_ir/struct_type_field.cpp: parser found 0 targets and 2 tree-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\nwarning: /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang/toolchain/sem_ir/vtable.cpp: parser found 0 targets and 1 tree-sitter ERROR/MISSING node(s). Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider preprocessing with `cpp -E` before passing to govfuzz.\n",
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang --out /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.65,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 40,
+   "by_severity": {
+    "high": 4,
+    "medium": 20,
+    "critical": 16
+   },
+   "top_rules": {
+    "GF-429": 16,
+    "GF-406": 14,
+    "GF-424": 4,
+    "GF-405": 2,
+    "GF-422": 2,
+    "GF-492": 1,
+    "GF-401": 1
+   },
+   "gaps": 44
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang --out /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang/sbom",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "components": 456
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 91.29,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/carbon-language__carbon-lang\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__carbon-language__carbon-lang/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint 30b5d3d2261e1e0c-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "7d89ac98c7f0600e3108224fef8664acb6bfc0c0",
+ "clone_s": 3.1,
+ "lane_check": "cpp: 384 files / 97554 lines; top=cpp(97554)",
+ "status": "done"
+}

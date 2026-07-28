@@ -1,0 +1,229 @@
+{
+ "lane": "c",
+ "repo": "HandBrake/HandBrake",
+ "stars": 23851,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/HandBrake__HandBrake --json --out /home/ubuntu/govfuzz-sweep-work/c__HandBrake__HandBrake.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 171785,
+   "sloc_by_lang": {
+    "c": 120776,
+    "csharp": 44126,
+    "python": 2390,
+    "cpp": 2355,
+    "ruby": 1518,
+    "config": 620
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/HandBrake__HandBrake --format json --top 100000",
+   "exit": 0,
+   "wall_s": 15.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 3097,
+   "by_language": {
+    "c": 2955,
+    "ruby": 5,
+    "csharp": 75,
+    "python": 61,
+    "cpp": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/HandBrake__HandBrake --out /home/ubuntu/govfuzz-sweep-work/c__HandBrake__HandBrake/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.11,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 183,
+   "by_severity": {
+    "medium": 8,
+    "high": 158,
+    "low": 12,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-401": 94,
+    "GF-407": 49,
+    "GF-546": 12,
+    "GF-405": 11,
+    "GF-406": 7,
+    "GF-404": 5,
+    "GF-403": 2,
+    "GF-500": 1,
+    "GF-472": 1,
+    "GF-408": 1
+   },
+   "gaps": 5
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/HandBrake__HandBrake --out /home/ubuntu/govfuzz-sweep-work/c__HandBrake__HandBrake/sbom",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "components": 54
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/HandBrake__HandBrake --work-dir /home/ubuntu/govfuzz-sweep-work/c__HandBrake__HandBrake --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 120.51,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 8,
+    "discovered_total": 3010,
+    "dropped_by_cap": 3002,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 9,
+    "synthesized_types": 2,
+    "synthesized_macros": 2,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "hb_x264_param_unparse",
+     "source": "encx264.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 9,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hb_ts_decode_pkt",
+     "source": "stream.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ghb_do_scan",
+     "source": "callbacks.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HandBrake.App.Core.Extensions.StringExtensions.ToTitleCase",
+     "source": "StringExtensions.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5201.47339763175,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "HandBrake.App.Core.Extensions.StringExtensions.ToInt",
+     "source": "StringExtensions.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2719.0580731147124,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Display#displayFolderCloser",
+     "source": "manicure.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Display#displayFolderCloser` is not loadable (skipped cleanly): missing module `plist` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- plist (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Display#generateAPIFolderCloserList",
+     "source": "manicure.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Display#generateAPIFolderCloserList` is not loadable (skipped cleanly): missing module `plist` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- plist (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cmd_out",
+     "source": "version.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.1746263121773077,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PATH \"X\": cannot load such file -- plist (LoadError)",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "0cb1a5e21c210dff21ba6fb231d6f3ecad1d38f7",
+ "clone_s": 2.2,
+ "lane_check": "c: 126 files / 114310 lines; top=c(114310)",
+ "status": "done"
+}

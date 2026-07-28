@@ -1,0 +1,151 @@
+{
+ "lane": "csharp",
+ "repo": "files-community/Files",
+ "stars": 44430,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/files-community__Files --json --out /home/ubuntu/govfuzz-sweep-work/csharp__files-community__Files.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 102289,
+   "sloc_by_lang": {
+    "csharp": 98112,
+    "cpp": 3114,
+    "config": 1002,
+    "c": 61
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/files-community__Files --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.54,
+   "timed_out": false,
+   "panic": false,
+   "count": 499,
+   "by_language": {
+    "csharp": 272,
+    "cpp": 227
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/files-community__Files --out /home/ubuntu/govfuzz-sweep-work/csharp__files-community__Files/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.89,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 20,
+   "by_severity": {
+    "high": 20
+   },
+   "top_rules": {
+    "GF-472": 20
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/files-community__Files --out /home/ubuntu/govfuzz-sweep-work/csharp__files-community__Files/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 55
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/files-community__Files --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__files-community__Files --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 124.2,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 498,
+    "dropped_by_cap": 495,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Files.App.Controls.GlobalHelper.WriteDebugStringForOmnibar",
+     "source": "GlobalHelper.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Files.App.Data.Commands.HotKeyCollection.Parse",
+     "source": "HotKeyCollection.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Files.App.Data.Commands.HotKey.Parse",
+     "source": "HotKey.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error CS0246: The type or namespace name \"X\" could not be found (are you missing a using directive or an assembly reference?) PATH",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "warning CS8632: The annotation for nullable reference types should only be used in code within a \"X\" annotations context. PATH",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "af991c3f0acd83d42aa6afee4624b40d0ab12eb6",
+ "clone_s": 6.7,
+ "lane_check": "csharp: 1132 files / 110361 lines; top=csharp(110361)",
+ "status": "done"
+}

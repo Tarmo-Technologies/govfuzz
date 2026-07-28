@@ -1,0 +1,304 @@
+{
+ "lane": "cpp",
+ "repo": "rethinkdb/rethinkdb",
+ "stars": 27001,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --json --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.34,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 358985,
+   "sloc_by_lang": {
+    "cpp": 298843,
+    "python": 45072,
+    "config": 10998,
+    "javascript": 2199,
+    "c": 1157,
+    "ruby": 567,
+    "perl": 149
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --format json --top 100000",
+   "exit": 0,
+   "wall_s": 155.79,
+   "timed_out": false,
+   "panic": false,
+   "count": 7650,
+   "by_language": {
+    "cpp": 7507,
+    "c": 19,
+    "python": 116,
+    "ruby": 4,
+    "perl": 4
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 15.67,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 282,
+   "by_severity": {
+    "medium": 35,
+    "high": 91,
+    "low": 116,
+    "critical": 40
+   },
+   "top_rules": {
+    "GF-546": 116,
+    "GF-405": 34,
+    "GF-424": 22,
+    "GF-420": 21,
+    "GF-421": 15,
+    "GF-507": 12,
+    "GF-404": 11,
+    "GF-449": 9,
+    "GF-500": 8,
+    "GF-304": 6,
+    "GF-407": 6,
+    "GF-401": 6,
+    "GF-403": 4,
+    "GF-408": 4,
+    "GF-425": 2
+   },
+   "gaps": 332
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 12
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 252.17,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 6026,
+    "dropped_by_cap": 6016,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 4,
+    "synthesized_types": 0,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "header_parser_singleton_t::parse",
+     "source": "http_job.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'header_parser_singleton_t::parse' is a member of class 'header_parser_singleton_t' defined only in a .cpp translation unit (not declared in any header) \u2014 not reachable from an external harness",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_local_addresses",
+     "source": "command_line.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pread",
+     "source": "unistd.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/src/arch/windows_stub/unistd.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/src/arch/windows_stub/unistd.h:6:10: fatal error: 'windows.hpp' file not found |     6 | #include \"windows.hpp\" |       |          ^~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "readPlistFromString",
+     "source": "__init__.py",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseColor",
+     "source": "colors.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `dmgbuild.colors` is not loadable (skipped cleanly): missing module `Quartz` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'Quartz'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pwrite",
+     "source": "unistd.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/src/arch/windows_stub/unistd.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/src/arch/windows_stub/unistd.h:6:10: fatal error: 'windows.hpp' file not found |     6 | #include \"windows.hpp\" |       |          ^~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Replayer#initialize",
+     "source": "netreplay",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Replayer#initialize` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/scripts/netrecord/netreplay` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/scripts/netrecord/netreplay (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Replayer#do_replay",
+     "source": "netreplay",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Replayer#do_replay` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/scripts/netrecord/netreplay` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb/scripts/netrecord/netreplay (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::callback",
+     "source": "process_headers.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2233.716144564353,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::includes_header",
+     "source": "process_headers.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3307.7252901069314,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling proj\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "incomplete type",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ target \"X\" is a member of class \"X\" defined only in a .cpp translation unit (not declared in any header) \u2014 not reachable from an external harness",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[python2] Python N: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PATH \"X\": cannot load such file -- PATH (LoadError)",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-546-239A0CD5",
+     "rule": "GF-546",
+     "cwe": [
+      "CWE-703"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "low",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P00BE-F1443333"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/findings --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "a2cf1308b57dca2e05d744f225a082881bab3fca",
+ "clone_s": 2.6,
+ "lane_check": "cpp: 1011 files / 307896 lines; top=cpp(307896)",
+ "status": "done"
+}

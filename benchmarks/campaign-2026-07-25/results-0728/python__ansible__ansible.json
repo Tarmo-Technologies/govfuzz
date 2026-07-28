@@ -1,0 +1,269 @@
+{
+ "lane": "python",
+ "repo": "ansible/ansible",
+ "stars": 69695,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible --json --out /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.26,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 233949,
+   "sloc_by_lang": {
+    "python": 146463,
+    "config": 81740,
+    "csharp": 5685,
+    "go": 61
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.94,
+   "timed_out": false,
+   "panic": false,
+   "count": 2708,
+   "by_language": {
+    "python": 2700,
+    "csharp": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible --out /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 8.57,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 311,
+   "by_severity": {
+    "high": 60,
+    "low": 210,
+    "critical": 37,
+    "medium": 4
+   },
+   "top_rules": {
+    "GF-546": 210,
+    "GF-421": 40,
+    "GF-420": 22,
+    "GF-405": 15,
+    "GF-404": 8,
+    "GF-429": 7,
+    "GF-422": 3,
+    "GF-562": 3,
+    "GF-427": 1,
+    "GF-428": 1,
+    "GF-426": 1
+   },
+   "gaps": 433
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible --out /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible/sbom",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "components": 46
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible --work-dir /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 37.75,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 2708,
+    "dropped_by_cap": 2698,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ErrorAction.from_config",
+     "source": "_handler.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.21790698762914684,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ErrorHandler.from_config",
+     "source": "_handler.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.2993073641188483,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Deprecation.parse",
+     "source": "create-bulk-issues.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2872.79494755743,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DeprecatedConfig.parse",
+     "source": "create-bulk-issues.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.9834968126759894,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AddHost.from_dict",
+     "source": "_task.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.16057520125853025,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Ansible.Privilege.PrivilegeUtil.CheckPrivilegeName",
+     "source": "Ansible.Privilege.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible/lib/ansible/module_utils/csharp/Ansible.Privilege.cs \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Ansible.Basic.AnsibleModule.Debug",
+     "source": "Ansible.Basic.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Ansible.Basic.AnsibleModule.Debug` needs a receiver, but `AnsibleModule` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Ansible.Basic.AnsibleModule.FailJson",
+     "source": "Ansible.Basic.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Ansible.Basic.AnsibleModule.FailJson` needs a receiver, but `AnsibleModule` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Ansible.Basic.AnsibleModule.Warn",
+     "source": "Ansible.Basic.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Ansible.Basic.AnsibleModule.Warn` needs a receiver, but `AnsibleModule` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Ansible.Basic.AnsibleModule.FromJson",
+     "source": "Ansible.Basic.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-500/python/ansible__ansible/lib/ansible/module_utils/csharp/Ansible.Basic.cs \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an u\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "no owning .csproj found for PATH \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-6bd3f699",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P00C8-0C55560E"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible/findings --out /home/ubuntu/govfuzz-sweep-work/python__ansible__ansible/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "67c6b7c5dd9a029d46c6a3792c14f9b61f66580e",
+ "clone_s": 2.4,
+ "lane_check": "python: 1808 files / 212997 lines; top=python(212997)",
+ "status": "done"
+}

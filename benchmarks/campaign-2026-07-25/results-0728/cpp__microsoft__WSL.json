@@ -1,0 +1,311 @@
+{
+ "lane": "cpp",
+ "repo": "microsoft/WSL",
+ "stars": 33206,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 203625,
+   "sloc_by_lang": {
+    "cpp": 146989,
+    "c": 49198,
+    "csharp": 3956,
+    "config": 2112,
+    "python": 1370
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --format json --top 100000",
+   "exit": 0,
+   "wall_s": 68.82,
+   "timed_out": false,
+   "panic": false,
+   "count": 5488,
+   "by_language": {
+    "cpp": 4594,
+    "c": 867,
+    "python": 18,
+    "csharp": 9
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.87,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 697,
+   "by_severity": {
+    "low": 1,
+    "high": 655,
+    "medium": 32,
+    "critical": 9
+   },
+   "top_rules": {
+    "GF-405": 453,
+    "GF-403": 126,
+    "GF-406": 29,
+    "GF-401": 28,
+    "GF-408": 26,
+    "GF-407": 16,
+    "GF-404": 9,
+    "GF-547": 5,
+    "GF-425": 2,
+    "GF-546": 1,
+    "GF-562": 1,
+    "GF-477": 1
+   },
+   "gaps": 78
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/sbom",
+   "exit": 0,
+   "wall_s": 0.27,
+   "timed_out": false,
+   "panic": false,
+   "components": 60
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 147.74,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3093,
+    "dropped_by_cap": 3083,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "CreateNtProcessUtilityVm",
+     "source": "binfmt.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (OffsetType, SpanType, T, __forceinline) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wsl::windows::wslc::CoreMain",
+     "source": "Main.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'argv' of type 'wchar_t const **' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): pointer parameter 'argv' of type 'wchar_t const * *' is not safely drivable after struct synthesis",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wsl::windows::common::wslutil::DownloadFileImpl",
+     "source": "wslutil.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'Url' of type 'std::wstring_view' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'Url' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_and_get_manifest",
+     "source": "validate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.1005724689022421,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "read_tar",
+     "source": "validate-modern.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `validate-modern` is not loadable (skipped cleanly): missing module `jsoncfg` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'jsoncfg'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WslSettings.Helpers.ResourceExtensions.GetLocalized",
+     "source": "ResourceExtensions.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/wslsettings/Helpers/ResourceExtensions.cs \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LibWsl.WslCoreConfigInterface.CreateWslConfig",
+     "source": "LibWsl.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no owning .csproj found for /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/wslsettings/LibWsl.cs \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "error",
+     "source": "validate-modern.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `validate-modern` is not loadable (skipped cleanly): missing module `jsoncfg` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'jsoncfg'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MountEnumCreateEx",
+     "source": "mountutil.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'mountEnum' of type 'PMOUNT_ENUM' has no byte-buffer decoder after struct synthesis: opaque type 'PMOUNT_ENUM' for parameter 'mountEnum' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MountFieldUnescapeOctal",
+     "source": "mountutil.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3773.7928104732273,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (OffsetType, SpanType, T, __forceinline) \u2014 an external SDK/framework type (e.g. MFC/Win32, a ven\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): pointer parameter \"X\" of type \"X\" i\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "no owning .csproj found for PATH \u2014 the C# lane builds through a project reference (skipped cleanly)",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-405-E8A5A62C",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X0071-BA93CAF9"
+    },
+    {
+     "id": "F-RO-GF-408-BDD8BA8A",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X0071-BA93CAF9"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/findings --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "b25c0820a9e9211d8c3212b45ee948120eb02919",
+ "clone_s": 2.4,
+ "lane_check": "cpp: 370 files / 135200 lines; top=cpp(135200)",
+ "status": "done"
+}

@@ -1,0 +1,234 @@
+{
+ "lane": "go",
+ "repo": "cli/cli",
+ "stars": 45415,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/cli__cli --json --out /home/ubuntu/govfuzz-sweep-work/go__cli__cli.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 234591,
+   "sloc_by_lang": {
+    "go": 226969,
+    "config": 6833,
+    "javascript": 789
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/cli__cli --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.95,
+   "timed_out": false,
+   "panic": false,
+   "count": 2009,
+   "by_language": {
+    "go": 2007,
+    "javascript": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/cli__cli --out /home/ubuntu/govfuzz-sweep-work/go__cli__cli/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.46,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 147,
+   "by_severity": {
+    "critical": 2,
+    "high": 137,
+    "medium": 8
+   },
+   "top_rules": {
+    "GF-405": 125,
+    "GF-436": 7,
+    "GF-427": 7,
+    "GF-423": 5,
+    "GF-429": 2,
+    "GF-548": 1
+   },
+   "gaps": 547
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/cli__cli --out /home/ubuntu/govfuzz-sweep-work/go__cli__cli/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 292
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/cli__cli --work-dir /home/ubuntu/govfuzz-sweep-work/go__cli__cli --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 17.45,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 2009,
+    "dropped_by_cap": 1999,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "NewFromString",
+     "source": "stub.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/cli/go-gh/v2@v2.13.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Parse",
+     "source": "frontmatter.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/cli/go-gh/v2@v2.13.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromFullName",
+     "source": "repo.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/cli/go-gh/v2@v2.13.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromFullNameWithHost",
+     "source": "repo.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/cli/go-gh/v2@v2.13.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FillFromJSON",
+     "source": "state.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*iostreams.IOStreams` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GistIDFromURL",
+     "source": "shared.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: charm.land/huh/v2@v2.0.3 requires go >= 1.25.8 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CredentialPatternFromGitURL",
+     "source": "client.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/cli/go-gh/v2@v2.13.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CredentialPatternFromHost",
+     "source": "client.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/cli/go-gh/v2@v2.13.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse",
+     "source": "ansi.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 442.11119309066095,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "renderToDom",
+     "source": "ansi.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 590.3699306027677,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 7,
+     "detail": "go build failed: go: PATH requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b1a9f7b183c12ae111ea63048d49aad2a53e9101",
+ "clone_s": 1.7,
+ "lane_check": "go: 890 files / 238515 lines; top=go(238515)",
+ "status": "done"
+}

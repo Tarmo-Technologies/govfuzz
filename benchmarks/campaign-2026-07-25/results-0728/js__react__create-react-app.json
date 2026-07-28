@@ -1,0 +1,229 @@
+{
+ "lane": "js",
+ "repo": "react/create-react-app",
+ "stars": 103302,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/react__create-react-app --json --out /home/ubuntu/govfuzz-sweep-work/js__react__create-react-app.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 12707,
+   "sloc_by_lang": {
+    "javascript": 12517,
+    "config": 190
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/react__create-react-app --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.69,
+   "timed_out": false,
+   "panic": false,
+   "count": 341,
+   "by_language": {
+    "javascript": 341
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/react__create-react-app --out /home/ubuntu/govfuzz-sweep-work/js__react__create-react-app/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 7.5,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 10,
+   "by_severity": {
+    "medium": 5,
+    "high": 5
+   },
+   "top_rules": {
+    "GF-500": 4,
+    "GF-505": 4,
+    "GF-512": 1,
+    "GF-422": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/react__create-react-app --out /home/ubuntu/govfuzz-sweep-work/js__react__create-react-app/sbom",
+   "exit": 0,
+   "wall_s": 0.57,
+   "timed_out": false,
+   "panic": false,
+   "components": 2124
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/react__create-react-app --work-dir /home/ubuntu/govfuzz-sweep-work/js__react__create-react-app --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 7.72,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 341,
+    "dropped_by_cap": 331,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "#apply",
+     "source": "ForkTsCheckerWarningWebpackPlugin.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-dev-utils/ForkTsCheckerWarningWebpackPlugin.js` is not loadable (skipped cleanly): missing module `fork-ts-checker-webpack-plugin` (not in the project and not installed) \u2014 Error: Cannot find module 'fork-ts-checker-webpack-plugin'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Html4Entities",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AllHtmlEntities",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AllHtmlEntities",
+     "source": "bundle_u.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle_u.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "EventPluginRegistry",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "EventPluginRegistry",
+     "source": "bundle_u.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle_u.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AsyncIterator",
+     "source": "bundle_u.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle_u.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AsyncIterator",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BasicSourceMapConsumer",
+     "source": "bundle_u.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle_u.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BasicSourceMapConsumer",
+     "source": "bundle.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/react__create-react-app/packages/react-error-overlay/fixtures/bundle.mjs` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webpackHotUpdate')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "TypeError: Cannot read properties of undefined (reading \"X\")",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "6254386531d263688ccfa542d0e628fbc0de0b28",
+ "clone_s": 1.1,
+ "lane_check": "js: 273 files / 86791 lines; top=js(86791)",
+ "status": "done"
+}

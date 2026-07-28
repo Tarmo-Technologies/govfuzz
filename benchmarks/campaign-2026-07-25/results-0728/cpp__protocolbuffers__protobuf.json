@@ -1,0 +1,232 @@
+{
+ "lane": "cpp",
+ "repo": "protocolbuffers/protobuf",
+ "stars": 71649,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --json --out /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.36,
+   "timed_out": false,
+   "panic": false,
+   "languages": 11,
+   "sloc_total": 927610,
+   "sloc_by_lang": {
+    "cpp": 338778,
+    "java": 237429,
+    "csharp": 160283,
+    "c": 125118,
+    "python": 24473,
+    "php": 19108,
+    "rust": 11046,
+    "ruby": 7694,
+    "config": 2668,
+    "lua": 705,
+    "go": 308
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --format json --top 100000",
+   "exit": 0,
+   "wall_s": 335.63,
+   "timed_out": false,
+   "panic": false,
+   "count": 44495,
+   "by_language": {
+    "cpp": 20677,
+    "python": 392,
+    "rust": 558,
+    "java": 15475,
+    "c": 6787,
+    "csharp": 35,
+    "ruby": 110,
+    "php": 460,
+    "lua": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --out /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 17.62,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 269,
+   "by_severity": {
+    "high": 152,
+    "critical": 3,
+    "medium": 84,
+    "low": 30
+   },
+   "top_rules": {
+    "GF-472": 108,
+    "GF-425": 40,
+    "GF-424": 31,
+    "GF-546": 29,
+    "GF-405": 24,
+    "GF-406": 13,
+    "GF-421": 11,
+    "GF-403": 4,
+    "GF-401": 4,
+    "GF-404": 2,
+    "GF-473": 1,
+    "GF-420": 1,
+    "GF-553": 1
+   },
+   "gaps": 304
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --out /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf/sbom",
+   "exit": 0,
+   "wall_s": 0.28,
+   "timed_out": false,
+   "panic": false,
+   "components": 66
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 449.38,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 6,
+    "discovered_total": 23407,
+    "dropped_by_cap": 23401,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "google::protobuf::compiler::java::FileGenerator::Validate",
+     "source": "file.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'google::protobuf::compiler::java::FileGenerator' to harness 'Validate': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'google::protobuf::compiler::java::FileGenerator' was found. Add a small wrapper or factory harness that constructs the object and calls 'Validate', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "google::protobuf::compiler::Parser::LocationRecorder::AttachComments",
+     "source": "parser.cc",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "upb_DecodeFast_GetArrayForAppend",
+     "source": "cardinality.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf/upb/wire/decode_fast/cardinality.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:8: | In file included from /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf/upb/wire/decode_fast/dispatch.h:20: | /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf/upb/wire/internal/decoder.h:35:10: fatal error: 'utf8_range.h' file not found |    35 | #include \"utf8_range.h\" |       |          ^~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Message.FromString",
+     "source": "message.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7285.518560790972,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decode",
+     "source": "wire.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no Cargo.toml found above the Rust target source",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "newInstance",
+     "source": "CodedInputStream.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling proj\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException) AND javac PATH error: package com.google.protobuf.DescriptorProtos d\u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "no Cargo.toml found above the Rust target source",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "6d7f56cbac8176028acc5f2097950cfe33c87514",
+ "clone_s": 4.3,
+ "lane_check": "cpp: 532 files / 274000 lines; top=java(306363)",
+ "status": "done"
+}

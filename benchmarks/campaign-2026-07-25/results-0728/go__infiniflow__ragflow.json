@@ -1,0 +1,162 @@
+{
+ "lane": "go",
+ "repo": "infiniflow/ragflow",
+ "stars": 85999,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/infiniflow__ragflow --json --out /home/ubuntu/govfuzz-sweep-work/go__infiniflow__ragflow.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.45,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 863307,
+   "sloc_by_lang": {
+    "go": 398077,
+    "python": 216776,
+    "javascript": 197566,
+    "cpp": 42472,
+    "config": 5447,
+    "c": 2969
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/infiniflow__ragflow --format json --top 100000",
+   "exit": 0,
+   "wall_s": 51.66,
+   "timed_out": false,
+   "panic": false,
+   "count": 10577,
+   "by_language": {
+    "python": 2965,
+    "go": 5993,
+    "cpp": 1123,
+    "c": 78,
+    "typescript": 418
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/infiniflow__ragflow --out /home/ubuntu/govfuzz-sweep-work/go__infiniflow__ragflow/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 89.73,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 734,
+   "by_severity": {
+    "high": 254,
+    "medium": 220,
+    "low": 244,
+    "critical": 16
+   },
+   "top_rules": {
+    "GF-546": 244,
+    "GF-405": 185,
+    "GF-436": 111,
+    "GF-544": 48,
+    "GF-422": 28,
+    "GF-427": 23,
+    "GF-423": 15,
+    "GF-429": 9,
+    "GF-426": 9,
+    "GF-425": 9,
+    "GF-428": 9,
+    "GF-503": 8,
+    "GF-404": 5,
+    "GF-477": 4,
+    "GF-421": 4
+   },
+   "gaps": 5872
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/infiniflow__ragflow --out /home/ubuntu/govfuzz-sweep-work/go__infiniflow__ragflow/sbom",
+   "exit": 0,
+   "wall_s": 0.73,
+   "timed_out": false,
+   "panic": false,
+   "components": 2877
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/infiniflow__ragflow --work-dir /home/ubuntu/govfuzz-sweep-work/go__infiniflow__ragflow --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 206.26,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 2,
+    "discovered_total": 10500,
+    "dropped_by_cap": 10498,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ParserModel::load",
+     "source": "thinc_parser.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'ParserModel::load' is a member of class 'ParserModel' defined only in a .cpp translation unit (not declared in any header) \u2014 not reachable from an external harness",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RAGAnalyzer::GetBestTokensTopN",
+     "source": "rag_analyzer.cpp",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "clang++: error: no such file or directory: \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ target \"X\" is a member of class \"X\" defined only in a .cpp translation unit (not declared in any header) \u2014 not reachable from an external harness",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "75836cfc107ee3999a348a4a677cc5385e23eb3d",
+ "clone_s": 6.5,
+ "lane_check": "go: 1552 files / 463305 lines; top=go(463305)",
+ "status": "done"
+}

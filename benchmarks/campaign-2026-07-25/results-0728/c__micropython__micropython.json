@@ -1,0 +1,259 @@
+{
+ "lane": "c",
+ "repo": "micropython/micropython",
+ "stars": 21936,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/micropython__micropython --json --out /home/ubuntu/govfuzz-sweep-work/c__micropython__micropython.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 392397,
+   "sloc_by_lang": {
+    "c": 314273,
+    "python": 70005,
+    "cpp": 5628,
+    "config": 1722,
+    "javascript": 769
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/micropython__micropython --format json --top 100000",
+   "exit": 0,
+   "wall_s": 36.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 12405,
+   "by_language": {
+    "c": 11862,
+    "python": 470,
+    "cpp": 73
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/micropython__micropython --out /home/ubuntu/govfuzz-sweep-work/c__micropython__micropython/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 9.13,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 583,
+   "by_severity": {
+    "high": 110,
+    "medium": 217,
+    "low": 141,
+    "critical": 115
+   },
+   "top_rules": {
+    "GF-546": 141,
+    "GF-425": 141,
+    "GF-420": 107,
+    "GF-424": 59,
+    "GF-408": 28,
+    "GF-405": 25,
+    "GF-401": 15,
+    "GF-421": 14,
+    "GF-426": 10,
+    "GF-406": 9,
+    "GF-472": 7,
+    "GF-404": 7,
+    "GF-422": 6,
+    "GF-403": 6,
+    "GF-407": 2
+   },
+   "gaps": 294
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/micropython__micropython --out /home/ubuntu/govfuzz-sweep-work/c__micropython__micropython/sbom",
+   "exit": 0,
+   "wall_s": 0.27,
+   "timed_out": false,
+   "panic": false,
+   "components": 20
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/micropython__micropython --work-dir /home/ubuntu/govfuzz-sweep-work/c__micropython__micropython --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 77.56,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 11986,
+    "dropped_by_cap": 11976,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 7,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 6,
+    "synthesized_types": 1,
+    "synthesized_macros": 3,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "sdcard_read_blocks",
+     "source": "sdcard.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 6,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mp_parse_num_integer",
+     "source": "parsenum.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "nina_scan",
+     "source": "nina_wifi_drv.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sdcard_write_blocks",
+     "source": "sdcard.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_sdkconfig_value",
+     "source": "makeimg.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `makeimg` is not loadable (skipped cleanly): TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_sdkconfig_hex_value",
+     "source": "makeimg.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `makeimg` is not loadable (skipped cleanly): TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_sdkconfig_str_value",
+     "source": "makeimg.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `makeimg` is not loadable (skipped cleanly): TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "nlr_cb",
+     "source": "coveragecpp.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extra_cpp_coverage",
+     "source": "coveragecpp.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 5,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extra_cpp_coverage_impl",
+     "source": "coveragecpp.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing header",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): TypeError: unsupported operand type(s) for +: \"X\" and \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "5aaa6d1751ab064a98a762d7d32a2f4071840770",
+ "clone_s": 2.5,
+ "lane_check": "c: 1155 files / 320555 lines; top=c(320555)",
+ "status": "done"
+}

@@ -1,0 +1,223 @@
+{
+ "lane": "php",
+ "repo": "livewire/livewire",
+ "stars": 23558,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire --json --out /home/ubuntu/govfuzz-sweep-work/php__livewire__livewire.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 82078,
+   "sloc_by_lang": {
+    "php": 71420,
+    "javascript": 9938,
+    "config": 720
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 667,
+   "by_language": {
+    "javascript": 162,
+    "php": 505
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire --out /home/ubuntu/govfuzz-sweep-work/php__livewire__livewire/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 13.58,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 16,
+   "by_severity": {
+    "medium": 10,
+    "high": 6
+   },
+   "top_rules": {
+    "GF-500": 10,
+    "GF-472": 6
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire --out /home/ubuntu/govfuzz-sweep-work/php__livewire__livewire/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 206
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire --work-dir /home/ubuntu/govfuzz-sweep-work/php__livewire__livewire --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 20.66,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 667,
+    "dropped_by_cap": 657,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Bag#add",
+     "source": "utils.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/utils.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@/synths' imported from /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/utils.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Bag#remove",
+     "source": "utils.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/utils.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@/synths' imported from /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/utils.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Bag#each",
+     "source": "utils.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/utils.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@/synths' imported from /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/utils.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "InterceptorRegistry#addInterceptor",
+     "source": "interceptor.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/request/interceptor.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@/utils' imported from /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/request/interceptor.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "InterceptorRegistry#getMessageInterceptors",
+     "source": "interceptor.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/request/interceptor.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@/utils' imported from /home/ubuntu/govfuzz-corpus-500/php/livewire__livewire/js/request/interceptor.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Livewire\\Compiler\\CacheManager#getClassName",
+     "source": "CacheManager.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 190.55918540725187,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Livewire\\Compiler\\CacheManager#getHash",
+     "source": "CacheManager.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 147.5235931227305,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Livewire\\Compiler\\CacheManager#getClassPath",
+     "source": "CacheManager.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 159.4997259594917,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Livewire\\Compiler\\CacheManager#getGlobalStylePath",
+     "source": "CacheManager.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 129.73841082079954,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Livewire\\Compiler\\CacheManager#clearCompiledFiles",
+     "source": "CacheManager.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 130.1237451621614,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from PATH",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9c1450739d30c9b0b223ad6512be2a33f8f62f96",
+ "clone_s": 1.7,
+ "lane_check": "php: 819 files / 75894 lines; top=php(75894)",
+ "status": "done"
+}

@@ -1,0 +1,483 @@
+{
+ "lane": "cpp",
+ "repo": "sqlitebrowser/sqlitebrowser",
+ "stars": 24366,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --json --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 368189,
+   "sloc_by_lang": {
+    "javascript": 189025,
+    "cpp": 171431,
+    "c": 6225,
+    "config": 1371,
+    "python": 137
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --format json --top 100000",
+   "exit": 0,
+   "wall_s": 126.4,
+   "timed_out": false,
+   "panic": false,
+   "count": 7461,
+   "by_language": {
+    "c": 109,
+    "cpp": 7344,
+    "python": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 106.45,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 137,
+   "by_severity": {
+    "high": 129,
+    "medium": 8
+   },
+   "top_rules": {
+    "GF-401": 33,
+    "GF-405": 32,
+    "GF-407": 25,
+    "GF-403": 19,
+    "GF-472": 12,
+    "GF-424": 6,
+    "GF-408": 6,
+    "GF-406": 2,
+    "GF-547": 1,
+    "GF-426": 1
+   },
+   "gaps": 413
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 16
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/sqlitebrowser__sqlitebrowser --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 265.39,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 5140,
+    "dropped_by_cap": 5130,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 17
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parsePlistDeserializedToJson",
+     "source": "extension-formats.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (SQLITE_EXTENSION_INIT1, sqlite3_context, sqlite3_value) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parsePlist",
+     "source": "extension-formats.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Editor::AddCharUTF",
+     "source": "Editor.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct abstract C++ class 'Editor' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Editor *' were found; harness a concrete subclass or a factory that returns 'Editor'; sequence generation also failed first: cannot construct abstract C++ class 'Editor' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Editor *' were found; harness a concrete subclass or a factory that returns 'Editor'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Editor::InsertPaste",
+     "source": "Editor.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct abstract C++ class 'Editor' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Editor *' were found; harness a concrete subclass or a factory that returns 'Editor'; sequence generation also failed first: cannot construct abstract C++ class 'Editor' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Editor *' were found; harness a concrete subclass or a factory that returns 'Editor'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Editor::PasteRectangular",
+     "source": "Editor.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct abstract C++ class 'Editor' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Editor *' were found; harness a concrete subclass or a factory that returns 'Editor'; sequence generation also failed first: cannot construct abstract C++ class 'Editor' (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public constructor, and no factory returning a 'Editor *' were found; harness a concrete subclass or a factory that returns 'Editor'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parsePlistToJson",
+     "source": "extension-formats.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "readArray",
+     "source": "extension-formats.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_file",
+     "source": "download_latest_sqlite.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2687.642853915515,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_file",
+     "source": "download_latest_openssl3.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.08292168236477185,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "fetch_download_page",
+     "source": "download_latest_sqlite.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.1617618552220141,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "cannot combine with previous \"X\" declaration specifier",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (SQLITE_EXTENSION_INIT1, sqlite3_context, sqlite3_value) \u2014 an external SDK/framework type (e.g. \u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "cannot construct abstract C++ class \"X\" (it declares a pure-virtual member): no concrete default-constructible subclass, no subclass with a supported public con\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-401-1399C1C6",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-401-2CBEC34A",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-401-474D8CE8",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-401-5C580A28",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-401-C4F02D42",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-401-EB24480C",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-087410A8",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-1D962B3F",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-2705FBD6",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-2F37AFB1",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-386661B6",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-7CBBF96E",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-8DCA2946",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-9E911ACC",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-A28C1935",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-F15E4350",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    },
+    {
+     "id": "F-RO-GF-403-F1695D34",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0628-940BC2DE"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser/findings --out /home/ubuntu/govfuzz-sweep-work/cpp__sqlitebrowser__sqlitebrowser/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "582f086e4db8df599a7ef2838d921046600854ac",
+ "clone_s": 2.1,
+ "lane_check": "cpp: 279 files / 185213 lines; top=ts(189025)",
+ "status": "done"
+}

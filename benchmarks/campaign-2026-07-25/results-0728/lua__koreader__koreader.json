@@ -1,0 +1,225 @@
+{
+ "lane": "lua",
+ "repo": "koreader/koreader",
+ "stars": 28032,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/koreader__koreader --json --out /home/ubuntu/govfuzz-sweep-work/lua__koreader__koreader.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 178577,
+   "sloc_by_lang": {
+    "lua": 177677,
+    "python": 502,
+    "config": 398
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/koreader__koreader --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.43,
+   "timed_out": false,
+   "panic": false,
+   "count": 2292,
+   "by_language": {
+    "lua": 2278,
+    "python": 14
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/koreader__koreader --out /home/ubuntu/govfuzz-sweep-work/lua__koreader__koreader/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.65,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 5,
+   "by_severity": {
+    "medium": 1,
+    "critical": 3,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-429": 3,
+    "GF-500": 1,
+    "GF-405": 1
+   },
+   "gaps": 16
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/koreader__koreader --out /home/ubuntu/govfuzz-sweep-work/lua__koreader__koreader/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/koreader__koreader --work-dir /home/ubuntu/govfuzz-sweep-work/lua__koreader__koreader --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 20.8,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 2292,
+    "dropped_by_cap": 2282,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "AndroidPowerD:setIntensityHW",
+     "source": "powerd.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AndroidPowerD:setIntensityHW` is not loadable (skipped cleanly): missing module `device/generic/powerd` (not in the project and not installed) \u2014 /usr/bin/lua: ...ua/koreader__koreader/frontend/device/android/powerd.lua:1: module 'device/generic/powerd' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Aliases:show",
+     "source": "aliases.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Aliases:show` is not loadable (skipped cleanly): missing module `ui/widget/keyvaluepage` (not in the project and not installed) \u2014 /usr/bin/lua: ...koreader__koreader/plugins/terminal.koplugin/aliases.lua:1: module 'ui/widget/keyvaluepage' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AlphaContainer:paintTo",
+     "source": "alphacontainer.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AlphaContainer:paintTo` is not loadable (skipped cleanly): missing module `ffi/blitbuffer` (not in the project and not installed) \u2014 /usr/bin/lua: ...koreader/frontend/ui/widget/container/alphacontainer.lua:19: module 'ffi/blitbuffer' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AndroidPowerD:setWarmthHW",
+     "source": "powerd.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AndroidPowerD:setWarmthHW` is not loadable (skipped cleanly): missing module `device/generic/powerd` (not in the project and not installed) \u2014 /usr/bin/lua: ...ua/koreader__koreader/frontend/device/android/powerd.lua:1: module 'device/generic/powerd' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Aliases:editAlias",
+     "source": "aliases.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Aliases:editAlias` is not loadable (skipped cleanly): missing module `ui/widget/keyvaluepage` (not in the project and not installed) \u2014 /usr/bin/lua: ...koreader__koreader/plugins/terminal.koplugin/aliases.lua:1: module 'ui/widget/keyvaluepage' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NFC",
+     "source": "ja_keyboard_generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2139.7071388593267,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "NFD",
+     "source": "ja_keyboard_generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3624.0773721066175,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "escape_luastring",
+     "source": "ja_keyboard_generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4008.7062152838357,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "generate_basic_cycle",
+     "source": "ja_keyboard_generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2640.3503342141753,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "generate_alphabet_shift_cycle",
+     "source": "ja_keyboard_generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2673.691996920569,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PATH PATH module \"X\" not found:",
+     "language": "lua"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "74e3ffbdec908d14a7fe04ad6cefbcbbe6defa26",
+ "clone_s": 1.8,
+ "lane_check": "lua: 565 files / 199224 lines; top=lua(199224)",
+ "status": "done"
+}

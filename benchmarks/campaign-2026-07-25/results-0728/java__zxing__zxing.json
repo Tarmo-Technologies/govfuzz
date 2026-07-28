@@ -1,0 +1,198 @@
+{
+ "lane": "java",
+ "repo": "zxing/zxing",
+ "stars": 34034,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/zxing__zxing --json --out /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 49508,
+   "sloc_by_lang": {
+    "java": 48447,
+    "javascript": 896,
+    "config": 165
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/zxing__zxing --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.34,
+   "timed_out": false,
+   "panic": false,
+   "count": 1645,
+   "by_language": {
+    "java": 1645
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/zxing__zxing --out /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.36,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 10,
+   "by_severity": {
+    "medium": 3,
+    "high": 7
+   },
+   "top_rules": {
+    "GF-561": 4,
+    "GF-436": 3,
+    "GF-405": 2,
+    "GF-423": 1
+   },
+   "gaps": 132
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/zxing__zxing --out /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 17
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/zxing__zxing --work-dir /home/ubuntu/govfuzz-sweep-work/java__zxing__zxing --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 110.3,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 6,
+    "discovered_total": 985,
+    "dropped_by_cap": 979,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ExpandedProductParsedResult",
+     "source": "ExpandedProductParsedResult.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'ExpandedProductParsedResult' parameter #14 has an unsupported type `Map<String,String>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "readImage",
+     "source": "ImageReader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "readDataURIImage",
+     "source": "ImageReader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "downloadViaHttp",
+     "source": "HttpHelper.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "downloadViaHttp",
+     "source": "HttpHelper.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ByQuadrantReader",
+     "source": "ByQuadrantReader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac PATH error: package android.app does not exist",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException) AND javac PATH error: package android.app does not exist",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (harness) failed: PATH error: incompatible types: InputStreamReader cannot be converted to Reader",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "19aa2d8254410e161f04dc3c928e68d5e90233c2",
+ "clone_s": 5.7,
+ "lane_check": "java: 523 files / 66380 lines; top=java(66380)",
+ "status": "done"
+}

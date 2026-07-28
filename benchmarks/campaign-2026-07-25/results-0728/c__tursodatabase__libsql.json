@@ -1,0 +1,96 @@
+{
+ "lane": "c",
+ "repo": "tursodatabase/libsql",
+ "stars": 16991,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/tursodatabase__libsql --json --out /home/ubuntu/govfuzz-sweep-work/c__tursodatabase__libsql.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.5,
+   "timed_out": false,
+   "panic": false,
+   "languages": 9,
+   "sloc_total": 1042363,
+   "sloc_by_lang": {
+    "c": 904174,
+    "rust": 98118,
+    "javascript": 13235,
+    "cpp": 11849,
+    "java": 11682,
+    "config": 1725,
+    "python": 737,
+    "lua": 536,
+    "csharp": 307
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/tursodatabase__libsql --format json --top 100000",
+   "exit": 0,
+   "wall_s": 260.83,
+   "timed_out": false,
+   "panic": false,
+   "count": 30582,
+   "by_language": {
+    "c": 26923,
+    "java": 542,
+    "cpp": 21,
+    "rust": 3086,
+    "python": 10
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/tursodatabase__libsql --out /home/ubuntu/govfuzz-sweep-work/c__tursodatabase__libsql/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 31.93,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1587,
+   "by_severity": {
+    "medium": 1023,
+    "high": 522,
+    "low": 29,
+    "critical": 13
+   },
+   "top_rules": {
+    "GF-424": 570,
+    "GF-425": 309,
+    "GF-405": 144,
+    "GF-407": 131,
+    "GF-403": 76,
+    "GF-406": 67,
+    "GF-408": 63,
+    "GF-472": 59,
+    "GF-436": 49,
+    "GF-553": 29,
+    "GF-401": 26,
+    "GF-552": 14,
+    "GF-500": 12,
+    "GF-404": 9,
+    "GF-422": 7
+   },
+   "gaps": 2100
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/tursodatabase__libsql --out /home/ubuntu/govfuzz-sweep-work/c__tursodatabase__libsql/sbom",
+   "exit": 0,
+   "wall_s": 0.35,
+   "timed_out": false,
+   "panic": false,
+   "components": 855
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/tursodatabase__libsql --work-dir /home/ubuntu/govfuzz-sweep-work/c__tursodatabase__libsql --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "6f451a1fabacbcbc9960b232b4c1605a5021979b",
+ "clone_s": 7.8,
+ "lane_check": "c: 524 files / 1248413 lines; top=c(1248413)",
+ "status": "done"
+}

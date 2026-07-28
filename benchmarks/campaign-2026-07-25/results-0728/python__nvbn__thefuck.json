@@ -1,0 +1,223 @@
+{
+ "lane": "python",
+ "repo": "nvbn/thefuck",
+ "stars": 97568,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/nvbn__thefuck --json --out /home/ubuntu/govfuzz-sweep-work/python__nvbn__thefuck.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 10681,
+   "sloc_by_lang": {
+    "python": 10582,
+    "config": 99
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/nvbn__thefuck --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "count": 461,
+   "by_language": {
+    "python": 461
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/nvbn__thefuck --out /home/ubuntu/govfuzz-sweep-work/python__nvbn__thefuck/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.58,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 8,
+   "by_severity": {
+    "medium": 2,
+    "low": 4,
+    "high": 2
+   },
+   "top_rules": {
+    "GF-546": 4,
+    "GF-500": 2,
+    "GF-405": 2
+   },
+   "gaps": 71
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/nvbn__thefuck --out /home/ubuntu/govfuzz-sweep-work/python__nvbn__thefuck/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/nvbn__thefuck --work-dir /home/ubuntu/govfuzz-sweep-work/python__nvbn__thefuck --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 26.73,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 461,
+    "dropped_by_cap": 451,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "failed",
+     "source": "logs.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 234.63299456382782,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "debug",
+     "source": "logs.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 149.290071111023,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "debug_time",
+     "source": "logs.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1871.5057548034104,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Generic.quote",
+     "source": "generic.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `thefuck.shells.generic` is not loadable (skipped cleanly): missing module `decorator` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'decorator'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_source",
+     "source": "conf.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 603.2864270092515,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Command.from_raw_script",
+     "source": "types.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `thefuck.types` is not loadable (skipped cleanly): missing module `decorator` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'decorator'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "already_configured",
+     "source": "logs.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 177.62275376295244,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Rule.from_path",
+     "source": "types.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `thefuck.types` is not loadable (skipped cleanly): missing module `decorator` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'decorator'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_actions",
+     "source": "ui.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `thefuck.ui` is not loadable (skipped cleanly): missing module `decorator` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'decorator'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Generic.decode_utf8",
+     "source": "generic.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `thefuck.shells.generic` is not loadable (skipped cleanly): missing module `decorator` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'decorator'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "c7e7e1d884d3bb241ea6448f72a989434c2a35ec",
+ "clone_s": 1.0,
+ "lane_check": "python: 416 files / 12743 lines; top=python(12743)",
+ "status": "done"
+}

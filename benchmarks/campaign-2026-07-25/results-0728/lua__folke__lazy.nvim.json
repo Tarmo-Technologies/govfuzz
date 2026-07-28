@@ -1,0 +1,227 @@
+{
+ "lane": "lua",
+ "repo": "folke/lazy.nvim",
+ "stars": 21318,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/folke__lazy.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__folke__lazy.nvim.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 12109,
+   "sloc_by_lang": {
+    "lua": 11855,
+    "config": 254
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/folke__lazy.nvim --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 274,
+   "by_language": {
+    "lua": 274
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/folke__lazy.nvim --out /home/ubuntu/govfuzz-sweep-work/lua__folke__lazy.nvim/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 9,
+   "by_severity": {
+    "high": 7,
+    "medium": 2
+   },
+   "top_rules": {
+    "GF-472": 7,
+    "GF-500": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/folke__lazy.nvim --out /home/ubuntu/govfuzz-sweep-work/lua__folke__lazy.nvim/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/folke__lazy.nvim --work-dir /home/ubuntu/govfuzz-sweep-work/lua__folke__lazy.nvim --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 0.9,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 274,
+    "dropped_by_cap": 264,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "B.cmd",
+     "source": "plugin.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B.cmd` is not loadable (skipped cleanly): /usr/bin/lua: ...-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/cache.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "B.shell",
+     "source": "plugin.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B.shell` is not loadable (skipped cleanly): /usr/bin/lua: ...-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/cache.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Async:on",
+     "source": "async.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Async:on` is not loadable (skipped cleanly): /usr/bin/lua: ...z-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/util.lua:8: attempt to index a nil value (global 'jit')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Async:_emit",
+     "source": "async.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Async:_emit` is not loadable (skipped cleanly): /usr/bin/lua: ...z-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/util.lua:8: attempt to index a nil value (global 'jit')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Async:sleep",
+     "source": "async.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Async:sleep` is not loadable (skipped cleanly): /usr/bin/lua: ...z-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/util.lua:8: attempt to index a nil value (global 'jit')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Async:suspend",
+     "source": "async.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Async:suspend` is not loadable (skipped cleanly): /usr/bin/lua: ...z-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/util.lua:8: attempt to index a nil value (global 'jit')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Async:wake",
+     "source": "async.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Async:wake` is not loadable (skipped cleanly): /usr/bin/lua: ...z-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/util.lua:8: attempt to index a nil value (global 'jit')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Loader.cache_file",
+     "source": "cache.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Loader.cache_file` is not loadable (skipped cleanly): /usr/bin/lua: ...-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/cache.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Loader.eq",
+     "source": "cache.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Loader.eq` is not loadable (skipped cleanly): /usr/bin/lua: ...-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/cache.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Loader.load",
+     "source": "cache.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Loader.load` is not loadable (skipped cleanly): /usr/bin/lua: ...-corpus-500/lua/folke__lazy.nvim/lua/lazy/core/cache.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "PATH PATH attempt to index a nil value (global \"X\")",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PATH PATH attempt to index a nil value (global \"X\")",
+     "language": "lua"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "306a05526ada86a7b30af95c5cc81ffba93fef97",
+ "clone_s": 0.9,
+ "lane_check": "lua: 65 files / 13301 lines; top=lua(13301)",
+ "status": "done"
+}

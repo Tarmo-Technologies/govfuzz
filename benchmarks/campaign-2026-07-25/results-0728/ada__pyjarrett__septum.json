@@ -1,0 +1,227 @@
+{
+ "lane": "ada",
+ "repo": "pyjarrett/septum",
+ "stars": 459,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/pyjarrett__septum --json --out /home/ubuntu/govfuzz-sweep-work/ada__pyjarrett__septum.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 4486,
+   "sloc_by_lang": {
+    "ada": 4209,
+    "config": 173,
+    "csharp": 104
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/pyjarrett__septum --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.63,
+   "timed_out": false,
+   "panic": false,
+   "count": 478,
+   "by_language": {
+    "ada": 478
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/pyjarrett__septum --out /home/ubuntu/govfuzz-sweep-work/ada__pyjarrett__septum/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 43,
+   "by_severity": {
+    "medium": 41,
+    "high": 2
+   },
+   "top_rules": {
+    "GF-411": 28,
+    "GF-412": 8,
+    "GF-500": 2,
+    "GF-410": 2,
+    "GF-472": 1,
+    "GF-402": 1,
+    "GF-405": 1
+   },
+   "gaps": 20
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/pyjarrett__septum --out /home/ubuntu/govfuzz-sweep-work/ada__pyjarrett__septum/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 18
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/pyjarrett__septum --work-dir /home/ubuntu/govfuzz-sweep-work/ada__pyjarrett__septum --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 19.02,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 169,
+    "dropped_by_cap": 159,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 10,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 2,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "should_load",
+     "source": "sp-file_system.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_lines",
+     "source": "sp-file_system.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "common_prefix_length",
+     "source": "sp-strings.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "matching_suffix",
+     "source": "sp-strings.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "contents",
+     "source": "sp-file_system.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "exclude_text",
+     "source": "sp-filters.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "find_like",
+     "source": "sp-filters.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "exclude_like",
+     "source": "sp-filters.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "file_completions",
+     "source": "sp-file_system.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "exclude_regex",
+     "source": "sp-filters.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unrecoverable_link",
+     "count": 10,
+     "detail": "1 undefined symbol(s) after repair",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "afa7a20c53dcaf65daf615ba9800a1e757529453",
+ "clone_s": 1.0,
+ "lane_check": "ada: 39 files / 4879 lines; top=ada(4879)",
+ "status": "done"
+}

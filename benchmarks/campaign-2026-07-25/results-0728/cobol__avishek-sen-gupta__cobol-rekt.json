@@ -1,0 +1,245 @@
+{
+ "lane": "cobol",
+ "repo": "avishek-sen-gupta/cobol-rekt",
+ "stars": 163,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/avishek-sen-gupta__cobol-rekt --json --out /home/ubuntu/govfuzz-sweep-work/cobol__avishek-sen-gupta__cobol-rekt.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 346356,
+   "sloc_by_lang": {
+    "cobol": 318370,
+    "java": 24340,
+    "javascript": 1566,
+    "python": 1561,
+    "c": 287,
+    "config": 232
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/avishek-sen-gupta__cobol-rekt --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.42,
+   "timed_out": false,
+   "panic": false,
+   "count": 1952,
+   "by_language": {
+    "java": 1847,
+    "typescript": 9,
+    "python": 88,
+    "c": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cobol/avishek-sen-gupta__cobol-rekt --out /home/ubuntu/govfuzz-sweep-work/cobol__avishek-sen-gupta__cobol-rekt/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.26,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 7,
+   "by_severity": {
+    "high": 7
+   },
+   "top_rules": {
+    "GF-405": 5,
+    "GF-472": 2
+   },
+   "gaps": 10
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cobol/avishek-sen-gupta__cobol-rekt --out /home/ubuntu/govfuzz-sweep-work/cobol__avishek-sen-gupta__cobol-rekt/sbom",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "components": 1079
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cobol/avishek-sen-gupta__cobol-rekt --work-dir /home/ubuntu/govfuzz-sweep-work/cobol__avishek-sen-gupta__cobol-rekt --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 32.43,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1775,
+    "dropped_by_cap": 1765,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "CobolExpression",
+     "source": "CobolExpression.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'CobolExpression' constructs the abstract class/interface 'org.smojol.common.vm.expression.CobolExpression', which cannot be instantiated; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NullCobolExpression",
+     "source": "NullCobolExpression.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CobolExpression",
+     "source": "CobolExpression.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'CobolExpression' constructs the abstract class/interface 'org.smojol.common.vm.expression.CobolExpression', which cannot be instantiated; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FunctionCallExpression",
+     "source": "FunctionCallExpression.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'FunctionCallExpression' parameter #1 has an unsupported type `List<CobolExpression>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cytoDigraphEdges",
+     "source": "Digraph.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 716.3463114722872,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "asCytoscapeDigraph",
+     "source": "Digraph.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 668.8063451163525,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "asCytoscapeTree",
+     "source": "CytoTree.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 757.7586319007393,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "build_glossary",
+     "source": "main.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `glossary_builder.main` is not loadable (skipped cleanly): missing module `langchain_openai` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_openai'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "attach_paragraphs",
+     "source": "capabilities_graph.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `capability_extractor.capabilities_graph` is not loadable (skipped cleanly): missing module `langchain_openai` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_openai'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "data_structure_graph",
+     "source": "paragraph_capabilities.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `capability_extractor.paragraph_capabilities` is not loadable (skipped cleanly): missing module `langchain_openai` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'langchain_openai'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Java target \"X\" constructs the abstract class/interface \"X\", which cannot be instantiated; not auto-harnessable",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac PATH error: package com.mojo.algorithms.domain does n\u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "a8b68546e91ff9e804c2f5e7aadbbf27e4ea292e",
+ "clone_s": 2.7,
+ "lane_check": "cobol: 34 files / 349386 lines; top=cobol(349386)",
+ "status": "done"
+}

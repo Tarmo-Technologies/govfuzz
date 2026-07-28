@@ -1,0 +1,251 @@
+{
+ "lane": "ada",
+ "repo": "codelabs-ch/muen",
+ "stars": 100,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/codelabs-ch__muen --json --out /home/ubuntu/govfuzz-sweep-work/ada__codelabs-ch__muen.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 6470,
+   "sloc_by_lang": {
+    "ada": 6460,
+    "c": 10
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/codelabs-ch__muen --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 368,
+   "by_language": {
+    "ada": 368
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/codelabs-ch__muen --out /home/ubuntu/govfuzz-sweep-work/ada__codelabs-ch__muen/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/codelabs-ch__muen --out /home/ubuntu/govfuzz-sweep-work/ada__codelabs-ch__muen/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 8
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/codelabs-ch__muen --work-dir /home/ubuntu/govfuzz-sweep-work/ada__codelabs-ch__muen --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 51.07,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 135,
+    "dropped_by_cap": 125,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 8,
+    "stubbed_ada_symbols": 4,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 10
+   },
+   "targets": [
+    {
+     "name": "acquire",
+     "source": "sk-debug_lock.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 5,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check_state",
+     "source": "sk-system_state.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Ctx' of target 'Sk.System_State.Check_State' with type 'Crash_Audit_Types.System_Init_Context_Type': named type Crash_Audit_Types.System_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Crash_Audit_Types.System_Init_Context_Type' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check_state",
+     "source": "sk-vtd.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Ctx' of target 'Sk.Vtd.Check_State' with type 'Crash_Audit_Types.Vtd_Init_Context_Type': named type Crash_Audit_Types.Vtd_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Crash_Audit_Types.Vtd_Init_Context_Type' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "disable_legacy_pic",
+     "source": "sk-interrupts.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check_state",
+     "source": "sk-mce.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Ctx' of target 'Sk.Mce.Check_State' with type 'Crash_Audit_Types.Mce_Init_Context_Type': named type Crash_Audit_Types.Mce_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Crash_Audit_Types.Mce_Init_Context_Type' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check_state",
+     "source": "sk-fpu.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Ctx' of target 'Sk.Fpu.Check_State' with type 'Crash_Audit_Types.Fpu_Init_Context_Type': named type Crash_Audit_Types.Fpu_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Crash_Audit_Types.Fpu_Init_Context_Type' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "disable_legacy_pit",
+     "source": "sk-interrupts.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 7,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "enable",
+     "source": "sk-mce.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_context",
+     "source": "sk-mce.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Ctx' of target 'Sk.Mce.Create_Context' with type 'Crash_Audit_Types.Mce_Context_Type': named type Crash_Audit_Types.Mce_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Crash_Audit_Types.Mce_Context_Type' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "allocate",
+     "source": "sk-crash_audit.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "missing Ada symbol",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing Ada package body",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Crash_Audit_Types.Fpu_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor funct\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Crash_Audit_Types.Mce_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function r\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Crash_Audit_Types.Mce_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor funct\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Crash_Audit_Types.System_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor fu\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Crash_Audit_Types.Vtd_Init_Context_Type is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor funct\u2026",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "377335576569839b32fc53a228e71788e0deab43",
+ "clone_s": 0.9,
+ "lane_check": "ada: 86 files / 9787 lines; top=ada(9787)",
+ "status": "done"
+}

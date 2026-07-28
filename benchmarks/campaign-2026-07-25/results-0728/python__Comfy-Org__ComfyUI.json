@@ -1,0 +1,238 @@
+{
+ "lane": "python",
+ "repo": "Comfy-Org/ComfyUI",
+ "stars": 122251,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/Comfy-Org__ComfyUI --json --out /home/ubuntu/govfuzz-sweep-work/python__Comfy-Org__ComfyUI.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 192914,
+   "sloc_by_lang": {
+    "python": 184933,
+    "config": 7981
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/Comfy-Org__ComfyUI --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.68,
+   "timed_out": false,
+   "panic": false,
+   "count": 6225,
+   "by_language": {
+    "python": 6225
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/Comfy-Org__ComfyUI --out /home/ubuntu/govfuzz-sweep-work/python__Comfy-Org__ComfyUI/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 9.05,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 102,
+   "by_severity": {
+    "low": 62,
+    "medium": 23,
+    "high": 15,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-546": 62,
+    "GF-500": 12,
+    "GF-472": 8,
+    "GF-544": 5,
+    "GF-548": 5,
+    "GF-473": 3,
+    "GF-429": 2,
+    "GF-405": 2,
+    "GF-423": 1,
+    "GF-422": 1,
+    "GF-426": 1
+   },
+   "gaps": 2497
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/Comfy-Org__ComfyUI --out /home/ubuntu/govfuzz-sweep-work/python__Comfy-Org__ComfyUI/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 40
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/Comfy-Org__ComfyUI --work-dir /home/ubuntu/govfuzz-sweep-work/python__Comfy-Org__ComfyUI --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 10.64,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 6225,
+    "dropped_by_cap": 6215,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "RangeInput.from_raw",
+     "source": "range_types.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `latest._input.range_types` is not loadable (skipped cleanly): missing module `comfy_api` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'comfy_api'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CurveInput.from_raw",
+     "source": "curve_types.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `latest._input.curve_types` is not loadable (skipped cleanly): missing module `comfy_api` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'comfy_api'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_and_extract_obj_zip",
+     "source": "nodes_hunyuan3d.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `comfy_api_nodes.nodes_hunyuan3d` is not loadable (skipped cleanly): missing module `torch` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LatentPreviewMethod.from_string",
+     "source": "cli_args.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `cli_args` is not loadable (skipped cleanly): missing module `comfy` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'comfy'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_files",
+     "source": "nodes_rodin.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `comfy_api_nodes.nodes_rodin` is not loadable (skipped cleanly): missing module `aiohttp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_url_to_image_tensor",
+     "source": "download_helpers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `comfy_api_nodes.util.download_helpers` is not loadable (skipped cleanly): missing module `yarl` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'yarl'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "boxes_from_input",
+     "source": "nodes_bounding_boxes.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `nodes_bounding_boxes` is not loadable (skipped cleanly): missing module `torch` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'torch'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_url_as_bytesio",
+     "source": "download_helpers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `comfy_api_nodes.util.download_helpers` is not loadable (skipped cleanly): missing module `yarl` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'yarl'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handle_prefix",
+     "source": "_io.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `latest._io` is not loadable (skipped cleanly): missing module `comfy_api` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'comfy_api'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NodeOutput.from_dict",
+     "source": "_io.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `latest._io` is not loadable (skipped cleanly): missing module `comfy_api` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'comfy_api'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "e8f8c2ff432276f711604d21d1547686c2e89253",
+ "clone_s": 3.1,
+ "lane_check": "python: 723 files / 209541 lines; top=python(209541)",
+ "status": "done"
+}

@@ -1,0 +1,229 @@
+{
+ "lane": "ruby",
+ "repo": "basecamp/kamal",
+ "stars": 14438,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/basecamp__kamal --json --out /home/ubuntu/govfuzz-sweep-work/ruby__basecamp__kamal.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 18347,
+   "sloc_by_lang": {
+    "ruby": 16340,
+    "config": 2007
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/basecamp__kamal --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 108,
+   "by_language": {
+    "ruby": 108
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/basecamp__kamal --out /home/ubuntu/govfuzz-sweep-work/ruby__basecamp__kamal/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 19,
+   "by_severity": {
+    "medium": 14,
+    "critical": 1,
+    "high": 4
+   },
+   "top_rules": {
+    "GF-477": 14,
+    "GF-481": 4,
+    "GF-429": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/basecamp__kamal --out /home/ubuntu/govfuzz-sweep-work/ruby__basecamp__kamal/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 75
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/basecamp__kamal --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__basecamp__kamal --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 21.78,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 108,
+    "dropped_by_cap": 98,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Kamal::Commands::Accessory#run",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#run` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commander::Specifics#roles_on",
+     "source": "specifics.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commander::Specifics#roles_on` is not loadable (skipped cleanly): missing module `active_support/core_ext/enumerable` (not in the project and not installed), needed by `kamal/commander` which defines `Kamal::Commander`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#info",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#info` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#logs",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#logs` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#follow_logs",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#follow_logs` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#execute_in_existing_container",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#execute_in_existing_container` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#execute_in_new_container",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#execute_in_new_container` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#execute_in_existing_container_over_ssh",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#execute_in_existing_container_over_ssh` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#execute_in_new_container_over_ssh",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#execute_in_new_container_over_ssh` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Kamal::Commands::Accessory#ensure_local_file_present",
+     "source": "accessory.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Kamal::Commands::Accessory#ensure_local_file_present` is not loadable (skipped cleanly): Accessory>': uninitialized constant Kamal::Commands::Accessory::Proxy (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Accessory>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed), needed by \"X\" which defines \"X\"",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "eee0083b38661c3707c6b6052cc89e85038a096c",
+ "clone_s": 0.7,
+ "lane_check": "ruby: 173 files / 16550 lines; top=ruby(16550)",
+ "status": "done"
+}

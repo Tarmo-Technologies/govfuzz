@@ -1,0 +1,182 @@
+{
+ "lane": "ada",
+ "repo": "alire-project/alire",
+ "stars": 405,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/alire-project__alire --json --out /home/ubuntu/govfuzz-sweep-work/ada__alire-project__alire.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 55822,
+   "sloc_by_lang": {
+    "ada": 42954,
+    "python": 9901,
+    "config": 2831,
+    "javascript": 87,
+    "c": 49
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/alire-project__alire --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.97,
+   "timed_out": false,
+   "panic": false,
+   "count": 3890,
+   "by_language": {
+    "ada": 3871,
+    "python": 17,
+    "c": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/alire-project__alire --out /home/ubuntu/govfuzz-sweep-work/ada__alire-project__alire/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.93,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 129,
+   "by_severity": {
+    "high": 11,
+    "medium": 113,
+    "low": 2,
+    "critical": 3
+   },
+   "top_rules": {
+    "GF-412": 93,
+    "GF-472": 10,
+    "GF-411": 8,
+    "GF-402": 5,
+    "GF-410": 3,
+    "GF-404": 3,
+    "GF-477": 2,
+    "GF-546": 2,
+    "GF-409": 1,
+    "GF-405": 1,
+    "GF-422": 1
+   },
+   "gaps": 32
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/alire-project__alire --out /home/ubuntu/govfuzz-sweep-work/ada__alire-project__alire/sbom",
+   "exit": 1,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/alire-project__alire --work-dir /home/ubuntu/govfuzz-sweep-work/ada__alire-project__alire --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 100.39,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 1522,
+    "dropped_by_cap": 1518,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 25,
+    "stubbed_ada_symbols": 6,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 24
+   },
+   "targets": [
+    {
+     "name": "version_patcher",
+     "source": "version_patcher.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Ada target 'version_patcher' is a project main executable (declared in version_patcher.gpr `for Main`) \u2014 an entry point, not a library subprogram; not auto-harnessable as a direct call.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_string",
+     "source": "alire-dependencies.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_string",
+     "source": "alire-licensing.ads",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "branch_exists",
+     "source": "alire-github.ads",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 19,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing Ada symbol",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing Ada unit",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Ada target \"X\" is a project main executable (declared in version_patcher.gpr \"X\") \u2014 an entry point, not a library subprogram; not auto-harnessable as a direct c\u2026",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "61bb04a46fa18c8a60c40ab484d8f8fb48601664",
+ "clone_s": 1.2,
+ "lane_check": "ada: 474 files / 54503 lines; top=ada(54503)",
+ "status": "done"
+}

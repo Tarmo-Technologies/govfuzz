@@ -1,0 +1,221 @@
+{
+ "lane": "lua",
+ "repo": "mason-org/mason.nvim",
+ "stars": 10407,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/mason-org__mason.nvim --json --out /home/ubuntu/govfuzz-sweep-work/lua__mason-org__mason.nvim.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 19637,
+   "sloc_by_lang": {
+    "lua": 19122,
+    "config": 515
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/mason-org__mason.nvim --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 332,
+   "by_language": {
+    "lua": 332
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/mason-org__mason.nvim --out /home/ubuntu/govfuzz-sweep-work/lua__mason-org__mason.nvim/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 9,
+   "by_severity": {
+    "medium": 4,
+    "high": 5
+   },
+   "top_rules": {
+    "GF-472": 5,
+    "GF-500": 4
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/mason-org__mason.nvim --out /home/ubuntu/govfuzz-sweep-work/lua__mason-org__mason.nvim/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/mason-org__mason.nvim --work-dir /home/ubuntu/govfuzz-sweep-work/lua__mason-org__mason.nvim --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 1.42,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 332,
+    "dropped_by_cap": 322,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "AbstractPackage:new",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:new` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:new_handle",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:new_handle` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:new_install_handle",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:new_install_handle` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:new_uninstall_handle",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:new_uninstall_handle` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:get_receipt",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:get_receipt` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:get_receipt_path",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:get_receipt_path` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:is_installed",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:is_installed` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:get_installed_version",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:get_installed_version` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:get_install_path",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:get_install_path` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AbstractPackage:unlink",
+     "source": "AbstractPackage.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AbstractPackage:unlink` is not loadable (skipped cleanly): /usr/bin/lua: ...mason-org__mason.nvim/lua/mason-core/functional/list.lua:71: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PATH PATH attempt to index a nil value (global \"X\")",
+     "language": "lua"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2a6940af80375532e5e9e7c1f2fc6319a1b7a69d",
+ "clone_s": 0.7,
+ "lane_check": "lua: 194 files / 21505 lines; top=lua(21505)",
+ "status": "done"
+}

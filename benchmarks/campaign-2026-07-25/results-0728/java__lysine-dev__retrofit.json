@@ -1,0 +1,235 @@
+{
+ "lane": "java",
+ "repo": "lysine-dev/retrofit",
+ "stars": 43920,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/lysine-dev__retrofit --json --out /home/ubuntu/govfuzz-sweep-work/java__lysine-dev__retrofit.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 29645,
+   "sloc_by_lang": {
+    "java": 28154,
+    "javascript": 1231,
+    "config": 260
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/lysine-dev__retrofit --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.82,
+   "timed_out": false,
+   "panic": false,
+   "count": 1105,
+   "by_language": {
+    "java": 1105
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/lysine-dev__retrofit --out /home/ubuntu/govfuzz-sweep-work/java__lysine-dev__retrofit/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 8.03,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 18,
+   "by_severity": {
+    "medium": 7,
+    "high": 11
+   },
+   "top_rules": {
+    "GF-472": 10,
+    "GF-500": 7,
+    "GF-507": 1
+   },
+   "gaps": 3
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/lysine-dev__retrofit --out /home/ubuntu/govfuzz-sweep-work/java__lysine-dev__retrofit/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 493
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/lysine-dev__retrofit --work-dir /home/ubuntu/govfuzz-sweep-work/java__lysine-dev__retrofit --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 13.47,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 180,
+    "dropped_by_cap": 170,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "of",
+     "source": "Invocation.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'of' parameter #1 has an unsupported type `T`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "baseUrl",
+     "source": "Retrofit.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'baseUrl' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "baseUrl",
+     "source": "Retrofit.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'baseUrl' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "backgroundExecutor",
+     "source": "MockRetrofit.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'backgroundExecutor' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "callbackExecutor",
+     "source": "Retrofit.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'callbackExecutor' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "backgroundExecutor",
+     "source": "MockRetrofit.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'backgroundExecutor' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "callbackExecutor",
+     "source": "Retrofit.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create",
+     "source": "SimpleXmlConverterFactory.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'create' parameter #0 has an unsupported type `Serializer`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Builder",
+     "source": "MockRetrofit.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'Builder' parameter #0 has an unsupported type `Retrofit`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create",
+     "source": "NetworkBehavior.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'create' parameter #0 has an unsupported type `Random`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "Java target \"X\" is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (target) failed: PATH error: duplicate class: retrofit2.DefaultMethodSupport",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "d0b112dad073b7fe49c953ebc46ff1b424cb1e51",
+ "clone_s": 0.9,
+ "lane_check": "java: 306 files / 34182 lines; top=java(34182)",
+ "status": "done"
+}

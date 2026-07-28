@@ -1,0 +1,150 @@
+{
+ "lane": "java",
+ "repo": "kestra-io/kestra",
+ "stars": 27469,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --json --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 365165,
+   "sloc_by_lang": {
+    "java": 205357,
+    "javascript": 147589,
+    "config": 12219
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --format json --top 100000",
+   "exit": 0,
+   "wall_s": 6.72,
+   "timed_out": false,
+   "panic": false,
+   "count": 5683,
+   "by_language": {
+    "java": 5440,
+    "typescript": 242,
+    "javascript": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 89.8,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 118,
+   "by_severity": {
+    "medium": 31,
+    "high": 72,
+    "critical": 15
+   },
+   "top_rules": {
+    "GF-472": 52,
+    "GF-500": 17,
+    "GF-544": 11,
+    "GF-429": 10,
+    "GF-458": 5,
+    "GF-419": 4,
+    "GF-405": 3,
+    "GF-454": 2,
+    "GF-426": 2,
+    "GF-477": 1,
+    "GF-479": 1,
+    "GF-503": 1,
+    "GF-456": 1,
+    "GF-459": 1,
+    "GF-457": 1
+   },
+   "gaps": 1716
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --out /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra/sbom",
+   "exit": 0,
+   "wall_s": 0.62,
+   "timed_out": false,
+   "panic": false,
+   "components": 1808
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/kestra-io__kestra --work-dir /home/ubuntu/govfuzz-sweep-work/java__kestra-io__kestra --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 139.3,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 2,
+    "discovered_total": 5108,
+    "dropped_by_cap": 5106,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "fromExecution",
+     "source": "WebhookResponse.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fromExecution",
+     "source": "ExecutionController.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "javac (target) failed: PATH error: package com.fasterxml.jackson.annotation does not exist",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "38efc82b43a6d3b2425b55e27d6c4210cb98dfde",
+ "clone_s": 4.2,
+ "lane_check": "java: 2548 files / 231841 lines; top=java(231841)",
+ "status": "done"
+}

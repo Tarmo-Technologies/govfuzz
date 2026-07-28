@@ -1,0 +1,257 @@
+{
+ "lane": "csharp",
+ "repo": "AvaloniaUI/Avalonia",
+ "stars": 31224,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia --json --out /home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.37,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 462073,
+   "sloc_by_lang": {
+    "csharp": 457927,
+    "javascript": 2487,
+    "cpp": 841,
+    "config": 669,
+    "c": 149
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia --format json --top 100000",
+   "exit": 0,
+   "wall_s": 4.66,
+   "timed_out": false,
+   "panic": false,
+   "count": 187,
+   "by_language": {
+    "csharp": 101,
+    "typescript": 67,
+    "javascript": 1,
+    "cpp": 17,
+    "c": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia --out /home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.53,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1,
+   "by_severity": {
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-500": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia --out /home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 89
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 75.87,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 187,
+    "dropped_by_cap": 177,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "addAppButton",
+     "source": "embed.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 338.6684225712833,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Avalonia.Animation.Easings.Easing.Parse",
+     "source": "Easing.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Avalonia.Automation.Peers.CalendarAutomationPeer.SetValue",
+     "source": "CalendarAutomationPeer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Avalonia.Automation.Peers.CalendarAutomationPeer.SetValue` needs a receiver, but `CalendarAutomationPeer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Avalonia.Animation.IterationCount.Parse",
+     "source": "IterationCount.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AvaloniaDOM.createAvaloniaCanvas",
+     "source": "dom.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia/harnesses/H-T001D-B70BF088/target.js` is not loadable (skipped cleanly): TypeError: globalThis.getDotnetRuntime is not a function",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AvaloniaDOM.attachCanvas",
+     "source": "dom.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia/harnesses/H-T002A-8FA8C891/target.js` is not loadable (skipped cleanly): TypeError: globalThis.getDotnetRuntime is not a function",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AvaloniaDOM.createAvaloniaHost",
+     "source": "dom.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/csharp__AvaloniaUI__Avalonia/harnesses/H-T0032-3F21D24F/target.js` is not loadable (skipped cleanly): TypeError: globalThis.getDotnetRuntime is not a function",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AvnAutomationNode::PropertyChanged",
+     "source": "AvnAutomationNode.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia/native/Avalonia.Native/src/OSX/AvnAutomationNode.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia/native/Avalonia.Native/src/OSX/AvnAccessibility.h:2:9: fatal error: 'Cocoa/Cocoa.h' file not found |     2 | #import <Cocoa/Cocoa.h> |       |         ^~~~~~~~~~~~~~~ | 1 error generated.; sequence generation also failed first: blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia/native/Avalonia.Native/src/OSX/AvnAutomationNode.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia/native/Avalonia.Native/src/OSX/AvnAccessibility.h:2:9: fatal error: 'Cocoa/Cocoa.h' file not found |     2 | #import <Cocoa/Cocoa.h> |       |         ^~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ComObject::QueryInterface",
+     "source": "comimpl.h",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IUnknown",
+     "source": "IWindowStateChanged.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia/native/Avalonia.Native/src/OSX/IWindowStateChanged.h' cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:1: | /home/ubuntu/govfuzz-corpus-500/csharp/AvaloniaUI__Avalonia/native/Avalonia.Native/src/OSX/IWindowStateChanged.h:9:27: error: expected identifier or '(' |     9 | struct IWindowStateChanged: public IUnknown |       |                           ^ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C harness translation unit under its recovered build flags, and no compiling proj\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "variable type \"X\" is an abstract class",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error CS0246: The type or namespace name \"X\" could not be found (are you missing a using directive or an assembly reference?) PATH",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an u\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "TypeError: globalThis.getDotnetRuntime is not a function",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "dbb8af90c96c3ed9262705783d84ad67d17ab86d",
+ "clone_s": 9.3,
+ "lane_check": "csharp: 4050 files / 529668 lines; top=csharp(529668)",
+ "status": "done"
+}

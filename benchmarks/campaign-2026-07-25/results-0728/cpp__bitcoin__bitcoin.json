@@ -1,0 +1,145 @@
+{
+ "lane": "cpp",
+ "repo": "bitcoin/bitcoin",
+ "stars": 89696,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --json --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.29,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 665478,
+   "sloc_by_lang": {
+    "javascript": 294123,
+    "cpp": 248403,
+    "python": 61701,
+    "c": 57753,
+    "config": 2384,
+    "rust": 1114
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --format json --top 100000",
+   "exit": 0,
+   "wall_s": 282.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 11486,
+   "by_language": {
+    "cpp": 10389,
+    "c": 1048,
+    "python": 27,
+    "rust": 22
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 231.82,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 246,
+   "by_severity": {
+    "critical": 14,
+    "high": 103,
+    "medium": 110,
+    "low": 19
+   },
+   "top_rules": {
+    "GF-405": 79,
+    "GF-500": 35,
+    "GF-424": 32,
+    "GF-406": 27,
+    "GF-546": 19,
+    "GF-403": 10,
+    "GF-472": 7,
+    "GF-419": 7,
+    "GF-404": 4,
+    "GF-425": 4,
+    "GF-436": 4,
+    "GF-407": 3,
+    "GF-408": 3,
+    "GF-420": 2,
+    "GF-422": 2
+   },
+   "gaps": 414
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --out /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin/sbom",
+   "exit": 0,
+   "wall_s": 0.71,
+   "timed_out": false,
+   "panic": false,
+   "components": 43
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/bitcoin__bitcoin --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__bitcoin__bitcoin --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 453.41,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 1,
+    "discovered_total": 6658,
+    "dropped_by_cap": 6657,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ParseScript",
+     "source": "core_io.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (consteval) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (consteval) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable he\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7dea464d6b51a69bd99a0451be8aaf3a26313eb6",
+ "clone_s": 3.3,
+ "lane_check": "cpp: 843 files / 231508 lines; top=ts(294126)",
+ "status": "done"
+}

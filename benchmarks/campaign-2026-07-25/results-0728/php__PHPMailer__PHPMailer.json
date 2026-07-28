@@ -1,0 +1,211 @@
+{
+ "lane": "php",
+ "repo": "PHPMailer/PHPMailer",
+ "stars": 22257,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/PHPMailer__PHPMailer --json --out /home/ubuntu/govfuzz-sweep-work/php__PHPMailer__PHPMailer.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 11734,
+   "sloc_by_lang": {
+    "php": 11446,
+    "config": 288
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/PHPMailer__PHPMailer --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 71,
+   "by_language": {
+    "php": 71
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/PHPMailer__PHPMailer --out /home/ubuntu/govfuzz-sweep-work/php__PHPMailer__PHPMailer/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1,
+   "by_severity": {
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-477": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/PHPMailer__PHPMailer --out /home/ubuntu/govfuzz-sweep-work/php__PHPMailer__PHPMailer/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 7
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/PHPMailer__PHPMailer --work-dir /home/ubuntu/govfuzz-sweep-work/php__PHPMailer__PHPMailer --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 40.63,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 71,
+    "dropped_by_cap": 61,
+    "built": 10,
+    "built_and_fuzzed": 10,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "PHPMailer\\PHPMailer\\DSNConfigurator::mailer",
+     "source": "DSNConfigurator.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 102.05616586424446,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\DSNConfigurator#configure",
+     "source": "DSNConfigurator.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 175.2211477598519,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#addAddress",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.162583297781552,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#addCC",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.88343303300294,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#addBCC",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.6038197074605955,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#DKIM_QP",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.317906834929449,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#DKIM_Sign",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.974245527376688,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#DKIM_HeaderC",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7.848990344472956,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#DKIM_BodyC",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.53198691058074,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "PHPMailer\\PHPMailer\\PHPMailer#DKIM_Add",
+     "source": "PHPMailer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.330969637358231,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4a489474e7ef8bbf03c1cb219d8939ea76a7fb40",
+ "clone_s": 0.8,
+ "lane_check": "php: 130 files / 17783 lines; top=php(17783)",
+ "status": "done"
+}

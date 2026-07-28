@@ -1,0 +1,575 @@
+{
+ "lane": "fortran",
+ "repo": "mapmeld/fortran-machine",
+ "stars": 811,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/mapmeld__fortran-machine --json --out /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 37990,
+   "sloc_by_lang": {
+    "fortran": 32072,
+    "c": 5722,
+    "java": 196
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/mapmeld__fortran-machine --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.54,
+   "timed_out": false,
+   "panic": false,
+   "count": 326,
+   "by_language": {
+    "fortran": 132,
+    "c": 158,
+    "java": 36
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/mapmeld__fortran-machine --out /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.31,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 46,
+   "by_severity": {
+    "high": 40,
+    "medium": 6
+   },
+   "top_rules": {
+    "GF-401": 20,
+    "GF-403": 11,
+    "GF-405": 8,
+    "GF-406": 4,
+    "GF-547": 1,
+    "GF-550": 1,
+    "GF-424": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/mapmeld__fortran-machine --out /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/mapmeld__fortran-machine --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 38.16,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 281,
+    "dropped_by_cap": 271,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 5,
+    "findings": 120
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ErrorMsg",
+     "source": "flemon.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ASSERT_ASSERT",
+     "source": "m_assert.f90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ALL_CAPS",
+     "source": "fwrapper.f90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ARGLIST_PROBLEM",
+     "source": "chkcompff.f90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ASSERT_COMPARABLE_REAL",
+     "source": "ftnunit.f90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ADD_FRAGMENTS_UP_TO",
+     "source": "genreader.f90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "msort",
+     "source": "flemon.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "merge",
+     "source": "flemon.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OptInit",
+     "source": "flemon.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Parse",
+     "source": "flemon.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 5,
+     "detail": "[c_knr] K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "Fortran harness build failed: unresolved external symbol(s): sqlite3_finalize_c_, sqlite3_reset_c_",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: Different CHARACTER lengths (N/N) in array constructor at (N); Error: Different CHARACTER lengths (N/N) in array constructor at \u2026",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Error: Symbol \u2018int_var\u2019 at (N) conflicts with symbol from module \u2018scope_mod\u2019, use-associated at (N); Error: Expecting \u2018END INTERFACE nu\u2026",
+     "language": "fortran"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-401-07C6C44F",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-401-2FE9B42B",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-401-7ADE8FCD",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-401-9BA6DCAB",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-401-C19A454F",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-401-F6B50D74",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-0BB02F11",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-1E400785",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-5F6AE46B",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-6CF5CC9F",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-7E9175BC",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-81C8068A",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-8DE2146F",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-956C1A51",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-AAFA1CA5",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-D4DA6D31",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": "Unbounded sprintf into a fixed buffer",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-403-E7962C56",
+     "rule": "GF-403",
+     "cwe": [
+      "CWE-787"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-405-04A64473",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": "Path-controlled file open",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-405-2C035803",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": "Path-controlled file open",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-405-3E2434B8",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": "Path-controlled file open",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-406-1A65FE6D",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": "Environment-dependent configuration read",
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-406-D4B9B463",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": "Environment-dependent configuration read",
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-424-91FBFE8B",
+     "rule": "GF-424",
+     "cwe": [
+      "CWE-457"
+     ],
+     "cwe_name": "Use of uninitialized variable",
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    },
+    {
+     "id": "F-RO-GF-550-8F0028C2",
+     "rule": "GF-550",
+     "cwe": [
+      "CWE-401"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C09A9-1DDEB3CD"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine/findings --out /home/ubuntu/govfuzz-sweep-work/fortran__mapmeld__fortran-machine/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "5e5e6bbdab353149047971a3f872238a2a4b716e",
+ "clone_s": 0.7,
+ "lane_check": "fortran: 195 files / 50548 lines; top=fortran(50548)",
+ "status": "done"
+}

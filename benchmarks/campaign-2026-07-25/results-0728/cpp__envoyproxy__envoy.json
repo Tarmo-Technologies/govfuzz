@@ -1,0 +1,96 @@
+{
+ "lane": "cpp",
+ "repo": "envoyproxy/envoy",
+ "stars": 28638,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --json --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.43,
+   "timed_out": false,
+   "panic": false,
+   "languages": 8,
+   "sloc_total": 1432247,
+   "sloc_by_lang": {
+    "cpp": 1279896,
+    "config": 49378,
+    "rust": 34611,
+    "java": 24706,
+    "go": 16773,
+    "c": 13537,
+    "python": 11842,
+    "javascript": 1504
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --format json --top 100000",
+   "exit": 0,
+   "wall_s": 330.97,
+   "timed_out": false,
+   "panic": false,
+   "count": 70385,
+   "by_language": {
+    "cpp": 64787,
+    "c": 1128,
+    "java": 1375,
+    "rust": 2229,
+    "go": 792,
+    "python": 74
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 66.67,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 468,
+   "by_severity": {
+    "medium": 187,
+    "high": 216,
+    "low": 16,
+    "critical": 49
+   },
+   "top_rules": {
+    "GF-424": 111,
+    "GF-405": 83,
+    "GF-406": 57,
+    "GF-549": 55,
+    "GF-429": 46,
+    "GF-403": 34,
+    "GF-407": 19,
+    "GF-546": 16,
+    "GF-422": 15,
+    "GF-408": 11,
+    "GF-552": 4,
+    "GF-404": 3,
+    "GF-542": 3,
+    "GF-401": 2,
+    "GF-425": 2
+   },
+   "gaps": 1426
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --out /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy/sbom",
+   "exit": 0,
+   "wall_s": 1.39,
+   "timed_out": false,
+   "panic": false,
+   "components": 414
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/envoyproxy__envoy --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__envoyproxy__envoy --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.1,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "7c068d08c1269ef189b2173e6d5472d098af5d57",
+ "clone_s": 17.7,
+ "lane_check": "cpp: 4102 files / 1185441 lines; top=cpp(1185441)",
+ "status": "done"
+}

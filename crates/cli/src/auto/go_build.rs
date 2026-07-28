@@ -116,8 +116,9 @@ pub fn build_go_harness(
         };
     }
     let go_mod = format!(
-        "module govfuzzharness\n\ngo 1.21\n\nrequire {module_path} v0.0.0-incompatible\n\nreplace {module_path} => {root}\n",
+        "module govfuzzharness\n\ngo 1.21\n\nrequire {module_path} {version}\n\nreplace {module_path} => {root}\n",
         module_path = module_path,
+        version = placeholder_module_version(&module_path),
         root = mod_root.display(),
     );
     if let Err(e) = std::fs::write(auto_dir.join("go.mod"), &go_mod) {
@@ -325,6 +326,27 @@ fn find_go_module(target_abs: &Path) -> Option<(PathBuf, String)> {
             return Some((dir.to_path_buf(), module));
         }
         dir = dir.parent()?;
+    }
+}
+
+/// The placeholder version the harness `require`s the module under test at.
+///
+/// The `replace` beside it points at the real tree, so this version is never
+/// resolved — but it must still SATISFY Go's rules, and semantic import
+/// versioning makes one of them path-dependent: a module path ending `/vN`
+/// (N >= 2) may only be required at a version starting `vN`. A hardcoded
+/// `v0.0.0-incompatible` on such a path is not a bad guess, it is a `go.mod`
+/// that does not parse — `go: errors parsing go.mod` before any build — and it
+/// took EVERY target in the project with it. In the 500-project sweep that was
+/// 51 targets across 9 of 40 Go projects: caddy, cli/cli, alist, etcd, moby,
+/// traefik, bubbletea, 3x-ui and CLIProxyAPI.
+///
+/// `/v1` and an unsuffixed path keep the v0 pre-release spelling, which is what
+/// Go wants for a module that has not adopted the suffix.
+fn placeholder_module_version(module_path: &str) -> String {
+    match module_path.rsplit_once("/v") {
+        Some((_, major)) if major.parse::<u32>().is_ok_and(|n| n >= 2) => format!("v{major}.0.0"),
+        _ => "v0.0.0-incompatible".to_owned(),
     }
 }
 
@@ -1094,5 +1116,38 @@ mod tests {
             calls.contains("govfuzzCovClear() runOne(buf) govfuzzCovRecord()"),
             "framed loop must clear -> runOne -> record in order"
         );
+    }
+
+    /// Semantic import versioning: a `/vN` module path may only be required at a
+    /// version starting `vN`. The hardcoded `v0.0.0-incompatible` made the
+    /// harness `go.mod` fail to PARSE, which failed every target in the project —
+    /// 51 of them across 9 of the 500-project sweep's 40 Go repos.
+    #[test]
+    fn a_major_version_suffixed_module_is_required_at_that_major() {
+        assert_eq!(
+            placeholder_module_version("github.com/caddyserver/caddy/v2"),
+            "v2.0.0"
+        );
+        assert_eq!(
+            placeholder_module_version("go.etcd.io/etcd/server/v3"),
+            "v3.0.0"
+        );
+        assert_eq!(placeholder_module_version("example.com/x/v10"), "v10.0.0");
+        // No suffix, `/v1`, and a path whose last segment merely STARTS with `v`
+        // keep the v0 spelling — Go wants exactly that for an unsuffixed module,
+        // and `v2beta`/`vendor` are not major-version suffixes.
+        for path in [
+            "github.com/mhsanaei/3x-ui",
+            "example.com/x/v1",
+            "example.com/x/v2beta",
+            "example.com/x/vendor",
+            "singleword",
+        ] {
+            assert_eq!(
+                placeholder_module_version(path),
+                "v0.0.0-incompatible",
+                "{path}"
+            );
+        }
     }
 }

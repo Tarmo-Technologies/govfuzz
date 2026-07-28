@@ -5,6 +5,12 @@ An honest inventory of every class of target GovFuzz does **not** fuzz, sized fr
 the 500-project sweep (`benchmarks/campaign-2026-07-25/results-0727/`: 463
 projects measured, 3,594 targets attempted, 1,057 built and fuzzed).
 
+**Re-measured 2026-07-28** over a full 500-project sweep
+(`results-0728/`: 482 projects measured, 1,212,086 targets discovered, 3,638
+attempted, **1,069 built and fuzzed — 29.4%**, 366 findings, all 16 lanes). The
+class shape below is unchanged; see [What the 2026-07-28 sweep
+changed](#what-the-2026-07-28-sweep-changed) for what it added and closed.
+
 Counts are targets, from the sweep's own residual-blocker histogram. They were
 produced by the binary **before** the 2026-07-27 fix wave, so a class fixed since
 is marked **[FIXED]** and its count is what it used to cost. Everything else is
@@ -337,6 +343,58 @@ named.
 artifact, so an unbuilt dependency has none.
 
 ### For-2. Unresolved external symbols — 3 — **DEPENDENCY**
+
+---
+
+## What the 2026-07-28 sweep changed
+
+The re-run was measured on a binary pinned before that day's fixes, so it is a
+clean read of the previous release.
+
+**Found and fixed — a crash, not a gap.** `carbon-language/carbon-lang` was
+SIGKILLed (`exit -9`) during discovery in BOTH `list targets` and `auto`.
+GovFuzz produced *no target list at all*, which is worse than any residual
+class here: a hard kill leaves nothing to act on and looks exactly like a hang.
+
+Root cause was in type resolution, not discovery. `MAX_RESOLVE_DEPTH` bounds
+recursion depth but not breadth, so a self-referential C++ type unrolled to the
+16-deep limit materialized on the order of F^16 field vectors. One 1205-line
+header cost **13.0 GiB and 88s**. Fixed by memoizing on (spelling, depth) and
+stopping at a cycle — a type that transitively contains itself now resolves to
+`Opaque` at the recurrence rather than unrolling, which loses nothing because a
+decoder cannot build an infinitely nested value either way.
+
+| carbon-lang | before | after |
+|---|---:|---:|
+| whole tree, `list targets` | SIGKILL at 12.9 GiB, 0 targets | exit 0, **52 MiB**, 5,092 targets |
+| whole tree, `auto` | SIGKILL, 0 targets | 4,040 fuzzable targets |
+| the single header | 13.0 GiB / 88s | **77 MiB / 1.2s** |
+
+The same fix took `simdjson` from a 900s `list targets` timeout to completing in
+481s with 14,690 targets. Seven other C/C++ projects still time out
+(`sumatrapdf`, `Proton`, `emscripten`, `serenity`, `rocksdb`, `envoy`,
+`whisper.cpp`) — those are tree size, not this bug.
+
+Discovery also gained the RSS ceiling the static scan already had, on both
+surfaces (`list targets` parses five lanes itself and defers eleven, so guarding
+only the shared walk would have left C++ unguarded). It degrades to a partial
+target list and says so. Note it did **not** save carbon-lang on its own: one
+file crossed the ceiling and blew past it between two 500ms samples, which is
+why the type-resolution fix was the real one. The guard is the backstop for
+trees that grow past memory gradually.
+
+**Closed since the measurement.** `blocked_by_non_self_contained_header`
+(49 C++ targets, the largest C++ residual class) now falls back to the header's
+owner translation unit, adopted only when it preflight-compiles. A repair that
+`#define`d over an enumerator the project itself defines — corrupting
+`enum { X = 4 }` into `enum { 1 = 4 }` and breaking a source that compiled fine
+— is vetoed the same way tree functions and types already were.
+
+**Still open, unchanged by this sweep.** The dominant residual mass is still
+missing modules/packages (Python 273, TypeScript 174, JavaScript 95, Ruby 42,
+Lua 39, PHP 36) — DEPENDENCY, answered by the missing-dependency manifest, not
+by a repair. The largest remaining GAP classes are undrivable parameters and
+unconstructible receivers, as below.
 
 ---
 

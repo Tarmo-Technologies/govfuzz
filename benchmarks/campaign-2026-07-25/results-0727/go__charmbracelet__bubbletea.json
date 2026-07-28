@@ -1,0 +1,231 @@
+{
+ "lane": "go",
+ "repo": "charmbracelet/bubbletea",
+ "stars": 43960,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/charmbracelet__bubbletea --json --out /home/ubuntu/govfuzz-sweep-work/go__charmbracelet__bubbletea.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 10492,
+   "sloc_by_lang": {
+    "go": 10119,
+    "config": 373
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/charmbracelet__bubbletea --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/charmbracelet__bubbletea --out /home/ubuntu/govfuzz-sweep-work/go__charmbracelet__bubbletea/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 20,
+   "by_severity": {
+    "high": 16,
+    "medium": 2,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-472": 9,
+    "GF-405": 6,
+    "GF-500": 1,
+    "GF-304": 1,
+    "GF-427": 1,
+    "GF-544": 1,
+    "GF-404": 1
+   },
+   "gaps": 19
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/charmbracelet__bubbletea --out /home/ubuntu/govfuzz-sweep-work/go__charmbracelet__bubbletea/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 56
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/charmbracelet__bubbletea --work-dir /home/ubuntu/govfuzz-sweep-work/go__charmbracelet__bubbletea --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 2.13,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 99,
+    "dropped_by_cap": 89,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 9,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LogToFile",
+     "source": "logging.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RequestCapability",
+     "source": "termcap.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LogToFileWith",
+     "source": "logging.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WithInput",
+     "source": "options.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewView",
+     "source": "tea.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Printf",
+     "source": "renderer.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LookupEnv",
+     "source": "environ.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `LookupEnv` needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Printf",
+     "source": "tea.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SetClipboard",
+     "source": "clipboard.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SetPrimaryClipboard",
+     "source": "clipboard.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 9,
+     "detail": "go build failed: go.mod:N: require charm.land/bubbletea/v2: version \"X\" invalid: should be v2, not v0",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Go method \"X\" needs a receiver value; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "language": "go"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "fc707bb7ea0161405bb6c653ec93f6a9c6a72fe1",
+ "clone_s": 2.0,
+ "lane_check": "go: 111 files / 12011 lines; top=go(12011)",
+ "status": "done"
+}

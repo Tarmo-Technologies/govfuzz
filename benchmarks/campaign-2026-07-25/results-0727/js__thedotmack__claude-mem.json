@@ -1,0 +1,228 @@
+{
+ "lane": "js",
+ "repo": "thedotmack/claude-mem",
+ "stars": 88564,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/thedotmack__claude-mem --json --out /home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 119184,
+   "sloc_by_lang": {
+    "javascript": 118552,
+    "config": 632
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/thedotmack__claude-mem --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/thedotmack__claude-mem --out /home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 81.85,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 47,
+   "by_severity": {
+    "medium": 9,
+    "high": 27,
+    "critical": 11
+   },
+   "top_rules": {
+    "GF-429": 11,
+    "GF-514": 8,
+    "GF-500": 7,
+    "GF-472": 7,
+    "GF-505": 7,
+    "GF-426": 2,
+    "GF-507": 2,
+    "GF-477": 1,
+    "GF-475": 1,
+    "GF-422": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/thedotmack__claude-mem --out /home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/sbom",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "components": 66
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/thedotmack__claude-mem --work-dir /home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 19.14,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 371,
+    "dropped_by_cap": 361,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ChromaRoutes#setupRoutes",
+     "source": "ChromaRoutes.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/harnesses/H-T000A-4AA7C230/target.js` is not loadable (skipped cleanly): missing module `@modelcontextprotocol/sdk/client/index.js` (not in the project and not installed) \u2014 Error: Cannot find module '@modelcontextprotocol/sdk/client/index.js'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BetterAuthRoutes#setupRoutes",
+     "source": "BetterAuthRoutes.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 343.59599767437703,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CorpusBuilder#build",
+     "source": "CorpusBuilder.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 234.0759027822129,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ActiveServerQueueManager#getQueue",
+     "source": "ActiveServerQueueManager.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/harnesses/H-T0030-EC7FBFC5/target.js` is not loadable (skipped cleanly): missing module `bullmq` (not in the project and not installed) \u2014 Error: Cannot find module 'bullmq'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActiveServerQueueManager#start",
+     "source": "ActiveServerQueueManager.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/harnesses/H-T0038-00AFE3FA/target.js` is not loadable (skipped cleanly): missing module `bullmq` (not in the project and not installed) \u2014 Error: Cannot find module 'bullmq'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CorpusRenderer#estimateTokens",
+     "source": "CorpusRenderer.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 414.3077640534696,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CorpusRenderer#generateSystemPrompt",
+     "source": "CorpusRenderer.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 371.9687671305505,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ChromaMcpManager#callTool",
+     "source": "ChromaMcpManager.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/harnesses/H-T02B2-BFDFDA06/target.js` is not loadable (skipped cleanly): missing module `@modelcontextprotocol/sdk/client/index.js` (not in the project and not installed) \u2014 Error: Cannot find module '@modelcontextprotocol/sdk/client/index.js'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChromaSync.backfillAllProjects",
+     "source": "ChromaSync.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/harnesses/H-T0430-FA979A3C/target.js` is not loadable (skipped cleanly): missing module `@modelcontextprotocol/sdk/client/index.js` (not in the project and not installed) \u2014 Error: Cannot find module '@modelcontextprotocol/sdk/client/index.js'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChromaMcpManager.resolveUvxCommand",
+     "source": "ChromaMcpManager.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/js__thedotmack__claude-mem/harnesses/H-T04B6-0E80D911/target.js` is not loadable (skipped cleanly): missing module `@modelcontextprotocol/sdk/client/index.js` (not in the project and not installed) \u2014 Error: Cannot find module '@modelcontextprotocol/sdk/client/index.js'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "132b46343e60ecf4057c427736c57b08f7615dfe",
+ "clone_s": 2.0,
+ "lane_check": "js: 32 files / 17428 lines; top=ts(132770)",
+ "status": "done"
+}

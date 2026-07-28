@@ -1,0 +1,214 @@
+{
+ "lane": "perl",
+ "repo": "exiftool/exiftool",
+ "stars": 4897,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/exiftool__exiftool --json --out /home/ubuntu/govfuzz-sweep-work/perl__exiftool__exiftool.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 309231,
+   "sloc_by_lang": {
+    "perl": 309190,
+    "config": 41
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/exiftool__exiftool --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/exiftool__exiftool --out /home/ubuntu/govfuzz-sweep-work/perl__exiftool__exiftool/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.93,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 99,
+   "by_severity": {
+    "medium": 18,
+    "critical": 79,
+    "high": 2
+   },
+   "top_rules": {
+    "GF-420": 73,
+    "GF-422": 18,
+    "GF-404": 6,
+    "GF-423": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/exiftool__exiftool --out /home/ubuntu/govfuzz-sweep-work/perl__exiftool__exiftool/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 12
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/exiftool__exiftool --work-dir /home/ubuntu/govfuzz-sweep-work/perl__exiftool__exiftool --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 60.45,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1308,
+    "dropped_by_cap": 1298,
+    "built": 10,
+    "built_and_fuzzed": 10,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "File::RandomAccess::Read",
+     "source": "RandomAccess.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1433.77938962251,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadBoolean",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1289.281437108947,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadPackInfo",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1428.4308083293315,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadFolder",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 921.5874488527382,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadData",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1210.373541408913,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadName",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1604.1325568942475,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadAttributes",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1978.9144760794368,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ReadFilesInfo",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1504.4694585160921,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::ExtractHeaderInfo",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1275.9737864625117,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Image::ExifTool::7Z::Process7Z",
+     "source": "7Z.pm",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1232.4803369907113,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2200871d9cef988051d2a99d67df3bda6cbb30a8",
+ "clone_s": 2.6,
+ "lane_check": "perl: 356 files / 349709 lines; top=perl(349709)",
+ "status": "done"
+}

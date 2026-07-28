@@ -1,0 +1,217 @@
+{
+ "lane": "js",
+ "repo": "sveltejs/svelte",
+ "stars": 87682,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte --json --out /home/ubuntu/govfuzz-sweep-work/js__sveltejs__svelte.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.32,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 166565,
+   "sloc_by_lang": {
+    "javascript": 162489,
+    "config": 4076
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte --out /home/ubuntu/govfuzz-sweep-work/js__sveltejs__svelte/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 76.3,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 6,
+   "by_severity": {
+    "high": 6
+   },
+   "top_rules": {
+    "GF-505": 6
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte --out /home/ubuntu/govfuzz-sweep-work/js__sveltejs__svelte/sbom",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "components": 505
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte --work-dir /home/ubuntu/govfuzz-sweep-work/js__sveltejs__svelte --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 6.52,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 502,
+    "dropped_by_cap": 492,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "MappedCode#concat",
+     "source": "mapped_code.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/compiler/utils/mapped_code.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExpressionMetadata#has_more_blockers_than",
+     "source": "nodes.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/compiler/phases/nodes.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExpressionMetadata#merge",
+     "source": "nodes.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/compiler/phases/nodes.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#skip_effect",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#capture",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#register_created_effect",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#increment",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#decrement",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#transfer_effects",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Batch#schedule",
+     "source": "batch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/sveltejs__svelte/packages/svelte/src/internal/client/reactivity/batch.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "throw error;",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "44a7813730579b94004e182e5a67aab27aa9d2a6",
+ "clone_s": 3.6,
+ "lane_check": "js: 3380 files / 118540 lines; top=js(118540)",
+ "status": "done"
+}

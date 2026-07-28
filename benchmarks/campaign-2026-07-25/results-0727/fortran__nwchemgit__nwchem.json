@@ -1,0 +1,438 @@
+{
+ "lane": "fortran",
+ "repo": "nwchemgit/nwchem",
+ "stars": 614,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/nwchemgit__nwchem --json --out /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.89,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 5032950,
+   "sloc_by_lang": {
+    "fortran": 4924004,
+    "c": 68272,
+    "java": 12311,
+    "python": 11087,
+    "cpp": 9945,
+    "perl": 5808,
+    "config": 1523
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/nwchemgit__nwchem --format json --top 100000",
+   "exit": 0,
+   "wall_s": 5.64,
+   "timed_out": false,
+   "panic": false,
+   "count": 2048,
+   "by_language": {
+    "c": 1568,
+    "cpp": 316,
+    "java": 164
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/nwchemgit__nwchem --out /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.27,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 519,
+   "by_severity": {
+    "medium": 19,
+    "high": 480,
+    "low": 7,
+    "critical": 13
+   },
+   "top_rules": {
+    "GF-401": 227,
+    "GF-405": 140,
+    "GF-403": 79,
+    "GF-547": 15,
+    "GF-404": 12,
+    "GF-406": 10,
+    "GF-472": 7,
+    "GF-546": 7,
+    "GF-407": 7,
+    "GF-500": 6,
+    "GF-408": 5,
+    "GF-436": 2,
+    "GF-420": 1,
+    "GF-424": 1
+   },
+   "gaps": 603
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/nwchemgit__nwchem --out /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem/sbom",
+   "exit": 0,
+   "wall_s": 0.39,
+   "timed_out": false,
+   "panic": false,
+   "components": 3
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/nwchemgit__nwchem --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 57.15,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 2680,
+    "dropped_by_cap": 2670,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 12
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "c_read",
+     "source": "cio.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "process_line",
+     "source": "32_to_64.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4276.070595876998,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "process_line",
+     "source": "64_to_32.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4230.435542461385,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hdbm_open",
+     "source": "hdbm.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3777.570330863575,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ANA_REPORT_LOC",
+     "source": "ana_report.F",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ADD_BEAD_LIST",
+     "source": "bead_list.F",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NWChem::Chemistry_QC_ModelFactory_impl::set_theory",
+     "source": "NWChem_Chemistry_QC_ModelFactory_Impl.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "pre-C++98 (cfront/ARM): legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NWChem::Chemistry_QC_ModelFactory_impl::set_basis",
+     "source": "NWChem_Chemistry_QC_ModelFactory_Impl.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "pre-C++98 (cfront/ARM): legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Angle",
+     "source": "Angle.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::Usage",
+     "source": "gen_liblist.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4266.0209852308435,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c_knr] K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp_pre98] legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Fatal Error: mafdecls.fh: No such file or directory",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Fatal Error: rtdb.fh: No such file or directory",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/fortran/nwchemgit__nwchem/src/java/whichjava.java:N: error: duplicate class: whichjava",
+     "language": "java"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-401-12D36B8D",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-401-A07F4296",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-401-A777396C",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-006F3E3B",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-0AF3B2D4",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-227CA7B3",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-27B2FC5C",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-34CEE3FB",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-5EA275D4",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-6CE9EE75",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-757EC1A2",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    },
+    {
+     "id": "F-RO-GF-405-B48C25CA",
+     "rule": "GF-405",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C008E-B19B3A07"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem/findings --out /home/ubuntu/govfuzz-sweep-work/fortran__nwchemgit__nwchem/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "86b193cfeb2d4d1f39889e9f73a8f58f742872ea",
+ "clone_s": 35.0,
+ "lane_check": "fortran: 17574 files / 5773821 lines; top=fortran(5773821)",
+ "status": "done"
+}

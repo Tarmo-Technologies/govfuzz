@@ -1,0 +1,251 @@
+{
+ "lane": "rust",
+ "repo": "tinyhumansai/openhuman",
+ "stars": 35426,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/tinyhumansai__openhuman --json --out /home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.55,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 1123090,
+   "sloc_by_lang": {
+    "rust": 689563,
+    "javascript": 405892,
+    "config": 27258,
+    "python": 321,
+    "ruby": 56
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/tinyhumansai__openhuman --format json --top 100000",
+   "exit": 0,
+   "wall_s": 28.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 8968,
+   "by_language": {
+    "rust": 8968
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/tinyhumansai__openhuman --out /home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 337.38,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 337,
+   "by_severity": {
+    "medium": 38,
+    "high": 85,
+    "low": 146,
+    "critical": 68
+   },
+   "top_rules": {
+    "GF-553": 144,
+    "GF-472": 67,
+    "GF-429": 60,
+    "GF-497": 24,
+    "GF-404": 5,
+    "GF-423": 5,
+    "GF-477": 4,
+    "GF-475": 4,
+    "GF-544": 4,
+    "GF-436": 3,
+    "GF-485": 3,
+    "GF-405": 2,
+    "GF-304": 2,
+    "GF-546": 2,
+    "GF-562": 2
+   },
+   "gaps": 1091
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/tinyhumansai__openhuman --out /home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman/sbom",
+   "exit": 0,
+   "wall_s": 1.31,
+   "timed_out": false,
+   "panic": false,
+   "components": 2641
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/tinyhumansai__openhuman --work-dir /home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 68.39,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 7292,
+    "dropped_by_cap": 7282,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "buffer_read",
+     "source": "store.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "board_for_thread",
+     "source": "task_board.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&Path' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "base64url_decode",
+     "source": "crypto.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "launchAgent",
+     "source": "core.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 277.5539273552914,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "receiveMessage",
+     "source": "core.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 400.58005938845326,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ConfirmationModal",
+     "source": "ConfirmationModal.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman/harnesses/H-T000C-D1FDC5E1/target.js` is not loadable (skipped cleanly): missing module `react` (not in the project and not installed) \u2014 Error: Cannot find module 'react'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CenteredLoadingState",
+     "source": "LoadingState.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman/harnesses/H-T0035-D23F7FDF/target.js` is not loadable (skipped cleanly): missing module `react/jsx-runtime` (not in the project and not installed) \u2014 Error: Cannot find module 'react/jsx-runtime'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AddMemorySourceDialog",
+     "source": "AddMemorySourceDialog.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/rust__tinyhumansai__openhuman/harnesses/H-T0039-D9BFAF28/target.js` is not loadable (skipped cleanly): missing module `debug` (not in the project and not installed) \u2014 Error: Cannot find module 'debug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main",
+     "source": "pool_worker.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 29.796970598811676,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main",
+     "source": "server.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 658.7508622150868,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "cargo build failed: error: failed to select a version for the requirement \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "dcc5b9b251f18e74b9b1ea9a3175cf1221dcacfb",
+ "clone_s": 8.8,
+ "lane_check": "rust: 2290 files / 810062 lines; top=rust(810062)",
+ "status": "done"
+}

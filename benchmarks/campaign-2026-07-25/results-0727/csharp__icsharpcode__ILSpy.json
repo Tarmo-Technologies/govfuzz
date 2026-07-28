@@ -1,0 +1,253 @@
+{
+ "lane": "csharp",
+ "repo": "icsharpcode/ILSpy",
+ "stars": 25719,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy --json --out /home/ubuntu/govfuzz-sweep-work/csharp__icsharpcode__ILSpy.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 256340,
+   "sloc_by_lang": {
+    "csharp": 254935,
+    "javascript": 881,
+    "config": 513,
+    "ruby": 11
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy --out /home/ubuntu/govfuzz-sweep-work/csharp__icsharpcode__ILSpy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.98,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 11,
+   "by_severity": {
+    "high": 5,
+    "medium": 1,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-472": 5,
+    "GF-429": 5,
+    "GF-477": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy --out /home/ubuntu/govfuzz-sweep-work/csharp__icsharpcode__ILSpy/sbom",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "components": 451
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__icsharpcode__ILSpy --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 34.08,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 119,
+    "dropped_by_cap": 109,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "transpileLess",
+     "source": "gulpfile.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy/ICSharpCode.ILSpyX/MermaidDiagrammer/html/gulpfile.js` is not loadable (skipped cleanly): missing module `gulp` (not in the project and not installed) \u2014 Error: Cannot find module 'gulp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "generateHtmlDiagrammer",
+     "source": "gulpfile.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/csharp/icsharpcode__ILSpy/ICSharpCode.ILSpyX/MermaidDiagrammer/html/gulpfile.js` is not loadable (skipped cleanly): missing module `gulp` (not in the project and not installed) \u2014 Error: Cannot find module 'gulp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.BamlDecompiler.XamlDecompiler.Decompile",
+     "source": "XamlDecompiler.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `ICSharpCode.BamlDecompiler.XamlDecompiler.Decompile` needs a receiver, but `XamlDecompiler` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WriteKeyword",
+     "source": "ITokenWriter.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WriteKeyword` is declared on abstract/interface type `DecoratingTokenWriter`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WriteToken",
+     "source": "ITokenWriter.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WriteToken` is declared on abstract/interface type `DecoratingTokenWriter`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WritePrimitiveType",
+     "source": "ITokenWriter.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WritePrimitiveType` is declared on abstract/interface type `DecoratingTokenWriter`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WriteInterpolatedText",
+     "source": "ITokenWriter.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `ICSharpCode.Decompiler.CSharp.OutputVisitor.DecoratingTokenWriter.WriteInterpolatedText` is declared on abstract/interface type `DecoratingTokenWriter`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.CSharpAmbience.WrapComment",
+     "source": "CSharpAmbience.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.TextWriterTokenWriter.ContainsNonPrintableIdentifierChar",
+     "source": "TextWriterTokenWriter.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ICSharpCode.Decompiler.CSharp.OutputVisitor.CSharpOutputVisitor.ConvertString",
+     "source": "CSharpOutputVisitor.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "instance method \"X\" is declared on abstract/interface type \"X\", which has no instance to allocate (skipped cleanly)",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "error : /usr/bin/sh: N: /tmp/MSBuildTempOO8SfF/tmp7a8b77d0de1140be8371e7837d8fbc5b.exec.cmd: pwsh: not found",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "error : /usr/bin/sh: N: /tmp/MSBuildTempVy2Ed9/tmpa884c4e4aa3240c5871f5b0b7882725e.exec.cmd: pwsh: not found",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "error : /usr/bin/sh: N: /tmp/MSBuildTemphCFgp8/tmpcf96a7cae4ee4326bbd71c4d1dbbfe66.exec.cmd: pwsh: not found",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an u\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "486ff7fccbdf96c7f75b9e4e743efa49f22579b6",
+ "clone_s": 2.1,
+ "lane_check": "csharp: 1734 files / 317430 lines; top=csharp(317430)",
+ "status": "done"
+}

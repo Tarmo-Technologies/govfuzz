@@ -1,0 +1,223 @@
+{
+ "lane": "ruby",
+ "repo": "fluent/fluentd",
+ "stars": 13568,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/fluent__fluentd --json --out /home/ubuntu/govfuzz-sweep-work/ruby__fluent__fluentd.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 87921,
+   "sloc_by_lang": {
+    "ruby": 87287,
+    "config": 634
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/fluent__fluentd --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/fluent__fluentd --out /home/ubuntu/govfuzz-sweep-work/ruby__fluent__fluentd/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.4,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1,
+   "by_severity": {
+    "high": 1
+   },
+   "top_rules": {
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/fluent__fluentd --out /home/ubuntu/govfuzz-sweep-work/ruby__fluent__fluentd/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 41
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/fluent__fluentd --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__fluent__fluentd --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 5.15,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1015,
+    "dropped_by_cap": 1005,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "BinlogReaderCommand::Base#initialize",
+     "source": "binlog_reader.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BinlogReaderCommand::Base#initialize` is not loadable (skipped cleanly): missing module `msgpack` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- msgpack (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BinlogReaderCommand::Formattable.initialize",
+     "source": "binlog_reader.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BinlogReaderCommand::Formattable.initialize` is not loadable (skipped cleanly): missing module `msgpack` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- msgpack (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BufferedChunkMixin.write",
+     "source": "output.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BufferedChunkMixin.write` is not loadable (skipped cleanly): missing module `serverengine/utils` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- serverengine/utils (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BinlogReaderCommand::Formattable.lookup_formatter",
+     "source": "binlog_reader.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BinlogReaderCommand::Formattable.lookup_formatter` is not loadable (skipped cleanly): missing module `msgpack` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- msgpack (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BinlogReaderCommand::Head#initialize",
+     "source": "binlog_reader.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BinlogReaderCommand::Head#initialize` is not loadable (skipped cleanly): missing module `msgpack` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- msgpack (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BinlogReaderCommand::Formats#initialize",
+     "source": "binlog_reader.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BinlogReaderCommand::Formats#initialize` is not loadable (skipped cleanly): missing module `msgpack` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- msgpack (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BufferedOutput#configure",
+     "source": "output.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BufferedOutput#configure` is not loadable (skipped cleanly): missing module `serverengine/utils` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- serverengine/utils (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BufferedOutput#emit",
+     "source": "output.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BufferedOutput#emit` is not loadable (skipped cleanly): missing module `serverengine/utils` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- serverengine/utils (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BufferedOutput#format_stream",
+     "source": "output.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BufferedOutput#format_stream` is not loadable (skipped cleanly): missing module `serverengine/utils` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- serverengine/utils (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BufferedOutput#extract_placeholders",
+     "source": "output.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BufferedOutput#extract_placeholders` is not loadable (skipped cleanly): missing module `serverengine/utils` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- serverengine/utils (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/\u2026",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:N:in \"X\": cannot load such \u2026",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "469d5c239113f36788046f6222d840aee8615047",
+ "clone_s": 1.0,
+ "lane_check": "ruby: 444 files / 93724 lines; top=ruby(93724)",
+ "status": "done"
+}

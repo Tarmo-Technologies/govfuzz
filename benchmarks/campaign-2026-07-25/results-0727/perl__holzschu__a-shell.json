@@ -1,0 +1,90 @@
+{
+ "lane": "perl",
+ "repo": "holzschu/a-shell",
+ "stars": 3833,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --json --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.42,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 1021016,
+   "sloc_by_lang": {
+    "perl": 637075,
+    "c": 293942,
+    "cpp": 73070,
+    "javascript": 15754,
+    "python": 1083,
+    "config": 92
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --format json --top 100000",
+   "exit": 0,
+   "wall_s": 186.81,
+   "timed_out": false,
+   "panic": false,
+   "count": 31157,
+   "by_language": {
+    "cpp": 15024,
+    "c": 16133
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.87,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 942,
+   "by_severity": {
+    "critical": 402,
+    "medium": 488,
+    "high": 48,
+    "low": 4
+   },
+   "top_rules": {
+    "GF-425": 353,
+    "GF-420": 219,
+    "GF-404": 181,
+    "GF-424": 124,
+    "GF-547": 13,
+    "GF-408": 12,
+    "GF-422": 9,
+    "GF-401": 8,
+    "GF-423": 5,
+    "GF-405": 4,
+    "GF-546": 4,
+    "GF-403": 4,
+    "GF-304": 2,
+    "GF-406": 2,
+    "GF-507": 2
+   },
+   "gaps": 141
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --out /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell/sbom",
+   "exit": 0,
+   "wall_s": 0.84,
+   "timed_out": false,
+   "panic": false,
+   "components": 2645
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/holzschu__a-shell --work-dir /home/ubuntu/govfuzz-sweep-work/perl__holzschu__a-shell --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.14,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "0a0614464ec65a9480f4d44f95a85273a33a6dfa",
+ "clone_s": 10.2,
+ "lane_check": "perl: 1282 files / 799089 lines; top=perl(799089)",
+ "status": "done"
+}

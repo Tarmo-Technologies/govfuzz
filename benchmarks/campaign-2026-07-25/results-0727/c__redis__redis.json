@@ -1,0 +1,91 @@
+{
+ "lane": "c",
+ "repo": "redis/redis",
+ "stars": 75698,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/redis__redis --json --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 266276,
+   "sloc_by_lang": {
+    "c": 246255,
+    "cpp": 11999,
+    "python": 4175,
+    "config": 2872,
+    "ruby": 639,
+    "lua": 306,
+    "javascript": 30
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/redis__redis --format json --top 100000",
+   "exit": 0,
+   "wall_s": 9.11,
+   "timed_out": false,
+   "panic": false,
+   "count": 11470,
+   "by_language": {
+    "c": 11095,
+    "cpp": 375
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/redis__redis --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 6.79,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 531,
+   "by_severity": {
+    "medium": 253,
+    "high": 272,
+    "low": 2,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-424": 160,
+    "GF-407": 128,
+    "GF-405": 63,
+    "GF-408": 40,
+    "GF-406": 24,
+    "GF-500": 23,
+    "GF-425": 19,
+    "GF-401": 17,
+    "GF-403": 15,
+    "GF-497": 13,
+    "GF-436": 11,
+    "GF-472": 7,
+    "GF-404": 3,
+    "GF-550": 3,
+    "GF-546": 2
+   },
+   "gaps": 5137
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/redis__redis --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis/sbom",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "components": 20
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/redis__redis --work-dir /home/ubuntu/govfuzz-sweep-work/c__redis__redis --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.11,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "d6f09b8ee22c3433d4ba91e3163814baa4043c75",
+ "clone_s": 2.1,
+ "lane_check": "c: 191 files / 191140 lines; top=c(191140)",
+ "status": "done"
+}

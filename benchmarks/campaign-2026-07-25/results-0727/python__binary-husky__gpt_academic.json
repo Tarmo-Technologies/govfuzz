@@ -1,0 +1,235 @@
+{
+ "lane": "python",
+ "repo": "binary-husky/gpt_academic",
+ "stars": 71137,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/binary-husky__gpt_academic --json --out /home/ubuntu/govfuzz-sweep-work/python__binary-husky__gpt_academic.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 44776,
+   "sloc_by_lang": {
+    "python": 36672,
+    "javascript": 7473,
+    "config": 631
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/binary-husky__gpt_academic --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/binary-husky__gpt_academic --out /home/ubuntu/govfuzz-sweep-work/python__binary-husky__gpt_academic/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.24,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 186,
+   "by_severity": {
+    "high": 90,
+    "medium": 36,
+    "critical": 27,
+    "low": 33
+   },
+   "top_rules": {
+    "GF-546": 33,
+    "GF-427": 29,
+    "GF-544": 20,
+    "GF-405": 19,
+    "GF-472": 18,
+    "GF-429": 15,
+    "GF-428": 11,
+    "GF-421": 8,
+    "GF-404": 6,
+    "GF-482": 6,
+    "GF-420": 6,
+    "GF-423": 4,
+    "GF-548": 4,
+    "GF-488": 2,
+    "GF-507": 2
+   },
+   "gaps": 1025
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/binary-husky__gpt_academic --out /home/ubuntu/govfuzz-sweep-work/python__binary-husky__gpt_academic/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 71
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/binary-husky__gpt_academic --work-dir /home/ubuntu/govfuzz-sweep-work/python__binary-husky__gpt_academic --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 51.69,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1194,
+    "dropped_by_cap": 1184,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "decode_chunk",
+     "source": "oai_std_model_template.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `oai_std_model_template` is not loadable (skipped cleanly): missing module `loguru` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'loguru'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_chunk",
+     "source": "bridge_cohere.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `bridge_cohere` is not loadable (skipped cleanly): missing module `gradio` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'gradio'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_chunk",
+     "source": "bridge_ollama.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `bridge_ollama` is not loadable (skipped cleanly): missing module `gradio` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'gradio'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_chunk",
+     "source": "bridge_claude.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `bridge_claude` is not loadable (skipped cleanly): missing module `loguru` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'loguru'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_chunk",
+     "source": "bridge_chatgpt_vision.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `bridge_chatgpt_vision` is not loadable (skipped cleanly): missing module `loguru` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'loguru'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "contain_uploaded_files",
+     "source": "doc_loader_dynamic.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2678.657059572634,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decode_chunk",
+     "source": "bridge_openrouter.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `bridge_openrouter` is not loadable (skipped cleanly): missing module `loguru` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'loguru'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_chunk",
+     "source": "bridge_chatgpt.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `bridge_chatgpt` is not loadable (skipped cleanly): missing module `loguru` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'loguru'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "file_already_in_downloadzone",
+     "source": "toolbox.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `toolbox` is not loadable (skipped cleanly): missing module `gradio` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'gradio'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "del_outdated_uploads",
+     "source": "toolbox.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `toolbox` is not loadable (skipped cleanly): missing module `gradio` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'gradio'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "d6bde0fa54373309bd05823a49bda8da019d2c77",
+ "clone_s": 1.2,
+ "lane_check": "python: 276 files / 53558 lines; top=python(53558)",
+ "status": "done"
+}

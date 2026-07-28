@@ -1,0 +1,87 @@
+{
+ "lane": "cpp",
+ "repo": "microsoft/WSL",
+ "stars": 33206,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 203422,
+   "sloc_by_lang": {
+    "cpp": 146793,
+    "c": 49191,
+    "csharp": 3956,
+    "config": 2112,
+    "python": 1370
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --format json --top 100000",
+   "exit": 0,
+   "wall_s": 12.42,
+   "timed_out": false,
+   "panic": false,
+   "count": 5454,
+   "by_language": {
+    "cpp": 4587,
+    "c": 867
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.13,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 697,
+   "by_severity": {
+    "low": 1,
+    "high": 655,
+    "medium": 32,
+    "critical": 9
+   },
+   "top_rules": {
+    "GF-405": 453,
+    "GF-403": 126,
+    "GF-406": 29,
+    "GF-401": 28,
+    "GF-408": 26,
+    "GF-407": 16,
+    "GF-404": 9,
+    "GF-547": 5,
+    "GF-425": 2,
+    "GF-546": 1,
+    "GF-562": 1,
+    "GF-477": 1
+   },
+   "gaps": 78
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/sbom",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "components": 60
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 96.68,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/WslcSDK/winrt/wslcsdk.idl: unexpected character '.' at line 15, column 20\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/WSLCCompat.idl: expected declaration, found 'cpp_quote' at line 22, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/WSLCShared.idl: expected ';' at line 20, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/windowsdefs.idl: expected identifier at line 38, column 8\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/wslc.idl: expected declaration, found 'cpp_quote' at line 23, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/service/inc/wslservice.idl: expected declaration, found 'cpp_quote' at line 22, column 1\ngovfuzz auto: skipping /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL/src/windows/wslinstaller/inc/wslinstallerservice.idl: expected declaration, found 'cpp_quote' at line 19, column 1\nIDL mapping is partial: 7 blocking recovery warning(s); see idl_recovery_report.json\ngovfuzz auto: generated CORBA scaffolding from 1 in-tree .idl file(s)\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__WSL\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__WSL/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint c97d71726db41e15-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "fceeecf97e6638ccdd691a03cd9b80b413a4f2a9",
+ "clone_s": 2.5,
+ "lane_check": "cpp: 369 files / 135008 lines; top=cpp(135008)",
+ "status": "done"
+}

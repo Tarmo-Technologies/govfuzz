@@ -1,0 +1,317 @@
+{
+ "lane": "lua",
+ "repo": "xmake-io/xmake",
+ "stars": 12109,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/xmake-io__xmake --json --out /home/ubuntu/govfuzz-sweep-work/lua__xmake-io__xmake.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "languages": 12,
+   "sloc_total": 228745,
+   "sloc_by_lang": {
+    "lua": 130646,
+    "c": 69222,
+    "cpp": 25874,
+    "config": 1613,
+    "perl": 910,
+    "python": 114,
+    "csharp": 86,
+    "rust": 80,
+    "qml": 64,
+    "go": 52,
+    "fortran": 50,
+    "javascript": 34
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/xmake-io__xmake --format json --top 100000",
+   "exit": 0,
+   "wall_s": 7.31,
+   "timed_out": false,
+   "panic": false,
+   "count": 2769,
+   "by_language": {
+    "c": 1458,
+    "cpp": 1306,
+    "rust": 5
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/xmake-io__xmake --out /home/ubuntu/govfuzz-sweep-work/lua__xmake-io__xmake/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.57,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 134,
+   "by_severity": {
+    "medium": 41,
+    "high": 84,
+    "critical": 9
+   },
+   "top_rules": {
+    "GF-472": 37,
+    "GF-500": 31,
+    "GF-407": 16,
+    "GF-401": 12,
+    "GF-408": 11,
+    "GF-405": 7,
+    "GF-404": 4,
+    "GF-497": 3,
+    "GF-425": 3,
+    "GF-429": 3,
+    "GF-406": 2,
+    "GF-424": 2,
+    "GF-420": 2,
+    "GF-403": 1
+   },
+   "gaps": 81
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/xmake-io__xmake --out /home/ubuntu/govfuzz-sweep-work/lua__xmake-io__xmake/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 34
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/xmake-io__xmake --work-dir /home/ubuntu/govfuzz-sweep-work/lua__xmake-io__xmake --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 37.48,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3852,
+    "dropped_by_cap": 3842,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "xm_binutils_ar_extract",
+     "source": "extractlib.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'istream' of type 'tb_stream_ref_t' has no byte-buffer decoder after struct synthesis: opaque type 'tb_stream_ref_t' for parameter 'istream' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "xm_engine_init",
+     "source": "engine.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (lua_Integer, lua_KContext, lua_State) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "__call",
+     "source": "path.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `__call` is not loadable (skipped cleanly): missing module `base/string` (not in the project and not installed) \u2014 /usr/bin/lua: ...-corpus-500/lua/xmake-io__xmake/xmake/core/base/path.lua:25: module 'base/string' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "__call",
+     "source": "bytes.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `__call` is not loadable (skipped cleanly): missing module `base/bit` (not in the project and not installed) \u2014 /usr/bin/lua: ...corpus-500/lua/xmake-io__xmake/xmake/core/base/bytes.lua:26: module 'base/bit' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::handle_if",
+     "source": "gas-preprocessor.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2393.641900001431,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::expand_macros",
+     "source": "gas-preprocessor.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 548.7632834579156,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "tb_pointer_t::xm_lua_topointer2(lua_State *, tb_int_t, tb_char_t const **)",
+     "source": "prefix.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'tb_pointer_t::xm_lua_topointer2(lua_State *, tb_int_t, tb_char_t const **)' return type '__tb_inline__' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Add",
+     "source": "add.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target is not inside a Go module (no go.mod found); only module-based Go targets are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "add",
+     "source": "foo.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "no Cargo.toml found above the Rust target source",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "XmakeGenerator.filename",
+     "source": "xmake_generator.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `XmakeGenerator.filename` needs a receiver, but `XmakeGenerator.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (lua_Integer, lua_KContext, lua_State) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendo\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target is not inside a Go module (no go.mod found); only module-based Go targets are supported (skipped cleanly)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 /usr/bin/lua: ...-corpus-N/lua/xmake-io__xmake/xmake/c\u2026",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 /usr/bin/lua: ...corpus-N/lua/xmake-io__xmake/xmake/co\u2026",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" takes N required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "no Cargo.toml found above the Rust target source",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-406-09DA76D3",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0619-09ABD437"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/lua__xmake-io__xmake/findings --out /home/ubuntu/govfuzz-sweep-work/lua__xmake-io__xmake/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "8dc4b58696df2ba7bdbefac721bf6b809796b440",
+ "clone_s": 1.6,
+ "lane_check": "lua: 2298 files / 189981 lines; top=lua(189981)",
+ "status": "done"
+}

@@ -1,0 +1,223 @@
+{
+ "lane": "ts",
+ "repo": "vitejs/vite",
+ "stars": 82093,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/vitejs__vite --json --out /home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 98499,
+   "sloc_by_lang": {
+    "javascript": 85848,
+    "config": 12651
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/vitejs__vite --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/vitejs__vite --out /home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 51.24,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 6,
+   "by_severity": {
+    "high": 6
+   },
+   "top_rules": {
+    "GF-505": 3,
+    "GF-507": 3
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/vitejs__vite --out /home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite/sbom",
+   "exit": 1,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/vitejs__vite --work-dir /home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 26.0,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 136,
+    "dropped_by_cap": 126,
+    "built": 6,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "BundledDevHMRClient#isSelfAccepted",
+     "source": "bundledDevHmrClient.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 448.5808213063125,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BundledDevHMRClient#acceptsDep",
+     "source": "bundledDevHmrClient.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 463.8014853676405,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BundledDevHMRClient#handlePush",
+     "source": "bundledDevHmrClient.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 447.4943005632568,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BundledDevHMRClient#invalidateLocally",
+     "source": "bundledDevHmrClient.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 381.55016528384937,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BundledDevHMRClient#handleModuleCacheRemoval",
+     "source": "bundledDevHmrClient.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 566.813973165511,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DevEnvironment#listen",
+     "source": "environment.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite/harnesses/H-T00E5-A7F932E3/target.js` is not loadable (skipped cleanly): missing module `picocolors` (not in the project and not installed) \u2014 Error: Cannot find module 'picocolors'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DevEnvironment#reloadModule",
+     "source": "environment.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite/harnesses/H-T00FC-16831ACC/target.js` is not loadable (skipped cleanly): missing module `picocolors` (not in the project and not installed) \u2014 Error: Cannot find module 'picocolors'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BundledDevHMRContext#invalidate",
+     "source": "bundledDevHmrClient.ts",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BasicMinimalPluginContext#error",
+     "source": "pluginContainer.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite/harnesses/H-T02C0-195771C9/target.js` is not loadable (skipped cleanly): missing module `rolldown/parseAst` (not in the project and not installed) \u2014 Error: Cannot find module 'rolldown/parseAst'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChunkMetadataMap#reset",
+     "source": "build.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vitejs__vite/harnesses/H-T04FE-80901859/target.js` is not loadable (skipped cleanly): missing module `picocolors` (not in the project and not installed) \u2014 Error: Cannot find module 'picocolors'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 1,
+     "detail": "built, no fuzz pass ran",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4c07b74416f859d7e8bdace13409ef2d080edf76",
+ "clone_s": 1.9,
+ "lane_check": "ts: 584 files / 80915 lines; top=ts(80915)",
+ "status": "done"
+}

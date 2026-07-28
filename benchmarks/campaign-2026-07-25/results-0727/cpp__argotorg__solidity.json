@@ -1,0 +1,262 @@
+{
+ "lane": "cpp",
+ "repo": "argotorg/solidity",
+ "stars": 25685,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/argotorg__solidity --json --out /home/ubuntu/govfuzz-sweep-work/cpp__argotorg__solidity.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 182052,
+   "sloc_by_lang": {
+    "cpp": 171312,
+    "python": 7051,
+    "config": 2179,
+    "c": 734,
+    "javascript": 694,
+    "java": 82
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/argotorg__solidity --format json --top 100000",
+   "exit": 0,
+   "wall_s": 10.97,
+   "timed_out": false,
+   "panic": false,
+   "count": 8566,
+   "by_language": {
+    "cpp": 8546,
+    "c": 19,
+    "java": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/argotorg__solidity --out /home/ubuntu/govfuzz-sweep-work/cpp__argotorg__solidity/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.96,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 33,
+   "by_severity": {
+    "medium": 22,
+    "high": 7,
+    "critical": 2,
+    "low": 2
+   },
+   "top_rules": {
+    "GF-406": 19,
+    "GF-505": 3,
+    "GF-424": 2,
+    "GF-404": 2,
+    "GF-546": 2,
+    "GF-477": 1,
+    "GF-427": 1,
+    "GF-405": 1,
+    "GF-437": 1,
+    "GF-407": 1
+   },
+   "gaps": 32
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/argotorg__solidity --out /home/ubuntu/govfuzz-sweep-work/cpp__argotorg__solidity/sbom",
+   "exit": 0,
+   "wall_s": 1.89,
+   "timed_out": false,
+   "panic": false,
+   "components": 17
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/argotorg__solidity --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__argotorg__solidity --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 156.26,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 5677,
+    "dropped_by_cap": 5667,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "solidity::frontend::FileReader::readFile",
+     "source": "FileReader.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "YulUtilFunctions::copyLiteralToStorageFunction",
+     "source": "YulUtilFunctions.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'YulUtilFunctions' to harness 'copyLiteralToStorageFunction': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'YulUtilFunctions' was found. Add a small wrapper or factory harness that constructs the object and calls 'copyLiteralToStorageFunction', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'YulUtilFunctions' to harness 'copyLiteralToStorageFunction': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'YulUtilFunctions' was found. Add a small wrapper or factory harness that constructs the object and calls 'copyLiteralToStorageFunction', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Assembly::assemblyJSON",
+     "source": "Assembly.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'Assembly::assemblyJSON' return type 'Json' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CompilerStack::interfaceSymbols",
+     "source": "CompilerStack.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'CompilerStack::interfaceSymbols' return type 'Json' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CompilerStack::gasEstimates",
+     "source": "CompilerStack.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'CompilerStack::gasEstimates' return type 'Json' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_standard_json_output",
+     "source": "prepare_report.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4081.797058492648,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_cli_output",
+     "source": "prepare_report.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2935.778877134974,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_file",
+     "source": "rest_api_helpers.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.14719984459558935,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "add_preamble",
+     "source": "cmdline_helpers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `cmdline_helpers` is not loadable (skipped cleanly): missing module `bytecodecompare` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'bytecodecompare'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main",
+     "source": "AntlrBatchTestRig.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (target) failed: /home/ubuntu/govfuzz-corpus-N/cpp/argotorg__solidity/scripts/AntlrBatchTestRig.java:N: error: package org.antlr.v4.runtime does not exist",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "96bdc54854a16664ac9dde32862c733ee419c89c",
+ "clone_s": 2.8,
+ "lane_check": "cpp: 452 files / 150364 lines; top=cpp(150364)",
+ "status": "done"
+}

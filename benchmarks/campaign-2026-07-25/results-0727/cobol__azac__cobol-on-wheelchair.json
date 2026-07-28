@@ -1,0 +1,156 @@
+{
+ "lane": "cobol",
+ "repo": "azac/cobol-on-wheelchair",
+ "stars": 1030,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/azac__cobol-on-wheelchair --json --out /home/ubuntu/govfuzz-sweep-work/cobol__azac__cobol-on-wheelchair.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 370,
+   "sloc_by_lang": {
+    "cobol": 359,
+    "config": 11
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/azac__cobol-on-wheelchair --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cobol/azac__cobol-on-wheelchair --out /home/ubuntu/govfuzz-sweep-work/cobol__azac__cobol-on-wheelchair/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "medium": 2
+   },
+   "top_rules": {
+    "GF-477": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cobol/azac__cobol-on-wheelchair --out /home/ubuntu/govfuzz-sweep-work/cobol__azac__cobol-on-wheelchair/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cobol/azac__cobol-on-wheelchair --work-dir /home/ubuntu/govfuzz-sweep-work/cobol__azac__cobol-on-wheelchair --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 15.5,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 4,
+    "built": 2,
+    "built_and_fuzzed": 2,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 2,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "COWTEMPLATE",
+     "source": "cowtemplate.cbl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17.29439282987108,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CHECKFILESTATUS",
+     "source": "cowtemplate.cbl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17.270322165694388,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "GETQUERY",
+     "source": "cow.cbl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "GETQUERY: nested COBOL program (cobc compiles it as a static C function, not externally callable)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHECKQUERY",
+     "source": "cow.cbl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "CHECKQUERY: nested COBOL program (cobc compiles it as a static C function, not externally callable)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "CHECKQUERY: nested COBOL program (cobc compiles it as a static C function, not externally callable)",
+     "language": "cobol"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "GETQUERY: nested COBOL program (cobc compiles it as a static C function, not externally callable)",
+     "language": "cobol"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9eac2bcb0e1f6edfdfefccc85a66270b444f3c48",
+ "clone_s": 0.6,
+ "lane_check": "cobol: 6 files / 376 lines; top=cobol(376)",
+ "status": "done"
+}

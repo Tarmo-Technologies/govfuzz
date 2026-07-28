@@ -1,0 +1,258 @@
+{
+ "lane": "ts",
+ "repo": "earendil-works/pi",
+ "stars": 77602,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi --json --out /home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 179742,
+   "sloc_by_lang": {
+    "javascript": 177886,
+    "config": 1706,
+    "c": 150
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 17,
+   "by_language": {
+    "c": 17
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi --out /home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 65.78,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 11,
+   "by_severity": {
+    "medium": 3,
+    "high": 4,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-429": 4,
+    "GF-507": 2,
+    "GF-428": 2,
+    "GF-505": 2,
+    "GF-500": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi --out /home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 171
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi --work-dir /home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 37.61,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 576,
+    "dropped_by_cap": 566,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "findPackageDirectories",
+     "source": "package-workspaces.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 361.350510024031,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AssistantMessageComponent#setHideThinkingBlock",
+     "source": "assistant-message.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi/harnesses/H-T0033-3E56BF3F/target.js` is not loadable (skipped cleanly): missing module `get-east-asian-width` (not in the project and not installed) \u2014 Error: Cannot find module 'get-east-asian-width'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AssistantMessageComponent#setHiddenThinkingLabel",
+     "source": "assistant-message.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi/harnesses/H-T003A-F94B2EE5/target.js` is not loadable (skipped cleanly): missing module `get-east-asian-width` (not in the project and not installed) \u2014 Error: Cannot find module 'get-east-asian-width'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AssistantMessageComponent#setOutputPad",
+     "source": "assistant-message.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi/harnesses/H-T0041-6E297C10/target.js` is not loadable (skipped cleanly): missing module `get-east-asian-width` (not in the project and not installed) \u2014 Error: Cannot find module 'get-east-asian-width'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AssistantMessageComponent#render",
+     "source": "assistant-message.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__earendil-works__pi/harnesses/H-T0048-9C73DFF5/target.js` is not loadable (skipped cleanly): missing module `get-east-asian-width` (not in the project and not installed) \u2014 Error: Cannot find module 'get-east-asian-width'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AgentSessionRuntime#importFromJsonl",
+     "source": "agent-session-runtime.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/earendil-works__pi/packages/coding-agent/src/core/agent-session-runtime.ts: \u25b2 [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "node_symbol",
+     "source": "win32-console-mode.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (HMODULE) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "node_symbol",
+     "source": "darwin-modifiers.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "modifier_mask_for_name",
+     "source": "darwin-modifiers.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (CGEventFlags) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "napi_register_module_v1",
+     "source": "win32-console-mode.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "\"X\" attributes are not enabled; use \"X\" or \"X\" to enable support for __declspec attributes",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "expected identifier or \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (CGEventFlags) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (HMODULE) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "\u25b2 [WARNING] \"X\" is not available with the \"X\" output format and will be empty [empty-import-meta]",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "c820aa26fe0907e053e881a957722693fc094c9c",
+ "clone_s": 1.4,
+ "lane_check": "ts: 931 files / 190624 lines; top=ts(190624)",
+ "status": "done"
+}

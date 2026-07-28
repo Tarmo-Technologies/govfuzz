@@ -1,0 +1,219 @@
+{
+ "lane": "lua",
+ "repo": "neovim/nvim-lspconfig",
+ "stars": 13809,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/neovim__nvim-lspconfig --json --out /home/ubuntu/govfuzz-sweep-work/lua__neovim__nvim-lspconfig.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 19535,
+   "sloc_by_lang": {
+    "lua": 19282,
+    "config": 253
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/neovim__nvim-lspconfig --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/neovim__nvim-lspconfig --out /home/ubuntu/govfuzz-sweep-work/lua__neovim__nvim-lspconfig/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.3,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 15,
+   "by_severity": {
+    "high": 8,
+    "medium": 7
+   },
+   "top_rules": {
+    "GF-472": 8,
+    "GF-500": 7
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/neovim__nvim-lspconfig --out /home/ubuntu/govfuzz-sweep-work/lua__neovim__nvim-lspconfig/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/neovim__nvim-lspconfig --work-dir /home/ubuntu/govfuzz-sweep-work/lua__neovim__nvim-lspconfig --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 0.95,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 379,
+    "dropped_by_cap": 369,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "M._setup_buffer",
+     "source": "configs.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M._setup_buffer` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.find_mercurial_ancestor",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.find_mercurial_ancestor` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.find_node_modules_ancestor",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.find_node_modules_ancestor` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.find_package_json_ancestor",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.find_package_json_ancestor` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.find_git_ancestor",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.find_git_ancestor` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.get_active_clients_list_by_ft",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.get_active_clients_list_by_ft` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.get_active_client_by_name",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.get_active_client_by_name` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M._parse_user_command_options",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M._parse_user_command_options` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.create_module_commands",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.create_module_commands` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "M.bufname_valid",
+     "source": "util.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `M.bufname_valid` is not loadable (skipped cleanly): /usr/bin/lua: ...us-500/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:1: attempt to index a nil value (global 'vim')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "/usr/bin/lua: ...us-N/lua/neovim__nvim-lspconfig/lua/lspconfig/util.lua:N: attempt to index a nil value (global \"X\")",
+     "language": "lua"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7ab79bb1b57160a537f427ac8a6026102f12b701",
+ "clone_s": 0.7,
+ "lane_check": "lua: 850 files / 55062 lines; top=lua(55062)",
+ "status": "done"
+}

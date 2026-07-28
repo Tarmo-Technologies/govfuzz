@@ -37,5 +37,6 @@
  "byoungd/up": "rejected_lane",
  "easychen/opc-methodology": "rejected_lane",
  "IBM/zOS-Client-Web-Enablement-Toolkit": "rejected_lane",
- "cloudflare/cobol-worker": "rejected_lane"
+ "cloudflare/cobol-worker": "rejected_lane",
+ "OpenHands/OpenHands": "rejected_lane"
 }

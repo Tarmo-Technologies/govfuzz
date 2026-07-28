@@ -1,0 +1,161 @@
+{
+ "lane": "c",
+ "repo": "pjreddie/darknet",
+ "stars": 26486,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/pjreddie__darknet --json --out /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 28871,
+   "sloc_by_lang": {
+    "c": 28478,
+    "python": 275,
+    "cpp": 118
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/pjreddie__darknet --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.96,
+   "timed_out": false,
+   "panic": false,
+   "count": 1190,
+   "by_language": {
+    "c": 1181,
+    "cpp": 9
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/pjreddie__darknet --out /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.47,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 184,
+   "by_severity": {
+    "critical": 7,
+    "high": 177
+   },
+   "top_rules": {
+    "GF-403": 100,
+    "GF-405": 38,
+    "GF-407": 24,
+    "GF-547": 12,
+    "GF-404": 7,
+    "GF-401": 3
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/pjreddie__darknet --out /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/pjreddie__darknet --work-dir /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 120.34,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 1,
+    "discovered_total": 994,
+    "dropped_by_cap": 993,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "load_data_detection",
+     "source": "data.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 5,
+     "execs_per_sec": 0.07156952740661035,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-4124c865",
+     "rule": "GF-208",
+     "cwe": [
+      "CWE-401"
+     ],
+     "cwe_name": "Missing Release of Memory after Effective Lifetime",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C040C-EF6959D7"
+    },
+    {
+     "id": "F-0001-af382a24",
+     "rule": "GF-205",
+     "cwe": [
+      "CWE-369"
+     ],
+     "cwe_name": "Divide By Zero",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C040C-EF6959D7"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet/findings --out /home/ubuntu/govfuzz-sweep-work/c__pjreddie__darknet/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "f6afaabcdf85f77e7aff2ec55c020c0e297c77f9",
+ "clone_s": 1.2,
+ "lane_check": "c: 69 files / 22153 lines; top=c(22153)",
+ "status": "done"
+}

@@ -1,0 +1,95 @@
+{
+ "lane": "cpp",
+ "repo": "protocolbuffers/protobuf",
+ "stars": 71649,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --json --out /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.3,
+   "timed_out": false,
+   "panic": false,
+   "languages": 11,
+   "sloc_total": 925716,
+   "sloc_by_lang": {
+    "cpp": 338057,
+    "java": 237129,
+    "csharp": 160283,
+    "c": 124349,
+    "python": 24369,
+    "php": 19108,
+    "rust": 11046,
+    "ruby": 7694,
+    "config": 2668,
+    "lua": 705,
+    "go": 308
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --format json --top 100000",
+   "exit": 0,
+   "wall_s": 69.86,
+   "timed_out": false,
+   "panic": false,
+   "count": 43417,
+   "by_language": {
+    "cpp": 20632,
+    "rust": 558,
+    "java": 15458,
+    "c": 6769
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --out /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 13.3,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 258,
+   "by_severity": {
+    "high": 152,
+    "critical": 3,
+    "medium": 74,
+    "low": 29
+   },
+   "top_rules": {
+    "GF-472": 108,
+    "GF-424": 31,
+    "GF-425": 30,
+    "GF-546": 28,
+    "GF-405": 24,
+    "GF-406": 13,
+    "GF-421": 11,
+    "GF-403": 4,
+    "GF-401": 4,
+    "GF-404": 2,
+    "GF-473": 1,
+    "GF-420": 1,
+    "GF-553": 1
+   },
+   "gaps": 304
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --out /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf/sbom",
+   "exit": 0,
+   "wall_s": 0.25,
+   "timed_out": false,
+   "panic": false,
+   "components": 66
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/protocolbuffers__protobuf --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__protocolbuffers__protobuf --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 510.12,
+   "timed_out": true,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "a5ac4e924ae8c0a5e70e15c03304063eb08f5c1f",
+ "clone_s": 2.6,
+ "lane_check": "cpp: 532 files / 273133 lines; top=java(306027)",
+ "status": "done"
+}

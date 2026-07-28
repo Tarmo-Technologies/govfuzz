@@ -1,0 +1,212 @@
+{
+ "lane": "php",
+ "repo": "FreshRSS/FreshRSS",
+ "stars": 15611,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/FreshRSS__FreshRSS --json --out /home/ubuntu/govfuzz-sweep-work/php__FreshRSS__FreshRSS.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 108440,
+   "sloc_by_lang": {
+    "php": 103871,
+    "javascript": 3887,
+    "config": 682
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/FreshRSS__FreshRSS --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/FreshRSS__FreshRSS --out /home/ubuntu/govfuzz-sweep-work/php__FreshRSS__FreshRSS/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.98,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 8,
+   "by_severity": {
+    "medium": 2,
+    "high": 6
+   },
+   "top_rules": {
+    "GF-472": 6,
+    "GF-477": 2
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/FreshRSS__FreshRSS --out /home/ubuntu/govfuzz-sweep-work/php__FreshRSS__FreshRSS/sbom",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "components": 529
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/FreshRSS__FreshRSS --work-dir /home/ubuntu/govfuzz-sweep-work/php__FreshRSS__FreshRSS --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 33.77,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 443,
+    "dropped_by_cap": 433,
+    "built": 10,
+    "built_and_fuzzed": 10,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Gt\\CssXPath\\SelectorListSplitter#split",
+     "source": "SelectorListSplitter.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 299.2223056002104,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\CssAttributeTokenBuilder#build",
+     "source": "CssAttributeTokenBuilder.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 324.292713833267,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\CssSelectorLexer#lex",
+     "source": "CssSelectorLexer.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 192.16293630849464,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\NotSelectorConditionBuilder#build",
+     "source": "NotSelectorConditionBuilder.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 306.51963101682014,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\HasSelectorConditionBuilder#build",
+     "source": "HasSelectorConditionBuilder.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 377.618798071475,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\XPathExpression#appendFragment",
+     "source": "XPathExpression.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 587.1692301025658,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\AttributeSelectorConverter#buildConditionFromToken",
+     "source": "AttributeSelectorConverter.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 176.53603894234197,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Gt\\CssXPath\\XPathExpression#lastPartEndsWith",
+     "source": "XPathExpression.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 582.2582037809552,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "FeverDAO#findEntries",
+     "source": "fever.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 138.106362355574,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "FeverAPI#wrap",
+     "source": "fever.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 185.6720591237828,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "1460e757303425473b6d0273244b84ca4f143465",
+ "clone_s": 1.5,
+ "lane_check": "php: 656 files / 121409 lines; top=php(121409)",
+ "status": "done"
+}

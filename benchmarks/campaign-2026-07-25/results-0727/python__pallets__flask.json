@@ -1,0 +1,231 @@
+{
+ "lane": "python",
+ "repo": "pallets/flask",
+ "stars": 72016,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/pallets__flask --json --out /home/ubuntu/govfuzz-sweep-work/python__pallets__flask.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 11018,
+   "sloc_by_lang": {
+    "python": 10777,
+    "config": 241
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/pallets__flask --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/pallets__flask --out /home/ubuntu/govfuzz-sweep-work/python__pallets__flask/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.33,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 28,
+   "by_severity": {
+    "high": 15,
+    "critical": 2,
+    "low": 9,
+    "medium": 2
+   },
+   "top_rules": {
+    "GF-449": 14,
+    "GF-546": 9,
+    "GF-420": 2,
+    "GF-405": 1,
+    "GF-422": 1,
+    "GF-444": 1
+   },
+   "gaps": 43
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/pallets__flask --out /home/ubuntu/govfuzz-sweep-work/python__pallets__flask/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 102
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/pallets__flask --work-dir /home/ubuntu/govfuzz-sweep-work/python__pallets__flask --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 3.89,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 246,
+    "dropped_by_cap": 236,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loads",
+     "source": "__init__.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `flask.json.__init__` is not loadable (skipped cleanly): missing module `werkzeug` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'werkzeug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "explain_template_loading_attempts",
+     "source": "debughelpers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `flask.debughelpers` is not loadable (skipped cleanly): missing module `werkzeug` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'werkzeug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_dotenv",
+     "source": "cli.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `flask.cli` is not loadable (skipped cleanly): missing module `werkzeug` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'werkzeug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "JSONProvider.loads",
+     "source": "provider.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `JSONProvider.loads` needs a receiver, but `JSONProvider.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Config.from_envvar",
+     "source": "config.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Config.from_envvar` needs a receiver, but `Config.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Config.from_prefixed_env",
+     "source": "config.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Config.from_prefixed_env` needs a receiver, but `Config.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DefaultJSONProvider.loads",
+     "source": "provider.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `flask.json.provider` is not loadable (skipped cleanly): missing module `werkzeug` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'werkzeug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Config.from_pyfile",
+     "source": "config.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Config.from_pyfile` needs a receiver, but `Config.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TaggedJSONSerializer.loads",
+     "source": "tag.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `flask.json.tag` is not loadable (skipped cleanly): missing module `werkzeug` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'werkzeug'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "App.handle_url_build_error",
+     "source": "app.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `App.handle_url_build_error` needs a receiver, but `App.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" takes N required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81",
+ "clone_s": 0.6,
+ "lane_check": "python: 83 files / 14081 lines; top=python(14081)",
+ "status": "done"
+}

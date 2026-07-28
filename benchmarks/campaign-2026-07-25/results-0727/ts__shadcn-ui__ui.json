@@ -1,0 +1,253 @@
+{
+ "lane": "ts",
+ "repo": "shadcn-ui/ui",
+ "stars": 119825,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/shadcn-ui__ui --json --out /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 550664,
+   "sloc_by_lang": {
+    "javascript": 500572,
+    "config": 50092
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/shadcn-ui__ui --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/shadcn-ui__ui --out /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 159.99,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 50,
+   "by_severity": {
+    "medium": 21,
+    "high": 25,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-472": 20,
+    "GF-500": 11,
+    "GF-477": 10,
+    "GF-429": 4,
+    "GF-505": 3,
+    "GF-492": 1,
+    "GF-475": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/shadcn-ui__ui --out /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/sbom",
+   "exit": 0,
+   "wall_s": 0.98,
+   "timed_out": false,
+   "panic": false,
+   "components": 3319
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/shadcn-ui__ui --work-dir /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 17.28,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 113,
+    "dropped_by_cap": 103,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "cn",
+     "source": "utils.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T0005-6EE9B3D6/target.js` is not loadable (skipped cleanly): missing module `clsx` (not in the project and not installed) \u2014 Error: Cannot find module 'clsx'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "assertNever",
+     "source": "utils.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.623486358393666,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "cloneValue",
+     "source": "utils.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 348.49594765866465,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "applyCleanup",
+     "source": "transform-cleanup.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T003C-55648DA6/target.js` is not loadable (skipped cleanly): missing module `ts-morph` (not in the project and not installed) \u2014 Error: Cannot find module 'ts-morph'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "applyRtlMapping",
+     "source": "transform-rtl.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T008B-880C4CE1/target.js` is not loadable (skipped cleanly): missing module `ts-morph` (not in the project and not installed) \u2014 Error: Cannot find module 'ts-morph'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cleanupMarkers",
+     "source": "transform-cleanup.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T008D-79F9B1F4/target.js` is not loadable (skipped cleanly): missing module `ts-morph` (not in the project and not installed) \u2014 Error: Cannot find module 'ts-morph'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "applyWildcardTarget",
+     "source": "import-matcher.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 332.6224636913476,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "assertSafeDependencies",
+     "source": "update-dependencies.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T00D0-B853497A/target.js` is not loadable (skipped cleanly): missing module `fs-extra` (not in the project and not installed) \u2014 Error: Cannot find module 'fs-extra'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "_createSourceFile",
+     "source": "update-tailwind-config.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T010B-12232030/target.js` is not loadable (skipped cleanly): missing module `kleur/colors` (not in the project and not installed) \u2014 Error: Cannot find module 'kleur/colors'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "_getQuoteChar",
+     "source": "update-tailwind-config.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/harnesses/H-T011E-2D3F26B8/target.js` is not loadable (skipped cleanly): missing module `kleur/colors` (not in the project and not installed) \u2014 Error: Cannot find module 'kleur/colors'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 7,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-61652453",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000C-2E13CE57"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/findings --out /home/ubuntu/govfuzz-sweep-work/ts__shadcn-ui__ui/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "2a2deaac417cb33720bcdfd0452d7585c3aa417f",
+ "clone_s": 3.1,
+ "lane_check": "ts: 3735 files / 503300 lines; top=ts(503300)",
+ "status": "done"
+}

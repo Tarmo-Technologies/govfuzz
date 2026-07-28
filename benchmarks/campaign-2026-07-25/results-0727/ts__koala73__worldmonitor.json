@@ -1,0 +1,236 @@
+{
+ "lane": "ts",
+ "repo": "koala73/worldmonitor",
+ "stars": 74223,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/koala73__worldmonitor --json --out /home/ubuntu/govfuzz-sweep-work/ts__koala73__worldmonitor.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.2,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 418445,
+   "sloc_by_lang": {
+    "javascript": 322225,
+    "config": 93425,
+    "rust": 1532,
+    "go": 493,
+    "python": 443,
+    "ruby": 327
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/koala73__worldmonitor --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "count": 1,
+   "by_language": {
+    "rust": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/koala73__worldmonitor --out /home/ubuntu/govfuzz-sweep-work/ts__koala73__worldmonitor/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 175.97,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 18,
+   "by_severity": {
+    "medium": 3,
+    "high": 2,
+    "critical": 12,
+    "low": 1
+   },
+   "top_rules": {
+    "GF-429": 12,
+    "GF-548": 3,
+    "GF-426": 1,
+    "GF-546": 1,
+    "GF-423": 1
+   },
+   "gaps": 10
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/koala73__worldmonitor --out /home/ubuntu/govfuzz-sweep-work/ts__koala73__worldmonitor/sbom",
+   "exit": 0,
+   "wall_s": 0.41,
+   "timed_out": false,
+   "panic": false,
+   "components": 2923
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/koala73__worldmonitor --work-dir /home/ubuntu/govfuzz-sweep-work/ts__koala73__worldmonitor --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 31.91,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1542,
+    "dropped_by_cap": 1532,
+    "built": 7,
+    "built_and_fuzzed": 7,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 3,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "parse_body",
+     "source": "__init__.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 394.58498336620335,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "aisComponent",
+     "source": "_scoring.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 472.8389118210041,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "adoptExistingCanonical",
+     "source": "dedup.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 249.60275970728594,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AirlineIntelPanel#toggle",
+     "source": "AirlineIntelPanel.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__koala73__worldmonitor/harnesses/H-T00B9-582F56B1/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AirlineIntelPanel#setLiveMode",
+     "source": "AirlineIntelPanel.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__koala73__worldmonitor/harnesses/H-T00CA-BD7A54D1/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WorldMonitor::Error::APIError#initialize",
+     "source": "worldmonitor.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1893.9691988612383,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "WorldMonitor::Error::Client#call_tool",
+     "source": "worldmonitor.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2302.6169191402646,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "New",
+     "source": "worldmonitor.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7343.909280145744,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "main.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'default' is a static method of a non-in-crate trait impl (callable only by UFCS with an in-crate trait); not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Client.call_tool",
+     "source": "__init__.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 981.1444570776433,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a static method of a non-in-crate trait impl (callable only by UFCS with an in-crate trait); not auto-harnessable",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "456995b35271cdf29e6580a78f791dfcf70f51c2",
+ "clone_s": 6.4,
+ "lane_check": "ts: 1456 files / 351162 lines; top=ts(351162)",
+ "status": "done"
+}

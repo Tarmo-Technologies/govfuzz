@@ -1,0 +1,227 @@
+{
+ "lane": "java",
+ "repo": "PhilJay/MPAndroidChart",
+ "stars": 38198,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/PhilJay__MPAndroidChart --json --out /home/ubuntu/govfuzz-sweep-work/java__PhilJay__MPAndroidChart.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 25250,
+   "sloc_by_lang": {
+    "java": 25232,
+    "config": 18
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/PhilJay__MPAndroidChart --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.38,
+   "timed_out": false,
+   "panic": false,
+   "count": 1795,
+   "by_language": {
+    "java": 1795
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/PhilJay__MPAndroidChart --out /home/ubuntu/govfuzz-sweep-work/java__PhilJay__MPAndroidChart/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.61,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 6
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/PhilJay__MPAndroidChart --out /home/ubuntu/govfuzz-sweep-work/java__PhilJay__MPAndroidChart/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 8
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/PhilJay__MPAndroidChart --work-dir /home/ubuntu/govfuzz-sweep-work/java__PhilJay__MPAndroidChart --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 49.0,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 1785,
+    "dropped_by_cap": 1775,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LargeValueFormatter",
+     "source": "LargeValueFormatter.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadEntriesFromFile",
+     "source": "FileUtils.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadEntriesFromAssets",
+     "source": "FileUtils.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'loadEntriesFromAssets' parameter #0 has an unsupported type `AssetManager`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadBarEntriesFromAssets",
+     "source": "FileUtils.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'loadBarEntriesFromAssets' parameter #0 has an unsupported type `AssetManager`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BubbleDataSet",
+     "source": "BubbleDataSet.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'BubbleDataSet' parameter #0 has an unsupported type `List<BubbleEntry>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BarLineScatterCandleBubbleDataSet",
+     "source": "BarLineScatterCandleBubbleDataSet.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'BarLineScatterCandleBubbleDataSet' constructs the abstract class/interface 'com.github.mikephil.charting.data.BarLineScatterCandleBubbleDataSet', which cannot be instantiated; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BarDataSet",
+     "source": "BarDataSet.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'BarDataSet' parameter #0 has an unsupported type `List<BarEntry>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DataSet",
+     "source": "DataSet.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'DataSet' constructs the abstract class/interface 'com.github.mikephil.charting.data.DataSet', which cannot be instantiated; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CandleDataSet",
+     "source": "CandleDataSet.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'CandleDataSet' parameter #0 has an unsupported type `List<CandleEntry>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BaseDataSet",
+     "source": "BaseDataSet.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'BaseDataSet' constructs the abstract class/interface 'com.github.mikephil.charting.data.BaseDataSet', which cannot be instantiated; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Java target \"X\" constructs the abstract class/interface \"X\", which cannot be instantiated; not auto-harnessable",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/PluginExecutionException) AND javac (/home/ubuntu/govfuzz-corpus-N/java/PhilJay__MPAndroidChar\u2026",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "9c7275a0596a7ac0e50ca566e680f7f9d73607af",
+ "clone_s": 1.1,
+ "lane_check": "java: 223 files / 34246 lines; top=java(34246)",
+ "status": "done"
+}

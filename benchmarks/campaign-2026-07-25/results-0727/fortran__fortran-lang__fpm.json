@@ -1,0 +1,241 @@
+{
+ "lane": "fortran",
+ "repo": "fortran-lang/fpm",
+ "stars": 1059,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__fpm --json --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__fpm.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 33115,
+   "sloc_by_lang": {
+    "fortran": 31654,
+    "config": 1148,
+    "c": 283,
+    "cpp": 30
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__fpm --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 21,
+   "by_language": {
+    "c": 19,
+    "cpp": 2
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__fpm --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__fpm/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.2,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 10,
+   "by_severity": {
+    "high": 10
+   },
+   "top_rules": {
+    "GF-472": 10
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__fpm --out /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__fpm/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/fortran-lang__fpm --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__fortran-lang__fpm --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 65.13,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 74,
+    "dropped_by_cap": 64,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 6,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 1,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 1,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "c_setenv",
+     "source": "fpm_environment.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4332.534753643837,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "C_ISDIR",
+     "source": "with_c.f90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BASENAME",
+     "source": "fpm_filesystem.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CANON_PATH",
+     "source": "fpm_filesystem.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CHECK_COMPILER",
+     "source": "fpm_compiler.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "my_isdir",
+     "source": "c_code.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6080.009715536893,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "c_is_dir",
+     "source": "filesystem_utilities.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6156.158445006239,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "c_unsetenv",
+     "source": "fpm_environment.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5438.829590749581,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "c_opendir",
+     "source": "filesystem_utilities.c",
+     "outcome": "failed_build",
+     "retries": 3,
+     "repairs": 3,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "intvec_maxval",
+     "source": "hello_world.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "expected identifier or \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undefined symbol",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "gfortran compile failed: Fatal Error: Cannot open module file \u2018fpm_environment.mod\u2019 for reading at (N): No such file or directory",
+     "language": "fortran"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "Fortran harness build failed: unresolved external symbol(s): __parent, __with_c_MOD_c_isdir, my_isdir, omp_get_num_threads_",
+     "language": "fortran"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "eaffbb36086abdb16c0d052961a3e7240cb22b0a",
+ "clone_s": 0.8,
+ "lane_check": "fortran: 221 files / 37693 lines; top=fortran(37693)",
+ "status": "done"
+}

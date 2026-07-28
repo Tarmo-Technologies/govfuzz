@@ -1,0 +1,92 @@
+{
+ "lane": "cpp",
+ "repo": "rethinkdb/rethinkdb",
+ "stars": 27001,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --json --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.18,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 358985,
+   "sloc_by_lang": {
+    "cpp": 298843,
+    "python": 45072,
+    "config": 10998,
+    "javascript": 2199,
+    "c": 1157,
+    "ruby": 567,
+    "perl": 149
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --format json --top 100000",
+   "exit": 0,
+   "wall_s": 17.43,
+   "timed_out": false,
+   "panic": false,
+   "count": 7526,
+   "by_language": {
+    "cpp": 7507,
+    "c": 19
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 12.28,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 282,
+   "by_severity": {
+    "medium": 35,
+    "high": 91,
+    "low": 116,
+    "critical": 40
+   },
+   "top_rules": {
+    "GF-546": 116,
+    "GF-405": 34,
+    "GF-424": 22,
+    "GF-420": 21,
+    "GF-421": 15,
+    "GF-507": 12,
+    "GF-404": 11,
+    "GF-449": 9,
+    "GF-500": 8,
+    "GF-304": 6,
+    "GF-407": 6,
+    "GF-401": 6,
+    "GF-403": 4,
+    "GF-408": 4,
+    "GF-425": 2
+   },
+   "gaps": 332
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --out /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 12
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": -9,
+   "wall_s": 161.91,
+   "timed_out": false,
+   "panic": false,
+   "stderr_tail": "govfuzz auto: checkpointing offline requirements to /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/auto/missing-deps.txt\ngovfuzz auto: work-directory state: new\ngovfuzz auto: discovering targets under /home/ubuntu/govfuzz-corpus-500/cpp/rethinkdb__rethinkdb\ngovfuzz auto: discovery cache miss at /home/ubuntu/govfuzz-sweep-work/cpp__rethinkdb__rethinkdb/discovery-cache.json (no cache file yet); recomputing discovery (fingerprint d7bec915afb9770f-pp:auto). Pass --no-discovery-cache to disable caching.\n",
+   "findings_detail": []
+  }
+ },
+ "sha": "a2cf1308b57dca2e05d744f225a082881bab3fca",
+ "clone_s": 2.6,
+ "lane_check": "cpp: 1011 files / 307896 lines; top=cpp(307896)",
+ "status": "done"
+}

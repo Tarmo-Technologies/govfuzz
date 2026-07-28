@@ -1,0 +1,229 @@
+{
+ "lane": "csharp",
+ "repo": "BCUninstaller/Bulk-Crap-Uninstaller",
+ "stars": 20381,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/BCUninstaller__Bulk-Crap-Uninstaller --json --out /home/ubuntu/govfuzz-sweep-work/csharp__BCUninstaller__Bulk-Crap-Uninstaller.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 74972,
+   "sloc_by_lang": {
+    "csharp": 74801,
+    "cpp": 118,
+    "config": 44,
+    "c": 9
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/BCUninstaller__Bulk-Crap-Uninstaller --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "count": 7,
+   "by_language": {
+    "cpp": 7
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/BCUninstaller__Bulk-Crap-Uninstaller --out /home/ubuntu/govfuzz-sweep-work/csharp__BCUninstaller__Bulk-Crap-Uninstaller/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.21,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 3,
+   "by_severity": {
+    "high": 2,
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-472": 2,
+    "GF-500": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/BCUninstaller__Bulk-Crap-Uninstaller --out /home/ubuntu/govfuzz-sweep-work/csharp__BCUninstaller__Bulk-Crap-Uninstaller/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 11
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/BCUninstaller__Bulk-Crap-Uninstaller --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__BCUninstaller__Bulk-Crap-Uninstaller --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 81.03,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 82,
+    "dropped_by_cap": 72,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 10,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 2,
+    "synthesized_types": 3,
+    "synthesized_macros": 13,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "BrightIdeasSoftware.ObjectListView.IsUrlVisited",
+     "source": "ObjectListView.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrightIdeasSoftware.ObjectListView.MarkUrlVisited",
+     "source": "ObjectListView.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrightIdeasSoftware.ObjectListView.RestoreState",
+     "source": "ObjectListView.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrightIdeasSoftware.ObjectListView.GetColumn",
+     "source": "ObjectListView.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrightIdeasSoftware.ObjectListView.Sort",
+     "source": "ObjectListView.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "isWin7orLater",
+     "source": "main.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 20,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fexists",
+     "source": "main.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IsWindowsVersionOrGreater",
+     "source": "main.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExePath",
+     "source": "main.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GetLastErrorAsString",
+     "source": "main.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "missing macro",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "error CS0246: The type or namespace name \"X\" could not be found (are you missing a using directive or an assembly reference?) [/home/ubuntu/govfuzz-sweep-work/c\u2026",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f39663316ad5d593c4d160b0445841ce7eb6a35f",
+ "clone_s": 1.9,
+ "lane_check": "csharp: 565 files / 117013 lines; top=csharp(117013)",
+ "status": "done"
+}

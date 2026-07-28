@@ -1,0 +1,248 @@
+{
+ "lane": "js",
+ "repo": "JuliusBrussee/caveman",
+ "stars": 93002,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/JuliusBrussee__caveman --json --out /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 6824,
+   "sloc_by_lang": {
+    "javascript": 4417,
+    "python": 2328,
+    "config": 79
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/JuliusBrussee__caveman --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/JuliusBrussee__caveman --out /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.23,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 7,
+   "by_severity": {
+    "low": 6,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-546": 6,
+    "GF-507": 1
+   },
+   "gaps": 180
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/JuliusBrussee__caveman --out /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 4
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/JuliusBrussee__caveman --work-dir /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 50.9,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 37,
+    "dropped_by_cap": 27,
+    "built": 6,
+    "built_and_fuzzed": 6,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "applyOverrides",
+     "source": "cavecrew-model-overrides.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 298.2390006356713,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CavemanPlugin",
+     "source": "plugin.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 141.63780772727924,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "attributeByMode",
+     "source": "caveman-stats.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 355.75545867828095,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "appendFlag",
+     "source": "caveman-config.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 220.97657243208502,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "aggregateHistory",
+     "source": "caveman-stats.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 324.99292610107824,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "count",
+     "source": "plot.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `plot` is not loadable (skipped cleanly): missing module `tiktoken` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'tiktoken'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "count",
+     "source": "measure.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `measure` is not loadable (skipped cleanly): missing module `tiktoken` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'tiktoken'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "run_claude",
+     "source": "llm_run.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.14861245582018448,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "stats",
+     "source": "measure.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `measure` is not loadable (skipped cleanly): missing module `tiktoken` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'tiktoken'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fmt_pct",
+     "source": "measure.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `measure` is not loadable (skipped cleanly): missing module `tiktoken` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'tiktoken'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-a6970892",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P002B-9D436617"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman/findings --out /home/ubuntu/govfuzz-sweep-work/js__JuliusBrussee__caveman/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0",
+ "clone_s": 0.7,
+ "lane_check": "js: 30 files / 7169 lines; top=js(7169)",
+ "status": "done"
+}

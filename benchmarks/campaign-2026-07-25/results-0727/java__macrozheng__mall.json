@@ -1,0 +1,144 @@
+{
+ "lane": "java",
+ "repo": "macrozheng/mall",
+ "stars": 84420,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --json --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 66130,
+   "sloc_by_lang": {
+    "java": 65564,
+    "config": 566
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.09,
+   "timed_out": false,
+   "panic": false,
+   "count": 3488,
+   "by_language": {
+    "java": 3488
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.55,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 4,
+   "by_severity": {
+    "medium": 4
+   },
+   "top_rules": {
+    "GF-544": 2,
+    "GF-477": 1,
+    "GF-446": 1
+   },
+   "gaps": 88
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 36
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --work-dir /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 184.14,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 3479,
+    "dropped_by_cap": 3476,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loadUserByUsername",
+     "source": "UmsMemberServiceImpl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadUserByUsername",
+     "source": "UmsAdminServiceImpl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fail",
+     "source": "Asserts.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 876.3284106186857,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac (/home/ubuntu/govfuzz-corpus-N/java/macrozheng__mall/\u2026",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "0504e86b1f1b6f1b8aa6a734d37a90fb67346be7",
+ "clone_s": 1.5,
+ "lane_check": "java: 524 files / 68598 lines; top=java(68598)",
+ "status": "done"
+}

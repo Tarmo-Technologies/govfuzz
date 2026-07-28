@@ -1,0 +1,233 @@
+{
+ "lane": "rust",
+ "repo": "alacritty/alacritty",
+ "stars": 65067,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/alacritty__alacritty --json --out /home/ubuntu/govfuzz-sweep-work/rust__alacritty__alacritty.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 24995,
+   "sloc_by_lang": {
+    "rust": 24796,
+    "config": 199
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/alacritty__alacritty --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.4,
+   "timed_out": false,
+   "panic": false,
+   "count": 1022,
+   "by_language": {
+    "rust": 1022
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/alacritty__alacritty --out /home/ubuntu/govfuzz-sweep-work/rust__alacritty__alacritty/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.63,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 17,
+   "by_severity": {
+    "medium": 5,
+    "high": 4,
+    "low": 8
+   },
+   "top_rules": {
+    "GF-553": 8,
+    "GF-500": 5,
+    "GF-552": 3,
+    "GF-405": 1
+   },
+   "gaps": 24
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/alacritty__alacritty --out /home/ubuntu/govfuzz-sweep-work/rust__alacritty__alacritty/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 292
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/alacritty__alacritty --work-dir /home/ubuntu/govfuzz-sweep-work/rust__alacritty__alacritty --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 118.34,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 8,
+    "discovered_total": 1012,
+    "dropped_by_cap": 1004,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 7,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 1
+   },
+   "targets": [
+    {
+     "name": "from_str",
+     "source": "color.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'from_str' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "try_read",
+     "source": "blocking.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'try_read' (in-crate) is a &self method with no usable, override-free receiver constructor; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read",
+     "source": "blocking.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'read' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clipboard_load",
+     "source": "mod.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'clipboard_load' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "migrate",
+     "source": "yaml.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&MigrateOptions' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "installed_config",
+     "source": "mod.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `toml`, `toml_edit` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "installed_config",
+     "source": "mod.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `toml`, `toml_edit` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mock_term",
+     "source": "mod.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "in-crate build: target crate inherits \"X\", \"X\" from the parent workspace\"X\"t resolve \u2014 skipped (the external-API lane still applies)",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: error[E0425]: cannot find function \"X\" in module \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" (in-crate) is a &self method with no usable, override-free receiver constructor; skipped",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "852e971cddfabe222d2d5bcda466e130f53af207",
+ "clone_s": 2.2,
+ "lane_check": "rust: 88 files / 28550 lines; top=rust(28550)",
+ "status": "done"
+}

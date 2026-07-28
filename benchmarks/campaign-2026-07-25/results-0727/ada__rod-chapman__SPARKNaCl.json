@@ -1,0 +1,238 @@
+{
+ "lane": "ada",
+ "repo": "rod-chapman/SPARKNaCl",
+ "stars": 136,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/rod-chapman__SPARKNaCl --json --out /home/ubuntu/govfuzz-sweep-work/ada__rod-chapman__SPARKNaCl.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 14278,
+   "sloc_by_lang": {
+    "ada": 12478,
+    "c": 1800
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/rod-chapman__SPARKNaCl --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.83,
+   "timed_out": false,
+   "panic": false,
+   "count": 673,
+   "by_language": {
+    "c": 82,
+    "ada": 591
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/rod-chapman__SPARKNaCl --out /home/ubuntu/govfuzz-sweep-work/ada__rod-chapman__SPARKNaCl/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "medium": 2
+   },
+   "top_rules": {
+    "GF-409": 2
+   },
+   "gaps": 84
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/rod-chapman__SPARKNaCl --out /home/ubuntu/govfuzz-sweep-work/ada__rod-chapman__SPARKNaCl/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 26
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/rod-chapman__SPARKNaCl --work-dir /home/ubuntu/govfuzz-sweep-work/ada__rod-chapman__SPARKNaCl --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 36.49,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 124,
+    "dropped_by_cap": 114,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 9,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 1,
+    "stubbed_ada_symbols": 1,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 2
+   },
+   "targets": [
+    {
+     "name": "to_byte_seq",
+     "source": "sparknacl.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "stressall",
+     "source": "stressall.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Ada target 'stressall' is a project main executable (declared in stressall.gpr `for Main`) \u2014 an entry point, not a library subprogram; not auto-harnessable as a direct call.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pack_stress",
+     "source": "pack_stress.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "diff_car_stress",
+     "source": "diff_car_stress.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gf_stress",
+     "source": "gf_stress.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "car_stress",
+     "source": "car_stress.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sanitize",
+     "source": "sparknacl-mac.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sanitize",
+     "source": "sparknacl-sign.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sanitize",
+     "source": "sparknacl-sign.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sanitize",
+     "source": "sparknacl.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "missing Ada symbol",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "subunit cannot depend on \"X\" (parent has wrong categorization)",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "\"X\" is not visible",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Ada target \"X\" is a project main executable (declared in stressall.gpr \"X\") \u2014 an entry point, not a library subprogram; not auto-harnessable as a direct call.",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "49e3bddf092561ce2b74c134a35acff91a2da9a4",
+ "clone_s": 0.6,
+ "lane_check": "ada: 119 files / 13866 lines; top=ada(13866)",
+ "status": "done"
+}

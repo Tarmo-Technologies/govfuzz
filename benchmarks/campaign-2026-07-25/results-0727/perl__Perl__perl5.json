@@ -1,0 +1,222 @@
+{
+ "lane": "perl",
+ "repo": "Perl/perl5",
+ "stars": 2310,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/Perl__perl5 --json --out /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 503690,
+   "sloc_by_lang": {
+    "perl": 238796,
+    "c": 220869,
+    "cpp": 40918,
+    "config": 3107
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/Perl__perl5 --format json --top 100000",
+   "exit": 0,
+   "wall_s": 25.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 4324,
+   "by_language": {
+    "c": 3839,
+    "cpp": 485
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/Perl__perl5 --out /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 6.59,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1119,
+   "by_severity": {
+    "high": 305,
+    "medium": 121,
+    "critical": 693
+   },
+   "top_rules": {
+    "GF-420": 363,
+    "GF-404": 327,
+    "GF-401": 143,
+    "GF-406": 92,
+    "GF-403": 58,
+    "GF-405": 49,
+    "GF-408": 32,
+    "GF-424": 14,
+    "GF-472": 13,
+    "GF-422": 11,
+    "GF-407": 7,
+    "GF-425": 3,
+    "GF-423": 3,
+    "GF-304": 2,
+    "GF-497": 1
+   },
+   "gaps": 109
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/Perl__perl5 --out /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5/sbom",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "components": 96
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/Perl__perl5 --work-dir /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5 --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 166.46,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 3,
+    "discovered_total": 9361,
+    "dropped_by_cap": 9358,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 1,
+    "findings": 3
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 2,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "PerlIOStdio_unread",
+     "source": "perlio.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BZ2_bzRead",
+     "source": "bzlib.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 6,
+     "execs_per_sec": 3544.8375488089196,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.3333333333333333
+    },
+    {
+     "name": "BZ2_bzread",
+     "source": "bzlib.c",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 6,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c_knr] K&R C: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "c"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-406-C3F80AB9",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0E9C-42CE2CDD"
+    },
+    {
+     "id": "F-RO-GF-406-C9623432",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0E9C-42CE2CDD"
+    },
+    {
+     "id": "F-RO-GF-406-ECBB4810",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0E9C-42CE2CDD"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5/findings --out /home/ubuntu/govfuzz-sweep-work/perl__Perl__perl5/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "982c43260ab0dd05d74d3880c93b5292774d1f24",
+ "clone_s": 6.4,
+ "lane_check": "perl: 3831 files / 726955 lines; top=perl(726955)",
+ "status": "done"
+}

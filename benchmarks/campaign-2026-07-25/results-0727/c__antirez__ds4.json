@@ -1,0 +1,275 @@
+{
+ "lane": "c",
+ "repo": "antirez/ds4",
+ "stars": 19220,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4 --json --out /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 130976,
+   "sloc_by_lang": {
+    "c": 126548,
+    "python": 3966,
+    "cpp": 462
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4 --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.65,
+   "timed_out": false,
+   "panic": false,
+   "count": 3734,
+   "by_language": {
+    "c": 3717,
+    "cpp": 17
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4 --out /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.38,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 539,
+   "by_severity": {
+    "medium": 443,
+    "high": 93,
+    "critical": 3
+   },
+   "top_rules": {
+    "GF-406": 369,
+    "GF-405": 66,
+    "GF-424": 31,
+    "GF-425": 29,
+    "GF-407": 20,
+    "GF-436": 12,
+    "GF-408": 6,
+    "GF-404": 3,
+    "GF-401": 1,
+    "GF-422": 1,
+    "GF-550": 1
+   },
+   "gaps": 280
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4 --out /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 5
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4 --work-dir /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4 --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 47.25,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 3512,
+    "dropped_by_cap": 3502,
+    "built": 3,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 4,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ds4_session_save_payload",
+     "source": "ds4.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'ds4_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_session' for parameter 's' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_dist_session_save_payload",
+     "source": "ds4_distributed.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'd' of type 'ds4_dist_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_dist_session' for parameter 'd' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_dist_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_dist_session_load_payload",
+     "source": "ds4_distributed.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'd' of type 'ds4_dist_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_dist_session' for parameter 'd' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_dist_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_session_load_layer_payload",
+     "source": "ds4.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 's' of type 'ds4_session *' has no byte-buffer decoder after struct synthesis: opaque handle 'ds4_session' for parameter 's' is incomplete in the harness's included headers (its full definition is visible only in a non-included source) and has no returning-constructor lifecycle; cannot stack-allocate it \u2014 skipping; sequence generation also failed first: C sequence handle 'ds4_session' is not fully defined in any included header (an opaque API handle); it cannot be zero-constructed, only built via its constructor",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_exact",
+     "source": "splice_mixed_expert_layers_gguf.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3158.1290581768826,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_layer_set",
+     "source": "splice_mixed_expert_layers_gguf.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2123.700726677796,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "c_scan_string_end",
+     "source": "build_ds4_imatrix_dataset.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1.4192921181948086,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ds4_precise_expf",
+     "source": "ds4_rocm.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h:3:10: fatal error: 'hip/hip_runtime.h' file not found |     3 | #include <hip/hip_runtime.h> |       |          ^~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_precise_log1pf",
+     "source": "ds4_rocm.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h:3:10: fatal error: 'hip/hip_runtime.h' file not found |     3 | #include <hip/hip_runtime.h> |       |          ^~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ds4_precise_sqrtf",
+     "source": "ds4_rocm.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: In file included from <stdin>:3: | /home/ubuntu/govfuzz-corpus-500/c/antirez__ds4/ds4_rocm.h:3:10: fatal error: 'hip/hip_runtime.h' file not found |     3 | #include <hip/hip_runtime.h> |       |          ^~~~~~~~~~~~~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"ds4_dist_sessi\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque handle \"X\" for parameter \"X\" is incomplete in the harness\"X\"ds4_session\"X\"",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-e4134e3d",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0341-9D342E10"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4/findings --out /home/ubuntu/govfuzz-sweep-work/c__antirez__ds4/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "0a7ad776b9068348e6cb09df8cafa9cadd285298",
+ "clone_s": 1.7,
+ "lane_check": "c: 36 files / 128956 lines; top=c(128956)",
+ "status": "done"
+}

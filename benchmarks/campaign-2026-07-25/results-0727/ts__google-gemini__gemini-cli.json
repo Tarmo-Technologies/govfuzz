@@ -1,0 +1,254 @@
+{
+ "lane": "ts",
+ "repo": "google-gemini/gemini-cli",
+ "stars": 106179,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli --json --out /home/ubuntu/govfuzz-sweep-work/ts__google-gemini__gemini-cli.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 545659,
+   "sloc_by_lang": {
+    "javascript": 536302,
+    "config": 7676,
+    "python": 1220,
+    "csharp": 461
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli --out /home/ubuntu/govfuzz-sweep-work/ts__google-gemini__gemini-cli/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 206.1,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 129,
+   "by_severity": {
+    "high": 84,
+    "medium": 17,
+    "critical": 28
+   },
+   "top_rules": {
+    "GF-505": 71,
+    "GF-429": 27,
+    "GF-500": 11,
+    "GF-477": 5,
+    "GF-562": 5,
+    "GF-495": 4,
+    "GF-470": 2,
+    "GF-506": 2,
+    "GF-471": 1,
+    "GF-428": 1
+   },
+   "gaps": 20
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli --out /home/ubuntu/govfuzz-sweep-work/ts__google-gemini__gemini-cli/sbom",
+   "exit": 0,
+   "wall_s": 0.47,
+   "timed_out": false,
+   "panic": false,
+   "components": 1529
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli --work-dir /home/ubuntu/govfuzz-sweep-work/ts__google-gemini__gemini-cli --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 22.7,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 471,
+    "dropped_by_cap": 461,
+    "built": 4,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "process_issue_triage",
+     "source": "triage_orchestrator.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `triage_orchestrator` is not loadable (skipped cleanly): ImportError: cannot import name 'storage' from 'google.cloud' (unknown location)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "upload_to_bucket",
+     "source": "agent_logger.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `utils.agent_logger` is not loadable (skipped cleanly): ImportError: cannot import name 'storage' from 'google.cloud' (unknown location)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getSafeName",
+     "source": "sea-launch.cjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 369.630374061503,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "prepareRuntime",
+     "source": "sea-launch.cjs",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main",
+     "source": "sea-launch.cjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 242.1292686420462,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "A2AResultReassembler#update",
+     "source": "a2aUtils.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__google-gemini__gemini-cli/harnesses/H-T0023-F0E77C1E/target.js` is not loadable (skipped cleanly): missing module `zod` (not in the project and not installed) \u2014 Error: Cannot find module 'zod'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActivityMonitor#addListener",
+     "source": "activity-monitor.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli/packages/core/src/telemetry/activity-monitor.ts: \u25b2 [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActivityMonitor#getRecentActivity",
+     "source": "activity-monitor.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "esbuild could not transpile /home/ubuntu/govfuzz-corpus-500/ts/google-gemini__gemini-cli/packages/core/src/telemetry/activity-monitor.ts: \u25b2 [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "validate_triage_result",
+     "source": "validator.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2583.160846212042,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "log_agent_run",
+     "source": "agent_logger.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `utils.agent_logger` is not loadable (skipped cleanly): ImportError: cannot import name 'storage' from 'google.cloud' (unknown location)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "built_not_fuzzed",
+     "count": 1,
+     "detail": "built, no fuzz pass ran",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "ImportError: cannot import name \"X\" from \"X\" (unknown location)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): ImportError: cannot import name \"X\" from \"X\" (unknown location)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "\u25b2 [WARNING] \"X\" is not available with the \"X\" output format and will be empty [empty-import-meta]",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "bef6119500b0238ad84f6396d2a6cabda9991554",
+ "clone_s": 4.5,
+ "lane_check": "ts: 2144 files / 574110 lines; top=ts(574110)",
+ "status": "done"
+}

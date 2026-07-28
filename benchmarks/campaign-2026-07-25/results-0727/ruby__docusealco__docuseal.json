@@ -1,0 +1,236 @@
+{
+ "lane": "ruby",
+ "repo": "docusealco/docuseal",
+ "stars": 18096,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal --json --out /home/ubuntu/govfuzz-sweep-work/ruby__docusealco__docuseal.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 69420,
+   "sloc_by_lang": {
+    "javascript": 36089,
+    "ruby": 24498,
+    "config": 8833
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal --out /home/ubuntu/govfuzz-sweep-work/ruby__docusealco__docuseal/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 14.25,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 30,
+   "by_severity": {
+    "medium": 9,
+    "high": 10,
+    "critical": 11
+   },
+   "top_rules": {
+    "GF-429": 11,
+    "GF-472": 10,
+    "GF-500": 5,
+    "GF-477": 3,
+    "GF-497": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal --out /home/ubuntu/govfuzz-sweep-work/ruby__docusealco__docuseal/sbom",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "components": 1243
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__docusealco__docuseal --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 22.05,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 480,
+    "dropped_by_cap": 470,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "convertImage",
+     "source": "convert_upload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal/app/javascript/elements/convert_upload.js` is not loadable (skipped cleanly): ReferenceError: HTMLElement is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "convertImagesInInput",
+     "source": "convert_upload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal/app/javascript/elements/convert_upload.js` is not loadable (skipped cleanly): ReferenceError: HTMLElement is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#apply",
+     "source": "field_condition.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal/app/javascript/elements/field_condition.js` is not loadable (skipped cleanly): ReferenceError: HTMLElement is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "buildEditor",
+     "source": "dynamic_editor.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/docusealco__docuseal/app/javascript/template_builder/dynamic_editor.js` is not loadable (skipped cleanly): throw error;",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "addFunction",
+     "source": "calculator.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 412.32461681323076,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Ability#initialize",
+     "source": "ability.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Ability#initialize` is not loadable (skipped cleanly): Ability>': uninitialized constant Ability::CanCan (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Abilities::TemplateConditions.collection",
+     "source": "template_conditions.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2117.21230520252,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Abilities::TemplateConditions.entity",
+     "source": "template_conditions.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2723.358495958195,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AccountConfigs.find_or_initialize_for_key",
+     "source": "account_configs.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2484.1470083924623,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AccountConfigs.find_for_account",
+     "source": "account_configs.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3185.3416570528193,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "ReferenceError: HTMLElement is not defined",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "throw error;",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Ability>\"X\"",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7ce6c29f4dfe62beceb97a21b6f49b995488ec1e",
+ "clone_s": 1.1,
+ "lane_check": "ruby: 466 files / 26209 lines; top=ruby(26209)",
+ "status": "done"
+}

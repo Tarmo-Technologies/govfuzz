@@ -1,0 +1,226 @@
+{
+ "lane": "python",
+ "repo": "anthropics/claude-code",
+ "stars": 139095,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/anthropics__claude-code --json --out /home/ubuntu/govfuzz-sweep-work/python__anthropics__claude-code.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 6779,
+   "sloc_by_lang": {
+    "python": 4018,
+    "config": 2168,
+    "javascript": 593
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/anthropics__claude-code --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 0,
+   "by_language": {}
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/anthropics__claude-code --out /home/ubuntu/govfuzz-sweep-work/python__anthropics__claude-code/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.62,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 41,
+   "by_severity": {
+    "medium": 2,
+    "high": 6,
+    "low": 28,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-546": 28,
+    "GF-472": 3,
+    "GF-420": 3,
+    "GF-405": 3,
+    "GF-477": 2,
+    "GF-404": 2
+   },
+   "gaps": 86
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/anthropics__claude-code --out /home/ubuntu/govfuzz-sweep-work/python__anthropics__claude-code/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/anthropics__claude-code --work-dir /home/ubuntu/govfuzz-sweep-work/python__anthropics__claude-code --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 36.01,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 10,
+    "discovered_total": 60,
+    "dropped_by_cap": 50,
+    "built": 9,
+    "built_and_fuzzed": 9,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 1,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Condition.from_dict",
+     "source": "config_loader.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3267.715378722798,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Rule.from_dict",
+     "source": "config_loader.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1849.4635850847305,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "load_rule_file",
+     "source": "config_loader.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2353.811991620981,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "compile_regex",
+     "source": "rule_engine.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `core.rule_engine` is not loadable (skipped cleanly): missing module `hookify` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'hookify'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "debug_log",
+     "source": "_base.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1869.538543451207,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "extract_frontmatter",
+     "source": "config_loader.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2725.692254807407,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "build_investigate_prompt",
+     "source": "review_api.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1365.056735072238,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "build_refute_prompt",
+     "source": "review_api.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1936.3498411189823,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "check_patterns",
+     "source": "security_reminder_hook.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3850.3621517917136,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "agentic_review",
+     "source": "llm.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 216.86950846012218,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7ef6eec9d9ba84ea6f233f26c45f1df5c5991843",
+ "clone_s": 1.2,
+ "lane_check": "python: 21 files / 6598 lines; top=python(6598)",
+ "status": "done"
+}

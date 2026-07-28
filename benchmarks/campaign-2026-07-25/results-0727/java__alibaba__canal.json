@@ -1,0 +1,176 @@
+{
+ "lane": "java",
+ "repo": "alibaba/canal",
+ "stars": 29710,
+ "wave": "FULL",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/alibaba__canal --json --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__canal.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.11,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 96176,
+   "sloc_by_lang": {
+    "java": 90445,
+    "javascript": 4263,
+    "config": 1426,
+    "python": 42
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/alibaba__canal --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.61,
+   "timed_out": false,
+   "panic": false,
+   "count": 6773,
+   "by_language": {
+    "java": 6773
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/alibaba__canal --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__canal/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 23.4,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 26,
+   "by_severity": {
+    "medium": 12,
+    "high": 14
+   },
+   "top_rules": {
+    "GF-426": 8,
+    "GF-422": 6,
+    "GF-507": 2,
+    "GF-503": 2,
+    "GF-478": 2,
+    "GF-423": 2,
+    "GF-544": 1,
+    "GF-405": 1,
+    "GF-477": 1,
+    "GF-427": 1
+   },
+   "gaps": 328
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/alibaba__canal --out /home/ubuntu/govfuzz-sweep-work/java__alibaba__canal/sbom",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "components": 183
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/alibaba__canal --work-dir /home/ubuntu/govfuzz-sweep-work/java__alibaba__canal --campaign-time 90 --per-target-time 3 --max-attempts 10 --max-repair-rounds 4 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 124.42,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 6330,
+    "dropped_by_cap": 6325,
+    "built": 1,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "deserializer",
+     "source": "CanalMessageDeserializer.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deserializer",
+     "source": "CanalMessageDeserializer.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "unmarshalFromString",
+     "source": "JsonUtils.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.2755987130695409,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "deserializer",
+     "source": "CanalMessageSerializerUtil.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deserializer",
+     "source": "CanalMessageSerializerUtil.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac (/home/ubuntu/govfuzz-corpus-N/java/alibaba__canal/dr\u2026",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "e20e4424468ef0ed60a97d921763b348eca27163",
+ "clone_s": 4.5,
+ "lane_check": "java: 702 files / 109694 lines; top=java(109694)",
+ "status": "done"
+}

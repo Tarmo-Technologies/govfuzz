@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use crate::auto::attempt::{AttemptResult, Outcome};
-use crate::auto::candidate::Lang;
+use crate::auto::candidate::lang_tag;
 
 /// One row: a language, the outcome bucket, and the normalized proximate cause.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -328,27 +328,6 @@ fn build_error_detail(error: &build_classifier::BuildErrorKind) -> String {
     }
 }
 
-fn lang_tag(l: Lang) -> &'static str {
-    match l {
-        Lang::Ada => "ada",
-        Lang::C => "c",
-        Lang::Cpp => "cpp",
-        Lang::Rust => "rust",
-        Lang::Java => "java",
-        Lang::Python => "python",
-        Lang::Perl => "perl",
-        Lang::Go => "go",
-        Lang::Cobol => "cobol",
-        Lang::Fortran => "fortran",
-        Lang::CSharp => "csharp",
-        Lang::Js => "javascript",
-        Lang::Ts => "typescript",
-        Lang::Ruby => "ruby",
-        Lang::Lua => "lua",
-        Lang::Php => "php",
-    }
-}
-
 /// Counted blockers, ordered most-common-first within each language.
 #[derive(Debug, Default)]
 pub(crate) struct BlockerHistogram {
@@ -444,6 +423,7 @@ impl BlockerHistogram {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auto::candidate::Lang;
 
     /// A backtick pair must be redacted as one span. Closing only on an
     /// apostrophe made the span run past its end to the next apostrophe on the

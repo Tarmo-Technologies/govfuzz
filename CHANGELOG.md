@@ -47,6 +47,53 @@ built+fuzzed, 354 findings).
   `StringBuilder`) and `ClassLoader` also stopped blocking targets. Collections
   and fuzz-parsed URIs are still refused, with reasons.
 
+- **Discovery on an amalgamated single header finishes.** simdjson's
+  `singleheader/` took over 1500 seconds and was still going, where `list
+  targets` over the same two files takes 145 — so the whole difference was work
+  `auto` adds. Two loop-invariant computations were being redone inside
+  per-function loops, and profiling named them (the obvious-looking quadratic was
+  not the cost): `recipe_mining::for_source` handed back a CLONE of the whole
+  recipe map on every cache hit — **133 of the preflight's 137 seconds** on one
+  2,863-function file — and `cpp_class_is_default_constructible` re-parsed the
+  entire include closure per opaque parameter, which its caller had already
+  parsed once. The preflight on simdjson.h (10,894 functions) went from never
+  finishing to **9.5 s**, and the whole directory from >1500 s to **218 s**.
+
+- **A Go target under `internal/` is reachable** (8 targets, 3 repos). Go decides
+  "outside the internal tree" from the IMPORT PATH, so a harness module named
+  `govfuzzharness` was outside every project — and `internal/` is where a great
+  deal of real Go code lives. The harness now declares itself a child of the
+  module under test, satisfying the rule the way the project's own packages do.
+
+- **A language PREVIEW feature is not an unbuildable tree** (11 targets, RxJava
+  and spring-framework). javac refuses `var _ = …` — preview on 21, standard from
+  22 — and names the flag it wants. It is asked for once now and carried through:
+  javac refuses to READ preview class files without it, and so does the JVM that
+  loads them.
+
+- **The C# harness no longer duplicates attributes the target declares** (17
+  targets, 4 Windows projects). The SDK synthesizes `[assembly: AssemblyTitle]`
+  by default and a classic project keeps its own `Properties/AssemblyInfo.cs`
+  declaring the same, so compiling those sources in gave `error CS0579`.
+
+- **A `path =` in another table no longer answers for `[lib]`** (8 targets, fd).
+  fd declares `[[bin]] path = "src/main.rs"`, so the binary-only crate's
+  synthesized `[lib]` went out with no path of its own and cargo refused the
+  manifest. Cargo's `error:` line is also a BANNER when it wraps — the diagnosis
+  is in the `Caused by:` block, which is now carried.
+
+- **A staged Ada C stub takes the header it includes with it** (12 targets, 2
+  projects). `auto_stubs.c` opens with `#include "auto_types.h"`, and a quoted
+  include resolves against the including file's own directory — so mirroring only
+  the `.c` into the Ada source dir left the header behind and every staged stub
+  died on `fatal error: auto_types.h: No such file or directory`. Measured on
+  tsoding/eepers: 0 built+fuzzed and 5 failed builds, now 4 and 1.
+
+- **The underscore is not part of the decoration-macro convention.** The ALL-CAPS
+  visibility-macro rule anchored on one (`_API`, `_EXPORT`), so it missed JNI's
+  `JNIEXPORT jint JNICALL …` — every Android or Java native library — and
+  `JNIEXPORT` reached the harness as a type it could not construct offline.
+
 - **A Go `/vN` module is required at `vN`, not `v0`.** The harness `go.mod`
   hardcoded `require <module> v0.0.0-incompatible`, which semantic import
   versioning makes illegal for a path ending `/vN` (N ≥ 2): Go rejects the file

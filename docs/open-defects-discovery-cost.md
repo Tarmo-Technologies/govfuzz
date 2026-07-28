@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Discovery cost: what a huge C++ file still costs, and what was fixed
+# Discovery cost: what a huge C++ file cost, and what fixed it
 
 Handoff document. Everything here was measured on the 2026-07-27 re-run of the
-500-project sweep (`benchmarks/campaign-2026-07-25`, `results-0727/`). One defect
-in this class is FIXED; one is OPEN with the measurement that isolates it.
+500-project sweep (`benchmarks/campaign-2026-07-25`, `results-0727/`). Both
+defects in this class are now FIXED; the measurements that isolated them are
+kept because the METHOD is what transfers.
 
 ---
 
@@ -81,66 +82,62 @@ resolved a non-empty recipe set.
 
 ---
 
-## 2. The known-blocked preflight is quadratic in a file's function count — OPEN
+## 2. The preflight re-derived per FILE what it had already computed — FIXED
 
 ### Symptom
 
-With the memory fixed, simdjson still cannot be swept: discovery does not finish.
-The cost is concentrated in one file.
+With the memory fixed, simdjson still could not be swept: discovery did not
+finish. The cost was concentrated in one directory.
 
 ```
 list targets   simdjson/singleheader/  (7.7 MB simdjson.h + 2.7 MB simdjson.cpp)   145 s
-auto           simdjson/singleheader/                                             > 20 min
-auto           simdjson minus singleheader/                                        59 s
+auto           simdjson/singleheader/                                            > 1500 s (killed)
+auto           simdjson minus singleheader/                                         59 s
 ```
 
-`list targets` and `auto` parse the same files, so the difference is what `auto`
-adds. Timing probes narrow it precisely: the tree-sitter parse of the 2.7 MB
-`simdjson.cpp` takes **3.5 s**, and
-`cpp_known_blocked_signatures_for_discovery` on the SAME file had not returned
-after ten minutes.
+`list targets` and `auto` parse the same files, so the whole difference was work
+`auto` adds.
 
-### Root cause (identified, not yet fixed)
+### Root cause
 
-`cpp_known_blocked_signatures_for_discovery` loops over every function in the
-file, and per function it:
+Two loop-invariant computations were redone inside per-function loops. **Profiling
+named them; the first guess was wrong** — `find_cpp_factory_for_class` scanning
+every function looked like the obvious quadratic and was not the cost.
 
-- builds two `type_model::TypeRegistry::from_defs(type_defs.iter())`,
-- calls `resolve_cpp_parameter_constructions`, which for each opaque parameter
-  calls `find_cpp_factory_for_class(leaf, functions, closure_texts, …)`.
+- **97% was `recipe_mining::for_source`.** The recipes are cached by project root,
+  but a cache HIT handed back a CLONE of the whole map — one entry per
+  constructible class in the project. Called once per function, that was **133 of
+  the preflight's 137 seconds** on the 2,863-function `simdjson.cpp`. It is shared
+  by `Arc` now, and hoisted out of the loop besides.
+- **The rest was `cpp_class_is_default_constructible` re-parsing the closure.** It
+  took the include-closure TEXTS and ran `collect_cpp_class_info_for_harness` on
+  them per call, from inside a per-parameter loop whose caller had computed
+  exactly that once — 7.7 MB of C++ re-parsed per opaque parameter. It takes the
+  already-collected class info now, which is the same answer by construction.
 
-`find_cpp_factory_for_class` filters ALL `functions` and scans the whole include
-closure (`cpp_class_is_default_constructible(owner, functions, closure_texts)`).
-So the file's cost is O(functions² × closure bytes). A hand-written file has tens
-of functions and this is invisible; an amalgamated single header has thousands
-and it never finishes.
+### Measured
 
-### What the preflight is for
+| | before | after |
+|---|---:|---:|
+| preflight, `simdjson.cpp` (2,863 fns) | 137 s | 3.9 s |
+| preflight, `simdjson.h` (10,894 fns) | never finished | 9.5 s |
+| `auto --list-targets`, whole `singleheader/` | >1500 s (killed) | **218 s**, 250 MB |
 
-It is advisory. Its only effect is `KNOWN_UNBUILDABLE_SIGNATURE_DEMOTION` — a
-RANK demotion for signatures generation would refuse anyway. Losing it costs
-ranking quality, not correctness: an un-demoted target is attempted and fails
-honestly, which is the same trade the discovery walk already makes elsewhere
-("over-discovering a genuinely-compiled-out function only costs a failed build").
+What remains is dominated by the tree-sitter parse of the 7.7 MB header itself,
+which is honest work.
 
-### Two directions, in preference order
+### What was NOT done, and why
 
-1. **De-quadratic it.** Within one call, `functions`, `closure_texts` and
-   `class_infos` are fixed, so `find_cpp_factory_for_class` and
-   `cpp_class_is_default_constructible` are memoizable by class name — except
-   that the registry passed in varies per function (scopes / defaults / recipes),
-   so a naive cache is unsound. Splitting the registry-independent filtering
-   (return type, access, template-ness) from the registry-dependent parameter
-   check would make the first part cacheable, and it is the part that scans every
-   function.
-2. **Bound it, and say so.** Skip the preflight above some function count per
-   file and log the skip. Cheap and safe, but a silent cap would read as
-   "checked" when it was not — so the log line is not optional.
+The preflight is advisory — its only effect is
+`KNOWN_UNBUILDABLE_SIGNATURE_DEMOTION`, a RANK demotion for signatures generation
+would refuse anyway — so bounding it by function count with a logged skip was the
+cheap alternative. It was not needed once the real cost was measured, and a cap
+would have read as "checked" when it was not.
 
-Do not "fix" this by excluding amalgamated headers from discovery. sqlite's
-`sqlite3.c` and simdjson's `simdjson.h` are what many projects actually ship, and
-`dedup_amalgamated_single_header` already exists to keep their targets from
-double-counting rather than to drop them.
+Do not "fix" a future instance of this by excluding amalgamated headers from
+discovery. sqlite's `sqlite3.c` and simdjson's `simdjson.h` are what many projects
+actually ship, and `dedup_amalgamated_single_header` exists to keep their targets
+from double-counting rather than to drop them.
 
 ---
 

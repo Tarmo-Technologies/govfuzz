@@ -51,22 +51,28 @@ pub(crate) type MinedRecipes = BTreeMap<String, String>;
 /// unbuildable and then turns out to be buildable, or worse the reverse. Deriving
 /// the root from the source and caching by that root makes them agree by
 /// construction rather than by two call sites being kept in step.
-pub(crate) fn for_source(source_path: &Path) -> MinedRecipes {
+///
+/// Shared by `Arc`, not cloned. The map holds one entry per constructible class
+/// in the project, and handing out a copy made a cache HIT cost as much as a
+/// small mine: 2,863 calls (one per function in simdjson's amalgamated `.cpp`)
+/// spent **133 of the preflight's 137 seconds** copying it, which is what made
+/// discovery on an amalgamated header never finish.
+pub(crate) fn for_source(source_path: &Path) -> std::sync::Arc<MinedRecipes> {
     static CACHE: std::sync::OnceLock<
-        std::sync::Mutex<BTreeMap<std::path::PathBuf, MinedRecipes>>,
+        std::sync::Mutex<BTreeMap<std::path::PathBuf, std::sync::Arc<MinedRecipes>>>,
     > = std::sync::OnceLock::new();
     let Some(root) = project_root_of(source_path) else {
-        return MinedRecipes::new();
+        return std::sync::Arc::new(MinedRecipes::new());
     };
     let cache = CACHE.get_or_init(|| std::sync::Mutex::new(BTreeMap::new()));
     if let Ok(guard) = cache.lock() {
         if let Some(hit) = guard.get(&root) {
-            return hit.clone();
+            return std::sync::Arc::clone(hit);
         }
     }
-    let mined = mine(&root, &["cpp", "cc", "cxx", "c", "hpp", "h"]);
+    let mined = std::sync::Arc::new(mine(&root, &["cpp", "cc", "cxx", "c", "hpp", "h"]));
     if let Ok(mut guard) = cache.lock() {
-        guard.insert(root, mined.clone());
+        guard.insert(root, std::sync::Arc::clone(&mined));
     }
     mined
 }

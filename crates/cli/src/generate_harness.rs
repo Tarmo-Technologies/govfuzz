@@ -7998,7 +7998,6 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
     let parameter_constructions = resolve_cpp_parameter_constructions(
         &function,
         &functions,
-        &closure_texts,
         &class_infos,
         &param_construction_registry,
         &args.decoder_limits.cpp_limits(),
@@ -8413,6 +8412,9 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
         collect_cpp_inheritance_texts(source_path, source, &target_includes, &include_dirs);
     let class_infos = collect_cpp_class_info_for_harness(&closure_texts);
     suppress_non_aggregate_cpp_class_defs(&mut type_defs, &class_infos);
+    // Loop-invariant: the mined recipes depend on the project owning this file,
+    // not on which function of it is being probed.
+    let mined = crate::auto::recipe_mining::for_source(source_path);
     let mut blocked = std::collections::HashSet::new();
     for function in functions {
         let parameter_types = function
@@ -8442,11 +8444,10 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
         let recipes = resolve_cpp_parameter_constructions(
             function,
             functions,
-            &closure_texts,
             &class_infos,
             &base_registry,
             &Default::default(),
-            &crate::auto::recipe_mining::for_source(source_path),
+            &mined,
         );
         let registry = type_model::TypeRegistry::from_defs(type_defs.iter())
             .with_cpp_lookup_scopes(scopes)
@@ -8675,7 +8676,7 @@ fn cpp_receiver_constructor_params(
     }) {
         // Phase 1 (#456): a concrete, DEFAULT-constructible subclass — `Subclass
         // _gf_receiver;` and the virtual call dispatches to its override.
-        if let Some(subclass) = resolve_concrete_subclass(class_name, functions, closure_texts) {
+        if let Some(subclass) = resolve_concrete_subclass(class_name, closure_texts) {
             return Ok((
                 Vec::new(),
                 Vec::new(),
@@ -8709,7 +8710,7 @@ fn cpp_receiver_constructor_params(
         // by-value `Base` return is impossible to instantiate, so any such match is
         // spurious); the factory path then null-guards and calls through `->`.
         if let Some(factory) =
-            find_cpp_factory_for_class(class_name, functions, closure_texts, registry, &class_infos)
+            find_cpp_factory_for_class(class_name, functions, registry, &class_infos)
         {
             if factory.receiver_is_pointer {
                 return Ok((Vec::new(), Vec::new(), None, Some(factory)));
@@ -8828,8 +8829,7 @@ fn cpp_receiver_constructor_params(
     // fewest parameters, earliest source line — for determinism across parses.
     // The factory's owner is stack-allocated so `_gf_owner` outlives the
     // call to the target method; the receiver's memory remains valid.
-    if let Some(factory) =
-        find_cpp_factory_for_class(class_name, functions, closure_texts, registry, &class_infos)
+    if let Some(factory) = find_cpp_factory_for_class(class_name, functions, registry, &class_infos)
     {
         return Ok((Vec::new(), Vec::new(), None, Some(factory)));
     }
@@ -8866,7 +8866,6 @@ fn cpp_receiver_constructor_params(
 fn resolve_cpp_parameter_constructions(
     function: &cpp_parser::CppFunction,
     functions: &[cpp_parser::CppFunction],
-    closure_texts: &[String],
     class_infos: &[cpp_parser::CppClassInfo],
     registry: &type_model::TypeRegistry,
     limits: &harness_gen::cpp_decoders::CppDecoderLimits,
@@ -8930,9 +8929,7 @@ fn resolve_cpp_parameter_constructions(
         // 2) A public STATIC by-value factory resolved from the include closure
         //    (`Owner::create()`), yielding a self-contained construction expression.
         let leaf = key.rsplit("::").next().unwrap_or(&key);
-        if let Some(factory) =
-            find_cpp_factory_for_class(leaf, functions, closure_texts, registry, class_infos)
-        {
+        if let Some(factory) = find_cpp_factory_for_class(leaf, functions, registry, class_infos) {
             if !factory.receiver_is_pointer
                 && factory.owner_method_is_static
                 && factory.factory_params.is_empty()
@@ -9092,7 +9089,6 @@ fn resolve_cpp_parameter_ctor_recipe(
 fn find_cpp_factory_for_class(
     class_name: &str,
     functions: &[cpp_parser::CppFunction],
-    closure_texts: &[String],
     registry: &type_model::TypeRegistry,
     class_infos: &[cpp_parser::CppClassInfo],
 ) -> Option<harness_gen::cpp_generate::CppFactoryPlan> {
@@ -9177,9 +9173,7 @@ fn find_cpp_factory_for_class(
         // A static owner method is called with `Owner::Factory` and has no such
         // requirement.
         if let Some(owner) = owner_class {
-            if !factory_fn.is_static
-                && !cpp_class_is_default_constructible(owner, functions, closure_texts)
-            {
+            if !factory_fn.is_static && !cpp_class_is_default_constructible(owner, class_infos) {
                 continue;
             }
         }
@@ -9216,11 +9210,7 @@ fn find_cpp_factory_for_class(
 /// is not itself abstract and is default-constructible (no declared ctor, an
 /// empty-param public ctor, or a source-declared default ctor). Deterministic
 /// (first by name) when several qualify.
-fn resolve_concrete_subclass(
-    base: &str,
-    functions: &[cpp_parser::CppFunction],
-    texts: &[String],
-) -> Option<String> {
+fn resolve_concrete_subclass(base: &str, texts: &[String]) -> Option<String> {
     // #456 / ROADMAP §27.4: scan the target source AND its include closure, since an
     // abstract base and its concrete subclass commonly live in headers the target
     // only `#include`s (libE57Format's Reader / a concrete reader subclass).
@@ -9236,8 +9226,11 @@ fn resolve_concrete_subclass(
     let mut derived = subclasses.get(base).cloned().unwrap_or_default();
     derived.sort();
     derived.dedup();
+    // Collected ONCE for the whole search: the predicate below asks about each
+    // candidate subclass against the same closure.
+    let infos = collect_cpp_class_info_for_harness(texts);
     derived.into_iter().find(|sub| {
-        !abstract_classes.contains(sub) && cpp_class_is_default_constructible(sub, functions, texts)
+        !abstract_classes.contains(sub) && cpp_class_is_default_constructible(sub, &infos)
     })
 }
 
@@ -9324,12 +9317,12 @@ fn resolve_subclass_with_ctor(
 /// default) that isn't `= delete`d. The "no ctor declared ANYWHERE" check uses the
 /// closure texts so a header subclass with only a parameterised/private ctor is
 /// not mistaken for implicitly default-constructible.
-fn cpp_class_is_default_constructible(
-    class: &str,
-    _functions: &[cpp_parser::CppFunction],
-    texts: &[String],
-) -> bool {
-    let infos = collect_cpp_class_info_for_harness(texts);
+/// Takes ALREADY-COLLECTED class info rather than the closure texts it comes
+/// from. It used to re-parse the whole include closure on every call, from inside
+/// a per-parameter loop whose caller had computed exactly that once — so a
+/// project whose closure is an amalgamated header re-parsed 7.7 MB of C++ per
+/// opaque parameter, and discovery never finished.
+fn cpp_class_is_default_constructible(class: &str, infos: &[cpp_parser::CppClassInfo]) -> bool {
     if let Some(exact) = infos.iter().find(|info| info.qualified_name == class) {
         return exact.has_public_default_constructor();
     }
@@ -12387,7 +12380,7 @@ inline namespace v12 {
                       class MemoryReader : public Reader { public: void read() override {} };\n"
             .to_owned();
         assert_eq!(
-            super::resolve_concrete_subclass("Reader", &[], &[source]).as_deref(),
+            super::resolve_concrete_subclass("Reader", &[source]).as_deref(),
             Some("MemoryReader")
         );
         assert_eq!(
@@ -12403,7 +12396,7 @@ inline namespace v12 {
                              class Mid : public Base { virtual void g() = 0; };\n"
             .to_owned();
         assert_eq!(
-            super::resolve_concrete_subclass("Base", &[], &[abstract_only]),
+            super::resolve_concrete_subclass("Base", &[abstract_only]),
             None
         );
     }
@@ -12419,15 +12412,14 @@ inline namespace v12 {
                       class FileReader : public Reader { public: FileReader(int fd); void read() override {} };\n"
             .to_owned();
         assert_eq!(
-            super::resolve_concrete_subclass("Reader", &[], &[base.clone(), header.clone()])
-                .as_deref(),
+            super::resolve_concrete_subclass("Reader", &[base.clone(), header.clone()]).as_deref(),
             Some("MemoryReader"),
             "implicit-default-ctor header subclass is taken; the param-ctor one is skipped"
         );
         // FileReader alone (param-only ctor) -> no usable subclass.
         let only_param = "class FileReader : public Reader { public: FileReader(int fd); void read() override {} };\n".to_owned();
         assert_eq!(
-            super::resolve_concrete_subclass("Reader", &[], &[base, only_param]),
+            super::resolve_concrete_subclass("Reader", &[base, only_param]),
             None
         );
     }
@@ -12465,7 +12457,7 @@ class BufferReader : public Reader { \
         assert_eq!(plan.1[0].cpp_type, "int");
         // No default-constructible subclass exists, so Phase 1 declines.
         assert_eq!(
-            super::resolve_concrete_subclass("Reader", &functions, &[src.to_owned()]),
+            super::resolve_concrete_subclass("Reader", &[src.to_owned()]),
             None
         );
     }
@@ -12483,14 +12475,9 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         let defs: Vec<c_parser::CTypeDefs> = vec![];
         let registry = type_model::TypeRegistry::from_defs(defs.iter());
         let class_infos = cpp_parser::parse_cpp_class_info(src).unwrap();
-        let factory = super::find_cpp_factory_for_class(
-            "Codec",
-            &functions,
-            &[src.to_owned()],
-            &registry,
-            &class_infos,
-        )
-        .expect("a free-function factory resolves");
+        let factory =
+            super::find_cpp_factory_for_class("Codec", &functions, &registry, &class_infos)
+                .expect("a free-function factory resolves");
         assert_eq!(factory.factory_method, "make_codec");
         assert!(factory.owner_type.is_none(), "free function has no owner");
         assert!(

@@ -189,10 +189,18 @@ A generic subprogram with a parameter that has no default.
 decodes to `context.Background()` (never nil, which would panic the callee). The
 rest are genuine project/library types.
 
-### Go-2. Method needs a receiver — 24 — **GAP (partly by design)**
+### Go-2. Method needs a receiver — 24 — **GAP, blocked on the parser**
 
-Says "pass `--force`". The forced path exists and works; the gap is that a
-no-arg-constructible receiver is not attempted unforced.
+Says "pass `--force`". The forced path exists and works (a zero receiver, taken
+by address so `(&r).M()` is valid for both value and pointer receivers); the gap
+is that a REAL receiver from a sibling `func NewT() *T` is not attempted
+unforced, which is what a human would write.
+
+**The blocker is `go_parser::GoFunc`, which does not capture a return type** —
+so a constructor cannot be told from any other no-arg function. Add
+`returns: Option<String>` there first; `receiver_synthesis` is then a small
+change, and it needs to emit `recv.M(…)` for a `*T` constructor versus
+`(&recv).M(…)` for a `T` one.
 
 ### Go-3. `not inside a Go module (no go.mod)` — 17 — **GAP**
 

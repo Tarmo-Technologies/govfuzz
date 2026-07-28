@@ -15889,7 +15889,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
-    fn owner_translation_unit_only_header_is_rejected_before_harness_build() {
+    fn owner_translation_unit_only_header_builds_via_its_owner() {
         if std::process::Command::new("clang++")
             .arg("--version")
             .output()
@@ -15911,12 +15911,73 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         )
         .unwrap();
 
-        let error = run(GenerateHarnessArgs {
+        // The header cannot compile alone, but `owner.cpp` establishes the type it
+        // needs and then includes it — so the harness compiles the OWNER TU. This
+        // used to be rejected outright, which made `blocked_by_non_self_contained_header`
+        // the largest C++ residual class in the 500-project sweep.
+        run(GenerateHarnessArgs {
             source: header,
             target: Some("parse_owner_fragment".to_owned()),
             target_line: None,
             output: root.join("out"),
             id: Some("H-CPP-OWNER-ONLY".to_owned()),
+            kind: "direct".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+        })
+        .expect("the owner TU supplies the header's missing context");
+
+        let harness = fs::read_to_string(root.join("out/H-CPP-OWNER-ONLY/main.cpp")).unwrap();
+        assert!(
+            harness.contains("owner.cpp"),
+            "the harness must include the owner translation unit, not the \
+             standalone header:\n{harness}"
+        );
+    }
+
+    /// The safety half of the fallback: a header that no translation unit can
+    /// make compile is still rejected. The owner search is only ever allowed to
+    /// adopt a candidate that PREFLIGHT-COMPILES, so widening it cannot turn a
+    /// clean skip into a broken harness.
+    #[test]
+    fn header_with_no_compilable_owner_is_still_rejected() {
+        if std::process::Command::new("clang++")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping header preflight test: clang++ not on PATH");
+            return;
+        }
+        let root = temp_dir("cpp-header-no-owner-preflight");
+        let header = root.join("orphan_fragment.hpp");
+        fs::write(
+            &header,
+            "inline int parse_orphan_fragment(void) { return (int)sizeof(NeverDefinedType); }\n",
+        )
+        .unwrap();
+        // A source that includes the header but STILL does not define the type,
+        // so no candidate can preflight — the fallback must reject, not adopt.
+        fs::write(
+            root.join("orphan.cpp"),
+            "#include \"orphan_fragment.hpp\"\n",
+        )
+        .unwrap();
+
+        let error = run(GenerateHarnessArgs {
+            source: header,
+            target: Some("parse_orphan_fragment".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CPP-NO-OWNER".to_owned()),
             kind: "direct".to_owned(),
             source_roots: Vec::new(),
             project: None,
@@ -15935,7 +15996,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             error.contains(BLOCKED_BY_NON_SELF_CONTAINED_HEADER),
             "{error}"
         );
-        assert!(!root.join("out/H-CPP-OWNER-ONLY/main.cpp").exists());
+        assert!(!root.join("out/H-CPP-NO-OWNER/main.cpp").exists());
     }
 
     #[test]

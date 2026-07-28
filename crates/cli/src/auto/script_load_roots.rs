@@ -170,24 +170,66 @@ pub(crate) fn join_roots(roots: &[PathBuf], separator: char) -> String {
 /// and strip the interpreter's file:line prefix so instances of one cause group
 /// together.
 pub(crate) fn interpreter_error_line(stderr: &str) -> String {
-    let informative = stderr
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with("from "))
-        .find(|line| {
-            line.contains("Error")
-                || line.contains("error")
-                || line.contains("cannot")
-                || line.contains("not found")
+    let lines: Vec<&str> = stderr.lines().collect();
+    // An interpreter that points at the failing statement ECHOES it and underlines
+    // it with a caret. Node opens every module-load failure that way:
+    //
+    //     node:internal/modules/esm/resolve:1204
+    //         throw error;
+    //         ^
+    //
+    //     Error [ERR_MODULE_NOT_FOUND]: Cannot find module '…'
+    //
+    // `throw error;` contains "error", so it won the loose match below and 77
+    // targets in the 500-project sweep reported a line of NODE's own source as
+    // their whole reason. An echoed line is never the diagnosis.
+    let usable: Vec<&str> = lines
+        .iter()
+        .enumerate()
+        .filter(|(index, line)| {
+            let trimmed = line.trim();
+            !trimmed.is_empty()
+                && !trimmed.starts_with("from ")
+                && !is_caret_underline(trimmed)
+                && !lines
+                    .get(index + 1)
+                    .is_some_and(|next| is_caret_underline(next.trim()))
         })
+        .map(|(_, line)| line.trim())
+        .collect();
+    // A line that NAMES a diagnostic wins over one that merely contains the word.
+    let informative = usable
+        .iter()
+        .find(|line| names_a_diagnostic(line))
         .or_else(|| {
-            stderr
-                .lines()
-                .map(str::trim)
-                .find(|line| !line.is_empty() && !line.starts_with("from "))
+            usable.iter().find(|line| {
+                line.contains("Error")
+                    || line.contains("error")
+                    || line.contains("cannot")
+                    || line.contains("not found")
+            })
         })
+        .or_else(|| usable.first())
+        .copied()
         .unwrap_or("load error");
     strip_location_prefix(informative)
+}
+
+/// A caret underline (`^`, `^^^`, `~~~^~~`) — the marker under an echoed source
+/// line, never a message.
+fn is_caret_underline(line: &str) -> bool {
+    !line.is_empty() && line.chars().all(|c| matches!(c, '^' | '~' | ' '))
+}
+
+/// Whether the line names a diagnostic rather than merely containing the word.
+/// Covers `Error:` / `TypeError:` / `error:`, Node's `Error [ERR_…]:` codes,
+/// `Exception:`, and PHP's `Fatal error:`.
+fn names_a_diagnostic(line: &str) -> bool {
+    line.contains("Error:")
+        || line.contains("error:")
+        || line.contains("Exception:")
+        || line.contains("Error [")
+        || line.contains("Fatal error")
 }
 
 /// Drop a leading `path:line:in 'fn':` so the same cause from two files is one
@@ -377,6 +419,55 @@ mod tests {
                 reason.contains(subject),
                 "the reason must name the target: {reason}"
             );
+        }
+    }
+
+    /// Node echoes the failing statement from its OWN internals and underlines it
+    /// with a caret before printing the real diagnostic. `throw error;` contains
+    /// "error", so it won — and 77 targets in the 500-project sweep reported that
+    /// line, and nothing else, as their reason.
+    #[test]
+    fn an_echoed_source_line_never_becomes_the_reason() {
+        let node = "node:internal/modules/esm/resolve:1204\n    \
+                    throw error;\n    ^\n\n\
+                    Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/p/nope.mjs' \
+                    imported from /p/bad.js\n    at finalizeResolution";
+        let line = interpreter_error_line(node);
+        assert!(
+            line.starts_with("Error [ERR_MODULE_NOT_FOUND]"),
+            "the named diagnostic must win over the echoed statement: {line}"
+        );
+        assert!(!line.contains("throw error"), "{line}");
+
+        // The CJS spelling has the same shape with a different statement.
+        let cjs = "node:internal/modules/cjs/loader:1210\n  throw err;\n  ^\n\n\
+                   Error: Cannot find module './missing-config.json'\nRequire stack:";
+        assert!(
+            interpreter_error_line(cjs).starts_with("Error: Cannot find module"),
+            "{cjs}"
+        );
+
+        // Every other lane's wording still resolves to exactly the line it always
+        // did — the tiering only changes which line is CHOSEN when several match.
+        for (stderr, expected) in [
+            (
+                "TypeError: unsupported operand type(s)",
+                "TypeError: unsupported operand type(s)",
+            ),
+            (
+                "lua: module 'socket' not found:",
+                "lua: module 'socket' not found:",
+            ),
+            (
+                "Can't locate JSON/PP/Boolean.pm in @INC (you may need to install it)",
+                "Can't locate JSON/PP/Boolean.pm in @INC (you may need to install it)",
+            ),
+            (
+                "-e:1:in 'require': cannot load such file -- concurrent/map (LoadError)",
+                "cannot load such file -- concurrent/map (LoadError)",
+            ),
+        ] {
+            assert_eq!(interpreter_error_line(stderr), expected);
         }
     }
 

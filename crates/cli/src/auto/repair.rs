@@ -3032,6 +3032,12 @@ pub(crate) fn plan_repair_forced_with_source_policy(
             if decl_index.defines_function(name) && !is_reserved_identifier(name) {
                 return None;
             }
+            // Same reasoning for an ENUMERATOR the tree defines: the define
+            // rewrites the enum's own body (`{ ScannerLimit = 4 }` -> `{ 1 = 4 }`)
+            // and every TU that compiled fine before now fails to parse.
+            if decl_index.defines_enumerator(name) && !is_reserved_identifier(name) {
+                return None;
+            }
             if decl_index.cpp_defines_type_or_namespace(name) && !is_reserved_identifier(name) {
                 None
             } else if is_synthesized_type_report_noise(name) {

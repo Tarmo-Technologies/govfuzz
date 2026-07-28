@@ -6049,23 +6049,17 @@ fn stage_ada_c_repair_sources(
     harness_id: &str,
     extra_sources: &[PathBuf],
 ) -> Result<(), String> {
-    let destination =
-        crate::auto::layout::harness_dir(work_dir, harness_id).join("repairs/ada_stubs");
+    let repairs = crate::auto::layout::harness_dir(work_dir, harness_id).join("repairs");
+    let destination = repairs.join("ada_stubs");
     std::fs::create_dir_all(&destination)
         .map_err(|error| format!("create {}: {error}", destination.display()))?;
-    for source in extra_sources {
-        if !source
-            .extension()
-            .is_some_and(|extension| extension.eq_ignore_ascii_case("c"))
-        {
-            continue;
-        }
+    let stage = |source: &Path| -> Result<(), String> {
         let Some(name) = source.file_name() else {
-            continue;
+            return Ok(());
         };
         let target = destination.join(name);
-        if source == &target {
-            continue;
+        if source == target {
+            return Ok(());
         }
         std::fs::copy(source, &target).map_err(|error| {
             format!(
@@ -6074,6 +6068,28 @@ fn stage_ada_c_repair_sources(
                 target.display()
             )
         })?;
+        Ok(())
+    };
+    for source in extra_sources {
+        // Headers travel with the sources that include them. `auto_stubs.c` opens
+        // with `#include "auto_types.h"`, and a QUOTED include resolves against
+        // the including file's own directory — so copying only the `.c` left the
+        // header behind in `repairs/` and every staged stub died on `fatal error:
+        // auto_types.h: No such file or directory`. Twelve targets across two Ada
+        // projects in the 500-project sweep, all of them a file-copy short.
+        if !source.extension().is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("c") || extension.eq_ignore_ascii_case("h")
+        }) {
+            continue;
+        }
+        stage(source)?;
+    }
+    // `auto_types.h` is written beside `auto_stubs.c` rather than listed as a
+    // repair source, so it never appears in `extra_sources` — stage it whenever
+    // it exists, or the include above resolves to nothing.
+    let types = repairs.join(crate::auto::repair::AUTO_TYPES_FILE);
+    if types.is_file() {
+        stage(&types)?;
     }
     Ok(())
 }
@@ -9302,6 +9318,34 @@ mod stamp_tests {
             )
             .unwrap(),
             "int native_helper(void) { return 1; }\n"
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// A quoted `#include` resolves against the including file's OWN directory,
+    /// so a staged `auto_stubs.c` needs `auto_types.h` staged beside it. Copying
+    /// only the `.c` left the header in `repairs/` and every staged stub died on
+    /// `fatal error: auto_types.h: No such file or directory` — 12 targets across
+    /// two Ada projects, all of them one file-copy short.
+    #[test]
+    fn a_staged_c_stub_takes_the_header_it_includes_with_it() {
+        let root = tmpdir("ada-c-repair-header");
+        let work = root.join("work");
+        let repairs = work.join("harnesses/H-A0001-TEST/repairs");
+        fs::create_dir_all(&repairs).unwrap();
+        let stub = repairs.join("auto_stubs.c");
+        fs::write(&stub, "#include \"auto_types.h\"\nvoid f(void) {}\n").unwrap();
+        // Written beside the stub rather than listed as a repair source, which is
+        // exactly why staging never saw it.
+        fs::write(repairs.join("auto_types.h"), "").unwrap();
+
+        stage_ada_c_repair_sources(&work, "H-A0001-TEST", &[stub]).unwrap();
+
+        let staged = repairs.join("ada_stubs");
+        assert!(staged.join("auto_stubs.c").is_file());
+        assert!(
+            staged.join("auto_types.h").is_file(),
+            "the header the stub includes must travel with it"
         );
         fs::remove_dir_all(&root).ok();
     }

@@ -56,6 +56,12 @@ built+fuzzed, 354 findings).
   unsuffixed paths keep the v0 spelling, which is what Go wants for a module that
   has not adopted the suffix.
 
+  What this buys is that the REAL blocker becomes visible; it is not a fuzz-count
+  claim. Measured on bubbletea, 7 targets moved off `failed_build` and the
+  manufactured error is gone — and what they hit next is that the module wants a
+  newer Go than the host has, which is an environment limit govfuzz reports
+  honestly and cannot fix. Do not restate this as +51 fuzzed targets.
+
 - **A line the interpreter echoed is not the diagnosis.** Node opens every
   module-load failure by echoing the failing statement from its own internals and
   underlining it with a caret; `throw error;` contains "error", so it won the

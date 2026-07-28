@@ -211,6 +211,55 @@ fn js_export_load_error(main_path: &Path, export_path: &str) -> Option<String> {
     ))
 }
 
+/// Loaders for the non-code assets a real TypeScript module imports.
+///
+/// A front-end module routinely does `import logo from "./logo.png"` or
+/// `import cfg from "./config.yaml"`. esbuild has no built-in loader for those
+/// and fails the WHOLE bundle with `No loader is configured for ".png" files`,
+/// which skipped the target. Measured in the 500-project sweep: `.png` 5, `.svg`
+/// 5, `.yaml` 5, `.vue` 3, across NextChat, mermaid and matomo.
+///
+/// The asset is irrelevant to fuzzing the module's FUNCTIONS, so it loads as
+/// inert text (or a data URL for binaries) and the code goes through. This never
+/// changes how the code itself is transpiled.
+///
+/// `.vue` is deliberately included even though a Single File Component is not
+/// really text: esbuild cannot compile one at all, and loading it inertly at
+/// least lets a sibling function be reached. If the module then breaks at load,
+/// the load-only build gate skips it with the real error rather than fuzzing
+/// something malformed — which is why this is safe to be liberal about.
+const NON_CODE_IMPORT_LOADERS: &[&str] = &[
+    "--loader:.css=text",
+    "--loader:.scss=text",
+    "--loader:.sass=text",
+    "--loader:.less=text",
+    "--loader:.styl=text",
+    "--loader:.svg=text",
+    "--loader:.html=text",
+    "--loader:.vue=text",
+    "--loader:.md=text",
+    "--loader:.txt=text",
+    "--loader:.yaml=text",
+    "--loader:.yml=text",
+    "--loader:.toml=text",
+    "--loader:.graphql=text",
+    "--loader:.gql=text",
+    "--loader:.png=dataurl",
+    "--loader:.jpg=dataurl",
+    "--loader:.jpeg=dataurl",
+    "--loader:.gif=dataurl",
+    "--loader:.ico=dataurl",
+    "--loader:.webp=dataurl",
+    "--loader:.avif=dataurl",
+    "--loader:.mp3=dataurl",
+    "--loader:.wav=dataurl",
+    "--loader:.woff=dataurl",
+    "--loader:.woff2=dataurl",
+    "--loader:.ttf=dataurl",
+    "--loader:.otf=dataurl",
+    "--loader:.eot=dataurl",
+];
+
 /// Resolve the TypeScript transpiler: `esbuild` on PATH (preferred — a single fast
 /// binary that strips types), else the local `npx esbuild`. Returns the argv prefix.
 fn locate_esbuild() -> Option<Vec<String>> {
@@ -285,6 +334,9 @@ pub fn build_ts_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         .arg("--format=cjs")
         .arg("--platform=node")
         .arg(format!("--outfile={}", out_js.display()));
+    for loader in NON_CODE_IMPORT_LOADERS {
+        cmd.arg(loader);
+    }
     match crate::command_output::output_with_timeout(
         &mut cmd,
         std::time::Duration::from_secs(30 * 60),

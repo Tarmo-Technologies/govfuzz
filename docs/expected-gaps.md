@@ -51,11 +51,19 @@ The biggest single C gap. Sub-shapes:
 | `pointer parameter X … not safely drivable after struct synthesis` | 7 | synthesis produced something unsafe to point at |
 | `decoder … exceeds 65536 bytes after struct synthesis` | 6 | a legitimately huge aggregate |
 
-The 13 "incomplete in the harness's included headers" cases are the tractable
-ones and the most valuable: GovFuzz has already *found* the complete definition
-and refused to use it. Replicating a private struct definition into the harness
-translation unit is legal C (completing an incomplete type), and the layout
-matches because the text is the project's own.
+The 13 "incomplete in the harness's included headers" cases look like the
+tractable ones, but **check the plumbing before believing that**. The refusal
+message describes the situation ("its full definition is visible only in a
+non-included source"); it does NOT mean GovFuzz is holding that definition. The
+harness's `type_defs` are deliberately "the INCLUDED headers + the tree-wide
+flat-POD fallback — never the target `.c`'s own body"
+(`header_complete_aggregate_spellings`), so at the point of refusal the complete
+struct is not in the registry at all.
+
+Replicating a private struct into the harness translation unit is still the right
+idea — completing an incomplete type is legal C, and the layout matches because
+the text is the project's own — but it needs the tree-wide struct definitions
+plumbed down to the decoder first. That is a real feature, not a small fix.
 
 `git`'s `struct repository`, timescaledb's `CompressionSettings` and antirez/ds4's
 `ds4_session` are the worked examples.
@@ -112,10 +120,11 @@ An external SDK/framework type (MFC, a vendor CORBA IDL). Correctly report-only.
 
 Same shape as C-1's "definition is in a non-included source", in C++.
 
-### C++-6. `compile flag contains a shell/make metacharacter` — 6 — **GAP**
+### C++-6. `compile flag contains a shell/make metacharacter` — 6 — **[FIXED]**
 
-A recovered compile flag is refused rather than escaped. Quoting it properly is
-a contained fix.
+A flag that is safe once single-quoted is now quoted rather than refused; `$`, a
+single quote and a newline are still refused, and paths/include names stay
+strict.
 
 ### C++-7. `linker command failed` — 10 — **GAP or DEPENDENCY**, unsplit
 
@@ -160,8 +169,9 @@ A generic subprogram with a parameter that has no default.
 
 `*protocol.RequestHeader`, `*pflag.FlagSet`, `DecodeOptions`, `context.Context`,
 `*zap.Logger`. Under `--force` these become zero values; unforced they skip.
-`context.Context` in particular has one obvious right answer
-(`context.Background()`) and appears everywhere.
+**`context.Context` is [FIXED]** — it is call context, not fuzz input, and now
+decodes to `context.Background()` (never nil, which would panic the callee). The
+rest are genuine project/library types.
 
 ### Go-2. Method needs a receiver — 24 — **GAP (partly by design)**
 
@@ -272,10 +282,10 @@ A DOM-targeting module loaded under bare Node. A minimal global shim would make
 these loadable; whether the resulting fuzz is meaningful needs judgement, and a
 shim that lies about the environment can manufacture findings.
 
-### TS-1. `No loader is configured for ".css"/".svg"/".vue"` — 12+ — **GAP**
+### TS-1. `No loader is configured for ".png"/".svg"/".yaml"/".vue"` — 18 — **[FIXED]**
 
-esbuild transpiling a module that imports non-JS assets. `--loader:.css=text` and
-friends are a contained fix.
+The transpile now declares loaders for the usual non-code assets: inert text for
+markup and config, a data URL for binaries.
 
 ### JS-3. Unconstructible receiver — 58 — **[FIXED]**
 
@@ -306,8 +316,8 @@ artifact, so an unbuilt dependency has none.
 
 By fixable targets, highest first:
 
-1. **C opaque-type lifecycle** (86) — start with the 13 whose complete definition
-   is already found in a non-included source.
+1. **C opaque-type lifecycle** (86) — the 13 "incomplete in headers" cases need
+   the tree-wide struct definitions plumbed to the decoder first; see C-1.
 2. **Java generic/collection parameters** (~40 of the 75) — needs declared-type
    locals instead of `var`.
 3. **C++ non-self-contained header, unforced** (49) — measure attempt-vs-refuse.

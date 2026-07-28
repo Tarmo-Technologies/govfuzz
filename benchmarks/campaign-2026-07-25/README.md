@@ -85,6 +85,33 @@ is hours. `--results-dir` writes rows somewhere else, so an A/B wave (say
 `--auto-force`) can be compared with `aggregate.py --compare` without
 overwriting the baseline it is being compared to.
 
+## The 2026-07-27 re-run
+
+`sh launch_full_0727.sh` re-runs the same corpus and budgets against a newer
+pinned binary, writing to `results-0727/` so `results/` survives as the thing to
+compare with. Read it with `python3 aggregate.py --results results-0727`.
+
+| | 2026-07-26 (`results/`) | 2026-07-27 (`results-0727/`) |
+|---|---:|---:|
+| projects measured | 453 | 463 |
+| targets discovered | 1,048,530 | 1,098,877 |
+| attempted | 3,608 | 3,594 |
+| **built + fuzzed** | **1,028 (28.5%)** | **1,057 (29.4%)** |
+| findings | 304 | 354 |
+
+Four defects came out of it, each in `CHANGELOG.md`: a cyclic C++ construction
+recipe that consumed 12 GiB and got 22 projects OOM-killed during DISCOVERY,
+POSIX/GLib scalar typedefs misread as opaque handles, a `java.io.File` parameter
+that could not be driven, and two ways the blocker histogram destroyed its own
+grouping key. One is still open — see `docs/open-defects-discovery-cost.md`.
+
+**A stale baseline lies about what is fixed.** Half of `results/`'s largest
+blocker rows (`Cannot find module "X"); run "X"`, `target module "X"torch"X"`,
+the PHP row that read `  thrown in PATH on line N`) were already fixed by the
+binary that produced them being older than the fix. Re-run before mining a row;
+the fastest check is to reproduce the row on a five-line fixture with the CURRENT
+binary, which takes a minute and settles it.
+
 ## Results
 
 See `results/` for the raw rows, `charts/` for the figures, and

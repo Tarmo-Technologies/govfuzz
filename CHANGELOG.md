@@ -2,6 +2,60 @@
 
 # Changelog
 
+## Unreleased
+
+Found by re-running the full 500-project sweep (`benchmarks/campaign-2026-07-25`,
+`results-0727/`: 463 measured, 1.1M targets discovered, 3,594 attempted, 1,057
+built+fuzzed, 354 findings).
+
+- **A cyclic construction recipe no longer eats 12 GiB during discovery.** The
+  sweep lost 22 projects to `exit=-9` — SIGKILL, no timeout, 44 to 250 seconds
+  in, before a target was ever attempted. It was govfuzz's own memory: one
+  `govfuzz auto` on simdjson, alone on an idle box, peaks at **12.4 GiB and is
+  OOM-killed**, where `list targets` over the same 39 MB tree uses 225 MiB. The
+  C++ parameter decoder's recipe block documented an invariant — recipes exist
+  only for a target's DIRECT parameters, so a constructor's arguments are always
+  directly decodable — that the producer graph had since made false. That graph
+  resolves what a chosen constructor's arguments need, to a fixed point, and is
+  explicitly cyclic (`A(B)`, `B(A)`); the consumer following those recipes had no
+  bound. It now carries the chain of keys it is expanding and treats a repeat as
+  "not decodable", the same clean skip the parameter got before recipes existed.
+  Depth is not what is cut: a three-deep acyclic chain still resolves.
+
+- **POSIX and GLib integer aliases are scalars, not opaque handles.** `pid_t` is
+  an int, but the typedef chases into glibc's `__pid_t`, which is not in the
+  scanned tree — so fastfetch's `ffProcessGetInfoLinux(pid_t pid, …)` skipped
+  with "opaque type 'pid_t' … needs lifecycle support (Phase C)", and HandBrake's
+  `ghb_do_scan(…, gboolean force)` said the same about GLib's `gboolean`. This is
+  the situation the existing BSD and Win32 blocks already answer. `pthread_t`,
+  `sem_t` and `gpointer` are deliberately excluded: they are integer- or
+  pointer-shaped but name a live kernel object, and decoding one from fuzz bytes
+  hands the target a fabricated handle. `gchar *` joins `char *` as a C string.
+  Measured on fastfetch: 1 → 3 built+fuzzed.
+
+  The scalar table also used to win over the tree unconditionally — the same
+  hazard as the Win32 header pack redefining a Linux driver's own `CHAR`. A
+  project that declares its own `key_t` struct would have had an int cast to it.
+  A tree declaration that resolves to something real now wins.
+
+- **A `java.io.File` parameter is a byte channel.** `parse(File)` is the classic
+  Java entry point (`ImageIO.read(File)`, `new ZipFile(File)`) and every one of
+  them skipped as an unsupported type, because the harness could only hand a
+  target bytes it held in memory. It now writes the input to one temp file per
+  process, truncated per iteration, and passes its `File`, `Path`, `URI` or
+  `URL`. Output sinks (`OutputStream`, `Writer`, `PrintWriter`, `PrintStream`,
+  `StringBuilder`) and `ClassLoader` also stopped blocking targets. Collections
+  and fuzz-parsed URIs are still refused, with reasons.
+
+- **Two ways the blocker histogram destroyed its own key.** A path in the MIDDLE
+  of a diagnostic was per-instance noise that never grouped — 176 of 1109
+  distinct rows, 456 targets, were one-off rows for that alone; a rooted or
+  extension-bearing path token now collapses to `PATH`, while prose keeps its
+  slashes. And an apostrophe inside a word is a contraction, not a delimiter:
+  Perl's most common failure opens "Can't locate Foo.pm in @INC", and reading
+  that apostrophe as a quote destroyed the message on the lane where it fires
+  most. GNAT's `Foo'` form and Ada attributes are unaffected.
+
 ## 0.2.21 - 2026-07-27
 
 Reach release: the targets `--force` was supposed to rescue and did not.

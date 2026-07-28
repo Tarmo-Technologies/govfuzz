@@ -46,6 +46,20 @@ fn ci_workflow_defines_gnat_dialect_profile_matrix() {
         );
     }
     assert!(runner.contains("gnatmake-${GOVFUZZ_GNAT_VERSION}"));
+    // The generated config is force-fed to every gprbuild in the cell, and the
+    // Ada runtime project builds `adafuzz_cov.c` — so an Ada-only config has no
+    // C DRIVER and every cell dies on `no compiler for language "C"`. That is
+    // what this matrix did on every nightly run between 2026-07-23 and
+    // 2026-07-28. Both halves are required: the config must ASK for C, and the
+    // workflow must install a C compiler of the matching major for it to find.
+    assert!(
+        runner.contains("--config=C,,,,gcc-${GOVFUZZ_GNAT_VERSION}"),
+        "the gprconfig config must include a C compiler:\n{runner}"
+    );
+    assert!(
+        workflow.contains("gcc-${{ matrix.gnat }}"),
+        "the workflow must install a version-matched C compiler:\n{workflow}"
+    );
     for dialect in ["ada95", "ada2005", "ada2012", "ada2022"] {
         assert!(
             workflow.contains(dialect),

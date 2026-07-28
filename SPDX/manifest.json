@@ -1599,6 +1599,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_force_keeps_manifest.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_force_non_self_contained.rs",
       "license": "Apache-2.0"
     },
@@ -1639,6 +1643,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_go_internal.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_go_lane.rs",
       "license": "Apache-2.0"
     },
@@ -1667,11 +1675,23 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_java_file_param.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_java_fuzz.rs",
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_java_preview.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_java_sink_oracle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/auto_js_unconstructible_receiver.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3267,6 +3287,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/expected-gaps.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/finding-report-fields.md",
       "license": "Apache-2.0"
     },
@@ -3287,7 +3311,15 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/open-defects-discovery-cost.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/open-defects-force-and-reach.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/recommended-sweep.md",
       "license": "Apache-2.0"
     },
     {

@@ -1213,20 +1213,40 @@ mod tests {
         );
     }
 
+    /// The TFM a host definitively CANNOT build: two majors above its newest
+    /// SDK. Hardcoding one (`net10.0`) asserted a fact about the machine rather
+    /// than about the code, so these tests passed on a .NET 8 box and failed on
+    /// a CI runner that ships a .NET 10 SDK — where picking net10.0 is correct.
+    fn unbuildable_tfm() -> String {
+        format!("net{}.0", host_max_net_major() + 2)
+    }
+
+    /// The host's own newest major, which `choose_target_framework` must prefer.
+    fn host_tfm() -> String {
+        format!("net{}.0", host_max_net_major())
+    }
+
     #[test]
     fn choose_tfm_prefers_supported_over_preview() {
-        let dir = std::env::temp_dir().join("gf_cs_tfm_test");
-        let _ = std::fs::create_dir_all(&dir);
-        // Multi-target incl. a preview net10.0 the net8.0 SDK can't build.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dir = dir.path();
+        let host = host_tfm();
+        let unbuildable = unbuildable_tfm();
+
+        // Multi-target including a framework newer than this SDK: take the
+        // newest the host can actually build.
         let csproj = dir.join("Multi.csproj");
         std::fs::write(
             &csproj,
-            "<Project><PropertyGroup><TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks></PropertyGroup></Project>",
+            format!(
+                "<Project><PropertyGroup><TargetFrameworks>netstandard2.0;{host};{unbuildable}\
+                 </TargetFrameworks></PropertyGroup></Project>"
+            ),
         )
         .unwrap();
-        assert_eq!(choose_target_framework(&csproj).as_deref(), Some("net8.0"));
+        assert_eq!(choose_target_framework(&csproj).as_deref(), Some(&*host));
 
-        // Only netstandard — pick it (net8.0 host can load it).
+        // Only netstandard — pick it; every supported host can load it.
         let ns = dir.join("Ns.csproj");
         std::fs::write(
             &ns,
@@ -1238,11 +1258,14 @@ mod tests {
             Some("netstandard2.0")
         );
 
-        // Only an unsupported preview — no compatible TFM.
+        // Only a framework this SDK cannot build — no compatible TFM.
         let only_preview = dir.join("Preview.csproj");
         std::fs::write(
             &only_preview,
-            "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>",
+            format!(
+                "<Project><PropertyGroup><TargetFramework>{unbuildable}</TargetFramework>\
+                 </PropertyGroup></Project>"
+            ),
         )
         .unwrap();
         assert_eq!(choose_target_framework(&only_preview), None);
@@ -1340,43 +1363,46 @@ mod tests {
 
     #[test]
     fn an_unbuildable_project_falls_back_to_compiling_its_sources() {
-        // v2rayN targets net10.0-windows; on a .NET 8 host the ProjectReference
-        // is a guaranteed failure for every target in the project, while its
-        // ordinary C# types compile fine into the harness assembly.
+        // v2rayN targets a platform TFM newer than the host SDK; the
+        // ProjectReference is then a guaranteed failure for every target in the
+        // project, while its ordinary C# types compile fine into the harness
+        // assembly. The version is derived from the HOST, not hardcoded: written
+        // as `net10.0` this asserted a fact about the machine, and CI runners
+        // ship a .NET 10 SDK where building it is correct.
         let dir = tempfile::tempdir().expect("tempdir");
+        let unbuildable = unbuildable_tfm();
+        let platform_tfm = format!("{unbuildable}-windows10.0.19041.0");
         let csproj = dir.path().join("ServiceLib.csproj");
         std::fs::write(
             &csproj,
-            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>\
-             <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework></PropertyGroup>\
-             <ItemGroup><PackageReference Include=\"YamlDotNet\" Version=\"15.1.0\" />\
-             <PackageReference Include=\"Central\" /></ItemGroup></Project>",
+            format!(
+                "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>\
+                 <TargetFramework>{platform_tfm}</TargetFramework></PropertyGroup>\
+                 <ItemGroup><PackageReference Include=\"YamlDotNet\" Version=\"15.1.0\" />\
+                 <PackageReference Include=\"Central\" /></ItemGroup></Project>"
+            ),
         )
         .expect("write csproj");
 
         assert_eq!(choose_target_framework(&csproj), None);
-        assert_eq!(
-            declared_target_frameworks(&csproj),
-            vec!["net10.0-windows10.0.19041.0".to_owned()]
-        );
+        assert_eq!(declared_target_frameworks(&csproj), vec![platform_tfm]);
 
         // v2rayN hoists its TFM into Directory.Build.props, which MSBuild
         // imports into every project beneath it; a csproj that declares nothing
-        // is still pinned to net10.0 and must be recognised as unbuildable.
+        // is still pinned to it and must be recognised as unbuildable.
         let nested = dir.path().join("src/ServiceLib");
         std::fs::create_dir_all(&nested).expect("mkdir");
         std::fs::write(
             dir.path().join("src/Directory.Build.props"),
-            "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework>\
-             </PropertyGroup></Project>",
+            format!(
+                "<Project><PropertyGroup><TargetFramework>{unbuildable}</TargetFramework>\
+                 </PropertyGroup></Project>"
+            ),
         )
         .expect("write props");
         let bare = nested.join("ServiceLib.csproj");
         std::fs::write(&bare, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>").expect("write");
-        assert_eq!(
-            declared_target_frameworks(&bare),
-            vec!["net10.0".to_owned()]
-        );
+        assert_eq!(declared_target_frameworks(&bare), vec![unbuildable.clone()]);
         assert_eq!(choose_target_framework(&bare), None);
 
         let out = generate_csproj(

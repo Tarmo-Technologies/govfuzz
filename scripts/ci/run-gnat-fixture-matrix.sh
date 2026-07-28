@@ -127,7 +127,18 @@ main() {
   local config_path="${temp_root}/govfuzz-gnat-${GOVFUZZ_GNAT_VERSION}.cgpr"
   local wrapper_dir="${temp_root}/govfuzz-gnat-${GOVFUZZ_GNAT_VERSION}-bin"
 
-  gprconfig --batch "--config=Ada,,,,$gnatmake" -o "$config_path"
+  # BOTH languages, or none of them. The generated config is force-fed to every
+  # gprbuild in this cell by the wrapper below, and the Ada runtime project
+  # declares `for Languages use ("Ada", "C")` — it compiles `adafuzz_cov.c`, the
+  # uninstrumented trace-pc callback. An Ada-only config carries C naming
+  # conventions but no C DRIVER, so every cell died on
+  # `adafuzz_runtime.gpr:2:09: no compiler for language "C"` and this matrix had
+  # been red on every nightly run. The C compiler is version-matched to the Ada
+  # one so the pair is what gprconfig would have chosen itself.
+  gprconfig --batch \
+    "--config=Ada,,,,$gnatmake" \
+    "--config=C,,,,gcc-${GOVFUZZ_GNAT_VERSION}" \
+    -o "$config_path"
   link_versioned_gnat_tools "$wrapper_dir" "$GOVFUZZ_GNAT_VERSION"
   if [ "$GOVFUZZ_ADA_DIALECT" = "ada2022" ] && ! gnatmake_supports_ada2022 "$gnatmake"; then
     install_ada2022_compat_wrapper "$wrapper_dir" "$config_path" "$GOVFUZZ_GNAT_VERSION"

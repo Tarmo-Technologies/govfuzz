@@ -2080,12 +2080,17 @@ fn is_leading_decl_noise(tok: &str) -> bool {
     // with linkage cannot have an initializer"). is_leading_decl_noise is consulted
     // only for LEADING tokens that have a following type token, so a single-token
     // type that merely ends this way is never stripped.
+    // The separator is not part of the convention: JNI spells its pair
+    // `JNIEXPORT jint JNICALL Java_com_foo_bar(JNIEnv *, …)` with no underscore
+    // at all, so an underscore-anchored suffix missed both and `JNIEXPORT`
+    // reached the harness as a type it could not construct offline — on every
+    // JNI surface, which is every Android or Java native library.
     if tok.len() >= 4
         && tok
             .chars()
             .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
         && [
-            "DEF", "_API", "_DECL", "_EXTERN", "_EXPORT", "_IMPORT", "_PUBLIC", "_CALL",
+            "DEF", "API", "DECL", "EXTERN", "EXPORT", "IMPORT", "PUBLIC", "CALL",
         ]
         .iter()
         .any(|s| tok.ends_with(s))
@@ -2924,6 +2929,16 @@ mod tests {
             "unsigned char *"
         );
         assert_eq!(strip_type_decoration("JSON_DECL int"), "int");
+        // The separator is not part of the convention. JNI spells its pair with
+        // no underscore at all — `JNIEXPORT jint JNICALL Java_com_foo_bar(…)` —
+        // so an underscore-anchored suffix missed both and `JNIEXPORT` reached
+        // the harness as a type it could not construct offline, on every JNI
+        // surface there is.
+        assert_eq!(strip_type_decoration("JNIEXPORT jint"), "jint");
+        assert_eq!(strip_type_decoration("EGLAPI EGLBoolean"), "EGLBoolean");
+        // Still LEADING-only by contract: a calling-convention macro that TRAILS
+        // the return type is a different shape, and a lone token is never noise.
+        assert_eq!(strip_type_decoration("JNICALL"), "JNICALL");
         // Function-like export macros that take the type as an argument (cJSON's
         // `CJSON_PUBLIC(cJSON *)`, `MYLIB_API(int)`) wrap the whole type and must
         // be unwrapped to the bare inner type — on Windows they expand to

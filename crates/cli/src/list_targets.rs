@@ -120,7 +120,18 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
     };
 
     let mut all_targets = Vec::new();
+    // Parsing every file in a large tree and holding every target in memory can
+    // exhaust RAM: carbon-language/carbon-lang was SIGKILLed (exit -9) here in
+    // the 500-project sweep, so `list targets` produced nothing at all. Past the
+    // RSS ceiling, stop parsing and report a partial list — the same graceful
+    // degradation the static scan and `auto`'s discovery walk use.
+    let memory_guard = static_analysis::MemoryGuard::start();
+    let mut skipped_for_memory = 0usize;
     for path in walk_targetable_files(&args.path)? {
+        if memory_guard.under_pressure() {
+            skipped_for_memory += 1;
+            continue;
+        }
         if path_is_excluded(&path, &args) {
             continue;
         }
@@ -239,12 +250,23 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
         }
     }
 
+    if skipped_for_memory > 0 {
+        let ceiling = static_analysis::MemoryGuard::ceiling_kb()
+            .map(|kb| format!("{} MiB", kb / 1024))
+            .unwrap_or_else(|| "the configured ceiling".to_owned());
+        eprintln!(
+            "govfuzz: discovery reached its memory ceiling ({ceiling}) and skipped \
+             {skipped_for_memory} file(s); this target list is PARTIAL. Raise it with \
+             GOVFUZZ_MAX_MEMORY_KB, or list a subdirectory."
+        );
+    }
+
     // The eleven lanes this command does not parse itself. `auto`'s discovery
     // already covers all sixteen, so defer to it rather than growing a second
     // copy that drifts — the two surfaces disagreeing about the same tree is the
     // failure mode worth designing out. Gated on a cheap extension scan, so a
     // C/C++/Ada/Java/Rust-only tree pays exactly what it paid before.
-    if tree_has_deferred_lane_sources(&args.path) {
+    if !memory_guard.under_pressure() && tree_has_deferred_lane_sources(&args.path) {
         for candidate in deferred_lane_targets(&args.path) {
             if path_is_excluded(&candidate.source_path, &args) {
                 continue;

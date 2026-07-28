@@ -1483,11 +1483,47 @@ fn accumulate_cpp_member_access(
     }
 }
 
+/// Files dropped from the walk because the RSS ceiling was reached. Reported once
+/// at the end of discovery so a truncated target list never reads as "this
+/// project has nothing to fuzz".
+static DISCOVERY_MEMORY_SKIPPED: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
 fn walk(
     dir: &Path,
     out: &mut Vec<Candidate>,
     filter: &DirFilter,
     preprocess: PreprocessMode,
+) -> Result<()> {
+    // Discovery parses every source file in the tree and holds every candidate in
+    // memory, so a large C++ estate can exhaust RAM: carbon-lang was SIGKILLed
+    // (exit -9) during discovery in the 500-project sweep, in BOTH `list targets`
+    // and `auto` — govfuzz produced no target list at all. The static scan already
+    // survives the same trees because it degrades under an RSS ceiling; discovery
+    // gets the same guard, so a huge tree yields a partial target list instead of
+    // nothing.
+    let guard = static_analysis::MemoryGuard::start();
+    let result = walk_guarded(dir, out, filter, preprocess, &guard);
+    let skipped = DISCOVERY_MEMORY_SKIPPED.swap(0, std::sync::atomic::Ordering::Relaxed);
+    if skipped > 0 {
+        let ceiling = static_analysis::MemoryGuard::ceiling_kb()
+            .map(|kb| format!("{} MiB", kb / 1024))
+            .unwrap_or_else(|| "the configured ceiling".to_owned());
+        eprintln!(
+            "govfuzz auto: discovery reached its memory ceiling ({ceiling}) and skipped \
+             {skipped} file(s); the target list is PARTIAL. Raise it with \
+             GOVFUZZ_MAX_MEMORY_KB, or scan a subdirectory."
+        );
+    }
+    result
+}
+
+fn walk_guarded(
+    dir: &Path,
+    out: &mut Vec<Candidate>,
+    filter: &DirFilter,
+    preprocess: PreprocessMode,
+    guard: &static_analysis::MemoryGuard,
 ) -> Result<()> {
     if dir.is_file() {
         return discover_file_guarded(dir, out, preprocess);
@@ -1500,8 +1536,16 @@ fn walk(
             if is_excluded_dir(&path, filter) {
                 continue;
             }
-            walk(&path, out, filter, preprocess)?;
+            walk_guarded(&path, out, filter, preprocess, guard)?;
         } else if ft.is_file() {
+            // Keep what has already been discovered rather than dying with
+            // nothing: past the ceiling, count the remaining files and stop
+            // parsing. Checking here (not inside the parse) means the candidate
+            // set stops growing at a file boundary.
+            if guard.under_pressure() {
+                DISCOVERY_MEMORY_SKIPPED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                continue;
+            }
             discover_file_guarded(&path, out, preprocess)?;
         }
     }

@@ -1066,6 +1066,63 @@ impl Drop for MemoryWatchdog {
     }
 }
 
+/// An RSS watchdog usable outside this crate (govfuzz's target DISCOVERY walk
+/// runs the same "parse every file in a huge tree" shape and used to be
+/// SIGKILLed on carbon-lang, producing no target list at all).
+///
+/// The guard degrades gracefully: [`MemoryGuard::under_pressure`] goes true once
+/// RSS crosses the ceiling, and the caller stops taking on new work. Dropping the
+/// guard stops the sampling thread.
+pub struct MemoryGuard {
+    _watchdog: MemoryWatchdog,
+}
+
+impl MemoryGuard {
+    /// Start sampling this process's RSS against the same ceiling the static
+    /// scan uses (`GOVFUZZ_MAX_MEMORY_KB`, else 80% of `MemAvailable` and 70% of
+    /// any cgroup limit, whichever is lower).
+    pub fn start() -> Self {
+        let watchdog = spawn_memory_watchdog();
+        // Sample once synchronously. The background thread samples every 500ms,
+        // which is fine for a long scan but leaves a window in which a walk that
+        // is ALREADY over the ceiling at startup runs unguarded. Only tightens
+        // the guard — it can never clear pressure.
+        #[cfg(target_os = "linux")]
+        {
+            if let (Some(rss), Some(ceiling)) =
+                (proc_kb("/proc/self/status", "VmRSS:"), memory_ceiling_kb())
+            {
+                if rss >= ceiling {
+                    MEMORY_PRESSURE.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
+        }
+        Self {
+            _watchdog: watchdog,
+        }
+    }
+
+    /// Whether RSS has crossed the ceiling. Cheap enough to call per file: a
+    /// relaxed atomic load, with the actual `/proc` sampling on the watchdog
+    /// thread.
+    pub fn under_pressure(&self) -> bool {
+        MEMORY_PRESSURE.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// The configured ceiling in kB, for diagnostics. `None` when no ceiling
+    /// could be determined (non-Linux, or unreadable `/proc`).
+    pub fn ceiling_kb() -> Option<u64> {
+        #[cfg(target_os = "linux")]
+        {
+            memory_ceiling_kb()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            None
+        }
+    }
+}
+
 fn spawn_memory_watchdog() -> MemoryWatchdog {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;

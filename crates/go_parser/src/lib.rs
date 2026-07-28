@@ -34,6 +34,14 @@ pub struct GoFunc {
     /// Receiver type spelling for a method (`*Decoder` / `Decoder`), else `None`.
     pub receiver_type: Option<String>,
     pub params: Vec<GoParam>,
+    /// Result spelling as written (`*Decoder`, `Decoder`, `(Decoder, error)`), or
+    /// `None` for a function that returns nothing.
+    ///
+    /// Carried so a CONSTRUCTOR can be told from any other no-arg function: the
+    /// harness builds a method's receiver from a sibling `func NewT() *T` rather
+    /// than demanding `--force` and a zero value, and without the result there is
+    /// nothing to match `T` against.
+    pub returns: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -142,6 +150,13 @@ fn parse_function(
         .map(|pl| parse_params(pl, bytes))
         .unwrap_or_default();
 
+    // tree-sitter-go puts the result — a bare type, or a parameter_list for a
+    // multi-value return — in the `result` field.
+    let returns = func
+        .child_by_field_name("result")
+        .map(|node| node_text(node, bytes).trim().to_owned())
+        .filter(|text| !text.is_empty());
+
     Some(GoFunc {
         name,
         line,
@@ -150,6 +165,7 @@ fn parse_function(
         is_method,
         receiver_type,
         params,
+        returns,
     })
 }
 
@@ -382,7 +398,7 @@ mod tests {
         assert!(toks.contains(&"4919".to_string()), "tokens: {toks:?}");
     }
 
-    const SRC: &str = "package parser\nimport \"errors\"\nfunc ParseRecord(data []byte) (int, error) {\n  if len(data) == 0 { return 0, errors.New(\"empty\") }\n  return len(data), nil\n}\nfunc Decode(s string, limit int) string { return s }\nfunc (p *Decoder) Feed(chunk []byte) error { return nil }\nfunc unexported(s string) {}\n";
+    const SRC: &str = "package parser\nimport \"errors\"\nfunc ParseRecord(data []byte) (int, error) {\n  if len(data) == 0 { return 0, errors.New(\"empty\") }\n  return len(data), nil\n}\nfunc Decode(s string, limit int) string { return s }\nfunc (p *Decoder) Feed(chunk []byte) error { return nil }\nfunc NewDecoder() *Decoder { return nil }\nfunc unexported(s string) {}\n";
 
     #[test]
     fn extracts_exported_function_with_typed_params() {
@@ -393,6 +409,8 @@ mod tests {
         assert_eq!(pr.params.len(), 1);
         assert_eq!(pr.params[0].name, "data");
         assert_eq!(pr.params[0].ty, "[]byte");
+        // A multi-value result comes back as its written parameter_list.
+        assert_eq!(pr.returns.as_deref(), Some("(int, error)"));
     }
 
     #[test]
@@ -410,6 +428,15 @@ mod tests {
         let feed = fns.iter().find(|f| f.name == "Feed").unwrap();
         assert!(feed.is_method);
         assert_eq!(feed.receiver_type.as_deref(), Some("*Decoder"));
+        // The result is carried so a constructor can be told from any other
+        // no-arg function — see `GoFunc::returns`.
+        let ctor = fns
+            .iter()
+            .find(|f| f.name == "NewDecoder")
+            .expect("NewDecoder parsed");
+        assert_eq!(ctor.returns.as_deref(), Some("*Decoder"));
+        assert!(ctor.params.is_empty());
+        assert_eq!(feed.returns.as_deref(), Some("error"));
         assert_eq!(feed.params.len(), 1, "receiver excluded from params");
         assert_eq!(feed.params[0].ty, "[]byte");
     }

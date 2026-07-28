@@ -62,15 +62,16 @@ pub fn build_go_harness(
         };
     };
 
-    let func = match resolve_target(candidate) {
-        Ok(f) => f,
+    let (func, siblings) = match resolve_target(candidate) {
+        Ok(pair) => pair,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
     };
-    // A method needs a receiver value. Under `--force` synthesize a zero one; the
-    // Go zero value exists for every type, and taking its address satisfies a
+    // A method needs a receiver value. Prefer a REAL one from a sibling no-arg
+    // constructor; failing that, and only under `--force`, synthesize the zero
+    // value — it exists for every Go type, and taking its address satisfies a
     // pointer receiver without passing nil (which would panic on first field
     // access — our fault, not the target's).
-    let receiver = match receiver_synthesis(&func, force) {
+    let receiver = match receiver_synthesis(&func, &siblings, force) {
         Ok(r) => r,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
     };
@@ -93,7 +94,7 @@ pub fn build_go_harness(
 
     // Build the decode/call body; an unsupported required param type skips cleanly
     // (unforced) or is synthesized as its zero value (forced).
-    let call = match generate_call(&func, receiver.as_deref(), force) {
+    let call = match generate_call(&func, receiver.as_ref(), force) {
         Ok(c) => c,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
     };
@@ -220,19 +221,20 @@ pub fn build_go_harness(
     }
 }
 
-fn resolve_target(candidate: &Candidate) -> Result<GoFunc, String> {
+/// The target plus every function parsed from its file — the siblings a receiver
+/// constructor is looked for among.
+fn resolve_target(candidate: &Candidate) -> Result<(GoFunc, Vec<GoFunc>), String> {
     let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
-    parse_go_functions(&source)
-        .map_err(|_| "failed to parse Go source".to_owned())?
-        .into_iter()
+    let functions =
+        parse_go_functions(&source).map_err(|_| "failed to parse Go source".to_owned())?;
+    let target = functions
+        .iter()
         .find(|f| f.name == candidate.name && f.line == candidate.line)
-        .or_else(|| {
-            parse_go_functions(&source)
-                .ok()
-                .and_then(|fs| fs.into_iter().find(|f| f.name == candidate.name))
-        })
-        .ok_or_else(|| format!("target `{}` no longer present in source", candidate.name))
+        .or_else(|| functions.iter().find(|f| f.name == candidate.name))
+        .cloned()
+        .ok_or_else(|| format!("target `{}` no longer present in source", candidate.name))?;
+    Ok((target, functions))
 }
 
 /// Local Go toolchain language version as `MAJOR.MINOR` ("1.22"), from
@@ -397,57 +399,128 @@ struct GoCall {
     forced_detail: Option<String>,
 }
 
-/// The receiver expression for a method target, or `None` for a plain function.
+/// How the harness obtains the receiver for a method target.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GoReceiver {
+    /// The line that binds `recv`.
+    setup: String,
+    /// How the call names it: `recv` when it is already a pointer, `(&recv)`
+    /// otherwise — the addressable form is valid for BOTH a value and a pointer
+    /// receiver.
+    callee: String,
+    /// `Some(detail)` only when the value was FABRICATED rather than constructed,
+    /// so the report can floor a finding on it. A real constructor is not forced.
+    forced: Option<String>,
+}
+
+/// The receiver for a method target, or `None` for a plain function.
 ///
-/// Unforced, a method is a clean skip: govfuzz has no value to call it on. Forced,
-/// declare the receiver's zero value and take its address — `(&r).M()` is valid for
-/// BOTH a value and a pointer receiver when `r` is addressable, and unlike a nil
-/// `*T` it does not panic the moment the method touches a field.
+/// Preferred: a sibling no-arg constructor (`func NewT() *T`), which is what a
+/// human would write and is a REAL value, so a finding on it stands on its own.
+/// That was previously impossible to spot — `go_parser::GoFunc` carried no result
+/// type, so a constructor could not be told from any other no-arg function — and
+/// every method target demanded `--force` instead. It was among the largest Go
+/// blockers in the 500-project sweep.
 ///
-/// Refused even under force when the receiver type is not nameable from the harness
+/// Failing that, and only under force: the receiver's zero value, taken by
+/// address. `(&r).M()` is valid for both a value and a pointer receiver when `r`
+/// is addressable, and unlike a nil `*T` it does not panic the moment the method
+/// touches a field.
+///
+/// Refused either way when the receiver type is not nameable from the harness
 /// package: unexported (`*decoder` — inaccessible by Go's visibility rules, so the
 /// method is uncallable from anywhere outside its package) or generic (`Tree[T]`
 /// needs a type argument govfuzz cannot choose).
-fn receiver_synthesis(func: &GoFunc, force: bool) -> Result<Option<String>, String> {
+fn receiver_synthesis(
+    func: &GoFunc,
+    siblings: &[GoFunc],
+    force: bool,
+) -> Result<Option<GoReceiver>, String> {
     if !func.is_method {
         return Ok(None);
     }
-    let unsupported = || {
-        format!(
-            "Go method `{}` needs a receiver value; pass --force to call it on a \
-             zero-valued receiver (skipped cleanly)",
-            func.name
-        )
-    };
-    if !force {
-        return Err(unsupported());
-    }
     let raw = func.receiver_type.as_deref().unwrap_or("").trim();
     let bare = raw.trim_start_matches('*').trim();
-    if bare.is_empty()
-        || bare.contains('[')
-        || bare.contains('.')
-        || !bare.starts_with(|c: char| c.is_ascii_uppercase())
-    {
+    let nameable = !bare.is_empty()
+        && !bare.contains('[')
+        && !bare.contains('.')
+        && bare.starts_with(|c: char| c.is_ascii_uppercase());
+    if !nameable {
         return Err(format!(
-            "forced: Go receiver type `{raw}` of method `{}` is not nameable from the \
+            "Go receiver type `{raw}` of method `{}` is not nameable from the \
              harness package (unexported or generic); skipped cleanly",
             func.name
         ));
     }
-    Ok(Some(format!("tgt.{bare}")))
+
+    if let Some(ctor) = find_go_constructor(bare, siblings) {
+        // A `*T` constructor already yields a pointer; a `T` one needs its
+        // address so a pointer-receiver method is still callable.
+        let returns_pointer = ctor
+            .returns
+            .as_deref()
+            .is_some_and(|r| r.trim().starts_with('*'));
+        return Ok(Some(GoReceiver {
+            setup: format!("\trecv := tgt.{}()\n", ctor.name),
+            callee: if returns_pointer {
+                "recv".to_owned()
+            } else {
+                "(&recv)".to_owned()
+            },
+            forced: None,
+        }));
+    }
+
+    if !force {
+        return Err(format!(
+            "Go method `{}` needs a receiver value and its type `{bare}` has no no-arg \
+             constructor; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+            func.name
+        ));
+    }
+    Ok(Some(GoReceiver {
+        setup: format!("\tvar recv tgt.{bare}\n"),
+        callee: "(&recv)".to_owned(),
+        forced: Some(format!("receiver tgt.{bare}")),
+    }))
+}
+
+/// A sibling no-arg constructor for `bare` — `func NewT() T` or `func NewT() *T`.
+///
+/// Restricted to the `New…` naming convention on purpose. Any exported no-arg
+/// function returning the type would compile, but only the convention says it is
+/// meant to CONSTRUCT one; `Open…`/`Connect…` shapes touch the world, and calling
+/// those per harness build is not something to do on a guess.
+fn find_go_constructor<'a>(bare: &str, siblings: &'a [GoFunc]) -> Option<&'a GoFunc> {
+    siblings
+        .iter()
+        .filter(|f| {
+            !f.is_method && f.is_exported && f.params.is_empty() && f.name.starts_with("New")
+        })
+        .find(|f| {
+            f.returns
+                .as_deref()
+                .map(|r| r.trim().trim_start_matches('*').trim())
+                .is_some_and(|returned| returned == bare)
+        })
 }
 
 /// Build the decode lines + the call statement for the target's params. Returns an
 /// error (clean skip) if a required parameter type can't be synthesized.
-fn generate_call(func: &GoFunc, receiver: Option<&str>, force: bool) -> Result<GoCall, String> {
+fn generate_call(
+    func: &GoFunc,
+    receiver: Option<&GoReceiver>,
+    force: bool,
+) -> Result<GoCall, String> {
     let n = func.params.len();
     let mut lines = String::new();
     let mut args = Vec::new();
     let mut forced: Vec<String> = Vec::new();
-    if let Some(receiver_type) = receiver {
-        lines.push_str(&format!("\tvar recv {receiver_type}\n"));
-        forced.push(format!("receiver {receiver_type}"));
+    if let Some(receiver) = receiver {
+        lines.push_str(&receiver.setup);
+        if let Some(detail) = &receiver.forced {
+            forced.push(detail.clone());
+        }
     }
     for (i, p) in func.params.iter().enumerate() {
         let last = i + 1 == n;
@@ -479,10 +552,9 @@ fn generate_call(func: &GoFunc, receiver: Option<&str>, force: bool) -> Result<G
         lines.push_str(&format!("\ta{i} := {expr}\n"));
         args.push(format!("a{i}"));
     }
-    let callee = if receiver.is_some() {
-        format!("(&recv).{}", func.name)
-    } else {
-        format!("tgt.{}", func.name)
+    let callee = match receiver {
+        Some(receiver) => format!("{}.{}", receiver.callee, func.name),
+        None => format!("tgt.{}", func.name),
     };
     lines.push_str(&format!("\t{callee}({})\n", args.join(", ")));
     Ok(GoCall {
@@ -933,6 +1005,7 @@ mod tests {
                     ty: (*t).to_owned(),
                 })
                 .collect(),
+            returns: None,
         }
     }
 
@@ -1010,11 +1083,10 @@ mod tests {
         let mut method = func("Feed", &[("data", "[]byte")], true);
         method.receiver_type = Some("*Decoder".to_owned());
         assert!(
-            receiver_synthesis(&method, false).is_err(),
-            "unforced, a method is still a clean skip"
+            receiver_synthesis(&method, &[], false).is_err(),
+            "with no constructor to find, unforced is still a clean skip"
         );
-        let receiver = receiver_synthesis(&method, true).unwrap().unwrap();
-        assert_eq!(receiver, "tgt.Decoder");
+        let receiver = receiver_synthesis(&method, &[], true).unwrap().unwrap();
         let call = generate_call(&method, Some(&receiver), true).unwrap();
         assert!(call.body.contains("var recv tgt.Decoder"), "{}", call.body);
         assert!(call.body.contains("(&recv).Feed(a0)"), "{}", call.body);
@@ -1024,13 +1096,62 @@ mod tests {
         );
     }
 
+    /// A sibling `func NewT() *T` is what a human would call, and the value is
+    /// REAL — so the target needs no `--force` and its findings are not floored.
+    /// `GoFunc` carried no result type until now, so a constructor could not be
+    /// told from any other no-arg function and every method target demanded force.
+    #[test]
+    fn a_sibling_constructor_gives_a_real_receiver_without_force() {
+        let mut method = func("Feed", &[("data", "[]byte")], true);
+        method.receiver_type = Some("*Decoder".to_owned());
+
+        let mut ctor = func("NewDecoder", &[], false);
+        ctor.returns = Some("*Decoder".to_owned());
+        let receiver = receiver_synthesis(&method, std::slice::from_ref(&ctor), false)
+            .expect("a constructor makes this drivable unforced")
+            .expect("a method has a receiver");
+        assert!(receiver.forced.is_none(), "a real value is not forced");
+        let call = generate_call(&method, Some(&receiver), false).unwrap();
+        assert!(
+            call.body.contains("recv := tgt.NewDecoder()"),
+            "{}",
+            call.body
+        );
+        // Already a pointer: no extra address-of.
+        assert!(call.body.contains("recv.Feed(a0)"), "{}", call.body);
+        assert!(call.forced_detail.is_none(), "{:?}", call.forced_detail);
+
+        // A VALUE-returning constructor needs its address so a pointer-receiver
+        // method is still callable.
+        let mut by_value = func("NewDecoder", &[], false);
+        by_value.returns = Some("Decoder".to_owned());
+        let receiver = receiver_synthesis(&method, std::slice::from_ref(&by_value), false)
+            .unwrap()
+            .unwrap();
+        let call = generate_call(&method, Some(&receiver), false).unwrap();
+        assert!(call.body.contains("(&recv).Feed(a0)"), "{}", call.body);
+
+        // Only the `New…` convention counts, and only for the right type: an
+        // arbitrary no-arg function returning it may touch the world.
+        let mut opener = func("OpenDecoder", &[], false);
+        opener.returns = Some("*Decoder".to_owned());
+        let mut wrong_type = func("NewEncoder", &[], false);
+        wrong_type.returns = Some("*Encoder".to_owned());
+        for sibling in [opener, wrong_type] {
+            assert!(
+                receiver_synthesis(&method, std::slice::from_ref(&sibling), false).is_err(),
+                "must not be treated as a constructor for Decoder"
+            );
+        }
+    }
+
     #[test]
     fn forced_receiver_refuses_what_the_harness_cannot_name() {
         for receiver_type in ["*decoder", "Tree[T]", "other.Decoder", ""] {
             let mut method = func("Feed", &[("data", "[]byte")], true);
             method.receiver_type = Some(receiver_type.to_owned());
             assert!(
-                receiver_synthesis(&method, true).is_err(),
+                receiver_synthesis(&method, &[], true).is_err(),
                 "`{receiver_type}` is not nameable from the harness package"
             );
         }

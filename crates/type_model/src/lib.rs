@@ -148,6 +148,79 @@ pub const SCALAR_SPELLINGS: &[(&str, ScalarKind)] = &[
     ("CHAR", ScalarKind::I8),
     ("UCHAR", ScalarKind::U8),
     ("BYTE", ScalarKind::U8),
+    // POSIX <sys/types.h>/<sys/stat.h>/<sys/socket.h>/<netinet/in.h> integer
+    // aliases. Same reasoning as the BSD block above, and the 500-project sweep
+    // showed it still biting: fastfetch's `ffProcessGetInfoLinux(pid_t pid, …)`
+    // skipped as "opaque type 'pid_t' … needs lifecycle support (Phase C)",
+    // because the typedef chases into glibc's `__pid_t`, which is not in the
+    // scanned tree. These spellings have standardized meanings, so resolve them
+    // directly. Widths are the glibc LP64 ones; as with the Win32 block, the
+    // emitted decl keeps the ALIAS spelling, so a width guess only changes how
+    // many fuzz bytes are consumed, never whether the harness compiles.
+    ("pid_t", ScalarKind::I32),
+    ("uid_t", ScalarKind::U32),
+    ("gid_t", ScalarKind::U32),
+    ("id_t", ScalarKind::U32),
+    ("mode_t", ScalarKind::U32),
+    ("key_t", ScalarKind::I32),
+    ("off_t", ScalarKind::I64),
+    ("off64_t", ScalarKind::I64),
+    ("loff_t", ScalarKind::I64),
+    ("dev_t", ScalarKind::U64),
+    ("ino_t", ScalarKind::U64),
+    ("ino64_t", ScalarKind::U64),
+    ("nlink_t", ScalarKind::U64),
+    ("blkcnt_t", ScalarKind::I64),
+    ("blksize_t", ScalarKind::I64),
+    ("fsblkcnt_t", ScalarKind::U64),
+    ("fsfilcnt_t", ScalarKind::U64),
+    ("rlim_t", ScalarKind::U64),
+    ("clock_t", ScalarKind::I64),
+    ("clockid_t", ScalarKind::I32),
+    ("suseconds_t", ScalarKind::I64),
+    ("useconds_t", ScalarKind::U32),
+    ("socklen_t", ScalarKind::U32),
+    ("sa_family_t", ScalarKind::U16),
+    ("in_addr_t", ScalarKind::U32),
+    ("in_port_t", ScalarKind::U16),
+    ("intptr_t", ScalarKind::I64),
+    ("uintptr_t", ScalarKind::U64),
+    ("ptrdiff_t", ScalarKind::I64),
+    ("wint_t", ScalarKind::U32),
+    // Deliberately absent: `pthread_t`, `sem_t`, `FILE`, `DIR` and the other
+    // POSIX HANDLE types. They are integer-shaped on glibc but they name a live
+    // kernel or libc object, and decoding one from fuzz bytes hands the target a
+    // fabricated handle — a crash govfuzz caused, not one it found.
+    //
+    // GLib scalar aliases (glib-2.0). GTK, GStreamer and every GLib application
+    // (HandBrake's `ghb_do_scan(…, gboolean force)`) use these throughout, and
+    // `glib.h` is not in the scanned tree on an offline lab, so the typedef chain
+    // has nothing to chase — exactly the Win32 situation. `gpointer`/
+    // `gconstpointer` are absent on purpose: they must stay on the pointer path.
+    ("gboolean", ScalarKind::I32),
+    ("gchar", ScalarKind::I8),
+    ("guchar", ScalarKind::U8),
+    ("gint", ScalarKind::I32),
+    ("guint", ScalarKind::U32),
+    ("gshort", ScalarKind::I16),
+    ("gushort", ScalarKind::U16),
+    ("glong", ScalarKind::I64),
+    ("gulong", ScalarKind::U64),
+    ("gint8", ScalarKind::I8),
+    ("guint8", ScalarKind::U8),
+    ("gint16", ScalarKind::I16),
+    ("guint16", ScalarKind::U16),
+    ("gint32", ScalarKind::I32),
+    ("guint32", ScalarKind::U32),
+    ("gint64", ScalarKind::I64),
+    ("guint64", ScalarKind::U64),
+    ("gsize", ScalarKind::U64),
+    ("gssize", ScalarKind::I64),
+    ("goffset", ScalarKind::I64),
+    ("gunichar", ScalarKind::U32),
+    ("gunichar2", ScalarKind::U16),
+    ("gfloat", ScalarKind::F32),
+    ("gdouble", ScalarKind::F64),
     ("float", ScalarKind::F32),
     ("double", ScalarKind::F64),
     ("_Bool", ScalarKind::Bool),
@@ -516,8 +589,11 @@ impl TypeRegistry {
         // Pointer peeling, one level per recursion.
         if let Some(base) = normalized.strip_suffix('*') {
             let base = base.trim_end();
-            // const char * / char * is a string, not Pointer(I8).
-            if matches!(base, "char") {
+            // const char * / char * is a string, not Pointer(I8). GLib's `gchar`
+            // IS `char` — a `gchar *` decoded as a bare byte pointer would hand a
+            // callee that `strlen`s it an unterminated buffer, which reads as a
+            // heap overflow govfuzz caused rather than one it found.
+            if matches!(base, "char" | "gchar") {
                 return TypeShape::CString;
             }
             return TypeShape::Pointer(Box::new(self.resolve_inner(base, depth + 1)));
@@ -528,7 +604,20 @@ impl TypeRegistry {
         }
 
         if let Some(kind) = scalar_kind(&normalized) {
-            return TypeShape::Scalar(kind);
+            // A scalar SPELLING is a fallback for a name the tree does not
+            // define — the whole point of the BSD/Win32/POSIX/GLib blocks is that
+            // those headers are absent offline. When the tree DOES declare the
+            // name and that declaration resolves to something real, it wins:
+            // these names are not reserved, and a project's own `key_t` struct
+            // decoded as an int does not even compile, turning a clean skip into
+            // a build failure. (The same shape as the Win32 header pack
+            // redefining a Linux driver's own `CHAR`.) A tree declaration that
+            // itself dead-ends — a vendored `typedef __u_int u_int` whose
+            // `__u_int` is nowhere — resolves Opaque, and the table still wins.
+            return match self.named_shape(&normalized, raw, depth) {
+                Some(shape) if !matches!(shape, TypeShape::Opaque(_)) => shape,
+                _ => TypeShape::Scalar(kind),
+            };
         }
 
         if let Some(tag) = normalized.strip_prefix("struct ") {
@@ -542,14 +631,8 @@ impl TypeRegistry {
         }
 
         // Bare name: enum, struct-by-alias, or typedef chain.
-        if let Some(def) = self.lookup_named(&self.enums, &normalized) {
-            return enum_shape_for_spelling(def, &normalized);
-        }
-        if self.lookup_named(&self.structs, &normalized).is_some() {
-            return self.struct_shape(&normalized, raw, depth);
-        }
-        if let Some(underlying) = self.lookup_named(&self.typedefs, &normalized) {
-            return self.resolve_inner(&underlying.clone(), depth + 1);
+        if let Some(shape) = self.named_shape(&normalized, raw, depth) {
+            return shape;
         }
 
         // Only infer a project-prefixed scalar after consulting real tree
@@ -560,6 +643,22 @@ impl TypeRegistry {
         }
 
         TypeShape::Opaque(normalized)
+    }
+
+    /// The shape a BARE name has because the scanned tree declares it — as an
+    /// enum, as a struct/union by alias, or through a typedef chain. `None` when
+    /// the tree says nothing about the name.
+    fn named_shape(&self, normalized: &str, raw: &str, depth: usize) -> Option<TypeShape> {
+        if let Some(def) = self.lookup_named(&self.enums, normalized) {
+            return Some(enum_shape_for_spelling(def, normalized));
+        }
+        if self.lookup_named(&self.structs, normalized).is_some() {
+            return Some(self.struct_shape(normalized, raw, depth));
+        }
+        if let Some(underlying) = self.lookup_named(&self.typedefs, normalized) {
+            return Some(self.resolve_inner(&underlying.clone(), depth + 1));
+        }
+        None
     }
 
     fn struct_shape(&self, tag: &str, raw: &str, depth: usize) -> TypeShape {
@@ -743,6 +842,57 @@ mod tests {
             reg.resolve("const utf8_int8_t *"),
             TypeShape::Pointer(Box::new(TypeShape::Scalar(ScalarKind::U8)))
         );
+    }
+
+    /// POSIX and GLib integer aliases live in headers an offline lab does not
+    /// have, so the typedef chain dead-ends and the parameter used to be reported
+    /// `opaque type … needs lifecycle support (Phase C)` — which is what
+    /// fastfetch's `ffProcessGetInfoLinux(pid_t, …)` and HandBrake's
+    /// `ghb_do_scan(…, gboolean force)` did across the 500-project sweep.
+    #[test]
+    fn posix_and_glib_integer_aliases_resolve_without_their_headers() {
+        let reg = TypeRegistry::default();
+        for (spelling, kind) in [
+            ("pid_t", ScalarKind::I32),
+            ("uid_t", ScalarKind::U32),
+            ("off_t", ScalarKind::I64),
+            ("socklen_t", ScalarKind::U32),
+            ("gboolean", ScalarKind::I32),
+            ("gsize", ScalarKind::U64),
+            ("gdouble", ScalarKind::F64),
+        ] {
+            assert_eq!(reg.resolve(spelling), TypeShape::Scalar(kind), "{spelling}");
+        }
+        // A `gchar *` is a string channel, not an opaque pointer.
+        assert_eq!(reg.resolve("const gchar *"), TypeShape::CString);
+        // Handle-shaped POSIX types stay OFF the table: decoding one from fuzz
+        // bytes hands the target a fabricated kernel handle.
+        assert!(matches!(reg.resolve("pthread_t"), TypeShape::Opaque(_)));
+        assert!(matches!(reg.resolve("gpointer"), TypeShape::Opaque(_)));
+    }
+
+    /// The scalar table is a fallback for names the tree does NOT define. These
+    /// spellings are not reserved, and a project that declares one as an
+    /// aggregate must win — an int cast to a struct does not compile, so letting
+    /// the table win turns a clean skip into a build failure.
+    #[test]
+    fn a_tree_declared_aggregate_wins_over_a_same_named_scalar_alias() {
+        let defs = c_parser::parse_c_type_defs(
+            "struct key_t { int a; int b; };\ntypedef struct key_t key_t;\n",
+        )
+        .expect("parses");
+        let reg = TypeRegistry::from_defs([&defs]);
+        assert!(
+            matches!(reg.resolve("key_t"), TypeShape::Struct { .. }),
+            "the tree's own key_t must win, got {:?}",
+            reg.resolve("key_t")
+        );
+
+        // …but a tree declaration that itself dead-ends (a vendored system-header
+        // typedef whose target is nowhere) leaves the table in charge.
+        let vendored = c_parser::parse_c_type_defs("typedef __pid_t pid_t;").expect("parses");
+        let reg = TypeRegistry::from_defs([&vendored]);
+        assert_eq!(reg.resolve("pid_t"), TypeShape::Scalar(ScalarKind::I32));
     }
 
     #[test]

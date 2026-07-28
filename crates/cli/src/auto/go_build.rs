@@ -642,6 +642,10 @@ fn decode_for_type(ty: &str, last: bool) -> Option<String> {
         // value); an unchecked type assertion on our synthesized value panics with
         // "interface conversion", which the finding classifier treats as our-fault.
         "interface{}" | "any" => "new(interface{})".to_owned(),
+        // Call context, not fuzz input. `context.Background()` is what every
+        // real caller passes; a nil context panics the moment the callee touches
+        // Done()/Err(), which would be govfuzz's fault rather than a finding.
+        "context.Context" => "c.ctx()".to_owned(),
         _ => return None,
     })
 }
@@ -657,6 +661,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"math"
@@ -830,6 +835,14 @@ func (c *cur) bytesField() []byte {{
 // f64 decodes a float (and keeps the math import referenced even when no float
 // param is decoded by a given target).
 func (c *cur) f64() float64 {{ return math.Float64frombits(uint64(c.i64())) }}
+
+// ctx supplies the canonical non-nil, non-cancelled context every real caller
+// passes. A `context.Context` parameter carries no fuzz input — it is call
+// context — and refusing it made the whole target undrivable. It must NOT be
+// nil: a nil context panics the moment the callee touches Done()/Err(), and that
+// panic would be govfuzz's fault, not a finding. This also keeps the context
+// import referenced when no target decodes one.
+func (c *cur) ctx() context.Context {{ return context.Background() }}
 
 // reader keeps the io import referenced even when no io.Reader param is decoded.
 var _ = io.EOF
@@ -1137,6 +1150,35 @@ mod tests {
         assert!(
             calls.contains("govfuzzCovClear() runOne(buf) govfuzzCovRecord()"),
             "framed loop must clear -> runOne -> record in order"
+        );
+    }
+
+    /// `context.Context` is call context, not fuzz input, and refusing it made
+    /// the whole target undrivable — it was among the most common undrivable Go
+    /// parameter types in the 500-project sweep. It must never be nil: a nil
+    /// context panics the moment the callee touches Done()/Err(), and that panic
+    /// would be govfuzz's fault rather than a finding.
+    #[test]
+    fn a_context_parameter_is_the_background_context_not_a_refusal() {
+        assert_eq!(
+            decode_for_type("context.Context", false).as_deref(),
+            Some("c.ctx()")
+        );
+        assert_eq!(
+            decode_for_type("context.Context", true).as_deref(),
+            Some("c.ctx()")
+        );
+        // The helper it calls exists, returns the non-nil background context,
+        // and keeps the import referenced so an unrelated harness still compiles.
+        let main_go = generate_main_go("x/y", "\ttgt.F()\n");
+        assert!(
+            main_go.contains("func (c *cur) ctx() context.Context"),
+            "{main_go}"
+        );
+        assert!(main_go.contains("context.Background()"), "{main_go}");
+        assert!(
+            main_go.contains("\"context\""),
+            "the import must be present: {main_go}"
         );
     }
 

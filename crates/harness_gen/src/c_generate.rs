@@ -1661,11 +1661,12 @@ fn pair_output_buffer_length(
 /// name with an embedded quote could break out of the `#include "..."`
 /// line in the generated harness source.
 fn validate_c_build_inputs(args: &GenerateCDirectArgs) -> Result<(), HarnessGenError> {
-    use crate::build_safety::{ensure_all_build_inputs_safe, ensure_build_input_safe};
-    ensure_all_build_inputs_safe(
-        "compile flag",
-        args.compile_flags.iter().map(String::as_str),
-    )?;
+    use crate::build_safety::{
+        ensure_all_build_inputs_safe, ensure_all_compile_flags_safe, ensure_build_input_safe,
+    };
+    // Flags are recipe-only, so one that is safe once single-quoted is allowed;
+    // paths and include names below stay strict (a path is also a make target).
+    ensure_all_compile_flags_safe(args.compile_flags.iter().map(String::as_str))?;
     ensure_all_build_inputs_safe(
         "include name",
         args.target_includes.iter().map(String::as_str),
@@ -1684,11 +1685,12 @@ fn validate_c_build_inputs(args: &GenerateCDirectArgs) -> Result<(), HarnessGenE
 }
 
 fn validate_c_sequence_build_inputs(args: &GenerateCSequenceArgs) -> Result<(), HarnessGenError> {
-    use crate::build_safety::{ensure_all_build_inputs_safe, ensure_build_input_safe};
-    ensure_all_build_inputs_safe(
-        "compile flag",
-        args.compile_flags.iter().map(String::as_str),
-    )?;
+    use crate::build_safety::{
+        ensure_all_build_inputs_safe, ensure_all_compile_flags_safe, ensure_build_input_safe,
+    };
+    // Flags are recipe-only, so one that is safe once single-quoted is allowed;
+    // paths and include names below stay strict (a path is also a make target).
+    ensure_all_compile_flags_safe(args.compile_flags.iter().map(String::as_str))?;
     ensure_all_build_inputs_safe(
         "include name",
         args.target_includes.iter().map(String::as_str),
@@ -2053,7 +2055,11 @@ fn split_c_compile_context(flags: &[String]) -> (Vec<String>, String, bool, Stri
                 dropped = value.to_owned();
                 None
             } else {
-                Some(flag.clone())
+                // Single-quote a flag that needs it. A CMake version-comparison
+                // define (`-DLLAMA_VERSIONS=>=3`) is legitimate but its `>` would
+                // redirect if emitted bare into the recipe; `validate_*` has
+                // already refused anything no quoting can make safe.
+                Some(crate::build_safety::recipe_token(flag))
             }
         })
         .collect();

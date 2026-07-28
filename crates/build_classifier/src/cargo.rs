@@ -90,14 +90,39 @@ pub fn classify(stderr: &str) -> Vec<RustBuildError> {
     }
 
     if hits.is_empty() {
-        let error_lines: Vec<&str> = stderr
-            .lines()
-            .filter(|line| {
-                let l = line.trim_start();
-                l.starts_with("error") || l.contains("error:")
-            })
-            .take(8)
-            .collect();
+        // Cargo wraps: the `error:` line is a BANNER and the diagnosis is in the
+        // `Caused by:` block under it, whose lines start with neither.
+        //
+        //     error: failed to parse manifest at `/p/Cargo.toml`
+        //
+        //     Caused by:
+        //       can't find library `fd_find`, rename file to src/lib.rs …
+        //
+        // Keeping only the banner reported eight fd targets as "failed to parse
+        // manifest at X" and said nothing about why — the histogram grouped
+        // them, and the cause had to be reproduced by hand to recover.
+        let mut error_lines: Vec<&str> = Vec::new();
+        let mut in_cause = false;
+        for line in stderr.lines() {
+            let l = line.trim_start();
+            if l.starts_with("Caused by:") {
+                in_cause = true;
+                continue;
+            }
+            if in_cause {
+                // The block is indented; the first unindented or blank line ends it.
+                if l.is_empty() || line.trim_start() == line {
+                    in_cause = false;
+                } else {
+                    error_lines.push(l);
+                    continue;
+                }
+            }
+            if l.starts_with("error") || l.contains("error:") {
+                error_lines.push(line);
+            }
+        }
+        error_lines.truncate(8);
         let tail = if error_lines.is_empty() {
             stderr
                 .lines()
@@ -211,6 +236,41 @@ mod tests {
         match kinds.as_slice() {
             [RustBuildError::Other { tail }] => {
                 assert!(tail.contains("gremlins"), "{tail:?}")
+            }
+            other => panic!("expected single Other, got {other:?}"),
+        }
+    }
+
+    /// Cargo's `error:` line is a banner when it wraps: the diagnosis lives in
+    /// the `Caused by:` block below it, which starts with neither "error" nor
+    /// "error:". Reporting only the banner said "failed to parse manifest at X"
+    /// and nothing about why, on eight fd targets.
+    #[test]
+    fn a_wrapped_cargo_error_carries_its_caused_by() {
+        let stderr = "error: failed to parse manifest at `/p/Cargo.toml`\n\n\
+                      Caused by:\n  \
+                      can't find library `fd_find`, rename file to `src/lib.rs` or specify \
+                      lib.path\n";
+        match classify(stderr).as_slice() {
+            [RustBuildError::Other { tail }] => {
+                assert!(tail.contains("failed to parse manifest"), "{tail:?}");
+                assert!(
+                    tail.contains("can't find library"),
+                    "the cause must survive: {tail:?}"
+                );
+            }
+            other => panic!("expected single Other, got {other:?}"),
+        }
+
+        // A `Caused by:` chain keeps every level, and an unindented line after
+        // the block ends it rather than swallowing the rest of the transcript.
+        let chained = "error: failed to get `x` as a dependency\n\n\
+                       Caused by:\n  failed to load source\n  network unreachable\n\n\
+                       Compiling something-else v1.0.0\n";
+        match classify(chained).as_slice() {
+            [RustBuildError::Other { tail }] => {
+                assert!(tail.contains("network unreachable"), "{tail:?}");
+                assert!(!tail.contains("Compiling something-else"), "{tail:?}");
             }
             other => panic!("expected single Other, got {other:?}"),
         }

@@ -631,6 +631,28 @@ pub fn select_cpp_decoder_with_registry_limited(
     registry: &TypeRegistry,
     limits: &CppDecoderLimits,
 ) -> Result<CParamEmission, CDecoderError> {
+    select_cpp_decoder_recipe_chain(cpp_type, name, registry, limits, &mut Vec::new())
+}
+
+/// [`select_cpp_decoder_with_registry_limited`] carrying the chain of class keys
+/// whose CONSTRUCTOR recipes are currently being expanded, so a cyclic recipe
+/// graph terminates.
+///
+/// The recipe block below used to assume its arguments were always directly
+/// decodable, because recipes were registered only for a target's DIRECT opaque
+/// parameters. The producer graph (which resolves what a chosen constructor's
+/// own arguments need, to a fixed point) made that false and is explicitly
+/// cyclic — `A(B)`, `B(A)` — so following one recipe into the next recursed
+/// without end. On simdjson that consumed **12 GiB and got the process
+/// OOM-killed during DISCOVERY**, losing 22 of the 500-project sweep's C/C++
+/// projects entirely, before a single target was ever attempted.
+fn select_cpp_decoder_recipe_chain(
+    cpp_type: &str,
+    name: &str,
+    registry: &TypeRegistry,
+    limits: &CppDecoderLimits,
+    recipe_chain: &mut Vec<String>,
+) -> Result<CParamEmission, CDecoderError> {
     // A function-pointer parameter (`utf8_int8_t *(*alloc_func_ptr)(utf8_int8_t *,
     // size_t)`, or a `RetType (*)(...)` / array-pointer `T (*)[N]` declarator)
     // has no scalar/aggregate decoder in the C++ lane; falling through to struct
@@ -654,7 +676,7 @@ pub fn select_cpp_decoder_with_registry_limited(
     if let Some(base) = cpp_type.trim_end().strip_suffix("&&") {
         let lvalue_ref = format!("{} &", base.trim_end());
         let mut emission =
-            select_cpp_decoder_with_registry_limited(&lvalue_ref, name, registry, limits)?;
+            select_cpp_decoder_recipe_chain(&lvalue_ref, name, registry, limits, recipe_chain)?;
         emission.arg = format!("std::move({})", emission.arg);
         return Ok(emission);
     }
@@ -702,8 +724,12 @@ pub fn select_cpp_decoder_with_registry_limited(
                         if normalized.ends_with('&') {
                             rebuilt.push_str(" &");
                         }
-                        return select_cpp_decoder_with_registry_limited(
-                            &rebuilt, name, registry, limits,
+                        return select_cpp_decoder_recipe_chain(
+                            &rebuilt,
+                            name,
+                            registry,
+                            limits,
+                            recipe_chain,
                         );
                     }
                     // A bundled non-std view (csv-parser's `using string_view =
@@ -890,9 +916,10 @@ pub fn select_cpp_decoder_with_registry_limited(
     // #99: an opaque class parameter that is NOT default-constructible but that the
     // caller resolved a public factory or parameterized constructor for (from the
     // owning header/include closure) is built via a genuine lifecycle construction
-    // instead of being rejected. The recipe is only registered for the target's
-    // DIRECT opaque-class parameters, so a constructor's argument types are always
-    // directly decodable — the recursive arg decode below terminates immediately.
+    // instead of being rejected. A constructor's arguments may themselves have
+    // recipes (the producer graph resolves them to a fixed point), so the decode
+    // below RECURSES — and that graph is cyclic by design, which is what
+    // `recipe_chain` cuts.
     if !canonical.contains('*') {
         // Resolve a project alias (`using WAlias = Widget;`) to its underlying
         // class so an aliased spelling finds the recipe registered for the real
@@ -901,42 +928,59 @@ pub fn select_cpp_decoder_with_registry_limited(
             .alias_target_spelling(&canonical)
             .map(|target| canonical_class_spelling(&target))
             .unwrap_or_else(|| canonical.clone());
-        if let Some(construction) = registry.class_construction(&construction_key) {
-            match construction {
-                type_model::ClassConstruction::Expression(expr) => {
-                    return Ok(CParamEmission {
-                        support: None,
-                        // The template renders `<decl>;`, so the assignment omits its
-                        // own trailing semicolon.
-                        decl: format!("{canonical} {name} = {expr}"),
-                        arg: name.to_owned(),
-                        c_type: canonical,
-                        free: None,
-                    });
-                }
-                type_model::ClassConstruction::Constructor { param_types } => {
-                    let mut statements = Vec::with_capacity(param_types.len() + 1);
-                    let mut arg_exprs = Vec::with_capacity(param_types.len());
-                    for (index, param_type) in param_types.iter().enumerate() {
-                        let arg_name = format!("{name}_gfa{index}");
-                        let arg_emission = select_cpp_decoder_with_registry_limited(
-                            param_type, &arg_name, registry, limits,
-                        )?;
-                        statements.push(arg_emission.decl);
-                        arg_exprs.push(arg_emission.arg);
+        // A key already on the chain means this recipe needs a value it is itself
+        // in the middle of producing. Following it again cannot terminate, so the
+        // parameter is genuinely not decodable: fall through to the registry
+        // fallback, which reports it as opaque — the same clean skip the target
+        // got before any recipe existed.
+        if !recipe_chain.iter().any(|seen| seen == &construction_key) {
+            if let Some(construction) = registry.class_construction(&construction_key) {
+                match construction {
+                    type_model::ClassConstruction::Expression(expr) => {
+                        return Ok(CParamEmission {
+                            support: None,
+                            // The template renders `<decl>;`, so the assignment omits its
+                            // own trailing semicolon.
+                            decl: format!("{canonical} {name} = {expr}"),
+                            arg: name.to_owned(),
+                            c_type: canonical,
+                            free: None,
+                        });
                     }
-                    // Direct-initialization (`T name(args)`) so an `explicit`
-                    // constructor is still callable. Each argument decode already
-                    // carries its own statement; the final construction omits its
-                    // trailing semicolon for the template.
-                    statements.push(format!("{canonical} {name}({})", arg_exprs.join(", ")));
-                    return Ok(CParamEmission {
-                        support: None,
-                        decl: statements.join(";\n    "),
-                        arg: name.to_owned(),
-                        c_type: canonical,
-                        free: None,
-                    });
+                    type_model::ClassConstruction::Constructor { param_types } => {
+                        let mut statements = Vec::with_capacity(param_types.len() + 1);
+                        let mut arg_exprs = Vec::with_capacity(param_types.len());
+                        recipe_chain.push(construction_key);
+                        let args = (|| {
+                            for (index, param_type) in param_types.iter().enumerate() {
+                                let arg_name = format!("{name}_gfa{index}");
+                                let arg_emission = select_cpp_decoder_recipe_chain(
+                                    param_type,
+                                    &arg_name,
+                                    registry,
+                                    limits,
+                                    recipe_chain,
+                                )?;
+                                statements.push(arg_emission.decl);
+                                arg_exprs.push(arg_emission.arg);
+                            }
+                            Ok::<(), CDecoderError>(())
+                        })();
+                        recipe_chain.pop();
+                        args?;
+                        // Direct-initialization (`T name(args)`) so an `explicit`
+                        // constructor is still callable. Each argument decode already
+                        // carries its own statement; the final construction omits its
+                        // trailing semicolon for the template.
+                        statements.push(format!("{canonical} {name}({})", arg_exprs.join(", ")));
+                        return Ok(CParamEmission {
+                            support: None,
+                            decl: statements.join(";\n    "),
+                            arg: name.to_owned(),
+                            c_type: canonical,
+                            free: None,
+                        });
+                    }
                 }
             }
         }
@@ -2696,6 +2740,85 @@ mod tests {
             assert_eq!(e.decl, "CORBA::Environment env;", "spelling {spelling:?}");
             assert_eq!(e.c_type, "CORBA::Environment", "spelling {spelling:?}");
         }
+    }
+
+    /// The producer graph is explicitly cyclic — it resolves `A(B)` and `B(A)` to
+    /// a fixed point — and the decoder follows a recipe's arguments into their own
+    /// recipes. Without a guard that pair recursed forever: on simdjson it took
+    /// **12 GiB and the OOM killer** during DISCOVERY, losing 22 of a 500-project
+    /// sweep's C/C++ projects before a target was ever attempted. A cycle must end
+    /// as an ordinary "opaque, not decodable" skip.
+    #[test]
+    fn a_cyclic_construction_recipe_terminates_instead_of_recursing() {
+        let reg = TypeRegistry::default().with_class_constructions([
+            (
+                "Alpha".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["Beta".to_owned()],
+                },
+            ),
+            (
+                "Beta".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["Alpha".to_owned()],
+                },
+            ),
+        ]);
+        assert!(
+            select_cpp_decoder_with_registry("Alpha &", "a", &reg).is_err(),
+            "a cycle has no construction, so the parameter must skip cleanly"
+        );
+
+        // A DEEP but acyclic chain still resolves — the guard cuts cycles, not
+        // depth, so a legitimately layered constructor keeps working.
+        let deep = TypeRegistry::default().with_class_constructions([
+            (
+                "One".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["Two".to_owned()],
+                },
+            ),
+            (
+                "Two".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["Three".to_owned()],
+                },
+            ),
+            (
+                "Three".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["int".to_owned()],
+                },
+            ),
+        ]);
+        let emission = select_cpp_decoder_with_registry("One &", "one", &deep)
+            .expect("an acyclic chain must still resolve");
+        assert!(
+            emission.decl.contains("Three one_gfa0_gfa0("),
+            "{emission:?}"
+        );
+        assert!(emission.decl.contains("One one("), "{emission:?}");
+
+        // The chain must be POPPED on the way out, so a type reachable twice by
+        // different paths is not mistaken for a cycle the second time.
+        let diamond = TypeRegistry::default().with_class_constructions([
+            (
+                "Top".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["Leaf".to_owned(), "Leaf".to_owned()],
+                },
+            ),
+            (
+                "Leaf".to_owned(),
+                type_model::ClassConstruction::Constructor {
+                    param_types: vec!["int".to_owned()],
+                },
+            ),
+        ]);
+        let emission = select_cpp_decoder_with_registry("Top &", "t", &diamond)
+            .expect("two independent uses of one type are not a cycle");
+        assert!(emission.decl.contains("Leaf t_gfa0("), "{emission:?}");
+        assert!(emission.decl.contains("Leaf t_gfa1("), "{emission:?}");
     }
 
     #[test]

@@ -1547,6 +1547,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/tests/auto_cpp_owner_tu.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/tests/auto_cpp_pimpl_incomplete.rs",
       "license": "Apache-2.0"
     },
@@ -1852,6 +1856,10 @@
     },
     {
       "path": "crates/cli/tests/differential_cli.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/tests/discovery_memory_ceiling.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3884,6 +3892,14 @@
     },
     {
       "path": "tests/fixtures/config_guard/parser.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/discovery_memory/lib.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "tests/fixtures/discovery_memory/other.c",
       "license": "Apache-2.0"
     },
     {

@@ -116,7 +116,8 @@ pub fn build_go_harness(
         };
     }
     let go_mod = format!(
-        "module govfuzzharness\n\ngo 1.21\n\nrequire {module_path} {version}\n\nreplace {module_path} => {root}\n",
+        "module {harness_module}\n\ngo 1.21\n\nrequire {module_path} {version}\n\nreplace {module_path} => {root}\n",
+        harness_module = harness_module_path(&module_path),
         module_path = module_path,
         version = placeholder_module_version(&module_path),
         root = mod_root.display(),
@@ -327,6 +328,27 @@ fn find_go_module(target_abs: &Path) -> Option<(PathBuf, String)> {
         }
         dir = dir.parent()?;
     }
+}
+
+/// The module path the harness declares for ITSELF.
+///
+/// Go forbids importing `<M>/…/internal/x` from outside the tree rooted at that
+/// `internal`'s parent, and it decides "outside" from the IMPORT PATH. A harness
+/// module called `govfuzzharness` is therefore outside every project, so any
+/// target whose package lives under an `internal/` was unreachable —
+/// `use of internal package … not allowed`, 8 targets in three of the sweep's Go
+/// repos, and `internal/` is where a great deal of real Go code lives.
+///
+/// Declaring the harness a child of the module under test satisfies the rule by
+/// the same mechanism the project's own packages do. It changes nothing else:
+/// the module is still built in its own directory with its own `replace` at the
+/// real tree, and the name never resolves as a real import path.
+fn harness_module_path(module_path: &str) -> String {
+    let base = module_path.trim_end_matches('/');
+    if base.is_empty() {
+        return "govfuzzharness".to_owned();
+    }
+    format!("{base}/govfuzzharness")
 }
 
 /// The placeholder version the harness `require`s the module under test at.
@@ -1116,6 +1138,30 @@ mod tests {
             calls.contains("govfuzzCovClear() runOne(buf) govfuzzCovRecord()"),
             "framed loop must clear -> runOne -> record in order"
         );
+    }
+
+    /// Go decides "outside the internal tree" from the import path, so a harness
+    /// module named `govfuzzharness` is outside every project and could never
+    /// reach a target under an `internal/` — which is where a great deal of real
+    /// Go code lives. Declaring it a child of the module under test satisfies the
+    /// rule the same way the project's own packages do.
+    #[test]
+    fn the_harness_module_is_a_child_of_the_module_under_test() {
+        assert_eq!(
+            harness_module_path("github.com/santifer/career-ops/dashboard"),
+            "github.com/santifer/career-ops/dashboard/govfuzzharness"
+        );
+        // A major-version suffix is part of the path and stays put.
+        assert_eq!(
+            harness_module_path("github.com/caddyserver/caddy/v2"),
+            "github.com/caddyserver/caddy/v2/govfuzzharness"
+        );
+        // A trailing slash or an empty module path must still yield a legal name.
+        assert_eq!(
+            harness_module_path("example.com/x/"),
+            "example.com/x/govfuzzharness"
+        );
+        assert_eq!(harness_module_path(""), "govfuzzharness");
     }
 
     /// Semantic import versioning: a `/vN` module path may only be required at a

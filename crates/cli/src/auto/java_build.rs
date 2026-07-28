@@ -147,9 +147,13 @@ pub fn build_java_harness(
         work_dir,
         &target_classes,
     ) {
-        Ok(cp) => cp,
+        Ok(resolved) => resolved,
         Err((reason, skip)) => return JavaBuildResult::Failed { reason, skip },
     };
+    // A target compiled with a language preview stays preview for everything
+    // downstream: javac refuses to READ such class files without the flag, and so
+    // does the JVM that loads them.
+    let (target_cp, target_needs_preview) = target_cp;
 
     // 4. Write + compile the harness against agent jar + target classpath.
     let harness_file = harness_src
@@ -168,17 +172,21 @@ pub fn build_java_harness(
         };
     }
     let harness_cp = format!("{}:{}", agent_jar.display(), target_cp);
-    if let Err(reason) = run_javac(
+    let harness_preview = match run_javac(
         &tc.javac,
         &[harness_cp.as_str()],
         &harness_classes,
         std::slice::from_ref(&harness_file),
+        target_needs_preview,
     ) {
-        return JavaBuildResult::Failed {
-            reason: format!("javac (harness) failed: {reason}"),
-            skip: false,
-        };
-    }
+        Ok(preview) => preview,
+        Err(reason) => {
+            return JavaBuildResult::Failed {
+                reason: format!("javac (harness) failed: {reason}"),
+                skip: false,
+            }
+        }
+    };
 
     // 5. Emit the launcher `main` script.
     let main_path = auto_dir.join("main");
@@ -204,10 +212,18 @@ pub fn build_java_harness(
          GOVFUZZ_EXPECTED_EXCEPTIONS=\"{expected}\" \\\n\
          GOVFUZZ_SCALAR_ONLY_TARGET=\"{scalar_only}\" \\\n\
          GOVFUZZ_SINK_OUT=\"$(dirname \"$0\")/sink_report.txt\" \\\n\
-         exec \"{java}\" -javaagent:\"{agent}\" -cp \"{cp}\" \\\n\
+         exec \"{java}\"{preview} -javaagent:\"{agent}\" -cp \"{cp}\" \\\n\
          \x20   com.govfuzz.Driver {harness_class} \"$@\"\n",
         expected = expected_exceptions,
         scalar_only = if scalar_only_target { "1" } else { "0" },
+        // The JVM refuses to LOAD a class compiled with preview features unless
+        // it is told to expect them, so a preview compile has to be matched here
+        // or the harness builds and then dies on first load.
+        preview = if harness_preview {
+            " --enable-preview"
+        } else {
+            ""
+        },
         java = tc.java.display(),
         agent = agent_jar.display(),
         cp = classpath,
@@ -538,32 +554,89 @@ fn java_no_arg_ctor_available(methods: &[java_parser::JavaMethod], class_path: &
         .any(|c| c.params.is_empty() && matches!(c.visibility, java_parser::JavaVisibility::Public))
 }
 
+/// Compile `sources`. `Ok(true)` means the sources needed `--enable-preview` and
+/// it was turned on — which the CALLER has to carry: every later javac that reads
+/// these class files needs the same flag, and so does the JVM that runs them.
 fn run_javac(
     javac: &Path,
     classpath: &[&str],
     out_dir: &Path,
     sources: &[PathBuf],
-) -> Result<(), String> {
-    let mut cmd = Command::new(javac);
-    cmd.arg("-d").arg(out_dir);
-    if !classpath.is_empty() {
-        cmd.arg("-cp").arg(classpath.join(":"));
-    }
-    // Keep going past individual warnings; proc-style errors still fail the build.
-    cmd.arg("-nowarn");
-    for s in sources {
-        cmd.arg(s);
-    }
-    let out = crate::command_output::output_with_timeout(
-        &mut cmd,
-        std::time::Duration::from_secs(30 * 60),
-    )
-    .map_err(|e| format!("spawn javac: {e}"))?;
+    preview: bool,
+) -> Result<bool, String> {
+    let attempt = |preview: bool| -> Result<std::process::Output, String> {
+        let mut cmd = Command::new(javac);
+        cmd.arg("-d").arg(out_dir);
+        if !classpath.is_empty() {
+            cmd.arg("-cp").arg(classpath.join(":"));
+        }
+        // `--enable-preview` is rejected on its own: javac requires an explicit
+        // `--release` (or `-source`), and preview is only ever valid for the
+        // CURRENT feature version, so there is exactly one legal value.
+        if preview {
+            if let Some(release) = javac_feature_version(javac) {
+                cmd.arg("--enable-preview").arg("--release").arg(release);
+            }
+        }
+        // Keep going past individual warnings; proc-style errors still fail the build.
+        cmd.arg("-nowarn");
+        for s in sources {
+            cmd.arg(s);
+        }
+        crate::command_output::output_with_timeout(
+            &mut cmd,
+            std::time::Duration::from_secs(30 * 60),
+        )
+        .map_err(|e| format!("spawn javac: {e}"))
+    };
+    let out = attempt(preview)?;
     if out.status.success() {
-        return Ok(());
+        return Ok(preview);
     }
     let stderr = String::from_utf8_lossy(&out.stderr);
+    // A tree using a language preview (`_` unnamed variables, which are preview in
+    // 21 and standard only from 22) compiles with the flag and fails without it.
+    // Nine RxJava targets and two in spring-framework died on exactly this, and
+    // javac says precisely what is needed — so ask for it once rather than
+    // reporting a language-level mismatch as an unbuildable project.
+    if !preview && needs_preview(&stderr) {
+        let retried = attempt(true)?;
+        if retried.status.success() {
+            return Ok(true);
+        }
+        // The retry's own diagnostic is the useful one: it is what remains after
+        // the flag the compiler asked for was supplied.
+        let retried_stderr = String::from_utf8_lossy(&retried.stderr);
+        return Err(retried_stderr
+            .lines()
+            .take(12)
+            .collect::<Vec<_>>()
+            .join("\n"));
+    }
     Err(stderr.lines().take(12).collect::<Vec<_>>().join("\n"))
+}
+
+/// Whether javac refused because a language PREVIEW feature is in the sources.
+/// Both spellings appear: the source-level refusal and the "this class file was
+/// built with preview" refusal a later compile sees.
+fn needs_preview(stderr: &str) -> bool {
+    stderr.contains("preview feature")
+        || stderr.contains("preview features")
+        || stderr.contains("--enable-preview")
+}
+
+/// The JDK feature version of `javac` (`javac 21.0.11` -> `21`), which is the only
+/// `--release` value `--enable-preview` accepts.
+fn javac_feature_version(javac: &Path) -> Option<String> {
+    let out = Command::new(javac).arg("-version").output().ok()?;
+    let text = if out.stdout.is_empty() {
+        String::from_utf8_lossy(&out.stderr).into_owned()
+    } else {
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    let version = text.split_whitespace().nth(1)?;
+    let feature = version.split('.').next()?;
+    feature.parse::<u32>().ok().map(|n| n.to_string())
 }
 
 /// A directory whose `.java` files are NOT library sources to compile: build/VCS
@@ -599,14 +672,16 @@ fn is_non_source_dir(name: &str) -> bool {
 /// dep-light path). A maven/gradle build is cached per project so it runs once
 /// across all of a project's targets, not once per candidate.
 ///
-/// Returns the colon-joined classpath on success, or `(reason, skip)` on failure.
+/// Returns `(classpath, needs_preview)` on success, or `(reason, skip)` on
+/// failure. `needs_preview` is true when the target only compiled with
+/// `--enable-preview`; the harness compile and the JVM that runs it need it too.
 fn resolve_target_classpath(
     tc: &JavaToolchain,
     source_root: &Path,
     source_path: &Path,
     work_dir: &Path,
     fallback_classes: &Path,
-) -> Result<String, (String, bool)> {
+) -> Result<(String, bool), (String, bool)> {
     // Maven/gradle are ADDITIVE: try the build tool (it resolves dependencies for
     // dep-heavy projects), but on ANY failure fall back to a bare `javac` of the
     // tree — which still works for dep-light/dep-free projects (and never does
@@ -617,7 +692,7 @@ fn resolve_target_classpath(
     if let Some(module) = find_build_file(source_path, source_root, &["pom.xml"]) {
         if which::which("mvn").is_ok() {
             match maven_classpath(&module, work_dir) {
-                Ok(cp) => return Ok(cp),
+                Ok(cp) => return Ok((cp, false)),
                 Err(e) => tool_error = Some(e),
             }
         }
@@ -630,7 +705,7 @@ fn resolve_target_classpath(
         let has_gradle = which::which("gradle").is_ok() || module.join("gradlew").is_file();
         if has_gradle {
             match gradle_classpath(&module) {
-                Ok(cp) => return Ok(cp),
+                Ok(cp) => return Ok((cp, false)),
                 Err(e) => tool_error = tool_error.or(Some(e)),
             }
         }
@@ -644,8 +719,8 @@ fn resolve_target_classpath(
             true,
         ));
     }
-    match run_javac(&tc.javac, &[], fallback_classes, &sources) {
-        Ok(()) => Ok(fallback_classes.display().to_string()),
+    match run_javac(&tc.javac, &[], fallback_classes, &sources, false) {
+        Ok(preview) => Ok((fallback_classes.display().to_string(), preview)),
         Err(javac_err) => {
             // Both the build tool (if any) and javac failed — surface both so a
             // dep-heavy project's real blocker (the build tool) isn't hidden.

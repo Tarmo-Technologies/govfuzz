@@ -643,6 +643,16 @@ fn xml_attribute(attrs: &str, name: &str) -> Option<String> {
     (!value.is_empty()).then(|| value.to_owned())
 }
 
+/// The harness `.csproj`.
+///
+/// `GenerateAssemblyInfo` is off deliberately. The SDK synthesizes
+/// `[assembly: AssemblyTitle]` and friends by default, and a classic
+/// (pre-SDK-style) project keeps its own hand-written `Properties/AssemblyInfo.cs`
+/// declaring exactly those attributes — so compiling the project's sources into
+/// the harness produced `error CS0579: Duplicate 'AssemblyTitleAttribute'
+/// attribute` and failed every target in it. 17 targets across four Windows C#
+/// projects in the 500-project sweep. The harness assembly has no use for the
+/// generated metadata either way.
 fn generate_csproj(target_csproj: &Path, linkage: &TargetLinkage) -> String {
     let reference = match linkage {
         TargetLinkage::ProjectReference {
@@ -700,6 +710,7 @@ fn generate_csproj(target_csproj: &Path, linkage: &TargetLinkage) -> String {
          \x20   <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n\
          \x20   <Nullable>disable</Nullable>\n\
          \x20   <AssemblyName>govfuzz_harness</AssemblyName>\n\
+         \x20   <GenerateAssemblyInfo>false</GenerateAssemblyInfo>\n\
          \x20   <ImplicitUsings>{implicit_usings}</ImplicitUsings>\n\
          \x20   <GenerateDocumentationFile>false</GenerateDocumentationFile>\n\
          \x20   <NoWarn>$(NoWarn);CS0618;CS0612;CS8032</NoWarn>\n\
@@ -1253,6 +1264,28 @@ mod tests {
             &TargetLinkage::ProjectReference { pinned_tfm: None },
         );
         assert!(!out_none.contains("SetTargetFramework"));
+    }
+
+    /// A classic project keeps a hand-written `Properties/AssemblyInfo.cs`
+    /// declaring `[assembly: AssemblyTitle]`, and the SDK synthesizes the same
+    /// attributes by default — so compiling those sources into the harness gave
+    /// `error CS0579: Duplicate 'AssemblyTitleAttribute' attribute` and failed
+    /// every target in the project. 17 across four Windows C# projects.
+    #[test]
+    fn the_sdk_never_synthesizes_attributes_the_target_already_declares() {
+        let csproj = std::env::temp_dir().join("Target.csproj");
+        for linkage in [
+            TargetLinkage::SourceInclusion {
+                excluded: Vec::new(),
+            },
+            TargetLinkage::ProjectReference { pinned_tfm: None },
+        ] {
+            let out = generate_csproj(&csproj, &linkage);
+            assert!(
+                out.contains("<GenerateAssemblyInfo>false</GenerateAssemblyInfo>"),
+                "{out}"
+            );
+        }
     }
 
     #[test]

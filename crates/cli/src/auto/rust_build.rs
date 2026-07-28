@@ -3787,9 +3787,16 @@ fn prepare_incrate_manifest(
     //    library `X`, rename file to src/lib.rs or specify lib.path". The
     //    in-crate injection already falls back to `src/main.rs` as the module
     //    root, so point the library at the same file.
+    //    The "does it already say where" check must look inside `[lib]` ONLY.
+    //    Scanning the whole manifest let a `path =` belonging to some OTHER
+    //    table answer for `[lib]`: fd declares `[[bin]] name = "fd" path =
+    //    "src/main.rs"`, so the `[lib]` went out without a path and cargo
+    //    refused the manifest — "can't find library `fd_find`" — taking all
+    //    eight of its in-crate targets with it. `[[example]]`, `[[test]]`,
+    //    `[[bench]]` and a `[dependencies.x]` path dep are the same shape.
     let needs_lib_path = !manifest_dir.join("src/lib.rs").is_file()
         && manifest_dir.join("src/main.rs").is_file()
-        && find_line_starting_with(&out, "path =").is_none();
+        && !section_declares_key(&out, "[lib]", "path");
     if let Some(lib_pos) = section_header_end(&out, "[lib]") {
         if let Some(ct_line) = find_line_starting_with(&out, "crate-type") {
             // Add "staticlib" to the existing array if absent.
@@ -3835,6 +3842,22 @@ fn section_header_end(toml: &str, header: &str) -> Option<usize> {
         }
     }
     None
+}
+
+/// Whether the `header` table declares `key` — looking only BETWEEN that header
+/// and the next one, so a key of the same name in another table cannot answer
+/// for it. A TOML key may be quoted (`"path" = …`), so both spellings count.
+fn section_declares_key(toml: &str, header: &str, key: &str) -> bool {
+    toml.lines()
+        .skip_while(|line| line.trim() != header)
+        .skip(1)
+        .take_while(|line| !line.trim_start().starts_with('['))
+        .any(|line| {
+            let line = line.trim_start();
+            let line = line.strip_prefix('"').unwrap_or(line);
+            line.strip_prefix(key)
+                .is_some_and(|rest| rest.trim_start_matches('"').trim_start().starts_with('='))
+        })
 }
 
 /// The `(start, end)` byte range (excluding the trailing newline) of the first line
@@ -5679,6 +5702,42 @@ mod tests {
         assert_eq!(out3.matches("crate-type").count(), 1, "{out3}");
         assert!(out3.contains("version = \"0.0.0\""), "{out3}");
         assert!(out3.contains("edition = \"2021\""), "{out3}");
+    }
+
+    /// A binary-only crate needs `[lib] path = "src/main.rs"`, and the check for
+    /// "does it already say where" must look inside `[lib]` ONLY. Scanning the
+    /// whole manifest let a `path =` belonging to another table answer for it:
+    /// fd declares `[[bin]] path = "src/main.rs"`, so the `[lib]` went out with
+    /// no path and cargo refused the manifest — "can't find library `fd_find`" —
+    /// failing all eight of its in-crate targets.
+    #[test]
+    fn a_path_in_another_table_does_not_answer_for_lib() {
+        let runtime = Path::new("/tmp/rust_runtime");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let crate_dir = dir.path();
+        std::fs::create_dir_all(crate_dir.join("src")).expect("src");
+        std::fs::write(crate_dir.join("src/main.rs"), "fn main() {}\n").expect("main.rs");
+
+        let binary_only = "[package]\nname = \"fd-find\"\nversion = \"1.0.0\"\n\n\
+                           [[bin]]\nname = \"fd\"\npath = \"src/main.rs\"\n\n\
+                           [dependencies]\nregex = \"1\"\n";
+        let out = prepare_incrate_manifest(binary_only, crate_dir, runtime).unwrap();
+        assert!(
+            out.contains("[lib]") && out.contains("path = \"src/main.rs\""),
+            "the [lib] must say where it lives: {out}"
+        );
+
+        // A `[lib]` that DOES declare its own path keeps it — the check is about
+        // that table, not about the absence of the word anywhere.
+        std::fs::write(crate_dir.join("src/lib_alt.rs"), "").expect("alt");
+        let own_path = "[package]\nname = \"c\"\nversion = \"1.0.0\"\n\n\
+                        [lib]\npath = \"src/lib_alt.rs\"\n";
+        let out2 = prepare_incrate_manifest(own_path, crate_dir, runtime).unwrap();
+        assert!(out2.contains("src/lib_alt.rs"), "{out2}");
+        assert!(
+            !out2.contains("src/main.rs"),
+            "must not add a second path: {out2}"
+        );
     }
 
     #[test]

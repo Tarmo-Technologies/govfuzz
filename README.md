@@ -171,7 +171,7 @@ manual co-location commands.
 #### Complete Linux install with `install.sh`
 
 ```sh
-VERSION=v0.2.21
+VERSION=v0.2.22
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 ARCHIVE="govfuzz-dist-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 
@@ -248,7 +248,7 @@ harness runtimes, and signed content together. The separate component
 installers remain available when you deliberately want a smaller install:
 
 ```sh
-VERSION=v0.2.21
+VERSION=v0.2.22
 BASE="https://github.com/Tarmo-Technologies/govfuzz/releases/download/${VERSION}"
 
 curl --proto '=https' --tlsv1.2 -LsSf "$BASE/govfuzz-installer.sh" | sh

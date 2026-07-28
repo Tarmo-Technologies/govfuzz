@@ -2,7 +2,16 @@
 
 # Changelog
 
-## Unreleased
+## 0.2.22 - 2026-07-28
+
+Correctness release. Nineteen defects, found by re-running the full 500-project
+sweep and then by reading what the sweep could not explain — plus the three CI
+workflows that had been failing unattended while Actions was assumed dead.
+
+Two of these are the kind that hide in plain sight: **no Ada target could be
+built on GNAT 11 at all**, and **`list targets` was blind to 11 of the 16
+supported languages**. Both had been true for a long time and neither showed up
+as an error anyone read.
 
 Found by re-running the full 500-project sweep (`benchmarks/campaign-2026-07-25`,
 `results-0727/`: 463 measured, 1.1M targets discovered, 3,594 attempted, 1,057
@@ -136,6 +145,32 @@ built+fuzzed, 354 findings).
   followed by a caret underline) is now ineligible, and a line that NAMES a
   diagnostic is preferred over one that merely contains the word. Python, Lua,
   Perl and Ruby resolve to exactly the line they did before.
+
+- **No Ada target could be built on GNAT 11 at all.** The harness build passed
+  `-gnat2022` unconditionally, as "the latest supported standard, which accepts
+  older code too". That switch arrived in GNAT 12; on GNAT 11 — Ubuntu 22.04's
+  default and that of still-supported RHEL 9 derivatives — `gnat1` answers
+  `invalid switch: -gnat2022` and the build dies before reading a line of Ada.
+  The standard is now probed and lowered to `-gnat2012` when the compiler lacks
+  the switch.
+
+- **A compile flag that needs quoting is quoted, not refused.** A CMake
+  version-comparison define is legitimate and its `>` would redirect if emitted
+  bare into the recipe — `-DLLAMA_VERSIONS=>=3` (gpt4all),
+  `-D_LIBCPP_HARDENING_MODE=..._DEBUG>` (btop) — which cost every target in both
+  projects. The relaxation is for FLAGS only: a source path is also a make target
+  and an include name lands in an `#include "..."` line, so both stay strict, and
+  `$`, a single quote and a newline are still refused outright.
+
+- **A non-code import no longer fails the whole TypeScript transpile.** esbuild
+  has no loader for `import logo from "./logo.png"` or `"./Comp.vue"` and fails
+  the entire bundle, skipping the target even though the fuzzed function never
+  touches the asset (`.png` 5, `.svg` 5, `.yaml` 5, `.vue` 3).
+
+- **A Go `context.Context` parameter is call context, not a refusal.** It carries
+  no fuzz input, and one such parameter made the whole target undrivable. The
+  harness passes `context.Background()` — never nil, which would panic the moment
+  the callee touched `Done()`.
 
 - **Two ways the blocker histogram destroyed its own key.** A path in the MIDDLE
   of a diagnostic was per-instance noise that never grouped — 176 of 1109

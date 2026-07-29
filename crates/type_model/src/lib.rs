@@ -10,6 +10,7 @@
 //! means (skip, NULL, or a Phase C lifecycle cluster).
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 pub fn crate_name() -> &'static str {
     "type_model"
@@ -299,12 +300,21 @@ pub enum ClassConstruction {
 }
 
 /// Per-translation-unit type registry.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TypeRegistry {
-    structs: HashMap<String, c_parser::CStructDef>,
-    unions: HashMap<String, c_parser::CStructDef>,
-    enums: HashMap<String, c_parser::CEnumDef>,
-    typedefs: HashMap<String, String>,
+    // The four definition maps are the heavy part of a registry and are never
+    // mutated after `from_defs`, so they sit behind `Arc`: cloning a registry to
+    // re-key it with different per-target scopes/recipes is then O(1) instead of
+    // a deep copy of every struct, enum and typedef in the include closure.
+    //
+    // That matters because the discovery preflight builds TWO registries PER
+    // FUNCTION over one file's shared type defs. On simdjson's 187k-line
+    // amalgamated header that is quadratic (F functions x T defs) and was most
+    // of the 51 seconds one file cost.
+    structs: Arc<HashMap<String, c_parser::CStructDef>>,
+    unions: Arc<HashMap<String, c_parser::CStructDef>>,
+    enums: Arc<HashMap<String, c_parser::CEnumDef>>,
+    typedefs: Arc<HashMap<String, String>>,
     /// C++ lexical scopes, most-specific first (`ns::Class`, then `ns`). Used
     /// only when an unqualified spelling needs to resolve a namespace-qualified
     /// definition; empty for C and for callers without scope context.
@@ -346,26 +356,33 @@ impl TypeRegistry {
     /// target TU first, then headers; first definition of a name wins
     /// except that complete struct definitions replace forward ones).
     pub fn from_defs<'a>(all: impl IntoIterator<Item = &'a c_parser::CTypeDefs>) -> Self {
-        let mut reg = Self::default();
+        let mut structs: HashMap<String, c_parser::CStructDef> = HashMap::new();
+        let mut enums: HashMap<String, c_parser::CEnumDef> = HashMap::new();
+        let mut typedefs: HashMap<String, String> = HashMap::new();
         for defs in all {
             for s in &defs.structs {
-                match reg.structs.get(&s.name) {
+                match structs.get(&s.name) {
                     Some(existing) if existing.complete || !s.complete => {}
                     _ => {
-                        reg.structs.insert(s.name.clone(), s.clone());
+                        structs.insert(s.name.clone(), s.clone());
                     }
                 }
             }
             for e in &defs.enums {
-                reg.enums.entry(e.name.clone()).or_insert_with(|| e.clone());
+                enums.entry(e.name.clone()).or_insert_with(|| e.clone());
             }
             for t in &defs.typedefs {
-                reg.typedefs
+                typedefs
                     .entry(t.name.clone())
                     .or_insert_with(|| t.underlying.clone());
             }
         }
-        reg
+        Self {
+            structs: Arc::new(structs),
+            enums: Arc::new(enums),
+            typedefs: Arc::new(typedefs),
+            ..Self::default()
+        }
     }
 
     /// Attach the set of default-constructible C++ class names (#353).
@@ -451,7 +468,7 @@ impl TypeRegistry {
             if let Some(base) = current.strip_suffix('*') {
                 return Some(base.trim().to_owned());
             }
-            let underlying = self.lookup_named(&self.typedefs, &current)?;
+            let underlying = self.lookup_named(&*self.typedefs, &current)?;
             current = normalize(underlying);
         }
         None
@@ -473,7 +490,7 @@ impl TypeRegistry {
             // parameters spell it `csv::string_view`. Mirrors `resolve_inner`'s leaf
             // fallback so the string-alias redirect and the no-public-constructor
             // gate both see through the qualified spelling (csv-parser, bug #16).
-            let underlying = self.lookup_named(&self.typedefs, &current).cloned();
+            let underlying = self.lookup_named(&*self.typedefs, &current).cloned();
             match underlying {
                 Some(underlying) => {
                     current = normalize(&underlying);
@@ -521,7 +538,7 @@ impl TypeRegistry {
             // (not in the registry) is left to the compiler — do not skip on it.
             if let Some(tag) = current.strip_prefix("struct ") {
                 let tag = tag.trim();
-                return match self.lookup_named(&self.structs, tag) {
+                return match self.lookup_named(&*self.structs, tag) {
                     Some(def) if def.complete => None,
                     Some(_) => Some(format!("struct {tag}")),
                     None => None,
@@ -530,8 +547,8 @@ impl TypeRegistry {
             if let Some(tag) = current.strip_prefix("union ") {
                 let tag = tag.trim();
                 return match self
-                    .lookup_named(&self.unions, tag)
-                    .or_else(|| self.lookup_named(&self.structs, tag))
+                    .lookup_named(&*self.unions, tag)
+                    .or_else(|| self.lookup_named(&*self.structs, tag))
                 {
                     Some(def) if def.complete => None,
                     Some(_) => Some(format!("union {tag}")),
@@ -543,17 +560,17 @@ impl TypeRegistry {
                 return None;
             }
             // Bare name: a struct-by-alias, an enum, or a typedef to chase.
-            if let Some(def) = self.lookup_named(&self.structs, &current) {
+            if let Some(def) = self.lookup_named(&*self.structs, &current) {
                 return if def.complete {
                     None
                 } else {
                     Some(format!("struct {}", def.name))
                 };
             }
-            if self.lookup_named(&self.enums, &current).is_some() {
+            if self.lookup_named(&*self.enums, &current).is_some() {
                 return None;
             }
-            if let Some(underlying) = self.lookup_named(&self.typedefs, &current) {
+            if let Some(underlying) = self.lookup_named(&*self.typedefs, &current) {
                 current = normalize(underlying);
                 continue;
             }
@@ -572,7 +589,7 @@ impl TypeRegistry {
         }
         let mut current = normalize(raw);
         for _ in 0..=MAX_RESOLVE_DEPTH {
-            let underlying = self.lookup_named(&self.typedefs, &current)?;
+            let underlying = self.lookup_named(&*self.typedefs, &current)?;
             if underlying.contains("(*") {
                 return Some(canonical_function_pointer_signature(underlying));
             }
@@ -699,13 +716,13 @@ impl TypeRegistry {
         depth: usize,
         memo: &mut ResolveMemo,
     ) -> Option<TypeShape> {
-        if let Some(def) = self.lookup_named(&self.enums, normalized) {
+        if let Some(def) = self.lookup_named(&*self.enums, normalized) {
             return Some(enum_shape_for_spelling(def, normalized));
         }
-        if self.lookup_named(&self.structs, normalized).is_some() {
+        if self.lookup_named(&*self.structs, normalized).is_some() {
             return Some(self.struct_shape(normalized, raw, depth, memo));
         }
-        if let Some(underlying) = self.lookup_named(&self.typedefs, normalized) {
+        if let Some(underlying) = self.lookup_named(&*self.typedefs, normalized) {
             return Some(self.resolve_inner(&underlying.clone(), depth + 1, memo));
         }
         None
@@ -729,7 +746,7 @@ impl TypeRegistry {
             memo.cycle_truncated = true;
             return TypeShape::Opaque(normalize(raw));
         }
-        match self.lookup_named(&self.structs, tag) {
+        match self.lookup_named(&*self.structs, tag) {
             Some(def) if def.complete => {
                 memo.active.push(tag.to_owned());
                 let fields = self.fields_of(def, depth, memo);
@@ -749,8 +766,8 @@ impl TypeRegistry {
             return TypeShape::Opaque(normalize(raw));
         }
         match self
-            .lookup_named(&self.unions, tag)
-            .or_else(|| self.lookup_named(&self.structs, tag))
+            .lookup_named(&*self.unions, tag)
+            .or_else(|| self.lookup_named(&*self.structs, tag))
         {
             Some(def) if def.complete => {
                 memo.active.push(tag.to_owned());
@@ -766,7 +783,7 @@ impl TypeRegistry {
     }
 
     fn enum_shape(&self, tag: &str, raw: &str) -> TypeShape {
-        match self.lookup_named(&self.enums, tag) {
+        match self.lookup_named(&*self.enums, tag) {
             Some(def) => enum_shape_for_spelling(def, tag),
             None => TypeShape::Opaque(normalize(raw)),
         }

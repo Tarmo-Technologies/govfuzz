@@ -676,6 +676,20 @@ pub fn run(args: AutoArgs) -> i32 {
     // with the in-place progress line and garble it (e.g.
     // "generating harnessGenerated C++ harness"). Harness dirs stay in the report.
     crate::generate_harness::silence_generation_banner(true);
+    // Discovery is not billed to `--campaign-time` (indexing a large tree should
+    // not eat the fuzz budget), but when the caller HAS declared a budget,
+    // discovery honours it as its own ceiling rather than running unbounded and
+    // being killed by the caller's outer timeout with nothing fuzzed. Proton
+    // indexed for 447s against a declared 240s campaign and produced nothing.
+    //
+    // HALF the campaign budget, not all of it: the caller's outer timeout has to
+    // cover discovery AND the campaign AND reporting, so letting indexing take as
+    // long as the fuzzing it enables still overruns. Half leaves the majority of
+    // the wall clock for the work the user actually asked for.
+    crate::auto::discovery::set_time_budget(
+        args.campaign_time
+            .map(|secs| std::time::Duration::from_secs((secs / 2).max(30))),
+    );
     // Top-level guard: an internal panic that escaped every per-target/per-file
     // `bug_report::catch` would otherwise abort the process before write_reports
     // runs, leaving no bug report. Catch it here — the panic hook already recorded
@@ -1101,18 +1115,22 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // Toolchain preflight: which lanes are present and whether their toolchains exist,
     // so a missing one is an explicit banner (not a silent skip that reads like a pass).
     // Kept for the end-of-run triage.
+    let _tp = std::time::Instant::now();
     let preflight = crate::auto::preflight::run(&candidates);
+    crate::auto::discovery::gfprof("auto:preflight", _tp);
     eprint!("{}", preflight.render());
 
     // Seed and atomically persist the offline-requirements manifest before any
     // target starts. If the parent is later OOM-killed, this declaration and
     // toolchain analysis still survives; completed targets extend it below.
     let mut dependency_seed = project_dependency_seed;
+    let _tr = std::time::Instant::now();
     crate::auto::requirements::add_target_requirements(
         &mut dependency_seed,
         &candidates,
         &preflight,
     );
+    crate::auto::discovery::gfprof("auto:requirements", _tr);
     dependency_seed.mark_checkpoint(0, false);
     let mut dependency_checkpoint =
         crate::auto::report::write_dependency_checkpoint(&path, &work, &dependency_seed, &[])?;
@@ -2371,7 +2389,9 @@ fn discover_or_reuse(
             cache_file.display()
         );
     }
+    let _td = std::time::Instant::now();
     let candidates = discover_with_options(path, dir_filter, preprocess)?;
+    crate::auto::discovery::gfprof("auto:discover", _td);
     // Persist the freshly ranked list for a later --reuse-discovery run. The cache
     // is a re-run optimization, so a write failure is logged, never fatal.
     let cache = DiscoveryCache::build(path, fingerprint, &candidates);

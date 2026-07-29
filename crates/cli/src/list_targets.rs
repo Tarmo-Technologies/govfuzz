@@ -3,6 +3,7 @@
 use crate::target_filter::{path_matches_exclusion, ExcludeCategory};
 use anyhow::{bail, Context, Result};
 use clap::ValueEnum;
+use rayon::prelude::*;
 use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
@@ -126,129 +127,171 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
     // RSS ceiling, stop parsing and report a partial list — the same graceful
     // degradation the static scan and `auto`'s discovery walk use.
     let memory_guard = static_analysis::MemoryGuard::start();
-    let mut skipped_for_memory = 0usize;
-    for path in walk_targetable_files(&args.path)? {
-        if memory_guard.under_pressure() {
-            skipped_for_memory += 1;
-            continue;
-        }
-        if path_is_excluded(&path, &args) {
-            continue;
-        }
-        if let Some(changed) = changed_set.as_ref() {
-            if !path_in_changed_set(&path, changed) {
-                continue;
-            }
-        }
-        let Some(language) = detect_language(&path) else {
-            continue;
-        };
-        // Latin-1 fallback: non-UTF-8 legacy sources are transcoded rather than
-        // skipped, so real targets in older Ada/C/C++ still get ranked.
-        let source = crate::source_text::read_source_text(&path)
-            .with_context(|| format!("read source {}", path.display()))?;
-        match language {
-            SourceLanguage::Ada => {
-                let ast = ada_parser::reconcile::build_structural_ast(&source, None, &path)
-                    .with_context(|| format!("scan Ada source {}", path.display()))?;
-                let metadata = ada_metadata(&path, &source, &ast);
-                for target in target_rank::rank_targets(&ast) {
-                    let line = ast
-                        .subprograms
-                        .iter()
-                        .find(|subprogram| subprogram.id == target.subprogram_id)
-                        .map(|subprogram| subprogram.decl_span.start_line)
-                        .unwrap_or(0);
-                    all_targets.push((
-                        path.clone(),
-                        ada_listed_target(&path, target, line, metadata.clone()),
-                    ));
+    // Enumerate first, then parse in parallel: parsing is the whole cost on a
+    // large tree, and this loop was single threaded. `par_iter().collect()`
+    // preserves input order and `walk_targetable_files` sorts, so the listing is
+    // byte-identical to the sequential one.
+    let skipped = std::sync::atomic::AtomicUsize::new(0);
+    let files = walk_targetable_files(&args.path)?;
+    let per_file: Vec<Result<Vec<(PathBuf, ListedTarget)>>> = listing_pool().install(|| {
+        files
+            .par_iter()
+            .map(|path| {
+                let path = path.clone();
+                let mut out: Vec<(PathBuf, ListedTarget)> = Vec::new();
+                if memory_guard.under_pressure() {
+                    skipped.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    return Ok(out);
                 }
-            }
-            SourceLanguage::C => {
-                let mut functions = c_parser::parse_c_functions(&source)
-                    .with_context(|| format!("scan C source {}", path.display()))?;
-                // #11 (offline-legacy audit): tree-sitter parses an old-style K&R
-                // definition as a ZERO-parameter function, hiding its real
-                // `(char*, int)` signature — so the listing disagrees with the
-                // K&R-aware `auto` discovery about the same legacy function. Recover
-                // the true K&R signatures and prefer them, matching discovery.
-                let knr = c_parser::parse_knr_functions(&source);
-                if !knr.is_empty() {
-                    let knr_names: std::collections::HashSet<String> =
-                        knr.iter().map(|function| function.name.clone()).collect();
-                    functions.retain(|function| !knr_names.contains(&function.name));
-                    functions.splice(0..0, knr);
+                if path_is_excluded(&path, &args) {
+                    return Ok(out);
                 }
-                warn_if_parser_recovered(&path, functions.is_empty(), || {
-                    c_parser::count_parse_errors(&source)
-                });
-                for target in target_rank::rank_c_targets(&functions) {
-                    all_targets.push((
-                        path.clone(),
-                        c_family_listed_target(&path, target, SourceLanguage::C, None),
-                    ));
+                if let Some(changed) = changed_set.as_ref() {
+                    if !path_in_changed_set(&path, changed) {
+                        return Ok(out);
+                    }
                 }
-            }
-            SourceLanguage::Cpp => {
-                let functions = cpp_parser::parse_cpp_functions(&source)
-                    .with_context(|| format!("scan C++ source {}", path.display()))?;
-                warn_if_parser_recovered(&path, functions.is_empty(), || {
-                    cpp_parser::count_parse_errors(&source)
-                });
-                for target in target_rank::rank_cpp_targets(&functions) {
-                    let metadata = functions
-                        .iter()
-                        .find(|function| {
-                            cpp_listed_target_name(function) == target.name
-                                && function.line == target.line
-                        })
-                        .and_then(|function| serde_json::to_value(&function.api).ok());
-                    all_targets.push((
-                        path.clone(),
-                        c_family_listed_target(&path, target, SourceLanguage::Cpp, metadata),
-                    ));
+                let Some(language) = detect_language(&path) else {
+                    return Ok(out);
+                };
+                // Latin-1 fallback: non-UTF-8 legacy sources are transcoded rather than
+                // skipped, so real targets in older Ada/C/C++ still get ranked.
+                let source = crate::source_text::read_source_text(&path)
+                    .with_context(|| format!("read source {}", path.display()))?;
+                match language {
+                    SourceLanguage::Ada => {
+                        let ast = ada_parser::reconcile::build_structural_ast(&source, None, &path)
+                            .with_context(|| format!("scan Ada source {}", path.display()))?;
+                        let metadata = ada_metadata(&path, &source, &ast);
+                        // Same one-time index as the C++ arm below, for the same
+                        // reason: a per-target linear scan over every subprogram is
+                        // quadratic on a large unit.
+                        let ada_lines: std::collections::HashMap<_, _> = ast
+                            .subprograms
+                            .iter()
+                            .map(|subprogram| (subprogram.id, subprogram.decl_span.start_line))
+                            .collect();
+                        for target in target_rank::rank_targets(&ast) {
+                            let line = ada_lines.get(&target.subprogram_id).copied().unwrap_or(0);
+                            out.push((
+                                path.clone(),
+                                ada_listed_target(&path, target, line, metadata.clone()),
+                            ));
+                        }
+                    }
+                    SourceLanguage::C => {
+                        let mut functions = c_parser::parse_c_functions(&source)
+                            .with_context(|| format!("scan C source {}", path.display()))?;
+                        // #11 (offline-legacy audit): tree-sitter parses an old-style K&R
+                        // definition as a ZERO-parameter function, hiding its real
+                        // `(char*, int)` signature — so the listing disagrees with the
+                        // K&R-aware `auto` discovery about the same legacy function. Recover
+                        // the true K&R signatures and prefer them, matching discovery.
+                        let knr = c_parser::parse_knr_functions(&source);
+                        if !knr.is_empty() {
+                            let knr_names: std::collections::HashSet<String> =
+                                knr.iter().map(|function| function.name.clone()).collect();
+                            functions.retain(|function| !knr_names.contains(&function.name));
+                            functions.splice(0..0, knr);
+                        }
+                        warn_if_parser_recovered(&path, functions.is_empty(), || {
+                            c_parser::count_parse_errors(&source)
+                        });
+                        for target in target_rank::rank_c_targets(&functions) {
+                            out.push((
+                                path.clone(),
+                                c_family_listed_target(&path, target, SourceLanguage::C, None),
+                            ));
+                        }
+                    }
+                    SourceLanguage::Cpp => {
+                        let functions = cpp_parser::parse_cpp_functions(&source)
+                            .with_context(|| format!("scan C++ source {}", path.display()))?;
+                        warn_if_parser_recovered(&path, functions.is_empty(), || {
+                            cpp_parser::count_parse_errors(&source)
+                        });
+                        // Index once, look up per target. Scanning `functions` for each
+                        // ranked target is quadratic AND allocates a name string per
+                        // comparison, which is what made a single amalgamated header
+                        // unlistable: simdjson's 187k-line `singleheader/simdjson.h`
+                        // yields 8,613 targets over a similar number of functions, so the
+                        // linear search ran ~74M times and cost **50 seconds for one
+                        // file** — the whole reason `list targets` timed out on simdjson,
+                        // sumatrapdf, Proton and emscripten in the 500-project sweep.
+                        // `auto`'s discovery already indexed this and does the same file
+                        // in 0.16s.
+                        //
+                        // First insertion wins, matching the `.find` this replaces.
+                        let mut by_identity: std::collections::HashMap<
+                            (String, u32),
+                            &cpp_parser::CppFunction,
+                        > = std::collections::HashMap::with_capacity(functions.len());
+                        for function in &functions {
+                            by_identity
+                                .entry((cpp_listed_target_name(function), function.line))
+                                .or_insert(function);
+                        }
+                        for target in target_rank::rank_cpp_targets(&functions) {
+                            let metadata = by_identity
+                                .get(&(target.name.clone(), target.line))
+                                .and_then(|function| serde_json::to_value(&function.api).ok());
+                            out.push((
+                                path.clone(),
+                                c_family_listed_target(
+                                    &path,
+                                    target,
+                                    SourceLanguage::Cpp,
+                                    metadata,
+                                ),
+                            ));
+                        }
+                    }
+                    SourceLanguage::Java => {
+                        let methods = java_parser::parse_java_methods(&source)
+                            .with_context(|| format!("scan Java source {}", path.display()))?;
+                        for target in target_rank::rank_java_targets(&methods) {
+                            out.push((
+                                path.clone(),
+                                non_c_listed_target(
+                                    "H-J",
+                                    &path,
+                                    &target.name,
+                                    target.line,
+                                    target.score,
+                                    SourceLanguage::Java,
+                                ),
+                            ));
+                        }
+                    }
+                    SourceLanguage::Rust => {
+                        let fns = rust_parser::parse_rust_functions(&source)
+                            .with_context(|| format!("scan Rust source {}", path.display()))?;
+                        for target in target_rank::rank_rust_targets(&fns) {
+                            out.push((
+                                path.clone(),
+                                non_c_listed_target(
+                                    "H-R",
+                                    &path,
+                                    &target.name,
+                                    target.line,
+                                    target.score,
+                                    SourceLanguage::Rust,
+                                ),
+                            ));
+                        }
+                    }
+                    // `detect_language` never yields this: it is the tag the deferred pass
+                    // below attaches to a candidate `auto` discovered.
+                    SourceLanguage::Other(_) => {}
                 }
-            }
-            SourceLanguage::Java => {
-                let methods = java_parser::parse_java_methods(&source)
-                    .with_context(|| format!("scan Java source {}", path.display()))?;
-                for target in target_rank::rank_java_targets(&methods) {
-                    all_targets.push((
-                        path.clone(),
-                        non_c_listed_target(
-                            "H-J",
-                            &path,
-                            &target.name,
-                            target.line,
-                            target.score,
-                            SourceLanguage::Java,
-                        ),
-                    ));
-                }
-            }
-            SourceLanguage::Rust => {
-                let fns = rust_parser::parse_rust_functions(&source)
-                    .with_context(|| format!("scan Rust source {}", path.display()))?;
-                for target in target_rank::rank_rust_targets(&fns) {
-                    all_targets.push((
-                        path.clone(),
-                        non_c_listed_target(
-                            "H-R",
-                            &path,
-                            &target.name,
-                            target.line,
-                            target.score,
-                            SourceLanguage::Rust,
-                        ),
-                    ));
-                }
-            }
-            // `detect_language` never yields this: it is the tag the deferred pass
-            // below attaches to a candidate `auto` discovered.
-            SourceLanguage::Other(_) => {}
-        }
+                Ok(out)
+            })
+            .collect()
+    });
+    for result in per_file {
+        all_targets.extend(result?);
     }
+    let skipped_for_memory = skipped.load(std::sync::atomic::Ordering::Relaxed);
 
     if skipped_for_memory > 0 {
         let ceiling = static_analysis::MemoryGuard::ceiling_kb()
@@ -731,6 +774,29 @@ use crate::git_diff::{compute_changed_set, path_in_changed_set};
 
 fn path_is_excluded(path: &Path, args: &ListTargetsArgs) -> bool {
     path_matches_exclusion(path, &args.path, &args.exclude_paths, &args.exclude)
+}
+
+/// `list targets`' worker pool. Same shape as discovery's: `cores - 1` workers
+/// with big stacks, because parsing recurses over the syntax tree and a rayon
+/// worker's default 2 MiB is not enough for real source.
+fn listing_pool() -> &'static rayon::ThreadPool {
+    static POOL: std::sync::OnceLock<rayon::ThreadPool> = std::sync::OnceLock::new();
+    POOL.get_or_init(|| {
+        let threads = std::env::var("GOVFUZZ_DISCOVERY_JOBS")
+            .ok()
+            .and_then(|n| n.parse::<usize>().ok())
+            .filter(|n| *n > 0)
+            .unwrap_or_else(|| {
+                std::thread::available_parallelism()
+                    .map(|n| n.get().saturating_sub(1).max(1))
+                    .unwrap_or(1)
+            });
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .stack_size(256 * 1024 * 1024)
+            .build()
+            .expect("build listing thread pool")
+    })
 }
 
 fn walk_targetable_files(path: &Path) -> Result<Vec<PathBuf>> {

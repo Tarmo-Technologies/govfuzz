@@ -1021,7 +1021,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // `--fresh-discovery` forces a re-discovery + cache rewrite. `--reuse-discovery`
     // is a deprecated no-op (the behavior it enabled is now the default).
     let _ = args.reuse_discovery;
-    let (mut candidates, discovery_cache_hit) = discover_or_reuse(
+    let (mut candidates, discovery_cache_hit, source_unchanged) = discover_or_reuse(
         &path,
         &dir_filter,
         &work,
@@ -1551,12 +1551,39 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         crate::auto::candidate::Candidate,
         crate::auto::attempt::AttemptResult,
     )> = Vec::new();
-    if args.resume && discovery_cache_hit && build_context_unchanged {
+    let source_identical = discovery_cache_hit || source_unchanged;
+    // A work dir written by a DIFFERENT govfuzz build: its records are still
+    // worth keeping, but only where they succeeded. Reusing an old
+    // `failed_build` would let a stale "no" cap what the new binary can reach —
+    // the same hazard the closure memo is careful about — so those are
+    // re-attempted while everything that actually fuzzed is kept.
+    let prior_state_incompatible =
+        work_state == crate::auto::work_state::WorkStateDisposition::IncompatibleMigration;
+    if args.resume && prior_state_incompatible {
+        eprintln!(
+            "govfuzz auto: --resume: this work-dir was written by a different govfuzz build; \
+             keeping targets that already fuzzed and re-attempting the rest"
+        );
+    }
+    if args.resume && build_context_unchanged {
+        let changed = crate::auto::resume_scope::changed_file_count();
+        if !source_identical && changed > 0 {
+            eprintln!(
+                "govfuzz auto: --resume: {changed} source file(s) changed since the last run; \
+                 reusing results only for targets whose own file is unchanged"
+            );
+        }
         candidates.retain(|c| {
+            // Per FILE, not per tree: a target is only stale if ITS source moved.
+            if !crate::auto::resume_scope::file_unchanged(&c.source_path) {
+                return true;
+            }
             match crate::auto::report::load_resumed_result(&work, &c.harness_id) {
                 Some((prior, prior_forced)) => {
                     let prior_fuzzed = reached_fuzz(&prior.outcome);
-                    if resume_should_reattempt(prior_fuzzed, prior_forced, options.force) {
+                    if (prior_state_incompatible && !prior_fuzzed)
+                        || resume_should_reattempt(prior_fuzzed, prior_forced, options.force)
+                    {
                         if !prior_forced && options.force && !prior_fuzzed {
                             // The force-upgrade case: phase 2 only.
                             force_upgrade.push((c.clone(), prior));
@@ -1587,13 +1614,9 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 resumed_results.len()
             );
         }
-    } else if args.resume && discovery_cache_hit && !build_context_unchanged {
+    } else if args.resume && !build_context_unchanged {
         eprintln!(
             "govfuzz auto: --resume: build context changed (GPR / compile_commands.json / IDL / config / options); re-attempting all targets to avoid stale results"
-        );
-    } else if args.resume {
-        eprintln!(
-            "govfuzz auto: --resume: target source changed (discovery cache miss); re-attempting all targets to avoid stale results"
         );
     }
     // #101: record this run's build-context fingerprint so the next --resume can
@@ -2370,13 +2393,16 @@ fn discover_or_reuse(
     fresh: bool,
     cache_override: Option<&Path>,
     preprocess: crate::auto::discovery::PreprocessMode,
-) -> Result<(Vec<crate::auto::candidate::Candidate>, bool)> {
+) -> Result<(Vec<crate::auto::candidate::Candidate>, bool, bool)> {
     // `--no-discovery-cache`: never read or write a cache. (Second tuple element
     // is `cache_hit` — whether the candidate list came from a validated cache, ie
     // the source tree is unchanged; `--resume` only skips completed targets then.)
     if !cache_enabled {
         return Ok((
             crate::auto::discovery::discover_with_options(path, dir_filter, preprocess)?,
+            false,
+            // `--no-discovery-cache` keeps no source identity, so `--resume`
+            // stays conservative and re-attempts, exactly as before.
             false,
         ));
     }
@@ -2390,8 +2416,38 @@ fn discover_or_reuse(
     // discovered (and their lines), so a cache built under a different mode must not
     // be reused (§27.6). The base fingerprint stays the content+dir-filter digest.
     let _tf = std::time::Instant::now();
-    let fingerprint = format!("{}-pp:{preprocess}", source_fingerprint(path, dir_filter));
+    let (tree_digest, current_files) =
+        crate::auto::discovery::source_fingerprint_with_files(path, dir_filter);
+    let fingerprint = format!("{tree_digest}-pp:{preprocess}");
     crate::auto::discovery::gfprof("auto:fingerprint", _tf);
+    // Persist the source identity SEPARATELY from the ranked-list cache, and do it
+    // before discovery runs.
+    //
+    // `--resume` used to treat "discovery cache hit" as its proof that the tree
+    // was unchanged. It is not the same thing: a run killed before it finished
+    // discovering leaves no cache at all, so the next `--resume` concluded "target
+    // source changed" — which was false — and re-attempted everything, throwing
+    // away good per-target records. That run then wrote the cache, so killing it
+    // and resuming again worked. Hence the "only works the second time" report.
+    //
+    // The fingerprint is the real signal and costs nothing to keep on its own.
+    let fingerprint_file = crate::auto::layout::reports_dir(work).join("source.fingerprint");
+    let source_unchanged = std::fs::read_to_string(&fingerprint_file)
+        .ok()
+        .is_some_and(|prior| prior.trim() == fingerprint);
+    let _ = crate::auto::report::atomic_write(&fingerprint_file, fingerprint.as_bytes());
+    // The same walk's per-file hashes, recorded before anything is fuzzed so they
+    // describe the tree as discovery saw it. One line per file, `<hex>\t<path>` —
+    // compact to write and to parse, and it is only read once per run.
+    let files_record = crate::auto::layout::reports_dir(work).join("source-files");
+    let prior_text = std::fs::read_to_string(&files_record).unwrap_or_default();
+    crate::auto::resume_scope::publish(path, &prior_text, &current_files);
+    let mut serialized = String::with_capacity(current_files.len() * 48);
+    for (rel, hash) in &current_files {
+        use std::fmt::Write;
+        let _ = writeln!(serialized, "{hash:016x}\t{rel}");
+    }
+    let _ = crate::auto::report::atomic_write(&files_record, serialized.as_bytes());
     if fresh {
         eprintln!(
             "govfuzz auto: --fresh-discovery: ignoring any cache at {} and recomputing discovery (fingerprint {fingerprint})",
@@ -2403,7 +2459,7 @@ fn discover_or_reuse(
             cache_file.display(),
             cached.len()
         );
-        return Ok((cached, true));
+        return Ok((cached, true, source_unchanged));
     } else {
         // Distinguish WHY it missed so a surprising re-discovery is explainable
         // (absent vs format-version vs fingerprint vs root mismatch).
@@ -2434,7 +2490,7 @@ fn discover_or_reuse(
         ),
     }
     crate::auto::discovery::gfprof("auto:cache_write", _tc);
-    Ok((candidates, false))
+    Ok((candidates, false, source_unchanged))
 }
 
 /// Resolve the per-target fuzz pass set from `--single-pass` / `--passes`.

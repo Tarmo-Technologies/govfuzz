@@ -59,6 +59,7 @@ pub mod repair;
 pub mod report;
 pub mod report_only;
 pub mod requirements;
+pub(crate) mod resume_scope;
 pub mod ruby;
 pub mod ruby_build;
 pub mod runtrace;

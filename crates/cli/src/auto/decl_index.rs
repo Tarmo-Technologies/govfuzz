@@ -532,7 +532,23 @@ impl DeclarationIndex {
         let mut c_type_defs = c_parser::CTypeDefs::default();
         let mut cpp_type_defs = c_parser::CTypeDefs::default();
         let mut c_source_scalar_type_defs = c_parser::CTypeDefs::default();
+        // This is the THIRD full-tree parse in an `auto` run (after discovery's
+        // walk and its C++ member-access pass), and on Valve's Proton it was the
+        // single largest phase at 173 seconds — larger than discovery and larger
+        // than the fuzzing it exists to support. It is not billed to any budget,
+        // so on a big tree the run was killed by the caller's outer timeout while
+        // still indexing.
+        //
+        // It honours the same deadline discovery does. A partial index only costs
+        // repair QUALITY for targets whose declarations live in the unindexed
+        // tail; being killed costs everything.
+        let deadline = crate::auto::discovery::deadline();
+        let mut skipped_for_time = 0usize;
         for entry in entries {
+            if deadline.is_some_and(|deadline| std::time::Instant::now() >= deadline) {
+                skipped_for_time += 1;
+                continue;
+            }
             let Some(ext) = entry.extension().and_then(|e| e.to_str()) else {
                 continue;
             };
@@ -842,6 +858,13 @@ impl DeclarationIndex {
         retain_flat_pod_structs(&mut cpp_type_defs);
         idx.c_type_defs = std::sync::Arc::new(c_type_defs);
         idx.cpp_type_defs = std::sync::Arc::new(cpp_type_defs);
+        if skipped_for_time > 0 {
+            eprintln!(
+                "govfuzz auto: declaration index reached the discovery time budget and skipped \
+                 {skipped_for_time} file(s); cross-file repair may be less complete. Raise \
+                 --campaign-time or set GOVFUZZ_DISCOVERY_TIME (seconds, 0 = unlimited)."
+            );
+        }
         idx.c_source_scalar_type_defs = std::sync::Arc::new(c_source_scalar_type_defs);
         // §27.2: compute the tree-wide C opaque-handle lifecycle pairs ONCE, from
         // public declarations in every C header in the tree, so a

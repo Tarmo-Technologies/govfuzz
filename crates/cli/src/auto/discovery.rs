@@ -783,7 +783,35 @@ fn discover_on_this_stack(
         let mut cpp_access = std::collections::BTreeMap::new();
         let mut cpp_sig_access = std::collections::BTreeMap::new();
         let _tm = std::time::Instant::now();
-        collect_cpp_member_access(root, filter, &mut cpp_access, &mut cpp_sig_access);
+        // This is a SECOND full pass over the tree — it reads and parses every
+        // C++ file again — so it gets the same treatment as the main walk:
+        // parallel, and bounded by the same deadline. Left sequential and
+        // unbounded it was pure overshoot past the discovery ceiling.
+        let mut files = Vec::new();
+        let _ = collect_walk_files(root, filter, &mut files);
+        let deadline = deadline();
+        let per_file: Vec<(
+            std::collections::BTreeMap<String, String>,
+            std::collections::BTreeMap<String, String>,
+        )> = discovery_pool().install(|| {
+            files
+                .par_iter()
+                .map(|path| {
+                    let mut access = std::collections::BTreeMap::new();
+                    let mut sig = std::collections::BTreeMap::new();
+                    if deadline.is_none_or(|deadline| std::time::Instant::now() < deadline) {
+                        accumulate_cpp_member_access(path, &mut access, &mut sig);
+                    }
+                    (access, sig)
+                })
+                .collect()
+        });
+        // Merged in file order, so a later file overrides an earlier one exactly
+        // as the sequential walk did.
+        for (access, sig) in per_file {
+            cpp_access.extend(access);
+            cpp_sig_access.extend(sig);
+        }
         gfprof("disc:cpp_access", _tm);
         out.retain(|c| {
             if !matches!(c.lang, Lang::Cpp) {
@@ -1519,6 +1547,12 @@ static DISCOVERY_DEADLINE: std::sync::Mutex<Option<std::time::Instant>> =
 static DISCOVERY_TIME_SKIPPED: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
 
+/// The shared discovery deadline, for other whole-tree passes that must respect
+/// the same ceiling (the declaration index is the big one).
+pub(crate) fn deadline() -> Option<std::time::Instant> {
+    DISCOVERY_DEADLINE.lock().ok().and_then(|slot| *slot)
+}
+
 /// Set the discovery wall-clock ceiling. `GOVFUZZ_DISCOVERY_TIME` overrides
 /// (in seconds; `0` disables the ceiling entirely).
 pub(crate) fn set_time_budget(budget: Option<std::time::Duration>) {
@@ -1554,7 +1588,7 @@ fn walk(
     // gets the same guard, so a huge tree yields a partial target list instead of
     // nothing.
     let guard = static_analysis::MemoryGuard::start();
-    let deadline = DISCOVERY_DEADLINE.lock().ok().and_then(|slot| *slot);
+    let deadline = deadline();
     let result = walk_guarded(dir, out, filter, preprocess, &guard, deadline);
     let timed_out = DISCOVERY_TIME_SKIPPED.swap(0, std::sync::atomic::Ordering::Relaxed);
     if timed_out > 0 {

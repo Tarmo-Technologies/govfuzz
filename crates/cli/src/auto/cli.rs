@@ -801,6 +801,7 @@ fn detect_custom_build(root: &Path) -> Option<(String, String)> {
 }
 
 fn run_inner(mut args: AutoArgs) -> Result<i32> {
+    let _tstart = std::time::Instant::now();
     let started_at = Utc::now().to_rfc3339();
     let run_start = std::time::Instant::now();
     let path = strip_verbatim_prefix(
@@ -1116,6 +1117,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // so a missing one is an explicit banner (not a silent skip that reads like a pass).
     // Kept for the end-of-run triage.
     let _tp = std::time::Instant::now();
+    crate::auto::discovery::gfprof("auto:start_to_preflight", _tstart);
     let preflight = crate::auto::preflight::run(&candidates);
     crate::auto::discovery::gfprof("auto:preflight", _tp);
     eprint!("{}", preflight.render());
@@ -1132,8 +1134,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     );
     crate::auto::discovery::gfprof("auto:requirements", _tr);
     dependency_seed.mark_checkpoint(0, false);
+    let _tdc = std::time::Instant::now();
     let mut dependency_checkpoint =
         crate::auto::report::write_dependency_checkpoint(&path, &work, &dependency_seed, &[])?;
+    crate::auto::discovery::gfprof("auto:dependency_checkpoint", _tdc);
+    let _tmid = std::time::Instant::now();
 
     // --dry-run: show the plan (toolchains + ranked targets + build-recovery note) and
     // exit without building or fuzzing, so a long run can be validated first.
@@ -1220,7 +1225,9 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             header_root.display()
         );
     }
+    let _tix = std::time::Instant::now();
     let mut idx = DeclarationIndex::build_indexed(&path, &header_root)?;
+    crate::auto::discovery::gfprof("auto:decl_index", _tix);
     if let Some(recovery) = &vcs_recovery {
         idx.add_vcs_recovery_root(&recovery.root)?;
     }
@@ -1680,7 +1687,16 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // subprocess by the budget plus a grace margin, so the in-flight target gets
     // a fair chance to finish and the run still ends near when it was asked to.
     if let Some(deadline) = campaign_deadline {
-        crate::command_output::set_campaign_deadline(deadline);
+        crate::command_output::set_campaign_deadline(
+            deadline,
+            args.campaign_time.map(std::time::Duration::from_secs),
+        );
+    }
+    if std::env::var_os("GOVFUZZ_PROFILE").is_some() {
+        eprintln!(
+            "[prof] campaign_deadline in {:?} (split_mode={split_mode})",
+            campaign_deadline.map(|d| d.saturating_duration_since(std::time::Instant::now()))
+        );
     }
 
     // One sweep of one candidate set under one set of options, dispatching serial
@@ -1836,6 +1852,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // work spent forcing another one.
     let mut unforced_options = options.clone();
     unforced_options.force = false;
+    crate::auto::discovery::gfprof("auto:checkpoint_to_sweep", _tmid);
+    let _tsw = std::time::Instant::now();
     let mut results = sweep_phase(
         candidates,
         &unforced_options,
@@ -1843,6 +1861,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         resumed_successes,
         &mut dependency_checkpoint,
     )?;
+    crate::auto::discovery::gfprof("auto:sweep_phase1", _tsw);
+    let _tpost = std::time::Instant::now();
 
     // Phase 2: force ONLY the targets phase 1 could not fuzz. A target that
     // already fuzzed is never re-attempted — forcing cannot improve a success, and
@@ -2121,6 +2141,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     }
 
     let finished_at = Utc::now().to_rfc3339();
+    crate::auto::discovery::gfprof("auto:post_sweep", _tpost);
+    let _twr = std::time::Instant::now();
     write_reports(
         &path,
         &results,
@@ -2134,6 +2156,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         args.static_dynamic,
         args.force,
     )?;
+    crate::auto::discovery::gfprof("auto:write_reports", _twr);
 
     // --install-deps: read the just-written manifest and fetch what we can
     // (online, opt-in). Re-run afterward to build against the real deps.
@@ -2366,7 +2389,9 @@ fn discover_or_reuse(
     // Fold the preprocess mode into the fingerprint: it changes WHICH functions are
     // discovered (and their lines), so a cache built under a different mode must not
     // be reused (§27.6). The base fingerprint stays the content+dir-filter digest.
+    let _tf = std::time::Instant::now();
     let fingerprint = format!("{}-pp:{preprocess}", source_fingerprint(path, dir_filter));
+    crate::auto::discovery::gfprof("auto:fingerprint", _tf);
     if fresh {
         eprintln!(
             "govfuzz auto: --fresh-discovery: ignoring any cache at {} and recomputing discovery (fingerprint {fingerprint})",
@@ -2392,6 +2417,7 @@ fn discover_or_reuse(
     let _td = std::time::Instant::now();
     let candidates = discover_with_options(path, dir_filter, preprocess)?;
     crate::auto::discovery::gfprof("auto:discover", _td);
+    let _tc = std::time::Instant::now();
     // Persist the freshly ranked list for a later --reuse-discovery run. The cache
     // is a re-run optimization, so a write failure is logged, never fatal.
     let cache = DiscoveryCache::build(path, fingerprint, &candidates);
@@ -2407,6 +2433,7 @@ fn discover_or_reuse(
             cache_file.display()
         ),
     }
+    crate::auto::discovery::gfprof("auto:cache_write", _tc);
     Ok((candidates, false))
 }
 
@@ -2593,6 +2620,9 @@ fn run_parallel_sweep(
                 if let Some(deadline) = campaign_deadline {
                     if std::time::Instant::now() >= deadline {
                         stopped.store(true, Ordering::SeqCst);
+                        if std::env::var_os("GOVFUZZ_PROFILE").is_some() {
+                            eprintln!("[prof] worker stopping: campaign deadline reached");
+                        }
                         break;
                     }
                 }
@@ -2628,6 +2658,7 @@ fn run_parallel_sweep(
                 } else {
                     None
                 };
+                let _ta = std::time::Instant::now();
                 let mut result = match crate::auto::bug_report::catch(attempt_ctx, || {
                     crate::auto::attempt::attempt(candidate, work, idx, options.clone())
                 }) {
@@ -2641,6 +2672,10 @@ fn run_parallel_sweep(
                         ),
                     }),
                 };
+                crate::auto::discovery::gfprof(
+                    &format!("attempt:{}", synth_candidate.harness_id),
+                    _ta,
+                );
                 {
                     let _g = stderr_lock.lock().unwrap();
                     match &result {

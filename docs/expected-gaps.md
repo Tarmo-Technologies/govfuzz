@@ -398,6 +398,48 @@ unconstructible receivers, as below.
 
 ---
 
+## Performance: where govfuzz is still slow
+
+Timing and memory were swept in 2026-07-29 and every project that used to time
+out now completes (see the CHANGELOG for v0.2.24). One measured outlier remains,
+and it is in the STATIC scanner rather than the fuzzing pipeline.
+
+**The interprocedural taint pass is superlinear, and worst on Java.**
+
+| tree | lane | SLOC | `static-scan` | rate |
+|---|---|---:|---:|---:|
+| elasticsearch | Java | 4,989,695 | **616 s**, 1366 MiB | **8.1k SLOC/s** |
+| kubernetes | Go | — (17,873 files) | 61 s, 586 MiB | — |
+| Proton | C/C++ | — (3,419 files) | 11 s, 34 MiB | — |
+| linux (recorded earlier) | C | 37M | 40 s, 648 MiB | 924k SLOC/s |
+
+Java is ~100x slower per SLOC than C, and it scales at about **O(n^1.6)**: 1,050
+Java files take 2.5 s, 4,912 take 30.4 s, and that exponent extrapolates to the
+616 s observed over 31,243 files.
+
+Two distinct causes, both identified:
+
+1. **`scan_taint_project` parallelizes across LANGUAGES, not within one.** It
+   spawns one task per language, so a single-language tree runs the entire
+   interprocedural phase on one core while the rest of the pool idles. This is
+   the cheaper half to fix, but the inner pass is a worklist BFS over the call
+   graph with a shared queue and dedup set, so it needs a real decomposition
+   rather than swapping in `par_iter`.
+
+2. **The worklist revisits a function once per distinct taint signature.** Dedup
+   is on `(function, taint-signature)`, so the number of visits grows with the
+   number of parameter-taint combinations reaching each function — which is where
+   the superlinearity comes from. Fixing it means joining/widening signatures per
+   function instead of enumerating them.
+
+Deliberately not attempted yet: (2) changes what the taint engine explores, so it
+can silently drop findings. It needs finding-parity verification against a corpus
+(same findings, fewer visits) rather than a quick edit, and the static scanner's
+precision is the product. `--max-memory-mb` already bounds the memory side, and
+the scan degrades gracefully rather than failing.
+
+---
+
 ## Ranked work list
 
 By fixable targets, highest first:

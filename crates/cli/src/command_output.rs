@@ -109,12 +109,30 @@ static CAMPAIGN_DEADLINE: std::sync::OnceLock<Instant> = std::sync::OnceLock::ne
 
 /// Work already in flight when the budget runs out gets this much longer to
 /// finish, so the last target is cut off cleanly rather than mid-link.
-const CAMPAIGN_GRACE: Duration = Duration::from_secs(120);
+///
+/// A QUARTER of the campaign, capped at two minutes and floored at ten seconds
+/// — not a flat two minutes. A round may start moments before the deadline and
+/// its compile then runs for the whole grace, so a flat grace is added to every
+/// campaign no matter how small: with `--campaign-time 120` it DOUBLED the
+/// phase, and Proton's run came to 84s discovery + 120s campaign + 120s grace
+/// against a 510s allowance. Scaling keeps the overshoot proportional to the
+/// budget the operator actually set.
+static CAMPAIGN_GRACE: std::sync::OnceLock<Duration> = std::sync::OnceLock::new();
+
+fn campaign_grace() -> Duration {
+    *CAMPAIGN_GRACE.get().unwrap_or(&Duration::from_secs(120))
+}
 
 /// Bound every subsequent subprocess by `deadline`. Idempotent: the first
 /// deadline set for a process wins, so nested code cannot extend it.
-pub(crate) fn set_campaign_deadline(deadline: Instant) {
+///
+/// `campaign` is the operator's total budget, used to size the grace.
+pub(crate) fn set_campaign_deadline(deadline: Instant, campaign: Option<Duration>) {
     let _ = CAMPAIGN_DEADLINE.set(deadline);
+    if let Some(campaign) = campaign {
+        let _ = CAMPAIGN_GRACE
+            .set((campaign / 4).clamp(Duration::from_secs(10), Duration::from_secs(120)));
+    }
 }
 
 /// Has the operator's budget passed? Callers use this to stop starting work
@@ -135,7 +153,7 @@ fn clamp_to_campaign(timeout: Duration) -> Duration {
     let Some(deadline) = CAMPAIGN_DEADLINE.get() else {
         return timeout;
     };
-    let remaining = (*deadline + CAMPAIGN_GRACE)
+    let remaining = (*deadline + campaign_grace())
         .saturating_duration_since(Instant::now())
         .max(Duration::from_secs(5));
     timeout.min(remaining)
@@ -257,12 +275,18 @@ mod tests {
 
         // With one, a generous build timeout is cut to what is left plus the
         // grace: a 30-minute compile must not outlive a two-minute campaign.
-        set_campaign_deadline(Instant::now() + Duration::from_secs(60));
+        set_campaign_deadline(
+            Instant::now() + Duration::from_secs(60),
+            Some(Duration::from_secs(60)),
+        );
         let clamped = clamp_to_campaign(Duration::from_secs(1800));
+        // The grace is a quarter of the campaign (15s here), not a flat two
+        // minutes, so a small budget is not doubled by the margin.
         assert!(
-            clamped <= Duration::from_secs(60) + CAMPAIGN_GRACE,
+            clamped <= Duration::from_secs(60) + campaign_grace(),
             "clamped to {clamped:?}"
         );
+        assert_eq!(campaign_grace(), Duration::from_secs(15));
         assert!(
             clamped >= Duration::from_secs(5),
             "a floor keeps work possible"

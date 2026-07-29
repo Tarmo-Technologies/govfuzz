@@ -263,9 +263,12 @@ fn replay_command(bin: &Path) -> Command {
     if which::which("timeout").is_ok() {
         let mut cmd = Command::new("timeout");
         cmd.arg("-s").arg("KILL").arg("10").arg(bin);
+        crate::command_output::run_target_beside_binary(&mut cmd, bin);
         cmd
     } else {
-        Command::new(bin)
+        let mut cmd = Command::new(bin);
+        crate::command_output::run_target_beside_binary(&mut cmd, bin);
+        cmd
     }
 }
 

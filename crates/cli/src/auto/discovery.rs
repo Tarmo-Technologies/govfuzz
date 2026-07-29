@@ -1436,42 +1436,6 @@ fn call_names_in_text(
     out
 }
 
-/// Walk the tree collecting a `Class::method -> access` map from every C++ class
-/// body, for the cross-file visibility filter. Mirrors `walk`'s directory
-/// filtering but only reads C++ files; best-effort (read/parse errors are
-/// skipped). A method's access is per-class consistent, so first-wins merge.
-fn collect_cpp_member_access(
-    dir: &Path,
-    filter: &DirFilter,
-    out: &mut std::collections::BTreeMap<String, String>,
-    // #98: exact-signature access, keyed by the SAME `member_access_key`
-    // (`Class::method(normalized params)`) the candidate name uses, so overloads of
-    // one name are not collapsed and a private overload with a public sibling is
-    // distinguished instead of both being marked "ambiguous".
-    by_signature: &mut std::collections::BTreeMap<String, String>,
-) {
-    if dir.is_file() {
-        accumulate_cpp_member_access(dir, out, by_signature);
-        return;
-    }
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let Ok(ft) = entry.file_type() else {
-            continue;
-        };
-        if ft.is_dir() {
-            if !is_excluded_dir(&path, filter) {
-                collect_cpp_member_access(&path, filter, out, by_signature);
-            }
-        } else if ft.is_file() {
-            accumulate_cpp_member_access(&path, out, by_signature);
-        }
-    }
-}
-
 fn accumulate_cpp_member_access(
     path: &Path,
     out: &mut std::collections::BTreeMap<String, String>,

@@ -74,11 +74,11 @@ pub fn run_cobol_attribution(work_dir: &Path) -> usize {
 /// Run the harness on `input` and return the first `libcob: ...: error: ...`
 /// diagnostic line from its stderr, if any.
 fn replay_capture_libcob(bin: &Path, input: &Path) -> Option<LibcobDiag> {
-    let out = crate::command_output::output_with_timeout(
-        std::process::Command::new(bin).arg(input),
-        Duration::from_secs(15),
-    )
-    .ok()?;
+    let mut command = std::process::Command::new(bin);
+    command.arg(input);
+    crate::command_output::run_target_beside_binary(&mut command, bin);
+    let out =
+        crate::command_output::output_with_timeout(&mut command, Duration::from_secs(15)).ok()?;
     let stderr = String::from_utf8_lossy(&out.stderr);
     for line in stderr.lines() {
         if let Some(diag) = parse_libcob_line(line) {

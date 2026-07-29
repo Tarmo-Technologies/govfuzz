@@ -189,6 +189,24 @@ fn per_call_ceiling() -> Duration {
         .unwrap_or(Duration::MAX)
 }
 
+/// Point a command that executes TARGET code at its own binary's directory.
+///
+/// Target code runs with attacker-controlled input and does whatever it likes
+/// with the filesystem. Inheriting govfuzz's CWD means those writes land wherever
+/// the user happened to invoke govfuzz — very often the tree being scanned. An
+/// empty file literally named `AAAAAA` turned up in this repository's root after a
+/// sweep, which is a fuzz input used as a filename.
+///
+/// Beyond the mess, it breaks `--resume`: a write into the scanned tree changes
+/// the source identity the next run compares against, so a run can invalidate its
+/// own fingerprint. The harness's own directory is under the work dir, so writes
+/// stay with the run that caused them.
+pub(crate) fn run_target_beside_binary(command: &mut Command, binary: &std::path::Path) {
+    if let Some(dir) = binary.parent().filter(|dir| dir.is_dir()) {
+        command.current_dir(dir);
+    }
+}
+
 /// Run a command to completion with INHERITED stdio (so compiler output still
 /// streams to the terminal), bounded by the same campaign clamp as
 /// [`output_with_timeout`], in its own process group so a timeout kills the

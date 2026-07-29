@@ -226,12 +226,14 @@ fn run_inner(args: DifferentialArgs) -> Result<i32, std::io::Error> {
 }
 
 fn run_harness(bin: &Path, input: &Path, timeout: Duration) -> HarnessOutput {
-    let child = Command::new(bin)
+    let mut command = Command::new(bin);
+    command
         .arg(input)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn();
+        .stderr(Stdio::piped());
+    crate::command_output::run_target_beside_binary(&mut command, bin);
+    let child = command.spawn();
     let mut child = match child {
         Ok(c) => c,
         Err(error) => {

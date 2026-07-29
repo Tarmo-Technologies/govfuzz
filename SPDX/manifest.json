@@ -1115,6 +1115,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/resume_scope.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/ruby.rs",
       "license": "Apache-2.0"
     },

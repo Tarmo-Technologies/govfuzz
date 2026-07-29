@@ -1,0 +1,792 @@
+{
+ "lane": "php",
+ "repo": "symfony/symfony",
+ "stars": 31110,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --json --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.32,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 1695353,
+   "sloc_by_lang": {
+    "php": 1683442,
+    "config": 10913,
+    "javascript": 998
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.19,
+   "timed_out": false,
+   "panic": false,
+   "count": 7180,
+   "by_language": {
+    "php": 7180
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 6.17,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 28,
+   "by_severity": {
+    "high": 1,
+    "medium": 17,
+    "critical": 10
+   },
+   "top_rules": {
+    "GF-497": 17,
+    "GF-429": 10,
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --out /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 139
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony --work-dir /home/ubuntu/govfuzz-sweep-work/php__symfony__symfony --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 47.06,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 7180,
+    "dropped_by_cap": 7120,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 55,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 8,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\DebugDataHolder#addQuery",
+     "source": "DebugDataHolder.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 1842.1269267694965,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterUidTypePass#process",
+     "source": "RegisterUidTypePass.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterUidTypePass#process` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\DependencyInjection\\Compiler\\CompilerPassInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DependencyInjection/CompilerPass/RegisterUidTypePass.php:20",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterDatePointTypePass#process",
+     "source": "RegisterDatePointTypePass.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterDatePointTypePass#process` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\DependencyInjection\\Compiler\\CompilerPassInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DependencyInjection/CompilerPass/RegisterDatePointTypePass.php:21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\EntityType#configureOptions",
+     "source": "EntityType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\EntityType#configureOptions` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/EntityType.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\IdGenerator\\UlidGenerator#generateId",
+     "source": "UlidGenerator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\IdGenerator\\UlidGenerator#generateId` is not loadable (skipped cleanly): missing module `Doctrine\\ORM\\Id\\AbstractIdGenerator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\ORM\\Id\\AbstractIdGenerator\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/IdGenerator/UlidGenerator.php:19",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\DataTransformer\\CollectionToArrayTransformer#transform",
+     "source": "CollectionToArrayTransformer.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\DataTransformer\\CollectionToArrayTransformer#transform` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\Form\\DataTransformerInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/DataTransformer/CollectionToArrayTransformer.php:25",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\SchemaListener\\LockStoreSchemaListener#postGenerateSchema",
+     "source": "LockStoreSchemaListener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\SchemaListener\\LockStoreSchemaListener#postGenerateSchema` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/SchemaListener/LockStoreSchemaListener.php:18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\SchemaListener\\PdoSessionHandlerSchemaListener#postGenerateSchema",
+     "source": "PdoSessionHandlerSchemaListener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\SchemaListener\\PdoSessionHandlerSchemaListener#postGenerateSchema` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/SchemaListener/PdoSessionHandlerSchemaListener.php:17",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\ChoiceList\\EntityLoaderInterface#getEntitiesByIds",
+     "source": "EntityLoaderInterface.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 7966.217912240618,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\DoctrineValidationPass#process",
+     "source": "DoctrineValidationPass.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\DoctrineValidationPass#process` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\DependencyInjection\\Compiler\\CompilerPassInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DependencyInjection/CompilerPass/DoctrineValidationPass.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\IdleConnection\\Listener#onKernelRequest",
+     "source": "Listener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Middleware\\IdleConnection\\Listener#onKernelRequest` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\EventDispatcher\\EventSubscriberInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Middleware/IdleConnection/Listener.php:20",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\SchemaListener\\DoctrineDbalCacheAdapterSchemaListener#postGenerateSchema",
+     "source": "DoctrineDbalCacheAdapterSchemaListener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\SchemaListener\\DoctrineDbalCacheAdapterSchemaListener#postGenerateSchema` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/SchemaListener/DoctrineDbalCacheAdapterSchemaListener.php:21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\SchemaListener\\MessengerTransportDoctrineSchemaListener#postGenerateSchema",
+     "source": "MessengerTransportDoctrineSchemaListener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\SchemaListener\\MessengerTransportDoctrineSchemaListener#postGenerateSchema` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/SchemaListener/MessengerTransportDoctrineSchemaListener.php:21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\SchemaListener\\RememberMeTokenProviderDoctrineSchemaListener#postGenerateSchema",
+     "source": "RememberMeTokenProviderDoctrineSchemaListener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\SchemaListener\\RememberMeTokenProviderDoctrineSchemaListener#postGenerateSchema` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\SchemaListener\\AbstractSchemaListener\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/SchemaListener/RememberMeTokenProviderDoctrineSchemaListener.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\IdGenerator\\UuidGenerator#generateId",
+     "source": "UuidGenerator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\IdGenerator\\UuidGenerator#generateId` is not loadable (skipped cleanly): missing module `Doctrine\\ORM\\Id\\AbstractIdGenerator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\ORM\\Id\\AbstractIdGenerator\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/IdGenerator/UuidGenerator.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Middleware#wrap",
+     "source": "Middleware.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Middleware#wrap` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Doctrine\\DBAL\\Driver\\Middleware\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Middleware/Debug/Middleware.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Messenger\\AbstractDoctrineMiddleware#handle",
+     "source": "AbstractDoctrineMiddleware.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Messenger\\AbstractDoctrineMiddleware#handle` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\Messenger\\Middleware\\MiddlewareInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Messenger/AbstractDoctrineMiddleware.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DependencyInjection\\Security\\UserProvider\\EntityFactory#create",
+     "source": "EntityFactory.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DependencyInjection\\Security\\UserProvider\\EntityFactory#create` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Bundle\\SecurityBundle\\DependencyInjection\\Security\\UserProvider\\UserProviderFactoryInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DependencyInjection/Security/UserProvider/EntityFactory.php:27",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Connection#prepare",
+     "source": "Connection.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Connection#prepare` is not loadable (skipped cleanly): missing module `Doctrine\\DBAL\\Driver\\Middleware\\AbstractConnectionMiddleware` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\DBAL\\Driver\\Middleware\\AbstractConnectionMiddleware\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Middleware/Debug/Connection.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\ChoiceList\\ORMQueryBuilderLoader#getEntitiesByIds",
+     "source": "ORMQueryBuilderLoader.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\ChoiceList\\ORMQueryBuilderLoader#getEntitiesByIds` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Bridge\\Doctrine\\Form\\ChoiceList\\EntityLoaderInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/ChoiceList/ORMQueryBuilderLoader.php:27",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#dispatchEvent",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#dispatchEvent` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\CacheWarmer\\ProxyCacheWarmer#warmUp",
+     "source": "ProxyCacheWarmer.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\CacheWarmer\\ProxyCacheWarmer#warmUp` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\HttpKernel\\CacheWarmer\\CacheWarmerInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/CacheWarmer/ProxyCacheWarmer.php:25",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\EventListener\\MergeDoctrineCollectionListener#onSubmit",
+     "source": "MergeDoctrineCollectionListener.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\EventListener\\MergeDoctrineCollectionListener#onSubmit` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\EventDispatcher\\EventSubscriberInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/EventListener/MergeDoctrineCollectionListener.php:28",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#getProperties",
+     "source": "DoctrineExtractor.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#getProperties` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\PropertyInfo\\PropertyListExtractorInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/PropertyInfo/DoctrineExtractor.php:35",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DataCollector\\DoctrineDataCollector#collect",
+     "source": "DoctrineDataCollector.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DataCollector\\DoctrineDataCollector#collect` is not loadable (skipped cleanly): missing module `Symfony\\Component\\HttpKernel\\DataCollector\\DataCollector` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\HttpKernel\\DataCollector\\DataCollector\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DataCollector/DoctrineDataCollector.php:29",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolver#resolve",
+     "source": "EntityValueResolver.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolver#resolve` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolverTrait\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ArgumentResolver/EntityValueResolver.php on line 30",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Statement#bindValue",
+     "source": "Statement.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Statement#bindValue` is not loadable (skipped cleanly): missing module `Doctrine\\DBAL\\Driver\\Middleware\\AbstractStatementMiddleware` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\DBAL\\Driver\\Middleware\\AbstractStatementMiddleware\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Middleware/Debug/Statement.php:27",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\IdGenerator\\UuidGenerator#nameBased",
+     "source": "UuidGenerator.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\IdGenerator\\UuidGenerator#nameBased` is not loadable (skipped cleanly): missing module `Doctrine\\ORM\\Id\\AbstractIdGenerator` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\ORM\\Id\\AbstractIdGenerator\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/IdGenerator/UuidGenerator.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ArgumentResolver\\Console\\EntityValueResolver#resolve",
+     "source": "EntityValueResolver.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ArgumentResolver\\Console\\EntityValueResolver#resolve` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Symfony\\Bridge\\Doctrine\\ArgumentResolver\\EntityValueResolverTrait\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ArgumentResolver/Console/EntityValueResolver.php on line 35",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Connection#query",
+     "source": "Connection.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Connection#query` is not loadable (skipped cleanly): missing module `Doctrine\\DBAL\\Driver\\Middleware\\AbstractConnectionMiddleware` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\DBAL\\Driver\\Middleware\\AbstractConnectionMiddleware\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Middleware/Debug/Connection.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\EntityType#getLoader",
+     "source": "EntityType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\EntityType#getLoader` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/EntityType.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessType",
+     "source": "DoctrineOrmTypeGuesser.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessType` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught LogicException: You cannot use the \"Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser\" class as the \"symfony/form\" package is not installed. Try running \"composer require symfony/form\". in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/DoctrineOrmTypeGuesser.php:40",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterEventListenersAndSubscribersPass#process",
+     "source": "RegisterEventListenersAndSubscribersPass.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterEventListenersAndSubscribersPass#process` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\DependencyInjection\\Compiler\\CompilerPassInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DependencyInjection/CompilerPass/RegisterEventListenersAndSubscribersPass.php:31",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType::createChoiceLabel",
+     "source": "DoctrineType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType::createChoiceLabel` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Form\\AbstractType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Form\\AbstractType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/DoctrineType.php:33",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Query#setParam",
+     "source": "Query.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 1270.45324499142,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Attribute\\MapEntity#withDefaults",
+     "source": "MapEntity.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Attribute\\MapEntity#withDefaults` is not loadable (skipped cleanly): missing module `Symfony\\Component\\HttpKernel\\Attribute\\ValueResolver` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\HttpKernel\\Attribute\\ValueResolver\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Attribute/MapEntity.php:21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#getType",
+     "source": "DoctrineExtractor.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#getType` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\PropertyInfo\\PropertyListExtractorInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/PropertyInfo/DoctrineExtractor.php:35",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#getListeners",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#getListeners` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Connection#exec",
+     "source": "Connection.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Connection#exec` is not loadable (skipped cleanly): missing module `Doctrine\\DBAL\\Driver\\Middleware\\AbstractConnectionMiddleware` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\DBAL\\Driver\\Middleware\\AbstractConnectionMiddleware\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Middleware/Debug/Connection.php:26",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Query#setValue",
+     "source": "Query.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 1299.1583029318124,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType::createChoiceName",
+     "source": "DoctrineType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType::createChoiceName` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Form\\AbstractType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Form\\AbstractType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/DoctrineType.php:33",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\EntityType#getQueryBuilderPartsForCachingHash",
+     "source": "EntityType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\EntityType#getQueryBuilderPartsForCachingHash` is not loadable (skipped cleanly): missing module `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/EntityType.php:22",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Security\\RememberMe\\DoctrineTokenProvider#deleteTokenBySeries",
+     "source": "DoctrineTokenProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Security\\RememberMe\\DoctrineTokenProvider#deleteTokenBySeries` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\Security\\Core\\Authentication\\RememberMe\\TokenProviderInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Security/RememberMe/DoctrineTokenProvider.php:49",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Middleware\\Debug\\Query#setValues",
+     "source": "Query.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 1193.132205031478,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterMappingsPass#process",
+     "source": "RegisterMappingsPass.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\DependencyInjection\\CompilerPass\\RegisterMappingsPass#process` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\DependencyInjection\\Compiler\\CompilerPassInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/DependencyInjection/CompilerPass/RegisterMappingsPass.php:33",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType#getQueryBuilderPartsForCachingHash",
+     "source": "DoctrineType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType#getQueryBuilderPartsForCachingHash` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Form\\AbstractType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Form\\AbstractType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/DoctrineType.php:33",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#hasListeners",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#hasListeners` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessRequired",
+     "source": "DoctrineOrmTypeGuesser.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessRequired` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught LogicException: You cannot use the \"Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser\" class as the \"symfony/form\" package is not installed. Try running \"composer require symfony/form\". in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/DoctrineOrmTypeGuesser.php:40",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventListener",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventListener` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType#buildForm",
+     "source": "DoctrineType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType#buildForm` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Form\\AbstractType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Form\\AbstractType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/DoctrineType.php:33",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Security\\RememberMe\\DoctrineTokenProvider#createNewToken",
+     "source": "DoctrineTokenProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Security\\RememberMe\\DoctrineTokenProvider#createNewToken` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\Security\\Core\\Authentication\\RememberMe\\TokenProviderInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Security/RememberMe/DoctrineTokenProvider.php:49",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType#configureOptions",
+     "source": "DoctrineType.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\Type\\DoctrineType#configureOptions` is not loadable (skipped cleanly): missing module `Symfony\\Component\\Form\\AbstractType` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Symfony\\Component\\Form\\AbstractType\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/Type/DoctrineType.php:33",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#removeEventListener",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#removeEventListener` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessMaxLength",
+     "source": "DoctrineOrmTypeGuesser.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessMaxLength` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught LogicException: You cannot use the \"Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser\" class as the \"symfony/form\" package is not installed. Try running \"composer require symfony/form\". in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/DoctrineOrmTypeGuesser.php:40",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventSubscriber",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#addEventSubscriber` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessPattern",
+     "source": "DoctrineOrmTypeGuesser.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser#guessPattern` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught LogicException: You cannot use the \"Symfony\\Bridge\\Doctrine\\Form\\DoctrineOrmTypeGuesser\" class as the \"symfony/form\" package is not installed. Try running \"composer require symfony/form\". in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Form/DoctrineOrmTypeGuesser.php:40",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#removeEventSubscriber",
+     "source": "ContainerAwareEventManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\ContainerAwareEventManager#removeEventSubscriber` is not loadable (skipped cleanly): missing module `Doctrine\\Common\\EventManager` (not in the project and not installed) \u2014 PHP Fatal error:  Uncaught Error: Class \"Doctrine\\Common\\EventManager\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/ContainerAwareEventManager.php:24",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#isReadable",
+     "source": "DoctrineExtractor.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#isReadable` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\PropertyInfo\\PropertyListExtractorInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/PropertyInfo/DoctrineExtractor.php:35",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#isWritable",
+     "source": "DoctrineExtractor.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\PropertyInfo\\DoctrineExtractor#isWritable` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\PropertyInfo\\PropertyListExtractorInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/PropertyInfo/DoctrineExtractor.php:35",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Symfony\\Bridge\\Doctrine\\Security\\RememberMe\\DoctrineTokenProvider#configureSchema",
+     "source": "DoctrineTokenProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Symfony\\Bridge\\Doctrine\\Security\\RememberMe\\DoctrineTokenProvider#configureSchema` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Symfony\\Component\\Security\\Core\\Authentication\\RememberMe\\TokenProviderInterface\" not found in /home/ubuntu/govfuzz-corpus-500/php/symfony__symfony/src/Symfony/Bridge/Doctrine/Security/RememberMe/DoctrineTokenProvider.php:49",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 29,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PHP Fatal error: Uncaught Error: Class \"X\" not found i\u2026",
+     "language": "php"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 20,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PHP Fatal error: Uncaught Error: Interface \"X\" not found in PATH",
+     "language": "php"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PHP Fatal error: Uncaught LogicException: You cannot use the \"X\" class as the \"X\" package is not installed. Try ru\u2026",
+     "language": "php"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PHP Fatal error: Trait \"X\" not found in PATH on line N",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "f85ae3d6521eeaf7d4284695e7e622d8206533e0",
+ "clone_s": 5.9,
+ "lane_check": "php: 10797 files / 1838121 lines; top=php(1838121)",
+ "status": "done"
+}

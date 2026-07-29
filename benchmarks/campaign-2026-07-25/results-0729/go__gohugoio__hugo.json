@@ -1,0 +1,859 @@
+{
+ "lane": "go",
+ "repo": "gohugoio/hugo",
+ "stars": 89178,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --json --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 184082,
+   "sloc_by_lang": {
+    "go": 170083,
+    "config": 6248,
+    "javascript": 3969,
+    "c": 3782
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.41,
+   "timed_out": false,
+   "panic": false,
+   "count": 3592,
+   "by_language": {
+    "go": 3419,
+    "javascript": 10,
+    "c": 163
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.74,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 63,
+   "by_severity": {
+    "medium": 12,
+    "high": 50,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-405": 48,
+    "GF-422": 11,
+    "GF-477": 1,
+    "GF-476": 1,
+    "GF-403": 1,
+    "GF-404": 1
+   },
+   "gaps": 52
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 229
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo --work-dir /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 77.92,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 3446,
+    "dropped_by_cap": 3386,
+    "built": 7,
+    "built_and_fuzzed": 7,
+    "fuzzed_stub_only": 0,
+    "failed_build": 15,
+    "unsupported_params": 36,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 2,
+    "findings": 2
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "FromString",
+     "source": "identities.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 23872.827841191185,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "IsGoTmplExt",
+     "source": "classifier.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 26472.338975639133,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParseBytes",
+     "source": "pageparser.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Config` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FormatFromString",
+     "source": "format.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseFrontMatterAndContent",
+     "source": "pageparser.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromTOMLConfigString",
+     "source": "configLoader.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromContent",
+     "source": "mediaType.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Types` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromConfigString",
+     "source": "configLoader.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewReadSeekerNoOpCloserFromString",
+     "source": "readers.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/spf13/afero@v1.15.0 requires go >= 1.23.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromFile",
+     "source": "configLoader.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `afero.Fs` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewBaseURLFromString",
+     "source": "baseURL.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 31659.912487003978,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParseVersion",
+     "source": "version.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 30397.504527322988,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "MD5FromStringHexEncoded",
+     "source": "hashing.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/spf13/afero@v1.15.0 requires go >= 1.23.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewReadSeekerNoOpCloserFromBytes",
+     "source": "readers.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/spf13/afero@v1.15.0 requires go >= 1.23.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseGlob",
+     "source": "helper.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromFileToMap",
+     "source": "configLoader.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `afero.Fs` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseMain",
+     "source": "pageparser.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `Config` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewReadSeekerNoOpCloserFromReader",
+     "source": "readers.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/spf13/afero@v1.15.0 requires go >= 1.23.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromStringAndExt",
+     "source": "mediaType.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MustParseVersion",
+     "source": "version.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 30900.35337359456,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "LoadConfigFromDir",
+     "source": "configLoader.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `afero.Fs` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromString",
+     "source": "mediaType.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ReadString",
+     "source": "readers.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/spf13/afero@v1.15.0 requires go >= 1.23.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ImageFormatFromExt",
+     "source": "config.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/image@v0.44.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewContentFileInfoFrom",
+     "source": "fileInfo.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MakeReadableAndRemoveAllModulePkgDir",
+     "source": "fs.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `afero.Fs` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ImageFormatFromMediaSubType",
+     "source": "config.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/image@v0.44.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewFileErrorFromName",
+     "source": "file_error.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `error` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeConfig",
+     "source": "roles.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `map[string]any` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeConfig",
+     "source": "versions.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `map[string]any` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExtractSummaryFromHTMLWithDivider",
+     "source": "page_markup.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `media.Type` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseDimension",
+     "source": "dimensions.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: github.com/spf13/afero@v1.15.0 requires go >= 1.23.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ParseGlob",
+     "source": "template.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/text@v0.40.0 requires go >= 1.25.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "readInput",
+     "source": "common.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8.873977278042155,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "writeOutput",
+     "source": "common.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9.202834170742955,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "f",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "check",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "splitUrl",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pathFromUrl",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "numberOfMatchingSegments",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pickBestMatch",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "pathsMatch",
+     "source": "livereload.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/go/gohugoio__hugo/livereload/livereload.js` is not loadable (skipped cleanly): ReferenceError: window is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_input_message",
+     "source": "avif.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (avifDecoder, avifEncoder, avifPixelFormat, avifResult, avifUnsignedFraction) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_input_message",
+     "source": "webp.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (WebPConfig) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "write_blob",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "encodeNRGBAAnimated",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "write_blob",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "encodeNRGBA",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "avifFormatForHint",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handle_commands",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handle_commands",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "initDecoderConfig",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "write_output_message",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "drain_bytes",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "encoder_errf",
+     "source": "avif.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "write_output_message",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "drain_bytes",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "initEncoderConfig",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "encodeGray",
+     "source": "webp.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 9,
+     "detail": "expected \"X\" after expression",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 6,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (WebPConfig) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable h\u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (avifDecoder, avifEncoder, avifPixelFormat, avifResult, avifUnsignedFraction) \u2014 an external SDK/\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 17,
+     "detail": "go build failed: go: PATH requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 11,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "ReferenceError: window is not defined",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-20def25f",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0002-3D108963"
+    },
+    {
+     "id": "F-0001-aaecfefe",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N004D-7196ABE2"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo/findings --out /home/ubuntu/govfuzz-sweep-work/go__gohugoio__hugo/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "8a468df065a75c1c7cf9f6850f32148746590ea5",
+ "clone_s": 1.4,
+ "lane_check": "go: 901 files / 194452 lines; top=go(194452)",
+ "status": "done"
+}

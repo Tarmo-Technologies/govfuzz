@@ -1,0 +1,399 @@
+{
+ "lane": "cpp",
+ "repo": "microsoft/terminal",
+ "stars": 104346,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal --json --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__terminal.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 227224,
+   "sloc_by_lang": {
+    "cpp": 211757,
+    "csharp": 10176,
+    "c": 4010,
+    "config": 1078,
+    "python": 195,
+    "javascript": 8
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal --format json --top 100000",
+   "exit": 0,
+   "wall_s": 37.46,
+   "timed_out": false,
+   "panic": false,
+   "count": 8315,
+   "by_language": {
+    "cpp": 8299,
+    "csharp": 2,
+    "c": 14
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__terminal/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.57,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 12,
+   "by_severity": {
+    "high": 6,
+    "medium": 6
+   },
+   "top_rules": {
+    "GF-424": 5,
+    "GF-405": 3,
+    "GF-491": 2,
+    "GF-500": 1,
+    "GF-408": 1
+   },
+   "gaps": 5
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal --out /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__terminal/sbom",
+   "exit": 0,
+   "wall_s": 0.17,
+   "timed_out": false,
+   "panic": false,
+   "components": 36
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__microsoft__terminal --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 289.17,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 22,
+    "discovered_total": 5923,
+    "dropped_by_cap": 5901,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 14,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 15,
+    "synthesized_types": 6,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "StateMachine::ProcessString",
+     "source": "stateMachine.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'StateMachine' to harness 'ProcessString': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'StateMachine' was found. Add a small wrapper or factory harness that constructs the object and calls 'ProcessString', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'StateMachine' to harness 'ProcessString': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'StateMachine' was found. Add a small wrapper or factory harness that constructs the object and calls 'ProcessString', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CONSOLE_INFORMATION::AllocateConsole",
+     "source": "consoleInformation.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'title' of type 'const std::wstring_view' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'title' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'title' of type 'const std::wstring_view' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'title' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Terminal::Write",
+     "source": "Terminal.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Terminal' to harness 'Write': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Terminal' was found. Add a small wrapper or factory harness that constructs the object and calls 'Write', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'Terminal' to harness 'Write': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Terminal' was found. Add a small wrapper or factory harness that constructs the object and calls 'Write', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ApiRoutines::WriteConsoleAImpl",
+     "source": "_stream.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'ApiRoutines::WriteConsoleAImpl' return type 'HRESULT' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "OutputStateMachineEngine::ActionOscDispatch",
+     "source": "OutputStateMachineEngine.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'OutputStateMachineEngine' to harness 'ActionOscDispatch': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'OutputStateMachineEngine' was found. Add a small wrapper or factory harness that constructs the object and calls 'ActionOscDispatch', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'OutputStateMachineEngine' to harness 'ActionOscDispatch': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'OutputStateMachineEngine' was found. Add a small wrapper or factory harness that constructs the object and calls 'ActionOscDispatch', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Terminal::PreviewText",
+     "source": "Terminal.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Terminal' to harness 'PreviewText': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Terminal' was found. Add a small wrapper or factory harness that constructs the object and calls 'PreviewText', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'Terminal' to harness 'PreviewText': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Terminal' was found. Add a small wrapper or factory harness that constructs the object and calls 'PreviewText', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AdaptDispatch::DoConEmuAction",
+     "source": "adaptDispatch.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'AdaptDispatch' to harness 'DoConEmuAction': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'AdaptDispatch' was found. Add a small wrapper or factory harness that constructs the object and calls 'DoConEmuAction', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'AdaptDispatch' to harness 'DoConEmuAction': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'AdaptDispatch' was found. Add a small wrapper or factory harness that constructs the object and calls 'DoConEmuAction', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AdaptDispatch::DoFinalTermAction",
+     "source": "adaptDispatch.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'AdaptDispatch' to harness 'DoFinalTermAction': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'AdaptDispatch' was found. Add a small wrapper or factory harness that constructs the object and calls 'DoFinalTermAction', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'AdaptDispatch' to harness 'DoFinalTermAction': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'AdaptDispatch' was found. Add a small wrapper or factory harness that constructs the object and calls 'DoFinalTermAction', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "utextExtract",
+     "source": "UTextAdapter.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'ut' of type 'UText *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'UText' for pointer parameter 'ut' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseNumericCode",
+     "source": "KeyChordSerialization.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'str' of type 'const std::wstring_view &' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'str' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Clipboard::StringPaste",
+     "source": "Clipboard.cpp",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 23,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Utils::ColorFromXParseColorSpec",
+     "source": "utils.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Utils' to harness 'ColorFromXParseColorSpec': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Utils' was found. Add a small wrapper or factory harness that constructs the object and calls 'ColorFromXParseColorSpec', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'Utils' to harness 'ColorFromXParseColorSpec': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Utils' was found. Add a small wrapper or factory harness that constructs the object and calls 'ColorFromXParseColorSpec', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "InputBuffer::Consume",
+     "source": "inputBuffer.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'source' of type 'std::wstring_view &' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'source' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'source' of type 'std::wstring_view &' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'source' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "til::io::read_file_as_utf8_string_if_exists",
+     "source": "io.h",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "blocked_by_non_self_contained_header: '/home/ubuntu/govfuzz-corpus-500/cpp/microsoft__terminal/src/inc/til/io.h' cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling project umbrella was found; it likely depends on declarations or macro state established by an owning source file before inclusion. Compiler preflight: <stdin>:1:10: fatal error: 'limits' file not found |     1 | #include <limits> |       |          ^~~~~~~~ | 1 error generated.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ApiRoutines::GetConsoleAliasAImpl",
+     "source": "alias.cpp",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 23,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ApiRoutines::GetConsoleAliasesAImpl",
+     "source": "alias.cpp",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 23,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ApiRoutines::GetConsoleCommandHistoryAImpl",
+     "source": "history.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'ApiRoutines::GetConsoleCommandHistoryAImpl' return type 'HRESULT' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CommandHistory::s_Allocate",
+     "source": "history.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'appName' of type 'const std::wstring_view' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'appName' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'appName' of type 'const std::wstring_view' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring_view' for parameter 'appName' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TextBuffer::IsWordBoundary",
+     "source": "textBuffer.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'TextBuffer' to harness 'IsWordBoundary': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'TextBuffer' was found. Add a small wrapper or factory harness that constructs the object and calls 'IsWordBoundary', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'TextBuffer' to harness 'IsWordBoundary': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'TextBuffer' was found. Add a small wrapper or factory harness that constructs the object and calls 'IsWordBoundary', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Base64::Decode",
+     "source": "base64.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ target 'Base64::Decode' return type 'HRESULT' is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Clipboard::TextToKeyEvents",
+     "source": "Clipboard.cpp",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 4,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AdaptDispatch::DoITerm2Action",
+     "source": "adaptDispatch.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'AdaptDispatch' to harness 'DoITerm2Action': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'AdaptDispatch' was found. Add a small wrapper or factory harness that constructs the object and calls 'DoITerm2Action', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'AdaptDispatch' to harness 'DoITerm2Action': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'AdaptDispatch' was found. Add a small wrapper or factory harness that constructs the object and calls 'DoITerm2Action', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "missing header",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 3,
+     "detail": "[cpp20] C++ target \"X\" return type \"X\" is undefined in the scanned tree \u2014 likely an external SDK/framework (e.g. MFC/Win32) unavailable offline; statically analyzed, no\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] blocked_by_non_self_contained_header: \"X\" cannot be included by an independent C++ harness translation unit under its recovered build flags, and no compiling pr\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "a463ae64797c19d181dd8fc9f74c5596ad017782",
+ "clone_s": 2.2,
+ "lane_check": "cpp: 671 files / 223388 lines; top=cpp(223388)",
+ "status": "done"
+}

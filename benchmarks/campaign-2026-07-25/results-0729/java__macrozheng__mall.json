@@ -1,0 +1,502 @@
+{
+ "lane": "java",
+ "repo": "macrozheng/mall",
+ "stars": 84420,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --json --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 66130,
+   "sloc_by_lang": {
+    "java": 65564,
+    "config": 566
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "count": 3488,
+   "by_language": {
+    "java": 3488
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.78,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 4,
+   "by_severity": {
+    "medium": 4
+   },
+   "top_rules": {
+    "GF-544": 2,
+    "GF-477": 1,
+    "GF-446": 1
+   },
+   "gaps": 88
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --out /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 36
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/macrozheng__mall --work-dir /home/ubuntu/govfuzz-sweep-work/java__macrozheng__mall --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 271.2,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 35,
+    "discovered_total": 3479,
+    "dropped_by_cap": 3444,
+    "built": 23,
+    "built_and_fuzzed": 23,
+    "fuzzed_stub_only": 0,
+    "failed_build": 6,
+    "unsupported_params": 6,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "loadUserByUsername",
+     "source": "UmsMemberServiceImpl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "loadUserByUsername",
+     "source": "UmsAdminServiceImpl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fail",
+     "source": "Asserts.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12732.421692751228,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "success",
+     "source": "CommonResult.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'success' parameter #0 has an unsupported type `T`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "failed",
+     "source": "CommonResult.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'failed' parameter #0 has an unsupported type `IErrorCode`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "failed",
+     "source": "CommonResult.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13377.897819972777,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "validateFailed",
+     "source": "CommonResult.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13449.269248645956,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "create",
+     "source": "PmsProductAttributeCategoryServiceImpl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create",
+     "source": "PmsProductAttributeCategoryController.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "del",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5901.708887932486,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "expire",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8620.013073837048,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "close",
+     "source": "OmsOrderController.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'close' parameter #0 has an unsupported type `List<Long>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "incr",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9805.640434290983,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "close",
+     "source": "OmsOrderServiceImpl.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'close' parameter #0 has an unsupported type `List<Long>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decr",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9580.97751741169,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hGet",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8740.494540107687,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hSet",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4702.147445357764,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hSet",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6495.852619296484,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hGetAll",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11017.11352310327,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hSetAll",
+     "source": "RedisServiceImpl.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'hSetAll' parameter #1 has an unsupported type `Map<String, Object>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hSetAll",
+     "source": "RedisServiceImpl.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'hSetAll' parameter #1 has an unsupported type `Map<String, ?>`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hDel",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8217.632849114318,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "delete",
+     "source": "MinioController.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hHasKey",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9665.43519794847,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "generateAuthCode",
+     "source": "UmsMemberServiceImpl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hIncr",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6645.900900145241,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "hDecr",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6615.21206106076,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lRange",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7422.801604595846,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lSize",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8695.474299587228,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lIndex",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11170.471347454295,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lPush",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10328.909292626398,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lPush",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10055.070151927177,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lPushAll",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8739.571191352043,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lPushAll",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10931.254544144838,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "lRemove",
+     "source": "RedisServiceImpl.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8481.134321105377,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 6,
+     "detail": "[ERROR] [Help N] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException) AND javac PATH error: package org.mybatis.generator.api does no\u2026",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "0504e86b1f1b6f1b8aa6a734d37a90fb67346be7",
+ "clone_s": 1.1,
+ "lane_check": "java: 524 files / 68598 lines; top=java(68598)",
+ "status": "done"
+}

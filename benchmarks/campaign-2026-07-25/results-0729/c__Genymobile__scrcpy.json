@@ -1,0 +1,712 @@
+{
+ "lane": "c",
+ "repo": "Genymobile/scrcpy",
+ "stars": 146403,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --json --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 34324,
+   "sloc_by_lang": {
+    "c": 23528,
+    "java": 10188,
+    "config": 431,
+    "cpp": 177
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "count": 1435,
+   "by_language": {
+    "c": 876,
+    "java": 559
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.29,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 44,
+   "by_severity": {
+    "medium": 37,
+    "critical": 5,
+    "high": 2
+   },
+   "top_rules": {
+    "GF-500": 15,
+    "GF-425": 12,
+    "GF-406": 5,
+    "GF-404": 5,
+    "GF-436": 4,
+    "GF-405": 2,
+    "GF-424": 1
+   },
+   "gaps": 51
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 12
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/Genymobile__scrcpy --work-dir /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 269.75,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 32,
+    "discovered_total": 1272,
+    "dropped_by_cap": 1240,
+    "built": 9,
+    "built_and_fuzzed": 9,
+    "fuzzed_stub_only": 0,
+    "failed_build": 14,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 14
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 6,
+    "synthesized_types": 3,
+    "synthesized_macros": 169,
+    "stubbed_symbols_declared": 12,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "sc_device_msg_deserialize",
+     "source": "device_msg.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 8,
+     "repairs": 12,
+     "execs_per_sec": 12469.316330833255,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_pipe_read_all",
+     "source": "process.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'pipe' of type 'sc_pipe' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pipe' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_pipe_read_intr",
+     "source": "process_intr.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'pid' of type 'sc_pid' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pid' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_pipe_read_all_intr",
+     "source": "process_intr.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'pid' of type 'sc_pid' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pid' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_process_execute",
+     "source": "process.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'pid' of type 'sc_pid *' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for pointer parameter 'pid' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_uhid_devices_process_hid_output",
+     "source": "uhid_output.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 148,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_keyboard_uhid_process_hid_output",
+     "source": "keyboard_uhid.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 135,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_process_execute_p",
+     "source": "process.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'handle' of type 'HANDLE *' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for pointer parameter 'handle' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "net_send_intr",
+     "source": "net_intr.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "net_send_all_intr",
+     "source": "net_intr.c",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "net_send",
+     "source": "net.c",
+     "outcome": "failed_build",
+     "retries": 8,
+     "repairs": 11,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "net_send_all",
+     "source": "net.c",
+     "outcome": "failed_build",
+     "retries": 8,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ControlMessageReader",
+     "source": "ControlMessageReader.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse",
+     "source": "CodecOption.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseDisplayInfo",
+     "source": "DisplayManager.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createScanFile",
+     "source": "ControlMessage.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_adb_getprop",
+     "source": "adb.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": 2.1330513473580948,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_adb_get_device_ip",
+     "source": "adb.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": 2.1535082852674674,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_str_wrap_lines",
+     "source": "str.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 9,
+     "repairs": 12,
+     "execs_per_sec": 4.295495872322708,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_adb_connect",
+     "source": "adb.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": 2.155639411701085,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "process_msgs",
+     "source": "receiver.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 108,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_pipe_read",
+     "source": "process.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 9,
+     "repairs": 12,
+     "execs_per_sec": 10.136587712989026,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_pipe_read",
+     "source": "process.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'pipe' of type 'HANDLE' has no byte-buffer decoder after struct synthesis: opaque type 'HANDLE' for parameter 'pipe' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "putValue",
+     "source": "Settings.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createDisplay",
+     "source": "SurfaceControl.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_adb_execute",
+     "source": "adb.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": 1.9025710096391328,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_adb_forward_remove",
+     "source": "adb.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": 2.2121998060546098,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "sc_adb_install",
+     "source": "adb.c",
+     "outcome": "failed_build",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sc_adb_disconnect",
+     "source": "adb.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 13,
+     "repairs": 38,
+     "execs_per_sec": 2.161366033748736,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "read",
+     "source": "AudioRecordReader.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'read' parameter #1 has an unsupported type `MediaCodec.BufferInfo`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read",
+     "source": "AudioPlaybackCapture.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'read' parameter #1 has an unsupported type `MediaCodec.BufferInfo`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read",
+     "source": "AudioDirectCapture.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'read' parameter #1 has an unsupported type `MediaCodec.BufferInfo`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "incomplete type",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing macro",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "undeclared function",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 6,
+     "detail": "javac (target) failed: PATH error: package android.graphics does not exist",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-0f34968b",
+     "rule": "GF-208",
+     "cwe": [
+      "CWE-401"
+     ],
+     "cwe_name": "Missing Release of Memory after Effective Lifetime",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C000B-3A66E5B1"
+    },
+    {
+     "id": "F-0001-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C02BF-F26478A5"
+    },
+    {
+     "id": "F-0002-21944724",
+     "rule": "GF-415",
+     "cwe": [
+      "CWE-617"
+     ],
+     "cwe_name": "Native assertion contract failed",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C02BF-F26478A5"
+    },
+    {
+     "id": "F-0003-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C029C-AFB6E84C"
+    },
+    {
+     "id": "F-0004-21944724",
+     "rule": "GF-415",
+     "cwe": [
+      "CWE-617"
+     ],
+     "cwe_name": "Native assertion contract failed",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C029C-AFB6E84C"
+    },
+    {
+     "id": "F-0005-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0174-E921DEF6"
+    },
+    {
+     "id": "F-0006-21944724",
+     "rule": "GF-415",
+     "cwe": [
+      "CWE-617"
+     ],
+     "cwe_name": "Native assertion contract failed",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0174-E921DEF6"
+    },
+    {
+     "id": "F-0007-dea88a88",
+     "rule": "GF-415",
+     "cwe": [
+      "CWE-617"
+     ],
+     "cwe_name": "Native assertion contract failed",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C00E4-30B15A12"
+    },
+    {
+     "id": "F-0008-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C019E-29B2B90E"
+    },
+    {
+     "id": "F-0009-21944724",
+     "rule": "GF-415",
+     "cwe": [
+      "CWE-617"
+     ],
+     "cwe_name": "Native assertion contract failed",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C019E-29B2B90E"
+    },
+    {
+     "id": "F-0010-75f035d1",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-122",
+      "CWE-125"
+     ],
+     "cwe_name": "Heap-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C00E4-6A9926F8"
+    },
+    {
+     "id": "F-0011-4feac75b",
+     "rule": "GF-431",
+     "cwe": [
+      "CWE-78"
+     ],
+     "cwe_name": "Fuzz-controlled command reached a process-execution API",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C00E4-6A9926F8"
+    },
+    {
+     "id": "F-0012-5c6a5cc7",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-682"
+     ],
+     "cwe_name": "Incorrect Calculation",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C0111-C07E8429"
+    },
+    {
+     "id": "F-0013-21944724",
+     "rule": "GF-415",
+     "cwe": [
+      "CWE-617"
+     ],
+     "cwe_name": "Native assertion contract failed",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0111-C07E8429"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/findings --out /home/ubuntu/govfuzz-sweep-work/c__Genymobile__scrcpy/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "2926c06c5dc3064ae6d8db706f1a98a37cfcf3f0",
+ "clone_s": 0.5,
+ "lane_check": "c: 91 files / 20941 lines; top=c(20941)",
+ "status": "done"
+}

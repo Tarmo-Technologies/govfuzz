@@ -1,0 +1,866 @@
+{
+ "lane": "ts",
+ "repo": "vuejs/vue",
+ "stars": 210144,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --json --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 69651,
+   "sloc_by_lang": {
+    "javascript": 63470,
+    "config": 6181
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 150,
+   "by_language": {
+    "typescript": 142,
+    "javascript": 8
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 5.17,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 21,
+   "by_severity": {
+    "medium": 5,
+    "high": 15,
+    "critical": 1
+   },
+   "top_rules": {
+    "GF-507": 10,
+    "GF-500": 5,
+    "GF-472": 5,
+    "GF-429": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 940
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue --work-dir /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 142.09,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 150,
+    "dropped_by_cap": 90,
+    "built": 21,
+    "built_and_fuzzed": 21,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 39,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 4
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "sfc",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `sfc` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'sfc' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "server",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `server` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'server' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compiler",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `compiler` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'compiler' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "core",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `core` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'core' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "web",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `web` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'web' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "vue",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `vue` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'vue' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "shared",
+     "source": "alias.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `shared` is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT 'shared' is not a function in /home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/alias.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getBuild",
+     "source": "config.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/vuejs__vue/scripts/config.js` is not loadable (skipped cleanly): missing module `@rollup/plugin-alias` (not in the project and not installed) \u2014 Error: Cannot find module '@rollup/plugin-alias'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createElement",
+     "source": "node-ops.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12.898497102191643,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "bindObjectListeners",
+     "source": "bind-object-listeners.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0004-DFADFC6C/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "genClassForVnode",
+     "source": "class.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1266.3724224762286,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "createSourceMapConsumers",
+     "source": "source-map-support.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0005-8CEBAC3D/target.js` is not loadable (skipped cleanly): missing module `source-map` (not in the project and not installed) \u2014 Error: Cannot find module 'source-map'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "genStyle",
+     "source": "style.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1344.2232835654056,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "createCompilerCreator",
+     "source": "create-compiler.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0006-57D95A5A/target.js` is not loadable (skipped cleanly): missing module `he` (not in the project and not installed) \u2014 Error: Cannot find module 'he'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handleError",
+     "source": "error.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0007-5A8CD64B/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "baseWarn",
+     "source": "helpers.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1133.6026527508495,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "h",
+     "source": "h.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0009-4DA13924/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createMapper",
+     "source": "create-async-file-mapper.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1449.1888632124967,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "srcset.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1549.0661857139971,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default#apply",
+     "source": "server.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T000E-669CBBD6/target.js` is not loadable (skipped cleanly): missing module `chalk` (not in the project and not installed) \u2014 Error: Cannot find module 'chalk'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#apply",
+     "source": "client.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0010-ECE656B4/target.js` is not loadable (skipped cleanly): missing module `chalk` (not in the project and not installed) \u2014 Error: Cannot find module 'chalk'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createElementNS",
+     "source": "node-ops.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.264809558743947,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "createCompileToFunctionFn",
+     "source": "to-function.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0015-C8B38EDE/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createTextNode",
+     "source": "node-ops.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.642591294632505,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "enter",
+     "source": "transition.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0019-4E07DFC0/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#_transform",
+     "source": "template-stream.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `default#_transform` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'inject')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "convertEnumeratedValue",
+     "source": "attrs.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1620.1338349245243,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "createComment",
+     "source": "node-ops.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12.226481346555804,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "detectErrors",
+     "source": "error-detector.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0020-7DAE5EAA/target.js` is not loadable (skipped cleanly): missing module `he` (not in the project and not installed) \u2014 Error: Cannot find module 'he'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "style.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1258.3463292781978,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "genAttrSegments",
+     "source": "modules.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1391.5925949760212,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "genAssignmentCode",
+     "source": "model.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1232.7561465672688,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "getTagNamespace",
+     "source": "element.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1012.3487653641464,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "getStyle",
+     "source": "style.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1249.1444608337772,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default#addSub",
+     "source": "dep.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T002B-4B127883/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extractTransitionData",
+     "source": "transition.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T002B-7B21DDC7/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "escape",
+     "source": "util.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1437.9053570693977,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default#removeSub",
+     "source": "dep.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T002F-DE9EC85A/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "concat",
+     "source": "class.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1641.7773416116158,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "eventsMixin",
+     "source": "events.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T003B-2765CA19/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#depend",
+     "source": "dep.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T003B-A1572CFC/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#_flush",
+     "source": "template-stream.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `default#_flush` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'inject')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createPatchFunction",
+     "source": "patch.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0042-6236F96E/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getAssetName",
+     "source": "util.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0045-5AE00473/target.js` is not loadable (skipped cleanly): missing module `chalk` (not in the project and not installed) \u2014 Error: Cannot find module 'chalk'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#notify",
+     "source": "dep.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0047-A665426D/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "EffectScope#stop",
+     "source": "effectScope.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T004F-51118860/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createEmptyVNode",
+     "source": "vnode.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1690.1890238676829,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "createTextVNode",
+     "source": "vnode.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1399.5133858960853,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "createBundleRunner",
+     "source": "create-bundle-runner.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T005D-6B504A39/target.js` is not loadable (skipped cleanly): missing module `resolve` (not in the project and not installed) \u2014 Error: Cannot find module 'resolve'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cloneVNode",
+     "source": "vnode.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1527.7920251471894,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "effectScope",
+     "source": "effectScope.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T006C-F389BAFC/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "customRef",
+     "source": "ref.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0094-A3F3C7AB/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default#addDep",
+     "source": "watcher.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T00A0-959BA108/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "getData",
+     "source": "state.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T00A8-BE0351A0/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "del",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T011B-38641FA7/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "activateChildComponent",
+     "source": "lifecycle.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0168-835BC880/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "hasChanged",
+     "source": "util.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 844.5137859255103,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "deactivateChildComponent",
+     "source": "lifecycle.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T017A-6A2E690F/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "genText",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0251-44CA3F75/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "genComment",
+     "source": "index.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/harnesses/H-T0259-BB60A63D/target.js` is not loadable (skipped cleanly): ReferenceError: __DEV__ is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 7,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Error: GOVFUZZ_JS_EXPORT \"X\" is not a function in PATH",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 22,
+     "detail": "ReferenceError: __DEV__ is not defined",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 7,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading \"X\")",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-c2fb7ef1",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T001C-C9BC339C"
+    },
+    {
+     "id": "F-0001-f3ca2654",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T0004-15CD230B"
+    },
+    {
+     "id": "F-0002-c0103b1a",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T0014-3F1A4B4A"
+    },
+    {
+     "id": "F-0003-9b323b5c",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T0018-02A2B91A"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/findings --out /home/ubuntu/govfuzz-sweep-work/ts__vuejs__vue/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "9e88707940088cb1f4cd7dd210c9168a50dc347c",
+ "clone_s": 0.6,
+ "lane_check": "ts: 391 files / 66960 lines; top=ts(66960)",
+ "status": "done"
+}

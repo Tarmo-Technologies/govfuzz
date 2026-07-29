@@ -1,0 +1,1022 @@
+{
+ "lane": "ts",
+ "repo": "clash-verge-rev/clash-verge-rev",
+ "stars": 133744,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev --json --out /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 82861,
+   "sloc_by_lang": {
+    "javascript": 41911,
+    "rust": 29493,
+    "config": 11457
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.34,
+   "timed_out": false,
+   "panic": false,
+   "count": 704,
+   "by_language": {
+    "rust": 603,
+    "typescript": 91,
+    "javascript": 10
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev --out /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 6.41,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 65,
+   "by_severity": {
+    "high": 63,
+    "critical": 2
+   },
+   "top_rules": {
+    "GF-472": 52,
+    "GF-470": 5,
+    "GF-426": 5,
+    "GF-429": 2,
+    "GF-423": 1
+   },
+   "gaps": 47
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev --out /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 1748
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev --work-dir /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 190.4,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 703,
+    "dropped_by_cap": 643,
+    "built": 18,
+    "built_and_fuzzed": 18,
+    "fuzzed_stub_only": 0,
+    "failed_build": 1,
+    "unsupported_params": 41,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 14
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "from_message",
+     "source": "validate.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_str",
+     "source": "hotkey.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'from_str' is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_icon_cache",
+     "source": "icon.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_icon_cache",
+     "source": "app.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_str",
+     "source": "help.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'parse_str' is generic over type parameter `T`: FromStr with no byte/str-slice bound to monomorphize (uninferable, e.g. `from_slice<T: Deserialize>`) \u2014 not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_local",
+     "source": "prfitem.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'Option<String>' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_url",
+     "source": "prfitem.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'Option<&String>' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_profile_file",
+     "source": "profile.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "log_success",
+     "source": "utils.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'cli-color' imported from /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "resolveServiceRelease",
+     "source": "service-release.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.205508148866999,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "log_error",
+     "source": "utils.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'cli-color' imported from /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "log_info",
+     "source": "utils.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'cli-color' imported from /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "resolveUpdateLog",
+     "source": "updatelog.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 271.6018505616567,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "log_debug",
+     "source": "utils.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'cli-color' imported from /home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/utils.mjs",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "readPrivateInstanceRecord",
+     "source": "dev-control.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 424.5644859393375,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "runDevAnchor",
+     "source": "dev.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/dev.mjs` is not loadable (skipped cleanly): Unable to start dev command: usage: node scripts/dev.mjs <dev|trace|sidecar>",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "runDevCommand",
+     "source": "dev.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/dev.mjs` is not loadable (skipped cleanly): Unable to start dev command: usage: node scripts/dev.mjs <dev|trace|sidecar>",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "prepareDevRuntime",
+     "source": "dev.mjs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ts/clash-verge-rev__clash-verge-rev/scripts/dev.mjs` is not loadable (skipped cleanly): Unable to start dev command: usage: node scripts/dev.mjs <dev|trace|sidecar>",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "upload",
+     "source": "backup.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'upload' (in-crate) is a &self method with no usable, override-free receiver constructor; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download",
+     "source": "backup.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'download' (in-crate) is a &self method with no usable, override-free receiver constructor; skipped",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ScrollTopButton",
+     "source": "scroll-top-button.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T000A-59C850A2/target.js` is not loadable (skipped cleanly): missing module `@mui/icons-material/KeyboardArrowUp` (not in the project and not installed) \u2014 Error: Cannot find module '@mui/icons-material/KeyboardArrowUp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "URI_Hysteria",
+     "source": "hysteria.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.8221518733919,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_SSR",
+     "source": "ssr.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.381044144580503,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_Hysteria2",
+     "source": "hysteria2.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.91074185401798,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_Trojan",
+     "source": "trojan.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.956955767274916,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_HTTP",
+     "source": "http.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.105791405717913,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_AnyTLS",
+     "source": "anytls.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12.807673366800335,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_TUIC",
+     "source": "tuic.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.944184513060929,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_SOCKS",
+     "source": "socks.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.15022679174316,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_Wireguard",
+     "source": "wireguard.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.91958499666539,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_SS",
+     "source": "ss.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.022201339248822,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "URI_VLESS",
+     "source": "vless.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.521457340527537,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "index.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.177975803601068,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ProfileViewer",
+     "source": "profile-viewer.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T0026-68D15096/target.js` is not loadable (skipped cleanly): missing module `@mui/material` (not in the project and not installed) \u2014 Error: Cannot find module '@mui/material'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TrafficErrorBoundary.getDerivedStateFromError",
+     "source": "traffic-error-boundary.tsx",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T0029-899A6A36/target.js` is not loadable (skipped cleanly): missing module `@mui/icons-material` (not in the project and not installed) \u2014 Error: Cannot find module '@mui/icons-material'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cacheLanguage",
+     "source": "i18n.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T0038-2BD516A3/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "deleteProfile",
+     "source": "cmds.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T0046-3665D0B4/target.js` is not loadable (skipped cleanly): missing module `@tauri-apps/api/core` (not in the project and not installed) \u2014 Error: Cannot find module '@tauri-apps/api/core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decodeAndTrim",
+     "source": "helpers.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1035.1327681906166,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "areValidIpCidrs",
+     "source": "network.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T0058-4FD1EC6A/target.js` is not loadable (skipped cleanly): missing module `cidr-block` (not in the project and not installed) \u2014 Error: Cannot find module 'cidr-block'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "URI_VMESS",
+     "source": "vmess.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.463838286350105,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "changeLanguage",
+     "source": "i18n.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T00AD-982150E2/target.js` is not loadable (skipped cleanly): missing module `i18next` (not in the project and not installed) \u2014 Error: Cannot find module 'i18next'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "changeClashCore",
+     "source": "cmds.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T00CF-DB53BBAF/target.js` is not loadable (skipped cleanly): missing module `@tauri-apps/api/core` (not in the project and not installed) \u2014 Error: Cannot find module '@tauri-apps/api/core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cmdTestDelay",
+     "source": "cmds.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T00F3-D4658FE8/target.js` is not loadable (skipped cleanly): missing module `@tauri-apps/api/core` (not in the project and not installed) \u2014 Error: Cannot find module '@tauri-apps/api/core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decodeBase64OrOriginal",
+     "source": "helpers.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 686.429225878026,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "deleteLocalBackup",
+     "source": "cmds.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/harnesses/H-T0146-B50F0977/target.js` is not loadable (skipped cleanly): missing module `@tauri-apps/api/core` (not in the project and not installed) \u2014 Error: Cannot find module '@tauri-apps/api/core'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "build_window_initial_script",
+     "source": "window_script.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "coded_error",
+     "source": "mod.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'impl std::fmt::Display' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "country_code_to_emoji",
+     "source": "utils.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "checked",
+     "source": "types.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'impl Into<String>' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "delete_local_backup",
+     "source": "backup.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "checked_region",
+     "source": "types.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'impl Into<String>' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decrypt_data",
+     "source": "encrypt.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "delete_webdav_backup",
+     "source": "webdav.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "change_clash_core",
+     "source": "clash.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "classify_service_health",
+     "source": "probe.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'CurrentServiceProbe' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "copy_icon_file",
+     "source": "app.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'feat::IconInfo' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "change_clash_mode",
+     "source": "clash.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "copy_icon_file",
+     "source": "icon.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'IconInfo' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "delete_profile",
+     "source": "profile.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "delete_local_backup",
+     "source": "backup.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "in-crate build: target crate inherits `clash-verge-draft`, `clash-verge-logging`, `clash-verge-signal`, `clash-verge-i18n`, `clash-verge-limiter`, `tauri-plugin-clash-verge-sysinfo`, `tauri-plugin-clipboard-manager`, `tauri`, `parking_lot`, `anyhow`, `tokio`, `compact_str`, `flexi_logger`, `log`, `serde`, `serde_json`, `serde_yaml_ng`, `smartstring`, `bitflags`, `socket2`, `deelevate`, `windows-sys`, `criterion`, `tokio` from the parent workspace's [workspace.dependencies], which the detached copy can't resolve \u2014 skipped (the external-API lane still applies)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from PATH",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Unable to start dev command: usage: node PATH <dev|trace|sidecar>",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 12,
+     "detail": "in-crate build: target crate inherits \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\", \"X\" fro\u2026",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Rust target \"X\" (in-crate) is a &self method with no usable, override-free receiver constructor; skipped",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: error: failed to run custom build command for \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is a private-module trait-impl method \u2014 in-crate trait resolution is not yet supported; skipped",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is generic over type parameter \"X\": FromStr with no byte/str-slice bound to monomorphize (uninferable, e.g. \"X\") \u2014 not auto-harnessable",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-2ed3d197",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000D-D5862A69"
+    },
+    {
+     "id": "F-0001-bc3f0d67",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000D-215D31F9"
+    },
+    {
+     "id": "F-0002-a7bd7949",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000B-5BAECD63"
+    },
+    {
+     "id": "F-0003-f0b2d419",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000B-FCF86D61"
+    },
+    {
+     "id": "F-0004-99cd6025",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000D-F6518343"
+    },
+    {
+     "id": "F-0005-cb8d0ec8",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000F-E4EBE49B"
+    },
+    {
+     "id": "F-0006-96746c93",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000B-6E5F4CDB"
+    },
+    {
+     "id": "F-0007-7c8e6082",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000D-EE87C499"
+    },
+    {
+     "id": "F-0008-04e207e0",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000C-1A0EEC66"
+    },
+    {
+     "id": "F-0009-5dd02e2a",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T0013-CDDA9569"
+    },
+    {
+     "id": "F-0010-b0dc136b",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T006E-1BE6C3A2"
+    },
+    {
+     "id": "F-0011-d211f88d",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T000E-AF66ED4A"
+    },
+    {
+     "id": "F-0012-8ab742c7",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-T0025-4380347D"
+    },
+    {
+     "id": "F-0013-499ae22c",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0004-B712EEA4"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/findings --out /home/ubuntu/govfuzz-sweep-work/ts__clash-verge-rev__clash-verge-rev/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "3de4d53b8f8e4d2d6e14db87b49016aa422d8f44",
+ "clone_s": 1.2,
+ "lane_check": "ts: 226 files / 42847 lines; top=ts(42847)",
+ "status": "done"
+}

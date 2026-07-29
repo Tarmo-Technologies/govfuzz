@@ -2,6 +2,85 @@
 
 # Changelog
 
+## 0.2.24 - 2026-07-29
+
+Performance and robustness release. **Every project that timed out in the
+500-project sweep now completes**, and two long-standing process bugs are gone.
+
+Validated on a 16-lane sweep (`benchmarks/campaign-2026-07-25/results-0729/`, 48
+projects, 3 per lane): **zero problems — no timeouts, no crashes** — 1,676
+targets attempted, 568 fuzzed (33.9%), 121 findings.
+
+**The eight timeouts.** Measured under the real sweep invocation
+(`--campaign-time 240`, 510s outer): Proton 449s, sumatrapdf 457s, emscripten
+406s, serenity 351s, envoy 366s, rocksdb 361s, whisper.cpp 325s, gnat-llvm 244s.
+
+Four causes, all found by measuring — the first two guesses were wrong and
+changed nothing, so the stage timings that found them stay behind
+`GOVFUZZ_PROFILE`:
+
+- **A header classifier that parsed each file twice.** `classify_c_header`
+  counted C functions *and* C++ functions to pick a language, then the real parse
+  ran a third time: **33 seconds** on simdjson's 187k-line amalgamated header
+  before any real work. The cheap predicates already in the same `||` chain now
+  answer first.
+- **A per-target rescan of the whole source.** Two loop-invariant guards sat
+  inside the per-target loop behind a lazy `.or_else`: 7,264 targets × 7.7 MB ≈
+  **56 GB of scanning**, 83 of 99 seconds.
+- **A per-target linear scan in `list targets`**, allocating a name string per
+  comparison — ~74M times on one file.
+- **Single-threaded parsing.** Both discovery surfaces ran on one core while the
+  static scan had used a worker pool for ages. Now `cores - 1` with the 256 MiB
+  stacks discovery already needed, and byte-identical output (entries are visited
+  in sorted order and `par_iter().collect()` preserves it).
+
+`list targets`: simdjson 900s TIMEOUT → 143s, Proton 888s → 475s, sumatrapdf
+305s → 118s.
+
+**No phase is unbudgeted any more.** Discovery is deliberately not billed to
+`--campaign-time`, but unbilled is not unbounded — Proton indexed for 447s
+against a declared 240s campaign and was killed having fuzzed nothing. Discovery,
+its C++ member-access pass, and the **declaration index (173s, the largest phase
+of all)** now honour one deadline for the phase, degrade to a clearly-labelled
+PARTIAL result, and say what they skipped. `GOVFUZZ_DISCOVERY_TIME` overrides.
+The in-flight grace scales with the campaign instead of being a flat two minutes,
+and no single subprocess may take more than a quarter of it.
+
+**Two process bugs, both observed on real runs:**
+
+- **Orphaned compilers outlived govfuzz indefinitely.** `compiler_adapter` ran
+  gprbuild with a plain `Command::output()` — no timeout, no process group, no
+  `PR_SET_PDEATHSIG` — so a killed run left `gprbuild`/`gcc`/`gnat1` with PPID 1.
+  Processes were found still burning CPU **39 hours** after their sweep, stealing
+  time from every run since. That is also why gnat-llvm timed out on a 4 MB tree:
+  one generated harness sent `gnat1` into a spin and nothing stopped it. Verified
+  zero orphans after a run that previously left them.
+
+- **Target code ran in the caller's working directory.** An empty file named
+  `AAAAAA` — a fuzz input used as a filename — appeared in a source checkout.
+  Three paths that execute the built harness set no working directory, so writes
+  landed wherever govfuzz was invoked from, very often the tree being scanned.
+  They now run beside the harness binary, under the work dir.
+
+**`--resume` is reliable instead of "works the second time".** Two independent
+causes:
+
+- Per-target `result.json` records live in `harnesses/`, which was treated as
+  regenerable — so any refresh (a work dir from a different build, say) deleted
+  every record. `--resume` then honestly reported "no completed targets" and
+  re-ran everything; that run wrote fresh records, so the *next* resume worked. A
+  refresh now clears build products and keeps records. Records from a different
+  build are kept where they FUZZED and re-attempted otherwise, so a stale "no"
+  cannot cap what the new binary reaches.
+
+- Resume treated "discovery cache hit" as proof the tree was unchanged. It is
+  not: fuzzing executes the target, and a target that writes or rewrites a
+  source-extension file — codegen, compilers — changes the digest the next run
+  compares against, so a run can invalidate its own fingerprint. Resume is now
+  decided **per source file**: a target is stale only when its own file moved.
+  The per-file hashes are a by-product of the fingerprint walk that already ran,
+  so this adds no extra walk and no extra reads; only the verdict is kept.
+
 ## 0.2.23 - 2026-07-28
 
 Follow-up to 0.2.22, from a second full 500-project sweep (`results-0728/`: 482

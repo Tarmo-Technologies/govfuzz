@@ -1,0 +1,692 @@
+{
+ "lane": "perl",
+ "repo": "brendangregg/FlameGraph",
+ "stars": 19623,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/perl/brendangregg__FlameGraph --json --out /home/ubuntu/govfuzz-sweep-work/perl__brendangregg__FlameGraph.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 2681,
+   "sloc_by_lang": {
+    "perl": 2458,
+    "php": 136,
+    "python": 72,
+    "config": 15
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/perl/brendangregg__FlameGraph --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 64,
+   "by_language": {
+    "php": 4,
+    "python": 6,
+    "perl": 54
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/perl/brendangregg__FlameGraph --out /home/ubuntu/govfuzz-sweep-work/perl__brendangregg__FlameGraph/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 5,
+   "by_severity": {
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-404": 5
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/perl/brendangregg__FlameGraph --out /home/ubuntu/govfuzz-sweep-work/perl__brendangregg__FlameGraph/sbom",
+   "exit": 0,
+   "wall_s": 0.0,
+   "timed_out": false,
+   "panic": false,
+   "components": 0
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/perl/brendangregg__FlameGraph --work-dir /home/ubuntu/govfuzz-sweep-work/perl__brendangregg__FlameGraph --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 248.56,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 51,
+    "discovered_total": 64,
+    "dropped_by_cap": 13,
+    "built": 34,
+    "built_and_fuzzed": 34,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 17,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 2,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "usage",
+     "source": "stackcollapse-xdebug.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `usage` is not loadable (skipped cleanly): load error",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "collapseStack",
+     "source": "stackcollapse-xdebug.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `collapseStack` is not loadable (skipped cleanly): load error",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "addCurrentStackToStacks",
+     "source": "stackcollapse-xdebug.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `addCurrentStackToStacks` is not loadable (skipped cleanly): load error",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "isEOTrace",
+     "source": "stackcollapse-xdebug.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `isEOTrace` is not loadable (skipped cleanly): load error",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cantor_pairing",
+     "source": "stackcollapse-chrome-tracing.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `stackcollapse-chrome-tracing` is not loadable (skipped cleanly): -c: error: the following arguments are required: input_file",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::parse_integer",
+     "source": "stackcollapse-vsprof.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 2,
+     "execs_per_sec": 6504.760739722217,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::parse_integer",
+     "source": "stackcollapse-vsprof.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 2,
+     "execs_per_sec": 6372.180490212095,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::read_palette",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::usage",
+     "source": "files.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3400.2173723200676,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "stackcollapse-java-exceptions.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.925184280119138,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::massage_function_names",
+     "source": "stackcollapse-vsprof.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 2,
+     "execs_per_sec": 5951.203904567082,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "range-perf.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4472.9400302502345,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "stackcollapse-vtune-mc.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4340.530961413002,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse-java-exceptions.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.810279746934707,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::wanted",
+     "source": "files.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6278.580356431857,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse-stap.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.781140227442167,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.654585967669277,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::add_current",
+     "source": "stackcollapse-elfutils.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.259271790265625,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "hcstackcollapse.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.871580409606254,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "thcstackcollapse.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.112014127188509,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "difffolded.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 2,
+     "execs_per_sec": 5847.031952024998,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "stackcollapse-ibmjava.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.58407116515567,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "stackcollapse-go.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.830215313777771,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "stackcollapse-jstack.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.960740084150993,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse-perf.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.4994721799083255,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse-go.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.795531231321665,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::massage_function_names",
+     "source": "stackcollapse-vsprof.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 2,
+     "execs_per_sec": 5419.14456465795,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse-ibmjava.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.573495955097849,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::remember_stack",
+     "source": "stackcollapse-jstack.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.817664480871886,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::format_statck",
+     "source": "stackcollapse-go.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.637646746614164,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::color",
+     "source": "hotcoldgraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): ERROR: No stack counts found",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main::inlineCacheAdd",
+     "source": "stackcollapse-perf.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.214906032328717,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::usage",
+     "source": "flamegraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.595709477604716,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "main::inline",
+     "source": "stackcollapse-perf.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.096314842391233,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::flow",
+     "source": "hotcoldgraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): ERROR: No stack counts found",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::namehash",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::sum_namehash",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::random_namehash",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::color",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::color_scale",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::color_map",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::flow",
+     "source": "flamegraph.pl",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `SVG` is not loadable (skipped cleanly): Stack count is low (0). Did something go wrong?",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_events",
+     "source": "stackcollapse-chrome-tracing.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `stackcollapse-chrome-tracing` is not loadable (skipped cleanly): -c: error: the following arguments are required: input_file",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_stack_identifiers",
+     "source": "stackcollapse-chrome-tracing.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `stackcollapse-chrome-tracing` is not loadable (skipped cleanly): -c: error: the following arguments are required: input_file",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SVG::header",
+     "source": "hotcoldgraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9.764971099610566,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::colorAllocate",
+     "source": "hotcoldgraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.58770109671911,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::filledRectangle",
+     "source": "hotcoldgraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.315573483264316,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::colorAllocate",
+     "source": "flamegraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.746489611753781,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::group_start",
+     "source": "flamegraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.32052805148203,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::group_end",
+     "source": "flamegraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.575437009825999,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SVG::filledRectangle",
+     "source": "flamegraph.pl",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4.3175214465210106,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Stack count is low (N). Did something go wrong?",
+     "language": "perl"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): ERROR: No stack counts found",
+     "language": "perl"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "target \"X\" is not loadable (skipped cleanly): load error",
+     "language": "php"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "target \"X\" is not loadable (skipped cleanly): -c: error: the following arguments are required: input_file",
+     "language": "python"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "41fee1f99f9276008b7cd112fca19dc3ea84ac32",
+ "clone_s": 0.5,
+ "lane_check": "perl: 28 files / 3842 lines; top=perl(3842)",
+ "status": "done"
+}

@@ -1,0 +1,570 @@
+{
+ "lane": "csharp",
+ "repo": "shadowsocks/shadowsocks-windows",
+ "stars": 59580,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/shadowsocks__shadowsocks-windows --json --out /home/ubuntu/govfuzz-sweep-work/csharp__shadowsocks__shadowsocks-windows.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 15002,
+   "sloc_by_lang": {
+    "csharp": 14179,
+    "javascript": 778,
+    "config": 45
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/shadowsocks__shadowsocks-windows --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "count": 39,
+   "by_language": {
+    "csharp": 39
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/shadowsocks__shadowsocks-windows --out /home/ubuntu/govfuzz-sweep-work/csharp__shadowsocks__shadowsocks-windows/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.2,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 0,
+   "by_severity": {},
+   "top_rules": {},
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/shadowsocks__shadowsocks-windows --out /home/ubuntu/govfuzz-sweep-work/csharp__shadowsocks__shadowsocks-windows/sbom",
+   "exit": 0,
+   "wall_s": 0.0,
+   "timed_out": false,
+   "panic": false,
+   "components": 35
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/shadowsocks__shadowsocks-windows --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__shadowsocks__shadowsocks-windows --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 142.73,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 39,
+    "discovered_total": 39,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 28,
+    "unsupported_params": 11,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Shadowsocks.Controller.Service.OnlineConfigResolver.GetOnline",
+     "source": "OnlineConfigResolver.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.Hotkeys.HotkeyCallbacks.GetCallback",
+     "source": "HotkeyCallbacks.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Util.Sockets.SocketUtil.GetEndPoint",
+     "source": "SocketUtil.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.RNG.GetBytes",
+     "source": "RNG.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.RNG.GetBytes",
+     "source": "RNG.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.MbedTLS.MD5",
+     "source": "MbedTLS.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.AEAD.AEADMbedTLSEncryptor.InitCipher",
+     "source": "AEADMbedTLSEncryptor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.AEAD.AEADMbedTLSEncryptor.InitCipher` needs a receiver, but `AEADMbedTLSEncryptor` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.OpenSSL.GetCipherInfo",
+     "source": "OpenSSL.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.AEAD.AEADOpenSSLEncryptor.InitCipher",
+     "source": "AEADOpenSSLEncryptor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.AEAD.AEADOpenSSLEncryptor.InitCipher` needs a receiver, but `AEADOpenSSLEncryptor` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.FileManager.NonExclusiveReadAllText",
+     "source": "FileManager.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.AEAD.AEADSodiumEncryptor.InitCipher",
+     "source": "AEADSodiumEncryptor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.AEAD.AEADSodiumEncryptor.InitCipher` needs a receiver, but `AEADSodiumEncryptor` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.MbedTLS.cipher_info_from_string",
+     "source": "MbedTLS.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.Sodium.sodium_increment",
+     "source": "Sodium.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Model.NLogConfig.SetLogFileName",
+     "source": "NlogConfig.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Util.Utils.GetTempPath",
+     "source": "Util.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Util.Utils.UnGzip",
+     "source": "Util.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.Hotkeys.HotKeys.Str2HotKey",
+     "source": "Hotkeys.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.AEAD.AEADEncryptor.InitCipher",
+     "source": "AEADEncryptor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.AEAD.AEADEncryptor.InitCipher` is declared on abstract/interface type `AEADEncryptor`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.AEAD.AEADEncryptor.randBytes",
+     "source": "AEADEncryptor.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.OpenSSL.EVP_get_cipherbyname",
+     "source": "OpenSSL.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Model.Server.ParseURL",
+     "source": "Server.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.GeositeUpdater.CheckGeositeGroup",
+     "source": "GeositeUpdater.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.CopyTo",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.CopyTo` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.CopyTo",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.CopyTo` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.CopyTo",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.CopyTo` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Model.Server.GetServers",
+     "source": "Server.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Get",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Get` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Get",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Get` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Model.Configuration.CheckServer",
+     "source": "Configuration.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.SavePACUrl",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Put",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Put` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Put",
+     "source": "ByteCircularBuffer.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Shadowsocks.Encryption.CircularBuffer.ByteCircularBuffer.Put` needs a receiver, but `ByteCircularBuffer` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.AskAddServerBySSURL",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.AddServerBySSURL",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.SaveSkippedUpdateVerion",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.SelectStrategy",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.UpdateOnlineConfigInternal",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.UpdateOnlineConfig",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Shadowsocks.Controller.ShadowsocksController.RemoveOnlineConfig",
+     "source": "ShadowsocksController.cs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 13,
+     "detail": "error CS0246: The type or namespace name \"X\" could not be found (are you missing a using directive or an assembly reference?) PATH",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an u\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 9,
+     "detail": "warning SYSLIB0023: \"X\" is obsolete: \"X\" (https://aka.ms/dotnet-warnings/SYSLIB0023) PATH",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "error CS0103: The name \"X\" does not exist in the current context PATH",
+     "language": "csharp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "error CS0234: The type or namespace name \"X\" does not exist in the namespace \"X\" (are you missing an assembly reference?) PATH",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "instance method \"X\" is declared on abstract/interface type \"X\", which has no instance to allocate (skipped cleanly)",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "891d971682eefcaa2e640258d3b352a3ad3b2233",
+ "clone_s": 0.8,
+ "lane_check": "csharp: 89 files / 15606 lines; top=csharp(15606)",
+ "status": "done"
+}

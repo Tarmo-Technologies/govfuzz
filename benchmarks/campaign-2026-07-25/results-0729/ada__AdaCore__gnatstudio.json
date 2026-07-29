@@ -1,0 +1,972 @@
+{
+ "lane": "ada",
+ "repo": "AdaCore/gnatstudio",
+ "stars": 524,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 684823,
+   "sloc_by_lang": {
+    "ada": 621093,
+    "python": 55888,
+    "javascript": 4865,
+    "c": 1309,
+    "cpp": 844,
+    "config": 807,
+    "java": 17
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --format json --top 100000",
+   "exit": 0,
+   "wall_s": 74.76,
+   "timed_out": false,
+   "panic": false,
+   "count": 41414,
+   "by_language": {
+    "ada": 39617,
+    "python": 1639,
+    "c": 78,
+    "cpp": 79,
+    "java": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 4.09,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1026,
+   "by_severity": {
+    "medium": 937,
+    "high": 17,
+    "low": 67,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-410": 440,
+    "GF-402": 192,
+    "GF-412": 113,
+    "GF-411": 100,
+    "GF-409": 86,
+    "GF-546": 67,
+    "GF-405": 6,
+    "GF-424": 6,
+    "GF-401": 5,
+    "GF-507": 4,
+    "GF-404": 3,
+    "GF-420": 2,
+    "GF-403": 1,
+    "GF-421": 1
+   },
+   "gaps": 507
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 60
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --work-dir /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 388.12,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 8611,
+    "dropped_by_cap": 8551,
+    "built": 2,
+    "built_and_fuzzed": 1,
+    "fuzzed_stub_only": 0,
+    "failed_build": 9,
+    "unsupported_params": 26,
+    "unrecoverable_link": 17,
+    "unrecoverable_runtime": 0,
+    "report_only": 6,
+    "findings": 6
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 0,
+    "synthesized_macros": 14,
+    "stubbed_symbols_declared": 1,
+    "stubbed_symbols_blind": 1,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 1,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "mark_read_only_areas",
+     "source": "read_only_lines.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `core.read_only_lines` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Module_Metaclass.load_desktop",
+     "source": "modules.py",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Rectangle.from_buffer",
+     "source": "rectangles.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `core.rectangles` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Diagram.load_json_data",
+     "source": "gpsbrowsers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gpsbrowsers` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "process_record_rep_clause",
+     "source": "ada_expansion.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ada_expansion` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_macro",
+     "source": "gtkada-macro.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Item' of target 'Gtkada.Macro.Load_Macro' with type 'Gtkada.Macro.Macro_Item': tagged type Gtkada.Macro.Macro_Item has no constructor with synthesizable parameters. Add a public constructor function returning 'Gtkada.Macro.Macro_Item' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_macro",
+     "source": "gtkada-macro.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_macro",
+     "source": "gtkada-macro.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_macro",
+     "source": "gtkada-macro.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_macro",
+     "source": "gtkada-macro.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_macro",
+     "source": "gtkada-macro.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_string",
+     "source": "gps-debuggers.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_gdb_version",
+     "source": "debugger-base_gdb.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_list",
+     "source": "gtkada-macro.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "is_ready_session",
+     "source": "g-exttre.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_color",
+     "source": "gps-kernel-style_manager.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "url_decode",
+     "source": "string_utils.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DiffLanguage.parse_constructs",
+     "source": "diff_language.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `languages.diff_language` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "XMLOutput.parse_xml_node",
+     "source": "dependencies.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `dependencies` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PythonLanguage.parse_constructs",
+     "source": "python_support.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `languages.python_support` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Module.load_desktop",
+     "source": "modules.py",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GnatcheckProc.parse_output",
+     "source": "gnatcheck.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `core.gnatcheck` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "rulesEditor.parse",
+     "source": "gnatcheck_rules_editor.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `rulesEditor.parse` needs a receiver, but `rulesEditor.__init__` takes 2 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GNATfuzzView.load_desktop",
+     "source": "gnatfuzz_view.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gnatfuzz_view` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "QGEN_Module.load_desktop",
+     "source": "__init__.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `qgen.__init__` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_label_from_text",
+     "source": "__init__.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `pygps.__init__` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "analyzeCall",
+     "source": "gnat_messages.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `gnat_messages` is not loadable (skipped cleanly): FileNotFoundError: [Errno 2] No such file or directory: 'known_unfixable.txt'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "block_complete_on_location",
+     "source": "block_completion.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `core.block_completion` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "add_ce_special_line",
+     "source": "spark2014.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `spark2014` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LanguageServer.on_error",
+     "source": "__init__.py",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LanguageServer.on_result",
+     "source": "__init__.py",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Python 2: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "QGEN_Diagram_Viewer.open_json",
+     "source": "__init__.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `qgen.__init__` is not loadable (skipped cleanly): missing module `GPS` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'GPS'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "is_compiler_defined",
+     "source": "toolchains-known.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compare",
+     "source": "glib_string_utils.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compiler_command",
+     "source": "toolchains-known.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_property",
+     "source": "gps-properties.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Property' of target 'Gps.Properties.Get_Property' with type 'Property_Record'class': named type Property_Record'class is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Property_Record'class' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "set_subdir",
+     "source": "builder_facility_module.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gtk_new_from_name_and_label",
+     "source": "gui_utils.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Button' of target 'Gui_Utils.Gtk_New_From_Name_And_Label' with type 'Gtk.Button.Gtk_Button': named type Gtk.Button.Gtk_Button is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Gtk.Button.Gtk_Button' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "compare",
+     "source": "string_utils.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_menu_path",
+     "source": "gui_utils.ads",
+     "outcome": "unrecoverable_link",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "__gps_set_readable",
+     "source": "os-utils.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": 10711.586929073255,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "NativeFileSelection",
+     "source": "native_file_selection.c",
+     "outcome": "failed_build",
+     "retries": 9,
+     "repairs": 18,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_g_signal_emit_by_name_int_int",
+     "source": "gtksupport.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'instance' of type 'gpointer' has no byte-buffer decoder after struct synthesis: opaque type 'gpointer' for parameter 'instance' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NativeDirSelection",
+     "source": "native_file_selection.c",
+     "outcome": "failed_build",
+     "retries": 9,
+     "repairs": 18,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NativeWin32FileSelection",
+     "source": "native_file_selection.c",
+     "outcome": "failed_build",
+     "retries": 9,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_load_pygtk",
+     "source": "python_support_gtk.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (GObject, GdkWindow, PyObject) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_build_with_pygtk",
+     "source": "python_support_gtk.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NativeFileSelectionSupported",
+     "source": "native_file_selection.c",
+     "outcome": "failed_build",
+     "retries": 9,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gtkada_check_button_install_handler",
+     "source": "check_button.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'type' of type 'GType' has no byte-buffer decoder after struct synthesis: opaque type 'GType' for parameter 'type' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gtkada_check_button_clicked",
+     "source": "check_button.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'button' of type 'GtkButton *' has no byte-buffer decoder after struct synthesis: opaque type 'GtkButton' for pointer parameter 'button' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_pyobject_from_widget",
+     "source": "python_support_gtk.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_nth_environment",
+     "source": "env.c",
+     "outcome": "built",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gtkada_check_button_force_state",
+     "source": "check_button.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'button' of type 'GtkToggleButton *' has no byte-buffer decoder after struct synthesis: opaque type 'GtkToggleButton' for pointer parameter 'button' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_window_from_pyobject",
+     "source": "python_support_gtk.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_gtk_tree_store_set_weight",
+     "source": "gtksupport.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'tree_store' of type 'GtkTreeStore *' has no byte-buffer decoder after struct synthesis: opaque type 'GtkTreeStore' for pointer parameter 'tree_store' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_init_pygtk",
+     "source": "python_support_gtk.c",
+     "outcome": "failed_build",
+     "retries": 4,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_job",
+     "source": "windows_gps_wrapper.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (JOBOBJECTINFOCLASS) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ada_gtk_tree_store_set_int_int_int",
+     "source": "gtksupport.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'tree_store' of type 'GtkTreeStore *' has no byte-buffer decoder after struct synthesis: opaque type 'GtkTreeStore' for pointer parameter 'tree_store' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrowseHook",
+     "source": "native_file_selection.c",
+     "outcome": "failed_build",
+     "retries": 9,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Print_On_Console",
+     "source": "@_Main_Name_@.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'Print_On_Console' parameter #0 has an unsupported type `AdaString`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unrecoverable_link",
+     "count": 17,
+     "detail": "1 undefined symbol(s) after repair",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Gtk.Button.Gtk_Button is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\" \u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Property_Record'class is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\"c\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "tagged type Gtkada.Macro.Macro_Item has no constructor with synthesizable parameters. Add a public constructor function returning \"X\" to the parsed source set, \u2026",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "expected identifier or \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 1,
+     "detail": "built, no fuzz pass ran",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (GObject, GdkWindow, PyObject) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA \u2026",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (JOBOBJECTINFOCLASS) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unava\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 9,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "report_only",
+     "count": 4,
+     "detail": "[python2] Python N: legacy dialect \u2014 discovered and statically analyzed, not fuzzed (M22)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" takes N required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): FileNotFoundError: [Errno N] No such file or directory: \"X\"",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-RO-GF-401-1AB8A8D9",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C003A-65CA8A43"
+    },
+    {
+     "id": "F-RO-GF-401-44B3455A",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C003A-65CA8A43"
+    },
+    {
+     "id": "F-RO-GF-401-6A6F1DD2",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C003A-65CA8A43"
+    },
+    {
+     "id": "F-RO-GF-401-F5D81FB6",
+     "rule": "GF-401",
+     "cwe": [
+      "CWE-120"
+     ],
+     "cwe_name": "Unsafe string copy call in source",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C003A-65CA8A43"
+    },
+    {
+     "id": "F-RO-GF-546-49E46F1F",
+     "rule": "GF-546",
+     "cwe": [
+      "CWE-703"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "low",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P00D5-2FA192A0"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio/findings --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "91de0fe1cb198c5c719bf4e79886dbc9bbef9d11",
+ "clone_s": 2.7,
+ "lane_check": "ada: 2341 files / 790381 lines; top=ada(790381)",
+ "status": "done"
+}

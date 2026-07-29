@@ -1,0 +1,176 @@
+{
+ "lane": "rust",
+ "repo": "farion1231/cc-switch",
+ "stars": 121185,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/farion1231__cc-switch --json --out /home/ubuntu/govfuzz-sweep-work/rust__farion1231__cc-switch.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 235841,
+   "sloc_by_lang": {
+    "rust": 139978,
+    "javascript": 89695,
+    "config": 6168
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/farion1231__cc-switch --format json --top 100000",
+   "exit": 0,
+   "wall_s": 1.79,
+   "timed_out": false,
+   "panic": false,
+   "count": 1525,
+   "by_language": {
+    "rust": 1411,
+    "typescript": 110,
+    "javascript": 4
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/farion1231__cc-switch --out /home/ubuntu/govfuzz-sweep-work/rust__farion1231__cc-switch/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 16.16,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 36,
+   "by_severity": {
+    "medium": 2,
+    "high": 21,
+    "low": 6,
+    "critical": 7
+   },
+   "top_rules": {
+    "GF-423": 15,
+    "GF-472": 6,
+    "GF-553": 6,
+    "GF-429": 4,
+    "GF-500": 2,
+    "GF-404": 2,
+    "GF-304": 1
+   },
+   "gaps": 181
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/farion1231__cc-switch --out /home/ubuntu/govfuzz-sweep-work/rust__farion1231__cc-switch/sbom",
+   "exit": 0,
+   "wall_s": 0.13,
+   "timed_out": false,
+   "panic": false,
+   "components": 1320
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/farion1231__cc-switch --work-dir /home/ubuntu/govfuzz-sweep-work/rust__farion1231__cc-switch --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 248.94,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 1517,
+    "dropped_by_cap": 1512,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "from_content_type",
+     "source": "response_handler.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_base64_param",
+     "source": "utils.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_raw_bytes",
+     "source": "hyper_client.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_path",
+     "source": "session.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_language",
+     "source": "tray.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 5,
+     "detail": "in-crate cargo build failed: error: failed to run custom build command for \"X\"",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "56fb46c09310ff52dabefd2b32f0e799e8357d9e",
+ "clone_s": 1.8,
+ "lane_check": "rust: 234 files / 154158 lines; top=rust(154158)",
+ "status": "done"
+}

@@ -1,0 +1,302 @@
+{
+ "lane": "csharp",
+ "repo": "2dust/v2rayN",
+ "stars": 112214,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/2dust__v2rayN --json --out /home/ubuntu/govfuzz-sweep-work/csharp__2dust__v2rayN.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 40407,
+   "sloc_by_lang": {
+    "csharp": 39012,
+    "config": 1395
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/2dust__v2rayN --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 103,
+   "by_language": {
+    "csharp": 103
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/2dust__v2rayN --out /home/ubuntu/govfuzz-sweep-work/csharp__2dust__v2rayN/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 8,
+   "by_severity": {
+    "medium": 5,
+    "high": 3
+   },
+   "top_rules": {
+    "GF-497": 4,
+    "GF-472": 3,
+    "GF-500": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/2dust__v2rayN --out /home/ubuntu/govfuzz-sweep-work/csharp__2dust__v2rayN/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 30
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/2dust__v2rayN --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__2dust__v2rayN --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 251.07,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 18,
+    "discovered_total": 103,
+    "dropped_by_cap": 85,
+    "built": 18,
+    "built_and_fuzzed": 18,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ServiceLib.Common.QRCodeUtils.GenQRCode",
+     "source": "QRCodeUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 74.82227902118002,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.EmbedUtils.GetEmbedText",
+     "source": "EmbedUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6301.0134478342625,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Extension.NullIfEmpty",
+     "source": "Extension.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12726.611474557702,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Logging.SaveLog",
+     "source": "Logging.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16685.421168503206,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.EmbedUtils.LoadResource",
+     "source": "EmbedUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9975.656250471404,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Extension.TrimEx",
+     "source": "Extension.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10670.49392381895,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.QRCodeUtils.ParseBarcode",
+     "source": "QRCodeUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13512.479105945651,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Extension.UpperFirstChar",
+     "source": "Extension.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13985.517547517056,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.FileUtils.NonExclusiveReadAllText",
+     "source": "FileUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8461.330770564145,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Extension.AppendQuotes",
+     "source": "Extension.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10251.631025463877,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.QRCodeUtils.ParseBarcode",
+     "source": "QRCodeUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9203.188613181002,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Extension.ToInt",
+     "source": "Extension.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12690.913884584226,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Utils.Base64Encode",
+     "source": "Utils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11973.87555381291,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.CountryExtension.CountryToEmoji",
+     "source": "CountryExtension.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7522.56603203169,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.JsonUtils.ParseJson",
+     "source": "JsonUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8027.51334909296,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Utils.Base64Decode",
+     "source": "Utils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11269.526225595906,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.FileUtils.GetFilesFromZip",
+     "source": "FileUtils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13900.425026882069,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ServiceLib.Common.Utils.ContainsInterfaceName",
+     "source": "Utils.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 3152.1980094727865,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "2e1bb23da74f00d19ead512ce84530c7fcdef3b5",
+ "clone_s": 1.0,
+ "lane_check": "csharp: 274 files / 42347 lines; top=csharp(42347)",
+ "status": "done"
+}

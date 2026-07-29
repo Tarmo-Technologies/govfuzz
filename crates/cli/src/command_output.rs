@@ -119,6 +119,10 @@ static CAMPAIGN_DEADLINE: std::sync::OnceLock<Instant> = std::sync::OnceLock::ne
 /// budget the operator actually set.
 static CAMPAIGN_GRACE: std::sync::OnceLock<Duration> = std::sync::OnceLock::new();
 
+/// The operator's whole campaign budget, used to size the grace and the
+/// per-subprocess ceiling.
+static CAMPAIGN_TOTAL: std::sync::OnceLock<Duration> = std::sync::OnceLock::new();
+
 fn campaign_grace() -> Duration {
     *CAMPAIGN_GRACE.get().unwrap_or(&Duration::from_secs(120))
 }
@@ -130,6 +134,16 @@ fn campaign_grace() -> Duration {
 pub(crate) fn set_campaign_deadline(deadline: Instant, campaign: Option<Duration>) {
     let _ = CAMPAIGN_DEADLINE.set(deadline);
     if let Some(campaign) = campaign {
+        let _ = CAMPAIGN_TOTAL.set(campaign);
+        // Publish the same ceiling to crates that spawn compilers themselves and
+        // cannot depend on this module (compiler_adapter runs gprbuild).
+        std::env::set_var(
+            "GOVFUZZ_SUBPROCESS_TIMEOUT_SECS",
+            (campaign / 4)
+                .max(Duration::from_secs(15))
+                .as_secs()
+                .to_string(),
+        );
         let _ = CAMPAIGN_GRACE
             .set((campaign / 4).clamp(Duration::from_secs(10), Duration::from_secs(120)));
     }
@@ -156,7 +170,64 @@ fn clamp_to_campaign(timeout: Duration) -> Duration {
     let remaining = (*deadline + campaign_grace())
         .saturating_duration_since(Instant::now())
         .max(Duration::from_secs(5));
-    timeout.min(remaining)
+    // No SINGLE subprocess may take more than a quarter of the campaign, even
+    // while the whole budget is still unspent. Remaining-time alone does not stop
+    // the FIRST build from eating everything: on AdaCore/gnat-llvm one generated
+    // harness sent `gnat1` into a spin and, because the budget was untouched, the
+    // clamp allowed it the entire campaign — one target consumed the run and it
+    // was killed with nothing to show. A build that cannot finish in a quarter of
+    // the budget leaves no time to fuzz what it produces.
+    timeout.min(remaining).min(per_call_ceiling())
+}
+
+/// The most any one subprocess may take: a quarter of the campaign, floored at
+/// 15s so a small budget can still run a compiler. Unbounded with no campaign.
+fn per_call_ceiling() -> Duration {
+    CAMPAIGN_TOTAL
+        .get()
+        .map(|total| (*total / 4).max(Duration::from_secs(15)))
+        .unwrap_or(Duration::MAX)
+}
+
+/// Run a command to completion with INHERITED stdio (so compiler output still
+/// streams to the terminal), bounded by the same campaign clamp as
+/// [`output_with_timeout`], in its own process group so a timeout kills the
+/// whole tree.
+///
+/// `Command::status()` does none of that. A generated Ada harness that sent
+/// `gnat1` into a spin ran `gprbuild` for the entire campaign on
+/// AdaCore/gnat-llvm, and because the child was neither grouped nor
+/// death-signalled it SURVIVED govfuzz being killed: orphaned `gprbuild`/`gcc`/
+/// `gnat1` processes were found still running 39 hours after their sweep,
+/// stealing CPU from every later run on the machine.
+pub(crate) fn status_with_timeout(
+    command: &mut Command,
+    timeout: Duration,
+) -> io::Result<std::process::ExitStatus> {
+    prepare_child(command);
+    let mut child = command.spawn()?;
+    let deadline = Instant::now() + clamp_to_campaign(timeout);
+    loop {
+        match child.try_wait() {
+            Err(error) => {
+                kill_child_tree(&mut child);
+                let _ = child.wait();
+                return Err(error);
+            }
+            Ok(Some(status)) => return Ok(status),
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    kill_child_tree(&mut child);
+                    let _ = child.wait();
+                    return Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "timed out (campaign budget)",
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+    }
 }
 
 /// Run a command with bounded stdout/stderr and a wall-clock timeout. Both pipes

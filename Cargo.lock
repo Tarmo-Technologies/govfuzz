@@ -345,6 +345,7 @@ name = "compiler_adapter"
 version = "0.2.23"
 dependencies = [
  "ada_parser",
+ "libc",
  "regex",
  "serde",
  "tempfile",

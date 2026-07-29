@@ -13,6 +13,7 @@ path = "src/lib.rs"
 
 [dependencies]
 ada_parser = { path = "../ada_parser" }
+libc = "0.2"
 regex.workspace = true
 serde.workspace = true
 tempfile.workspace = true

@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::CompilerError;
 
@@ -234,7 +234,7 @@ impl CompilerAdapter {
             command.args(["-c", "-cargs:Ada", "-gnatc"]);
         }
 
-        let output = command.output()?;
+        let output = run_bounded(&mut command)?;
         let duration_ms = millis_u64(start.elapsed().as_millis());
         let exit_code = output.status.code().map_or(-1, |code| code);
 
@@ -303,6 +303,106 @@ fn millis_u64(milliseconds: u128) -> u64 {
     } else {
         milliseconds as u64
     }
+}
+
+/// Seconds any single compiler invocation may take, from
+/// `GOVFUZZ_SUBPROCESS_TIMEOUT_SECS`. Unset (or 0) means unbounded, which is the
+/// right default for a one-off `govfuzz build`; the sweep sets it from the
+/// campaign budget.
+fn subprocess_timeout() -> Option<Duration> {
+    std::env::var("GOVFUZZ_SUBPROCESS_TIMEOUT_SECS")
+        .ok()
+        .and_then(|secs| secs.parse::<u64>().ok())
+        .filter(|secs| *secs > 0)
+        .map(Duration::from_secs)
+}
+
+/// Run a compiler in its OWN PROCESS GROUP, with a wall-clock bound, capturing
+/// output.
+///
+/// `Command::output()` does neither, and both mattered. A generated Ada harness
+/// sent `gnat1` into a spin on AdaCore/gnat-llvm: `gprbuild` ran until the whole
+/// sweep was killed, and because it was neither grouped nor death-signalled it
+/// then SURVIVED — orphaned `gprbuild`/`gcc`/`gnat1` were found still running 39
+/// hours later, stealing CPU from every subsequent run on the machine.
+///
+/// The group kill is what reaches gprbuild's own children; `PR_SET_PDEATHSIG`
+/// only covers the direct child, and only while govfuzz's spawning thread lives.
+fn run_bounded(command: &mut Command) -> std::io::Result<std::process::Output> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+        #[cfg(target_os = "linux")]
+        unsafe {
+            command.pre_exec(|| {
+                libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL, 0, 0, 0);
+                Ok(())
+            });
+        }
+    }
+    let Some(timeout) = subprocess_timeout() else {
+        return command.output();
+    };
+    command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let mut child = command.spawn()?;
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    // Drain both pipes concurrently so a chatty compiler cannot deadlock on a
+    // full pipe while we are waiting on the deadline.
+    let stdout_reader = stdout.map(|mut pipe| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut pipe, &mut buf);
+            buf
+        })
+    });
+    let stderr_reader = stderr.map(|mut pipe| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut pipe, &mut buf);
+            buf
+        })
+    });
+    let deadline = Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait()? {
+            Some(status) => break status,
+            None => {
+                if Instant::now() >= deadline {
+                    kill_group(&mut child);
+                    let status = child.wait()?;
+                    break status;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+    };
+    Ok(std::process::Output {
+        status,
+        stdout: stdout_reader
+            .and_then(|h| h.join().ok())
+            .unwrap_or_default(),
+        stderr: stderr_reader
+            .and_then(|h| h.join().ok())
+            .unwrap_or_default(),
+    })
+}
+
+#[cfg(unix)]
+fn kill_group(child: &mut std::process::Child) {
+    let pid = child.id() as i32;
+    unsafe {
+        libc::kill(-pid, libc::SIGKILL);
+    }
+    let _ = child.kill();
+}
+
+#[cfg(not(unix))]
+fn kill_group(child: &mut std::process::Child) {
+    let _ = child.kill();
 }
 
 #[cfg(test)]

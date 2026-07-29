@@ -695,7 +695,12 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
     }
     let force_includes = repair_force_includes(&harness_dir);
     apply_c_family_make_env(&mut cmd, &[], &[], &force_includes, None);
-    let status = cmd.status();
+    // Bounded and process-grouped: an unbounded `status()` here let one spinning
+    // compile consume a whole campaign and outlive govfuzz entirely.
+    let status = crate::command_output::status_with_timeout(
+        &mut cmd,
+        std::time::Duration::from_secs(30 * 60),
+    );
     match status {
         Ok(s) if s.success() => {
             let built = harness_dir.join(built_name);

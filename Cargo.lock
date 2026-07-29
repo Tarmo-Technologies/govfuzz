@@ -765,6 +765,7 @@ dependencies = [
  "perl_parser",
  "project_synth",
  "python_parser",
+ "rayon",
  "regex",
  "replay_min",
  "report",

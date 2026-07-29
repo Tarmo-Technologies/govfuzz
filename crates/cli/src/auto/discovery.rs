@@ -3,8 +3,9 @@
 use crate::auto::candidate::{Candidate, Lang};
 use ada_parser::ast::Visibility;
 use anyhow::{Context, Result};
+use rayon::prelude::*;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Whether to run the CPP-lite preprocessor (#460 / §27.6) over a C/C++ file
 /// before parsing it for discovery. Preprocessing resolves `#ifdef`/`#if` branches
@@ -705,7 +706,6 @@ pub fn discover_with_options(
     // pointed at an estate has to survive every tree in it, so discovery runs on
     // a thread with room to recurse. The stack is reserved, not committed, so
     // the cost is address space rather than memory.
-    const DISCOVERY_STACK_BYTES: usize = 256 * 1024 * 1024;
     std::thread::scope(|scope| {
         match std::thread::Builder::new()
             .name("govfuzz-discovery".to_owned())
@@ -734,7 +734,9 @@ fn discover_on_this_stack(
     preprocess: PreprocessMode,
 ) -> Result<Vec<Candidate>> {
     let mut out = Vec::new();
+    let _tw = std::time::Instant::now();
     walk(root, &mut out, filter, preprocess)?;
+    gfprof("disc:walk", _tw);
     // The organizational-directory heuristic (`app/`, `tools/`, `cli/`, `bin/`)
     // assumes the library lives elsewhere and those directories only hold demo
     // or driver code. When a project IS one of them — scrcpy keeps its entire C
@@ -742,8 +744,10 @@ fn discover_on_this_stack(
     // project, and the whole sweep then runs on the Android server's Java.
     // Excluding your way to nothing is never right: retry the languages that
     // came back empty with those directories admitted.
+    let _tx = std::time::Instant::now();
     if let Some(relaxed) = filter.without_organizational_exclusions() {
         let empty_langs = languages_lost_to_exclusions(root, &out, &relaxed, preprocess);
+        gfprof("disc:lost_langs", _tx);
         if !empty_langs.is_empty() {
             let mut recovered = Vec::new();
             walk(root, &mut recovered, &relaxed, preprocess)?;
@@ -778,7 +782,9 @@ fn discover_on_this_stack(
     if out.iter().any(|c| matches!(c.lang, Lang::Cpp)) {
         let mut cpp_access = std::collections::BTreeMap::new();
         let mut cpp_sig_access = std::collections::BTreeMap::new();
+        let _tm = std::time::Instant::now();
         collect_cpp_member_access(root, filter, &mut cpp_access, &mut cpp_sig_access);
+        gfprof("disc:cpp_access", _tm);
         out.retain(|c| {
             if !matches!(c.lang, Lang::Cpp) {
                 return true;
@@ -1489,6 +1495,46 @@ fn accumulate_cpp_member_access(
 static DISCOVERY_MEMORY_SKIPPED: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
 
+/// Wall-clock ceiling for the discovery walk, in seconds. `None` = unlimited.
+///
+/// Discovery is deliberately NOT billed to `--campaign-time` (indexing a large
+/// tree should not eat the fuzz budget), but unbilled is not the same as
+/// unbounded: on Valve's Proton — 3,409 C/C++ files, 232 MB — indexing ran 447
+/// seconds against a declared 240-second campaign, so the run was killed by the
+/// caller's outer timeout having fuzzed nothing at all.
+///
+/// So when the caller has DECLARED a budget, discovery honours it too rather
+/// than inventing one: past the ceiling it stops taking on new files and
+/// proceeds to fuzz what it already found. A partial target list that fuzzes
+/// beats a complete one that gets killed.
+static DISCOVERY_TIME_BUDGET: std::sync::Mutex<Option<std::time::Duration>> =
+    std::sync::Mutex::new(None);
+
+/// Files skipped because the discovery time budget ran out.
+static DISCOVERY_TIME_SKIPPED: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+/// Set the discovery wall-clock ceiling. `GOVFUZZ_DISCOVERY_TIME` overrides
+/// (in seconds; `0` disables the ceiling entirely).
+pub(crate) fn set_time_budget(budget: Option<std::time::Duration>) {
+    let resolved = match std::env::var("GOVFUZZ_DISCOVERY_TIME")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+    {
+        Some(0) => None,
+        Some(secs) => Some(std::time::Duration::from_secs(secs)),
+        None => budget,
+    };
+    if let Ok(mut slot) = DISCOVERY_TIME_BUDGET.lock() {
+        *slot = resolved;
+    }
+}
+
+/// Parsing recurses over the syntax tree and real source is deep enough to
+/// exhaust the 8 MiB a main thread gets, so every thread that parses gets room.
+/// Reserved address space, not committed memory.
+const DISCOVERY_STACK_BYTES: usize = 256 * 1024 * 1024;
+
 fn walk(
     dir: &Path,
     out: &mut Vec<Candidate>,
@@ -1503,7 +1549,20 @@ fn walk(
     // gets the same guard, so a huge tree yields a partial target list instead of
     // nothing.
     let guard = static_analysis::MemoryGuard::start();
-    let result = walk_guarded(dir, out, filter, preprocess, &guard);
+    let deadline = DISCOVERY_TIME_BUDGET
+        .lock()
+        .ok()
+        .and_then(|budget| *budget)
+        .map(|budget| std::time::Instant::now() + budget);
+    let result = walk_guarded(dir, out, filter, preprocess, &guard, deadline);
+    let timed_out = DISCOVERY_TIME_SKIPPED.swap(0, std::sync::atomic::Ordering::Relaxed);
+    if timed_out > 0 {
+        eprintln!(
+            "govfuzz auto: discovery reached its time budget and skipped {timed_out} file(s); \
+             the target list is PARTIAL. Raise --campaign-time, set GOVFUZZ_DISCOVERY_TIME \
+             (seconds, 0 = unlimited), or scan a subdirectory."
+        );
+    }
     let skipped = DISCOVERY_MEMORY_SKIPPED.swap(0, std::sync::atomic::Ordering::Relaxed);
     if skipped > 0 {
         let ceiling = static_analysis::MemoryGuard::ceiling_kb()
@@ -1524,32 +1583,96 @@ fn walk_guarded(
     filter: &DirFilter,
     preprocess: PreprocessMode,
     guard: &static_analysis::MemoryGuard,
+    deadline: Option<std::time::Instant>,
 ) -> Result<()> {
+    // Enumerate first (cheap: no file is opened), then parse in parallel.
+    // Parsing IS the cost of discovery on a large tree, and it was single
+    // threaded while the static scan had used a worker pool for ages. Listing a
+    // 232 MB tree like Proton took ~15 minutes of one core.
+    let mut files = Vec::new();
     if dir.is_file() {
-        return discover_file_guarded(dir, out, preprocess);
+        files.push(dir.to_path_buf());
+    } else {
+        collect_walk_files(dir, filter, &mut files)?;
     }
-    for entry in std::fs::read_dir(dir).with_context(|| format!("read dir {}", dir.display()))? {
-        let entry = entry?;
+
+    // Deterministic: `collect_walk_files` visits each directory's entries sorted
+    // by name, and `par_iter().collect()` preserves input order, so the candidate
+    // list is byte-identical to the sequential walk's.
+    let per_file: Vec<Result<Vec<Candidate>>> = discovery_pool().install(|| {
+        files
+            .par_iter()
+            .map(|path| {
+                // Past the ceiling, count the remaining files and stop parsing
+                // rather than dying with nothing. Checked at a file boundary so
+                // the candidate set stops growing cleanly.
+                if guard.under_pressure() {
+                    DISCOVERY_MEMORY_SKIPPED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    return Ok(Vec::new());
+                }
+                if deadline.is_some_and(|deadline| std::time::Instant::now() >= deadline) {
+                    DISCOVERY_TIME_SKIPPED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    return Ok(Vec::new());
+                }
+                let mut local = Vec::new();
+                discover_file_guarded(path, &mut local, preprocess)?;
+                Ok(local)
+            })
+            .collect()
+    });
+
+    for result in per_file {
+        out.extend(result?);
+    }
+    Ok(())
+}
+
+/// Every targetable file under `dir`, in the same order the sequential walk
+/// visited them (each directory's entries sorted by name, depth first).
+fn collect_walk_files(dir: &Path, filter: &DirFilter, files: &mut Vec<PathBuf>) -> Result<()> {
+    let mut entries = std::fs::read_dir(dir)
+        .with_context(|| format!("read dir {}", dir.display()))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
         let path = entry.path();
         let ft = entry.file_type()?;
         if ft.is_dir() {
             if is_excluded_dir(&path, filter) {
                 continue;
             }
-            walk_guarded(&path, out, filter, preprocess, guard)?;
+            collect_walk_files(&path, filter, files)?;
         } else if ft.is_file() {
-            // Keep what has already been discovered rather than dying with
-            // nothing: past the ceiling, count the remaining files and stop
-            // parsing. Checking here (not inside the parse) means the candidate
-            // set stops growing at a file boundary.
-            if guard.under_pressure() {
-                DISCOVERY_MEMORY_SKIPPED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                continue;
-            }
-            discover_file_guarded(&path, out, preprocess)?;
+            files.push(path);
         }
     }
     Ok(())
+}
+
+/// Discovery's worker pool: `cores - 1` like the static scan, and with the same
+/// 256 MiB stacks the single discovery thread already used — parsing recurses
+/// over the syntax tree, and real source is deep enough to blow the 2 MiB a
+/// rayon worker gets by default (vllm's `cpu_types_arm.hpp` aborted a whole run
+/// with "fatal runtime error: stack overflow"). The stacks are reserved address
+/// space, not committed memory.
+fn discovery_pool() -> &'static rayon::ThreadPool {
+    static POOL: std::sync::OnceLock<rayon::ThreadPool> = std::sync::OnceLock::new();
+    POOL.get_or_init(|| {
+        let threads = std::env::var("GOVFUZZ_DISCOVERY_JOBS")
+            .ok()
+            .and_then(|n| n.parse::<usize>().ok())
+            .filter(|n| *n > 0)
+            .unwrap_or_else(|| {
+                std::thread::available_parallelism()
+                    .map(|n| n.get().saturating_sub(1).max(1))
+                    .unwrap_or(1)
+            });
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .stack_size(DISCOVERY_STACK_BYTES)
+            .build()
+            .expect("build discovery thread pool")
+    })
 }
 
 /// [`discover_file`] wrapped so a govfuzz-internal PANIC while parsing/ranking ONE
@@ -1605,6 +1728,21 @@ fn discover_file_guarded(
     }
 }
 
+/// Stage timings to stderr when `GOVFUZZ_PROFILE` is set. Off by default and
+/// costing one relaxed atomic load per call, so it can stay on the hot path.
+///
+/// Kept because guessing at this cost the work twice: a whole-registry rebuild
+/// per function LOOKED like the quadratic on a 187k-line amalgamated header and
+/// fixing it changed nothing, while the real costs — a per-target rescan of the
+/// whole source, and a header classifier that parsed the file once with EACH
+/// parser — were only visible once measured. Profile, don't guess.
+pub(crate) fn gfprof(label: &str, start: std::time::Instant) {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ON.get_or_init(|| std::env::var_os("GOVFUZZ_PROFILE").is_some()) {
+        eprintln!("[prof] {label}: {:.3}s", start.elapsed().as_secs_f64());
+    }
+}
+
 fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMode) -> Result<()> {
     if !has_targetable_extension(path) {
         return Ok(());
@@ -1633,18 +1771,26 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             )
         }
     };
+    let _tpre = std::time::Instant::now();
+    let _tdl = std::time::Instant::now();
     let Some(lang) = detect_lang(path, &source) else {
         return Ok(());
     };
     // M22: tag each candidate with its detected source dialect. Only the lanes
     // whose tree-sitter grammar hides the version signal are detected here
     // (C/C++/Python/Perl); Ada/Rust/Java/Go are left `None` until their phase.
+    gfprof("pre:detect_lang", _tdl);
+    let _tfd = std::time::Instant::now();
     let dialect = file_dialect(lang, &source);
+    gfprof("pre:file_dialect", _tfd);
+    let _tcd = std::time::Instant::now();
     let preprocessor_defines = if matches!(lang, Lang::C | Lang::Cpp) {
         compile_database_preprocessor_defines(path)
     } else {
         Vec::new()
     };
+    gfprof("pre:compile_db_defines", _tcd);
+    gfprof("pre:lang+dialect+defines", _tpre);
     // A non-standalone C/C++ fragment header (`*-inl.h`, `*.inc.hpp`, `*.tcc`) is
     // meant to be textually included after its dependencies; a candidate generated
     // from it can only ever produce a harness that includes the fragment alone and
@@ -1801,7 +1947,9 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             let fns = dedup_c_functions(fns);
             // A function declarator inside a multi-line `#define` is a macro
             // template, not a target (BSD tree.h/queue.h `RB_GENERATE_*`).
+            let _t2 = std::time::Instant::now();
             let macro_lines = macro_definition_body_lines(&source);
+            gfprof("cpp:macro_lines", _t2);
             let fns: Vec<_> = fns
                 .into_iter()
                 .filter(|function| {
@@ -1811,13 +1959,15 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 .collect();
             let meta: HashMap<(&str, u32), &c_parser::CFunction> =
                 fns.iter().map(|f| ((f.name.as_str(), f.line), f)).collect();
+            // Loop-invariant: depends only on the path. Same hoist as the C++ arm.
+            let path_guard = foreign_platform_path_guard(path);
             for tgt in target_rank::rank_c_targets(&fns) {
                 let (is_static, foreign_guard) = {
                     let m = meta.get(&(tgt.name.as_str(), tgt.line));
                     (
                         m.is_some_and(|f| f.is_static),
                         m.and_then(|f| f.foreign_guard.clone())
-                            .or_else(|| foreign_platform_path_guard(path)),
+                            .or_else(|| path_guard.clone()),
                     )
                 };
                 out.push(Candidate {
@@ -1837,6 +1987,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
         Lang::Cpp => {
             // §27.6: parse the preprocessed text under `preprocess`, translating
             // each surviving function's line back to the ORIGINAL source.
+            let _t0 = std::time::Instant::now();
             let fns = match parse_cpp_functions_preprocessed(
                 &source,
                 preprocess,
@@ -1848,7 +1999,10 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     return record_discovery_drop(path, "cpp", "parse", &format!("{error:?}"))
                 }
             };
+            gfprof("cpp:parse", _t0);
+            let _t1 = std::time::Instant::now();
             let fns = dedup_cpp_functions(fns);
+            gfprof("cpp:dedup", _t1);
             // Same macro-template exclusion as the C lane: a C++ TU that includes
             // a BSD tree.h/queue.h header sees the identical pseudo-functions.
             let macro_lines = macro_definition_body_lines(&source);
@@ -1859,9 +2013,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                         && !is_macro_invocation_name(&function.name)
                 })
                 .collect();
+            let _t3 = std::time::Instant::now();
             let known_blocked = crate::generate_harness::cpp_known_blocked_signatures_for_discovery(
                 path, &source, &fns,
             );
+            gfprof("cpp:known_blocked", _t3);
             let meta = fns
                 .iter()
                 .map(|function| {
@@ -1871,7 +2027,21 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     )
                 })
                 .collect::<HashMap<_, _>>();
-            for tgt in target_rank::rank_cpp_targets(&fns) {
+            let _t4 = std::time::Instant::now();
+            let _ranked = target_rank::rank_cpp_targets(&fns);
+            gfprof("cpp:rank", _t4);
+            // Both fallback guards are loop-invariant — one depends only on the
+            // PATH, the other only on the SOURCE TEXT — but being inside the
+            // per-target loop meant `cpp_windows_framework_guard` rescanned the
+            // whole file once per target. On simdjson's 187k-line amalgamated
+            // header that is 7,264 targets x 7.7 MB = ~56 GB of scanning, and it
+            // was 83 of the 99 seconds discovery spent walking that one file.
+            // `.or_else` is lazy, so it only fired for targets with no parsed
+            // guard of their own — which is nearly all of them.
+            let path_guard = foreign_platform_path_guard(path);
+            let windows_guard = cpp_windows_framework_guard(&source);
+            let _t5 = std::time::Instant::now();
+            for tgt in _ranked {
                 let (is_static, foreign_guard, signature_known_blocked) = {
                     // Ranked C++ names are qualified (`ns::Class::method`) while
                     // `CppFunction::name` is the leaf. The old `(name,line)` map
@@ -1888,8 +2058,8 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                         // static free functions have internal linkage.
                         m.is_some_and(|f| f.is_static && !f.api.is_method),
                         m.and_then(|f| f.foreign_guard.clone())
-                            .or_else(|| foreign_platform_path_guard(path))
-                            .or_else(|| cpp_windows_framework_guard(&source)),
+                            .or_else(|| path_guard.clone())
+                            .or_else(|| windows_guard.clone()),
                         known_blocked.contains(&identity),
                     )
                 };
@@ -1911,6 +2081,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     dialect,
                 });
             }
+            gfprof("cpp:push_loop", _t5);
         }
         Lang::Rust => {
             // M1.1: discover + rank Rust targets. The ranker drops private fns
@@ -2448,17 +2619,35 @@ fn detect_lang(path: &Path, source: &str) -> Option<Lang> {
 }
 
 fn classify_c_header(path: &Path, source: &str) -> Lang {
+    let has_c_impl = path.with_extension("c").is_file();
+    let has_cpp_impl = ["cpp", "cc", "cxx", "C"]
+        .iter()
+        .any(|ext| path.with_extension(ext).is_file());
+    // Decide on the CHEAP evidence first. All three tests below are pure
+    // predicates joined by `||`, so answering from the marker scan or the
+    // sibling-implementation check gives exactly the verdict the original
+    // `cpp_count > c_count || ...` chain gave — it just stops before paying for
+    // two whole-file parses.
+    //
+    // That mattered enormously: counting functions parses the file ONCE WITH
+    // EACH PARSER purely to pick a language, and the C parser over a large C++
+    // header spends its time in error recovery. simdjson's 187k-line
+    // `singleheader/simdjson.h` cost **33 seconds here alone** — more than the
+    // real parse that follows — and the file says `namespace`, `class` and
+    // `template` on nearly every page, so the marker scan answers it in
+    // milliseconds.
+    if header_looks_like_cpp(source) || (has_cpp_impl && !has_c_impl) {
+        return Lang::Cpp;
+    }
+    // Genuinely ambiguous: no C++ markers and no decisive sibling. Only now is
+    // the double parse worth it, and such headers are small in practice.
     let c_count = c_parser::parse_c_functions(source)
         .map(|fns| fns.len())
         .unwrap_or(0);
     let cpp_count = cpp_parser::parse_cpp_functions(source)
         .map(|fns| fns.len())
         .unwrap_or(0);
-    let has_c_impl = path.with_extension("c").is_file();
-    let has_cpp_impl = ["cpp", "cc", "cxx", "C"]
-        .iter()
-        .any(|ext| path.with_extension(ext).is_file());
-    if cpp_count > c_count || header_looks_like_cpp(source) || (has_cpp_impl && !has_c_impl) {
+    if cpp_count > c_count {
         Lang::Cpp
     } else {
         Lang::C

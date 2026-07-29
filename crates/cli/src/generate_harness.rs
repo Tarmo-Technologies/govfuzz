@@ -8641,6 +8641,13 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
     // Loop-invariant: the mined recipes depend on the project owning this file,
     // not on which function of it is being probed.
     let mined = crate::auto::recipe_mining::for_source(source_path);
+    // Also loop-invariant: the DEFINITIONS in the registry are the file's, not
+    // the probed function's. Only the scopes/defaults/recipes differ per
+    // function, and those are small — so build the definition maps once and
+    // re-key cheap clones below. Rebuilding them per function is quadratic
+    // (functions x type defs) and was most of the 51 seconds simdjson's
+    // 187k-line amalgamated header cost on its own.
+    let base_defs = type_model::TypeRegistry::from_defs(type_defs.iter());
     let mut blocked = std::collections::HashSet::new();
     for function in functions {
         let parameter_types = function
@@ -8664,7 +8671,8 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
         // flagged. Resolve the recipes against the identical closure/type context
         // (a base registry without recipes), then re-key the probe registry WITH
         // them so the preflight verdict matches generation.
-        let base_registry = type_model::TypeRegistry::from_defs(type_defs.iter())
+        let base_registry = base_defs
+            .clone()
             .with_cpp_lookup_scopes(scopes.clone())
             .with_default_constructible_classes(defaults.clone());
         let recipes = resolve_cpp_parameter_constructions(
@@ -8675,7 +8683,8 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
             &Default::default(),
             &mined,
         );
-        let registry = type_model::TypeRegistry::from_defs(type_defs.iter())
+        let registry = base_defs
+            .clone()
             .with_cpp_lookup_scopes(scopes)
             .with_default_constructible_classes(defaults)
             .with_class_constructions(recipes);

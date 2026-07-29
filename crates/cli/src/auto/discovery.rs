@@ -944,6 +944,25 @@ fn dedup_ada_spec_body_candidates(candidates: &mut Vec<Candidate>) {
 /// stable across processes — the same property `stable_harness_id` relies on.
 /// (Reading the bytes is far cheaper than the tree-sitter re-parse it avoids.)
 pub fn source_fingerprint(root: &Path, filter: &DirFilter) -> String {
+    source_fingerprint_with_files(root, filter).0
+}
+
+/// The tree digest AND the per-file content hashes, from ONE walk.
+///
+/// `--resume` needs the per-file view because FUZZING CAN CHANGE THE TREE: a
+/// target that writes or rewrites a file with a source extension (a code
+/// generator, a compiler, anything emitting `.c`/`.py`/`.ts` into the checkout)
+/// makes a run invalidate its OWN digest. The next `--resume` concluded "the
+/// source changed", discarded every completed target and re-ran the lot; once
+/// that target had run again and the file settled, the run after it matched —
+/// the reported "resume only works the second time".
+///
+/// The per-file hashes are a by-product of the digest walk, so this costs one
+/// walk, not two: the entries were being computed and thrown away already.
+pub fn source_fingerprint_with_files(
+    root: &Path,
+    filter: &DirFilter,
+) -> (String, Vec<(String, u64)>) {
     use std::hash::{Hash, Hasher};
 
     // Collect (relative-path, len, content-hash) for every targetable file, in a
@@ -974,7 +993,14 @@ pub fn source_fingerprint(root: &Path, filter: &DirFilter) -> String {
         len.hash(&mut hasher);
         content.hash(&mut hasher);
     }
-    format!("{:016x}", hasher.finish())
+    let digest = format!("{:016x}", hasher.finish());
+    // One u64 per file: the length folded into the content hash. Cheaper to hold
+    // and to persist than the triple, and enough to answer "did this file move?".
+    let files = entries
+        .into_iter()
+        .map(|(rel, len, content)| (rel, len ^ content.rotate_left(1)))
+        .collect();
+    (digest, files)
 }
 
 /// #101: fingerprint the BUILD context — the files and options that change how a

@@ -621,8 +621,14 @@ fn incompatible_resume_and_clean_all_cannot_reuse_stale_generated_state() {
     let migrated: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&state_path).unwrap()).unwrap();
     assert_eq!(migrated["disposition"], "incompatible_migration");
+    // `harnesses/H-STALE` itself survives as a directory now: it holds the target's
+    // `result.json`, the only resume state there is, which a refresh must keep.
+    // Its generated artifacts must still be gone.
+    assert!(
+        !work.join("harnesses/H-STALE/main.c").exists(),
+        "stale generated harness survived"
+    );
     for stale in [
-        "harnesses/H-STALE",
         "generated_harnesses/H-STALE",
         "fake_corba/stale.ads",
         "src_instrumented/stale.adb",

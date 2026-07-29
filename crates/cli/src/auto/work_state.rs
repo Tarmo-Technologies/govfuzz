@@ -133,9 +133,23 @@ fn regenerable_state_exists(work_dir: &Path) -> bool {
         .any(|relative| work_dir.join(relative).exists())
 }
 
+/// Per-target attempt records, which live inside `harnesses/<id>/`. They are the
+/// one thing in there that is NOT regenerable: recreating a record means redoing
+/// the whole attempt. Wiping them with the build artifacts is what made
+/// `--resume` look intermittent — a work dir produced by a different govfuzz
+/// version was refreshed on the way in, so the resume that followed found
+/// nothing and silently re-ran everything. Killing THAT run left records written
+/// by the current binary, so the next `--resume` worked, which is exactly the
+/// "works the second time" symptom.
+const PRESERVED_IN_HARNESS_DIRS: &str = "result.json";
+
 fn refresh_regenerable_state(work_dir: &Path) -> std::io::Result<()> {
     for relative in REGENERABLE_DIRECTORIES {
         let path = work_dir.join(relative);
+        if *relative == "harnesses" {
+            refresh_harness_dirs_preserving_records(&path)?;
+            continue;
+        }
         match std::fs::symlink_metadata(&path) {
             Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
                 std::fs::remove_dir_all(path)?;
@@ -156,9 +170,67 @@ fn refresh_regenerable_state(work_dir: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Clear every generated artifact under `harnesses/` while keeping each target's
+/// `result.json`. A target directory left holding only its record is inert: the
+/// harness and build products are regenerated on the next attempt.
+fn refresh_harness_dirs_preserving_records(harnesses: &Path) -> std::io::Result<()> {
+    let Ok(entries) = std::fs::read_dir(harnesses) else {
+        return Ok(());
+    };
+    for entry in entries.flatten() {
+        let target_dir = entry.path();
+        if !target_dir.is_dir() {
+            std::fs::remove_file(&target_dir)?;
+            continue;
+        }
+        for inner in std::fs::read_dir(&target_dir)?.flatten() {
+            if inner.file_name() == PRESERVED_IN_HARNESS_DIRS {
+                continue;
+            }
+            let path = inner.path();
+            let metadata = std::fs::symlink_metadata(&path)?;
+            if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                std::fs::remove_dir_all(path)?;
+            } else {
+                std::fs::remove_file(path)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A refresh must keep every target's `result.json`. Those records are the
+    /// ONLY resume state there is, and they live inside `harnesses/` alongside
+    /// genuinely regenerable build products — so wiping the directory wholesale
+    /// silently destroyed `--resume`. That is what made resume look intermittent:
+    /// the first run after an interrupted one refreshed the work dir, found no
+    /// records, and re-ran everything; killing THAT run left records written by
+    /// the current binary, so the next `--resume` worked.
+    #[test]
+    fn a_refresh_keeps_attempt_records_and_drops_only_build_products() {
+        let temp = tempfile::tempdir().unwrap();
+        let work = temp.path();
+        let target = work.join("harnesses/H-KEEP");
+        std::fs::create_dir_all(target.join("obj")).unwrap();
+        std::fs::write(target.join("result.json"), r#"{"harness_id":"H-KEEP"}"#).unwrap();
+        std::fs::write(target.join("main.c"), "int main(void){return 0;}").unwrap();
+        std::fs::write(target.join("obj/main.o"), b"\x7fELF").unwrap();
+
+        refresh_regenerable_state(work).unwrap();
+
+        assert!(
+            target.join("result.json").is_file(),
+            "the attempt record is not regenerable — recreating it means redoing the work"
+        );
+        assert!(
+            !target.join("main.c").exists() && !target.join("obj").exists(),
+            "generated harness and build products must still be cleared"
+        );
+    }
 
     #[test]
     fn fresh_run_refreshes_generated_state_but_preserves_corpus_and_findings() {
@@ -209,11 +281,19 @@ mod tests {
         state["generated_state_semantic_version"] = serde_json::json!(999);
         std::fs::write(&state_path, serde_json::to_vec(&state).unwrap()).unwrap();
         std::fs::create_dir_all(work.join("harnesses/H-OLD")).unwrap();
+        std::fs::write(work.join("harnesses/H-OLD/main.c"), "stale").unwrap();
+        std::fs::write(work.join("harnesses/H-OLD/result.json"), "{}").unwrap();
 
         assert_eq!(
             prepare(work, true).unwrap(),
             WorkStateDisposition::IncompatibleMigration
         );
-        assert!(!work.join("harnesses/H-OLD").exists());
+        // The generated harness goes; the attempt RECORD stays. It is the only
+        // resume state there is, and removing it is what made `--resume` appear
+        // to work only on the second try. The caller decides what to do with a
+        // record from an older build (successes are kept, failures re-attempted)
+        // — but it must still be there to decide about.
+        assert!(!work.join("harnesses/H-OLD/main.c").exists());
+        assert!(work.join("harnesses/H-OLD/result.json").is_file());
     }
 }

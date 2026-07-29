@@ -1507,7 +1507,12 @@ static DISCOVERY_MEMORY_SKIPPED: std::sync::atomic::AtomicUsize =
 /// than inventing one: past the ceiling it stops taking on new files and
 /// proceeds to fuzz what it already found. A partial target list that fuzzes
 /// beats a complete one that gets killed.
-static DISCOVERY_TIME_BUDGET: std::sync::Mutex<Option<std::time::Duration>> =
+/// Stored as an ABSOLUTE deadline, not a duration: discovery walks the tree more
+/// than once (the organizational-exclusion retry re-walks, and `list targets`
+/// defers lanes to a second pass), and a per-walk duration silently granted each
+/// of them a fresh budget — Proton spent 117s against a 60s ceiling. One deadline
+/// for the process bounds the whole phase however many walks it takes.
+static DISCOVERY_DEADLINE: std::sync::Mutex<Option<std::time::Instant>> =
     std::sync::Mutex::new(None);
 
 /// Files skipped because the discovery time budget ran out.
@@ -1525,8 +1530,8 @@ pub(crate) fn set_time_budget(budget: Option<std::time::Duration>) {
         Some(secs) => Some(std::time::Duration::from_secs(secs)),
         None => budget,
     };
-    if let Ok(mut slot) = DISCOVERY_TIME_BUDGET.lock() {
-        *slot = resolved;
+    if let Ok(mut slot) = DISCOVERY_DEADLINE.lock() {
+        *slot = resolved.map(|budget| std::time::Instant::now() + budget);
     }
 }
 
@@ -1549,11 +1554,7 @@ fn walk(
     // gets the same guard, so a huge tree yields a partial target list instead of
     // nothing.
     let guard = static_analysis::MemoryGuard::start();
-    let deadline = DISCOVERY_TIME_BUDGET
-        .lock()
-        .ok()
-        .and_then(|budget| *budget)
-        .map(|budget| std::time::Instant::now() + budget);
+    let deadline = DISCOVERY_DEADLINE.lock().ok().and_then(|slot| *slot);
     let result = walk_guarded(dir, out, filter, preprocess, &guard, deadline);
     let timed_out = DISCOVERY_TIME_SKIPPED.swap(0, std::sync::atomic::Ordering::Relaxed);
     if timed_out > 0 {

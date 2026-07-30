@@ -58,8 +58,12 @@ fn java_target_builds_and_fuzzes_natively_and_finds_planted_crash() {
         .args([
             "auto",
             fixture().to_str().unwrap(),
+            // 30s: JVM + Jazzer startup can consume most of a 10s budget on a
+            // loaded runner, so the seeded input never gets executed and the test
+            // reports "no finding" when it means "no time". Same exposure that
+            // made auto_java_builder flake on CI.
             "--per-target-time",
-            "10",
+            "30",
             "--max-targets",
             "1",
             "--seed-dir",

@@ -432,7 +432,33 @@ findings — and only 1.3 s in taint. Both real causes were in that BFS:
   grows, so that is monotonic and cannot go stale: a further **2.7x**, and the BFS
   went from 79.1 s to 2.0 s on the full tree.
 
-What is left is inherent work, and that is now a measured claim rather than an
+**The residual is lane-specific, and it is the Java call graph.** Measured phase
+shares on comparable trees:
+
+| lane | per-file | taint | reachability |
+|---|---:|---:|---:|
+| Go (kubernetes) | 15.3 s | **2.1 s** | 1.9 s |
+| C++ (Proton) | 13.0 s | **0.04 s** | 0.09 s |
+| Python (django) | 5.1 s | **0.6 s** | 0.3 s |
+| Java (elasticsearch) | 23.5 s | **15.9 s** | 4.2 s |
+
+Java's taint pass is 7.6x Go's, and it tracks the gap count: elasticsearch
+produces **43,660 `unresolved_project_local_call` gaps**. Java calls are
+`obj.method(...)` while the index keys on names, so resolution fails constantly,
+and every failure allocates a five-field `AnalysisGap` that is retained and
+serialised. That is the concrete next lever — but note carefully that BOTH ways
+of pulling it change reported output, which is why neither was taken here:
+
+- Resolving those calls (a receiver-type-aware index) would let taint flow
+  further and so can only ADD findings.
+- Deduplicating or bounding the gaps changes `gap_count`, which the parity
+  harness compares deliberately, because a shrinking gap count is exactly how
+  "we stopped exploring" would disguise itself.
+
+Either is legitimate, but each needs to be argued as a behaviour change on its
+own merits rather than smuggled in as an optimisation.
+
+The rest is inherent work, and that is now a measured claim rather than an
 assumption. Two further optimisations were tried on the taint worklist and BOTH
 measured as no gain:
 

@@ -485,6 +485,22 @@ real precision win also looks like. Anyone taking this must build an
 inheritance-aware index first (declared type -> supertypes -> declaring class),
 and treat the resulting finding delta as the deliverable.
 
+**Step one is a PARSER change, and it does not exist yet.** `JavaTypeModel`
+carries `fqn`, `is_enum`, `self_constants`, `has_public_no_arg_ctor` and
+`no_arg_self_factories` — there is no `extends`/`implements`, and `JavaMethod`
+records no declaring hierarchy. So the supertype closure the narrowing depends on
+cannot be computed from what `java_parser` produces today. The order of work is:
+
+1. `java_parser`: extract `extends` / `implements` per type (tree-sitter already
+   has the nodes; nothing consumes them).
+2. `static_analysis`: build declared-type -> supertype-closure, and resolve a
+   member against the closure rather than the declared type alone.
+3. Gate it opt-in, measure the finding delta with `finding-parity.py`, and review
+   what disappears BEFORE it becomes the default.
+
+Skipping (1) is what makes the language-gate shortcut above look plausible and
+makes it destructive.
+
 It is not taken here because it is a PRECISION change: `finding-parity.py` should
 be expected to show findings CHANGE, most likely decrease as spurious flows
 disappear, and each disappearance needs looking at rather than waving through.

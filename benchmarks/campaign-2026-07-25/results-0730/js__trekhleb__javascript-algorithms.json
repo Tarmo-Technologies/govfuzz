@@ -1,0 +1,789 @@
+{
+ "lane": "js",
+ "repo": "trekhleb/javascript-algorithms",
+ "stars": 196333,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms --json --out /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 15613,
+   "sloc_by_lang": {
+    "javascript": 15586,
+    "config": 27
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 204,
+   "by_language": {
+    "javascript": 204
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms --out /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 2.48,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2,
+   "by_severity": {
+    "medium": 1,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-500": 1,
+    "GF-472": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms --out /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms/sbom",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "components": 628
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms --work-dir /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 246.8,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 52,
+    "discovered_total": 204,
+    "dropped_by_cap": 152,
+    "built": 36,
+    "built_and_fuzzed": 36,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 16,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 7
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "default",
+     "source": "floydWarshall.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 742.7113068558987,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "multiplyByTwo.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1392.2335382653494,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "factorialRecursive.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1391.452844358831,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "isEven.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 636.4246543022808,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "factorial.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1479.5647101090872,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "divideByTwo.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 646.0649936838868,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "isPositive.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 730.4508095652886,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "isPowerOfTwo.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1369.7109647254558,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "countSetBits.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 790.7076203101954,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "switchSign.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1322.301980188204,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "setBit.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1366.2422543873938,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "getBit.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 751.7733345760298,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "clearBit.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 834.9359128839396,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "bellmanFord.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 553.6360471791687,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "updateBit.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1461.2726744433444,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "topologicalSort.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/topological-sorting/topologicalSort.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/stack/Stack` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/stack/Stack' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/topological-sorting/topologicalSort.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "euclideanAlgorithm.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11.214337617456083,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "bitLength.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 874.8126447432958,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "euclideanAlgorithmIterative.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1526.898272183997,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "prim.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/prim/prim.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/graph/Graph` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/graph/Graph' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/prim/prim.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "detectDirectedCycle.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/detect-cycle/detectDirectedCycle.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/detect-cycle/detectDirectedCycle.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "detectUndirectedCycle.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/detect-cycle/detectUndirectedCycle.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/detect-cycle/detectUndirectedCycle.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "detectUndirectedCycleUsingDisjointSet.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/detect-cycle/detectUndirectedCycleUsingDisjointSet.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/disjoint-set/DisjointSet` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/disjoint-set/DisjointSet' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/detect-cycle/detectUndirectedCycleUsingDisjointSet.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "kruskal.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/kruskal/kruskal.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/graph/Graph` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/graph/Graph' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/kruskal/kruskal.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "eulerianPath.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/eulerian-path/eulerianPath.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/bridges/graphBridges` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/bridges/graphBridges' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/eulerian-path/eulerianPath.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SortTester.testSort",
+     "source": "SortTester.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 571.068825294121,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "bitsDiff.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/bitsDiff.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/countSetBits` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/countSetBits' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/bitsDiff.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "fastPowering.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 10.790351860404165,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "traversal.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 663.167087623556,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "dijkstra.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/dijkstra/dijkstra.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/priority-queue/PriorityQueue` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/priority-queue/PriorityQueue' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/dijkstra/dijkstra.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "graphBridges.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/bridges/graphBridges.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/bridges/graphBridges.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "multiplyUnsigned.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1346.7927935234554,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "articulationPoints.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/articulation-points/articulationPoints.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/depth-first-search/depthFirstSearch' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/articulation-points/articulationPoints.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "default",
+     "source": "reverseTraversal.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 825.8062874892462,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SortTester.testNegativeNumbersSort",
+     "source": "SortTester.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 602.5777064125655,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "multiply.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/multiply.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/multiplyByTwo` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/multiplyByTwo' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/multiply.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SortTester.testSortWithCustomComparator",
+     "source": "SortTester.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 730.454135150081,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "caesarCipherEncrypt",
+     "source": "caesarCipher.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 805.4248645643391,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "fullAdder.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/fullAdder.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/getBit` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/getBit' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/math/bits/fullAdder.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SortTester.testSortStability",
+     "source": "SortTester.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 661.770289235254,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "breadthFirstSearch.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/breadth-first-search/breadthFirstSearch.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/queue/Queue` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/queue/Queue' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/breadth-first-search/breadthFirstSearch.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "caesarCipherDecrypt",
+     "source": "caesarCipher.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 839.4490967861282,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SortTester.testAlgorithmTimeComplexity",
+     "source": "SortTester.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.174395319392908,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "depthFirstSearch.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 627.1238468594445,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "bfTravellingSalesman.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 754.471942237752,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "bitsToFloat16",
+     "source": "bitsToFloat.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 570.084069086177,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "hamiltonianCycle.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/hamiltonian-cycle/hamiltonianCycle.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/graph/GraphVertex` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/graph/GraphVertex' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/hamiltonian-cycle/hamiltonianCycle.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bitsToFloat32",
+     "source": "bitsToFloat.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 653.0699313361574,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "bitsToFloat64",
+     "source": "bitsToFloat.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 590.2175580278033,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "stronglyConnectedComponents.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/strongly-connected-components/stronglyConnectedComponents.js` is not loadable (skipped cleanly): missing module `/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/stack/Stack` (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/data-structures/stack/Stack' imported from /home/ubuntu/govfuzz-corpus-500/js/trekhleb__javascript-algorithms/src/algorithms/graph/strongly-connected-components/stronglyConnectedComponents.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decodeRailFenceCipher",
+     "source": "railFenceCipher.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 18.444239467463163,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "add",
+     "source": "Matrix.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.252604151010732,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 16,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error [ERR_MODULE_NOT_FOUND]: Cannot find module \"X\" imported from PATH",
+     "language": "javascript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-1ff6c28b",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N003F-532FA5AC"
+    },
+    {
+     "id": "F-0001-8069dacc",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N00F9-E3B7E5E8"
+    },
+    {
+     "id": "F-0002-09160fb5",
+     "rule": "GF-207",
+     "cwe": [
+      "CWE-121"
+     ],
+     "cwe_name": "Stack-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N00DF-7B35984D"
+    },
+    {
+     "id": "F-0003-a4c3ef75",
+     "rule": "GF-207",
+     "cwe": [
+      "CWE-121"
+     ],
+     "cwe_name": "Stack-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N00DF-7B35984D"
+    },
+    {
+     "id": "F-0004-291e46fe",
+     "rule": "GF-207",
+     "cwe": [
+      "CWE-121"
+     ],
+     "cwe_name": "Stack-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N00DF-7B35984D"
+    },
+    {
+     "id": "F-0005-5714b72d",
+     "rule": "GF-207",
+     "cwe": [
+      "CWE-121"
+     ],
+     "cwe_name": "Stack-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N0007-252FDCE3"
+    },
+    {
+     "id": "F-0006-83b85483",
+     "rule": "GF-207",
+     "cwe": [
+      "CWE-121"
+     ],
+     "cwe_name": "Stack-based Buffer Overflow",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-N000B-C0449BE5"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms/findings --out /home/ubuntu/govfuzz-sweep-work/js__trekhleb__javascript-algorithms/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "85293e3e2b88f4d2ce330d956b139cf628aa1e82",
+ "clone_s": 0.9,
+ "lane_check": "js: 361 files / 20143 lines; top=js(20143)",
+ "status": "done"
+}

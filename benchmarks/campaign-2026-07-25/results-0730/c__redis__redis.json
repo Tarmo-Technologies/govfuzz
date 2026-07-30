@@ -1,0 +1,184 @@
+{
+ "lane": "c",
+ "repo": "redis/redis",
+ "stars": 75698,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/c/redis__redis --json --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 266450,
+   "sloc_by_lang": {
+    "c": 246426,
+    "cpp": 12002,
+    "python": 4175,
+    "config": 2872,
+    "ruby": 639,
+    "lua": 306,
+    "javascript": 30
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/c/redis__redis --format json --top 100000",
+   "exit": 0,
+   "wall_s": 6.37,
+   "timed_out": false,
+   "panic": false,
+   "count": 11528,
+   "by_language": {
+    "c": 11103,
+    "cpp": 375,
+    "ruby": 13,
+    "python": 37
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/c/redis__redis --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.31,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 531,
+   "by_severity": {
+    "medium": 253,
+    "high": 272,
+    "low": 2,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-424": 160,
+    "GF-407": 128,
+    "GF-405": 63,
+    "GF-408": 40,
+    "GF-406": 24,
+    "GF-500": 23,
+    "GF-425": 19,
+    "GF-401": 17,
+    "GF-403": 15,
+    "GF-497": 13,
+    "GF-436": 11,
+    "GF-472": 7,
+    "GF-404": 3,
+    "GF-550": 3,
+    "GF-546": 2
+   },
+   "gaps": 5137
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/c/redis__redis --out /home/ubuntu/govfuzz-sweep-work/c__redis__redis/sbom",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "components": 20
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/c/redis__redis --work-dir /home/ubuntu/govfuzz-sweep-work/c__redis__redis --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 256.63,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 4,
+    "discovered_total": 5948,
+    "dropped_by_cap": 5944,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 1,
+    "synthesized_types": 0,
+    "synthesized_macros": 4,
+    "stubbed_symbols_declared": 77,
+    "stubbed_symbols_blind": 13,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "moduleOnLoad",
+     "source": "module.c",
+     "outcome": "failed_build",
+     "retries": 10,
+     "repairs": 59,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "sentinelProcessHelloMessage",
+     "source": "sentinel.c",
+     "outcome": "failed_build",
+     "retries": 12,
+     "repairs": 165,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "moduleUnload",
+     "source": "module.c",
+     "outcome": "failed_build",
+     "retries": 10,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACLSetSelector",
+     "source": "acl.c",
+     "outcome": "failed_build",
+     "retries": 1,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "expected identifier or \"X\"",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "build abandoned after N repair round(s): the --campaign-time budget was exhausted. This is a cut-off, not a diagnosis: re-run with a larger --campaign-time to s\u2026",
+     "language": "c"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "58d0fb9c62e88df331c55dec378cd149909d406b",
+ "clone_s": 1.4,
+ "lane_check": "c: 191 files / 191412 lines; top=c(191412)",
+ "status": "done"
+}

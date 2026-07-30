@@ -2,6 +2,19 @@
 
 # Changelog
 
+## 0.2.25 - 2026-07-29
+
+Documentation release on top of 0.2.24, which carried the performance work.
+
+- `docs/expected-gaps.md` now records the one measured performance outlier left
+  after the timeout sweep, with its root causes rather than just its symptom:
+  `static-scan`'s interprocedural taint pass runs at **8.1k SLOC/s on Java**
+  against **924k SLOC/s on C**, and scales at about **O(n^1.6)** (1,050 Java files
+  in 2.5s, 4,912 in 30.4s, extrapolating to the 616s measured over elasticsearch's
+  31,243). `scan_taint_project` parallelizes across LANGUAGES rather than within
+  one, so a single-language tree runs the whole phase on one core; and the
+  worklist revisits a function once per distinct taint signature.
+
 ## 0.2.24 - 2026-07-29
 
 Performance and robustness release. **Every project that timed out in the

@@ -426,11 +426,7 @@ fn spawn_harness(command: &mut std::process::Command) -> std::io::Result<std::pr
         match command.spawn() {
             Ok(child) => return Ok(child),
             Err(error) => {
-                let transient = matches!(
-                    error.raw_os_error(),
-                    Some(code) if code == libc::ETXTBSY || code == libc::EAGAIN
-                );
-                if !transient {
+                if !transient_spawn_failure(&error) {
                     return Err(error);
                 }
                 std::thread::sleep(RETRY_DELAY);
@@ -438,4 +434,16 @@ fn spawn_harness(command: &mut std::process::Command) -> std::io::Result<std::pr
         }
     }
     command.spawn()
+}
+
+/// Whether a spawn failure is one of the two "try again in a moment" kinds.
+///
+/// Matched through `ErrorKind` rather than raw errno so this compiles on every
+/// target — `libc` is not available on the MSVC build, which is how the first
+/// attempt at this broke the Windows job.
+fn transient_spawn_failure(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        std::io::ErrorKind::ExecutableFileBusy | std::io::ErrorKind::WouldBlock
+    )
 }

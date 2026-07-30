@@ -23730,7 +23730,15 @@ fn scan_taint_language(
     let mut queue: VecDeque<(FunctionKey, Vec<TraceStep>, BTreeSet<String>)> = VecDeque::new();
     // Dedup at ENQUEUE (not pop): the same (function, taint-signature) is pushed at
     // most once, so a diamond call graph cannot balloon the queue in memory.
-    let mut enqueued: BTreeSet<(FunctionKey, String)> = BTreeSet::new();
+    // Insert-only, never iterated — so hashed, for consistency with the
+    // reachability set. Honest note: unlike there, this measured as NO change
+    // (taint stayed at 15.9s of a 45s elasticsearch scan). The reachability BFS
+    // probed once per candidate per LINE; this worklist probes once per enqueue and
+    // per pop, which is orders of magnitude fewer, so the long-path comparisons
+    // never dominated here. Its remaining cost is the per-line call resolution in
+    // `local_calls`, not these lookups.
+    let mut enqueued: std::collections::HashSet<(FunctionKey, String)> =
+        std::collections::HashSet::new();
     for (key, function) in &index.models {
         if function.params.iter().any(|param| is_source_param(param)) {
             // Source-named parameters seed taint directly.
@@ -23755,8 +23763,9 @@ fn scan_taint_language(
             }
         }
     }
-    let mut fn_states: BTreeMap<FunctionKey, u32> = BTreeMap::new();
-    let mut truncated: BTreeSet<FunctionKey> = BTreeSet::new();
+    let mut fn_states: std::collections::HashMap<FunctionKey, u32> =
+        std::collections::HashMap::new();
+    let mut truncated: std::collections::HashSet<FunctionKey> = std::collections::HashSet::new();
     while let Some((key, trace, tainted)) = queue.pop_front() {
         if MEMORY_PRESSURE.load(std::sync::atomic::Ordering::Relaxed) {
             analysis_gaps.push(AnalysisGap {

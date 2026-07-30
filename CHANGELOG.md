@@ -2,6 +2,24 @@
 
 # Changelog
 
+## 0.2.27 - 2026-07-30
+
+- **`replay` no longer fails intermittently on a freshly built harness.** The
+  kernel refuses to `exec` a file that is still open for writing anywhere, so
+  building a harness and immediately replaying it races the writer's descriptor
+  closing. Both spawn paths now retry that (`ExecutableFileBusy`) and a transient
+  fork failure on a loaded box (`WouldBlock`), matched on `ErrorKind` so it
+  compiles on every target.
+
+- **The failure says why.** `failed to start harness <path>` kept its cause in the
+  `#[source]` chain, and the top-level `error:` line is all a CI log shows — so it
+  could not be told apart from a missing file or a permissions problem. The errno
+  is in the message now. That ambiguity is why the first two attempts at this fix
+  patched the wrong spawn sites, in the wrong crate.
+
+Stated plainly: the retry is a well-founded mitigation, not a confirmed fix — the
+errno was never visible, which the second change makes impossible next time.
+
 ## 0.2.26 - 2026-07-29
 
 `static-scan` is **13.6x faster on Java** with byte-identical output, and every

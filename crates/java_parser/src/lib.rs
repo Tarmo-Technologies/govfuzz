@@ -122,6 +122,17 @@ pub struct JavaTypeModel {
     /// Names of public static no-arg factory methods returning `<Self>`
     /// (e.g. `create`, `newInstance`, `getDefault`), in source order.
     pub no_arg_self_factories: Vec<String>,
+    /// Direct supertypes: the `extends` class and every `implements` interface,
+    /// as written, reduced to leaf names.
+    ///
+    /// Nothing consumes this yet. It exists because Java call resolution keys on
+    /// method NAME, which over-approximates every `obj.method()` to every
+    /// same-named method in the tree (measured fan-out 2.49 against Go's 0.80).
+    /// Narrowing by the receiver's declared type is only correct if a method
+    /// declared on a BASE class or interface still resolves — Java dispatch is
+    /// virtual — and that needs a supertype closure, which could not be computed
+    /// at all without this. See docs/expected-gaps.md.
+    pub supertypes: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -455,6 +466,7 @@ fn collect_type_models(
                         &name,
                         is_abstract,
                         body,
+                        declared_supertypes(child, bytes),
                         bytes,
                     ));
                 }
@@ -500,6 +512,7 @@ fn build_type_model(
     name_leaf: &str,
     is_abstract: bool,
     body: Option<tree_sitter::Node<'_>>,
+    supertypes: Vec<String>,
     bytes: &[u8],
 ) -> JavaTypeModel {
     let is_enum = kind == "enum_declaration";
@@ -593,7 +606,51 @@ fn build_type_model(
         self_constants,
         has_public_no_arg_ctor,
         no_arg_self_factories,
+        supertypes,
     }
+}
+
+/// The leaf names of a declaration's `extends` and `implements` clauses.
+///
+/// Tree-sitter already exposes these nodes; nothing read them before. Generics,
+/// arrays and qualifiers are stripped by the same leaf reduction used elsewhere,
+/// so `implements Map.Entry<K, V>` yields `Entry`.
+fn declared_supertypes(decl: tree_sitter::Node<'_>, bytes: &[u8]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    // A class exposes `superclass` / `interfaces` as named FIELDS, but an
+    // interface's own `extends` list is an unnamed child node — so a field lookup
+    // alone silently returns nothing for `interface A extends B, C`. That is the
+    // case that matters most: Java hierarchies are mostly interfaces, and missing
+    // them would make the eventual supertype closure quietly useless.
+    let mut clauses: Vec<tree_sitter::Node<'_>> = Vec::new();
+    for field in ["superclass", "interfaces"] {
+        if let Some(node) = decl.child_by_field_name(field) {
+            clauses.push(node);
+        }
+    }
+    let mut cursor = decl.walk();
+    for child in decl.children(&mut cursor) {
+        if matches!(child.kind(), "extends_interfaces" | "super_interfaces") {
+            clauses.push(child);
+        }
+    }
+    for node in clauses {
+        let Ok(text) = node.utf8_text(bytes) else {
+            continue;
+        };
+        let text = text
+            .trim()
+            .trim_start_matches("extends")
+            .trim_start_matches("implements")
+            .trim_start_matches("permits");
+        for piece in text.split(',') {
+            let leaf = type_leaf(piece.trim()).to_owned();
+            if !leaf.is_empty() && !out.contains(&leaf) {
+                out.push(leaf);
+            }
+        }
+    }
+    out
 }
 
 /// The leaf type name with generics, array brackets, and package/nesting qualifiers
@@ -1038,6 +1095,56 @@ fn push_unique_token(out: &mut Vec<String>, tok: String) {
 
 #[cfg(test)]
 mod tests {
+
+    /// The supertype closure's raw material. Without this, narrowing
+    /// `obj.method()` by the receiver's declared type would MISS every method
+    /// inherited from a base class or implemented interface — and Java dispatch
+    /// is virtual, so that is most real call sites.
+    #[test]
+    fn declared_supertypes_capture_extends_and_implements() {
+        let source = r#"
+package com.example;
+public interface Handler { void handle(String s); }
+public abstract class Base { public void shared() {} }
+public class Impl extends Base implements Handler, java.io.Closeable {
+    public void handle(String s) {}
+    public void close() {}
+}
+public interface Chained extends Handler, Runnable {}
+"#;
+        let types = parse_java_type_models(source);
+        let of = |leaf: &str| -> Vec<String> {
+            types
+                .iter()
+                .find(|t| t.fqn.ends_with(leaf))
+                .unwrap_or_else(|| panic!("no type model for {leaf}: {types:#?}"))
+                .supertypes
+                .clone()
+        };
+
+        // `extends` and every `implements`, reduced to leaf names — so a
+        // qualified `java.io.Closeable` is usable as an index key.
+        let impl_supers = of("Impl");
+        assert!(
+            impl_supers.contains(&"Base".to_owned())
+                && impl_supers.contains(&"Handler".to_owned())
+                && impl_supers.contains(&"Closeable".to_owned()),
+            "Impl should record Base, Handler and Closeable: {impl_supers:?}"
+        );
+
+        // An interface's `extends` list is a different tree-sitter field and is
+        // easy to miss.
+        let chained = of("Chained");
+        assert!(
+            chained.contains(&"Handler".to_owned()) && chained.contains(&"Runnable".to_owned()),
+            "interface extends-list should be captured: {chained:?}"
+        );
+
+        assert!(
+            of("Handler").is_empty(),
+            "a root interface has no supertypes"
+        );
+    }
     use super::*;
 
     #[test]

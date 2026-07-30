@@ -498,8 +498,12 @@ cannot be computed from what `java_parser` produces today. The order of work is:
    tree-sitter FIELDS, but an interface's own `extends` list is an unnamed child
    node — a field-only lookup silently returns nothing for
    `interface A extends B, C`, which is the case that matters most.
-2. `static_analysis`: build declared-type -> supertype-closure, and resolve a
-   member against the closure rather than the declared type alone.
+2. `static_analysis`: resolve a member against the closure rather than the
+   declared type alone. **The closure itself is DONE** —
+   `java_parser::supertype_closure`, transitive and cycle-safe, unit-tested and
+   inert. What remains in this step is wiring Java type models into
+   `static_analysis` (it does not consume them today) and tracking Java local
+   declarations so a receiver's declared type is known at the call site.
 3. Gate it opt-in, measure the finding delta with `finding-parity.py`, and review
    what disappears BEFORE it becomes the default.
 

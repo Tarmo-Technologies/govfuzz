@@ -593,13 +593,13 @@ pub(crate) fn signatures_for_input_with_runner(
 ) -> Result<Vec<Signature>, ReplayError> {
     let events_path = TempEventFile::new();
     let mut command = runner.command_for_events(events_path.path())?;
-    let mut child = command
+    command
         .env("GOVFUZZ_EVENTS_PATH", events_path.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|source| ReplayError::HarnessFailedToStart {
+        .stderr(Stdio::piped());
+    let mut child =
+        spawn_harness(&mut command).map_err(|source| ReplayError::HarnessFailedToStart {
             path: runner.executable_path().to_path_buf(),
             source,
         })?;
@@ -659,7 +659,12 @@ pub enum ReplayError {
     MissingFinding { path: PathBuf },
     #[error("missing testcase.bin at {}", path.display())]
     MissingTestcase { path: PathBuf },
-    #[error("failed to start harness {}", path.display())]
+    // The source errno is part of the message, not just the `#[source]` chain: the
+    // top-level `error:` line is all a CI log shows, and "failed to start harness
+    // <path>" alone cannot distinguish a missing file from a permissions problem
+    // from `Text file busy`. That ambiguity is exactly what made an intermittent
+    // CI failure here impossible to diagnose from the log.
+    #[error("failed to start harness {}: {source}", path.display())]
     HarnessFailedToStart {
         path: PathBuf,
         #[source]
@@ -1273,4 +1278,39 @@ fn main() -> std::io::Result<()> {
             mocks: Vec::new(),
         }
     }
+}
+
+/// Spawn a harness, retrying the two transient failures that make an `exec` of a
+/// FRESHLY WRITTEN executable fail.
+///
+/// `ExecutableFileBusy` (`ETXTBSY`) is the real one: the kernel refuses to exec a
+/// file that is still open for writing anywhere, so building — or copying — a
+/// harness and immediately replaying it races the writer's descriptor being
+/// closed. It is load- and filesystem-dependent, which is why it surfaced as an
+/// intermittent CI failure and never locally: `replay` exiting 1 with "failed to
+/// start harness ...", which reads like a broken harness rather than a race.
+///
+/// This is not a test-only concern. govfuzz BUILDS a harness and then replays it,
+/// so real runs hit the same window. `WouldBlock` (`EAGAIN`) covers a transient
+/// fork failure when a loaded box is briefly out of process slots.
+///
+/// Matched on `ErrorKind` rather than raw errno so it compiles on every target.
+fn spawn_harness(command: &mut Command) -> std::io::Result<std::process::Child> {
+    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(25);
+    const RETRIES: usize = 40; // ~1s total, far longer than either window lasts
+    for _ in 0..RETRIES {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error) => {
+                if !matches!(
+                    error.kind(),
+                    std::io::ErrorKind::ExecutableFileBusy | std::io::ErrorKind::WouldBlock
+                ) {
+                    return Err(error);
+                }
+                std::thread::sleep(RETRY_DELAY);
+            }
+        }
+    }
+    command.spawn()
 }

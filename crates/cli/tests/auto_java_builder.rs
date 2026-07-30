@@ -58,8 +58,14 @@ fn java_builder_only_class_synthesises_receiver_and_finds_crash() {
         .args([
             "auto",
             fixture().to_str().unwrap(),
+            // 30s, not 10s: the seed above is designed to trip the planted read on
+            // its first execution, so the budget only has to cover JVM and Jazzer
+            // startup. On a loaded CI runner that startup ate most of a 10s budget
+            // and the run finished having fuzzed the target but found nothing —
+            // an intermittent failure that says "no finding" when it means "no
+            // time". Raising the ceiling changes nothing about what is tested.
             "--per-target-time",
-            "10",
+            "30",
             "--max-targets",
             "1",
             "--seed-dir",

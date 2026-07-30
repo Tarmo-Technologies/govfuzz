@@ -1,0 +1,780 @@
+{
+ "lane": "php",
+ "repo": "laravel/framework",
+ "stars": 34814,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/php/laravel__framework --json --out /home/ubuntu/govfuzz-sweep-work/php__laravel__framework.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 340046,
+   "sloc_by_lang": {
+    "php": 338452,
+    "config": 1492,
+    "javascript": 102
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/php/laravel__framework --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.15,
+   "timed_out": false,
+   "panic": false,
+   "count": 4916,
+   "by_language": {
+    "php": 4916
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/php/laravel__framework --out /home/ubuntu/govfuzz-sweep-work/php__laravel__framework/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.76,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 55,
+   "by_severity": {
+    "medium": 15,
+    "high": 37,
+    "critical": 3
+   },
+   "top_rules": {
+    "GF-472": 37,
+    "GF-497": 15,
+    "GF-429": 3
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/php/laravel__framework --out /home/ubuntu/govfuzz-sweep-work/php__laravel__framework/sbom",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "components": 207
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/php/laravel__framework --work-dir /home/ubuntu/govfuzz-sweep-work/php__laravel__framework --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 82.0,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 4916,
+    "dropped_by_cap": 4856,
+    "built": 11,
+    "built_and_fuzzed": 11,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 49,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 8,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Illuminate\\Auth\\Listeners\\SendEmailVerificationNotification#handle",
+     "source": "SendEmailVerificationNotification.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 4155.312981136106,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\CreatesUserProviders#createUserProvider",
+     "source": "CreatesUserProviders.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 8030.92407342709,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\HandlesAuthorization#denyWithStatus",
+     "source": "HandlesAuthorization.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 7088.926077967482,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\HandlesAuthorization#denyAsNotFound",
+     "source": "HandlesAuthorization.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 7790.579560397873,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#retrieveById",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#retrieveById` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\AuthorizationException#setResponse",
+     "source": "AuthorizationException.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 2770.09498353373,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\DatabaseUserProvider#retrieveById",
+     "source": "DatabaseUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\DatabaseUserProvider#retrieveById` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/DatabaseUserProvider.php:12",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Response::allow",
+     "source": "Response.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Response::allow` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Support\\Arrayable\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Response.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Middleware\\Authenticate#handle",
+     "source": "Authenticate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Middleware\\Authenticate#handle` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\Middleware\\AuthenticatesRequests\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Middleware/Authenticate.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthenticationException#redirectTo",
+     "source": "AuthenticationException.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 2346.5848197436417,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\AuthorizationException#withStatus",
+     "source": "AuthorizationException.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 2779.2224215145466,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#retrieveByToken",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#retrieveByToken` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\DatabaseUserProvider#retrieveByToken",
+     "source": "DatabaseUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\DatabaseUserProvider#retrieveByToken` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/DatabaseUserProvider.php:12",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#guard",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#guard` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Response::deny",
+     "source": "Response.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Response::deny` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Support\\Arrayable\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Response.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthenticationException::redirectUsing",
+     "source": "AuthenticationException.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 2230.4123232350444,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\GenericUser#setRememberToken",
+     "source": "GenericUser.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\GenericUser#setRememberToken` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\Authenticatable\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/GenericUser.php:7",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Response::denyWithStatus",
+     "source": "Response.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Response::denyWithStatus` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Support\\Arrayable\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Response.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\GuardHelpers#setUser",
+     "source": "GuardHelpers.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 8220.018230947455,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\DatabaseUserProvider#updateRememberToken",
+     "source": "DatabaseUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\DatabaseUserProvider#updateRememberToken` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/DatabaseUserProvider.php:12",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Authenticatable#setRememberToken",
+     "source": "Authenticatable.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 7399.038293352277,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#updateRememberToken",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#updateRememberToken` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Response::denyAsNotFound",
+     "source": "Response.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Response::denyAsNotFound` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Support\\Arrayable\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Response.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\GuardHelpers#setProvider",
+     "source": "GuardHelpers.php",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 8,
+     "execs_per_sec": 8601.40806108241,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#has",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#has` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#createSessionDriver",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#createSessionDriver` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#allowIf",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#allowIf` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#validateCredentials",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#validateCredentials` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\DatabaseUserProvider#validateCredentials",
+     "source": "DatabaseUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\DatabaseUserProvider#validateCredentials` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/DatabaseUserProvider.php:12",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#denyIf",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#denyIf` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#createTokenDriver",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#createTokenDriver` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Response#withStatus",
+     "source": "Response.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Response#withStatus` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Support\\Arrayable\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Response.php:8",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#rehashPasswordIfRequired",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#rehashPasswordIfRequired` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\DatabaseUserProvider#rehashPasswordIfRequired",
+     "source": "DatabaseUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\DatabaseUserProvider#rehashPasswordIfRequired` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/DatabaseUserProvider.php:12",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#define",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#define` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#shouldUse",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#shouldUse` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#setDefaultDriver",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#setDefaultDriver` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#resource",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#resource` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#setHasher",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#setHasher` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#viaRequest",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#viaRequest` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#setModel",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#setModel` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#resolveUsersUsing",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#resolveUsersUsing` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\EloquentUserProvider#withQuery",
+     "source": "EloquentUserProvider.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\EloquentUserProvider#withQuery` is not loadable (skipped cleanly): PHP Fatal error:  Uncaught Error: Interface \"Illuminate\\Contracts\\Auth\\UserProvider\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/EloquentUserProvider.php:11",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#extend",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#extend` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#policy",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#policy` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#provider",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#provider` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#allows",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#allows` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\AuthManager#setApplication",
+     "source": "AuthManager.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\AuthManager#setApplication` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\CreatesUserProviders\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/AuthManager.php on line 18",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#denies",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#denies` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#check",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#check` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#any",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#any` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#none",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#none` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#authorize",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#authorize` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#inspect",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#inspect` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#raw",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#raw` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#getPolicyFor",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#getPolicyFor` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#resolvePolicy",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#resolvePolicy` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#forUser",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#forUser` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#defaultDenialResponse",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#defaultDenialResponse` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Illuminate\\Auth\\Access\\Gate#setContainer",
+     "source": "Gate.php",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Illuminate\\Auth\\Access\\Gate#setContainer` is not loadable (skipped cleanly): PHP Fatal error:  Trait \"Illuminate\\Auth\\Access\\HandlesAuthorization\" not found in /home/ubuntu/govfuzz-corpus-500/php/laravel__framework/src/Illuminate/Auth/Access/Gate.php on line 21",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 29,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PHP Fatal error: Trait \"X\" not found in PATH on line N",
+     "language": "php"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 20,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PHP Fatal error: Uncaught Error: Interface \"X\" not found in PATH",
+     "language": "php"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7e5b3aff7dcc0843758cc0ad83c383aab84596b8",
+ "clone_s": 1.6,
+ "lane_check": "php: 3009 files / 452996 lines; top=php(452996)",
+ "status": "done"
+}

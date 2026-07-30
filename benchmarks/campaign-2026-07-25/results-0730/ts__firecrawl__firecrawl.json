@@ -1,0 +1,474 @@
+{
+ "lane": "ts",
+ "repo": "firecrawl/firecrawl",
+ "stars": 156037,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --json --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 9,
+   "sloc_total": 265373,
+   "sloc_by_lang": {
+    "javascript": 180945,
+    "python": 31007,
+    "config": 24653,
+    "rust": 11259,
+    "java": 4702,
+    "php": 4577,
+    "csharp": 3003,
+    "go": 2923,
+    "ruby": 2304
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.23,
+   "timed_out": false,
+   "panic": false,
+   "count": 2023,
+   "by_language": {
+    "go": 76,
+    "python": 647,
+    "java": 660,
+    "rust": 119,
+    "ruby": 78,
+    "typescript": 373,
+    "php": 70
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 17.95,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 90,
+   "by_severity": {
+    "high": 13,
+    "medium": 63,
+    "critical": 1,
+    "low": 13
+   },
+   "top_rules": {
+    "GF-500": 29,
+    "GF-503": 16,
+    "GF-546": 13,
+    "GF-472": 8,
+    "GF-477": 5,
+    "GF-478": 5,
+    "GF-548": 4,
+    "GF-405": 2,
+    "GF-497": 2,
+    "GF-475": 1,
+    "GF-436": 1,
+    "GF-429": 1,
+    "GF-507": 1,
+    "GF-422": 1,
+    "GF-427": 1
+   },
+   "gaps": 303
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --out /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl/sbom",
+   "exit": 0,
+   "wall_s": 0.1,
+   "timed_out": false,
+   "panic": false,
+   "components": 2461
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ts/firecrawl__firecrawl --work-dir /home/ubuntu/govfuzz-sweep-work/ts__firecrawl__firecrawl --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 255.82,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 25,
+    "discovered_total": 2023,
+    "dropped_by_cap": 1998,
+    "built": 13,
+    "built_and_fuzzed": 3,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 10,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 22,
+    "missing_files": 1,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "NewParseFileFromPath",
+     "source": "parse.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 20045.003378359634,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "NewParseFileFromBytes",
+     "source": "parse.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 21744.98596805499,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "handle_response_error",
+     "source": "error_handler.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `firecrawl.v2.utils.error_handler` is not loadable (skipped cleanly): missing module `aiohttp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_paper",
+     "source": "research.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `research` is not loadable (skipped cleanly): ImportError: attempted relative import with no known parent package",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_paper",
+     "source": "research.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `aio.research` is not loadable (skipped cleanly): ImportError: attempted relative import beyond top-level package",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scrapeExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scrapeExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "browserExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "browserExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scrapeExecuteAsync",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scrapeExecuteAsync",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "browserExecuteAsync",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "read_zip_text",
+     "source": "xml.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'read_zip_text' is generic over type parameter `R`: Read + Seek with no byte/str-slice bound to monomorphize (uninferable, e.g. `from_slice<T: Deserialize>`) \u2014 not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_bytes",
+     "source": "parse.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'impl Into<String>' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_summary_information",
+     "source": "oleps.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_sitemap_xml",
+     "source": "crawler.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UnmarshalJSON",
+     "source": "models.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Go method `UnmarshalJSON` needs a receiver value and its type `LinkResult` has no no-arg constructor; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scrapeExecute",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "scrapeExecuteAsync",
+     "source": "FirecrawlClient.java",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AsyncFirecrawlClient.read_paper",
+     "source": "client_async.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `firecrawl.v2.client_async` is not loadable (skipped cleanly): missing module `aiohttp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FirecrawlGeminiEditor.generate_image_from_text",
+     "source": "cli.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `FirecrawlGeminiEditor.generate_image_from_text` needs a receiver, but `FirecrawlGeminiEditor.__init__` takes 2 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FirecrawlClient.read_paper",
+     "source": "client.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `firecrawl.v2.client` is not loadable (skipped cleanly): missing module `aiohttp` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'aiohttp'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FirecrawlGeminiEditor.batch_process_urls",
+     "source": "cli.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `FirecrawlGeminiEditor.batch_process_urls` needs a receiver, but `FirecrawlGeminiEditor.__init__` takes 2 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Firecrawl::AuthenticationError#initialize",
+     "source": "errors.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 5000.735619792778,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Firecrawl::Client#batch_scrape",
+     "source": "client.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Go method \"X\" needs a receiver value and its type \"X\" has no no-arg constructor; pass --force to call it on a zero-valued receiver (skipped cleanly)",
+     "language": "go"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 9,
+     "detail": "built, no fuzz pass ran",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" takes N required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "ImportError: attempted relative import beyond top-level package",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): ImportError: attempted relative import with no known parent package",
+     "language": "python"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 1,
+     "detail": "built, no fuzz pass ran",
+     "language": "ruby"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "cargo build failed: Compiling anstyle-parse v1.N.N",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "in-crate cargo build failed: Compiling ctor v1.N.N",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Rust target \"X\" is generic over type parameter \"X\": Read + Seek with no byte/str-slice bound to monomorphize (uninferable, e.g. \"X\") \u2014 not auto-harnessable",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "4e93d641b499c1a0055826fa035d4e599af69b22",
+ "clone_s": 1.5,
+ "lane_check": "ts: 785 files / 191360 lines; top=ts(191360)",
+ "status": "done"
+}

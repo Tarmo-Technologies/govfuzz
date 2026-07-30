@@ -1,0 +1,764 @@
+{
+ "lane": "cpp",
+ "repo": "electron/electron",
+ "stars": 122194,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cpp/electron__electron --json --out /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 189669,
+   "sloc_by_lang": {
+    "cpp": 98018,
+    "javascript": 80858,
+    "config": 7896,
+    "python": 2661,
+    "c": 236
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cpp/electron__electron --format json --top 100000",
+   "exit": 0,
+   "wall_s": 7.98,
+   "timed_out": false,
+   "panic": false,
+   "count": 5751,
+   "by_language": {
+    "python": 128,
+    "cpp": 5512,
+    "typescript": 107,
+    "javascript": 3,
+    "c": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cpp/electron__electron --out /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 18.93,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 481,
+   "by_severity": {
+    "high": 252,
+    "medium": 219,
+    "low": 7,
+    "critical": 3
+   },
+   "top_rules": {
+    "GF-529": 208,
+    "GF-528": 192,
+    "GF-426": 20,
+    "GF-548": 18,
+    "GF-546": 7,
+    "GF-507": 7,
+    "GF-526": 5,
+    "GF-422": 3,
+    "GF-505": 3,
+    "GF-406": 3,
+    "GF-506": 2,
+    "GF-405": 2,
+    "GF-424": 2,
+    "GF-480": 1,
+    "GF-485": 1
+   },
+   "gaps": 29
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cpp/electron__electron --out /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 1180
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cpp/electron__electron --work-dir /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 262.35,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 47,
+    "discovered_total": 4661,
+    "dropped_by_cap": 4614,
+    "built": 12,
+    "built_and_fuzzed": 12,
+    "fuzzed_stub_only": 0,
+    "failed_build": 3,
+    "unsupported_params": 28,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 4,
+    "findings": 1
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 20,
+    "synthesized_types": 2,
+    "synthesized_macros": 1,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 3,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "ReadMime",
+     "source": "electron_api_clipboard_item.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'buffer' of type 'ui::ClipboardBuffer' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'ui::ClipboardBuffer' for parameter 'buffer' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HandleAccessibilityRequestCallback",
+     "source": "accessibility_ui.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'current_context' of type 'content::BrowserContext *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'content::BrowserContext' for pointer parameter 'current_context' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WebContents::EmitNavigationEvent",
+     "source": "electron_api_web_contents.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'WebContents' to harness 'EmitNavigationEvent': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'WebContents' was found. Add a small wrapper or factory harness that constructs the object and calls 'EmitNavigationEvent', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'WebContents' to harness 'EmitNavigationEvent': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'WebContents' was found. Add a small wrapper or factory harness that constructs the object and calls 'EmitNavigationEvent', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download",
+     "source": "util.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 2,
+     "execs_per_sec": 2571.6915504061612,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SimpleURLLoaderWrapper::OnDataReceived",
+     "source": "electron_api_url_loader.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'SimpleURLLoaderWrapper' to harness 'OnDataReceived': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'SimpleURLLoaderWrapper' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnDataReceived', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'SimpleURLLoaderWrapper' to harness 'OnDataReceived': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'SimpleURLLoaderWrapper' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnDataReceived', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::ElectronWebContentsUtilityHandlerImpl::SetPreloadCodeCache",
+     "source": "electron_web_contents_utility_handler_impl.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'electron::ElectronWebContentsUtilityHandlerImpl' to harness 'SetPreloadCodeCache': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'electron::ElectronWebContentsUtilityHandlerImpl' was found. Add a small wrapper or factory harness that constructs the object and calls 'SetPreloadCodeCache', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'electron::ElectronWebContentsUtilityHandlerImpl' to harness 'SetPreloadCodeCache': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'electron::ElectronWebContentsUtilityHandlerImpl' was found. Add a small wrapper or factory harness that constructs the object and calls 'SetPreloadCodeCache', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::GtkSymbolicIconProvider::LoadIcon",
+     "source": "gtk_symbolic_icon_provider.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'electron::GtkSymbolicIconProvider' to harness 'LoadIcon': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'electron::GtkSymbolicIconProvider' was found. Add a small wrapper or factory harness that constructs the object and calls 'LoadIcon', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'electron::GtkSymbolicIconProvider' to harness 'LoadIcon': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'electron::GtkSymbolicIconProvider' was found. Add a small wrapper or factory harness that constructs the object and calls 'LoadIcon', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::ParseCSSColor",
+     "source": "color_util.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (SkColor) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::ProtocolRegistry::CreateNonNetworkNavigationURLLoaderFactory",
+     "source": "protocol_registry.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'electron::ProtocolRegistry' to harness 'CreateNonNetworkNavigationURLLoaderFactory': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'electron::ProtocolRegistry' was found. Add a small wrapper or factory harness that constructs the object and calls 'CreateNonNetworkNavigationURLLoaderFactory', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'electron::ProtocolRegistry' to harness 'CreateNonNetworkNavigationURLLoaderFactory': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'electron::ProtocolRegistry' was found. Add a small wrapper or factory harness that constructs the object and calls 'CreateNonNetworkNavigationURLLoaderFactory', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::ParseSchemesCLISwitch",
+     "source": "renderer_client_base.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'command_line' of type 'base::CommandLine *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'base::CommandLine' for pointer parameter 'command_line' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::SetApplicationLocaleOnIOThread",
+     "source": "electron_browser_client.cc",
+     "outcome": "failed_build",
+     "retries": 13,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrowserProcessImpl::SetSystemLocale",
+     "source": "browser_process_impl.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (PrefService, ProxyConfigMonitor) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrowserProcessImpl::SetApplicationLocale",
+     "source": "browser_process_impl.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (PrefService, ProxyConfigMonitor) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "electron::api::ClipboardItem::CreateForRead",
+     "source": "electron_api_clipboard_item.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'isolate' of type 'v8::Isolate *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'v8::Isolate' for pointer parameter 'isolate' needs lifecycle support (Phase C); sequence generation also failed first: C++ parameter 'isolate' of type 'v8::Isolate *' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'v8::Isolate' for pointer parameter 'isolate' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "UpdateMsix",
+     "source": "electron_api_msix_updater.cc",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Session::OnHunspellDictionaryDownloadBegin",
+     "source": "electron_api_session.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Session' to harness 'OnHunspellDictionaryDownloadBegin': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Session' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnHunspellDictionaryDownloadBegin', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'Session' to harness 'OnHunspellDictionaryDownloadBegin': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Session' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnHunspellDictionaryDownloadBegin', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Session::OnHunspellDictionaryDownloadSuccess",
+     "source": "electron_api_session.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Session' to harness 'OnHunspellDictionaryDownloadSuccess': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Session' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnHunspellDictionaryDownloadSuccess', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'Session' to harness 'OnHunspellDictionaryDownloadSuccess': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Session' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnHunspellDictionaryDownloadSuccess', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Session::OnHunspellDictionaryDownloadFailure",
+     "source": "electron_api_session.cc",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cannot construct C++ class 'Session' to harness 'OnHunspellDictionaryDownloadFailure': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Session' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnHunspellDictionaryDownloadFailure', or expose a public fuzzable constructor.; sequence generation also failed first: cannot construct C++ class 'Session' to harness 'OnHunspellDictionaryDownloadFailure': it has no public default constructor, no supported public constructor, and no factory method or free function returning 'Session' was found. Add a small wrapper or factory harness that constructs the object and calls 'OnHunspellDictionaryDownloadFailure', or expose a public fuzzable constructor.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "RegisterPackage",
+     "source": "electron_api_msix_updater.cc",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (uv_loop_t) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "FromFrameToken",
+     "source": "electron_api_web_frame_main.cc",
+     "outcome": "failed_build",
+     "retries": 14,
+     "repairs": 13,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "add",
+     "source": "local.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1459.109075145101,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "containsRetainingPath",
+     "source": "heapsnapshot-helpers.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1211.75298320477,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "exitWithApp",
+     "source": "exit.mjs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1356.0213738361754,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParentPort#postMessage",
+     "source": "parent-port.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T001D-EDA2F7CE/target.js` is not loadable (skipped cleanly): Error: No such binding was linked: electron_utility_parent_port",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IpcMainImpl#removeHandler",
+     "source": "ipc-main-impl.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1188.525875476159,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "WebViewAttribute#setValue",
+     "source": "web-view-attributes.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewAttribute#setValue` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webviewNode')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WebViewAttribute#setValueIgnoreMutation",
+     "source": "web-view-attributes.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewAttribute#setValueIgnoreMutation` is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading 'webviewNode')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clearTimeout",
+     "source": "timers-shim.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1445.7409471134172,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "closeAllWindows",
+     "source": "window-helpers.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T0033-F43726D8/target.js` is not loadable (skipped cleanly): missing module `electron/main` (not in the project and not installed) \u2014 Error: Cannot find module 'electron/main'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "addIpcDispatchListeners",
+     "source": "ipc-dispatch.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T0040-BA395067/target.js` is not loadable (skipped cleanly): missing module `electron/main` (not in the project and not installed) \u2014 Error: Cannot find module 'electron/main'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "checkForUpdate",
+     "source": "squirrel-update-win.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1010.082929108372,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "WebViewImpl#handleWebviewAttributeMutation",
+     "source": "web-view-impl.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewImpl#handleWebviewAttributeMutation` is not loadable (skipped cleanly): ReferenceError: document is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WebViewImpl#dispatchEvent",
+     "source": "web-view-impl.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewImpl#dispatchEvent` is not loadable (skipped cleanly): ReferenceError: document is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WebViewImpl#setupEventProperty",
+     "source": "web-view-impl.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewImpl#setupEventProperty` is not loadable (skipped cleanly): ReferenceError: document is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WebViewImpl#onAttach",
+     "source": "web-view-impl.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewImpl#onAttach` is not loadable (skipped cleanly): ReferenceError: document is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "WebViewImpl#attachGuestInstance",
+     "source": "web-view-impl.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `WebViewImpl#attachGuestInstance` is not loadable (skipped cleanly): ReferenceError: document is not defined",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "buildFromTemplate",
+     "source": "menu.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T00E0-B5610632/target.js` is not loadable (skipped cleanly): missing module `electron/main` (not in the project and not installed) \u2014 Error: Cannot find module 'electron/main'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ClientRequest#setHeader",
+     "source": "net-client-request.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T017A-315EC776/target.js` is not loadable (skipped cleanly): Error: No such binding was linked: electron_common_net",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ClientRequest#getHeader",
+     "source": "net-client-request.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T0184-5B599DB4/target.js` is not loadable (skipped cleanly): Error: No such binding was linked: electron_common_net",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ClientRequest#removeHeader",
+     "source": "net-client-request.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T018E-38BC1182/target.js` is not loadable (skipped cleanly): Error: No such binding was linked: electron_common_net",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ClientRequest#_die",
+     "source": "net-client-request.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/harnesses/H-T021B-0D38000E/target.js` is not loadable (skipped cleanly): Error: No such binding was linked: electron_common_net",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "bold_red",
+     "source": "run-clang-format.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7834.508805231495,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "print_trouble",
+     "source": "run-clang-format.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5155.007619216591,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "is_patch_location_line",
+     "source": "patches.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8226.281588110694,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "LoadPythonDictionary",
+     "source": "generate_node_headers.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `generate_node_headers` is not loadable (skipped cleanly): missing module `install` (not in the project and not installed) \u2014 ModuleNotFoundError: No module named 'install'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_files",
+     "source": "upload-node-checksums.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2868.399981959011,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_cpp_profile",
+     "source": "download-profiles.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4498.424985035658,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "cannot construct C++ class \"X\" to harness \"X\": it has no public default constructor, no supported public constructor, and no factory method or free function ret\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for pointer paramet\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (PrefService, ProxyConfigMonitor) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor COR\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "no member named \"X\" in namespace \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "use of undeclared identifier \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (SkColor) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (uv_loop_t) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable he\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 ModuleNotFoundError: No module named \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "target \"X\" is not loadable (skipped cleanly): ReferenceError: document is not defined",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "Error: No such binding was linked: electron_common_net",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): TypeError: Cannot read properties of undefined (reading \"X\")",
+     "language": "typescript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Error: No such binding was linked: electron_utility_parent_port",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-3ba64ab7",
+     "rule": "GF-416",
+     "cwe": [
+      "CWE-732"
+     ],
+     "cwe_name": "Runtime assignment of insecure file permissions",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-P0023-34FDD80C"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/findings --out /home/ubuntu/govfuzz-sweep-work/cpp__electron__electron/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.04,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "9f4aa33039a0f0f11aba447d5a80be42b3212e8d",
+ "clone_s": 2.0,
+ "lane_check": "cpp: 387 files / 83529 lines; top=cpp(83529)",
+ "status": "done"
+}

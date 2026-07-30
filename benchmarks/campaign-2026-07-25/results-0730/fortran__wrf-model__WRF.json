@@ -1,0 +1,197 @@
+{
+ "lane": "fortran",
+ "repo": "wrf-model/WRF",
+ "stars": 1714,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --json --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.39,
+   "timed_out": false,
+   "panic": false,
+   "languages": 6,
+   "sloc_total": 1315986,
+   "sloc_by_lang": {
+    "fortran": 1235042,
+    "c": 74988,
+    "python": 2707,
+    "cpp": 1788,
+    "perl": 1146,
+    "config": 315
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --format json --top 100000",
+   "exit": 0,
+   "wall_s": 4.18,
+   "timed_out": false,
+   "panic": false,
+   "count": 2419,
+   "by_language": {
+    "c": 1527,
+    "fortran": 861,
+    "python": 31
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 6.12,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 2143,
+   "by_severity": {
+    "high": 2097,
+    "critical": 22,
+    "medium": 22,
+    "low": 2
+   },
+   "top_rules": {
+    "GF-403": 1022,
+    "GF-401": 786,
+    "GF-405": 210,
+    "GF-407": 53,
+    "GF-404": 22,
+    "GF-408": 15,
+    "GF-547": 10,
+    "GF-406": 9,
+    "GF-436": 7,
+    "GF-544": 3,
+    "GF-424": 3,
+    "GF-546": 2,
+    "GF-473": 1
+   },
+   "gaps": 156
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --out /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF/sbom",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "components": 19
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/fortran/wrf-model__WRF --work-dir /home/ubuntu/govfuzz-sweep-work/fortran__wrf-model__WRF --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 375.55,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 5,
+    "discovered_total": 1808,
+    "dropped_by_cap": 1803,
+    "built": 0,
+    "built_and_fuzzed": 0,
+    "fuzzed_stub_only": 0,
+    "failed_build": 5,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 1,
+    "synthesized_macros": 5,
+    "stubbed_symbols_declared": 3,
+    "stubbed_symbols_blind": 2,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ProcessTerm",
+     "source": "scanner.c",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 39,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ProcessTerm",
+     "source": "scanner.c",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 39,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "yy_scan_buffer",
+     "source": "lexer.c",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "yy_scan_bytes",
+     "source": "lexer.c",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACCUMULATE_NWIS_NOT_IN_RLANDPARAMS",
+     "source": "module_stream_nudging.F90",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "malformed function declaration",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "gfortran compile failed: Fatal Error: Cannot open module file \u2018module_nudging_io.mod\u2019 for reading at (N): No such file or directory",
+     "language": "fortran"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "06d4240ae989cc3e50af412bb472df3d9048783c",
+ "clone_s": 8.8,
+ "lane_check": "fortran: 1045 files / 1429206 lines; top=fortran(1429206)",
+ "status": "done"
+}

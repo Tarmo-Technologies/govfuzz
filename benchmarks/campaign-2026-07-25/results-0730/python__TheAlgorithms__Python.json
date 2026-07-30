@@ -1,0 +1,714 @@
+{
+ "lane": "python",
+ "repo": "TheAlgorithms/Python",
+ "stars": 223159,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/python/TheAlgorithms__Python --json --out /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 48002,
+   "sloc_by_lang": {
+    "python": 47631,
+    "config": 371
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/python/TheAlgorithms__Python --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.22,
+   "timed_out": false,
+   "panic": false,
+   "count": 2995,
+   "by_language": {
+    "python": 2995
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/python/TheAlgorithms__Python --out /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.08,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 19,
+   "by_severity": {
+    "medium": 8,
+    "high": 9,
+    "low": 2
+   },
+   "top_rules": {
+    "GF-500": 6,
+    "GF-472": 6,
+    "GF-546": 2,
+    "GF-428": 1,
+    "GF-422": 1,
+    "GF-421": 1,
+    "GF-427": 1,
+    "GF-423": 1
+   },
+   "gaps": 117
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/python/TheAlgorithms__Python --out /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 87
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/python/TheAlgorithms__Python --work-dir /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 303.48,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 40,
+    "discovered_total": 2995,
+    "dropped_by_cap": 2955,
+    "built": 35,
+    "built_and_fuzzed": 35,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 5,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 10
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 1,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "read_file_binary",
+     "source": "lempel_ziv_decompress.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5351.902644430979,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "read_file_binary",
+     "source": "lempel_ziv.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5125.787834210906,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_video",
+     "source": "instagram_video.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.6787557501205715,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_image",
+     "source": "instagram_pic.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.15928745225278776,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "base16_decode",
+     "source": "base16.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7449.183814557338,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_file",
+     "source": "huffman.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7692.305361597436,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "download_images_from_google_query",
+     "source": "download_images_from_google_query.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.1513570522400865,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "base32_decode",
+     "source": "base32.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4284.7366868126255,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "breadth_first_search",
+     "source": "breadth_first_search_2.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4602.046426698653,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ascii85_decode",
+     "source": "base85.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1108.776890121761,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_roman_numerals",
+     "source": "sol1.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5589.859258878227,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_token",
+     "source": "postfix_evaluation.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5193.565243191116,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "breadth_first_search_with_deque",
+     "source": "breadth_first_search_2.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5003.506733743511,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decode",
+     "source": "baconian_cipher.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.360287669509714,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "read_key_file",
+     "source": "rsa_cipher.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ciphers.rsa_cipher` is not loadable (skipped cleanly): SyntaxError: multiple exception types must be parenthesized",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "base64_decode",
+     "source": "base64_cipher.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6.29863913356554,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "emails_from_url",
+     "source": "emails_from_url.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.09075145763196639,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "deserialize",
+     "source": "serialize_deserialize_binary_tree.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 670.851062320002,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "preprocess",
+     "source": "md5.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7354.442457908154,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "read_from_file_and_decrypt",
+     "source": "rsa_cipher.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ciphers.rsa_cipher` is not loadable (skipped cleanly): SyntaxError: multiple exception types must be parenthesized",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parse_moves",
+     "source": "matrix_based_game.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5898.100448803146,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SHA256.preprocessing",
+     "source": "sha256.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7247.414375716931,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "decode",
+     "source": "playfair_cipher.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 372.89843582827433,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_memory",
+     "source": "external_sort.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6197.0086453815165,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "load_data",
+     "source": "local_weighted_learning.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.3135789281763674,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "breadth_first_search",
+     "source": "ford_fulkerson.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 5.558974790116035,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "add_key_to_lexicon",
+     "source": "lempel_ziv.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 8402.835788982067,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "oe_process",
+     "source": "odd_even_transposition_parallel.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 6561.8681854642045,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Parser.handle_starttag",
+     "source": "emails_from_url.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Parser.handle_starttag` needs a receiver, but `Parser.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PolybiusCipher.decode",
+     "source": "polybius.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 4143.9952965758375,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BifidCipher.decode",
+     "source": "bifid.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.051608202114773,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "HillCipher.process_text",
+     "source": "hill_cipher.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `HillCipher.process_text` needs a receiver, but `HillCipher.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_blocks_from_text",
+     "source": "rsa_cipher.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ciphers.rsa_cipher` is not loadable (skipped cleanly): SyntaxError: multiple exception types must be parenthesized",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "to_complex_case",
+     "source": "string_switch_case.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 665.2713836414856,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "actual_power",
+     "source": "power.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.07441746570258018,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Onepad.encrypt",
+     "source": "onepad_cipher.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 213.82472634798143,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "abbr",
+     "source": "abbreviation.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 43.58261290051811,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "NumberingSystem.max_value",
+     "source": "convert_number_to_words.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7809.04206647631,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SHA1Hash.rotate",
+     "source": "sha1.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 9500.73570853406,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DiffieHellman.generate_shared_key_static",
+     "source": "diffie_hellman.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 768.5833345778809,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "SyntaxError: multiple exception types must be parenthesized",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" takes N required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "python"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-0f597f7d",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0040-CEACBFB3"
+    },
+    {
+     "id": "F-0001-1308cf80",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P003E-8FC84CC3"
+    },
+    {
+     "id": "F-0002-bb911135",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0056-2DD2955C"
+    },
+    {
+     "id": "F-0003-1a86d9b1",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P000D-63F6BD87"
+    },
+    {
+     "id": "F-0004-b094d4f3",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0082-96040568"
+    },
+    {
+     "id": "F-0005-4a56503c",
+     "rule": "GF-416",
+     "cwe": [
+      "CWE-732"
+     ],
+     "cwe_name": "Runtime assignment of insecure file permissions",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-P0082-96040568"
+    },
+    {
+     "id": "F-0006-affe46a6",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0080-53E2551E"
+    },
+    {
+     "id": "F-0007-e8c1cd64",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0024-ACCDAB65"
+    },
+    {
+     "id": "F-0008-decd6c2c",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0014-14D74DA8"
+    },
+    {
+     "id": "F-0009-225ac73b",
+     "rule": "GF-201",
+     "cwe": [
+      "CWE-125",
+      "CWE-787"
+     ],
+     "cwe_name": "Out-of-bounds Read",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0058-E6B627FB"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python/findings --out /home/ubuntu/govfuzz-sweep-work/python__TheAlgorithms__Python/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.26,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "25bcced0f37df781b0e5aaa575e2a4fad41a2816",
+ "clone_s": 1.0,
+ "lane_check": "python: 1385 files / 97825 lines; top=python(97825)",
+ "status": "done"
+}

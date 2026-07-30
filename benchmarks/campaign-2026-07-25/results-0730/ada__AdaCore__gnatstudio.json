@@ -1,0 +1,93 @@
+{
+ "lane": "ada",
+ "repo": "AdaCore/gnatstudio",
+ "stars": 524,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --json --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 684826,
+   "sloc_by_lang": {
+    "ada": 621096,
+    "python": 55888,
+    "javascript": 4865,
+    "c": 1309,
+    "cpp": 844,
+    "config": 807,
+    "java": 17
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --format json --top 100000",
+   "exit": 0,
+   "wall_s": 68.47,
+   "timed_out": false,
+   "panic": false,
+   "count": 41414,
+   "by_language": {
+    "ada": 39617,
+    "python": 1639,
+    "c": 78,
+    "cpp": 79,
+    "java": 1
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.36,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1026,
+   "by_severity": {
+    "medium": 937,
+    "high": 17,
+    "low": 67,
+    "critical": 5
+   },
+   "top_rules": {
+    "GF-410": 440,
+    "GF-402": 192,
+    "GF-412": 113,
+    "GF-411": 100,
+    "GF-409": 86,
+    "GF-546": 67,
+    "GF-405": 6,
+    "GF-424": 6,
+    "GF-401": 5,
+    "GF-507": 4,
+    "GF-404": 3,
+    "GF-420": 2,
+    "GF-403": 1,
+    "GF-421": 1
+   },
+   "gaps": 507
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --out /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio/sbom",
+   "exit": 0,
+   "wall_s": 0.14,
+   "timed_out": false,
+   "panic": false,
+   "components": 60
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/AdaCore__gnatstudio --work-dir /home/ubuntu/govfuzz-sweep-work/ada__AdaCore__gnatstudio --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 1,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "findings_detail": []
+  }
+ },
+ "sha": "6568d88ee6d951329750c237d6224a93ab1006aa",
+ "clone_s": 2.7,
+ "lane_check": "ada: 2341 files / 790384 lines; top=ada(790384)",
+ "status": "done"
+}

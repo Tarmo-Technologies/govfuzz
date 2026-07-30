@@ -229,12 +229,12 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
         }
     };
 
-    let mut child = match Command::new(harness)
+    let mut stdin_replay = Command::new(harness);
+    stdin_replay
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
+        .stderr(Stdio::piped());
+    let mut child = match spawn_harness(&mut stdin_replay) {
         Ok(c) => c,
         Err(error) => {
             eprintln!("spawn {}: {error}", harness.display());
@@ -357,7 +357,7 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
         cmd.env(k, v);
     }
 
-    let mut child = match cmd.spawn() {
+    let mut child = match spawn_harness(&mut cmd) {
         Ok(c) => c,
         Err(error) => {
             eprintln!("spawn {}: {error}", harness.display());
@@ -404,4 +404,38 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
             3
         }
     }
+}
+
+/// Spawn a freshly-written harness, retrying the two transient failures that make
+/// an `exec` of a just-created executable fail.
+///
+/// `ETXTBSY` is the real one: the kernel refuses to exec a file still open for
+/// writing anywhere, so building (or copying) a harness and immediately replaying
+/// it races the writer's descriptor being closed. It is load- and
+/// filesystem-dependent, which is why it surfaced as an occasional CI failure and
+/// never locally — `replay` exiting 1 with a bare "spawn ...: Text file busy",
+/// which reads like a broken harness rather than a race. `EAGAIN` covers a
+/// transient fork failure when the box is briefly out of process slots, which a
+/// loaded sweep machine does hit.
+///
+/// Both mean "try again in a moment", not "this cannot run", so both are retried.
+fn spawn_harness(command: &mut std::process::Command) -> std::io::Result<std::process::Child> {
+    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(25);
+    const RETRIES: usize = 40; // ~1s total, far longer than either window lasts
+    for _ in 0..RETRIES {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error) => {
+                let transient = matches!(
+                    error.raw_os_error(),
+                    Some(code) if code == libc::ETXTBSY || code == libc::EAGAIN
+                );
+                if !transient {
+                    return Err(error);
+                }
+                std::thread::sleep(RETRY_DELAY);
+            }
+        }
+    }
+    command.spawn()
 }

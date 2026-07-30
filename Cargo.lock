@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "actionability"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "finding_rules",
  "serde",
@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "ada_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "cc",
  "serde",
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "ada_state_machine"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "serde",
@@ -164,7 +164,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "binary_analysis"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
  "serde_json",
@@ -198,7 +198,7 @@ dependencies = [
 
 [[package]]
 name = "build_classifier"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "regex",
  "serde",
@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "c_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "c_stub_gen",
  "thiserror 1.0.69",
@@ -242,7 +242,7 @@ dependencies = [
 
 [[package]]
 name = "c_stub_gen"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "cc"
@@ -319,7 +319,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "cmplog"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde_json",
  "thiserror 1.0.69",
@@ -342,7 +342,7 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "compiler_adapter"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "libc",
@@ -355,7 +355,7 @@ dependencies = [
 
 [[package]]
 name = "confidence_model"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
  "serde_json",
@@ -365,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "const_format"
@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "continuous_daemon"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
  "serde_json",
@@ -414,7 +414,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "corpus"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "actionability",
  "event_log",
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "cpp_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "c_parser",
  "c_stub_gen",
@@ -494,7 +494,7 @@ dependencies = [
 
 [[package]]
 name = "discovery"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "displaydoc"
@@ -554,7 +554,7 @@ dependencies = [
 
 [[package]]
 name = "event_log"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
  "thiserror 1.0.69",
@@ -562,7 +562,7 @@ dependencies = [
 
 [[package]]
 name = "fake_corba"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
 ]
@@ -581,14 +581,14 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "finding_rules"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "fork_server"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "libc",
  "thiserror 1.0.69",
@@ -629,14 +629,14 @@ dependencies = [
 
 [[package]]
 name = "fuzz_engine_afl_adapter"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "fuzz_engine_builtin",
 ]
 
 [[package]]
 name = "fuzz_engine_builtin"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "cmplog",
@@ -646,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "fuzz_engine_libafl_adapter"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "corpus",
  "event_log",
@@ -657,11 +657,11 @@ dependencies = [
 
 [[package]]
 name = "fuzz_engine_libfuzzer_adapter"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "fuzz_engine_nyx_adapter"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "corpus",
  "event_log",
@@ -709,7 +709,7 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "go_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 1.0.69",
  "tree-sitter",
@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "governance"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "sbom_ingest",
  "serde_json",
@@ -729,7 +729,7 @@ dependencies = [
 
 [[package]]
 name = "govfuzz"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "actionability",
  "ada_parser",
@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "govfuzz-daemon"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "c_parser",
@@ -804,14 +804,14 @@ dependencies = [
 
 [[package]]
 name = "govfuzz_cc_intercept"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "govfuzz_runtrace_shim"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "cc",
  "libc",
@@ -820,7 +820,7 @@ dependencies = [
 
 [[package]]
 name = "harness_gen"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "anyhow",
@@ -983,7 +983,7 @@ dependencies = [
 
 [[package]]
 name = "idl_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
 ]
@@ -1011,7 +1011,7 @@ dependencies = [
 
 [[package]]
 name = "iiop"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "idl_parser",
 ]
@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "instrumenter"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "anyhow",
@@ -1052,7 +1052,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "java_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 1.0.69",
  "tree-sitter",
@@ -1087,7 +1087,7 @@ checksum = "a4933f3f57a8e9d9da04db23fb153356ecaf00cbd14aee46279c33dc80925c37"
 
 [[package]]
 name = "lang_profile"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde",
 ]
@@ -1166,7 +1166,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "license_policy"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "config",
  "serde_json",
@@ -1188,7 +1188,7 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
 name = "llm_harness_gen"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "libc",
  "serde",
@@ -1257,7 +1257,7 @@ dependencies = [
 
 [[package]]
 name = "multicore_fuzz"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "corpus",
  "serde",
@@ -1370,7 +1370,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "perl_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 1.0.69",
  "tree-sitter",
@@ -1406,7 +1406,7 @@ dependencies = [
 
 [[package]]
 name = "probe_gnat_actions"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "proc-macro2"
@@ -1419,7 +1419,7 @@ dependencies = [
 
 [[package]]
 name = "project_synth"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "serde",
@@ -1429,7 +1429,7 @@ dependencies = [
 
 [[package]]
 name = "python_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 1.0.69",
  "tree-sitter",
@@ -1511,7 +1511,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "replay_min"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "corpus",
  "event_log",
@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "report"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "actionability",
  "confidence_model",
@@ -1550,11 +1550,11 @@ dependencies = [
 
 [[package]]
 name = "runtrace_manifest"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "rust_parser"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "thiserror 1.0.69",
  "tree-sitter",
@@ -1563,7 +1563,7 @@ dependencies = [
 
 [[package]]
 name = "rust_runtime"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "rustc-demangle"
@@ -1627,7 +1627,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "sbom_ingest"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "serde_json",
  "sha2",
@@ -1644,7 +1644,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "semantic"
-version = "0.2.27"
+version = "0.2.28"
 
 [[package]]
 name = "serde"
@@ -1753,7 +1753,7 @@ checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
 
 [[package]]
 name = "spdx_check"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "anyhow",
  "clap",
@@ -1769,7 +1769,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "static_analysis"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "finding_rules",
  "rayon",
@@ -1798,7 +1798,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "stub_gen"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "compiler_adapter",
@@ -1863,7 +1863,7 @@ dependencies = [
 
 [[package]]
 name = "target_rank"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "ada_parser",
  "c_parser",
@@ -2086,7 +2086,7 @@ checksum = "141fb9f71ee586d956d7d6e4d5a9ef8e946061188520140f7591b668841d502e"
 
 [[package]]
 name = "type_model"
-version = "0.2.27"
+version = "0.2.28"
 dependencies = [
  "c_parser",
 ]

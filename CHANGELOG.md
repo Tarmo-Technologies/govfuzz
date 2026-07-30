@@ -2,6 +2,34 @@
 
 # Changelog
 
+## 0.2.28 - 2026-07-30
+
+**GF-440 no longer reports govfuzz deleting its own temp input as a target
+vulnerability.** Reported from the field: govfuzz claimed attacker input could
+delete a file via a function whose only call is `statvfs` — a read-only stat that
+cannot appear in GF-440's API list at all. The finding showed api `unlink`, path
+`/tmp/gf_in032dWa`, taint `fuzz_input[2..] -> unlink(path)`.
+
+That file is govfuzz's own: `gf_make_tempfile()` materialises the fuzz bytes at
+`/tmp/gf_inXXXXXX` so a `const char *path` parameter can be supplied at all, then
+govfuzz removes it. The shim saw the unlink, the path really was input-derived,
+and the oracle billed it to whatever target was under test.
+
+A gap rather than a bad heuristic: `is_govfuzz_owned_resource` already knew these
+paths — its comment names `gf_make_tempfile()` — but had exactly one call site,
+the resource-leak oracle. The sink oracles were added later and never consulted
+it, and a `ConfirmedSink` carries no frame, so unlike the crash path (which
+suppresses "no target frame" as a harness fault) nothing could tell target from
+scaffolding.
+
+Scope was set by measurement: a first attempt suppressed any filesystem sink
+resolving inside the work dir and immediately failed
+`auto_confirms_path_controlled_open_gf405`, because a target OPENING an
+attacker-named file relative to its CWD is a real GF-405 and the fuzz child's CWD
+is inside the work dir. Narrowed to DESTRUCTIVE sinks on govfuzz's own `/tmp/gf_*`
+artifacts only — a target deleting a file in its own scratch directory still
+reports, and so does any traversal.
+
 ## 0.2.27 - 2026-07-30
 
 - **`replay` no longer fails intermittently on a freshly built harness.** The

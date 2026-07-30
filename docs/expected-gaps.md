@@ -398,45 +398,46 @@ unconstructible receivers, as below.
 
 ---
 
-## Performance: where govfuzz is still slow
+## Performance: the static scanner
 
-Timing and memory were swept in 2026-07-29 and every project that used to time
-out now completes (see the CHANGELOG for v0.2.24). One measured outlier remains,
-and it is in the STATIC scanner rather than the fuzzing pipeline.
+`static-scan` was the last measured outlier after the timeout sweep, and it is
+now **13.6x faster on Java** with byte-identical output.
 
-**The interprocedural taint pass is superlinear, and worst on Java.**
+| tree | lane | before | after |
+|---|---|---:|---:|
+| elasticsearch (4.99M SLOC) | Java | 616.6 s | **45.4 s** (13.6x) |
+| kubernetes | Go | 59.2 s | **15.4 s** (3.8x) |
+| Proton | C/C++ | 10.6 s | 10.4 s (unchanged) |
 
-| tree | lane | SLOC | `static-scan` | rate |
-|---|---|---:|---:|---:|
-| elasticsearch | Java | 4,989,695 | **616 s**, 1366 MiB | **8.1k SLOC/s** |
-| kubernetes | Go | — (17,873 files) | 61 s, 586 MiB | — |
-| Proton | C/C++ | — (3,419 files) | 11 s, 34 MiB | — |
-| linux (recorded earlier) | C | 37M | 40 s, 648 MiB | 924k SLOC/s |
+8.1k -> 110k SLOC/s on Java. Every number above was gated on
+`scripts/validation/finding-parity.py`: identical findings, identical
+`analysis_gaps`, per rule, severity and CWE. Speed is easy to measure and easy to
+fool yourself about; losing a finding looks exactly like a faster scan, and gaps
+are where the engine admits it stopped, so exploring less shows up as MORE gaps
+even when the finding count holds.
 
-Java is ~100x slower per SLOC than C, and it scales at about **O(n^1.6)**: 1,050
-Java files take 2.5 s, 4,912 take 30.4 s, and that exponent extrapolates to the
-616 s observed over 31,243 files.
+**The earlier entry here blamed the wrong pass.** It named the interprocedural
+taint worklist, on the strength of reading the code. Measurement put 24 of a
+28-second Java scan in `annotate_reachability` — the call-graph BFS that LABELS
+findings — and only 1.3 s in taint. Both real causes were in that BFS:
 
-Two distinct causes, both identified:
+- **`reachable` was a `BTreeSet<FunctionKey>`, and a key holds a `PathBuf`.** Every
+  probe cost ~17 comparisons of long path strings, and the BFS probes once per
+  candidate target per call site. It is membership-only, never iterated, so it is
+  now a hash set: **3.1x** on its own, and it helped Go as much as Java.
+- **Each call site walked EVERY function in the tree sharing that name**, and that
+  list grows with the tree — the actual source of the O(n^1.6). A name whose whole
+  candidate set is already reachable can never contribute again, whichever subset
+  the preference rules pick, so such names are retired. The reachable set only
+  grows, so that is monotonic and cannot go stale: a further **2.7x**, and the BFS
+  went from 79.1 s to 2.0 s on the full tree.
 
-1. **`scan_taint_project` parallelizes across LANGUAGES, not within one.** It
-   spawns one task per language, so a single-language tree runs the entire
-   interprocedural phase on one core while the rest of the pool idles. This is
-   the cheaper half to fix, but the inner pass is a worklist BFS over the call
-   graph with a shared queue and dedup set, so it needs a real decomposition
-   rather than swapping in `par_iter`.
-
-2. **The worklist revisits a function once per distinct taint signature.** Dedup
-   is on `(function, taint-signature)`, so the number of visits grows with the
-   number of parameter-taint combinations reaching each function — which is where
-   the superlinearity comes from. Fixing it means joining/widening signatures per
-   function instead of enumerating them.
-
-Deliberately not attempted yet: (2) changes what the taint engine explores, so it
-can silently drop findings. It needs finding-parity verification against a corpus
-(same findings, fewer visits) rather than a quick edit, and the static scanner's
-precision is the product. `--max-memory-mb` already bounds the memory side, and
-the scan degrades gracefully rather than failing.
+What is left is honest work: per-file rule packs (23.9 s, already parallel at
+cores-1) and the taint worklist (16.0 s). The worklist is single-threaded for a
+mono-language tree because `scan_taint_project` parallelizes across LANGUAGES, and
+its state (`enqueued`, `fn_states`, `truncated`) is shared, so parallelising it is
+a real decomposition rather than a `par_iter` swap — and it is the pass that can
+silently change findings. Left alone deliberately.
 
 ---
 

@@ -16,6 +16,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
+/// A `--version`-style toolchain probe should answer instantly; this only exists
+/// so a wedged or half-installed toolchain cannot hang the whole run.
+const TOOL_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 pub enum JsBuildResult {
     Built,
     /// Not fuzzable here (no `node`, target no longer present) — skip cleanly.
@@ -25,9 +29,9 @@ pub enum JsBuildResult {
 }
 
 fn have_node() -> bool {
-    Command::new("node")
-        .arg("--version")
-        .output()
+    let mut command = Command::new("node");
+    command.arg("--version");
+    crate::command_output::output_with_timeout(&mut command, TOOL_PROBE_TIMEOUT)
         .map(|o| o.status.success())
         .unwrap_or(false)
 }
@@ -90,7 +94,14 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
 /// both syntax errors and unresolved runtime `require`s (missing npm dependencies).
 fn js_module_load_error(module_abs: &Path) -> Option<String> {
     // `node -c` first (cheap, no side effects) for a precise syntax message.
-    if let Ok(out) = Command::new("node").arg("-c").arg(module_abs).output() {
+    let mut syntax_check = Command::new("node");
+    syntax_check.arg("-c").arg(module_abs);
+    // A syntax check reads USER JavaScript, so it gets a real budget rather than
+    // the probe timeout — but a budget all the same.
+    if let Ok(out) = crate::command_output::output_with_timeout(
+        &mut syntax_check,
+        std::time::Duration::from_secs(120),
+    ) {
         if !out.status.success() {
             let msg = String::from_utf8_lossy(&out.stderr);
             return Some(format!(

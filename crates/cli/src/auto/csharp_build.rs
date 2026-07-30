@@ -23,6 +23,10 @@ use crate::auto::csharp::{parse_csharp, CSharpMethod, CSharpParamKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// A `--version`-style toolchain probe should answer instantly; this only exists
+/// so a wedged or half-installed toolchain cannot hang the whole run.
+const TOOL_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 pub enum CSharpBuildResult {
     Built {
         /// Under `--force`: what the entry shim had to synthesize to call the
@@ -41,9 +45,10 @@ pub enum CSharpBuildResult {
 }
 
 fn have(bin: &str, arg: &str) -> bool {
-    Command::new(bin)
-        .arg(arg)
-        .output()
+    // Bounded like every other spawn: a wedged toolchain must not hang the run.
+    let mut command = Command::new(bin);
+    command.arg(arg);
+    crate::command_output::output_with_timeout(&mut command, TOOL_PROBE_TIMEOUT)
         .map(|o| o.status.success())
         .unwrap_or(false)
 }
@@ -117,7 +122,11 @@ fn host_max_net_major() -> u32 {
     use std::sync::OnceLock;
     static MAX: OnceLock<u32> = OnceLock::new();
     *MAX.get_or_init(|| {
-        let Ok(out) = Command::new("dotnet").arg("--list-sdks").output() else {
+        let mut sdk_probe = Command::new("dotnet");
+        sdk_probe.arg("--list-sdks");
+        let Ok(out) =
+            crate::command_output::output_with_timeout(&mut sdk_probe, TOOL_PROBE_TIMEOUT)
+        else {
             return 8;
         };
         String::from_utf8_lossy(&out.stdout)

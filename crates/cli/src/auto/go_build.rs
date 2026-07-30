@@ -135,12 +135,15 @@ pub fn build_go_harness(
     // a target's `go 1.x` directive asks for (that needs network + is an env limit,
     // not a govfuzz failure). The version-compatible majority then still builds.
     let bin = auto_dir.join("main");
-    let _ = Command::new(&go)
-        .args(["mod", "tidy"])
+    // `go mod tidy` reaches the module graph and can sit indefinitely on a wedged
+    // proxy or a huge closure, so it is bounded like every other spawn.
+    let mut tidy = Command::new(&go);
+    tidy.args(["mod", "tidy"])
         .current_dir(&auto_dir)
         .env("GOFLAGS", "-mod=mod")
-        .env("GOTOOLCHAIN", "local")
-        .output();
+        .env("GOTOOLCHAIN", "local");
+    let _ =
+        crate::command_output::output_with_timeout(&mut tidy, std::time::Duration::from_secs(300));
     // Real edge coverage (was black-box): build with `-cover -covermode=atomic` so
     // the harness can read per-input executed-block sets via `runtime/coverage` and
     // fold them into govfuzz's shared edge map — the same coverage-guided feedback
@@ -240,11 +243,15 @@ fn resolve_target(candidate: &Candidate) -> Result<(GoFunc, Vec<GoFunc>), String
 /// Local Go toolchain language version as `MAJOR.MINOR` ("1.22"), from
 /// `go env GOVERSION` ("go1.22.2"). None if it can't be parsed.
 fn local_go_minor(go: &Path) -> Option<String> {
-    let out = Command::new(go)
+    let mut version_probe = Command::new(go);
+    version_probe
         .args(["env", "GOVERSION"])
-        .env("GOTOOLCHAIN", "local")
-        .output()
-        .ok()?;
+        .env("GOTOOLCHAIN", "local");
+    let out = crate::command_output::output_with_timeout(
+        &mut version_probe,
+        std::time::Duration::from_secs(30),
+    )
+    .ok()?;
     parse_go_minor(&String::from_utf8_lossy(&out.stdout))
 }
 

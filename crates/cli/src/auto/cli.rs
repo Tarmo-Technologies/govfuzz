@@ -2407,7 +2407,7 @@ fn discover_or_reuse(
         ));
     }
 
-    use crate::auto::discovery::{discover_with_options, source_fingerprint};
+    use crate::auto::discovery::discover_with_options;
     use crate::auto::discovery_cache::{self, DiscoveryCache};
 
     // `--discovery-cache <path>` overrides the default `<work>/discovery-cache.json`.

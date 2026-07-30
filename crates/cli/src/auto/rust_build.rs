@@ -70,11 +70,14 @@ fn probe_toolchain() -> Option<RustToolchain> {
     // Prefer the plain `+nightly` channel; rustup resolves it. Confirm a nightly
     // rustc actually exists by asking for its verbose version through cargo's
     // proxy — `-vV` also gives us the `host:` triple we need for `--target`.
-    let probe = Command::new(&cargo)
-        .arg("+nightly")
-        .arg("-vV")
-        .output()
-        .ok()?;
+    let mut nightly_probe = Command::new(&cargo);
+    nightly_probe.arg("+nightly").arg("-vV");
+    // Bounded: rustup can go out to the network resolving a missing toolchain.
+    let probe = crate::command_output::output_with_timeout(
+        &mut nightly_probe,
+        std::time::Duration::from_secs(60),
+    )
+    .ok()?;
     if probe.status.success() {
         let stdout = String::from_utf8_lossy(&probe.stdout);
         let host_triple = parse_host_triple(&stdout)?;

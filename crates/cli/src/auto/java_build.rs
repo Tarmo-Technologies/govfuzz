@@ -32,6 +32,10 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// A `--version`-style toolchain probe should answer instantly; this only exists
+/// so a wedged or half-installed toolchain cannot hang the whole run.
+const TOOL_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 /// Outcome of the native Java build lane (parallels `RustBuildResult`).
 pub enum JavaBuildResult {
     /// `<work>/harnesses/<id>/main` was produced and is ready to fuzz.
@@ -628,7 +632,10 @@ fn needs_preview(stderr: &str) -> bool {
 /// The JDK feature version of `javac` (`javac 21.0.11` -> `21`), which is the only
 /// `--release` value `--enable-preview` accepts.
 fn javac_feature_version(javac: &Path) -> Option<String> {
-    let out = Command::new(javac).arg("-version").output().ok()?;
+    let mut version_probe = Command::new(javac);
+    version_probe.arg("-version");
+    let out =
+        crate::command_output::output_with_timeout(&mut version_probe, TOOL_PROBE_TIMEOUT).ok()?;
     let text = if out.stdout.is_empty() {
         String::from_utf8_lossy(&out.stderr).into_owned()
     } else {

@@ -445,12 +445,18 @@ shares on comparable trees:
 Measuring the call graph itself says what the cause is
 (`GOVFUZZ_PROFILE=1` prints these):
 
-| lane | call sites | target edges | fan-out |
+| lane | call sites | edges walked | fan-out |
 |---|---:|---:|---:|
-| Java (elasticsearch) | 175,297 | 562,531 | **3.21** |
-| Go (kubernetes) | 17,690 | 16,155 | **0.91** |
+| Java (elasticsearch) | 175,297 | 436,984 | **2.49** |
+| Go (kubernetes) | 17,690 | 14,112 | **0.80** |
 
-**Java's call graph is over-approximated by roughly 3.5x.** Calls are
+Counted AFTER the self-call and duplicate drops, so these are edges the taint pass
+actually walks. (A first version counted raw candidate visits and reported 3.21 /
+0.91 — about 22% too high, because `local_calls` discards duplicates and
+self-calls further down. The ratio survived the correction; the absolute number
+did not.)
+
+**Java carries roughly 3.1x the edges per call site that Go does.** Calls are
 `obj.method(...)`, and the index keys on name plus arity, so `get()` resolves to
 every zero-argument `get` in the tree. Each spurious edge is both extra taint
 work and a spurious flow, which is why elasticsearch also emits 43,660

@@ -1,0 +1,1251 @@
+{
+ "lane": "rust",
+ "repo": "rustdesk/rustdesk",
+ "stars": 118862,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --json --out /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.06,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 145743,
+   "sloc_by_lang": {
+    "rust": 131176,
+    "cpp": 4300,
+    "c": 4009,
+    "python": 3137,
+    "config": 3121
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --format json --top 100000",
+   "exit": 0,
+   "wall_s": 2.24,
+   "timed_out": false,
+   "panic": false,
+   "count": 3319,
+   "by_language": {
+    "python": 157,
+    "rust": 2888,
+    "cpp": 165,
+    "c": 109
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --out /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 1.91,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 1037,
+   "by_severity": {
+    "medium": 23,
+    "critical": 1,
+    "low": 952,
+    "high": 61
+   },
+   "top_rules": {
+    "GF-553": 950,
+    "GF-408": 26,
+    "GF-500": 16,
+    "GF-552": 13,
+    "GF-427": 10,
+    "GF-405": 5,
+    "GF-422": 4,
+    "GF-563": 3,
+    "GF-423": 2,
+    "GF-546": 2,
+    "GF-426": 2,
+    "GF-477": 1,
+    "GF-479": 1,
+    "GF-404": 1,
+    "GF-406": 1
+   },
+   "gaps": 131
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --out /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk/sbom",
+   "exit": 0,
+   "wall_s": 0.16,
+   "timed_out": false,
+   "panic": false,
+   "components": 1224
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/rust/rustdesk__rustdesk --work-dir /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 217.24,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 3303,
+    "dropped_by_cap": 3243,
+    "built": 14,
+    "built_and_fuzzed": 14,
+    "fuzzed_stub_only": 0,
+    "failed_build": 29,
+    "unsupported_params": 14,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 3,
+    "findings": 28
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 18,
+    "synthesized_types": 19,
+    "synthesized_macros": 32,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 1,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0,
+    "harness_codegen_errors": 2
+   },
+   "targets": [
+    {
+     "name": "parse_rules",
+     "source": "device-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.12097693653388379,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse_rules",
+     "source": "user-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.1151608810463817,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "parse",
+     "source": "hbbs_http.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "download_file",
+     "source": "downloader.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type 'Option<PathBuf>' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_plugin",
+     "source": "ipc.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "from_str",
+     "source": "auth_2fa.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "install_driver",
+     "source": "win_device.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'install_driver' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_plugin_async",
+     "source": "ipc.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "device_io_control",
+     "source": "win_device.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'device_io_control' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_plugin",
+     "source": "plugins.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_restricted_dacl",
+     "source": "terminal_helper.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "main_load_recent_peers_for_ab",
+     "source": "flutter_ffi.rs",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "decode_id_pk",
+     "source": "common.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust parameter type '&sign::PublicKey' has no govfuzz-native byte decoder",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Java_ffi_FFI_startServer",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_startServer' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Java_ffi_FFI_translateLocale",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_translateLocale' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Java_ffi_FFI_getLocalOption",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_getLocalOption' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Java_ffi_FFI_getBuildinOption",
+     "source": "flutter_ffi.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'Java_ffi_FFI_getBuildinOption' is an `unsafe fn` with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "handleMask",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 33,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "generate_md5_table",
+     "source": "generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7471.988417401644,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "headers_with",
+     "source": "device-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.2685810667442056,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "compress",
+     "source": "inline-sciter.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `inline-sciter` is not loadable (skipped cleanly): FileNotFoundError: [Errno 2] No such file or directory: 'src/ui/common.css'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "enable_strategy",
+     "source": "strategies.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.26398731495334643,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "build_portable",
+     "source": "generate.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 359.0562393594701,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "disable_strategy",
+     "source": "strategies.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.2581507804267054,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "delete_groups",
+     "source": "device-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.22921001952616318,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "delete_groups",
+     "source": "user-groups.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.1595657664036867,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "enhance_audit_data",
+     "source": "audits.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.2644869113286812,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "disable_email_verification",
+     "source": "users.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.20848235423986824,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "force_logout",
+     "source": "users.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.2643153774036737,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "delete_shared_abs",
+     "source": "ab.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.20393304474761373,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "delete_ab_rules",
+     "source": "ab.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 0.16422629245406106,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "wf_cliprdr_process_filename",
+     "source": "wf_cliprdr.c",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C parameter 'wFileName' of type 'WCHAR *' has no byte-buffer decoder after struct synthesis: opaque type 'WCHAR' for pointer parameter 'wFileName' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "drawOutline",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "print_help_install_pkg",
+     "source": "main.cc",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 14,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "is_command_exists",
+     "source": "main.cc",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 14,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SetLastMsg",
+     "source": "IddController.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (GUID, HRESULT, HSWDEVICE, INT, PBOOL, PHSWDEVICE, SW_DEVICE_LIFETIME, VOID, _In_) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "flog",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Utf8FromUtf16",
+     "source": "utils.cpp",
+     "outcome": "failed_build",
+     "retries": 5,
+     "repairs": 9,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wf_cliprdr_bounded_strlen",
+     "source": "wf_cliprdr.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 20,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ReadConfig",
+     "source": "ReadConfig.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'filename' of type 'const std::wstring &' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'std::wstring' for parameter 'filename' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TerminateProcessesByNameW",
+     "source": "CustomActions.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'processName' of type 'LPCWSTR' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type 'LPCWSTR' for parameter 'processName' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "TerminateProcesses",
+     "source": "CustomActions.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'hInstall' of type '__in' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type '__in' for parameter 'hInstall' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "keyboard_thread",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_local_format_id_by_name",
+     "source": "wf_cliprdr.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (PUINT) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "wWinMain",
+     "source": "main.cpp",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "C++ parameter 'instance' of type '_In_' has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type '_In_' for parameter 'instance' needs lifecycle support (Phase C)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LaunchProcessWin",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "win32_enable_lowlevel_keyboard",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "PrintXPSRawData",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_di_bits",
+     "source": "windows.cc",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "InstallUpdate",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "IsDeviceCreated",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DeviceCreate",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DeviceCreateWithLifetime",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DeviceClose",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MonitorPlugIn",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MonitorPlugOut",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "MonitorModesUpdate",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CreationCallback",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "GetDevicePath2",
+     "source": "IddController.c",
+     "outcome": "failed_build",
+     "retries": 16,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CliprdrDataObject_Delete",
+     "source": "wf_cliprdr.c",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (PUINT) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 10,
+     "detail": "typedef redefinition with different types (\"X\" vs \"X\" (aka \"X\"))",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 2,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (PUINT) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, \u2026",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "c"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[c99] requires type(s) the generated harness cannot construct offline (GUID, HRESULT, HSWDEVICE, INT, PBOOL, PHSWDEVICE, SW_DEVICE_LIFETIME, VOID, _In_) \u2014 an external\u2026",
+     "language": "c"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "C parameter \"X\" of type \"X\" has no byte-buffer decoder after struct synthesis: opaque type \"X\" for pointer parameter \"X\" needs lifecycle support (Phase C)",
+     "language": "c"
+    },
+    {
+     "category": "failed_build",
+     "count": 8,
+     "detail": "missing macro",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "C++ parameter \"X\" of type \"X\" has no byte-buffer decoder (auto-harness drives scalar, string, and visible aggregate params): opaque type \"X\" for parameter \"X\" n\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "a type specifier is required for all declarations",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "no member named \"X\" in the global namespace",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): FileNotFoundError: [Errno N] No such file or directory: \"X\"",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "Rust target \"X\" is an \"X\" with a caller-upheld safety precondition the harness cannot honour; skipped (lab-only).",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "cargo build failed: error: failed to get \"X\" as a dependency of package \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "in-crate cargo build failed: error: failed to load manifest for workspace member \"X\"",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Rust parameter type \"X\" has no govfuzz-native byte decoder",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-d7011d1b",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-248"
+     ],
+     "cwe_name": "Uncaught Exception",
+     "kind": null,
+     "severity": null,
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-P0044-A827C038"
+    },
+    {
+     "id": "F-0001-b77ff60f",
+     "rule": "GF-418",
+     "cwe": [
+      "CWE-367"
+     ],
+     "cwe_name": "Runtime time-of-check/time-of-use file race",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-P0044-A827C038"
+    },
+    {
+     "id": "F-RO-GF-408-0CF711DF",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-0F257CED",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-0FF7CCE4",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-12241FDE",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-13ED58AA",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-30274F83",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-3367657E",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-3FBF7DAA",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-4A527C54",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-4F2811B1",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-541A5BBE",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-557E2CCE",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-5C982ABA",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-5FA57247",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-66949FD7",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-781714B9",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-7F197EF9",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-803AFFC3",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-87D8ACEB",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-8A8A69C1",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-8E594082",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-90FF2608",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-AD8CE59A",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-F2A76F80",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-F8683BAF",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    },
+    {
+     "id": "F-RO-GF-408-FD8E33D5",
+     "rule": "GF-408",
+     "cwe": [
+      "CWE-134"
+     ],
+     "cwe_name": "Nonliteral format string",
+     "kind": null,
+     "severity": "high",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C0036-4B5F195A"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk/findings --out /home/ubuntu/govfuzz-sweep-work/rust__rustdesk__rustdesk/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.3,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "e63df747156c9db2cb74ae342e119a2a418371ea",
+ "clone_s": 2.2,
+ "lane_check": "rust: 250 files / 137399 lines; top=rust(137399)",
+ "status": "done"
+}

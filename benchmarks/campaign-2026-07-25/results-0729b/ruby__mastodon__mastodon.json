@@ -1,0 +1,850 @@
+{
+ "lane": "ruby",
+ "repo": "mastodon/mastodon",
+ "stars": 50143,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon --json --out /home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.07,
+   "timed_out": false,
+   "panic": false,
+   "languages": 3,
+   "sloc_total": 443270,
+   "sloc_by_lang": {
+    "config": 217582,
+    "ruby": 141510,
+    "javascript": 84178
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "count": 365,
+   "by_language": {
+    "ruby": 196,
+    "typescript": 156,
+    "javascript": 13
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon --out /home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 13.11,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 28,
+   "by_severity": {
+    "medium": 23,
+    "critical": 4,
+    "high": 1
+   },
+   "top_rules": {
+    "GF-500": 15,
+    "GF-497": 7,
+    "GF-429": 4,
+    "GF-477": 1,
+    "GF-426": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon --out /home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/sbom",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "components": 1797
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 124.55,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 365,
+    "dropped_by_cap": 305,
+    "built": 18,
+    "built_and_fuzzed": 18,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 42,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 22,
+    "missing_files": 1,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "format",
+     "source": "formatjs-formatter.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1934.9716094181733,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "configFromEnv",
+     "source": "database.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/database.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pg' imported from /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/database.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "extractStatusAndMessage",
+     "source": "errors.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1831.716452727629,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "setupMetrics",
+     "source": "metrics.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/metrics.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'prom-client' imported from /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/metrics.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "isTruthy",
+     "source": "utils.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2069.3338118015745,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "foldToASCII",
+     "source": "utils.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1880.0184760903073,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "normalizeHashtag",
+     "source": "utils.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1953.4529348072908,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "firstParam",
+     "source": "utils.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1868.1971934447204,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "configFromEnv",
+     "source": "redis.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/redis.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'ioredis' imported from /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/redis.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "parseIntFromEnvValue",
+     "source": "utils.js",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1942.3171955799426,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "attachWebsocketHttpLogger",
+     "source": "logging.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/logging.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pino' imported from /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/logging.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "createWebsocketLogger",
+     "source": "logging.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/logging.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pino' imported from /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/logging.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "initializeLogLevel",
+     "source": "logging.js",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/logging.js` is not loadable (skipped cleanly): Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pino' imported from /home/ubuntu/govfuzz-corpus-500/ruby/mastodon__mastodon/streaming/logging.js",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetAsyncRefresh",
+     "source": "async_refreshes.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0004-6A3CA628/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiFollowTag",
+     "source": "tags.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0007-B996A5EA/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiDeleteSuggestion",
+     "source": "suggestions.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0007-C8C03E76/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetContext",
+     "source": "statuses.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0009-3E0A62CF/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetAnnualReportState",
+     "source": "annual_report.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T000C-A3D155E1/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiFeatureTag",
+     "source": "tags.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T000D-6459589B/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetAccounts",
+     "source": "accounts.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0016-D6CD26DB/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetAccountLists",
+     "source": "lists.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0017-BEBA2AAB/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiAddAccountToList",
+     "source": "lists.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T001A-AFCF6A6F/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiDeleteCollection",
+     "source": "collections.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T001A-E897355B/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetCollection",
+     "source": "collections.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T001D-C84804D9/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SessionStorage#save",
+     "source": "state_storage.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1969.4916668281135,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "apiGetCollectionsCreatedByAccount",
+     "source": "collections.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0022-85B29939/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetCollectionsFeaturingAccount",
+     "source": "collections.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0025-2F6B5F22/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiGetAnnualReport",
+     "source": "annual_report.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0025-58DED2AB/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiAddCollectionItem",
+     "source": "collections.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0028-DE33DC86/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SessionStorage#getStateKey",
+     "source": "state_storage.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2027.2880457456793,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "apiDeleteFeaturedTag",
+     "source": "accounts.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T003B-772E9C21/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiFetchNotificationRequest",
+     "source": "notifications.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T004C-D9B0D2B9/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiAcceptNotificationRequest",
+     "source": "notifications.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0052-C5FB5A6F/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiDismissNotificationRequest",
+     "source": "notifications.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T0056-F6DF2FCF/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiAcceptNotificationRequests",
+     "source": "notifications.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T005A-018949A4/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "apiDismissNotificationRequests",
+     "source": "notifications.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/ruby__mastodon__mastodon/harnesses/H-T005E-C19F3324/target.js` is not loadable (skipped cleanly): missing module `axios` (not in the project and not installed) \u2014 Error: Cannot find module 'axios'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrowserErrorsHelpers.ignore_js_error",
+     "source": "browser_errors.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BrowserErrorsHelpers.ignore_js_error` is not loadable (skipped cleanly): uninitialized constant RSpec (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DomainHelpers.configure_mx",
+     "source": "domain_helpers.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8565.03070224852,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Elasticsearch::ClientExtensions.initialize",
+     "source": "client_extensions.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Elasticsearch::ClientExtensions.initialize` is not loadable (skipped cleanly): uninitialized constant Elasticsearch::Client (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ActiveRecord::Batches.pluck_each",
+     "source": "batches.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8961.12099359731,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Chewy::IndexExtensions.index_preset",
+     "source": "index_extensions.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Chewy::IndexExtensions.index_preset` is not loadable (skipped cleanly): uninitialized constant Chewy::Index (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AppendComponent.append",
+     "source": "simple_form.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AppendComponent.append` is not loadable (skipped cleanly): uninitialized constant SimpleForm (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Mastodon::Middleware::PrometheusQueueTime#call",
+     "source": "prometheus_queue_time.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Middleware::PrometheusQueueTime#call` is not loadable (skipped cleanly): Middleware>': uninitialized constant PrometheusExporter (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BrowserErrorsHelpers.error_message",
+     "source": "browser_errors.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BrowserErrorsHelpers.error_message` is not loadable (skipped cleanly): uninitialized constant RSpec (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Mastodon::Feature.method_missing",
+     "source": "feature.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Feature.method_missing` is not loadable (skipped cleanly): uninitialized constant Mastodon (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HtmlHeadInspection.head_meta_content",
+     "source": "html_head_inspection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9293.484220082286,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Mastodon::Middleware::PublicFileServer#initialize",
+     "source": "public_file_server.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Middleware::PublicFileServer#initialize` is not loadable (skipped cleanly): missing module `action_dispatch/middleware/static` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- action_dispatch/middleware/static (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Chewy::Strategy::Mastodon#update",
+     "source": "mastodon.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Chewy::Strategy::Mastodon#update` is not loadable (skipped cleanly): Strategy>': uninitialized constant Chewy::Strategy::Base (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Mastodon::Middleware::PublicFileServer#call",
+     "source": "public_file_server.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Middleware::PublicFileServer#call` is not loadable (skipped cleanly): missing module `action_dispatch/middleware/static` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- action_dispatch/middleware/static (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "HtmlHeadInspection.head_meta_exists",
+     "source": "html_head_inspection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9297.234803698837,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "GifReader::GifReaderException::UnknownImageType::CannotParseImage#initialize",
+     "source": "gif_transcoder.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `GifReader::GifReaderException::UnknownImageType::CannotParseImage#initialize` is not loadable (skipped cleanly): Paperclip>': uninitialized constant Paperclip::Processor (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Mastodon::Error::NotPermittedError::ValidationError::HostValidationError::LengthValidationError::DimensionsValidationError::StreamValidationError::RaceConditionError::RateLimitExceededError::SyntaxError::InvalidParameterError::SignatureVerificationError::MalformedHeaderError::RecursionLimitExceededError::UnexpectedResponseError#initialize",
+     "source": "exceptions.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Error::NotPermittedError::ValidationError::HostValidationError::LengthValidationError::DimensionsValidationError::StreamValidationError::RaceConditionError::RateLimitExceededError::SyntaxError::InvalidParameterError::SignatureVerificationError::MalformedHeaderError::RecursionLimitExceededError::UnexpectedResponseError#initialize` is not loadable (skipped cleanly): Mastodon>': uninitialized constant Mastodon::HTTP (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Mastodon::Feature.respond_to_missing",
+     "source": "feature.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Feature.respond_to_missing` is not loadable (skipped cleanly): uninitialized constant Mastodon (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Mastodon::Database.add_post_migrate_path_to_rails",
+     "source": "database.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8874.194650377402,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DomainHelpers.configure_dns",
+     "source": "domain_helpers.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8826.189339938379,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Mastodon::Error::NotPermittedError::ValidationError::HostValidationError::LengthValidationError::DimensionsValidationError::StreamValidationError::RaceConditionError::RateLimitExceededError::SyntaxError::InvalidParameterError::SignatureVerificationError::MalformedHeaderError::RecursionLimitExceededError::PrivateNetworkAddressError#initialize",
+     "source": "exceptions.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Mastodon::Error::NotPermittedError::ValidationError::HostValidationError::LengthValidationError::DimensionsValidationError::StreamValidationError::RaceConditionError::RateLimitExceededError::SyntaxError::InvalidParameterError::SignatureVerificationError::MalformedHeaderError::RecursionLimitExceededError::PrivateNetworkAddressError#initialize` is not loadable (skipped cleanly): Mastodon>': uninitialized constant Mastodon::HTTP (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DomainHelpers.double_mx",
+     "source": "domain_helpers.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 7804.441125046814,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DomainHelpers.double_resource_v4",
+     "source": "domain_helpers.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8253.320026727943,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DomainHelpers.double_resource_v6",
+     "source": "domain_helpers.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8745.965363697213,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "IdsToBigints#migrate_columns",
+     "source": "20170918125918_ids_to_bigints.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `IdsToBigints#migrate_columns` is not loadable (skipped cleanly): MigrationHelpers>': uninitialized constant Mastodon::MigrationHelpers::ActiveRecord (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "Error [ERR_MODULE_NOT_FOUND]: Cannot find package \"X\" imported from PATH",
+     "language": "javascript"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Mastodon>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PATH \"X\": cannot load such file -- action_dispatch/mid\u2026",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "target \"X\" is not loadable (skipped cleanly): uninitialized constant Mastodon (NameError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "uninitialized constant RSpec (NameError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Middleware>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): MigrationHelpers>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Paperclip>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Strategy>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): uninitialized constant Chewy::Index (NameError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): uninitialized constant Elasticsearch::Client (NameError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "uninitialized constant SimpleForm (NameError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 21,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "ae4f80ee5721465dc55a08b70a9792e9db763459",
+ "clone_s": 3.9,
+ "lane_check": "ruby: 3229 files / 148148 lines; top=ruby(148148)",
+ "status": "done"
+}

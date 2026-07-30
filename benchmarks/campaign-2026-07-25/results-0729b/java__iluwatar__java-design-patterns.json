@@ -1,0 +1,564 @@
+{
+ "lane": "java",
+ "repo": "iluwatar/java-design-patterns",
+ "stars": 94244,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/java/iluwatar__java-design-patterns --json --out /home/ubuntu/govfuzz-sweep-work/java__iluwatar__java-design-patterns.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 51443,
+   "sloc_by_lang": {
+    "java": 51161,
+    "config": 282
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/java/iluwatar__java-design-patterns --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.12,
+   "timed_out": false,
+   "panic": false,
+   "count": 2193,
+   "by_language": {
+    "java": 2193
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/java/iluwatar__java-design-patterns --out /home/ubuntu/govfuzz-sweep-work/java__iluwatar__java-design-patterns/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.51,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 23,
+   "by_severity": {
+    "medium": 8,
+    "high": 8,
+    "critical": 7
+   },
+   "top_rules": {
+    "GF-544": 6,
+    "GF-404": 6,
+    "GF-421": 4,
+    "GF-472": 3,
+    "GF-500": 2,
+    "GF-429": 1,
+    "GF-434": 1
+   },
+   "gaps": 178
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/java/iluwatar__java-design-patterns --out /home/ubuntu/govfuzz-sweep-work/java__iluwatar__java-design-patterns/sbom",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "components": 268
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/java/iluwatar__java-design-patterns --work-dir /home/ubuntu/govfuzz-sweep-work/java__iluwatar__java-design-patterns --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 256.87,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 39,
+    "discovered_total": 2093,
+    "dropped_by_cap": 2054,
+    "built": 28,
+    "built_and_fuzzed": 28,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 9,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "readV1",
+     "source": "RainbowFishSerializer.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13291.43244504412,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "downloadFile",
+     "source": "Utility.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 11702.85094520339,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "loadFromDb",
+     "source": "LobSerializer.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'loadFromDb' is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SimpleFileWriter",
+     "source": "SimpleFileWriter.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'SimpleFileWriter' parameter #1 has an unsupported type `FileWriterAction`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "throwIncorrectData",
+     "source": "ShopException.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 14555.997402747274,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "readFromDb",
+     "source": "VirtualDb.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15033.793758423753,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "readThrough",
+     "source": "CacheStore.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 14155.662064238819,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "readFromDb",
+     "source": "MongoDb.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13435.378032201172,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "readThroughWithWriteBackPolicy",
+     "source": "CacheStore.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13235.449726616107,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "FindCustomerRequest",
+     "source": "FindCustomerRequest.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'FindCustomerRequest' parameter #1 has an unsupported type `RateLimiter`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ContextController",
+     "source": "ContextController.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'ContextController' parameter #0 has an unsupported type `GreetingServiceClient`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CommanderUnit",
+     "source": "CommanderUnit.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17470.113450446424,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Elf",
+     "source": "Elf.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15144.735432945825,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Human",
+     "source": "Human.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16009.657588111782,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CakeLayerInfo",
+     "source": "CakeLayerInfo.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16864.92734955889,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CakeToppingInfo",
+     "source": "CakeToppingInfo.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15623.071594807214,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Consumer",
+     "source": "Consumer.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'Consumer' parameter #1 has an unsupported type `MqSubscribePoint`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Consumer",
+     "source": "Consumer.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15433.517308916156,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "App",
+     "source": "App.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 12719.077855815674,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "FindCustomer",
+     "source": "FindCustomer.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'FindCustomer' parameter #1 has an unsupported type `BusinessException[]`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CakeLayerInfo",
+     "source": "CakeLayerInfo.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16557.8081183704,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Character",
+     "source": "Character.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17160.838991886678,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CakeToppingInfo",
+     "source": "CakeToppingInfo.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15632.24162862216,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BarCustomer",
+     "source": "BarCustomer.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 14427.552712623889,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Data",
+     "source": "Data.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'Data' parameter #2 has an unsupported type `DataType`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AlbumInvocationHandler",
+     "source": "AlbumInvocationHandler.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'AlbumInvocationHandler' parameter #1 has an unsupported type `HttpClient`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Freighter",
+     "source": "Freighter.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17229.04608493399,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Car",
+     "source": "Car.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16563.793524031826,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DatabaseService",
+     "source": "DatabaseService.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15643.277985960189,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "AccountCreateEvent",
+     "source": "AccountCreateEvent.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 19719.290353589204,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Author",
+     "source": "Author.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16439.063872417868,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "App",
+     "source": "App.java",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Java target 'App' parameter #1 has an unsupported type `HttpClient`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CakeTopping",
+     "source": "CakeTopping.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15328.95516029819,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CakeLayer",
+     "source": "CakeLayer.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16234.705675259871,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Book",
+     "source": "Book.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Character",
+     "source": "Character.java",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Builder",
+     "source": "Hero.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 18780.31675881051,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "DatagramPacket",
+     "source": "NioDatagramChannel.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 17473.881985093678,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Chapter",
+     "source": "Saga.java",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 16901.810815941746,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "Java target \"X\" parameter #N has an unsupported type \"X\"",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (harness) failed: PATH error: incompatible types: com.iluwatar.cqrs.dto.Author cannot be converted to com.iluwatar.cqrs.domain.model.Author",
+     "language": "java"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "javac (harness) failed: PATH error: no suitable constructor found for Character(String,char)",
+     "language": "java"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "Java target \"X\" is an instance method and no no-arg constructor was found to build a receiver; not auto-harnessable",
+     "language": "java"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b55fc2bcb5f8e1c4b884bca0a38d402d19fe467c",
+ "clone_s": 1.6,
+ "lane_check": "java: 1902 files / 111102 lines; top=java(111102)",
+ "status": "done"
+}

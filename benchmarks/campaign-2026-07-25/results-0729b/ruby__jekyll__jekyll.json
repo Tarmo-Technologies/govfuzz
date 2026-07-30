@@ -1,0 +1,817 @@
+{
+ "lane": "ruby",
+ "repo": "jekyll/jekyll",
+ "stars": 51596,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ruby/jekyll__jekyll --json --out /home/ubuntu/govfuzz-sweep-work/ruby__jekyll__jekyll.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 20358,
+   "sloc_by_lang": {
+    "ruby": 16662,
+    "config": 2620,
+    "javascript": 1073,
+    "php": 3
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ruby/jekyll__jekyll --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "count": 307,
+   "by_language": {
+    "ruby": 307
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ruby/jekyll__jekyll --out /home/ubuntu/govfuzz-sweep-work/ruby__jekyll__jekyll/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.24,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 15,
+   "by_severity": {
+    "medium": 4,
+    "high": 11
+   },
+   "top_rules": {
+    "GF-472": 10,
+    "GF-500": 3,
+    "GF-477": 1,
+    "GF-507": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ruby/jekyll__jekyll --out /home/ubuntu/govfuzz-sweep-work/ruby__jekyll__jekyll/sbom",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "components": 78
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ruby/jekyll__jekyll --work-dir /home/ubuntu/govfuzz-sweep-work/ruby__jekyll__jekyll --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 178.8,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 307,
+    "dropped_by_cap": 247,
+    "built": 26,
+    "built_and_fuzzed": 20,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 34,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 22,
+    "missing_files": 1,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Jekyll::Commands::Help#init_with_program",
+     "source": "help.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Help#init_with_program` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Doctor#init_with_program",
+     "source": "doctor.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Doctor#init_with_program` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Clean#init_with_program",
+     "source": "clean.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Clean#init_with_program` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Build#init_with_program",
+     "source": "build.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Build#init_with_program` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Cleaner#initialize",
+     "source": "cleaner.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8733.315162295696,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::CollectionReader#initialize",
+     "source": "collection_reader.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8734.60111143507,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Collection#initialize",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8753.849905030555,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Command#inherited",
+     "source": "command.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8848.630226299434,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Commands::Help#invalid_command",
+     "source": "help.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Help#invalid_command` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Command#process_site",
+     "source": "command.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8677.967764752842,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Collection#respond_to_missing",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9173.793448982566,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Commands::Clean#remove",
+     "source": "clean.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Clean#remove` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Collection#method_missing",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9274.956120867897,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Commands::New#create_blank_site",
+     "source": "new.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::New#create_blank_site` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.strip_index",
+     "source": "url_filters.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8248.796080137305,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Command#add_build_options",
+     "source": "command.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9051.312622743188,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.debug",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.debug` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Build#build",
+     "source": "build.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Build#build` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.destination",
+     "source": "static_file.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.destination` is not loadable (skipped cleanly): StaticFile>': uninitialized constant Jekyll::StaticFile::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Doctor#deprecated_relative_permalinks",
+     "source": "doctor.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Doctor#deprecated_relative_permalinks` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.compute_absolute_url",
+     "source": "url_filters.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8595.273564680667,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Cache#initialize",
+     "source": "cache.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.info",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.info` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Doctor#conflicting_urls",
+     "source": "doctor.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Doctor#conflicting_urls` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.slashed_dir_cache",
+     "source": "path_manager.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8764.424994951118,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.compute_relative_url",
+     "source": "url_filters.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8738.655396832142,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll::Commands::Build#watch",
+     "source": "build.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Build#watch` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.warn",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.warn` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.error",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.error` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Command#process_with_graceful_fail",
+     "source": "command.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8682.002611545318,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.ensure_leading_slash",
+     "source": "url_filters.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8564.283586263296,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.abort_with",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.abort_with` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll::Commands::Doctor#urls_only_differ_by_case",
+     "source": "doctor.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll::Commands::Doctor#urls_only_differ_by_case` is not loadable (skipped cleanly): Commands>': uninitialized constant Jekyll::Commands::Command (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.write",
+     "source": "static_file.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.write` is not loadable (skipped cleanly): StaticFile>': uninitialized constant Jekyll::StaticFile::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.getset",
+     "source": "cache.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.message",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.message` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.configuration",
+     "source": "jekyll.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.configuration` is not loadable (skipped cleanly): missing module `pathutil` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- pathutil (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.delete",
+     "source": "cache.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.process",
+     "source": "page.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.process` is not loadable (skipped cleanly): Page>': uninitialized constant Jekyll::Page::Convertible (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.formatted_topic",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.formatted_topic` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.render",
+     "source": "page.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.render` is not loadable (skipped cleanly): Page>': uninitialized constant Jekyll::Page::Convertible (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.collection_dir",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8828.232728264535,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.set_timezone",
+     "source": "jekyll.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.set_timezone` is not loadable (skipped cleanly): missing module `pathutil` (not in the project and not installed) \u2014 <internal:/usr/lib/ruby/vendor_ruby/rubygems/core_ext/kernel_require.rb>:86:in `require': cannot load such file -- pathutil (LoadError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.write",
+     "source": "log_adapter.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.write` is not loadable (skipped cleanly): LogAdapter>': uninitialized constant Logger (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.hash",
+     "source": "cache.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.destination",
+     "source": "page.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.destination` is not loadable (skipped cleanly): Page>': uninitialized constant Jekyll::Page::Convertible (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.load",
+     "source": "cache.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.sanitize_label",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8750.136270056038,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.dump",
+     "source": "cache.rb",
+     "outcome": "built",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.read_document",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9027.199953444955,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "IncludeRelativeTag#load_cached_partial",
+     "source": "include.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `IncludeRelativeTag#load_cached_partial` is not loadable (skipped cleanly): Tags>': uninitialized constant Jekyll::Tags::Liquid (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.determine_sort_order",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8685.269760736368,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.order_with_warning",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 9418.409788958083,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.write",
+     "source": "document.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.write` is not loadable (skipped cleanly): Document>': uninitialized constant Jekyll::Document::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.read_static_file",
+     "source": "collection.rb",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 22,
+     "execs_per_sec": 8825.583741412334,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Jekyll.trigger_hooks",
+     "source": "document.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.trigger_hooks` is not loadable (skipped cleanly): Document>': uninitialized constant Jekyll::Document::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.method_missing",
+     "source": "document.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.method_missing` is not loadable (skipped cleanly): Document>': uninitialized constant Jekyll::Document::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.categories_from_path",
+     "source": "document.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.categories_from_path` is not loadable (skipped cleanly): Document>': uninitialized constant Jekyll::Document::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.handle_read_error",
+     "source": "document.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.handle_read_error` is not loadable (skipped cleanly): Document>': uninitialized constant Jekyll::Document::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Jekyll.modify_date",
+     "source": "document.rb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Jekyll.modify_date` is not loadable (skipped cleanly): Document>': uninitialized constant Jekyll::Document::Forwardable (NameError)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 12,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Commands>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 8,
+     "detail": "LogAdapter>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "built_not_fuzzed",
+     "count": 6,
+     "detail": "built, no fuzz pass ran",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "Document>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "Page>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "StaticFile>\"X\"",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 PATH \"X\": cannot load such file -- pathutil (LoadError)",
+     "language": "ruby"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "target \"X\" is not loadable (skipped cleanly): Tags>\"X\"",
+     "language": "ruby"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "7697d249793d6c48c66a7293310a718aec01f660",
+ "clone_s": 0.9,
+ "lane_check": "ruby: 161 files / 19260 lines; top=ruby(19260)",
+ "status": "done"
+}

@@ -1,0 +1,1009 @@
+{
+ "lane": "go",
+ "repo": "ollama/ollama",
+ "stars": 176895,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --json --out /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "languages": 5,
+   "sloc_total": 312104,
+   "sloc_by_lang": {
+    "go": 237424,
+    "c": 47675,
+    "cpp": 13225,
+    "javascript": 10092,
+    "config": 3688
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --format json --top 100000",
+   "exit": 0,
+   "wall_s": 18.27,
+   "timed_out": false,
+   "panic": false,
+   "count": 3045,
+   "by_language": {
+    "go": 1838,
+    "cpp": 542,
+    "c": 630,
+    "typescript": 35
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --out /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 3.11,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 516,
+   "by_severity": {
+    "medium": 48,
+    "high": 458,
+    "critical": 10
+   },
+   "top_rules": {
+    "GF-405": 430,
+    "GF-472": 17,
+    "GF-436": 17,
+    "GF-500": 16,
+    "GF-404": 9,
+    "GF-423": 9,
+    "GF-422": 6,
+    "GF-497": 4,
+    "GF-477": 2,
+    "GF-562": 2,
+    "GF-406": 2,
+    "GF-550": 1,
+    "GF-429": 1
+   },
+   "gaps": 708
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --out /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama/sbom",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "components": 999
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/go/ollama__ollama --work-dir /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 304.0,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 57,
+    "discovered_total": 2641,
+    "dropped_by_cap": 2584,
+    "built": 31,
+    "built_and_fuzzed": 31,
+    "fuzzed_stub_only": 0,
+    "failed_build": 10,
+    "unsupported_params": 8,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "report_only": 8,
+    "findings": 15
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 3,
+    "synthesized_types": 5,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 41380,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "LoadFromBytes",
+     "source": "tokenizer_load.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 27732.460548976556,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "LoadSafetensorsNative",
+     "source": "io.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadFromBytesWithConfig",
+     "source": "tokenizer_load.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "unsupported Go parameter type `*TokenizerConfig` (skipped)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DecodeFloatTensor",
+     "source": "dtype.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadManifest",
+     "source": "manifest.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 26640.683666631678,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParseFileType",
+     "source": "type.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/sync@v0.17.0 requires go >= 1.24.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "NewLayerFromLayer",
+     "source": "layer.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 21285.713057478555,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Load",
+     "source": "io.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadModel",
+     "source": "server.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/sync@v0.17.0 requires go >= 1.24.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ExtractRawFromSafetensors",
+     "source": "extractor.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 26908.407970649732,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Parse",
+     "source": "template.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/crypto@v0.43.0 requires go >= 1.24.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadDefaultSkills",
+     "source": "skills.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/crypto@v0.43.0 requires go >= 1.24.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "LoadIntegration",
+     "source": "config.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 26550.372958716354,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParseBlobTensorNames",
+     "source": "manifest.go",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 28660.44347009755,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ParseFile",
+     "source": "parser.go",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "go build failed: go: golang.org/x/mod@v0.30.0 requires go >= 1.24.0 (running go 1.22.2; GOTOOLCHAIN=local)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::register_load_op",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::read_at",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "failed_build",
+     "retries": 6,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::register_concat_load",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::register_concat_load_to_f32",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::decode_base64",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_backend_buffer_type_t, ggml_type, gguf_get_val_u32, gguf_set_val_u32, gguf_type) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::parse_tensor_index",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::read_u32_kv",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mlx_dynamic_load",
+     "source": "dynamic.c",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1034.1349007087065,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "llama_ollama_compat::read_tensor_as_f32",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::maybe_clip_mmproj_embd",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "copyTextToClipboard",
+     "source": "clipboard.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1100.0491271507967,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ChatsResponse#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1723.3568418960483,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ToolCall#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1716.5569738124618,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "getChat",
+     "source": "api.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__ollama__ollama/harnesses/H-T006E-966980CE/target.js` is not loadable (skipped cleanly): missing module `@/gotypes` (not in the project and not installed) \u2014 Error: Cannot find module '@/gotypes'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Message#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1766.446194343328,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Chat#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1801.0794163761393,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ChatResponse#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1647.2685190825473,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Model#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1750.379482871845,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ModelsResponse#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1743.0815482179903,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "InferenceComputeResponse#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1763.4302607417633,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "deleteChat",
+     "source": "api.ts",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `/home/ubuntu/govfuzz-sweep-work/go__ollama__ollama/harnesses/H-T0149-719CE9ED/target.js` is not loadable (skipped cleanly): missing module `@/gotypes` (not in the project and not installed) \u2014 Error: Cannot find module '@/gotypes'",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ChatEvent#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1750.0665132768893,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "SettingsResponse#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1694.880742258892,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ChatRequest#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1728.4476528105363,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Page#convertValues",
+     "source": "gotypes.gen.ts",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1738.2556388107546,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "llama_ollama_compat::detail::inject_u32_if_missing",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::inject_f32_arr_if_missing",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::truncate_str_arr",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::detail::take_load_op",
+     "source": "llama-ollama-compat-util.cpp",
+     "outcome": "report_only",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a vendor CORBA IDL) unavailable here, or a type whose definition is not visible to the harness translation unit; statically analyzed, not fuzzed",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::qwen35_should_shift_norm_after_rename",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "llama_ollama_compat::qwen35moe_mtp_expert_source",
+     "source": "llama-ollama-compat.cpp",
+     "outcome": "failed_build",
+     "retries": 7,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "mlx_fast_cuda_kernel_config_add_template_arg_int",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.419878242761469,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_fast_metal_kernel_config_add_template_arg_int",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.386673467966866,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_load",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.4249506650334567,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_load_gguf",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.4563014631663314,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_load_safetensors",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.456859050481749,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_vector_string_set_data",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.3884243527190154,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_vector_string_append_data",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.458597252992079,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_linalg_norm_matrix",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.38601365029597,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_dequantize",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.4137390016248523,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_gather_qmm",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.441984540079147,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "mlx_pad",
+     "source": "generated.h",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 2.4502698567380943,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "report_only",
+     "count": 7,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (ggml_context, ggml_tensor, gguf_context) \u2014 an external SDK/framework type (e.g. MFC/Win32, a ve\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 6,
+     "detail": "cannot initialize a variable of type \"X\" (aka \"X\") with an lvalue of type \"X\"",
+     "language": "cpp"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "missing type",
+     "language": "cpp"
+    },
+    {
+     "category": "report_only",
+     "count": 1,
+     "detail": "[cpp20] requires type(s) the generated harness cannot construct offline (ggml_backend_buffer_type_t, ggml_type, gguf_get_val_u32, gguf_set_val_u32, gguf_type) \u2014 an exte\u2026",
+     "language": "cpp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "go build failed: go: PATH requires go >= N.N.N (running go N.N.N; GOTOOLCHAIN=local)",
+     "language": "go"
+    },
+    {
+     "category": "failed_build",
+     "count": 3,
+     "detail": "go build failed: imports iter: build constraints exclude all Go files in PATH",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "unsupported Go parameter type \"X\" (skipped)",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "missing module \"X\" (not in the project and not installed) \u2014 Error: Cannot find module \"X\"",
+     "language": "typescript"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0000-8a744804",
+     "rule": "GF-413",
+     "cwe": [
+      "CWE-427"
+     ],
+     "cwe_name": "Runtime dynamic library load uses an unsafe search path",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C001B-A83B3B6B"
+    },
+    {
+     "id": "F-0001-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C110A-67E6F273"
+    },
+    {
+     "id": "F-0002-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C115F-953C6BBE"
+    },
+    {
+     "id": "F-0003-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C1262-13B9B785"
+    },
+    {
+     "id": "F-0004-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C1265-AB67D3AA"
+    },
+    {
+     "id": "F-0005-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C126F-3D98B8B0"
+    },
+    {
+     "id": "F-0006-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C1C45-F34F9081"
+    },
+    {
+     "id": "F-0007-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C1C3C-383B75F8"
+    },
+    {
+     "id": "F-0008-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C1598-D442EBDC"
+    },
+    {
+     "id": "F-0009-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C163A-D01E1E36"
+    },
+    {
+     "id": "F-0010-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C132B-D23F0A89"
+    },
+    {
+     "id": "F-0011-f9a820bb",
+     "rule": "GF-206",
+     "cwe": [
+      "CWE-476"
+     ],
+     "cwe_name": "NULL Pointer Dereference",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-C17A9-24605432"
+    },
+    {
+     "id": "F-CAP-0000",
+     "rule": "GF-668",
+     "cwe": [
+      "CWE-114"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C001B-A83B3B6B"
+    },
+    {
+     "id": "F-CAP-0001",
+     "rule": "GF-668",
+     "cwe": [
+      "CWE-22"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-C001B-A83B3B6B"
+    },
+    {
+     "id": "F-RO-GF-406-A573C662",
+     "rule": "GF-406",
+     "cwe": [
+      "CWE-15"
+     ],
+     "cwe_name": null,
+     "kind": null,
+     "severity": "medium",
+     "confidence": "medium",
+     "tier": null,
+     "harness": "H-X01CA-457ADCEE"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama/findings --out /home/ubuntu/govfuzz-sweep-work/go__ollama__ollama/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.19,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "b205993ed483f1d31e43963959b51d20a6e8e6b8",
+ "clone_s": 2.4,
+ "lane_check": "go: 719 files / 249731 lines; top=go(249731)",
+ "status": "done"
+}

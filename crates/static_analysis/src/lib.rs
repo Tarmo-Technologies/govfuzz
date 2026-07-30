@@ -1123,6 +1123,17 @@ impl MemoryGuard {
     }
 }
 
+/// Phase timings to stderr when `GOVFUZZ_PROFILE` is set. One relaxed load when
+/// off, so it can sit on the scan path. Kept because the Java scan's cost was NOT
+/// where it looked: the obvious suspects (call resolution, taint state explosion)
+/// were both already bounded, and only measurement found the real phase.
+fn ssprof(label: &str, start: std::time::Instant) {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ON.get_or_init(|| std::env::var_os("GOVFUZZ_PROFILE").is_some()) {
+        eprintln!("[prof] {label}: {:.3}s", start.elapsed().as_secs_f64());
+    }
+}
+
 fn spawn_memory_watchdog() -> MemoryWatchdog {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
@@ -1323,6 +1334,7 @@ fn discover_findings(
         .num_threads(scan_thread_count())
         .build()
         .map_err(|e| StaticScanError::Io(std::io::Error::other(e.to_string())))?;
+    let _tpa = std::time::Instant::now();
     let per_file: Vec<(Vec<StaticFinding>, Vec<FunctionModel>, Vec<AnalysisGap>)> =
         pool.install(|| {
             files
@@ -1353,19 +1365,28 @@ fn discover_findings(
             ),
         });
     }
+    ssprof("phaseA:per_file", _tpa);
     // Phase B (interprocedural): run the parallel taint passes on the same bounded
     // pool so the whole scan honors the cores-1 cap (no global-pool 100% pinning).
     pool.install(|| {
+        let _tt = std::time::Instant::now();
         scan_taint_project(root, &taint_functions, &mut findings, &mut analysis_gaps);
+        ssprof("phaseB:taint", _tt);
         // M23 Phase 3: intraprocedural def-use over the parsed C/C++ functions
         // (uninitialized-variable use, numeric truncation).
+        let _td = std::time::Instant::now();
         scan_defuse(root, &taint_functions, &mut findings);
+        ssprof("phaseB:defuse", _td);
     });
     // #01 static-reachability tiering: label every finding by whether untrusted
     // input can reach its enclosing function over the call graph (the honest static
     // analog of the "attacker-reachable" verdict the commercial tools market).
+    let _tr = std::time::Instant::now();
     annotate_reachability(root, &taint_functions, &mut findings);
+    ssprof("phaseC:reachability", _tr);
+    let _tdd = std::time::Instant::now();
     dedupe_taint_over_pattern(&mut findings);
+    ssprof("phaseC:dedupe", _tdd);
     dedupe_low_confidence_secret_over_verified(&mut findings);
     // Inline `// govfuzz:ignore` / `# nosec` / `# nosemgrep` suppression, over all
     // rule classes (pattern, secret, def-use, taint).
@@ -1390,7 +1411,12 @@ fn discover_findings(
 /// every input-source-bearing function, plus a per-file map of function line ranges
 /// so a finding's location can be mapped to its enclosing function.
 struct LangReach {
-    reachable: BTreeSet<FunctionKey>,
+    /// Membership only — never iterated — so this is a HASH set. As a `BTreeSet`
+    /// every probe cost ~17 comparisons of `FunctionKey`, and a key holds a full
+    /// `PathBuf`, so each of those compared long path strings. The reachability BFS
+    /// probes once per candidate target per call site, which on a 4,912-file Java
+    /// tree is billions of path comparisons: 24 of the scan's 28 seconds.
+    reachable: std::collections::HashSet<FunctionKey>,
     has_source: bool,
     ranges: BTreeMap<String, Vec<(u32, u32, FunctionKey)>>,
 }
@@ -1413,7 +1439,10 @@ fn annotate_reachability(root: &Path, functions: &[FunctionModel], findings: &mu
     }
     let mut reach: BTreeMap<&str, LangReach> = BTreeMap::new();
     for (lang, fns) in by_lang {
+        let _ti = std::time::Instant::now();
         let index = FunctionIndex::new(fns);
+        ssprof("reach:index", _ti);
+        let _ts = std::time::Instant::now();
         let mut sources: Vec<FunctionKey> = Vec::new();
         let mut ranges: BTreeMap<String, Vec<(u32, u32, FunctionKey)>> = BTreeMap::new();
         for (key, function) in &index.models {
@@ -1434,25 +1463,57 @@ fn annotate_reachability(root: &Path, functions: &[FunctionModel], findings: &mu
                 sources.push(key.clone());
             }
         }
+        ssprof("reach:sources+ranges", _ts);
+        let _tb = std::time::Instant::now();
         let has_source = !sources.is_empty();
         // Forward BFS over caller->callee edges from every source: everything an
         // input-bearing function can reach is on an attacker-influenced path.
-        let mut reachable: BTreeSet<FunctionKey> = sources.iter().cloned().collect();
+        let mut reachable: std::collections::HashSet<FunctionKey> =
+            sources.iter().cloned().collect();
         let mut queue: VecDeque<FunctionKey> = sources.into_iter().collect();
+        // Reused across call sites so the closure can hand work back to the queue
+        // without borrowing it: one allocation for the whole BFS.
+        let mut newly_reached: Vec<FunctionKey> = Vec::new();
+        // Names whose whole candidate set is already reachable.
+        let mut saturated: std::collections::HashSet<String> = std::collections::HashSet::new();
         while let Some(key) = queue.pop_front() {
             let Some(function) = index.get(&key) else {
                 continue;
             };
             for line in &function.body {
                 for name in line_call_name_candidates(&line.text) {
-                    for target in index.call_targets(&name, function) {
-                        if reachable.insert(target.clone()) {
-                            queue.push_back(target);
+                    // A name whose every candidate is already reachable can never
+                    // add anything again, whichever subset the preference rules
+                    // would pick — so retire it.
+                    //
+                    // This is what makes the pass stop being quadratic. Each call
+                    // site walks EVERY function in the tree sharing that name, and
+                    // that list grows with the tree, so a hot name like `get` in a
+                    // dense Java codebase was re-walked across thousands of lines.
+                    // The reachable set only ever grows, so "saturated" is
+                    // monotonic and can never go stale.
+                    if saturated.contains(name.as_str()) {
+                        continue;
+                    }
+                    if let Some(candidates) = index.candidates_for(&name, function) {
+                        if candidates.iter().all(|key| reachable.contains(key)) {
+                            saturated.insert(name);
+                            continue;
                         }
+                    }
+                    index.for_each_call_target(&name, function, |target| {
+                        if !reachable.contains(target) {
+                            reachable.insert(target.clone());
+                            newly_reached.push(target.clone());
+                        }
+                    });
+                    for target in newly_reached.drain(..) {
+                        queue.push_back(target);
                     }
                 }
             }
         }
+        ssprof("reach:bfs", _tb);
         reach.insert(
             lang,
             LangReach {
@@ -23228,7 +23289,7 @@ struct FunctionModel {
     body: Vec<BodyLine>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct FunctionKey {
     path: PathBuf,
     name: String,
@@ -23251,13 +23312,16 @@ struct FunctionIndex<'a> {
     // of essentially every modeled source line; cloning them into a per-language
     // index doubled peak RSS on large scans.
     models: BTreeMap<FunctionKey, &'a FunctionModel>,
-    by_name: BTreeMap<String, Vec<FunctionKey>>,
+    /// Lookup-only, so hashed. (`models` stays ordered: it IS iterated, and that
+    /// order decides which definition wins for an enclosing-range lookup.)
+    by_name: std::collections::HashMap<String, Vec<FunctionKey>>,
 }
 
 impl<'a> FunctionIndex<'a> {
     fn new(functions: impl IntoIterator<Item = &'a FunctionModel>) -> Self {
         let mut models = BTreeMap::new();
-        let mut by_name: BTreeMap<String, Vec<FunctionKey>> = BTreeMap::new();
+        let mut by_name: std::collections::HashMap<String, Vec<FunctionKey>> =
+            std::collections::HashMap::new();
         for function in functions {
             let key = FunctionKey::from_model(function);
             for lookup_name in function_lookup_names(function) {
@@ -23276,24 +23340,68 @@ impl<'a> FunctionIndex<'a> {
         self.models.get(key).copied()
     }
 
-    fn call_targets(&self, name: &str, caller: &FunctionModel) -> Vec<FunctionKey> {
-        let lookup_name = if caller.language == "ada" {
-            name.to_ascii_lowercase()
+    /// Visit exactly the keys [`Self::call_targets`] would return, in the same
+    /// order, WITHOUT allocating.
+    ///
+    /// The allocating form was 24 of the 28 seconds a 4,912-file Java scan spent:
+    /// the reachability BFS calls it for every candidate name on every line of
+    /// every reachable function, and each call allocated a `String` merely to key
+    /// the lookup and then CLONED THE WHOLE CANDIDATE LIST (`prefer_same_file` ->
+    /// `candidates.to_vec()`). A Java method name like `get` is shared by hundreds
+    /// of classes, so that is hundreds of key clones per call site.
+    fn for_each_call_target(
+        &self,
+        name: &str,
+        caller: &FunctionModel,
+        mut visit: impl FnMut(&FunctionKey),
+    ) {
+        // Only Ada needs a case-folded copy; every other language can look up the
+        // borrowed name directly.
+        let candidates = if caller.language == "ada" {
+            self.by_name.get(&name.to_ascii_lowercase())
         } else {
-            name.to_owned()
+            self.by_name.get(name)
         };
-        let Some(candidates) = self.by_name.get(&lookup_name) else {
-            return Vec::new();
+        let Some(candidates) = candidates else {
+            return;
         };
         if caller.language == "cpp" && !name.contains("::") {
-            return self.cpp_unqualified_targets(name, caller, candidates);
+            for key in self.cpp_unqualified_targets(name, caller, candidates) {
+                visit(&key);
+            }
+            return;
         }
-        let same_file = candidates
-            .iter()
-            .filter(|key| key.path == caller.path)
-            .cloned()
-            .collect::<Vec<_>>();
-        prefer_same_file(candidates, &same_file)
+        // Same-file definitions win, exactly as `prefer_same_file` chose: emit them
+        // in candidate order, and fall back to the full list only when none match.
+        let mut saw_same_file = false;
+        for key in candidates {
+            if key.path == caller.path {
+                saw_same_file = true;
+                visit(key);
+            }
+        }
+        if !saw_same_file {
+            for key in candidates {
+                visit(key);
+            }
+        }
+    }
+
+    /// Every function in this language's index whose lookup name matches, before
+    /// any same-file or scope preference is applied.
+    fn candidates_for(&self, name: &str, caller: &FunctionModel) -> Option<&[FunctionKey]> {
+        let found = if caller.language == "ada" {
+            self.by_name.get(&name.to_ascii_lowercase())
+        } else {
+            self.by_name.get(name)
+        };
+        found.map(|keys| keys.as_slice())
+    }
+
+    fn call_targets(&self, name: &str, caller: &FunctionModel) -> Vec<FunctionKey> {
+        let mut targets = Vec::new();
+        self.for_each_call_target(name, caller, |key| targets.push(key.clone()));
+        targets
     }
 
     fn call_targets_with_arity(

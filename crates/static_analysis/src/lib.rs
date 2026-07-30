@@ -1127,6 +1127,21 @@ impl MemoryGuard {
 /// off, so it can sit on the scan path. Kept because the Java scan's cost was NOT
 /// where it looked: the obvious suspects (call resolution, taint state explosion)
 /// were both already bounded, and only measurement found the real phase.
+/// Call-graph fan-out counters: how many (name, arity) call sites were resolved,
+/// and how many target edges that produced. Their ratio is the average
+/// over-approximation, which is what a name-keyed index costs on a language whose
+/// calls are `obj.method(...)`.
+static CALL_SITES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static CALL_TARGETS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// One cached env lookup, so the counters below cost nothing when profiling is
+/// off. They sit on the taint pass's hottest path — every candidate name on every
+/// line — and an unconditional atomic there is not free.
+fn profiling() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("GOVFUZZ_PROFILE").is_some())
+}
+
 fn ssprof(label: &str, start: std::time::Instant) {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     if *ON.get_or_init(|| std::env::var_os("GOVFUZZ_PROFILE").is_some()) {
@@ -1372,6 +1387,14 @@ fn discover_findings(
         let _tt = std::time::Instant::now();
         scan_taint_project(root, &taint_functions, &mut findings, &mut analysis_gaps);
         ssprof("phaseB:taint", _tt);
+        if profiling() {
+            let sites = CALL_SITES.load(std::sync::atomic::Ordering::Relaxed);
+            let targets = CALL_TARGETS.load(std::sync::atomic::Ordering::Relaxed);
+            eprintln!(
+                "[prof] taint:call_sites={sites} targets={targets} fanout={:.2}",
+                targets as f64 / sites.max(1) as f64
+            );
+        }
         // M23 Phase 3: intraprocedural def-use over the parsed C/C++ functions
         // (uninitialized-variable use, numeric truncation).
         let _td = std::time::Instant::now();
@@ -27492,7 +27515,13 @@ fn local_calls(
         } else {
             name.clone()
         };
+        if profiling() {
+            CALL_SITES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         for key in functions.call_targets_with_arity(&name, current_model, arg_count) {
+            if profiling() {
+                CALL_TARGETS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
             if &key == current || !seen.insert(key.clone()) {
                 continue;
             }

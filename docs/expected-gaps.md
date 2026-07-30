@@ -442,21 +442,28 @@ shares on comparable trees:
 | Python (django) | 5.1 s | **0.6 s** | 0.3 s |
 | Java (elasticsearch) | 23.5 s | **15.9 s** | 4.2 s |
 
-Java's taint pass is 7.6x Go's, and it tracks the gap count: elasticsearch
-produces **43,660 `unresolved_project_local_call` gaps**. Java calls are
-`obj.method(...)` while the index keys on names, so resolution fails constantly,
-and every failure allocates a five-field `AnalysisGap` that is retained and
-serialised. That is the concrete next lever — but note carefully that BOTH ways
-of pulling it change reported output, which is why neither was taken here:
+Measuring the call graph itself says what the cause is
+(`GOVFUZZ_PROFILE=1` prints these):
 
-- Resolving those calls (a receiver-type-aware index) would let taint flow
-  further and so can only ADD findings.
-- Deduplicating or bounding the gaps changes `gap_count`, which the parity
-  harness compares deliberately, because a shrinking gap count is exactly how
-  "we stopped exploring" would disguise itself.
+| lane | call sites | target edges | fan-out |
+|---|---:|---:|---:|
+| Java (elasticsearch) | 175,297 | 562,531 | **3.21** |
+| Go (kubernetes) | 17,690 | 16,155 | **0.91** |
 
-Either is legitimate, but each needs to be argued as a behaviour change on its
-own merits rather than smuggled in as an optimisation.
+**Java's call graph is over-approximated by roughly 3.5x.** Calls are
+`obj.method(...)`, and the index keys on name plus arity, so `get()` resolves to
+every zero-argument `get` in the tree. Each spurious edge is both extra taint
+work and a spurious flow, which is why elasticsearch also emits 43,660
+`unresolved_project_local_call` gaps for the names that match nothing at all.
+
+So this is one defect with two symptoms, not a density fact about Java. A
+receiver-type-aware index would make the lane **faster AND more precise** —
+narrowing 562k edges toward Go's ~1:1 removes work and removes spurious flows.
+
+It is not taken here because it is a PRECISION change: `finding-parity.py` should
+be expected to show findings CHANGE, most likely decrease as spurious flows
+disappear, and each disappearance needs looking at rather than waving through.
+That is a deliberate piece of work with a review step, not an optimisation.
 
 The rest is inherent work, and that is now a measured claim rather than an
 assumption. Two further optimisations were tried on the taint worklist and BOTH

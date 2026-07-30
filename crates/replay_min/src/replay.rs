@@ -578,6 +578,41 @@ fn find_on_path(binary: &str) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
+/// Spawn a harness, retrying the two transient failures that make an `exec` of a
+/// FRESHLY WRITTEN executable fail.
+///
+/// `ExecutableFileBusy` (`ETXTBSY`) is the real one: the kernel refuses to exec a
+/// file that is still open for writing anywhere, so building — or copying — a
+/// harness and immediately replaying it races the writer's descriptor being
+/// closed. It is load- and filesystem-dependent, which is why it surfaced as an
+/// intermittent CI failure and never locally: `replay` exiting 1 with "failed to
+/// start harness ...", which reads like a broken harness rather than a race.
+///
+/// This is not a test-only concern. govfuzz BUILDS a harness and then replays it,
+/// so real runs hit the same window. `WouldBlock` (`EAGAIN`) covers a transient
+/// fork failure when a loaded box is briefly out of process slots.
+///
+/// Matched on `ErrorKind` rather than raw errno so it compiles on every target.
+fn spawn_harness(command: &mut Command) -> std::io::Result<std::process::Child> {
+    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(25);
+    const RETRIES: usize = 40; // ~1s total, far longer than either window lasts
+    for _ in 0..RETRIES {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error) => {
+                if !matches!(
+                    error.kind(),
+                    std::io::ErrorKind::ExecutableFileBusy | std::io::ErrorKind::WouldBlock
+                ) {
+                    return Err(error);
+                }
+                std::thread::sleep(RETRY_DELAY);
+            }
+        }
+    }
+    command.spawn()
+}
+
 #[cfg(test)]
 pub(crate) fn signatures_for_input(
     harness_path: &Path,
@@ -1278,39 +1313,4 @@ fn main() -> std::io::Result<()> {
             mocks: Vec::new(),
         }
     }
-}
-
-/// Spawn a harness, retrying the two transient failures that make an `exec` of a
-/// FRESHLY WRITTEN executable fail.
-///
-/// `ExecutableFileBusy` (`ETXTBSY`) is the real one: the kernel refuses to exec a
-/// file that is still open for writing anywhere, so building — or copying — a
-/// harness and immediately replaying it races the writer's descriptor being
-/// closed. It is load- and filesystem-dependent, which is why it surfaced as an
-/// intermittent CI failure and never locally: `replay` exiting 1 with "failed to
-/// start harness ...", which reads like a broken harness rather than a race.
-///
-/// This is not a test-only concern. govfuzz BUILDS a harness and then replays it,
-/// so real runs hit the same window. `WouldBlock` (`EAGAIN`) covers a transient
-/// fork failure when a loaded box is briefly out of process slots.
-///
-/// Matched on `ErrorKind` rather than raw errno so it compiles on every target.
-fn spawn_harness(command: &mut Command) -> std::io::Result<std::process::Child> {
-    const RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(25);
-    const RETRIES: usize = 40; // ~1s total, far longer than either window lasts
-    for _ in 0..RETRIES {
-        match command.spawn() {
-            Ok(child) => return Ok(child),
-            Err(error) => {
-                if !matches!(
-                    error.kind(),
-                    std::io::ErrorKind::ExecutableFileBusy | std::io::ErrorKind::WouldBlock
-                ) {
-                    return Err(error);
-                }
-                std::thread::sleep(RETRY_DELAY);
-            }
-        }
-    }
-    command.spawn()
 }

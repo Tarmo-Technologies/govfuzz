@@ -432,12 +432,29 @@ findings — and only 1.3 s in taint. Both real causes were in that BFS:
   grows, so that is monotonic and cannot go stale: a further **2.7x**, and the BFS
   went from 79.1 s to 2.0 s on the full tree.
 
-What is left is honest work: per-file rule packs (23.9 s, already parallel at
-cores-1) and the taint worklist (16.0 s). The worklist is single-threaded for a
-mono-language tree because `scan_taint_project` parallelizes across LANGUAGES, and
-its state (`enqueued`, `fn_states`, `truncated`) is shared, so parallelising it is
-a real decomposition rather than a `par_iter` swap — and it is the pass that can
-silently change findings. Left alone deliberately.
+What is left is inherent work, and that is now a measured claim rather than an
+assumption. Two further optimisations were tried on the taint worklist and BOTH
+measured as no gain:
+
+- Hashing its membership sets (`enqueued`, `fn_states`, `truncated`) — the change
+  that was worth 3.1x in the reachability BFS — moved nothing. The BFS probed once
+  per candidate per LINE; the worklist probes once per enqueue and per pop, orders
+  of magnitude fewer, so long-path comparisons never dominated here. Kept anyway
+  for consistency, and labelled as a no-op in the code.
+- Making the per-line arity resolution allocation-free took the phase from 15.9 s
+  to 16.9 s: avoiding the two intermediate `Vec`s meant walking the candidate list
+  up to three times instead of once. Reverted.
+
+So the remaining 16.0 s is the per-line call resolution itself — candidate
+extraction, call-shape gating, arity matching — not a data-structure or allocation
+problem. The only structural lever left is running it on more than one core:
+`scan_taint_project` parallelizes across LANGUAGES, so a mono-language tree uses
+one. That means decomposing shared mutable state (`enqueued`, `fn_states`,
+`truncated`, the findings sink) in the one pass that can silently change findings,
+which is a redesign rather than a `par_iter` swap. `finding-parity.py` is the gate
+it would need.
+
+Per-file rule packs (23.6 s) are already parallel at cores-1.
 
 ---
 

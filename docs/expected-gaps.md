@@ -466,6 +466,25 @@ So this is one defect with two symptoms, not a density fact about Java. A
 receiver-type-aware index would make the lane **faster AND more precise** —
 narrowing 562k edges toward Go's ~1:1 removes work and removes spurious flows.
 
+**Do not "fix" this by enabling the C++ receiver path for Java.** The machinery
+looks one language gate away —
+
+    if language == "cpp" {
+        for (name, type_name) in cpp_local_object_declarations(&line.text) { ... }
+    }
+
+— and it is a trap. `cpp_member_targets` resolves `ReceiverType::member` against
+`by_name` with **no inheritance walk**: when the method is declared on a base
+class or interface, the lookup misses and it returns NO targets. Java dispatch is
+virtual and elasticsearch is interface-heavy, so most call sites would resolve to
+nothing at all — turning a 2.49x over-approximation into near-total
+UNDER-approximation and silently gutting taint propagation.
+
+It would present as a large speedup with fewer findings, which is exactly what a
+real precision win also looks like. Anyone taking this must build an
+inheritance-aware index first (declared type -> supertypes -> declaring class),
+and treat the resulting finding delta as the deliverable.
+
 It is not taken here because it is a PRECISION change: `finding-parity.py` should
 be expected to show findings CHANGE, most likely decrease as spurious flows
 disappear, and each disappearance needs looking at rather than waving through.

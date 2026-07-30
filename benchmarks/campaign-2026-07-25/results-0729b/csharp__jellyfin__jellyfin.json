@@ -1,0 +1,777 @@
+{
+ "lane": "csharp",
+ "repo": "jellyfin/jellyfin",
+ "stars": 54977,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/csharp/jellyfin__jellyfin --json --out /home/ubuntu/govfuzz-sweep-work/csharp__jellyfin__jellyfin.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "languages": 2,
+   "sloc_total": 225268,
+   "sloc_by_lang": {
+    "csharp": 224253,
+    "config": 1015
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/csharp/jellyfin__jellyfin --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.08,
+   "timed_out": false,
+   "panic": false,
+   "count": 229,
+   "by_language": {
+    "csharp": 229
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/csharp/jellyfin__jellyfin --out /home/ubuntu/govfuzz-sweep-work/csharp__jellyfin__jellyfin/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.41,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 11,
+   "by_severity": {
+    "medium": 7,
+    "critical": 4
+   },
+   "top_rules": {
+    "GF-500": 7,
+    "GF-429": 4
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/csharp/jellyfin__jellyfin --out /home/ubuntu/govfuzz-sweep-work/csharp__jellyfin__jellyfin/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 78
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/csharp/jellyfin__jellyfin --work-dir /home/ubuntu/govfuzz-sweep-work/csharp__jellyfin__jellyfin --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 98.54,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 229,
+    "dropped_by_cap": 169,
+    "built": 5,
+    "built_and_fuzzed": 5,
+    "fuzzed_stub_only": 0,
+    "failed_build": 0,
+    "unsupported_params": 55,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 0,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Emby.Server.Implementations.IO.MbLinkShortcutHandler.Resolve",
+     "source": "MbLinkShortcutHandler.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 13653.058021693836,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Emby.Server.Implementations.Data.TypeMapper.GetType",
+     "source": "TypeMapper.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 14018.348604355182,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Emby.Naming.AudioBook.AudioBookNameParser.Parse",
+     "source": "AudioBookNameParser.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Naming.AudioBook.AudioBookNameParser.Parse` needs a receiver, but `AudioBookNameParser` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Naming.AudioBook.AudioBookFilePathParser.Parse",
+     "source": "AudioBookFilePathParser.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Naming.AudioBook.AudioBookFilePathParser.Parse` needs a receiver, but `AudioBookFilePathParser` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Naming.AudioBook.AudioBookResolver.Resolve",
+     "source": "AudioBookResolver.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Naming.AudioBook.AudioBookResolver.Resolve` needs a receiver, but `AudioBookResolver` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Naming.Audio.AlbumParser.IsMultiPart",
+     "source": "AlbumParser.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Naming.Audio.AlbumParser.IsMultiPart` needs a receiver, but `AlbumParser` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Naming.Book.BookFileNameParser.Parse",
+     "source": "BookFileNameParser.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 1038.7743721977845,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Emby.Naming.Video.FileStack.ContainsFile",
+     "source": "FileStack.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Naming.Video.FileStack.ContainsFile` needs a receiver, but `FileStack` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.FileRefresher.AddPath",
+     "source": "FileRefresher.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.FileRefresher.AddPath` needs a receiver, but `FileRefresher` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.IsShortcut",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.IsShortcut` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.PathManager.GetAttachmentFolderPath",
+     "source": "PathManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.PathManager.GetAttachmentFolderPath` needs a receiver, but `PathManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.ResolveShortcut",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.ResolveShortcut` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.LibraryMonitor.ReportFileSystemChangeBeginning",
+     "source": "LibraryMonitor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.LibraryMonitor.ReportFileSystemChangeBeginning` needs a receiver, but `LibraryMonitor` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.PathManager.GetSubtitleFolderPath",
+     "source": "PathManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.PathManager.GetSubtitleFolderPath` needs a receiver, but `PathManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.LibraryMonitor.ReportFileSystemChangeComplete",
+     "source": "LibraryMonitor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.LibraryMonitor.ReportFileSystemChangeComplete` needs a receiver, but `LibraryMonitor` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.PathExtensions.Canonicalize",
+     "source": "PathExtensions.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15258.10171777086,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.PathExtensions.NormalizePath",
+     "source": "PathExtensions.cs",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 15639.625308463465,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetFileSystemInfo",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetFileSystemInfo` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetFileInfo",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetFileInfo` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetDirectoryInfo",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetDirectoryInfo` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Localization.LocalizationManager.FindLanguageInfo",
+     "source": "LocalizationManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Localization.LocalizationManager.FindLanguageInfo` needs a receiver, but `LocalizationManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.MediaSourceManager.GetPathProtocol",
+     "source": "MediaSourceManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.MediaSourceManager.GetPathProtocol` needs a receiver, but `MediaSourceManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Localization.LocalizationManager.GetLanguageDisplayName",
+     "source": "LocalizationManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Localization.LocalizationManager.GetLanguageDisplayName` needs a receiver, but `LocalizationManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.AppBase.BaseConfigurationManager.GetConfiguration",
+     "source": "BaseConfigurationManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.AppBase.BaseConfigurationManager.GetConfiguration` is declared on abstract/interface type `BaseConfigurationManager`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.ApplicationHost.ExpandVirtualPath",
+     "source": "ApplicationHost.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.ApplicationHost.ExpandVirtualPath` is declared on abstract/interface type `ApplicationHost`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.ApplicationHost.ReverseVirtualPath",
+     "source": "ApplicationHost.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.ApplicationHost.ReverseVirtualPath` is declared on abstract/interface type `ApplicationHost`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetValidFilename",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetValidFilename` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.LibraryMonitor.ReportFileSystemChanged",
+     "source": "LibraryMonitor.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.LibraryMonitor.ReportFileSystemChanged` needs a receiver, but `LibraryMonitor` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetCreationTimeUtc",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetCreationTimeUtc` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.AppBase.BaseConfigurationManager.GetConfigurationType",
+     "source": "BaseConfigurationManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.AppBase.BaseConfigurationManager.GetConfigurationType` is declared on abstract/interface type `BaseConfigurationManager`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetLastWriteTimeUtc",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetLastWriteTimeUtc` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.SetHidden",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.SetHidden` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.SetAttributes",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.SetAttributes` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.IsPathFile",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.IsPathFile` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.DeleteFile",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.DeleteFile` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Localization.LocalizationManager.GetLocalizedString",
+     "source": "LocalizationManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Localization.LocalizationManager.GetLocalizedString` needs a receiver, but `LocalizationManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetDirectories",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetDirectories` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetFiles",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetFiles` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetFileSystemEntries",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetFileSystemEntries` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetDirectoryPaths",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetDirectoryPaths` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetFilePaths",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetFilePaths` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.GetFileSystemEntryPaths",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.GetFileSystemEntryPaths` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.DirectoryExists",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.DirectoryExists` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.IO.ManagedFileSystem.FileExists",
+     "source": "ManagedFileSystem.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.IO.ManagedFileSystem.FileExists` needs a receiver, but `ManagedFileSystem` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.MediaSourceManager.GetLiveStreamInfo",
+     "source": "MediaSourceManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.MediaSourceManager.GetLiveStreamInfo` needs a receiver, but `MediaSourceManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.MediaSourceManager.GetLiveStreamInfoByUniqueId",
+     "source": "MediaSourceManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.MediaSourceManager.GetLiveStreamInfoByUniqueId` needs a receiver, but `MediaSourceManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.ApplicationHost.GetSmartApiUrl",
+     "source": "ApplicationHost.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.ApplicationHost.GetSmartApiUrl` is declared on abstract/interface type `ApplicationHost`, which has no instance to allocate (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.MediaSourceManager.CloseLiveStream",
+     "source": "MediaSourceManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.MediaSourceManager.CloseLiveStream` needs a receiver, but `MediaSourceManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.FindByPath",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.FindByPath` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetPerson",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetPerson` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetStudio",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetStudio` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetStudioId",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetStudioId` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetGenreId",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetGenreId` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetMusicGenreId",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetMusicGenreId` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetGenre",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetGenre` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetMusicGenre",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetMusicGenre` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetArtist",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetArtist` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.GetConfiguredContentType",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.GetConfiguredContentType` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.ParseName",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.ParseName` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Emby.Server.Implementations.Library.LibraryManager.RemoveVirtualFolder",
+     "source": "LibraryManager.cs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Emby.Server.Implementations.Library.LibraryManager.RemoveVirtualFolder` needs a receiver, but `LibraryManager` has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an uninitialized receiver (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 50,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" has no accessible parameterless constructor (only a parameterized or private one); pass --force to call it on an u\u2026",
+     "language": "csharp"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "instance method \"X\" is declared on abstract/interface type \"X\", which has no instance to allocate (skipped cleanly)",
+     "language": "csharp"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "b15d3c9ad31d6a2f7e940d0372d9f3b93c5f9e95",
+ "clone_s": 1.3,
+ "lane_check": "csharp: 2122 files / 270677 lines; top=csharp(270677)",
+ "status": "done"
+}

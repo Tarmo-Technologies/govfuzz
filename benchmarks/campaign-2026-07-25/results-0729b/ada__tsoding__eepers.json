@@ -1,0 +1,879 @@
+{
+ "lane": "ada",
+ "repo": "tsoding/eepers",
+ "stars": 468,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/ada/tsoding__eepers --json --out /home/ubuntu/govfuzz-sweep-work/ada__tsoding__eepers.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.0,
+   "timed_out": false,
+   "panic": false,
+   "languages": 1,
+   "sloc_total": 2079,
+   "sloc_by_lang": {
+    "ada": 2079
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/ada/tsoding__eepers --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.03,
+   "timed_out": false,
+   "panic": false,
+   "count": 127,
+   "by_language": {
+    "ada": 127
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/ada/tsoding__eepers --out /home/ubuntu/govfuzz-sweep-work/ada__tsoding__eepers/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 12,
+   "by_severity": {
+    "medium": 12
+   },
+   "top_rules": {
+    "GF-412": 8,
+    "GF-410": 2,
+    "GF-409": 1,
+    "GF-402": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/ada/tsoding__eepers --out /home/ubuntu/govfuzz-sweep-work/ada__tsoding__eepers/sbom",
+   "exit": 0,
+   "wall_s": 0.0,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/ada/tsoding__eepers --work-dir /home/ubuntu/govfuzz-sweep-work/ada__tsoding__eepers --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 118.1,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 112,
+    "dropped_by_cap": 52,
+    "built": 11,
+    "built_and_fuzzed": 11,
+    "fuzzed_stub_only": 11,
+    "failed_build": 16,
+    "unsupported_params": 33,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 12,
+    "stubbed_ada_units": 5,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 1,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "load_image",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'File_Name' of target 'Raylib.Load_Image' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_sound",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'File_Name' of target 'Raylib.Load_Sound' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_music_stream",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'File_Name' of target 'Raylib.Load_Music_Stream' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "close_window",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 13177.66803636923,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "window_should_close",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 14801.87341688449,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "begin_drawing",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 13943.120721553985,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "end_drawing",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 2,
+     "repairs": 3,
+     "execs_per_sec": 13442.420603157525,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "get_screen_width",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_screen_height",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_key_pressed",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "end_mode2d",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 14936.359323690256,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "get_frame_time",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_time",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_working_directory",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_application_directory",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "init_audio_device",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 13519.068366352887,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "screen_size",
+     "source": "eepers.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "swallow_player_input",
+     "source": "eepers.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_font_ex",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'File_Name' of target 'Raylib.Load_Font_Ex' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "load_game_from_image",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Game' of target 'Load_Game_From_Image' with type 'Game_State': named type Game_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Game_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "init_window",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Title' of target 'Raylib.Init_Window' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "measure_text",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Text' of target 'Raylib.Measure_Text' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_text",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Text' of target 'Raylib.Draw_Text' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_text_ex",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Text' of target 'Raylib.Draw_Text_Ex' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "export_image",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'File_Name' of target 'Raylib.Export_Image' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "measure_text_ex",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Text' of target 'Raylib.Measure_Text_Ex' with type 'Char_Array': named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Char_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "show_popup",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Popup' of target 'Show_Popup' with type 'Popup_State': named type Popup_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Popup_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "gen_texture_mipmaps",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clear_background",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 15075.95971084914,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "draw_rectangle",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_rectangle_v",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 14365.368805190736,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "begin_mode2d",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 12745.631119647076,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "color_to_int",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_circle",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Radius' of target 'Raylib.Draw_Circle' with type 'C_Float': named type C_Float is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'C_Float' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_circle_v",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Radius' of target 'Raylib.Draw_Circle_V' with type 'C_Float': named type C_Float is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'C_Float' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_fps",
+     "source": "raylib.ads",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cell_colors",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'C' of target 'Cell_Colors' with type 'Cell': named type Cell is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Cell' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "color_brightness",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Factor' of target 'Raylib.Color_Brightness' with type 'C_Float': named type C_Float is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'C_Float' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "color_to_hsv",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 14377.532952847638,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "color_from_hsv",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Hue' of target 'Raylib.Color_From_Hsv' with type 'C_Float': named type C_Float is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'C_Float' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_triangle",
+     "source": "raylib.ads",
+     "outcome": "built_and_fuzzed",
+     "retries": 1,
+     "repairs": 3,
+     "execs_per_sec": 14145.862742917463,
+     "reason": null,
+     "stub_only": true,
+     "blind_stub_fraction": 1.0
+    },
+    {
+     "name": "draw_triangle_strip",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Points' of target 'Raylib.Draw_Triangle_Strip' with type 'Raylib.Vector2_Array': named type Raylib.Vector2_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Raylib.Vector2_Array' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "change_directory",
+     "source": "raylib.ads",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Dir' of target 'Raylib.Change_Directory' with type 'Chars_Ptr': named type Chars_Ptr is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Chars_Ptr' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_popup",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Popup' of target 'Draw_Popup' with type 'Popup_State': named type Popup_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Popup_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clone_map",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'M0' of target 'Clone_Map' with type 'Map_Access': named type Map_Access is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Map_Access' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "eeper_can_stand_here",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Game' of target 'Eeper_Can_Stand_Here' with type 'Game_State': named type Game_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Game_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "allocate_eeper",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Game' of target 'Allocate_Eeper' with type 'Game_State': named type Game_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Game_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "allocate_item",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Game' of target 'Allocate_Item' with type 'Game_State': named type Game_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Game_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "cell_by_color",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Out_Cel' of target 'Cell_By_Color' with type 'Level_Cell': named type Level_Cell is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Level_Cell' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_bomb",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Position' of target 'Draw_Bomb' with type 'Ivector2': named type Ivector2 is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Ivector2' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_key",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Position' of target 'Draw_Key' with type 'Ivector2': named type Ivector2 is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Ivector2' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_number",
+     "source": "eepers.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_number",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Cell_Position' of target 'Draw_Number' with type 'Ivector2': named type Ivector2 is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Ivector2' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "explode",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Game' of target 'Explode' with type 'Game_State': named type Game_State is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Game_State' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "command_enqueue",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Q' of target 'Command_Enqueue' with type 'Command_Queue_Record': named type Command_Queue_Record is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Command_Queue_Record' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "command_dequeue",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Q' of target 'Command_Dequeue' with type 'Command_Queue_Record': named type Command_Queue_Record is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Command_Queue_Record' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "clamp",
+     "source": "eepers.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "delta_angle",
+     "source": "eepers.adb",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 1,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_eyes",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Prev_Kind' of target 'Draw_Eyes' with type 'Eyes_Kind': named type Eyes_Kind is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Eyes_Kind' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "draw_cooldown_timer_bubble",
+     "source": "eepers.adb",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "direct-call harness cannot initialize parameter 'Background' of target 'Draw_Cooldown_Timer_Bubble' with type 'Palette': named type Palette is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning 'Palette' to the parsed source set, include the needed source roots/project dependencies, or use a sequence or servant harness when the call requires existing state.",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "unsupported_params",
+     "count": 10,
+     "detail": "named type Char_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\" to the pars\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 8,
+     "detail": "\"X\" is not visible",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 5,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Game_State is not declared in the parsed source set and has no synth\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 4,
+     "detail": "named type C_Float is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\" to the parsed \u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 3,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Ivector2 is not declared in the parsed source set and has no synthes\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "\"X\" is not visible (more references follow)",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "incorrect use of \"X\"",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "procedure or entry name expected",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Command_Queue_Record is not declared in the parsed source set and ha\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Popup_State is not declared in the parsed source set and has no synt\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "expected an access type with designated type \"X\" defined at raylib.ads:N",
+     "language": "ada"
+    },
+    {
+     "category": "failed_build",
+     "count": 1,
+     "detail": "expected type \"X\" defined at raymath.ads:N",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Cell is not declared in the parsed source set and has no synthesizab\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Eyes_Kind is not declared in the parsed source set and has no synthe\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Level_Cell is not declared in the parsed source set and has no synth\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Map_Access is not declared in the parsed source set and has no synth\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "direct-call harness cannot initialize parameter \"X\" of target \"X\" with type \"X\": named type Palette is not declared in the parsed source set and has no synthesi\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Chars_Ptr is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\" to the parse\u2026",
+     "language": "ada"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "named type Raylib.Vector2_Array is not declared in the parsed source set and has no synthesizable constructor. Add a public constructor function returning \"X\" t\u2026",
+     "language": "ada"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "90a6ff6644cbc507588f193a7a7d8300da06e6fa",
+ "clone_s": 3.3,
+ "lane_check": "ada: 5 files / 2141 lines; top=ada(2141)",
+ "status": "done"
+}

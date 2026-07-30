@@ -1,0 +1,826 @@
+{
+ "lane": "lua",
+ "repo": "Kong/kong",
+ "stars": 43858,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/lua/Kong__kong --json --out /home/ubuntu/govfuzz-sweep-work/lua__Kong__kong.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "languages": 7,
+   "sloc_total": 297614,
+   "sloc_by_lang": {
+    "lua": 265200,
+    "config": 30460,
+    "python": 1141,
+    "rust": 542,
+    "perl": 185,
+    "go": 61,
+    "javascript": 25
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/lua/Kong__kong --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.09,
+   "timed_out": false,
+   "panic": false,
+   "count": 1284,
+   "by_language": {
+    "rust": 28,
+    "lua": 1250,
+    "python": 2,
+    "go": 4
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/lua/Kong__kong --out /home/ubuntu/govfuzz-sweep-work/lua__Kong__kong/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.52,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 177,
+   "by_severity": {
+    "medium": 22,
+    "high": 7,
+    "critical": 148
+   },
+   "top_rules": {
+    "GF-429": 140,
+    "GF-500": 12,
+    "GF-404": 8,
+    "GF-497": 6,
+    "GF-477": 3,
+    "GF-482": 2,
+    "GF-479": 1,
+    "GF-480": 1,
+    "GF-485": 1,
+    "GF-484": 1,
+    "GF-486": 1,
+    "GF-504": 1
+   },
+   "gaps": 1
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/lua/Kong__kong --out /home/ubuntu/govfuzz-sweep-work/lua__Kong__kong/sbom",
+   "exit": 0,
+   "wall_s": 0.02,
+   "timed_out": false,
+   "panic": false,
+   "components": 105
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/lua/Kong__kong --work-dir /home/ubuntu/govfuzz-sweep-work/lua__Kong__kong --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 40.19,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 60,
+    "discovered_total": 1265,
+    "dropped_by_cap": 1205,
+    "built": 4,
+    "built_and_fuzzed": 4,
+    "fuzzed_stub_only": 0,
+    "failed_build": 4,
+    "unsupported_params": 52,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 0
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 0,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 7,
+    "missing_files": 0,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "Ca_certificates:check_ca_reference",
+     "source": "ca_certificates.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Ca_certificates:check_ca_reference` is not loadable (skipped cleanly): missing module `ngx.ssl` (not in the project and not installed) \u2014 /usr/bin/lua: ...z-corpus-500/lua/Kong__kong/kong/runloop/certificate.lua:1: module 'ngx.ssl' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CacheHandler:access",
+     "source": "handler.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 6,
+     "execs_per_sec": 3085.5396349998937,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "Blueprint:build",
+     "source": "blueprints.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Blueprint:build` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/tools/table.lua:14: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BasicAuthHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BasicAuthHandler:access` is not loadable (skipped cleanly): missing module `resty.sha1` (not in the project and not installed) \u2014 /usr/bin/lua: ...us-500/lua/Kong__kong/kong/plugins/basic-auth/crypto.lua:2: module 'resty.sha1' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "B3_SINGLE_INJECTOR:create_headers",
+     "source": "b3-single.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B3_SINGLE_INJECTOR:create_headers` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "B3_INJECTOR:create_headers",
+     "source": "b3.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B3_INJECTOR:create_headers` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CLEANUP_BEFORE_COMPARE",
+     "source": "12-native_unit_spec.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CLEANUP_BEFORE_COMPARE` is not loadable (skipped cleanly): missing module `pl.file` (not in the project and not installed) \u2014 /usr/bin/lua: ...kong/spec/03-plugins/38-ai-proxy/12-native_unit_spec.lua:2: module 'pl.file' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Blueprint:insert",
+     "source": "blueprints.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Blueprint:insert` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/tools/table.lua:14: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DATADOG_EXTRACTOR:get_context",
+     "source": "datadog.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DATADOG_EXTRACTOR:get_context` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DATADOG_INJECTOR:create_headers",
+     "source": "datadog.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DATADOG_INJECTOR:create_headers` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWS_INJECTOR:create_headers",
+     "source": "aws.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AWS_INJECTOR:create_headers` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Blueprint:insert_ws",
+     "source": "blueprints.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Blueprint:insert_ws` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/tools/table.lua:14: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWS_INJECTOR:get_formatted_trace_id",
+     "source": "aws.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AWS_INJECTOR:get_formatted_trace_id` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWS_EXTRACTOR:get_context",
+     "source": "aws.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AWS_EXTRACTOR:get_context` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DATADOG_INJECTOR:get_formatted_trace_id",
+     "source": "datadog.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DATADOG_INJECTOR:get_formatted_trace_id` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Blueprint:remove",
+     "source": "blueprints.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Blueprint:remove` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/tools/table.lua:14: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Ca_certificates:delete",
+     "source": "ca_certificates.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Ca_certificates:delete` is not loadable (skipped cleanly): missing module `ngx.ssl` (not in the project and not installed) \u2014 /usr/bin/lua: ...z-corpus-500/lua/Kong__kong/kong/runloop/certificate.lua:1: module 'ngx.ssl' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "B3_SINGLE_INJECTOR:get_formatted_trace_id",
+     "source": "b3-single.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B3_SINGLE_INJECTOR:get_formatted_trace_id` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "B3_INJECTOR:get_formatted_trace_id",
+     "source": "b3.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B3_INJECTOR:get_formatted_trace_id` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Connector:store_connection",
+     "source": "connector.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 6,
+     "execs_per_sec": 3390.8885431890294,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CtxCheckerHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CtxCheckerHandler:access` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...ures/custom_plugins/kong/plugins/ctx-checker/handler.lua:1: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Blueprint:update",
+     "source": "blueprints.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `Blueprint:update` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/tools/table.lua:14: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACLHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACLHandler:access` is not loadable (skipped cleanly): /usr/bin/lua: ...ntu/govfuzz-corpus-500/lua/Kong__kong/kong/constants.lua:246: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CorrelationIdHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CorrelationIdHandler:access` is not loadable (skipped cleanly): missing module `resty.jit-uuid` (not in the project and not installed) \u2014 /usr/bin/lua: ...tu/govfuzz-corpus-500/lua/Kong__kong/kong/tools/uuid.lua:1: module 'resty.jit-uuid' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Connector:get_stored_connection",
+     "source": "connector.lua",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 6,
+     "execs_per_sec": 3227.481564144,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BotDetectionHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `BotDetectionHandler:access` is not loadable (skipped cleanly): missing module `table.new` (not in the project and not installed) \u2014 /usr/bin/lua: .../govfuzz-corpus-500/lua/Kong__kong/kong/tools/string.lua:1: module 'table.new' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWSLambdaHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AWSLambdaHandler:access` is not loadable (skipped cleanly): /usr/bin/lua: ...s-500/lua/Kong__kong/kong/plugins/aws-lambda/handler.lua:3: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CtxCheckerHandler:header_filter",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CtxCheckerHandler:header_filter` is not loadable (skipped cleanly): missing module `pl.tablex` (not in the project and not installed) \u2014 /usr/bin/lua: ...ures/custom_plugins/kong/plugins/ctx-checker/handler.lua:1: module 'pl.tablex' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CorrelationIdHandler:header_filter",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CorrelationIdHandler:header_filter` is not loadable (skipped cleanly): missing module `resty.jit-uuid` (not in the project and not installed) \u2014 /usr/bin/lua: ...tu/govfuzz-corpus-500/lua/Kong__kong/kong/tools/uuid.lua:1: module 'resty.jit-uuid' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACMEHandler:configure",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACMEHandler:configure` is not loadable (skipped cleanly): missing module `ngx.ssl` (not in the project and not installed) \u2014 /usr/bin/lua: ...z-corpus-500/lua/Kong__kong/kong/runloop/certificate.lua:1: module 'ngx.ssl' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACMEHandler:certificate",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACMEHandler:certificate` is not loadable (skipped cleanly): missing module `ngx.ssl` (not in the project and not installed) \u2014 /usr/bin/lua: ...z-corpus-500/lua/Kong__kong/kong/runloop/certificate.lua:1: module 'ngx.ssl' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "B3_EXTRACTOR:get_context",
+     "source": "b3.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `B3_EXTRACTOR:get_context` is not loadable (skipped cleanly): /usr/bin/lua: ...g__kong/kong/observability/tracing/propagation/utils.lua:5: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CorsHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CorsHandler:access` is not loadable (skipped cleanly): missing module `resty.lrucache` (not in the project and not installed) \u2014 /usr/bin/lua: ...-corpus-500/lua/Kong__kong/kong/plugins/cors/handler.lua:1: module 'resty.lrucache' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "ACMEHandler:access",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `ACMEHandler:access` is not loadable (skipped cleanly): missing module `ngx.ssl` (not in the project and not installed) \u2014 /usr/bin/lua: ...z-corpus-500/lua/Kong__kong/kong/runloop/certificate.lua:1: module 'ngx.ssl' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "CorsHandler:header_filter",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `CorsHandler:header_filter` is not loadable (skipped cleanly): missing module `resty.lrucache` (not in the project and not installed) \u2014 /usr/bin/lua: ...-corpus-500/lua/Kong__kong/kong/plugins/cors/handler.lua:1: module 'resty.lrucache' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "AWSLambdaHandler:header_filter",
+     "source": "handler.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `AWSLambdaHandler:header_filter` is not loadable (skipped cleanly): /usr/bin/lua: ...s-500/lua/Kong__kong/kong/plugins/aws-lambda/handler.lua:3: attempt to index a nil value (global 'ngx')",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:select",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:select` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:insert",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:insert` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:update",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:update` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:upsert",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:upsert` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:delete",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:delete` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:select_by_cache_key",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:select_by_cache_key` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:rows_to_entities",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:rows_to_entities` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:row_to_entity",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:row_to_entity` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "DAO:post_crud_event",
+     "source": "init.lua",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "target `DAO:post_crud_event` is not loadable (skipped cleanly): missing module `cjson` (not in the project and not installed) \u2014 /usr/bin/lua: ...u/govfuzz-corpus-500/lua/Kong__kong/kong/db/dao/init.lua:1: module 'cjson' not found:",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "try_from",
+     "source": "types.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "cargo build failed: unresolved path `response_transformer`",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "lambda_handler",
+     "source": "app.py",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": 7641.758037741624,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "default",
+     "source": "types.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'default' is a static method of a non-in-crate trait impl (callable only by UFCS with an in-crate trait); not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "on_configure",
+     "source": "filter.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'on_configure' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "create_http_context",
+     "source": "filter.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'create_http_context' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "on_http_response_headers",
+     "source": "filter.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'on_http_response_headers' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "New",
+     "source": "go-hello.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "try_from",
+     "source": "types.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'try_from' is a static method of a non-in-crate trait impl (callable only by UFCS with an in-crate trait); not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "on_done",
+     "source": "filter.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'on_done' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Access",
+     "source": "go-hello.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Log",
+     "source": "go-hello.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Response",
+     "source": "go-hello.go",
+     "outcome": "failed_build",
+     "retries": 0,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "Plugin.access",
+     "source": "py-hello.py",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "instance method `Plugin.access` needs a receiver, but `Plugin.__init__` takes 1 required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "fmt",
+     "source": "types.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'fmt' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "get_type",
+     "source": "filter.rs",
+     "outcome": "unsupported_params",
+     "retries": null,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": "Rust target 'get_type' is a &self method and no no-arg receiver constructor (Default / new()) was found; not auto-harnessable",
+     "stub_only": null,
+     "blind_stub_fraction": null
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 4,
+     "detail": "go build failed: govfuzz_harness.go:N:N: import \"X\" is a program, not an importable package",
+     "language": "go"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 28,
+     "detail": "target \"X\" is not loadable (skipped cleanly): missing module \"X\" (not in the project and not installed) \u2014 PATH PATH module \"X\" not found:",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 14,
+     "detail": "target \"X\" is not loadable (skipped cleanly): PATH PATH attempt to index a nil value (global \"X\")",
+     "language": "lua"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "instance method \"X\" needs a receiver, but \"X\" takes N required argument(s); only no-arg-constructible receivers are supported (skipped cleanly)",
+     "language": "python"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 6,
+     "detail": "Rust target \"X\" is a &self method and no no-arg receiver constructor (Default PATH new()) was found; not auto-harnessable",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 2,
+     "detail": "Rust target \"X\" is a static method of a non-in-crate trait impl (callable only by UFCS with an in-crate trait); not auto-harnessable",
+     "language": "rust"
+    },
+    {
+     "category": "unsupported_params",
+     "count": 1,
+     "detail": "cargo build failed: unresolved path \"X\"",
+     "language": "rust"
+    }
+   ],
+   "findings_detail": []
+  }
+ },
+ "sha": "391ee48d3a68e8d0bbd0405ec1d02d75f768aa92",
+ "clone_s": 1.5,
+ "lane_check": "lua: 1308 files / 285556 lines; top=lua(285556)",
+ "status": "done"
+}

@@ -1,0 +1,428 @@
+{
+ "lane": "cobol",
+ "repo": "meyfa/CobolCraft",
+ "stars": 699,
+ "wave": "W0",
+ "surfaces": {
+  "sloc": {
+   "cmd": "sloc /home/ubuntu/govfuzz-corpus-500/cobol/meyfa__CobolCraft --json --out /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft.cwd/sloc.json",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "languages": 4,
+   "sloc_total": 23445,
+   "sloc_by_lang": {
+    "cobol": 22845,
+    "cpp": 452,
+    "config": 125,
+    "c": 23
+   }
+  },
+  "list_targets": {
+   "cmd": "list targets /home/ubuntu/govfuzz-corpus-500/cobol/meyfa__CobolCraft --format json --top 100000",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "count": 160,
+   "by_language": {
+    "cpp": 22,
+    "cobol": 138
+   }
+  },
+  "static_scan": {
+   "cmd": "static-scan /home/ubuntu/govfuzz-corpus-500/cobol/meyfa__CobolCraft --out /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft/static --sarif --sloc sloc-breakdown.json --jobs 2 --max-memory-mb 2500",
+   "exit": 0,
+   "wall_s": 0.05,
+   "timed_out": false,
+   "panic": false,
+   "sarif": true,
+   "count": 6,
+   "by_severity": {
+    "high": 5,
+    "medium": 1
+   },
+   "top_rules": {
+    "GF-472": 5,
+    "GF-477": 1
+   },
+   "gaps": 0
+  },
+  "sbom": {
+   "cmd": "sbom /home/ubuntu/govfuzz-corpus-500/cobol/meyfa__CobolCraft --out /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft/sbom",
+   "exit": 0,
+   "wall_s": 0.0,
+   "timed_out": false,
+   "panic": false,
+   "components": 1
+  },
+  "auto": {
+   "cmd": "auto /home/ubuntu/govfuzz-corpus-500/cobol/meyfa__CobolCraft --work-dir /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft --campaign-time 240 --per-target-time 6 --max-attempts 60 --max-repair-rounds 16 --jobs 1 --profile external-tools --single-pass",
+   "exit": 0,
+   "wall_s": 309.85,
+   "timed_out": false,
+   "panic": false,
+   "summary": {
+    "discovered": 26,
+    "discovered_total": 160,
+    "dropped_by_cap": 134,
+    "built": 24,
+    "built_and_fuzzed": 24,
+    "fuzzed_stub_only": 0,
+    "failed_build": 2,
+    "unsupported_params": 0,
+    "unrecoverable_link": 0,
+    "unrecoverable_runtime": 0,
+    "findings": 15
+   },
+   "mode": "reporting",
+   "partial": false,
+   "needed_for_build": {
+    "synthesized_headers": 0,
+    "synthesized_types": 0,
+    "synthesized_macros": 0,
+    "stubbed_symbols_declared": 0,
+    "stubbed_symbols_blind": 8,
+    "stubbed_ada_units": 0,
+    "stubbed_ada_symbols": 0,
+    "missing_libraries": 0,
+    "missing_gpr_imports": 0,
+    "environment_variables_faked": 89,
+    "missing_files": 12,
+    "network_endpoints": 0,
+    "dlopen_failures": 0,
+    "missing_ada_units": 0
+   },
+   "targets": [
+    {
+     "name": "ReadConsole",
+     "source": "cobolcraft_util.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 8,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "SocketRead",
+     "source": "cobolcraft_util.cpp",
+     "outcome": "failed_build",
+     "retries": 2,
+     "repairs": 0,
+     "execs_per_sec": null,
+     "reason": null,
+     "stub_only": null,
+     "blind_stub_fraction": null
+    },
+    {
+     "name": "BLOCKS-PARSE",
+     "source": "blocks.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.075935167810017,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-ITEMS-MAIN",
+     "source": "items.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.818884108514496,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-PACKETS-MAIN",
+     "source": "packets.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.834804402373888,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-MAIN",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.654429003778316,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BROADCASTCHATMESSAGE",
+     "source": "chat.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.586545855773329,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BROADCASTCHATMESSAGEEXCEPT",
+     "source": "chat.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.634476266359781,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BLOCKS-PARSE-PROPERTY",
+     "source": "blocks.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.164865470477,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "ADDCOMMANDLITERAL",
+     "source": "commands.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.6494678287453794,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-POOL",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 18556.78129798945,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BLOCKS-PARSE-STATE",
+     "source": "blocks.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.016834391619207,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-CONDITIONS",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.617620762428825,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-CONDITION",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.396854647039227,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-CONDINVERT",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 15671.912961903681,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BLOCKS-DESCRIPTION-GETVALUE",
+     "source": "blocks.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 16212.50984718979,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "BLOCKS-DESCRIPTION-SETVALUE",
+     "source": "blocks.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 16492.225583525338,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-CONDANYOF",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.660783270050694,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-ALTERNATIVE",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.7280287033131545,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-ENTRYALT",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 17431.605110228367,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-FNLIMIT",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 17396.116151797756,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-FNEXPLDECAY",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 18547.0851078885,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-NUMBER",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 4.874049808863812,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-NUMCONSTANT",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 18732.50203654648,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-NUMUNIFORM",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 18772.24887928783,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    },
+    {
+     "name": "CG-BLOCKSLOOTTABLE-NUMBINOMIAL",
+     "source": "blocks_loot_table.cob",
+     "outcome": "built_and_fuzzed",
+     "retries": 0,
+     "repairs": 88,
+     "execs_per_sec": 3521.1130453348114,
+     "reason": null,
+     "stub_only": false,
+     "blind_stub_fraction": 0.0
+    }
+   ],
+   "blockers": [
+    {
+     "category": "failed_build",
+     "count": 2,
+     "detail": "undefined symbol",
+     "language": "cpp"
+    }
+   ],
+   "findings_detail": [
+    {
+     "id": "F-0005-4d5fdd34",
+     "rule": "GF-210",
+     "cwe": [
+      "CWE-125"
+     ],
+     "cwe_name": "Out-of-bounds Write",
+     "kind": null,
+     "severity": null,
+     "confidence": "low",
+     "tier": null,
+     "harness": "H-B0041-EA80DA67"
+    }
+   ]
+  },
+  "report": {
+   "cmd": "report --findings /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft/findings --out /home/ubuntu/govfuzz-sweep-work/cobol__meyfa__CobolCraft/reports --sarif --junit --csv",
+   "exit": 0,
+   "wall_s": 0.01,
+   "timed_out": false,
+   "panic": false,
+   "emitted": [
+    ".csv",
+    ".json",
+    ".md",
+    ".sarif",
+    ".xml"
+   ]
+  }
+ },
+ "sha": "e8c420df7a901b51b10c70bc08b56af7310d00f2",
+ "clone_s": 0.5,
+ "lane_check": "cobol: 268 files / 25502 lines; top=cobol(25502)",
+ "status": "done"
+}

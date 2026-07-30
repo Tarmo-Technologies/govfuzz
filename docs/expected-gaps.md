@@ -491,8 +491,13 @@ carries `fqn`, `is_enum`, `self_constants`, `has_public_no_arg_ctor` and
 records no declaring hierarchy. So the supertype closure the narrowing depends on
 cannot be computed from what `java_parser` produces today. The order of work is:
 
-1. `java_parser`: extract `extends` / `implements` per type (tree-sitter already
-   has the nodes; nothing consumes them).
+1. ~~`java_parser`: extract `extends` / `implements` per type.~~ **DONE** —
+   `JavaTypeModel::supertypes` carries them (leaf-reduced, so `java.io.Closeable`
+   is usable as an index key). Inert: nothing consumes it, behaviour unchanged.
+   Note for whoever continues: a class exposes `superclass`/`interfaces` as named
+   tree-sitter FIELDS, but an interface's own `extends` list is an unnamed child
+   node — a field-only lookup silently returns nothing for
+   `interface A extends B, C`, which is the case that matters most.
 2. `static_analysis`: build declared-type -> supertype-closure, and resolve a
    member against the closure rather than the declared type alone.
 3. Gate it opt-in, measure the finding delta with `finding-parity.py`, and review

@@ -2,6 +2,63 @@
 
 # Changelog
 
+## 0.2.26 - 2026-07-29
+
+`static-scan` is **13.6x faster on Java** with byte-identical output, and every
+per-lane toolchain spawn is now bounded.
+
+| tree | lane | before | after |
+|---|---|---:|---:|
+| elasticsearch (4.99M SLOC) | Java | 616.6s | **45.4s** (13.6x) |
+| kubernetes | Go | 59.2s | **15.4s** (3.8x) |
+| Proton | C/C++ | 10.6s | 10.4s |
+
+8.1k -> 110k SLOC/s on Java, memory unchanged or slightly lower.
+
+**The harness came first.** `scripts/validation/finding-parity.py` captures a
+normalised digest of a scan — findings as a MULTISET of `rule:path:line:slug`
+(several findings legitimately share a site, so set semantics would hide a change
+in how many), totals per rule, severity and CWE, and `analysis_gaps` by reason —
+and fails on any difference. The gaps matter most: they are where the engine
+admits it stopped, so exploring LESS shows up as MORE gaps even when the finding
+count holds. Speed is easy to measure and easy to fool yourself about; losing a
+finding looks exactly like a faster scan. Every number above is parity-gated, on
+Java, Go and C/C++.
+
+**The 0.2.25 write-up blamed the wrong pass** — it named the interprocedural taint
+worklist, from reading the code. Measurement put 24 of a 28-second Java scan in
+`annotate_reachability`, the call-graph BFS that LABELS findings, and 1.3s in
+taint. Both real causes were there:
+
+- **`reachable` was a `BTreeSet<FunctionKey>`, and a key holds a `PathBuf`.** Every
+  probe cost ~17 comparisons of long path strings, and the BFS probes once per
+  candidate target per call site. It is membership-only and never iterated, so it
+  is now a hash set — 3.1x on its own, and it helped Go as much as Java.
+- **Each call site walked EVERY function in the tree sharing that name**, and that
+  list grows with the tree: the actual source of the O(n^1.6). A name whose whole
+  candidate set is already reachable can never contribute again, whichever subset
+  the preference rules would pick, so such names are retired. The reachable set
+  only grows, so saturation is monotonic and cannot go stale. A further 2.7x, and
+  the BFS went 79.1s -> 2.0s on the full tree.
+
+`call_targets` also stopped allocating a `String` per lookup and cloning the whole
+candidate list — kept because it is strictly better, though on its own it was
+worth only 1.03x.
+
+**Per-lane toolchain spawns are bounded**, the same class as the gprbuild spawn
+that ate a campaign and orphaned for 39 hours — found by auditing for it rather
+than waiting for it to bite again. C# `have()`/`dotnet --list-sdks`, Java
+`javac -version`, JS `node --version` and `node -c <module>` (a real 120s budget,
+since it reads user JavaScript), Go `go mod tidy` and `go env GOVERSION`, and the
+Rust `cargo +nightly` probe all previously ran with no timeout and no process
+group.
+
+Left alone deliberately: the per-file rule packs (23.9s, already parallel at
+cores-1) and the taint worklist (16.0s, single-threaded for a mono-language tree
+because `scan_taint_project` parallelizes across LANGUAGES). That worklist shares
+mutable state and is the pass that can silently change findings, so it needs a
+real decomposition rather than a `par_iter` swap.
+
 ## 0.2.25 - 2026-07-29
 
 Documentation release on top of 0.2.24, which carried the performance work.

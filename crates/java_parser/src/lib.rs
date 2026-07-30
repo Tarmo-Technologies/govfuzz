@@ -1093,8 +1093,84 @@ fn push_unique_token(out: &mut Vec<String>, tok: String) {
     }
 }
 
+/// Every type reachable from each type's `extends`/`implements` chain, keyed by
+/// LEAF name (the form `JavaTypeModel::supertypes` records and the form a call
+/// index can key on).
+///
+/// This is the lookup correct receiver narrowing needs: `obj.method()` where
+/// `obj` is declared as `Impl` must still resolve a method declared on `Base` or
+/// on an interface, because Java dispatch is virtual. Narrowing to the declared
+/// type alone resolves to NOTHING for those calls — see docs/expected-gaps.md,
+/// where that shortcut is written up as a trap.
+///
+/// Inert: nothing consumes this yet. It is separated from the narrowing itself so
+/// the closure can be proven correct on its own, before any change to what the
+/// scanner reports.
+///
+/// Cyclic input (`interface A extends B`, `interface B extends A` — illegal Java,
+/// but this parses whatever it is handed) terminates: each type is expanded at
+/// most once per closure.
+pub fn supertype_closure(
+    types: &[JavaTypeModel],
+) -> std::collections::BTreeMap<String, std::collections::BTreeSet<String>> {
+    let mut direct: std::collections::BTreeMap<&str, &[String]> = std::collections::BTreeMap::new();
+    for model in types {
+        direct.insert(type_leaf(&model.fqn), model.supertypes.as_slice());
+    }
+
+    let mut out = std::collections::BTreeMap::new();
+    for model in types {
+        let leaf = type_leaf(&model.fqn);
+        let mut reached = std::collections::BTreeSet::new();
+        let mut queue: Vec<&str> = model.supertypes.iter().map(String::as_str).collect();
+        while let Some(name) = queue.pop() {
+            // `insert` returning false means this type is already expanded, which
+            // is also what makes a cycle terminate.
+            if !reached.insert(name.to_owned()) {
+                continue;
+            }
+            if let Some(parents) = direct.get(name) {
+                queue.extend(parents.iter().map(String::as_str));
+            }
+        }
+        out.insert(leaf.to_owned(), reached);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn supertype_closure_is_transitive_and_terminates_on_cycles() {
+        let source = r#"
+package com.example;
+public interface Top {}
+public interface Mid extends Top {}
+public abstract class Base implements Mid {}
+public class Leaf extends Base {}
+"#;
+        let closure = supertype_closure(&parse_java_type_models(source));
+
+        // Transitive: Leaf -> Base -> Mid -> Top. Narrowing `leaf.method()` has to
+        // reach a method declared on Top, three hops up.
+        let leaf = &closure["Leaf"];
+        assert!(
+            leaf.contains("Base") && leaf.contains("Mid") && leaf.contains("Top"),
+            "closure must be transitive, got {leaf:?}"
+        );
+        assert!(closure["Top"].is_empty(), "a root has no supertypes");
+
+        // Illegal Java, but the parser takes whatever it is given, and an
+        // unbounded expansion here would hang a scan rather than fail it.
+        let cyclic = r#"
+package com.example;
+public interface A extends B {}
+public interface B extends A {}
+"#;
+        let closure = supertype_closure(&parse_java_type_models(cyclic));
+        assert!(closure["A"].contains("B") && closure["B"].contains("A"));
+    }
 
     /// The supertype closure's raw material. Without this, narrowing
     /// `obj.method()` by the receiver's declared type would MISS every method

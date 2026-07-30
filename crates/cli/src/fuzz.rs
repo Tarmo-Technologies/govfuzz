@@ -142,6 +142,68 @@ fn parse_afl_fuzzer_stats(out_dir: &Path) -> (Option<u64>, Option<f64>) {
 /// those files land in one clearly-named, throwaway place - `<work>/
 /// fuzz_scratch/` - instead of polluting wherever govfuzz was launched. The
 /// whole work dir is the user's to delete, so the junk goes with it.
+/// Whether a confirmed sink is govfuzz operating on its OWN files rather than the
+/// target reaching a dangerous API.
+///
+/// A `ConfirmedSink` records the API and the path, but no frame — so unlike the
+/// crash path, which suppresses findings with "no target frame" as harness
+/// faults, the sink oracles cannot tell a call made by the TARGET from one made
+/// by the driver or the harness around it. Everything the shim sees during an
+/// execution becomes a finding attributed to whatever target was being fuzzed.
+///
+/// That produced a report that govfuzz could delete a file via a function whose
+/// only call is `statvfs` — a read-only stat. `statvfs` cannot appear in the
+/// GF-440 API list at all, so the observed call came from elsewhere in the
+/// process while the target merely happened to be the thing under test.
+///
+/// Confirmed in the field: the observed API was `unlink` and the path was
+/// `testcase.bin` — govfuzz's OWN recorded-input file — reported as "attacker
+/// input can delete a file" against a function whose only call is `statvfs`.
+///
+/// Housekeeping is recognised by the only signal actually available: the path
+/// resolves inside govfuzz's own work directory. A TRAVERSAL still reports — a
+/// target that escapes its scratch directory with `..` is the real GF-440, and
+/// suppressing that would trade a false positive for a false negative.
+fn sink_subject_is_govfuzz_housekeeping(
+    confirmed: &crate::auto::runtrace::ConfirmedSink,
+    work_dir: &Path,
+) -> bool {
+    use crate::auto::runtrace::SinkClass;
+    // DESTRUCTIVE sinks only. An earlier, broader version of this also covered
+    // `OpenPath` and immediately broke `auto_confirms_path_controlled_open_gf405`:
+    // a target OPENING an attacker-named file relative to its CWD is a genuine
+    // GF-405, and the fuzz child's CWD is inside the work dir, so a containment
+    // test suppressed the real finding. Trading this false positive for a false
+    // negative would be the worse bargain.
+    if !matches!(confirmed.class, SinkClass::DestructivePath) {
+        return false;
+    }
+    // And only govfuzz's OWN temp artifacts, by the prefixes it creates them
+    // under. Reported in the field: `unlink` on `/tmp/gf_in032dWa` with
+    // `fuzz_input[2..] -> unlink(path)`. `gf_make_tempfile()` materialises the
+    // fuzz bytes at `/tmp/gf_inXXXXXX` precisely so a `const char *path`
+    // parameter can be supplied at all — then govfuzz removes its own file, and
+    // the oracle billed that to the target.
+    //
+    // Deliberately NOT the scratch/run directories that
+    // `is_govfuzz_owned_resource` also covers: a target creating and deleting an
+    // attacker-named file in its own working directory is a real GF-440, and
+    // suppressing by location would hide it.
+    let subject = confirmed.subject.trim();
+    if subject.contains("..") {
+        return false;
+    }
+    let _ = work_dir;
+    GOVFUZZ_TEMP_PREFIXES
+        .iter()
+        .any(|prefix| subject.starts_with(prefix))
+}
+
+/// Where govfuzz materialises its own per-input temp files. Kept in step with
+/// `runtrace::is_govfuzz_owned_resource`, which has known about these since the
+/// resource-leak oracle — it was simply never consulted on the sink path.
+const GOVFUZZ_TEMP_PREFIXES: &[&str] = &["/tmp/gf_", "/tmp/govfuzz"];
+
 fn ensure_harness_scratch(work_dir: &Path) -> Result<PathBuf, String> {
     let scratch = work_dir.join("fuzz_scratch");
     std::fs::create_dir_all(&scratch)
@@ -2641,6 +2703,9 @@ fn run_builtin_with_progress(
     let confirmed_sinks = sink_taint.into_confirmed();
     let confirmed_sinks_total = confirmed_sinks.len();
     for confirmed in confirmed_sinks.into_iter().take(max_sink_taint_findings) {
+        if sink_subject_is_govfuzz_housekeeping(&confirmed, &prepared.work_dir) {
+            continue;
+        }
         let Some(hit) = crate::auto::runtrace::confirmed_sink_hit(&confirmed) else {
             continue;
         };
@@ -6002,6 +6067,65 @@ mod fuzz_child_env_tests {
 
 #[cfg(test)]
 mod auto_path_tests {
+
+    /// The reported false positive, pinned.
+    ///
+    /// govfuzz unlinks its own `testcase.bin` while a target is under test. The
+    /// sink oracles carry no frame, so that call was billed to whatever was being
+    /// fuzzed — producing "attacker input can delete a file" against a function
+    /// whose only call is `statvfs`, which cannot appear in GF-440's API list at
+    /// all. A relative subject must be resolved against the fuzz child's CWD
+    /// before it can be recognised as govfuzz's own housekeeping.
+    #[test]
+    fn govfuzz_deleting_its_own_testcase_is_not_a_target_finding() {
+        use crate::auto::runtrace::{ConfirmedSink, SinkClass};
+        let work = std::path::Path::new("/tmp/gf-work");
+        let own_testcase = ConfirmedSink {
+            class: SinkClass::DestructivePath,
+            api: "unlink".to_owned(),
+            // The path from the reported finding.
+            subject: "/tmp/gf_in032dWa".to_owned(),
+            taint_offset: 0,
+            input: vec![b'a'],
+        };
+        assert!(
+            sink_subject_is_govfuzz_housekeeping(&own_testcase, work),
+            "unlinking the temp file govfuzz itself created for the input is \
+             housekeeping, not a target finding"
+        );
+
+        // A target deleting an attacker-named file OUTSIDE the work dir is the
+        // real GF-440 and must survive.
+        let real = ConfirmedSink {
+            subject: "/etc/passwd".to_owned(),
+            ..own_testcase.clone()
+        };
+        assert!(!sink_subject_is_govfuzz_housekeeping(&real, work));
+
+        // So must an escape from the scratch directory — suppressing traversal
+        // would trade this false positive for a false negative.
+        let traversal = ConfirmedSink {
+            subject: "../../etc/passwd".to_owned(),
+            ..own_testcase.clone()
+        };
+        assert!(!sink_subject_is_govfuzz_housekeeping(&traversal, work));
+
+        // Non-filesystem sinks are never housekeeping.
+        // A target deleting a file in its own scratch directory still reports:
+        // suppressing by LOCATION would hide a real GF-440.
+        let in_scratch = ConfirmedSink {
+            subject: "/tmp/gf-work/fuzz_scratch/victim.txt".to_owned(),
+            ..own_testcase.clone()
+        };
+        assert!(!sink_subject_is_govfuzz_housekeeping(&in_scratch, work));
+
+        let exec = ConfirmedSink {
+            class: SinkClass::ProcessExec,
+            subject: "/tmp/gf_in032dWa".to_owned(),
+            ..own_testcase
+        };
+        assert!(!sink_subject_is_govfuzz_housekeeping(&exec, work));
+    }
     use super::*;
     use std::fs;
     use std::io::Write;

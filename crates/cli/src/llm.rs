@@ -230,7 +230,7 @@ fn test_provider(args: TestArgs) -> i32 {
     let provider = match build_provider(&args.provider) {
         Ok(provider) => provider,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
     };
@@ -241,12 +241,12 @@ fn test_provider(args: TestArgs) -> i32 {
     ) {
         Ok(completion) => completion,
         Err(error) => {
-            eprintln!("LLM connection failed: {error}");
+            gfeprintln!("LLM connection failed: {error}");
             return 1;
         }
     };
     if !completion.contains("GOVFUZZ_LLM_OK") {
-        eprintln!("LLM connection responded but did not return the verification marker");
+        gfeprintln!("LLM connection responded but did not return the verification marker");
         return 1;
     }
     let report = TestReport {
@@ -274,7 +274,7 @@ fn prompt(args: AssistanceArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             2
         }
     }
@@ -284,14 +284,14 @@ fn assist(args: AssistArgs) -> i32 {
     let prompt = match build_prompt(args.request) {
         Ok(prompt) => prompt,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
     };
     let provider = match build_provider(&args.provider) {
         Ok(provider) => provider,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
     };
@@ -313,7 +313,7 @@ fn assist(args: AssistArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("LLM assistance failed: {error}");
+            gfeprintln!("LLM assistance failed: {error}");
             1
         }
     }

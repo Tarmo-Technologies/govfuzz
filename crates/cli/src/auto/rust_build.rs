@@ -4240,7 +4240,7 @@ mod tests {
         let harness = tmp.path().join("h");
         // rust_runtime must be locatable; skip cleanly if not (CI sandbox).
         if locate_rust_runtime().is_none() {
-            eprintln!("skipping: rust_runtime crate not locatable");
+            gfeprintln!("skipping: rust_runtime crate not locatable");
             return;
         }
         emit_harness_crate(&harness, "fn _x() {}", "data_url", &target, &[]).unwrap();

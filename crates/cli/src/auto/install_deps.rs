@@ -186,7 +186,7 @@ pub fn run_installs(manifest: &DependencyManifest) -> InstallReport {
             ));
             continue;
         }
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: installing '{}': {}",
             plan.dep_name,
             plan.command.join(" ")

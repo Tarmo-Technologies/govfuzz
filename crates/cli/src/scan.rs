@@ -69,7 +69,7 @@ pub fn run(args: ScanArgs) -> i32 {
             match serde_json::to_string_pretty(&index) {
                 Ok(json) => println!("{json}"),
                 Err(error) => {
-                    eprintln!("failed to render scan summary: {error}");
+                    gfeprintln!("failed to render scan summary: {error}");
                     return 1;
                 }
             }
@@ -81,7 +81,7 @@ pub fn run(args: ScanArgs) -> i32 {
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }
@@ -113,7 +113,7 @@ fn scan_path(path: &Path) -> Result<ScanIndex> {
         match scan_file(&path) {
             Ok(file) => index.files.push(file),
             Err(reason) => {
-                eprintln!("skipping source {}: {reason}", path.display());
+                gfeprintln!("skipping source {}: {reason}", path.display());
                 index.skipped.push(SkippedFile { path, reason });
             }
         }

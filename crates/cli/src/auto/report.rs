@@ -45,6 +45,12 @@ struct Summary {
     /// split (`discovered_total - discovered`). 0 for an uncapped run.
     #[serde(skip_serializing_if = "is_zero")]
     dropped_by_cap: usize,
+    /// The operator ended the run early from the keyboard (`q`). The shortfall
+    /// against `discovered_total` then has nothing to do with a cap, and a report
+    /// read weeks later must not blame one — it is the difference between "this
+    /// tree has 3 unreachable targets" and "somebody stopped watching".
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    stopped_by_operator: bool,
     /// `--resume`: targets skipped this run because they already completed in a
     /// prior sweep over the same work-dir (their artifacts remain on disk). 0 when
     /// not resuming. Included in `discovered`.
@@ -484,6 +490,7 @@ pub fn write_reports(
     discovered_total: usize,
     static_dynamic: bool,
     force: bool,
+    stopped_by_operator: bool,
 ) -> Result<()> {
     let auto_dir = work_dir.join("auto");
     std::fs::create_dir_all(&auto_dir)?;
@@ -527,6 +534,7 @@ pub fn write_reports(
         discovered: attempted,
         discovered_total,
         dropped_by_cap: discovered_total - attempted,
+        stopped_by_operator,
         resumed,
         ..Summary::default()
     };
@@ -964,7 +972,7 @@ pub fn write_reports(
     // Always point at the report under --debug (it's always written then, even
     // with zero issues), so the user sees WHERE it landed at the end of the run.
     if bug_count > 0 || crate::auto::bug_report::debug_enabled() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz: bug report ({bug_count} issue(s) govfuzz couldn't fully handle) → {}",
             auto_dir.join("bug-report.md").display()
         );
@@ -1006,7 +1014,7 @@ pub fn write_reports(
     manifest.mark_checkpoint(results.len(), true);
     write_dependency_manifest_files(work_dir, &manifest)?;
     if !manifest.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: {} external dependenc{} needed ({} still blocking, {} stubbed) — see {}",
             manifest.entries.len(),
             if manifest.entries.len() == 1 {
@@ -3020,9 +3028,14 @@ fn render_md(r: &RunJson<'_>) -> String {
         );
     }
     if r.summary.dropped_by_cap > 0 {
+        let reason = if r.summary.stopped_by_operator {
+            "not attempted — the operator stopped the run"
+        } else {
+            "dropped by --max-targets/--campaign-time cap"
+        };
         let _ = writeln!(
             s,
-            "  (of {} ranked; {} dropped by --max-targets/--campaign-time cap)",
+            "  (of {} ranked; {} {reason})",
             r.summary.discovered_total, r.summary.dropped_by_cap
         );
     }
@@ -4033,6 +4046,7 @@ mod tests {
             0,
             false,
             false,
+            false,
         )
         .unwrap();
         let json: serde_json::Value =
@@ -4091,6 +4105,7 @@ mod tests {
             5,
             false,
             false,
+            false,
         )
         .unwrap();
         let json: serde_json::Value =
@@ -4104,6 +4119,56 @@ mod tests {
         );
         let md = std::fs::read_to_string(work.join("auto/run.md")).unwrap();
         assert!(md.contains("dropped by --max-targets"), "{md}");
+        // An uncapped, un-stopped run must not carry the operator flag at all.
+        assert!(json["summary"].get("stopped_by_operator").is_none());
+        let _ = std::fs::remove_dir_all(&work);
+    }
+
+    #[test]
+    fn an_operator_stopped_run_does_not_blame_a_cap_for_the_shortfall() {
+        // Pressing `q` leaves exactly the shortfall a cap would. Reporting it as
+        // "dropped by cap" would tell a reader weeks later that flags they never
+        // passed truncated the sweep.
+        let r1 = AttemptResult {
+            candidate: cand("H-C0001"),
+            outcome: Outcome::Built {
+                repairs: vec![],
+                retries: 0,
+            },
+            harness_dir: PathBuf::from("/h"),
+        };
+        let work = std::env::temp_dir().join(format!(
+            "govfuzz-report-operator-stop-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        write_reports(
+            Path::new("/src"),
+            std::slice::from_ref(&r1),
+            &work,
+            "T0",
+            "T1",
+            false,
+            actionability::RunMode::Reporting,
+            0,
+            4,
+            false,
+            false,
+            true,
+        )
+        .unwrap();
+        let json: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(work.join("auto/run.json")).unwrap()).unwrap();
+        assert_eq!(json["summary"]["dropped_by_cap"], 3);
+        assert_eq!(json["summary"]["stopped_by_operator"], true);
+        let md = std::fs::read_to_string(work.join("auto/run.md")).unwrap();
+        assert!(
+            md.contains("3 not attempted — the operator stopped the run"),
+            "{md}"
+        );
+        assert!(!md.contains("dropped by --max-targets"), "{md}");
         let _ = std::fs::remove_dir_all(&work);
     }
 
@@ -4150,6 +4215,7 @@ mod tests {
             actionability::RunMode::Reporting,
             0,
             0,
+            false,
             false,
             false,
         )
@@ -4210,6 +4276,7 @@ mod tests {
             actionability::RunMode::Reporting,
             0,
             0,
+            false,
             false,
             false,
         )
@@ -4276,6 +4343,7 @@ mod tests {
             actionability::RunMode::Reporting,
             0,
             0,
+            false,
             false,
             false,
         )
@@ -4473,6 +4541,7 @@ mod tests {
             0,
             false,
             false,
+            false,
         )
         .unwrap();
 
@@ -4595,6 +4664,7 @@ mod tests {
             actionability::RunMode::Reporting,
             0,
             0,
+            false,
             false,
             false,
         )
@@ -4872,6 +4942,7 @@ mod tests {
             0,
             false,
             false,
+            false,
         )
         .unwrap();
 
@@ -4905,6 +4976,7 @@ mod tests {
             actionability::RunMode::Reporting,
             0,
             0,
+            false,
             false,
             false,
         )
@@ -4978,6 +5050,7 @@ mod tests {
             actionability::RunMode::Reporting,
             0,
             0,
+            false,
             false,
             false,
         )
@@ -5114,6 +5187,7 @@ mod tests {
             0,
             false,
             false,
+            false,
         )
         .unwrap();
 
@@ -5232,7 +5306,8 @@ mod tests {
             0,
             0,
             false,
-            true, // force
+            true, // force,
+            false,
         )
         .unwrap();
 

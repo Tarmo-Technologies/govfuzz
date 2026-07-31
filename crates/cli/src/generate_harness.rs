@@ -1305,7 +1305,7 @@ fn resolve_project_import(
         return Ok(Some(path));
     }
 
-    eprintln!(
+    gfeprintln!(
         "warning: skipped unresolved GPR import '{}' from {}",
         import.display(),
         project_dir.display()
@@ -1330,7 +1330,7 @@ fn find_project_import_in_roots(
     } else if matches.is_empty() {
         Ok(None)
     } else {
-        eprintln!(
+        gfeprintln!(
             "warning: skipped ambiguous GPR import '{}' with {} matches",
             import.display(),
             matches.len()
@@ -2389,7 +2389,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         args.target_line,
     )?;
     if let Some(warning) = warning {
-        eprintln!("{warning}");
+        gfeprintln!("{warning}");
     }
 
     // A `va_list` is compiler ABI state, not fuzz bytes. When the same TU
@@ -3502,7 +3502,7 @@ fn c_lifecycle_steps(
         .find(|function| is_c_lifecycle_init(&function.name))
         .map(|function| c_lifecycle_function_to_step(function));
     if init_step.is_none() {
-        eprintln!(
+        gfeprintln!(
             "warning: generated C lifecycle harness for '{}' without init function",
             target.name
         );
@@ -3513,7 +3513,7 @@ fn c_lifecycle_steps(
         .find(|function| is_c_lifecycle_end(&function.name))
         .map(|function| c_lifecycle_function_to_step(function));
     if end_step.is_none() {
-        eprintln!(
+        gfeprintln!(
             "warning: generated C lifecycle harness for '{}' without end function",
             target.name
         );
@@ -5420,7 +5420,7 @@ pub(crate) fn compile_database_flags_for_source(source_path: &Path) -> Vec<Strin
     match try_compile_database_flags_for_source(source_path) {
         Ok(flags) => flags,
         Err(error) => {
-            eprintln!(
+            gfeprintln!(
                 "warning: skipped compile_commands.json flags for {}: {error:#}",
                 source_path.display()
             );
@@ -7628,7 +7628,7 @@ fn standalone_header_include_plan(
     // The preflight verdict is still reported, so a forced build that fails anyway
     // says why it was unpromising.
     if force {
-        eprintln!(
+        gfeprintln!(
             "govfuzz generate-harness: --force: '{}' is not self-contained ({}), \
              attempting it anyway — the repair loop will work on the real compiler errors",
             target.display(),
@@ -7948,7 +7948,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         args.target_line,
     )?;
     if let Some(warning) = warning {
-        eprintln!("{warning}");
+        gfeprintln!("{warning}");
     }
 
     // §27.5 phase 3: steer a templated target with no call-site-detected
@@ -8449,7 +8449,7 @@ fn cpp_lifecycle_steps(
         if !harness_gen::cpp_generate::cpp_callable_member_name(&function.name)
             || !harness_gen::cpp_generate::cpp_return_type_emittable(&function.return_type)
         {
-            eprintln!(
+            gfeprintln!(
                 "warning: skipped C++ lifecycle step '{}': not a validly callable member \
                  (parse-recovery artifact)",
                 function.name
@@ -8469,7 +8469,7 @@ fn cpp_lifecycle_steps(
         // `start_transcoding` resolve correctly, so requiring known-public drops
         // only the unsafe/unknown steps and still builds a working lifecycle.
         if function.api.member_access.as_deref() != Some("public") {
-            eprintln!(
+            gfeprintln!(
                 "warning: skipped C++ lifecycle step '{}': {} method is not known to be public",
                 function.name,
                 function
@@ -8492,9 +8492,10 @@ fn cpp_lifecycle_steps(
             })
             .map(|param| param.cpp_type.clone())
         {
-            eprintln!(
+            gfeprintln!(
                 "warning: skipped C++ lifecycle step '{}': unsupported parameter type '{}'",
-                function.name, unsupported
+                function.name,
+                unsupported
             );
             continue;
         }
@@ -9715,7 +9716,7 @@ fn cpp_build_context_for_source(source_path: &Path) -> CppBuildContext {
             };
         }
         Ok(_) => {}
-        Err(error) => eprintln!(
+        Err(error) => gfeprintln!(
             "warning: skipped compile_commands.json flags for {}: {error:#}",
             source_path.display()
         ),
@@ -15412,7 +15413,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             .output()
             .is_err()
         {
-            eprintln!("skipping generated C sequence compile: clang not on PATH");
+            gfeprintln!("skipping generated C sequence compile: clang not on PATH");
             return;
         }
         let obj = root.join("sequence_main.o");
@@ -15738,7 +15739,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             .output()
             .is_err()
         {
-            eprintln!("skipping per-TU context test: g++ not on PATH");
+            gfeprintln!("skipping per-TU context test: g++ not on PATH");
             return;
         }
         let root = temp_dir("cpp-per-tu-build-context");
@@ -15827,7 +15828,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             .output()
             .is_err()
         {
-            eprintln!("skipping header preflight test: clang++ not on PATH");
+            gfeprintln!("skipping header preflight test: clang++ not on PATH");
             return;
         }
         let root = temp_dir("cpp-header-umbrella-preflight");
@@ -15877,7 +15878,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             .output()
             .is_err()
         {
-            eprintln!("skipping header preflight test: clang++ not on PATH");
+            gfeprintln!("skipping header preflight test: clang++ not on PATH");
             return;
         }
         let root = temp_dir("cpp-header-prelude-preflight");
@@ -15904,7 +15905,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             .output()
             .is_err()
         {
-            eprintln!("skipping header preflight test: clang++ not on PATH");
+            gfeprintln!("skipping header preflight test: clang++ not on PATH");
             return;
         }
         let root = temp_dir("cpp-header-owner-only-preflight");
@@ -15963,7 +15964,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             .output()
             .is_err()
         {
-            eprintln!("skipping header preflight test: clang++ not on PATH");
+            gfeprintln!("skipping header preflight test: clang++ not on PATH");
             return;
         }
         let root = temp_dir("cpp-header-no-owner-preflight");

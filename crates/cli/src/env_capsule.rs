@@ -42,7 +42,7 @@ pub struct EnvCapsuleArgs {
 
 pub fn run(args: EnvCapsuleArgs) -> i32 {
     let Some(shim) = crate::auto::shim_path::locate() else {
-        eprintln!(
+        gfeprintln!(
             "govfuzz env-capsule: the runtrace shim (libgovfuzz_runtrace.so) was not found; \
              it is required to record/replay the faked environment"
         );
@@ -54,18 +54,18 @@ pub fn run(args: EnvCapsuleArgs) -> i32 {
         .clone()
         .unwrap_or_else(|| args.work_dir.join("env-capsules"));
     if std::fs::create_dir_all(&out_root).is_err() {
-        eprintln!("error: cannot create {}", out_root.display());
+        gfeprintln!("error: cannot create {}", out_root.display());
         return 1;
     }
     let findings = match collect(&args.work_dir, args.finding_id.as_deref()) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("error: {e}");
+            gfeprintln!("error: {e}");
             return 1;
         }
     };
     if findings.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz env-capsule: no C crash findings in {}",
             args.work_dir.display()
         );

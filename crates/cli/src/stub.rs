@@ -44,20 +44,20 @@ pub fn run(args: StubArgs) -> i32 {
     let adapter = match CompilerAdapter::discover_for(toolchain_config(&args)) {
         Ok(adapter) => adapter,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
     };
 
     if let Err(error) = probe_compiler(&adapter) {
-        eprintln!("{error}");
+        gfeprintln!("{error}");
         return 2;
     }
 
     let layout = match prepare_layout(&args) {
         Ok(layout) => layout,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 3;
         }
     };
@@ -65,18 +65,18 @@ pub fn run(args: StubArgs) -> i32 {
     let result = match run_build_loop(&layout.work_dir, &layout.project_spec, &adapter) {
         Ok(result) => result,
         Err(StubGenError::CompilerAdapter(error)) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 1;
         }
     };
 
     let manifest = manifest_from_result(&result, &layout.stubs_dir);
     if let Err(error) = write_manifest(&layout.stubs_dir.join("manifest.json"), &manifest) {
-        eprintln!("{error}");
+        gfeprintln!("{error}");
         return 1;
     }
 

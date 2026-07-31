@@ -116,11 +116,11 @@ fn run_import(args: ImportArgs) -> i32 {
 
 fn run_export(args: ExportArgs) -> i32 {
     let Some(target) = Format::parse(&args.to) else {
-        eprintln!("error: unknown target format: {}", args.to);
+        gfeprintln!("error: unknown target format: {}", args.to);
         return 2;
     };
     if matches!(target, Format::Unknown) {
-        eprintln!("error: target format must be one of govfuzz, libfuzzer, afl, honggfuzz");
+        gfeprintln!("error: target format must be one of govfuzz, libfuzzer, afl, honggfuzz");
         return 2;
     }
     match export_dir(&args.input, &args.output, target) {
@@ -146,12 +146,12 @@ fn run_minimize(args: MinimizeCorpusArgs) -> i32 {
     let inputs = match read_corpus_inputs(&args.input) {
         Ok(inputs) => inputs,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             return 1;
         }
     };
     if inputs.is_empty() {
-        eprintln!("error: no corpus files found in {}", args.input.display());
+        gfeprintln!("error: no corpus files found in {}", args.input.display());
         return 1;
     }
 
@@ -166,7 +166,7 @@ fn run_minimize(args: MinimizeCorpusArgs) -> i32 {
     let work_dir = match scratch_work_dir() {
         Ok(dir) => dir,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             return 1;
         }
     };
@@ -184,7 +184,7 @@ fn run_minimize(args: MinimizeCorpusArgs) -> i32 {
             // One unreplayable input must not abort the whole minimize: warn,
             // treat it as contributing no coverage, and keep going.
             Err(error) => {
-                eprintln!("warning: skipping input (replay failed): {error}");
+                gfeprintln!("warning: skipping input (replay failed): {error}");
                 Ok(Vec::new())
             }
         }
@@ -194,13 +194,13 @@ fn run_minimize(args: MinimizeCorpusArgs) -> i32 {
     let kept = match selection {
         Ok(kept) => kept,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             return 1;
         }
     };
 
     if !saw_coverage {
-        eprintln!(
+        gfeprintln!(
             "warning: harness produced no runtrace coverage for any input; \
              C/C++ libFuzzer harnesses are not supported for coverage-minimal \
              merge — use `govfuzz corpus merge` for content deduplication"
@@ -208,7 +208,7 @@ fn run_minimize(args: MinimizeCorpusArgs) -> i32 {
     }
 
     if let Err(error) = copy_selected(&args.input, &args.output, &kept) {
-        eprintln!("error: {error}");
+        gfeprintln!("error: {error}");
         return 1;
     }
 
@@ -281,7 +281,7 @@ fn print_summary(verb: &str, summary: &ImportSummary) {
 }
 
 fn fail(error: BridgeError) -> i32 {
-    eprintln!("error: {error}");
+    gfeprintln!("error: {error}");
     1
 }
 

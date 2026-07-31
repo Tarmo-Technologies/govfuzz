@@ -46,12 +46,12 @@ pub fn run(args: CartographyArgs) -> i32 {
     let findings = match collect(&args.work_dir, args.finding_id.as_deref()) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("error: {e}");
+            gfeprintln!("error: {e}");
             return 1;
         }
     };
     if findings.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz cartography: no reproducible C crash findings in {}",
             args.work_dir.display()
         );
@@ -71,7 +71,7 @@ pub fn run(args: CartographyArgs) -> i32 {
         }
     }
     if mapped == 0 {
-        eprintln!("govfuzz cartography: no finding reproduced under perturbation analysis");
+        gfeprintln!("govfuzz cartography: no finding reproduced under perturbation analysis");
     }
     0
 }

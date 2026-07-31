@@ -116,7 +116,7 @@ fn differential_one(
     let bin_a = match build_side(hdir, is_cpp, &spec.cc_a, &spec.cxx_a, "a") {
         Some(bin) => bin,
         None => {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: differential — {harness_id}: build under {} failed; skipping",
                 if is_cpp { &spec.cxx_a } else { &spec.cc_a }
             );
@@ -126,7 +126,7 @@ fn differential_one(
     let bin_b = match build_side(hdir, is_cpp, &spec.cc_b, &spec.cxx_b, "b") {
         Some(bin) => bin,
         None => {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: differential — {harness_id}: build under {} failed; skipping",
                 if is_cpp { &spec.cxx_b } else { &spec.cc_b }
             );

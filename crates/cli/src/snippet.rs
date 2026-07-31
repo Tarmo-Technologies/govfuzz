@@ -468,14 +468,14 @@ pub fn run(args: SnippetArgs) -> i32 {
     let source = match read_snippet(args.input.as_deref()) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("error: {e:#}");
+            gfeprintln!("error: {e:#}");
             return 1;
         }
     };
     let lang = match resolve_language(args.language, args.input.as_deref(), &source) {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("error: {e:#}");
+            gfeprintln!("error: {e:#}");
             return 1;
         }
     };
@@ -485,11 +485,11 @@ pub fn run(args: SnippetArgs) -> i32 {
     let src_dir = match materialize(lang, &source, &src_dir) {
         Ok(d) => d,
         Err(e) => {
-            eprintln!("error: {e:#}");
+            gfeprintln!("error: {e:#}");
             return 1;
         }
     };
-    eprintln!(
+    gfeprintln!(
         "govfuzz snippet: detected {}, fuzzing for up to {}s (project at {})",
         lang_token(lang),
         args.per_target_time,
@@ -501,7 +501,7 @@ pub fn run(args: SnippetArgs) -> i32 {
         Err(error) => {
             // A parse failure here is a govfuzz bug (we built the argv), not user
             // error — surface it rather than printing clap usage for `auto`.
-            eprintln!("internal error: could not construct auto args: {error}");
+            gfeprintln!("internal error: could not construct auto args: {error}");
             return 2;
         }
     };

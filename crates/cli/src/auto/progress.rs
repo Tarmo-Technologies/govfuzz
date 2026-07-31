@@ -23,6 +23,11 @@ pub struct ProgressUpdate {
     pub elapsed: Duration,
     pub budget: Option<Duration>,
     pub executions: usize,
+    /// Distinct instrumented edges the target has hit so far in this pass. Read
+    /// live from the coverage tracker at tick time so the dashboard can show
+    /// coverage growth — and, by watching it grow, how long the target has been
+    /// cold. 0 for harnesses with no edge runtime.
+    pub edges: usize,
     pub findings: usize,
     /// Marks the terminal update for a fuzz pass, carrying the pass's final
     /// execution/finding counts. Live ticks during a pass land faster than the
@@ -40,9 +45,22 @@ impl ProgressUpdate {
             elapsed: Duration::ZERO,
             budget: None,
             executions: 0,
+            edges: 0,
             findings: 0,
             is_final: false,
         }
+    }
+}
+
+/// Human name for a stage, shared by the single-line sink and the dashboard's
+/// worker lines so both call the same stage the same thing.
+pub fn phase_label(phase: &Phase) -> String {
+    match phase {
+        Phase::Generate => "generating harness".to_owned(),
+        Phase::Build { retry: 0 } => "building".to_owned(),
+        Phase::Build { retry } => format!("building (retry {retry})"),
+        Phase::Repair { retry } => format!("repairing (attempt {retry})"),
+        Phase::Fuzz { pass } => format!("fuzz:{pass}"),
     }
 }
 
@@ -56,6 +74,40 @@ pub trait ProgressSink {
 pub struct NoProgress;
 impl ProgressSink for NoProgress {
     fn update(&self, _: &ProgressUpdate) {}
+}
+
+/// Sink that feeds one worker's slot in the run-level dashboard.
+///
+/// Every sweep — serial and parallel — uses this, which is what makes the
+/// parallel sweep as legible as the serial one. It used to use [`NoProgress`],
+/// because concurrent in-place line rewrites corrupt a terminal; routing each
+/// worker into its own dashboard slot removes the contention instead of removing
+/// the information.
+pub struct WorkerProgress {
+    status: std::sync::Arc<crate::auto::run_status::RunStatus>,
+    slot: usize,
+    /// Non-TTY `--verbose` heartbeat, preserved verbatim: CI logs of piped runs
+    /// are diffed across releases, so the historical per-phase lines stay.
+    echo: Option<TerminalProgress>,
+}
+
+impl WorkerProgress {
+    pub fn new(
+        status: std::sync::Arc<crate::auto::run_status::RunStatus>,
+        slot: usize,
+        echo: Option<TerminalProgress>,
+    ) -> Self {
+        Self { status, slot, echo }
+    }
+}
+
+impl ProgressSink for WorkerProgress {
+    fn update(&self, update: &ProgressUpdate) {
+        self.status.worker_update(self.slot, update);
+        if let Some(echo) = &self.echo {
+            echo.update(update);
+        }
+    }
 }
 
 pub struct TerminalProgress {
@@ -85,18 +137,8 @@ impl TerminalProgress {
         }
     }
 
-    fn phase_label(phase: &Phase) -> String {
-        match phase {
-            Phase::Generate => "generating harness".to_owned(),
-            Phase::Build { retry: 0 } => "building".to_owned(),
-            Phase::Build { retry } => format!("building (retry {retry})"),
-            Phase::Repair { retry } => format!("repairing (attempt {retry})"),
-            Phase::Fuzz { pass } => format!("fuzz:{pass}"),
-        }
-    }
-
     fn render(&self, u: &ProgressUpdate) -> String {
-        let mut line = format!("{} … {}", self.prefix, Self::phase_label(&u.phase));
+        let mut line = format!("{} … {}", self.prefix, phase_label(&u.phase));
         if matches!(u.phase, Phase::Fuzz { .. }) {
             let budget = u
                 .budget
@@ -149,7 +191,7 @@ impl ProgressSink for TerminalProgress {
             changed
         };
         if should_print {
-            eprintln!("{}", self.render(u));
+            gfeprintln!("{}", self.render(u));
         }
     }
 
@@ -177,6 +219,7 @@ mod tests {
             elapsed: Duration::from_secs(14),
             budget: Some(Duration::from_secs(60)),
             executions: 8123,
+            edges: 318,
             findings: 1,
             is_final: false,
         });
@@ -219,6 +262,7 @@ mod tests {
             elapsed: Duration::ZERO,
             budget: Some(Duration::from_secs(3)),
             executions: 0,
+            edges: 0,
             findings: 0,
             is_final: false,
         };

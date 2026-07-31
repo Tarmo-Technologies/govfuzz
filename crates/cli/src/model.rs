@@ -50,7 +50,7 @@ pub fn run(args: ModelArgs) -> i32 {
     match run_result(args) {
         Ok(()) => 0,
         Err(error) => {
-            eprintln!("error: {error:#}");
+            gfeprintln!("error: {error:#}");
             1
         }
     }

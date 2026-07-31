@@ -233,7 +233,7 @@ pub fn run(args: MinimizeArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("error: {error:#}");
+            gfeprintln!("error: {error:#}");
             1
         }
     }

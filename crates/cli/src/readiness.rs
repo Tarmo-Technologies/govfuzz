@@ -41,7 +41,7 @@ pub fn run(args: ReadinessArgs) -> i32 {
     match result {
         Ok(()) => 0,
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

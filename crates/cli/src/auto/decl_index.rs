@@ -859,7 +859,7 @@ impl DeclarationIndex {
         idx.c_type_defs = std::sync::Arc::new(c_type_defs);
         idx.cpp_type_defs = std::sync::Arc::new(cpp_type_defs);
         if skipped_for_time > 0 {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: declaration index reached the discovery time budget and skipped \
                  {skipped_for_time} file(s); cross-file repair may be less complete. Raise \
                  --campaign-time or set GOVFUZZ_DISCOVERY_TIME (seconds, 0 = unlimited)."

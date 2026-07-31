@@ -818,7 +818,7 @@ pub fn build_csharp_harness(
     let pinned_tfm = choose_target_framework(&target_csproj);
     let declares_tfm = declared_target_frameworks(&target_csproj);
     let linkage = if pinned_tfm.is_none() && !declares_tfm.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: C# project {} targets {} which the installed .NET SDK \
              (max net{}.0) cannot build; compiling its sources into the harness instead",
             target_csproj.display(),
@@ -937,7 +937,7 @@ pub fn build_csharp_harness(
                 tail(&output, 4000)
             ));
         }
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: C# source-inclusion: ejecting {} file(s) that do not compile \
              into the harness (round {})",
             failing.len(),

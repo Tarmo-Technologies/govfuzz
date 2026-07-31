@@ -50,7 +50,7 @@ fn run_ingest(args: IngestArgs) -> i32 {
     let log = match ingest_from_jsonl_log(&args.log) {
         Ok(log) => log,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             return 1;
         }
     };
@@ -69,7 +69,7 @@ fn run_ingest(args: IngestArgs) -> i32 {
             }
         }
         other => {
-            eprintln!("error: unknown --format {other}");
+            gfeprintln!("error: unknown --format {other}");
             return 2;
         }
     }

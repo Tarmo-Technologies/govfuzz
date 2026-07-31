@@ -206,7 +206,7 @@ fn probe_msbuild(tree: &Path, db: &Path) -> Option<PathBuf> {
         entries.extend(vcxproj_entries(proj));
     }
     if entries.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: MSBuild probe found a VS solution/project under {} but no \
              ClCompile sources to map",
             tree.display()
@@ -595,13 +595,13 @@ pub fn probe_build(tree: &Path, sandbox_program: Option<&Path>) -> Option<PathBu
             // No native compile DB: run the build's own command under compiler
             // interception (the PATH shim + LD_PRELOAD exec shim recover flags).
             let command = interception_build_command(bs).expect("bazel/scons command");
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --probe-build: intercepting `{command}` to recover compile flags"
             );
             probe_build_command(tree, command, sandbox_program)
         }
         BuildSystem::None => {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --probe-build found no CMake/Meson/MSBuild/Make/Ninja/Bazel/SCons \
                  build at {} (use --build-command \"<cmd>\" to intercept a custom build)",
                 tree.display()
@@ -622,11 +622,11 @@ pub fn probe_ada_build(tree: &Path, sandbox_program: Option<&Path>) {
     let has_alire = tree.join("alire.toml").is_file();
     let gpr = first_gpr(tree);
     if !has_alire && gpr.is_none() {
-        eprintln!("govfuzz auto: --run-untrusted: no Ada project (alire.toml/.gpr) at {}; skipping Ada build probe", tree.display());
+        gfeprintln!("govfuzz auto: --run-untrusted: no Ada project (alire.toml/.gpr) at {}; skipping Ada build probe", tree.display());
         return;
     }
     if has_alire && find_on_path("alr") {
-        eprintln!("govfuzz auto: --run-untrusted: running `alr build` to generate Alire config + fetch deps");
+        gfeprintln!("govfuzz auto: --run-untrusted: running `alr build` to generate Alire config + fetch deps");
         run_build(
             tree,
             &["alr".to_owned(), "-n".to_owned(), "build".to_owned()],
@@ -637,7 +637,7 @@ pub fn probe_ada_build(tree: &Path, sandbox_program: Option<&Path>) {
     }
     if let Some(gpr) = gpr {
         if find_on_path("gprbuild") {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --run-untrusted: running `gprbuild -p -P {}` to run gpr codegen",
                 gpr.display()
             );
@@ -655,7 +655,7 @@ pub fn probe_ada_build(tree: &Path, sandbox_program: Option<&Path>) {
             return;
         }
     }
-    eprintln!(
+    gfeprintln!(
         "govfuzz auto: --run-untrusted: no Ada build tool available (need `alr` or `gprbuild`); skipping Ada build probe"
     );
 }
@@ -679,7 +679,7 @@ fn probe_cmake(
     sandbox_program: Option<&Path>,
 ) -> Option<PathBuf> {
     if !find_on_path("cmake") {
-        eprintln!("govfuzz auto: --probe-build: cmake not on PATH; skipping CMake probe");
+        gfeprintln!("govfuzz auto: --probe-build: cmake not on PATH; skipping CMake probe");
         record_probe_requirement(
             tree,
             ProbeRequirement {
@@ -704,7 +704,7 @@ fn probe_cmake(
     ) {
         Ok(output) => output,
         Err(error) => {
-            eprintln!("govfuzz auto: --probe-build: failed to run cmake: {error}");
+            gfeprintln!("govfuzz auto: --probe-build: failed to run cmake: {error}");
             return None;
         }
     };
@@ -740,7 +740,7 @@ fn probe_cmake(
                     ),
                 },
             );
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --probe-build: CMake configure FAILED — required dependency `{pkg}` was \
              not found (`find_package({pkg} REQUIRED)`). This aborted the whole probe, so no \
              compile_commands.json was produced and every target will fail to build until it is \
@@ -748,7 +748,7 @@ fn probe_cmake(
              `{pkg}_ROOT`/`CMAKE_PREFIX_PATH`), then re-run with --probe-build."
             )
         }
-        None => eprintln!(
+        None => gfeprintln!(
             "govfuzz auto: --probe-build: `cmake` configure produced no compile_commands.json at {}",
             db.display()
         ),
@@ -961,7 +961,7 @@ fn probe_meson(
     sandbox_program: Option<&Path>,
 ) -> Option<PathBuf> {
     if !find_on_path("meson") {
-        eprintln!("govfuzz auto: --probe-build: meson not on PATH; skipping Meson probe");
+        gfeprintln!("govfuzz auto: --probe-build: meson not on PATH; skipping Meson probe");
         return None;
     }
     run_build(
@@ -979,7 +979,7 @@ fn probe_meson(
 /// stdio; this one needs the captured stdout.)
 fn probe_ninja(tree: &Path, db: &Path, sandbox_program: Option<&Path>) -> Option<PathBuf> {
     if !find_on_path("ninja") {
-        eprintln!("govfuzz auto: --probe-build: ninja not on PATH; skipping Ninja probe");
+        gfeprintln!("govfuzz auto: --probe-build: ninja not on PATH; skipping Ninja probe");
         return None;
     }
     let mut command = build_command(tree, &ninja_compdb_args(tree), &[], sandbox_program);
@@ -990,12 +990,12 @@ fn probe_ninja(tree: &Path, db: &Path, sandbox_program: Option<&Path>) -> Option
     let status = match command.status() {
         Ok(status) => status,
         Err(error) => {
-            eprintln!("govfuzz auto: --probe-build: failed to run ninja compdb: {error}");
+            gfeprintln!("govfuzz auto: --probe-build: failed to run ninja compdb: {error}");
             return None;
         }
     };
     if !status.success() || !std::fs::metadata(db).is_ok_and(|metadata| metadata.len() > 0) {
-        eprintln!("govfuzz auto: --probe-build: `ninja -t compdb` produced no database");
+        gfeprintln!("govfuzz auto: --probe-build: `ninja -t compdb` produced no database");
         let _ = std::fs::remove_file(db);
         return None;
     }
@@ -1009,11 +1009,11 @@ fn probe_make(
     sandbox_program: Option<&Path>,
 ) -> Option<PathBuf> {
     if !find_on_path("make") {
-        eprintln!("govfuzz auto: --probe-build: make not on PATH; skipping Make probe");
+        gfeprintln!("govfuzz auto: --probe-build: make not on PATH; skipping Make probe");
         return None;
     }
     let Some(real_cc) = real_compiler() else {
-        eprintln!("govfuzz auto: --probe-build: no C compiler on PATH; skipping Make probe");
+        gfeprintln!("govfuzz auto: --probe-build: no C compiler on PATH; skipping Make probe");
         return None;
     };
     let wrapper = probe_dir.join("gf-cc");
@@ -1267,7 +1267,7 @@ pub fn probe_build_command(
         }
     }
     if !wrote_any {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --build-command: no C/C++ compiler found on PATH to intercept; skipping"
         );
         return None;
@@ -1308,7 +1308,7 @@ pub fn probe_build_command(
     let log_text = std::fs::read_to_string(&log).ok()?;
     let entries = dedup_intercept_entries(parse_intercept_log(&log_text));
     if entries.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --build-command: intercepted no compiler invocations \
              (did `{command}` compile any C/C++?)"
         );
@@ -1429,11 +1429,11 @@ fn run_build(
     let mut command = build_command(cwd, args, env, sandbox_program);
     match command.status() {
         Ok(status) if status.success() => {}
-        Ok(status) => eprintln!(
+        Ok(status) => gfeprintln!(
             "govfuzz auto: --probe-build: `{}` exited with {status} (a partial build can still yield a usable compile database)",
             args.join(" ")
         ),
-        Err(error) => eprintln!("govfuzz auto: --probe-build: failed to run `{}`: {error}", args.join(" ")),
+        Err(error) => gfeprintln!("govfuzz auto: --probe-build: failed to run `{}`: {error}", args.join(" ")),
     }
 }
 

@@ -18,7 +18,7 @@ pub fn run(args: ExtractStateMachinesArgs) -> i32 {
     let files = match collect_ada_files(&args.path) {
         Ok(files) => files,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             return 1;
         }
     };
@@ -27,7 +27,7 @@ pub fn run(args: ExtractStateMachinesArgs) -> i32 {
         let source = match fs::read_to_string(&path) {
             Ok(s) => s,
             Err(error) => {
-                eprintln!("warning: read {}: {error}", path.display());
+                gfeprintln!("warning: read {}: {error}", path.display());
                 continue;
             }
         };
@@ -45,7 +45,7 @@ pub fn run(args: ExtractStateMachinesArgs) -> i32 {
                 }
             }
             Err(error) => {
-                eprintln!("warning: infer {}: {error}", path.display());
+                gfeprintln!("warning: infer {}: {error}", path.display());
             }
         }
     }

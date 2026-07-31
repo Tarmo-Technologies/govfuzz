@@ -138,7 +138,7 @@ pub fn run(args: StaticScanArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }
@@ -149,7 +149,7 @@ pub fn run(args: StaticScanArgs) -> i32 {
 /// on failure so the caller can exit non-zero.
 pub(crate) fn write_sloc_report(root: &std::path::Path, out: &std::path::Path) -> Result<(), i32> {
     let report = static_analysis::sloc_report(root).map_err(|error| {
-        eprintln!("sloc: {error:#}");
+        gfeprintln!("sloc: {error:#}");
         1
     })?;
     let is_json = out
@@ -160,7 +160,7 @@ pub(crate) fn write_sloc_report(root: &std::path::Path, out: &std::path::Path) -
         match serde_json::to_string_pretty(&report) {
             Ok(json) => format!("{json}\n"),
             Err(error) => {
-                eprintln!("sloc: {error}");
+                gfeprintln!("sloc: {error}");
                 return Err(1);
             }
         }
@@ -173,7 +173,7 @@ pub(crate) fn write_sloc_report(root: &std::path::Path, out: &std::path::Path) -
         }
     }
     if let Err(error) = std::fs::write(out, body) {
-        eprintln!("sloc: cannot write {}: {error}", out.display());
+        gfeprintln!("sloc: cannot write {}: {error}", out.display());
         return Err(1);
     }
     println!(
@@ -196,7 +196,7 @@ fn run_external_tools(
     let profile = resolve_external_profile();
     let findings = crate::auto::external_tools::collect_external_findings(root, profile);
     if profile == config::Profile::StrictPermissive {
-        eprintln!(
+        gfeprintln!(
             "external tools: profile 'strict-permissive' allows no analyzers — set GOVFUZZ_PROFILE=external-tools"
         );
     }

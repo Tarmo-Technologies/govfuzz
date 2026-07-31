@@ -122,7 +122,7 @@ fn create(args: CreateArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }
@@ -137,14 +137,14 @@ fn verify(args: VerifyArgs) -> i32 {
         Ok(summary) => {
             if let Some(out) = args.out {
                 if let Err(error) = governance::write_json(&out, &summary) {
-                    eprintln!("{error:#}");
+                    gfeprintln!("{error:#}");
                     return 1;
                 }
             } else {
                 match serde_json::to_string_pretty(&summary) {
                     Ok(json) => println!("{json}"),
                     Err(error) => {
-                        eprintln!("serialize update pack verification: {error}");
+                        gfeprintln!("serialize update pack verification: {error}");
                         return 1;
                     }
                 }
@@ -156,7 +156,7 @@ fn verify(args: VerifyArgs) -> i32 {
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }
@@ -170,7 +170,7 @@ fn write_summary(
         Ok(summary) => {
             if let Some(out) = out {
                 if let Err(error) = governance::write_json(&out, &summary) {
-                    eprintln!("{error:#}");
+                    gfeprintln!("{error:#}");
                     return 1;
                 }
             } else {
@@ -190,7 +190,7 @@ fn write_summary(
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

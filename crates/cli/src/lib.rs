@@ -4,6 +4,32 @@ use clap::{Parser, Subcommand};
 use config::Profile;
 use license_policy::enforce;
 
+/// Terminal output, routed so it cannot be eaten by the live progress block.
+///
+/// `auto` pins a status block to the bottom of the terminal and erases it by
+/// walking the cursor up a known number of rows. A bare `eprintln!` issued from
+/// anywhere else — a fuzz-engine warning, a build diagnostic — writes into that
+/// region without the block knowing, so the next erase walks up the wrong number
+/// of rows: the message is wiped and a fragment of the old block is stranded in
+/// the scrollback. That was observed in a real sweep, not theorised.
+///
+/// These forward to the run's console when one is live (which erases, prints and
+/// repaints as one unit) and to `eprintln!`/`eprint!` otherwise, so every path —
+/// other subcommands, unit tests, anything before the console exists — behaves
+/// exactly as it did.
+#[macro_export]
+macro_rules! gfeprintln {
+    () => { $crate::auto::dashboard::emit_line("") };
+    ($($arg:tt)*) => { $crate::auto::dashboard::emit_line(&format!($($arg)*)) };
+}
+
+/// [`gfeprintln`] without the trailing newline, for pre-rendered blocks that
+/// carry their own.
+#[macro_export]
+macro_rules! gfeprint {
+    ($($arg:tt)*) => { $crate::auto::dashboard::emit(&format!($($arg)*)) };
+}
+
 mod ada_bridge;
 mod audit;
 pub mod auto;

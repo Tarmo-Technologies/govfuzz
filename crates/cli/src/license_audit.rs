@@ -27,12 +27,12 @@ pub fn run(args: LicenseAuditArgs, profile: Profile) -> i32 {
         }
         Ok(report) => {
             for finding in report.findings {
-                eprintln!("license audit: {}", finding.message);
+                gfeprintln!("license audit: {}", finding.message);
             }
             2
         }
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             operational_exit_code(&error)
         }
     }

@@ -147,7 +147,7 @@ pub fn run(args: DifferentialArgs) -> i32 {
     match run_inner(args) {
         Ok(code) => code,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             1
         }
     }

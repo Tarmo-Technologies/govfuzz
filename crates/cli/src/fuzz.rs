@@ -495,7 +495,7 @@ fn bound_seed_corpus(seeds: &mut Vec<Vec<u8>>, max_len: usize) {
     }
     let dropped = before.saturating_sub(kept.len());
     if dropped > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz: seed corpus bounded to {} input(s) / {} MiB; dropped {dropped} \
              seed(s) beyond the in-memory corpus budget (override with \
              GOVFUZZ_MAX_CORPUS_ENTRIES / GOVFUZZ_MAX_CORPUS_BYTES)",
@@ -962,7 +962,7 @@ pub fn run(args: FuzzArgs) -> i32 {
     let prepared = match prepare(args) {
         Ok(prepared) => prepared,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 3;
         }
     };
@@ -977,14 +977,14 @@ pub fn run(args: FuzzArgs) -> i32 {
             match serde_json::to_string_pretty(&summary) {
                 Ok(json) => println!("{json}"),
                 Err(error) => {
-                    eprintln!("failed to render fuzz summary: {error}");
+                    gfeprintln!("failed to render fuzz summary: {error}");
                     return 1;
                 }
             }
             0
         }
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             1
         }
     }
@@ -999,7 +999,12 @@ pub fn run(args: FuzzArgs) -> i32 {
 /// Periodic live-progress callback for the builtin fuzz loop:
 /// `(executions, findings_so_far, elapsed)` sampled at most every
 /// 500ms so the hot loop stays hot.
-pub(crate) type FuzzProgressFn<'a> = &'a dyn Fn(usize, usize, Duration);
+/// `(executions, findings, edges, elapsed)`. Edges is the live distinct-edge
+/// count from the coverage tracker (0 for harnesses with no edge runtime): the
+/// dashboard needs coverage growth WHILE a pass runs, not only in the pass
+/// summary, because "no new edge for four minutes" is the signal that the rest
+/// of this target's budget is being wasted.
+pub(crate) type FuzzProgressFn<'a> = &'a dyn Fn(usize, usize, usize, Duration);
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn run_one_target_programmatic(
@@ -1183,7 +1188,7 @@ fn run_multicore_campaign(args: FuzzArgs) -> i32 {
     let sanitizers = match parse_sanitizer_args(&args.sanitizers) {
         Ok(sanitizers) => sanitizers,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 3;
         }
     };
@@ -1198,7 +1203,7 @@ fn run_multicore_campaign(args: FuzzArgs) -> i32 {
         None => match std::env::current_exe() {
             Ok(path) => path,
             Err(error) => {
-                eprintln!("resolve current govfuzz executable: {error}");
+                gfeprintln!("resolve current govfuzz executable: {error}");
                 return 3;
             }
         },
@@ -1223,14 +1228,14 @@ fn run_multicore_campaign(args: FuzzArgs) -> i32 {
             match serde_json::to_string_pretty(&summary) {
                 Ok(json) => println!("{json}"),
                 Err(error) => {
-                    eprintln!("failed to render multicore fuzz summary: {error}");
+                    gfeprintln!("failed to render multicore fuzz summary: {error}");
                     return 1;
                 }
             }
             0
         }
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             match error {
                 multicore_fuzz::MulticoreError::WorkDirMissing(_)
                 | multicore_fuzz::MulticoreError::BinMissing(_)
@@ -1358,7 +1363,7 @@ fn prepare(args: FuzzArgs) -> Result<PreparedFuzzRun, String> {
         let (bytes, original_len) = read_seed_file_prefix(&seed_file, args.max_len.max(1))
             .map_err(|error| format!("read seed file '{}': {error}", seed_file.display()))?;
         if original_len > bytes.len() as u64 {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: seed '{}' is {original_len} bytes; using its first {} bytes \
                  to honor --max-len",
                 seed_file.display(),
@@ -1845,6 +1850,9 @@ struct CoverageTracker;
 impl CoverageTracker {
     fn new(_extra_env: &[(String, String)]) -> Option<Self> {
         None
+    }
+    fn count(&self) -> usize {
+        0
     }
     fn input_increased_coverage(&mut self) -> bool {
         false
@@ -2427,7 +2435,12 @@ fn run_builtin_with_progress(
         sink_taint.observe(&runtrace_events, &input);
         if let Some(tick) = progress {
             if last_tick.elapsed() >= Duration::from_millis(500) {
-                tick(executions, finding_ids.len(), start.elapsed());
+                tick(
+                    executions,
+                    finding_ids.len(),
+                    cov_tracker.as_ref().map_or(0, |cov| cov.count()),
+                    start.elapsed(),
+                );
                 last_tick = Instant::now();
             }
         }
@@ -2718,35 +2731,36 @@ fn run_builtin_with_progress(
         finding_ids.push(id.0);
     }
     if confirmed_sinks_total > max_sink_taint_findings {
-        eprintln!(
+        gfeprintln!(
             "govfuzz fuzz: {confirmed_sinks_total} fuzz-controlled sink(s) confirmed (#422); \
              emitted the first {max_sink_taint_findings} (raise \
              GOVFUZZ_MAX_SINK_TAINT_FINDINGS if intended)"
         );
     }
     if dropped_sink_entries > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz fuzz: sink-taint tracking reached its {}-subject memory cap; \
              ignored {} later distinct sink observation(s) (raise \
              GOVFUZZ_MAX_SINK_SUBJECTS or GOVFUZZ_MAX_SINK_TRACKING_BYTES if intended)",
-            sink_taint_limit, dropped_sink_entries
+            sink_taint_limit,
+            dropped_sink_entries
         );
     }
 
     if non_reproducible > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz fuzz: {non_reproducible} fault(s) did not reproduce in a fresh \
              process (global-state artifacts) and were not emitted"
         );
     }
     if driver_glue_drops > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz fuzz: {driver_glue_drops} crash(es) in libFuzzer/sanitizer driver glue \
              (no target frame) were treated as harness faults and not emitted"
         );
     }
     if scaffolding_leak_drops > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz fuzz: {scaffolding_leak_drops} LSan leak(s) whose entire stack was govfuzz \
              decode/harness scaffolding (no target frame) were suppressed (not target leaks)"
         );
@@ -2768,7 +2782,7 @@ fn run_builtin_with_progress(
     ) {
         Ok(count) => count,
         Err(error) => {
-            eprintln!("govfuzz fuzz: warning: could not persist coverage corpus: {error}");
+            gfeprintln!("govfuzz fuzz: warning: could not persist coverage corpus: {error}");
             0
         }
     };
@@ -2816,7 +2830,7 @@ fn run_builtin_with_progress(
         executions_per_sec: executions_per_sec(executions, elapsed_secs),
     };
     if prepared.print_final_stats {
-        eprintln!(
+        gfeprintln!(
             "{}",
             format_final_stats(
                 summary.executions,
@@ -2906,7 +2920,7 @@ fn first_of_sanitizer_cluster(
     }
     if seen.len() >= limit {
         if seen.len() == limit {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: sanitizer-cluster tracking reached its {limit}-key \
                  memory cap; suppressing later distinct clusters (raise \
                  GOVFUZZ_MAX_FINDING_DEDUP_KEYS if intended)"
@@ -3186,7 +3200,7 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
     if timed_out {
         // Reap any persistent-mode worker that setsid()'d out of the killed group.
         kill_processes_by_exe(&main_afl);
-        eprintln!(
+        gfeprintln!(
             "govfuzz: afl-fuzz exceeded its hard deadline ({:?}) and was killed — \
              likely a fork-server/persistent-mode hang; harvesting any crashes found so far",
             time_budget.saturating_mul(2) + Duration::from_secs(30)
@@ -3221,7 +3235,7 @@ fn run_afl_plus_plus(prepared: PreparedFuzzRun) -> Result<FuzzRunSummary, String
             // warning and lose the target; instead fall through to an empty
             // summary. The builtin engine surfaces such crashes directly, so
             // `--engine builtin,afl++` still reports them.
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: afl-fuzz could not start for {} — every seed aborts the \
                  harness (a pervasive sanitizer finding that fires on all inputs); \
                  skipping AFL for this target. Use `--engine builtin,afl++` so the \
@@ -3728,7 +3742,7 @@ fn run_c_libfuzzer_single_input(
             });
         }
         if stderr.contains("exceeded per-input timeout") {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: input hung beyond {:?}, skipping",
                 per_input_timeout
             );
@@ -3812,7 +3826,7 @@ fn load_cmplog_for_run(
             )
         }
         Err(error) => {
-            eprintln!(
+            gfeprintln!(
                 "warning: failed to ingest cmplog log {}: {error}; falling back to empty dictionary",
                 path.display()
             );
@@ -4296,7 +4310,7 @@ fn load_afl_dictionary_tokens(path: &Path) -> Result<Vec<Vec<u8>>, String> {
             }
             Ok(None) => {}
             Err(error) => {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz: warning: skipping dictionary '{}:{}': {error}",
                     path.display(),
                     index + 1

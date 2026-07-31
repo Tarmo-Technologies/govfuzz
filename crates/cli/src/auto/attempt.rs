@@ -2620,7 +2620,7 @@ fn run_attempt(
 
     if let ForeignStrategy::StubIsolated(stub) = &strategy {
         if let Err(error) = apply_platform_stub(stub, &harness_dir, &repairs_dir) {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: warning: {}: platform stub setup failed: {error}",
                 candidate.harness_id
             );
@@ -2693,7 +2693,7 @@ fn run_attempt(
         // wall-clock the operator asked for (a `--campaign-time 150` sweep ran ten
         // minutes because one target kept repairing). Stop and report honestly.
         if retry > 0 && crate::command_output::campaign_budget_exhausted() {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: {}: --campaign-time budget exhausted after {retry} repair \
                  round(s); abandoning this target",
                 candidate.harness_id
@@ -2841,19 +2841,22 @@ fn run_attempt(
                         elapsed: Duration::ZERO,
                         budget: time_budget,
                         executions: 0,
+                        edges: 0,
                         findings: 0,
                         is_final: false,
                     });
-                    let tick = |executions: usize, findings: usize, elapsed: Duration| {
-                        progress.update(&ProgressUpdate {
-                            phase: Phase::Fuzz { pass: pass_label },
-                            elapsed,
-                            budget: time_budget,
-                            executions,
-                            findings,
-                            is_final: false,
-                        });
-                    };
+                    let tick =
+                        |executions: usize, findings: usize, edges: usize, elapsed: Duration| {
+                            progress.update(&ProgressUpdate {
+                                phase: Phase::Fuzz { pass: pass_label },
+                                elapsed,
+                                budget: time_budget,
+                                executions,
+                                edges,
+                                findings,
+                                is_final: false,
+                            });
+                        };
                     let pass_started = std::time::Instant::now();
                     // #383: carry coverage forward — reseed this pass from the
                     // prior passes' persisted, signature-deduped corpus queue so
@@ -2898,7 +2901,7 @@ fn run_attempt(
                             p
                         }
                         Err(error) => {
-                            eprintln!(
+                            gfeprintln!(
                                 "govfuzz auto: fuzz pass `{pass_label}` failed for {}: {error}",
                                 candidate.harness_id
                             );
@@ -2938,6 +2941,7 @@ fn run_attempt(
                         elapsed: pass_started.elapsed(),
                         budget: time_budget,
                         executions: summary.executions,
+                        edges: summary.coverage.edges,
                         findings: summary.findings.len(),
                         is_final: true,
                     });
@@ -2971,7 +2975,7 @@ fn run_attempt(
                         if let Err(error) =
                             stamp_runtime_mode(&finding_path, *pass, &env_injected, reach_label)
                         {
-                            eprintln!("govfuzz auto: warning: stamp {fid} runtime_mode: {error}");
+                            gfeprintln!("govfuzz auto: warning: stamp {fid} runtime_mode: {error}");
                         }
                     }
                     events.append(&mut ev);
@@ -3019,7 +3023,7 @@ fn run_attempt(
                     .status
                     .success();
                     if !afl_built {
-                        eprintln!(
+                        gfeprintln!(
                             "govfuzz auto: warning: `make afl` failed for {} — AFL skipped, \
                              builtin results kept",
                             candidate.harness_id
@@ -3058,7 +3062,7 @@ fn run_attempt(
                                         &env_injected,
                                         reach_label,
                                     ) {
-                                        eprintln!(
+                                        gfeprintln!(
                                             "govfuzz auto: warning: stamp {fid} runtime_mode: {error}"
                                         );
                                     }
@@ -3074,7 +3078,7 @@ fn run_attempt(
                                     findings: summary.findings.clone(),
                                 });
                             }
-                            Err(error) => eprintln!(
+                            Err(error) => gfeprintln!(
                                 "govfuzz auto: warning: AFL run failed for {}: {error}",
                                 candidate.harness_id
                             ),
@@ -3110,7 +3114,7 @@ fn run_attempt(
                         .max()
                         .unwrap_or(0);
                     let findings: usize = pass_runs.iter().map(|p| p.findings.len()).sum();
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: WARNING: {} fuzzed STUB-ONLY — {}/{} called symbols were \
                          blind stubs (empty bodies) and no real dependency source was linked; the \
                          fuzz exercised stubs, not the real library, so its {} finding(s) at \
@@ -3127,11 +3131,14 @@ fn run_attempt(
                 // so loudly; the structured signal lands in run.json `platform_stub`.
                 if let ForeignStrategy::StubIsolated(stub) = &strategy {
                     let findings: usize = pass_runs.iter().map(|p| p.findings.len()).sum();
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: NOTE: {} fuzzed STUB-ISOLATED for `{}` — its platform \
                          deps were faked (real {} behavior not modeled), so its {} finding(s) are \
                          REDUCED-FIDELITY and need confirmation on the real platform",
-                        candidate.harness_id, stub.platform, stub.platform, findings,
+                        candidate.harness_id,
+                        stub.platform,
+                        stub.platform,
+                        findings,
                     );
                 }
                 // #95: target entry is a fuzz-SUCCESS invariant. C/C++/Ada
@@ -3148,7 +3155,7 @@ fn run_attempt(
                 if let Some((entry_miss, reason)) =
                     entry_miss_classification(candidate.lang, &pass_runs, stub_exec.stub_only)
                 {
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: {}: built but the target was NEVER entered ({entry_miss}) \
                          — recording built_not_entered, NOT a fuzz success ({reason})",
                         candidate.harness_id
@@ -3178,7 +3185,7 @@ fn run_attempt(
                 // success. Downgrade to Built (compiled, but no fuzz signal).
                 let total_executions: usize = pass_runs.iter().map(|p| p.executions).sum();
                 if total_executions == 0 {
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: {}: built but no fuzz iteration executed (0 executions) — \
                          recording built, NOT built_and_fuzzed",
                         candidate.harness_id
@@ -3213,7 +3220,7 @@ fn run_attempt(
                         .max()
                         .unwrap_or(0);
                     if builtin_entered_execed && peak_builtin_edges == 0 {
-                        eprintln!(
+                        gfeprintln!(
                             "govfuzz auto: WARNING: {} entered and executed the target but recorded \
                              ZERO coverage edges — coverage instrumentation is inert, so this run \
                              fuzzed BLIND (no coverage-guided mutation). Findings are still valid, \
@@ -3246,7 +3253,7 @@ fn run_attempt(
                     // explicitly so a long multi-round cascade that never converges
                     // is distinguishable from a one-shot failure, and the campaign
                     // moves on instead of appearing stuck on this target.
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: {}: repair cap reached ({max_repair_rounds} rounds) \
                          without a clean build; giving up on this target (failed_build) and \
                          advancing. Raise --max-repair-rounds to allow more repair rounds.",
@@ -3326,7 +3333,7 @@ fn run_attempt(
                     &mut extra_sources,
                     &options.extra_sources,
                 ) {
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: {}: recovered source {} does not compile in \
                          isolation; dropping it and stubbing the symbols it \
                          provided",
@@ -3362,7 +3369,7 @@ fn run_attempt(
                             symbol: WHOLE_LIBRARY_ARCHIVE_SYMBOL.to_owned(),
                             source_path: archive.clone(),
                         });
-                        eprintln!(
+                        gfeprintln!(
                             "govfuzz auto: {}: undefined externals unresolved in the swept tree; \
                              linking recovered static library {} to close the link (§26.1)",
                             candidate.harness_id,
@@ -3417,7 +3424,7 @@ fn run_attempt(
                         linked_any = true;
                     }
                     if linked_any {
-                        eprintln!(
+                        gfeprintln!(
                             "govfuzz auto: {}: undefined externals across sibling TUs and no \
                              prebuilt archive; linking the library's full recovered TU set \
                              ({} source(s)) to close the link (§26.1)",
@@ -3527,7 +3534,7 @@ fn run_attempt(
                             // never allowed through that fallback: stubbing it would
                             // produce a false-clean harness that fuzzes no real target.
                             if record_refused_repair(&mut refused_repairs, &repair) {
-                                eprintln!(
+                                gfeprintln!(
                                     "govfuzz auto: refusing self-target repair {} for {}; \
                                      target appears unavailable in the active build",
                                     repair_key(&repair),
@@ -3589,7 +3596,7 @@ fn run_attempt(
                                 // The candidate ultimately surfaces as
                                 // FailedBuild with the originating error
                                 // in last_errors.
-                                eprintln!(
+                                gfeprintln!(
                                     "govfuzz auto: skipping repair for {}: {e}",
                                     repair_key(&repair)
                                 );
@@ -4069,7 +4076,7 @@ fn run_fuzz_with_runtrace(
         );
         child_env.push(("LD_PRELOAD".to_owned(), ld_preload));
     } else if SHIM_MISSING_WARNED.set(()).is_ok() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: libgovfuzz_runtrace.so not found beside govfuzz or in a \
              sibling govfuzz_runtrace_shim archive directory; \
              running fuzz without runtime audit"
@@ -5276,7 +5283,7 @@ fn try_build_c(
         );
         if build_succeeded(&out) {
             let _ = std::fs::write(c_compiler_cache_path(work_dir), "gcc");
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: {harness_id}: clang rejected this target and gcc \
                  accepted it; using gcc for the rest of the run"
             );
@@ -6830,7 +6837,7 @@ fn ensure_ada_src_instrumented(
         let mut source = match crate::source_text::read_source_text(&source_path) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: skipping {}: read error: {e}",
                     source_path.display()
                 );
@@ -6870,7 +6877,7 @@ fn ensure_ada_src_instrumented(
         let ast = match ada_parser::reconcile::build_structural_ast(&source, None, &source_path) {
             Ok(ast) => ast,
             Err(e) => {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: skipping {}: parse error: {e}",
                     source_path.display()
                 );
@@ -6884,7 +6891,7 @@ fn ensure_ada_src_instrumented(
         }) {
             Ok(out) => out,
             Err(e) => {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: skipping {}: instrumenter: {e}",
                     source_path.display()
                 );

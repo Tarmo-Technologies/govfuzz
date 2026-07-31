@@ -34,7 +34,7 @@ pub fn run(args: SlocArgs) -> i32 {
         match static_analysis::sloc_report(path) {
             Ok(report) => reports.push(report),
             Err(error) => {
-                eprintln!("sloc: {}: {error:#}", path.display());
+                gfeprintln!("sloc: {}: {error:#}", path.display());
                 return 1;
             }
         }
@@ -51,7 +51,7 @@ pub fn run(args: SlocArgs) -> i32 {
         match serde_json::to_string_pretty(&render_json(&reports)) {
             Ok(json) => format!("{json}\n"),
             Err(error) => {
-                eprintln!("sloc: {error}");
+                gfeprintln!("sloc: {error}");
                 return 1;
             }
         }
@@ -67,7 +67,7 @@ pub fn run(args: SlocArgs) -> i32 {
                 }
             }
             if let Err(error) = std::fs::write(out, &body) {
-                eprintln!("sloc: cannot write {}: {error}", out.display());
+                gfeprintln!("sloc: cannot write {}: {error}", out.display());
                 return 1;
             }
             println!("sloc: {} root(s) → {}", reports.len(), out.display());

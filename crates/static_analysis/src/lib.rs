@@ -535,6 +535,37 @@ fn cluster_findings(findings: &[StaticFinding]) -> Vec<IssueCluster> {
 /// report layer can fill the `findings.csv` `remediation` column.
 pub fn remediation_for(rule_id: &str) -> &'static str {
     match rule_id {
+        "GF-101" => "Validate input before the failing operation and handle each expected exception explicitly; recover safely or return a controlled error instead of letting it escape.",
+        "GF-102" => "Validate array indices and numeric ranges before use, and replace broad exception swallowing with a specific handler that returns a controlled error.",
+        "GF-103" => "Cap input-derived allocation and task-stack sizes, handle allocation failure explicitly, and do not swallow Storage_Error and continue in a partial state.",
+        "GF-104" => "Synchronize task lifecycle and queue operations, check task state before use, and handle Tasking_Error explicitly by safely recovering or propagating the failure.",
+        "GF-105" => "Replace the broad catch with explicit handlers for the expected user exceptions, and either restore a valid state or propagate a controlled error.",
+        "GF-106" => "Validate the input before the reachable raise and return a controlled error for invalid values; keep explicit raises only for invariants callers cannot violate.",
+        "GF-201" | "GF-203" => "Check the requested index and offset and copy length against the actual buffer bounds before every read or write; use size-aware APIs where available.",
+        "GF-202" => "Give the allocation one clear owner, stop all aliases from using it after release, and use lifetime-safe ownership or null the pointer immediately after free.",
+        "GF-204" => "Release the allocation on exactly one ownership path and clear or transfer all aliases after the first free so cleanup cannot free it again.",
+        "GF-205" => "Use checked arithmetic and validate operands before addition, multiplication, shifts, narrowing, allocation-size calculations, or index calculations.",
+        "GF-206" => "Reject or handle null before dereference and preserve the invariant that required pointers are initialized and valid on every reachable path.",
+        "GF-207" => "Replace attacker-controlled recursion with iteration where possible, or enforce a strict depth/complexity limit before making the recursive call.",
+        "GF-208" | "GF-306" => "Release every acquired allocation or handle on all success and error paths; preferably with a single cleanup block or RAII/defer-style ownership.",
+        "GF-209" => "Validate input-derived sizes against a fixed resource limit before allocating, and reject or stream work that would exceed the limit.",
+        "GF-210" => "Reproduce the signal under ASan/UBSan with symbols, identify the first project frame, and fix the invalid memory, arithmetic, or control-flow operation at that site.",
+        "GF-211" => "Do not let the address of a local object escape its lifetime; return by value, copy into caller-owned storage, or allocate storage with the required lifetime.",
+        "GF-212" => "Initialize the full object or buffer before any read, including padding and partially filled output buffers; use calloc, memset, or explicit initializers.",
+        "GF-556" => "Synchronize shared mutable state with a mutex or correctly ordered atomics, or redesign ownership so the memory is not concurrently shared.",
+        "GF-558" => "Enforce a validated upper bound on input-derived allocation or accumulation, or process the data incrementally instead of buffering the expanded result.",
+        "GF-557" => "Determine whether the contract or implementation is wrong; validate before a preconditioned call, or fix the body so postconditions and invariants always hold.",
+        "GF-668" => "Confirm the input should reach this OS capability, then allowlist and constrain its command, path, address, library, or format operand to the minimum required scope.",
+        "GF-301" | "GF-307" => "Restore the documented behavioral invariant for all equivalent inputs and states, or tighten input validation if the differing behavior is intentionally unsupported.",
+        "GF-302" => "Use a parameterized/prepared query with bound arguments and validate identifiers against an allowlist; never concatenate input into SQL.",
+        "GF-303" => "Allowlist outbound schemes and hosts, resolve and block loopback/private/metadata addresses, and revalidate every redirect before connecting.",
+        "GF-305" => "Remove secrets from the process environment where possible, pass narrowly scoped credentials through a secret manager, and redact sensitive values from errors and logs.",
+        "GF-413" => "Load only an absolute, trusted library path (or a fixed allowlisted name from a locked directory) and remove attacker-writable directories from the search path.",
+        "GF-414" => "Restrict deletion to an approved base directory, canonicalize and verify the final path is inside it, and never derive a recursive-delete parent from untrusted input.",
+        "GF-415" => "Validate attacker-controlled values before the assertion, return a controlled error for invalid input, and reserve assertions for internal invariants.",
+        "GF-416" => "Create files and directories with the least permissions required, apply an explicit restrictive mode, and do not rely on a permissive process umask.",
+        "GF-417" => "Create temporary files atomically with a system API that uses an unpredictable name and exclusive creation; never reuse a caller-controlled temp path.",
+        "GF-418" => "Perform validation and use as one atomic operation on the same opened handle; avoid check-then-open path logic and use no-follow/exclusive flags where supported.",
         "GF-304" | "GF-404" | "GF-412" => "Pass arguments as a list to a fixed program (execve-style), or validate against an allowlist — never build a shell string from input.",
         "GF-405" => "Canonicalize the path and confirm it stays within an allowed base directory (reject `..`); prefer an opaque id over a caller-supplied path.",
         "GF-419" => "Use a parameterized/prepared query with bound arguments; never concatenate or format input into SQL.",
@@ -666,7 +697,12 @@ pub fn remediation_for(rule_id: &str) -> &'static str {
         "GF-428" => "Generate the secret with a CSPRNG (`secrets`/`os.urandom`, `crypto/rand`, `SecureRandom`, `crypto.randomBytes`, or Web Crypto).",
         "GF-552" => "Avoid transmute: use an `as` cast, `from_bits`/`to_bits`, `From`/`TryFrom`, or `bytemuck`/`zerocopy`; if unavoidable, verify both types have identical layout and every target-type invariant holds.",
         "GF-553" => "Propagate the error with `?` or handle the `Err`/`None` case; reserve `expect` for invariants already established.",
-        _ => "See the rule description for remediation guidance.",
+        // Every CSV row must be self-contained. A newly added rule may not have a
+        // bespoke repair sentence yet, but its catalog description is still more
+        // useful than pointing at text the CSV does not carry.
+        _ => finding_rules::by_id(rule_id)
+            .map(|rule| rule.description)
+            .unwrap_or("Validate the affected input and state at the reported sink, handle failure explicitly, and add a regression test using the saved reproducer."),
     }
 }
 
@@ -27519,11 +27555,14 @@ fn local_calls(
             CALL_SITES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
         for key in functions.call_targets_with_arity(&name, current_model, arg_count) {
-            if profiling() {
-                CALL_TARGETS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            }
             if &key == current || !seen.insert(key.clone()) {
                 continue;
+            }
+            // Counted HERE, after the self-call and duplicate drops, so the ratio
+            // reflects edges the taint pass actually walks — not raw candidate
+            // visits, which over-report it.
+            if profiling() {
+                CALL_TARGETS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
             calls.push((call_name.clone(), key));
         }
@@ -30002,6 +30041,24 @@ fn path_matches(pattern: &str, path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn remediation_is_self_contained_for_fuzz_confirmation_rules() {
+        for rule_id in [
+            "GF-101", "GF-102", "GF-201", "GF-205", "GF-210", "GF-212", "GF-301", "GF-415",
+            "GF-556", "GF-557", "GF-558", "GF-668",
+        ] {
+            let guidance = remediation_for(rule_id);
+            assert!(
+                !guidance.trim().is_empty(),
+                "{rule_id} remediation is empty"
+            );
+            assert!(
+                !guidance.contains("See the rule description"),
+                "{rule_id} remediation is not self-contained: {guidance}"
+            );
+        }
+    }
     use std::time::{SystemTime, UNIX_EPOCH};
 
     /// Campaign fix: the tree walk skips dependency / build / cache dirs, so a scan

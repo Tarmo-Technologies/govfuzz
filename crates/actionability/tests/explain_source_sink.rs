@@ -8,6 +8,32 @@ use actionability::{backfill_actionability, patch_hints_for_finding, RunMode, Ve
 use serde_json::json;
 
 #[test]
+fn runtime_message_source_prefix_backfills_sink_and_fix_location() {
+    let raw = json!({
+        "rule_id": "GF-205",
+        "target": { "name": "decode_index" },
+        "exception": {
+            "name": "UBSAN_ARRAY_INDEX_OUT_OF_BOUNDS",
+            "message": "/project/src/decode.c:41:17: runtime error: index -2 out of bounds for type 'char[6]'"
+        }
+    });
+
+    let record = backfill_actionability(RunMode::Reporting, &raw, None);
+    let sink = record.sink.expect("message source should become the sink");
+    assert_eq!(sink.file.as_deref(), Some("/project/src/decode.c"));
+    assert_eq!(sink.line, Some(41));
+    assert_eq!(sink.function, "decode_index");
+
+    let fix = record
+        .fix_location
+        .expect("message source should be fixable");
+    assert_eq!(fix.path, "/project/src/decode.c");
+    assert_eq!(fix.line, Some(41));
+    assert_eq!(fix.col, Some(17));
+    assert_eq!(fix.reason, "exception_message_source");
+}
+
+#[test]
 fn sink_skips_rust_stdlib_frame_and_resolves_in_project_frame() {
     // #32: a Rust-lane crash's top frame is the toolchain stdlib
     // (core::ptr::copy_nonoverlapping at library/core); the sink / fix_location

@@ -81,15 +81,16 @@ fn write_static_findings(candidate: &Candidate, findings_root: &Path) -> Option<
         if std::fs::create_dir_all(&dir).is_err() {
             continue;
         }
-        // Use the scanner's own (relative) reported path, not the candidate's
-        // absolute `source_path`, so a report-only (F-RO) finding's sink_file matches
-        // the relative paths the tree-wide (F-STATIC) scan emits instead of leaking
-        // an absolute path into findings.csv.
+        let full_source_path = source_canon
+            .as_deref()
+            .unwrap_or(source)
+            .to_string_lossy()
+            .into_owned();
         let record = static_finding_record(
             &id,
             &candidate.harness_id,
             &candidate.name,
-            &f.location.path,
+            &full_source_path,
             candidate.dialect.map(|d| d.as_str()),
             f,
         );
@@ -261,8 +262,9 @@ pub fn emit_tree_static_findings(root: &Path, work: &Path) -> usize {
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| "static-scan".to_owned());
+        let full_source_path = absolute_reported_path(root, &f.location.path);
         let record =
-            static_finding_record(&id, "static-scan", &target_name, &f.location.path, None, f);
+            static_finding_record(&id, "static-scan", &target_name, &full_source_path, None, f);
         if std::fs::write(
             dir.join("finding.json"),
             serde_json::to_vec_pretty(&record).unwrap_or_default(),
@@ -273,6 +275,22 @@ pub fn emit_tree_static_findings(root: &Path, work: &Path) -> usize {
         }
     }
     written
+}
+
+/// Resolve a scanner path against its scan root for report consumers. Keep the
+/// joined absolute path even when canonicalization fails (for example, if a file
+/// is removed between scanning and report emission).
+fn absolute_reported_path(root: &Path, reported: &str) -> String {
+    let path = Path::new(reported);
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    std::fs::canonicalize(&joined)
+        .unwrap_or(joined)
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Whether a scan-reported path lies inside the govfuzz work-dir (its generated
@@ -372,6 +390,14 @@ mod tests {
             assert!(
                 !path.contains("work/") && !path.contains("harnesses"),
                 "work-dir harness finding leaked into --static report: {path}"
+            );
+            assert!(
+                Path::new(path).is_absolute(),
+                "static sink path must be absolute: {path}"
+            );
+            assert!(
+                path.ends_with("app.c"),
+                "static sink must name the user's full source path: {path}"
             );
         }
     }

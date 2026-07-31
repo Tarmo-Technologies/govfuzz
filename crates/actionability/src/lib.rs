@@ -365,6 +365,9 @@ pub fn select_fix_location(raw: &Value, finding_json_path: Option<&str>) -> Opti
     if let Some(location) = sanitizer_stack_location(raw) {
         return Some(location);
     }
+    if let Some(location) = exception_message_location(raw) {
+        return Some(location);
+    }
     if let Some(location) = explicit_raise_location(raw) {
         return Some(location);
     }
@@ -641,6 +644,9 @@ pub fn existing_actionability_or_backfill(
             // plain-English explanation / fix guidance.
             if record.sink.is_none() {
                 record.sink = sink_from(raw);
+            }
+            if record.fix_location.is_none() {
+                record.fix_location = select_fix_location(raw, None);
             }
             if record.source.is_none() {
                 record.source = source_from(raw, record.entry_path.as_ref());
@@ -1611,9 +1617,10 @@ pub fn is_harness_frame(function: &str, file: Option<&str>) -> bool {
 /// only a function name.
 fn sink_from(raw: &Value) -> Option<Sink> {
     let Some(frames) = raw.pointer("/exception/stack").and_then(Value::as_array) else {
-        // No crash stack (an oracle hit) — derive the sink from the oracle's
-        // declared source location when it carries one.
-        return oracle_sink(raw);
+        // Some UBSan/runtime emitters put the only source location at the start
+        // of the diagnostic message (`file:line:col: runtime error: ...`). Use it
+        // when no structured stack or oracle sink was recorded.
+        return oracle_sink(raw).or_else(|| exception_message_sink(raw));
     };
     let mut fallback: Option<Sink> = None;
     for frame in frames {
@@ -1640,7 +1647,64 @@ fn sink_from(raw: &Value) -> Option<Sink> {
             fallback = Some(sink);
         }
     }
-    fallback.or_else(|| oracle_sink(raw))
+    fallback
+        .or_else(|| oracle_sink(raw))
+        .or_else(|| exception_message_sink(raw))
+}
+
+#[derive(Debug)]
+struct MessageSourceLocation {
+    file: String,
+    line: u64,
+    col: Option<u64>,
+}
+
+/// Parse the source prefix used by UBSan and several language runtimes:
+/// `file:line:col: runtime error: ...` (or `file:line: ...`). The first numeric
+/// colon-delimited component is the line, which also preserves Windows drive
+/// prefixes such as `C:\\src\\file.c:12:4`.
+fn message_source_location(raw: &Value) -> Option<MessageSourceLocation> {
+    let message = string_at(raw, &["exception", "message"])?;
+    let parts: Vec<&str> = message.split(':').collect();
+    let line_idx = parts
+        .iter()
+        .position(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))?;
+    if line_idx == 0 {
+        return None;
+    }
+    let file = parts[..line_idx].join(":").trim().to_owned();
+    if file.is_empty() {
+        return None;
+    }
+    let line = parts[line_idx].parse::<u64>().ok()?;
+    let col = parts
+        .get(line_idx + 1)
+        .filter(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
+        .and_then(|part| part.parse::<u64>().ok());
+    Some(MessageSourceLocation { file, line, col })
+}
+
+fn exception_message_sink(raw: &Value) -> Option<Sink> {
+    let location = message_source_location(raw)?;
+    let function = string_at(raw, &["target", "subprogram"])
+        .or_else(|| string_at(raw, &["target", "function"]))
+        .or_else(|| string_at(raw, &["target", "name"]))
+        .unwrap_or_default();
+    Some(Sink {
+        file: Some(location.file),
+        line: Some(location.line),
+        function,
+    })
+}
+
+fn exception_message_location(raw: &Value) -> Option<FixLocation> {
+    let location = message_source_location(raw)?;
+    Some(FixLocation {
+        path: location.file,
+        line: Some(location.line),
+        col: location.col,
+        reason: "exception_message_source".to_owned(),
+    })
 }
 
 /// Derive a [`Sink`] for an oracle hit from its declared `source` evidence —

@@ -974,6 +974,7 @@ pub fn write_reports(
     write_findings_csv(
         &auto_dir,
         work_dir,
+        source_root,
         results,
         mode,
         static_dynamic,
@@ -1074,12 +1075,11 @@ struct CsvFinding {
     confidence: actionability::ActionabilityConfidence,
     verdict: actionability::Verdict,
     cwe: Vec<String>,
-    /// Taint SOURCE `file:line` when the finding carries a source→sink flow
-    /// (interprocedural taint rules like GF-405/419); empty for a pattern rule
-    /// (e.g. GF-401 unsafe-copy) that flags a call site without tracing an origin.
+    /// Input origin. For a taint finding this is the traced `file:line`; for a
+    /// runtime finding it is the saved fuzz input that drove the target.
     source: String,
-    /// #1: the full source→sink taint path, each step `path:line` joined by
-    /// ` -> ` (Coverity-style). Empty for a pattern rule with no trace.
+    /// Best available source→sink path. Static taint rules carry their traced
+    /// `path:line` steps; runtime findings carry input → entry → sink.
     data_flow: String,
     sink_file: String,
     sink_line: String,
@@ -1170,6 +1170,7 @@ pub(crate) fn tree_static_finding_ids(work_dir: &Path) -> Vec<String> {
 fn write_findings_csv(
     auto_dir: &Path,
     work_dir: &Path,
+    source_root: &Path,
     results: &[AttemptResult],
     mode: actionability::RunMode,
     static_dynamic: bool,
@@ -1193,6 +1194,28 @@ fn write_findings_csv(
                     .map(|s| (r.candidate.harness_id.clone(), s))
             })
             .collect();
+    let source_by_harness: std::collections::BTreeMap<String, PathBuf> = results
+        .iter()
+        .map(|result| {
+            (
+                result.candidate.harness_id.clone(),
+                result.candidate.source_path.clone(),
+            )
+        })
+        .collect();
+    let target_by_harness: std::collections::BTreeMap<String, String> = results
+        .iter()
+        .map(|result| {
+            (
+                result.candidate.harness_id.clone(),
+                result.candidate.name.clone(),
+            )
+        })
+        .collect();
+    let line_by_harness: std::collections::BTreeMap<String, u32> = results
+        .iter()
+        .map(|result| (result.candidate.harness_id.clone(), result.candidate.line))
+        .collect();
     // Build the header in the ORDER `render_issue_row` writes the row: the optional
     // flag columns come before the stub-accounting block, not after it. Appending
     // them to the end of the full header instead shifted every stub column by one
@@ -1247,7 +1270,16 @@ fn write_findings_csv(
         std::collections::HashMap::new();
     for fid in &fids {
         let finding_path = findings_root.join(fid).join("finding.json");
-        let Some(finding) = load_csv_finding(&finding_path, fid, mode, forced_harness_ids) else {
+        let Some(finding) = load_csv_finding(
+            &finding_path,
+            fid,
+            mode,
+            forced_harness_ids,
+            source_root,
+            &source_by_harness,
+            &target_by_harness,
+            &line_by_harness,
+        ) else {
             continue;
         };
         match index_by_key.get(&finding.group_key) {
@@ -1279,6 +1311,10 @@ fn load_csv_finding(
     fid: &str,
     mode: actionability::RunMode,
     forced_harness_ids: &std::collections::BTreeSet<String>,
+    source_root: &Path,
+    source_by_harness: &std::collections::BTreeMap<String, PathBuf>,
+    target_by_harness: &std::collections::BTreeMap<String, String>,
+    line_by_harness: &std::collections::BTreeMap<String, u32>,
 ) -> Option<CsvFinding> {
     let raw: serde_json::Value = std::fs::read(path)
         .ok()
@@ -1298,7 +1334,10 @@ fn load_csv_finding(
         .filter(|key| !key.trim().is_empty())
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| id.clone());
-    let (sink_file, sink_line, sink_function) = match &action.sink {
+    let classification = json_str(&raw, &["classification"]);
+    let is_static = classification == "static_scan";
+    let raw_harness_id = json_str(&raw, &["harness_id"]);
+    let (mut sink_file, mut sink_line, mut sink_function) = match &action.sink {
         Some(sink) => (
             sink.file.clone().unwrap_or_default(),
             sink.line.map(|line| line.to_string()).unwrap_or_default(),
@@ -1306,11 +1345,46 @@ fn load_csv_finding(
         ),
         None => (String::new(), String::new(), String::new()),
     };
+    let exception_name = json_str(&raw, &["exception", "name"]);
+    if is_static && !sink_file.is_empty() {
+        sink_file = full_static_sink_path(
+            &raw,
+            &sink_file,
+            &raw_harness_id,
+            source_root,
+            source_by_harness,
+        );
+    } else if !is_static {
+        // Stackless OOMs and some older UBSan records have no structured frame.
+        // The result ledger still supplies a concrete target source/line, which
+        // is preferable to an entirely blank sink and is clearly the fuzz entry
+        // fallback rather than a fabricated internal frame.
+        if sink_file.is_empty() {
+            if let Some(path) = source_by_harness.get(&raw_harness_id) {
+                sink_file = absolute_candidate_path(source_root, path);
+            }
+        }
+        if sink_line.is_empty() {
+            sink_line = line_by_harness
+                .get(&raw_harness_id)
+                .map(ToString::to_string)
+                .unwrap_or_default();
+        }
+        if sink_function.is_empty()
+            || sink_function.eq_ignore_ascii_case(&exception_name)
+            || is_sanitizer_diagnostic_label(&sink_function)
+        {
+            sink_function = target_by_harness
+                .get(&raw_harness_id)
+                .cloned()
+                .unwrap_or_default();
+        }
+    }
     // #1: the taint SOURCE `file:line`, when the finding recorded a source→sink
     // flow. Interprocedural taint rules carry `exception.source_file`/`source_line`;
     // a pure pattern rule (GF-401 unsafe-copy) has none, so this stays empty rather
     // than duplicating the sink.
-    let source = {
+    let mut source = {
         let file = json_str(&raw, &["exception", "source_file"]);
         let line = json_str(&raw, &["exception", "source_line"]);
         match (file.is_empty(), line.is_empty()) {
@@ -1320,8 +1394,51 @@ fn load_csv_finding(
         }
     };
 
-    let classification = json_str(&raw, &["classification"]);
-    let is_static = classification == "static_scan";
+    // Runtime findings are driven by an actual saved input even when they do not
+    // carry a static taint trace. Surface that origin rather than leaving every
+    // fuzz row blank in `source`.
+    if source.is_empty() && !is_static {
+        let testcase = json_str(&raw, &["paths", "testcase"]);
+        source = format!(
+            "fuzz_input:{}",
+            if testcase.is_empty() {
+                "testcase.bin"
+            } else {
+                &testcase
+            }
+        );
+    }
+
+    let mut data_flow = json_str(&raw, &["data_flow"]);
+    if data_flow.is_empty() && !is_static {
+        let entry = target_by_harness
+            .get(&raw_harness_id)
+            .cloned()
+            .unwrap_or_else(|| raw_harness_id.clone());
+        let sink = match (sink_file.is_empty(), sink_line.is_empty()) {
+            (false, false) => format!("{}:{}:{}", sink_file, sink_line, sink_function),
+            (false, true) => format!("{}:{}", sink_file, sink_function),
+            _ => sink_function.clone(),
+        };
+        data_flow = format!("{source} -> entry:{entry} -> sink:{sink}");
+    }
+
+    let mut entity = json_str(&raw, &["entity"]);
+    if entity.is_empty() {
+        entity = if !sink_function.is_empty() {
+            sink_function.clone()
+        } else {
+            target_by_harness
+                .get(&raw_harness_id)
+                .cloned()
+                .or_else(|| {
+                    let target = json_str(&raw, &["target", "name"]);
+                    (!target.is_empty()).then_some(target)
+                })
+                .unwrap_or_else(|| exception_name.clone())
+        };
+    }
+
     // #484: provenance. An explicit `confirmation` (set by the join, or "static"
     // on a static finding) wins; a finding without one is a runtime hit, so
     // default it to "fuzz".
@@ -1352,7 +1469,6 @@ fn load_csv_finding(
     // floor, matching `confidence_model::forced_floor`) and attach the caveat note.
     // Keyed off the finding's real (raw) harness id so the static-scan blanking of
     // `harness_id` below doesn't hide the match.
-    let raw_harness_id = json_str(&raw, &["harness_id"]);
     let forced = forced_harness_ids.contains(&raw_harness_id);
     if forced {
         confidence = actionability::ActionabilityConfidence::Low;
@@ -1369,7 +1485,7 @@ fn load_csv_finding(
         harness_id,
         rule_id: json_str(&raw, &["rule_id"]),
         message: json_str(&raw, &["exception", "message"]),
-        exception_name: json_str(&raw, &["exception", "name"]),
+        exception_name,
         sanitizer: json_str(&raw, &["exception", "sanitizer"]),
         classification,
         confirmation,
@@ -1384,16 +1500,65 @@ fn load_csv_finding(
             .map(|id| id.strip_prefix("CWE-").unwrap_or(id).to_owned())
             .collect(),
         source,
-        data_flow: json_str(&raw, &["data_flow"]),
+        data_flow,
         sink_file,
         sink_line,
         sink_function,
-        entity: json_str(&raw, &["entity"]),
+        entity,
         remediation: static_analysis::remediation_for(&json_str(&raw, &["rule_id"])).to_owned(),
         signature: json_str(&raw, &["signature"]),
         forced,
         note,
     })
+}
+
+fn absolute_candidate_path(source_root: &Path, path: &Path) -> String {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        source_root.join(path)
+    };
+    std::fs::canonicalize(&absolute)
+        .unwrap_or(absolute)
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn is_sanitizer_diagnostic_label(function: &str) -> bool {
+    let upper = function.trim().to_ascii_uppercase();
+    ["ASAN_", "UBSAN_", "LSAN_", "MSAN_", "TSAN_"]
+        .iter()
+        .any(|prefix| upper.starts_with(prefix))
+}
+
+/// Static scanners historically stored a relative path (sometimes only a
+/// basename) in finding.json. Resolve it while rendering so regenerated CSVs
+/// also repair older findings. Report-only rows can use the exact candidate
+/// source keyed by harness; whole-tree rows resolve against the scan root.
+fn full_static_sink_path(
+    raw: &serde_json::Value,
+    sink_file: &str,
+    harness_id: &str,
+    source_root: &Path,
+    source_by_harness: &std::collections::BTreeMap<String, PathBuf>,
+) -> String {
+    let reported = source_by_harness
+        .get(harness_id)
+        .cloned()
+        .or_else(|| {
+            let target_path = json_str(raw, &["target", "source_path"]);
+            (!target_path.is_empty()).then(|| PathBuf::from(target_path))
+        })
+        .unwrap_or_else(|| PathBuf::from(sink_file));
+    let absolute = if reported.is_absolute() {
+        reported
+    } else {
+        source_root.join(reported)
+    };
+    std::fs::canonicalize(&absolute)
+        .unwrap_or(absolute)
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Render one `findings.csv` row for a root-cause group: the most-severe member is
@@ -3183,6 +3348,108 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
+    fn old_relative_static_sink_uses_exact_candidate_source_in_regenerated_csv() {
+        let root = std::env::temp_dir().join(format!(
+            "govfuzz-static-path-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = root.join("nested").join("weak.c");
+        std::fs::create_dir_all(source.parent().unwrap()).unwrap();
+        std::fs::write(&source, "int weak(void) { return 0; }").unwrap();
+        let mut sources = std::collections::BTreeMap::new();
+        sources.insert("H-static".to_owned(), source.clone());
+        let raw = serde_json::json!({
+            "classification": "static_scan",
+            "harness_id": "H-static",
+            "target": { "source_path": "weak.c" }
+        });
+
+        let resolved = full_static_sink_path(&raw, "weak.c", "H-static", &root, &sources);
+        assert_eq!(
+            PathBuf::from(resolved),
+            std::fs::canonicalize(&source).unwrap()
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn stackless_runtime_rows_use_message_or_candidate_location_and_fill_flow() {
+        let root = std::env::temp_dir().join(format!(
+            "govfuzz-runtime-csv-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let candidate_source = root.join("src").join("target.c");
+        std::fs::create_dir_all(candidate_source.parent().unwrap()).unwrap();
+        std::fs::write(&candidate_source, "int decode(void) { return 0; }").unwrap();
+
+        let harness = "H-CSTACKLESS";
+        let sources = BTreeMap::from([(harness.to_owned(), candidate_source.clone())]);
+        let targets = BTreeMap::from([(harness.to_owned(), "decode".to_owned())]);
+        let lines = BTreeMap::from([(harness.to_owned(), 9_u32)]);
+        let forced = std::collections::BTreeSet::new();
+
+        let cases = [
+            serde_json::json!({
+                "id": "F-UBSAN",
+                "rule_id": "GF-201",
+                "classification": "unhandled",
+                "harness_id": harness,
+                "paths": { "testcase": "crash-ubsan.bin" },
+                "exception": {
+                    "name": "UBSAN_OUT_OF_BOUNDS_ACCESS",
+                    "message": "/project/parser.c:73:5: runtime error: index -2 out of bounds for type 'char[6]'"
+                }
+            }),
+            serde_json::json!({
+                "id": "F-OOM",
+                "rule_id": "GF-209",
+                "classification": "unhandled",
+                "harness_id": harness,
+                "paths": { "testcase": "crash-oom.bin" },
+                "exception": {
+                    "name": "ASAN_OUT_OF_MEMORY",
+                    "message": "AddressSanitizer failed to allocate memory"
+                },
+                "oracle": {
+                    "evidence": [{ "key": "source", "value": "ASAN_OUT_OF_MEMORY" }]
+                }
+            }),
+        ];
+
+        for raw in cases {
+            let id = raw["id"].as_str().unwrap();
+            let path = root.join(format!("{id}.json"));
+            std::fs::write(&path, serde_json::to_vec_pretty(&raw).unwrap()).unwrap();
+            let row = load_csv_finding(
+                &path,
+                id,
+                actionability::RunMode::Reporting,
+                &forced,
+                &root,
+                &sources,
+                &targets,
+                &lines,
+            )
+            .expect("CSV finding");
+            assert!(!row.sink_file.is_empty(), "{id} sink_file");
+            assert!(!row.sink_line.is_empty(), "{id} sink_line");
+            assert_eq!(row.sink_function, "decode", "{id} sink_function");
+            assert_eq!(row.entity, "decode", "{id} entity");
+            assert!(row.source.starts_with("fuzz_input:"), "{id} source");
+            assert!(row.data_flow.contains("entry:decode"), "{id} data_flow");
+        }
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn tree_static_finding_ids_lists_only_f_static_dirs() {
         let tmp = std::env::temp_dir().join(format!(
             "govfuzz-tsf-{}",
@@ -4359,16 +4626,18 @@ mod tests {
         assert!(!cells[11].is_empty(), "verdict empty in row: {row}");
         // cwe: bare number, no `CWE-` prefix (lsan leak -> 401).
         assert_eq!(cells[12], "401");
-        // source (13): empty for a fuzz crash with no taint source→sink flow.
-        assert_eq!(cells[13], "");
-        // data_flow (14): empty too — no taint trace on a fuzz crash.
-        assert_eq!(cells[14], "");
+        // Runtime source/data-flow: saved fuzz input -> discovered entry -> sink.
+        assert_eq!(cells[13], "fuzz_input:testcase.bin");
+        assert_eq!(
+            cells[14],
+            "fuzz_input:testcase.bin -> entry:f -> sink:/src/nanosvg.h:646:nsvg__createParser"
+        );
         // sink = top resolved project frame (allocator + harness skipped).
         assert_eq!(cells[15], "/src/nanosvg.h");
         assert_eq!(cells[16], "646");
         assert_eq!(cells[17], "nsvg__createParser");
-        // entity (18): a fuzz crash has no tainted-variable/sink expression.
-        assert_eq!(cells[18], "");
+        // entity (18): the most specific resolved faulting callable.
+        assert_eq!(cells[18], "nsvg__createParser");
         // remediation (19): a one-line fix; a rule-less crash gets the fallback.
         assert!(!cells[19].is_empty(), "remediation empty in row: {row}");
         assert!(

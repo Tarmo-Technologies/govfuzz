@@ -1767,12 +1767,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                             break;
                         }
                     }
-                    let prefix = format!(
-                        "[{:>4}/{:>4}] {} {}",
+                    let prefix = candidate_progress_prefix(
                         i + 1,
                         total,
-                        candidate.harness_id,
-                        candidate.name
+                        &candidate.harness_id,
+                        &candidate.name,
+                        fuzz_successes,
+                        success_cap,
                     );
                     // On a TTY the progress sink owns the line and rewrites it in
                     // place per phase/tick; piped output keeps the historical
@@ -1819,7 +1820,24 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                         },
                     };
                     crate::auto::progress::ProgressSink::clear(&progress);
-                    eprintln!("{prefix} → {}", outcome_label(&result.outcome));
+                    // Count the completed outcome before rendering it so a success
+                    // visibly advances `[fuzzed N/CAP]` on its own result line. The
+                    // next target's live phase prefix then starts from that same N.
+                    if matches!(
+                        result.outcome,
+                        crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
+                    ) {
+                        fuzz_successes += 1;
+                    }
+                    let completed_prefix = candidate_progress_prefix(
+                        i + 1,
+                        total,
+                        &candidate.harness_id,
+                        &candidate.name,
+                        fuzz_successes,
+                        success_cap,
+                    );
+                    eprintln!("{completed_prefix} → {}", outcome_label(&result.outcome));
                     if args.verbose {
                         for line in verbose_detail(&result.outcome) {
                             eprintln!("    {line}");
@@ -1840,13 +1858,6 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                             result.candidate.harness_id
                         )
                     })?;
-                    // #94: only a target that reached the fuzz phase counts toward the cap.
-                    if matches!(
-                        result.outcome,
-                        crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
-                    ) {
-                        fuzz_successes += 1;
-                    }
                     results.push(result);
                 }
                 results
@@ -1935,7 +1946,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             let forced_results = sweep_phase(
                 retry,
                 &options,
-                cap_left,
+                // `already_fuzzed` seeds the sweep's success counter, so the stop
+                // threshold remains the original absolute cap (not the remaining
+                // delta). This also keeps the live `fuzzed N/CAP` denominator stable
+                // across the unforced and forced phases.
+                success_cap,
                 fuzzed_in_phase_one,
                 &mut dependency_checkpoint,
             )?;
@@ -2570,6 +2585,28 @@ fn resume_should_reattempt(prior_fuzzed: bool, prior_forced: bool, now_force: bo
     false
 }
 
+/// Human progress prefix for one ranked candidate. `position/total` describes
+/// how far govfuzz has searched through the ranked candidates; `fuzzed/cap`
+/// separately describes progress toward `--max-targets`. Keeping both prevents
+/// a line such as `713/26409` from being mistaken for 713 successful fuzz runs.
+fn candidate_progress_prefix(
+    position: usize,
+    total: usize,
+    harness_id: &str,
+    name: &str,
+    fuzzed: usize,
+    success_cap: Option<usize>,
+) -> String {
+    let candidate = format!("[{position:>4}/{total:>4}]");
+    match success_cap {
+        Some(cap) => format!(
+            "{candidate} [fuzzed {fuzzed:>width$}/{cap}] {harness_id} {name}",
+            width = cap.to_string().len()
+        ),
+        None => format!("{candidate} {harness_id} {name}"),
+    }
+}
+
 /// Whether an outcome means the target actually reached the fuzz phase. The one
 /// definition both `--force` phases and the success cap agree on.
 fn reached_fuzz(outcome: &crate::auto::attempt::Outcome) -> bool {
@@ -2687,12 +2724,13 @@ fn run_parallel_sweep(
                     break;
                 }
                 let candidate = &candidates[i];
-                let prefix = format!(
-                    "[{:>4}/{:>4}] {} {}",
+                let prefix = candidate_progress_prefix(
                     i + 1,
                     total,
-                    candidate.harness_id,
-                    candidate.name
+                    &candidate.harness_id,
+                    &candidate.name,
+                    success_count.load(Ordering::SeqCst),
+                    success_cap,
                 );
                 {
                     let _g = stderr_lock.lock().unwrap();
@@ -2732,18 +2770,46 @@ fn run_parallel_sweep(
                     &format!("attempt:{}", synth_candidate.harness_id),
                     _ta,
                 );
+                // Advance the shared success count before printing the completion
+                // line, so the operator sees exactly which completion changed it.
+                // In-flight workers can finish past the cap by design.
+                let fuzzed = if matches!(
+                    &result,
+                    Ok(r) if matches!(
+                        r.outcome,
+                        crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
+                    )
+                ) {
+                    let fuzzed = success_count.fetch_add(1, Ordering::SeqCst) + 1;
+                    if let Some(cap) = success_cap {
+                        if fuzzed >= cap {
+                            stopped.store(true, Ordering::SeqCst);
+                        }
+                    }
+                    fuzzed
+                } else {
+                    success_count.load(Ordering::SeqCst)
+                };
+                let completed_prefix = candidate_progress_prefix(
+                    i + 1,
+                    total,
+                    &candidate.harness_id,
+                    &candidate.name,
+                    fuzzed,
+                    success_cap,
+                );
                 {
                     let _g = stderr_lock.lock().unwrap();
                     match &result {
                         Ok(r) => {
-                            eprintln!("{prefix} → {}", outcome_label(&r.outcome));
+                            eprintln!("{completed_prefix} → {}", outcome_label(&r.outcome));
                             if verbose {
                                 for line in verbose_detail(&r.outcome) {
                                     eprintln!("    {line}");
                                 }
                             }
                         }
-                        Err(error) => eprintln!("{prefix} → error: {error:#}"),
+                        Err(error) => eprintln!("{completed_prefix} → error: {error:#}"),
                     }
                 }
                 // Persist and checkpoint inside the worker, before the result is
@@ -2771,22 +2837,6 @@ fn run_parallel_sweep(
                     }
                 }
                 reached.fetch_add(1, Ordering::SeqCst);
-                // #94: count fuzz-phase successes; once the cap is hit, stop handing
-                // out new candidates (in-flight workers still finish).
-                if matches!(
-                    &result,
-                    Ok(r) if matches!(
-                        r.outcome,
-                        crate::auto::attempt::Outcome::BuiltAndFuzzed { .. }
-                    )
-                ) {
-                    let fuzzed = success_count.fetch_add(1, Ordering::SeqCst) + 1;
-                    if let Some(cap) = success_cap {
-                        if fuzzed >= cap {
-                            stopped.store(true, Ordering::SeqCst);
-                        }
-                    }
-                }
                 slots.lock().unwrap()[i] = Some(result);
             });
         }
@@ -3922,6 +3972,18 @@ fn build_error_brief(err: &build_classifier::BuildErrorKind) -> String {
 mod tests {
     use super::*;
     use crate::auto::candidate::{Candidate, Lang};
+
+    #[test]
+    fn progress_prefix_separates_candidate_position_from_fuzz_success_cap() {
+        assert_eq!(
+            candidate_progress_prefix(713, 26_409, "H-C0713", "parse", 7, Some(100)),
+            "[ 713/26409] [fuzzed   7/100] H-C0713 parse"
+        );
+        assert_eq!(
+            candidate_progress_prefix(3, 191, "H-C0042", "inflate", 0, None),
+            "[   3/ 191] H-C0042 inflate"
+        );
+    }
 
     #[test]
     fn detect_custom_build_finds_scripts_and_skips_probed_systems() {

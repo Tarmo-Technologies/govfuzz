@@ -65,7 +65,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.package]
-version = "0.2.28"
+version = "0.2.29"
 edition = "2021"
 rust-version = "1.83"
 license = "Apache-2.0"

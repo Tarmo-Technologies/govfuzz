@@ -114,7 +114,7 @@ pub fn run(args: RunnersArgs) -> i32 {
                 if summary.get("valid").and_then(|value| value.as_bool()) == Some(true) {
                     0
                 } else {
-                    eprintln!(
+                    gfeprintln!(
                         "{}",
                         serde_json::to_string_pretty(&summary).unwrap_or_default()
                     );
@@ -122,7 +122,7 @@ pub fn run(args: RunnersArgs) -> i32 {
                 }
             }
             Err(error) => {
-                eprintln!("{error:#}");
+                gfeprintln!("{error:#}");
                 1
             }
         },
@@ -144,7 +144,7 @@ pub fn run(args: RunnersArgs) -> i32 {
                 if summary.get("valid").and_then(|value| value.as_bool()) == Some(true) {
                     0
                 } else {
-                    eprintln!(
+                    gfeprintln!(
                         "{}",
                         serde_json::to_string_pretty(&summary).unwrap_or_default()
                     );
@@ -152,7 +152,7 @@ pub fn run(args: RunnersArgs) -> i32 {
                 }
             }
             Err(error) => {
-                eprintln!("{error:#}");
+                gfeprintln!("{error:#}");
                 1
             }
         },
@@ -165,14 +165,14 @@ fn validate(args: ValidateArgs) -> i32 {
         Ok(summary) => {
             if let Some(out) = args.out {
                 if let Err(error) = governance::write_json(&out, &summary) {
-                    eprintln!("{error:#}");
+                    gfeprintln!("{error:#}");
                     return 1;
                 }
             } else {
                 match serde_json::to_string_pretty(&summary) {
                     Ok(json) => println!("{json}"),
                     Err(error) => {
-                        eprintln!("serialize runner validation: {error}");
+                        gfeprintln!("serialize runner validation: {error}");
                         return 1;
                     }
                 }
@@ -184,7 +184,7 @@ fn validate(args: ValidateArgs) -> i32 {
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }
@@ -198,7 +198,7 @@ fn write_summary(
         Ok(summary) => {
             if let Some(out) = out {
                 if let Err(error) = governance::write_json(&out, &summary) {
-                    eprintln!("{error:#}");
+                    gfeprintln!("{error:#}");
                     return 1;
                 }
             } else {
@@ -218,7 +218,7 @@ fn write_summary(
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

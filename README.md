@@ -83,6 +83,75 @@ Read `govfuzz_work/auto/summary.txt` first: it separates **built+fuzzed** from
 **static-only**, **skipped**, and **forced**, and prints a residual-blocker histogram
 saying why anything that did not fuzz did not fuzz.
 
+### Watching and steering a live sweep
+
+On a terminal, `auto` keeps a status block pinned below the scrolling results:
+
+```text
+phase 1/2 unforced   fuzzed  7/50 ██░░░░░░░░░░░░  attempts 213/26409   6m12s · eta ~38m
+7 fuzzed · 118 failed-build · 88 skipped   2 finding(s)   top blocker: missing header X (c) (61)
+jobs 3/16 · cap 50 · target-time 1m00s · force off · verbose off   cpu 42%   rss 1.2 GB/9.0 GB
+keys: [q] stop & report · [p] pause · [+/-] jobs · [{/}] cap · [</>] target-time · [f] force · [v] verbose · [?] help
+now  H-C0042            mz_compress            c      building (retry 1) 9s
+     H-C0051            mz_crc32               c      fuzz:cmplog 14s/1m00s  8.1k execs 512/s  318 edges  last edge 4s
+```
+
+* **Line 1** — the constraint that will actually end the run. With `--max-targets`
+  the bar tracks targets fuzzed (candidate position is a poor proxy: most
+  candidates never fuzz); without it, the bar tracks the candidate sweep. `--force`
+  runs two phases and the line says which one you are in.
+* **Line 2** — yield so far and the most common reason targets are failing, live
+  rather than at end of run.
+* **Line 3** — every value you can change from the keyboard, plus load against the
+  run's own RSS budget.
+* **Worker lines** — one per in-flight target, with `last edge` / `last find`
+  showing how long since that target produced anything new.
+
+### Steering a run from the keyboard
+
+You do not have to know the keys: the legend is line 4 of the block, always on
+screen, and it shortens to fit a narrow terminal rather than being cut off.
+Pressing `?` expands it in place into a list of what each key does and what each
+value is right now:
+
+```text
+keys: [q] stop & report · [p] pause · [+/-] jobs · [{/}] cap · [</>] target-time · [f] force · [v] verbose · [?] close help
+  ── controls ──────────────────────────────────────────────────────
+  q      stop cleanly: finish in-flight targets, then write the report
+  p      pause: in-flight targets finish, nothing new starts, the run stays alive
+  + -    --jobs (now 2/6), applied as workers free up
+  ] [    --max-targets (now 5), by a tenth — never below what has fuzzed
+  > <    --per-target-time (now 25s), by a quarter — applies from the NEXT target
+  f      forced phase 2 (now off) — retries what this pass could not fuzz
+  v      per-target detail lines (now off)
+  ?      close this list · Ctrl-C still aborts, without a report
+  ──────────────────────────────────────────────────────────────────
+```
+
+Any key that does something dismisses the list. Each of these used to require
+killing the run and starting over with different flags, losing every in-flight
+target:
+
+| Key | Effect |
+|---|---|
+| `q` | Stop cleanly: no new targets start, in-flight ones finish and are persisted, and the report + summary are written. Unlike Ctrl-C, nothing is lost. A forced phase 2 is skipped. |
+| `p` | Pause / resume. In-flight targets finish, nothing new starts, and the run stays alive — for when you need the box back for ten minutes. |
+| `+` / `-` | Concurrency (`--jobs`), clamped to 1..cores. Reach for it when line 3 shows the box is idle. |
+| `]` / `[` | Raise or lower `--max-targets`, by a tenth of itself. Never drops below what has already fuzzed. An uncapped run can be capped down but not "raised" — it is already unlimited. |
+| `>` / `<` | Raise or lower `--per-target-time`, by a quarter of itself. Applies from the **next** target; the running one keeps its planned pass cascade. This is what the `last edge` column is for. Refused when a `--campaign-time` split owns the budget. |
+| `f` | Add or drop the forced phase 2. Decided at the phase boundary, so a toggle any time during phase 1 counts — including on a run that never passed `--force`. |
+| `v` | Toggle the per-target detail lines. |
+| `?` | Print the key list. |
+
+Deliberately **not** adjustable mid-run: anything baked into discovery (the
+candidate set is already ranked) or into a harness build — `--sanitizers`,
+`--cxx-std`, `--build-command`. Changing those mid-sweep would make targets within
+one report incomparable.
+
+Ctrl-C still aborts as before (the key reader leaves `ISIG` on). Piped or CI
+output is unchanged — the per-target lines stay static, and `--verbose` adds a
+run-level heartbeat every 30s.
+
 ### Resume an interrupted `auto` campaign
 
 `govfuzz auto` checkpoints every completed target atomically. After a process

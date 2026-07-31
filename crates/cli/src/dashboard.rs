@@ -26,12 +26,12 @@ pub fn run(args: DashboardArgs) -> i32 {
         Ok(dashboard) => match governance::write_json(&args.out, &dashboard) {
             Ok(()) => 0,
             Err(error) => {
-                eprintln!("{error:#}");
+                gfeprintln!("{error:#}");
                 1
             }
         },
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

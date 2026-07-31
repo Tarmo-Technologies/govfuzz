@@ -55,7 +55,7 @@ pub fn run(args: BinaryScanArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

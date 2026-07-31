@@ -139,7 +139,7 @@ fn parse_c_functions_preprocessed(
         if fns.is_empty() {
             let raw = c_parser::parse_c_functions(source)?;
             if !raw.is_empty() {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: note: preprocessing removed all {} discoverable \
                      function(s) (likely an unexpanded #if feature gate); using the raw parse",
                     raw.len()
@@ -168,7 +168,7 @@ fn parse_cpp_functions_preprocessed(
         if fns.is_empty() {
             let raw = cpp_parser::parse_cpp_functions(source)?;
             if !raw.is_empty() {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: note: C++ preprocessing removed all {} discoverable \
                      function(s); using the raw parse because the conditional context is incomplete",
                     raw.len()
@@ -760,7 +760,7 @@ fn discover_on_this_stack(
             if out.len() > before {
                 let names: Vec<String> =
                     empty_langs.iter().map(|lang| format!("{lang:?}")).collect();
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: {} candidate(s) recovered from organizational \
                      directories: {} code lives only there, so excluding them found nothing",
                     out.len() - before,
@@ -1582,7 +1582,7 @@ fn walk(
     let result = walk_guarded(dir, out, filter, preprocess, &guard, deadline);
     let timed_out = DISCOVERY_TIME_SKIPPED.swap(0, std::sync::atomic::Ordering::Relaxed);
     if timed_out > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: discovery reached its time budget and skipped {timed_out} file(s); \
              the target list is PARTIAL. Raise --campaign-time, set GOVFUZZ_DISCOVERY_TIME \
              (seconds, 0 = unlimited), or scan a subdirectory."
@@ -1593,7 +1593,7 @@ fn walk(
         let ceiling = static_analysis::MemoryGuard::ceiling_kb()
             .map(|kb| format!("{} MiB", kb / 1024))
             .unwrap_or_else(|| "the configured ceiling".to_owned());
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: discovery reached its memory ceiling ({ceiling}) and skipped \
              {skipped} file(s); the target list is PARTIAL. Raise it with \
              GOVFUZZ_MAX_MEMORY_KB, or scan a subdirectory."
@@ -1764,7 +1764,7 @@ fn discover_file_guarded(
 pub(crate) fn gfprof(label: &str, start: std::time::Instant) {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     if *ON.get_or_init(|| std::env::var_os("GOVFUZZ_PROFILE").is_some()) {
-        eprintln!("[prof] {label}: {:.3}s", start.elapsed().as_secs_f64());
+        gfeprintln!("[prof] {label}: {:.3}s", start.elapsed().as_secs_f64());
     }
 }
 

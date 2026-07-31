@@ -1108,7 +1108,7 @@ mod tests {
             .output()
             .is_err()
         {
-            eprintln!("skipping crt-compat compile: clang not on PATH");
+            gfeprintln!("skipping crt-compat compile: clang not on PATH");
             return;
         }
         let dir = std::env::temp_dir().join(format!("gf-crt-{}", std::process::id()));
@@ -1176,7 +1176,7 @@ mod tests {
             .output()
             .is_err()
         {
-            eprintln!("skipping crt-compat C++ compile: clang++ not on PATH");
+            gfeprintln!("skipping crt-compat C++ compile: clang++ not on PATH");
             return;
         }
         let dir = std::env::temp_dir().join(format!("gf-crt-cpp-{}", std::process::id()));
@@ -1194,7 +1194,7 @@ mod tests {
             .map(|o| o.status.success())
             .unwrap_or(false);
         if !probe_ok {
-            eprintln!("skipping crt-compat C++ compile: clang++ can't find the C++ stdlib");
+            gfeprintln!("skipping crt-compat C++ compile: clang++ can't find the C++ stdlib");
             let _ = std::fs::remove_dir_all(&dir);
             return;
         }

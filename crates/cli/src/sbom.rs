@@ -100,7 +100,7 @@ pub fn run(args: SbomArgs) -> i32 {
     let emit = match args.emit_set() {
         Ok(emit) => emit,
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             return 1;
         }
     };
@@ -133,7 +133,7 @@ pub fn run(args: SbomArgs) -> i32 {
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

@@ -50,7 +50,7 @@ pub fn run(args: BenchmarkArgs) -> i32 {
     match result {
         Ok(exit_code) => exit_code,
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

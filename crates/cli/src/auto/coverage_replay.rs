@@ -147,7 +147,7 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     }
     let export_text = String::from_utf8_lossy(&export.stdout);
     if export_text.contains("[govfuzz: subprocess output truncated]") {
-        eprintln!(
+        gfeprintln!(
             "govfuzz: llvm-cov output for {harness_id} exceeded the bounded capture; \
              negative-confirmation coverage is partial"
         );

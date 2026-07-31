@@ -56,7 +56,7 @@ pub(crate) fn activate_compatible_clang() -> bool {
 
             prepend_process_path("PATH", &[root.join("bin"), root.join("sbin")]);
             prepend_process_path("LD_LIBRARY_PATH", &[lib64]);
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: using RHEL 7 LLVM Toolset compiler {} (base clang lacks SanitizerCoverage)",
                 clang.display()
             );
@@ -169,7 +169,7 @@ pub fn run(args: BuildArgs) -> i32 {
     let layout = match prepare_layout(&args) {
         Ok(layout) => layout,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 3;
         }
     };
@@ -177,26 +177,26 @@ pub fn run(args: BuildArgs) -> i32 {
     let adapter = match CompilerAdapter::discover_for(toolchain_config(&args)) {
         Ok(adapter) => adapter,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
     };
 
     if let Err(error) = probe_compiler(&adapter) {
-        eprintln!("{error}");
+        gfeprintln!("{error}");
         return 2;
     }
 
     let result = match adapter.build(&layout.project_path) {
         Ok(result) => result,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             return 2;
         }
     };
 
     print!("{}", result.stdout);
-    eprint!("{}", result.stderr);
+    gfeprint!("{}", result.stderr);
 
     if result.exit_code == 0 {
         0
@@ -675,7 +675,7 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
     // and the existing find_harness_executable helper find the binary.
     let build_dir = work_dir.join("build").join(&harness_id);
     if let Err(error) = fs::create_dir_all(&build_dir) {
-        eprintln!("create build directory '{}': {error}", build_dir.display());
+        gfeprintln!("create build directory '{}': {error}", build_dir.display());
         return Some(2);
     }
 
@@ -683,7 +683,7 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
         CEngine::Libfuzzer => (Some("main"), "main", "main"),
         CEngine::AflPlusPlus => (Some("afl"), "main_afl", "main_afl"),
     };
-    eprintln!(
+    gfeprintln!(
         "Building C/C++ harness '{}' via make{}",
         harness_id,
         make_target.map(|t| format!(" {t}")).unwrap_or_default()
@@ -707,16 +707,16 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
             if built.is_file() {
                 let dest = build_dir.join(staged_name);
                 if let Err(error) = fs::copy(&built, &dest) {
-                    eprintln!(
+                    gfeprintln!(
                         "copy '{}' -> '{}': {error}",
                         built.display(),
                         dest.display()
                     );
                     return Some(2);
                 }
-                eprintln!("built harness binary -> {}", dest.display());
+                gfeprintln!("built harness binary -> {}", dest.display());
             } else {
-                eprintln!(
+                gfeprintln!(
                     "make reported success but did not produce expected harness binary '{}'",
                     built.display()
                 );
@@ -725,11 +725,11 @@ fn try_run_c_make_build(args: &BuildArgs) -> Option<i32> {
             Some(0)
         }
         Ok(s) => {
-            eprintln!("make exited with status {:?}", s.code());
+            gfeprintln!("make exited with status {:?}", s.code());
             Some(1)
         }
         Err(error) => {
-            eprintln!("invoke make: {error}");
+            gfeprintln!("invoke make: {error}");
             Some(2)
         }
     }
@@ -1563,7 +1563,7 @@ mod tests {
             .output()
             .is_err()
         {
-            eprintln!("skipping explicit make goal test: make not on PATH");
+            gfeprintln!("skipping explicit make goal test: make not on PATH");
             return;
         }
         let temp = tempfile::tempdir().unwrap();

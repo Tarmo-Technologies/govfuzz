@@ -57,7 +57,7 @@ pub fn run(args: ReplayArgs) -> i32 {
     let harness = match resolve_harness(&finding_dir, args.harness) {
         Ok(harness) => harness,
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             return 1;
         }
     };
@@ -94,11 +94,11 @@ pub fn run(args: ReplayArgs) -> i32 {
             let actual = actual
                 .map(|signature| signature.hex())
                 .unwrap_or_else(|| "<none>".to_owned());
-            eprintln!("MISMATCH recorded={} actual={actual}", recorded.hex());
+            gfeprintln!("MISMATCH recorded={} actual={actual}", recorded.hex());
             3
         }
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             1
         }
     }
@@ -210,12 +210,12 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
             .and_then(|v| v.as_str())
             .map(ToOwned::to_owned),
         Err(error) => {
-            eprintln!("read {}: {error}", finding_path.display());
+            gfeprintln!("read {}: {error}", finding_path.display());
             return 1;
         }
     };
     let Some(recorded_rule) = recorded_rule else {
-        eprintln!(
+        gfeprintln!(
             "finding {} has no rule_id; cannot replay AFL crash without a baseline",
             finding_path.display()
         );
@@ -224,7 +224,7 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
     let input = match fs::read(&testcase_path) {
         Ok(b) => b,
         Err(error) => {
-            eprintln!("read {}: {error}", testcase_path.display());
+            gfeprintln!("read {}: {error}", testcase_path.display());
             return 1;
         }
     };
@@ -237,7 +237,7 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
     let mut child = match spawn_harness(&mut stdin_replay) {
         Ok(c) => c,
         Err(error) => {
-            eprintln!("spawn {}: {error}", harness.display());
+            gfeprintln!("spawn {}: {error}", harness.display());
             return 1;
         }
     };
@@ -256,7 +256,7 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
                 std::thread::sleep(Duration::from_millis(20));
             }
             Err(error) => {
-                eprintln!("poll {}: {error}", harness.display());
+                gfeprintln!("poll {}: {error}", harness.display());
                 return 1;
             }
         }
@@ -264,7 +264,7 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
     let output = match child.wait_with_output() {
         Ok(o) => o,
         Err(error) => {
-            eprintln!("wait {}: {error}", harness.display());
+            gfeprintln!("wait {}: {error}", harness.display());
             return 1;
         }
     };
@@ -276,11 +276,11 @@ fn replay_c_afl(finding_dir: &Path, harness: &Path) -> i32 {
             0
         }
         Some(rule) => {
-            eprintln!("MISMATCH recorded={recorded_rule} actual={rule}");
+            gfeprintln!("MISMATCH recorded={recorded_rule} actual={rule}");
             3
         }
         None => {
-            eprintln!("MISMATCH recorded={recorded_rule} actual=<none>");
+            gfeprintln!("MISMATCH recorded={recorded_rule} actual=<none>");
             3
         }
     }
@@ -302,7 +302,7 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
     }) {
         Ok(value) => value,
         Err(error) => {
-            eprintln!("read {}: {error}", finding_path.display());
+            gfeprintln!("read {}: {error}", finding_path.display());
             return 1;
         }
     };
@@ -311,7 +311,7 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
         .and_then(|v| v.as_str())
         .map(ToOwned::to_owned);
     let Some(recorded_rule) = recorded_rule else {
-        eprintln!(
+        gfeprintln!(
             "finding {} has no rule_id; cannot replay libFuzzer crash without a baseline",
             finding_path.display()
         );
@@ -360,7 +360,7 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
     let mut child = match spawn_harness(&mut cmd) {
         Ok(c) => c,
         Err(error) => {
-            eprintln!("spawn {}: {error}", harness.display());
+            gfeprintln!("spawn {}: {error}", harness.display());
             return 1;
         }
     };
@@ -376,7 +376,7 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
                 std::thread::sleep(Duration::from_millis(20));
             }
             Err(error) => {
-                eprintln!("poll {}: {error}", harness.display());
+                gfeprintln!("poll {}: {error}", harness.display());
                 return 1;
             }
         }
@@ -384,7 +384,7 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
     let output = match child.wait_with_output() {
         Ok(o) => o,
         Err(error) => {
-            eprintln!("wait {}: {error}", harness.display());
+            gfeprintln!("wait {}: {error}", harness.display());
             return 1;
         }
     };
@@ -396,11 +396,11 @@ fn replay_c_libfuzzer(finding_dir: &Path, harness: &Path) -> i32 {
             0
         }
         Some(rule) => {
-            eprintln!("MISMATCH recorded={recorded_rule} actual={rule}");
+            gfeprintln!("MISMATCH recorded={recorded_rule} actual={rule}");
             3
         }
         None => {
-            eprintln!("MISMATCH recorded={recorded_rule} actual=<none>");
+            gfeprintln!("MISMATCH recorded={recorded_rule} actual=<none>");
             3
         }
     }

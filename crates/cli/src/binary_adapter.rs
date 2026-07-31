@@ -64,7 +64,7 @@ impl AdapterKind {
 
 pub fn run(args: BinaryAdapterArgs, profile: Profile) -> i32 {
     if !adapter_allowed(profile, args.adapter) {
-        eprintln!(
+        gfeprintln!(
             "binary adapter '{}' is not allowed for profile '{}'",
             args.adapter.as_str(),
             profile.as_str()
@@ -79,7 +79,7 @@ pub fn run(args: BinaryAdapterArgs, profile: Profile) -> i32 {
     match result {
         Ok(exit_code) => exit_code,
         Err(error) => {
-            eprintln!("{error}");
+            gfeprintln!("{error}");
             1
         }
     }

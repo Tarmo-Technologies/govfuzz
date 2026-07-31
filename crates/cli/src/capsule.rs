@@ -61,18 +61,18 @@ pub fn run(args: CapsuleArgs) -> i32 {
         .clone()
         .unwrap_or_else(|| args.work_dir.join("capsules"));
     if std::fs::create_dir_all(&out_root).is_err() {
-        eprintln!("error: cannot create output dir {}", out_root.display());
+        gfeprintln!("error: cannot create output dir {}", out_root.display());
         return 1;
     }
     let findings = match collect_findings(&args.work_dir, args.finding_id.as_deref()) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("error: {e}");
+            gfeprintln!("error: {e}");
             return 1;
         }
     };
     if findings.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz capsule: no reproducible C crash findings in {} (need a runtime finding with a testcase.bin)",
             args.work_dir.display()
         );
@@ -104,7 +104,7 @@ pub fn run(args: CapsuleArgs) -> i32 {
             }
             Err(e) => {
                 if args.verbose {
-                    eprintln!("  {} skipped: {e}", f.finding_id);
+                    gfeprintln!("  {} skipped: {e}", f.finding_id);
                 }
             }
         }
@@ -482,14 +482,14 @@ pub fn run_verify(args: VerifyPocArgs) -> i32 {
     let (root, _scratch) = match resolve_capsule(&args.capsule) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("error: {e}");
+            gfeprintln!("error: {e}");
             return 1;
         }
     };
     let manifest = match read_json(&root.join("manifest.json")) {
         Some(m) => m,
         None => {
-            eprintln!(
+            gfeprintln!(
                 "error: not a govfuzz capsule (missing manifest.json): {}",
                 root.display()
             );

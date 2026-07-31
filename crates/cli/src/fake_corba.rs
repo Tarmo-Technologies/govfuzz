@@ -45,21 +45,21 @@ pub fn run(args: FakeCorbaArgs) -> i32 {
     let output_dir = work_dir.join("fake_corba");
 
     if let Err(error) = std::fs::create_dir_all(&work_dir) {
-        eprintln!("create work directory '{}': {error}", work_dir.display());
+        gfeprintln!("create work directory '{}': {error}", work_dir.display());
         return 1;
     }
 
     if !source_dir.is_dir() {
         if (args.idl.is_some() || !args.ros_interfaces.is_empty()) && args.source_dir.is_none() {
             if let Err(error) = std::fs::create_dir_all(&source_dir) {
-                eprintln!(
+                gfeprintln!(
                     "create default source directory '{}': {error}",
                     source_dir.display()
                 );
                 return 1;
             }
         } else {
-            eprintln!(
+            gfeprintln!(
                 "source directory '{}' does not exist; run instrumentation first or pass --source-dir",
                 source_dir.display()
             );
@@ -94,13 +94,13 @@ pub fn run(args: FakeCorbaArgs) -> i32 {
                     0
                 }
                 Err(error) => {
-                    eprintln!("{error}");
+                    gfeprintln!("{error}");
                     1
                 }
             }
         }
         Err(error) => {
-            eprintln!(
+            gfeprintln!(
                 "generate fake CORBA under '{}': {error}",
                 output_dir.display()
             );
@@ -140,7 +140,7 @@ pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path, force: bool)
     // packages (reconstructing their full used API), so skip fake-corba's flat
     // `Pkg.Exception` guesses to avoid a duplicate/conflicting unit definition.
     if let Err(error) = ::fake_corba::generate_fake_corba_with(source_root, &output_dir, force) {
-        eprintln!("govfuzz auto: fake-corba base generation: {error}");
+        gfeprintln!("govfuzz auto: fake-corba base generation: {error}");
     }
     // Resolve cross-directory `#include "other.idl"` against EVERY directory that
     // holds an .idl in the tree, not just the current file's own dir (see
@@ -176,7 +176,7 @@ pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path, force: bool)
                 ast.warnings.extend(parsed.warnings);
                 mapped += 1;
             }
-            Err(error) => eprintln!("govfuzz auto: skipping {}: {error}", idl.display()),
+            Err(error) => gfeprintln!("govfuzz auto: skipping {}: {error}", idl.display()),
         }
     }
     // Emit the entire tree in one pass. The emitter merges reopened modules;
@@ -192,7 +192,7 @@ pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path, force: bool)
                 defines_applied: project_defines.len(),
             },
         ) {
-            eprintln!("govfuzz auto: write aggregate IDL mapping: {error}");
+            gfeprintln!("govfuzz auto: write aggregate IDL mapping: {error}");
             return 0;
         }
     }
@@ -204,11 +204,11 @@ pub fn auto_generate_from_tree(source_root: &Path, work_dir: &Path, force: bool)
     match prune_generated_real_unit_collisions(source_root, &output_dir, Some(work_dir)) {
         Ok(removed) => {
             if let Err(error) = checkpoint_real_fake_collisions(&output_dir, removed) {
-                eprintln!("govfuzz auto: fake-corba collision checkpoint: {error}");
+                gfeprintln!("govfuzz auto: fake-corba collision checkpoint: {error}");
             }
         }
         Err(error) => {
-            eprintln!("govfuzz auto: fake-corba collision pruning: {error}");
+            gfeprintln!("govfuzz auto: fake-corba collision pruning: {error}");
         }
     }
     mapped
@@ -568,7 +568,7 @@ fn write_idl_ast(
         })?;
     }
     for warning in &output.warnings {
-        eprintln!("IDL mapping warning: {warning}");
+        gfeprintln!("IDL mapping warning: {warning}");
     }
     write_idl_recovery_report(
         output_dir,
@@ -653,7 +653,7 @@ fn write_idl_recovery_report(
     )
     .map_err(|error| format!("write IDL recovery report: {error}"))?;
     if !complete {
-        eprintln!(
+        gfeprintln!(
             "IDL mapping is partial: {} blocking recovery warning(s); see idl_recovery_report.json",
             blocking_warnings + parse_failures
         );

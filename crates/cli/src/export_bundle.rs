@@ -72,7 +72,7 @@ pub fn run(args: ExportArgs) -> i32 {
             }
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

@@ -624,7 +624,7 @@ fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8
         match crate::fuzz::read_seed_file_prefix(path, cap) {
             Ok((bytes, original_len)) => {
                 if original_len > bytes.len() as u64 {
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: seed '{}' is {original_len} bytes; using its first \
                          {cap} bytes (bytes past the mutator seed cap only consume RAM)",
                         path.display()
@@ -632,7 +632,7 @@ fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8
                 }
                 seeds.push(bytes);
             }
-            Err(error) => eprintln!(
+            Err(error) => gfeprintln!(
                 "govfuzz auto: skipping seed file '{}': {error}",
                 path.display()
             ),
@@ -651,14 +651,14 @@ fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8
                     }
                 }
             }
-            Err(error) => eprintln!(
+            Err(error) => gfeprintln!(
                 "govfuzz auto: skipping seed dir '{}': {error}",
                 dir.display()
             ),
         }
     }
     if dropped > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: seed corpus capped at {} entries; skipped {dropped} additional seed(s)",
             corpus_entry_limit
         );
@@ -697,12 +697,12 @@ pub fn run(args: AutoArgs) -> i32 {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_inner(args))) {
         Ok(Ok(code)) => code,
         Ok(Err(error)) => {
-            eprintln!("error: {error:#}");
+            gfeprintln!("error: {error:#}");
             1
         }
         Err(_panic) => {
             let n = crate::auto::bug_report::flush_after_panic();
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: run aborted by an internal panic — {n} issue(s) recorded in the bug \
                  report (path printed above)."
             );
@@ -828,7 +828,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // path instead of no handoff artifact at all.
     let empty_dependency_seed = crate::auto::dep_manifest::DependencyManifest::new();
     crate::auto::report::write_dependency_checkpoint(&path, &work, &empty_dependency_seed, &[])?;
-    eprintln!(
+    gfeprintln!(
         "govfuzz auto: checkpointing offline requirements to {}",
         work.join("auto/missing-deps.txt").display()
     );
@@ -838,13 +838,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // fill options the CLI left at their default. Applied BEFORE the env-publish and
     // build-recovery blocks below, which read the resulting args.
     for note in crate::auto::config::apply(&mut args, &path).map_err(|e| anyhow::anyhow!("{e}"))? {
-        eprintln!("govfuzz auto: {note}");
+        gfeprintln!("govfuzz auto: {note}");
     }
     let work_state = crate::auto::work_state::prepare(&work, args.resume)
         .with_context(|| format!("prepare generated state under {}", work.display()))?;
-    eprintln!("govfuzz auto: work-directory state: {work_state}");
+    gfeprintln!("govfuzz auto: work-directory state: {work_state}");
     if let Err(error) = crate::support_report::write_auto_context(&work, &args, work_state) {
-        eprintln!("warning: could not checkpoint privacy-safe support context: {error}");
+        gfeprintln!("warning: could not checkpoint privacy-safe support context: {error}");
     }
 
     // A `--grammar` applies to every target this run fuzzes. Validate it up front so a
@@ -890,13 +890,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if args.unsafe_search_and_run_build_commands {
         if args.build_command.is_none() {
             if let Some((marker, cmd)) = detect_custom_build(&path) {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: --unsafe-search-and-run-build-commands — found {marker}, \
                      executing to recover build flags: {cmd}"
                 );
                 args.build_command = Some(cmd);
             } else {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: --unsafe-search-and-run-build-commands — no custom build \
                      script found; probing recognized build systems (CMake/Meson/Make/Ada)"
                 );
@@ -934,7 +934,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     }
 
     #[cfg(not(target_os = "linux"))]
-    eprintln!(
+    gfeprintln!(
         "govfuzz auto: runtime audit is Linux-only; running on this OS without \
          LD_PRELOAD hooks. Build-time stubbing remains active."
     );
@@ -944,7 +944,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // `--build-command` is its own trigger: an explicit command to intercept.
     if probe_requested {
         let sandbox = crate::auto::build_probe::resolve_sandbox_program();
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: running the project's build offline{} to recover compile flags / generated files",
             match &sandbox {
                 Some(program) => format!(" under {}", program.display()),
@@ -954,7 +954,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         // An explicit `--build-command` takes precedence over the auto-detected
         // tier: it intercepts compilers from whatever build the user names.
         let recovered = if let Some(command) = &args.build_command {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --build-command: intercepting `{command}` to recover compile flags"
             );
             crate::auto::build_probe::probe_build_command(&path, command, sandbox.as_deref())
@@ -962,11 +962,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             crate::auto::build_probe::probe_build(&path, sandbox.as_deref())
         };
         match recovered {
-            Some(db) => eprintln!(
+            Some(db) => gfeprintln!(
                 "govfuzz auto: recovered compile database at {}",
                 db.display()
             ),
-            None => eprintln!(
+            None => gfeprintln!(
                 "govfuzz auto: no compile database produced; continuing with include auto-detection"
             ),
         }
@@ -1000,21 +1000,33 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // govfuzz's own IDL parser — executes no project code — so it runs by default.
     let idl_mapped = crate::fake_corba::auto_generate_from_tree(&path, &work, args.force);
     if idl_mapped > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: generated CORBA scaffolding from {idl_mapped} in-tree .idl file(s)"
         );
     }
 
     let vcs_recovery = crate::auto::vcs_recovery::materialize_deleted_tracked_files(&path, &work);
     if let Some(recovery) = &vcs_recovery {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: recovered {} deleted tracked dependency file(s) from local Git HEAD into isolated work dir {}",
             recovery.relative_paths.len(),
             recovery.root.display()
         );
     }
 
-    eprintln!("govfuzz auto: discovering targets under {}", path.display());
+    // The console is created here, before the longest silent phase of the run, so
+    // discovery can show a clock; the sweep's dashboard reuses it later.
+    let console = std::sync::Arc::new(crate::auto::dashboard::Console::new());
+    // From here on every `gfeprintln!` in the process — including the fuzz
+    // engine's and the build probes' — writes through this console, so nothing
+    // can land inside the sticky block.
+    crate::auto::dashboard::set_active(console.clone());
+    console.println(&format!(
+        "govfuzz auto: discovering targets under {}",
+        path.display()
+    ));
+    let discovery_ticker =
+        crate::auto::dashboard::PhaseTicker::start(console.clone(), "  discovering targets");
     let dir_filter =
         DirFilter::new(&args.exclude_dir, &args.include_dir).with_work_dir(&args.work_dir);
     // Discovery caching is ON by default; `--no-discovery-cache` opts out and
@@ -1033,7 +1045,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if let Err(error) =
         crate::support_report::checkpoint_discovery_cache_hit(&work, discovery_cache_hit)
     {
-        eprintln!("warning: could not checkpoint discovery-cache decision: {error}");
+        gfeprintln!("warning: could not checkpoint discovery-cache decision: {error}");
     }
     if !args.exclude_paths.is_empty() || !args.exclude.is_empty() {
         candidates.retain(|candidate| {
@@ -1081,7 +1093,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if !args.languages.is_empty() {
         let selected = selected_lang_set(&args.languages);
         let (kept, dropped) = retain_languages(&mut candidates, &selected);
-        eprintln!(
+        gfeprintln!(
             "  language filter [{}] kept {kept} candidate(s), dropped {dropped}",
             render_selected_langs(&args.languages),
         );
@@ -1091,7 +1103,10 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             crate::source_text::read_source_text(path).unwrap_or_default()
         });
     }
-    eprintln!("  discovered {} candidate(s)", candidates.len());
+    // Discovery is done: stop the clock and give the line back before the
+    // candidate count is printed under it.
+    drop(discovery_ticker);
+    console.println(&format!("  discovered {} candidate(s)", candidates.len()));
     // #102: if any files were dropped during discovery (read/decode/parse
     // failures), say so on the console — bounded and grouped — so a parser
     // regression on a large tree is visible immediately, not just in run.json.
@@ -1102,13 +1117,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             .collect();
         if !drops.is_empty() {
             let total: usize = drops.iter().map(|i| i.occurrences).sum();
-            eprintln!(
+            gfeprintln!(
                 "  discovery: {total} file(s) dropped across {} read/parse failure class(es) \
                  (see run.md Discovery Diagnostics)",
                 drops.len()
             );
             for i in drops.iter().take(5) {
-                eprintln!("    - {} ({} file(s))", i.summary, i.occurrences);
+                gfeprintln!("    - {} ({} file(s))", i.summary, i.occurrences);
             }
         }
     }
@@ -1120,7 +1135,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     crate::auto::discovery::gfprof("auto:start_to_preflight", _tstart);
     let preflight = crate::auto::preflight::run(&candidates);
     crate::auto::discovery::gfprof("auto:preflight", _tp);
-    eprint!("{}", preflight.render());
+    gfeprint!("{}", preflight.render());
 
     // Seed and atomically persist the offline-requirements manifest before any
     // target starts. If the parent is later OOM-killed, this declaration and
@@ -1148,26 +1163,26 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if args.dry_run {
         let planned_count = capped_target_count(candidates.len(), args.max_attempts);
         if planned_count < candidates.len() {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --max-attempts {planned_count}: showing the top {planned_count} of {} ranked candidate(s) in the dry-run plan",
                 candidates.len()
             );
         }
         if let Some(cap) = args.max_targets {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --max-targets {cap}: the sweep will stop after {cap} of these reach the fuzz phase; which candidates are viable is unknown until build time (nonviable ones are backfilled)"
             );
         }
         let planned_candidates = &candidates[..planned_count];
-        eprintln!("\ngovfuzz auto: --dry-run — plan only, nothing is built or fuzzed:");
+        gfeprintln!("\ngovfuzz auto: --dry-run — plan only, nothing is built or fuzzed:");
         print_ranked_targets(planned_candidates, &path);
         if let Some((marker, cmd)) = detect_custom_build(&path) {
-            eprintln!(
+            gfeprintln!(
                 "  build recovery: this tree has its own build ({marker}); \
                  pass --build-command {cmd:?} (or --unsafe-search-and-run-build-commands) if targets fail to build"
             );
         }
-        eprintln!(
+        gfeprintln!(
             "  would fuzz {} target(s){}",
             planned_candidates.len(),
             if preflight.any_missing() {
@@ -1189,7 +1204,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         // non-fuzzable code, an unbuildable tree still deserve static coverage).
         if args.static_scan {
             let n = crate::auto::report_only::emit_tree_static_findings(&path, &work);
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --static — static scan wrote {n} finding(s) (no fuzzable targets discovered)"
             );
         }
@@ -1206,6 +1221,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             0,
             args.static_dynamic,
             args.force,
+            false,
         )?;
         // A --static scan that produced findings is a successful run (0), not the
         // "nothing to do" code (2).
@@ -1220,7 +1236,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // parsing stays scoped to `path`, and discovery/attempts below stay scoped.
     let header_root = crate::auto::decl_index::project_index_root(&path);
     if header_root != path {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: resolving cross-dir headers from project root {}",
             header_root.display()
         );
@@ -1248,7 +1264,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         // `void` stub that returns a garbage register and crashes the harness in
         // `free(garbage)` (#388).
         idx.add_definition_search_roots(&extra_include_dirs)?;
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: {} extra C/C++ include dir(s) on the harness build path",
             extra_include_dirs.len()
         );
@@ -1263,7 +1279,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         .filter_map(|file| file.canonicalize().ok())
         .collect();
     if !extra_source_files.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: {} extra C/C++ source file(s) linked into the harness build",
             extra_source_files.len()
         );
@@ -1289,14 +1305,14 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         ada_dep_dirs.push(fake_corba_dir);
     }
     if !ada_dep_dirs.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: {} local Ada dependency dir(s) on the build path",
             ada_dep_dirs.len()
         );
     }
     let user_seeds = load_seed_inputs(&args.seed_files, &args.seed_dirs);
     if !user_seeds.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: {} user seed input(s) added to each target's corpus",
             user_seeds.len()
         );
@@ -1305,7 +1321,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // fuzz passes — an empty pass list makes `attempt` return `Built`, and the
     // manifest is emitted as usual.
     if args.deps_only {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --deps-only — building each target to surface missing dependencies; fuzzing skipped"
         );
     }
@@ -1322,7 +1338,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if let (false, Some(total)) = (args.deps_only, args.total_time) {
         if args.per_target_time != 60 {
             let pass_count = passes.len().max(1) as u64;
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: WARNING: both --total-time ({total}s) and --per-target-time \
                  ({}s) are set — --total-time WINS and --per-target-time is IGNORED. \
                  --total-time is a PER-TARGET budget apportioned across {pass_count} pass(es), \
@@ -1333,7 +1349,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         }
     }
     if !args.deps_only && (args.single_pass || args.passes.is_some()) {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: fuzzing {} of 3 pass(es) per target [{}]",
             passes.len(),
             passes
@@ -1348,7 +1364,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // (a too-high value OOM-kills, e.g. inside a cgroup MemoryMax slice).
     let jobs = args.jobs.max(1);
     if jobs > 1 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: running up to {jobs} candidate(s) concurrently (--jobs {jobs}, \
              default: half the host's cores); child RSS allowance = jobs x rss-limit-mb = {} MB, \
              plus parent/index/build/report overhead — size the total to the host, or pass \
@@ -1359,7 +1375,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             .iter()
             .any(|candidate| candidate.lang == crate::auto::candidate::Lang::Ada)
         {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: Ada targets share the staged source layout and will build \
                  serially; non-Ada targets still use --jobs {jobs}"
             );
@@ -1372,11 +1388,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let sanitizers = crate::fuzz::parse_sanitizer_args(&args.sanitizers)
         .map_err(|error| anyhow::anyhow!(error))?;
     match &sanitizers {
-        multicore_fuzz::SanitizerSelection::Set(_) => eprintln!(
+        multicore_fuzz::SanitizerSelection::Set(_) => gfeprintln!(
             "govfuzz auto: arming sanitizer matrix [{}] on each C/C++ harness build + run",
             args.sanitizers.join(", ")
         ),
-        multicore_fuzz::SanitizerSelection::None => eprintln!(
+        multicore_fuzz::SanitizerSelection::None => gfeprintln!(
             "govfuzz auto: --sanitizers none — building each C/C++ harness with coverage but \
              no -fsanitize= (native crash-only, zero ASan/UBSan false positives)"
         ),
@@ -1396,7 +1412,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let engines =
         crate::auto::attempt::prune_engines_for_toolchain(&requested_engines, afl_available);
     if afl_requested && !afl_available {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --engine afl++ requested but afl-fuzz/afl-clang-fast not on PATH — \
              falling back to the builtin engine for this run"
         );
@@ -1462,7 +1478,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let success_cap = args.max_targets;
     if let Some(cap) = args.max_attempts {
         if candidates.len() > cap {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --max-attempts {cap}: inspecting at most {cap} of {} ranked candidate(s)",
                 candidates.len()
             );
@@ -1470,7 +1486,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         }
     }
     if let Some(cap) = success_cap {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --max-targets {cap}: stopping after {cap} target(s) reach the fuzz phase (backfilling past nonviable candidates)"
         );
     }
@@ -1490,7 +1506,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 std::time::Duration::from_secs(min),
                 n,
             );
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --campaign-time {campaign}s split across {n} target(s) \
                  (--min-target-time {min}s floor): {per_target_secs}s/target, attempting the \
                  top {keep}, dropping {dropped} below the floor",
@@ -1560,7 +1576,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let prior_state_incompatible =
         work_state == crate::auto::work_state::WorkStateDisposition::IncompatibleMigration;
     if args.resume && prior_state_incompatible {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --resume: this work-dir was written by a different govfuzz build; \
              keeping targets that already fuzzed and re-attempting the rest"
         );
@@ -1568,7 +1584,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if args.resume && build_context_unchanged {
         let changed = crate::auto::resume_scope::changed_file_count();
         if !source_identical && changed > 0 {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --resume: {changed} source file(s) changed since the last run; \
                  reusing results only for targets whose own file is unchanged"
             );
@@ -1599,23 +1615,23 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         });
         let upgrade_to_forced = force_upgrade.len();
         if resumed_results.is_empty() {
-            eprintln!("govfuzz auto: --resume: no completed targets to reload");
+            gfeprintln!("govfuzz auto: --resume: no completed targets to reload");
         } else {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --resume: reloaded {} completed target(s); re-running {} remaining",
                 resumed_results.len(),
                 candidates.len()
             );
         }
         if upgrade_to_forced > 0 {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --resume --force: keeping {} target(s) that already fuzzed and \
                  forcing only the {upgrade_to_forced} that did not",
                 resumed_results.len()
             );
         }
     } else if args.resume && !build_context_unchanged {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --resume: build context changed (GPR / compile_commands.json / IDL / config / options); re-attempting all targets to avoid stale results"
         );
     }
@@ -1656,7 +1672,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let mut static_emitted = false;
     if args.static_scan {
         let n = crate::auto::report_only::emit_tree_static_findings(&path, &work);
-        eprintln!("govfuzz auto: --static — static scan wrote {n} finding(s) into the report");
+        gfeprintln!("govfuzz auto: --static — static scan wrote {n} finding(s) into the report");
         static_emitted = true;
         let sink_files = crate::auto::confirm::static_finding_files(&work);
         if !sink_files.is_empty() {
@@ -1678,7 +1694,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 u8::from(!hit) // sink-bearing (false -> 0) sorts first; stable within groups
             });
             if directed > 0 {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: directed fuzzing — {directed} candidate(s) carrying a static-finding sink fuzzed first"
                 );
             }
@@ -1716,11 +1732,68 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         );
     }
     if std::env::var_os("GOVFUZZ_PROFILE").is_some() {
-        eprintln!(
+        gfeprintln!(
             "[prof] campaign_deadline in {:?} (split_mode={split_mode})",
             campaign_deadline.map(|d| d.saturating_duration_since(std::time::Instant::now()))
         );
     }
+
+    // Live run status: the shared state behind the sticky progress block, the
+    // `--jobs` control, and the clean-stop key. Created before the first sweep so
+    // both phases write into one run-level picture.
+    // A live `+` may not oversubscribe the box: past core count, more concurrent
+    // compilers make the sweep slower AND multiply the RSS budget that already
+    // OOM-kills runs inside a cgroup slice.
+    let jobs_ceiling = num_cpus::get().max(jobs);
+    let status = std::sync::Arc::new(crate::auto::run_status::RunStatus::new(jobs, jobs_ceiling));
+    status.set_cap(success_cap);
+    status.set_deadline(campaign_deadline);
+    status.seed_resumed(resumed_successes);
+    status.set_rss_budget_mb(jobs.saturating_mul(args.rss_limit_mb));
+    status.set_per_target_time(options.per_target_time);
+    // A --campaign-time split divides the campaign across the targets it kept, so
+    // the per-target budget is derived, not chosen: the control refuses to fight it.
+    status.set_budget_locked(split_mode);
+    status.set_verbose(args.verbose);
+    status.set_force(options.force);
+    // The run plan, printed once before the first target. What `auto` is about to
+    // do was previously spread over a dozen conditional one-liners issued minutes
+    // apart, so the two facts that decide how long to wait — how many passes there
+    // will be, and what actually ends the run — were never on screen together.
+    console.println(&run_plan(
+        candidates.len(),
+        if options.force { 2 } else { 1 },
+        success_cap,
+        args.campaign_time,
+        jobs,
+        jobs_ceiling,
+    ));
+    // Keyboard control needs a controlling terminal; a piped or CI run gets
+    // neither the keys nor the raw-mode switch.
+    let controls =
+        crate::auto::controls::Controls::start(status.clone(), console.clone()).inspect(|_| {
+            // Deliberately short and pointed at `[?]`: the full legend is a
+            // permanent line of the block below, so repeating it here would
+            // scroll away a second copy of what is already always on screen.
+            console.println(
+                "govfuzz auto: live controls are on — the key legend is pinned below the run; press [?] for what each one does",
+            );
+        });
+    // Both of these bring the block on screen, so they come last — set earlier,
+    // every `println` above would redraw an empty run underneath the text that
+    // explains what the run is about to do.
+    console.set_block_provider({
+        let status = status.clone();
+        Box::new(move || {
+            let (cols, rows) = crate::auto::dashboard::terminal_size();
+            crate::auto::run_status::fit_block(
+                crate::auto::run_status::render_block(&status.snapshot(), cols),
+                rows,
+            )
+        })
+    });
+    let dashboard =
+        crate::auto::dashboard::Dashboard::start(status.clone(), console.clone(), args.verbose);
 
     // One sweep of one candidate set under one set of options, dispatching serial
     // vs parallel exactly as before. Factored out because `--force` now runs as a
@@ -1732,7 +1805,6 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let sweep_phase =
         |candidates: Vec<crate::auto::candidate::Candidate>,
          phase_options: &AttemptOptions,
-         phase_cap: Option<usize>,
          already_fuzzed: usize,
          dependency_checkpoint: &mut crate::auto::dep_manifest::DependencyManifest|
          -> Result<Vec<crate::auto::attempt::AttemptResult>> {
@@ -1741,7 +1813,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             // forced phase print `[1/0]`, because phase 2 sweeps a different (and
             // smaller) set — and on a resumed force run phase 1 sweeps nothing.
             let total = candidates.len();
-            let results = if jobs <= 1 {
+            status.begin_phase(if forced_phase { 2 } else { 1 }, forced_phase, total);
+            // The pool runs a `--jobs 1` sweep exactly as the serial loop does —
+            // one permit, candidates handed out in rank order — but its
+            // concurrency is a live value rather than a spawn-time constant. The
+            // serial loop is kept only for a host that could never run a second
+            // worker, where the pool would add threads and buy nothing.
+            let results = if jobs_ceiling <= 1 {
                 // --jobs 1 (default): the historical serial sweep, byte-identical when no
                 // --campaign-time is set (the deadline check is a no-op while None).
                 let mut results = Vec::new();
@@ -1749,23 +1827,48 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 // seeded with resumed successes so a resumed run honours the same cap.
                 let mut fuzz_successes = already_fuzzed;
                 for (i, candidate) in candidates.into_iter().enumerate() {
+                    // The operator pressed `q`: stop handing out candidates. Every
+                    // target completed so far is already persisted, and the run
+                    // continues into reporting rather than dying with the process.
+                    if status.quitting() {
+                        console.println(&format!(
+                            "govfuzz auto: stopped by operator after {} of {total} target(s) \
+                             ({fuzz_successes} fuzzed); writing the report",
+                            results.len()
+                        ));
+                        break;
+                    }
                     if let Some(deadline) = campaign_deadline {
                         if std::time::Instant::now() >= deadline {
-                            eprintln!(
+                            console.println(&format!(
                         "govfuzz auto: --campaign-time reached; stopping after {} of {total} target(s)",
                         results.len()
-                    );
+                    ));
                             break;
                         }
                     }
-                    if let Some(cap) = success_cap {
+                    if let Some(cap) = status.cap() {
                         if fuzz_successes >= cap {
-                            eprintln!(
+                            console.println(&format!(
                         "govfuzz auto: --max-targets {cap} reached; stopping after {} attempt(s) ({fuzz_successes} fuzzed)",
                         results.len()
-                    );
+                    ));
                             break;
                         }
+                    }
+                    // [p]: hold here rather than take the next candidate. Polled so
+                    // a resume, a `q`, or the deadline is noticed without a second
+                    // wakeup path.
+                    while status.paused() && !status.quitting() {
+                        std::thread::sleep(std::time::Duration::from_millis(200));
+                    }
+                    if status.quitting() {
+                        console.println(&format!(
+                            "govfuzz auto: stopped by operator after {} of {total} target(s) \
+                             ({fuzz_successes} fuzzed); writing the report",
+                            results.len()
+                        ));
+                        break;
                     }
                     let prefix = candidate_progress_prefix(
                         i + 1,
@@ -1773,16 +1876,30 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                         &candidate.harness_id,
                         &candidate.name,
                         fuzz_successes,
-                        success_cap,
+                        status.cap(),
                     );
-                    // On a TTY the progress sink owns the line and rewrites it in
-                    // place per phase/tick; piped output keeps the historical
-                    // static "… attempting" line so CI logs are unchanged.
+                    // On a TTY the dashboard owns the live view; piped output keeps
+                    // the historical static "… attempting" line so CI logs are
+                    // unchanged.
                     if !live_tty {
-                        eprintln!("{prefix} … attempting");
+                        console.println(&format!("{prefix} … attempting"));
                     }
-                    let progress =
-                        crate::auto::progress::TerminalProgress::new(prefix.clone(), args.verbose);
+                    status.worker_begin(
+                        0,
+                        &candidate.harness_id,
+                        &candidate.name,
+                        crate::auto::candidate::lang_tag(candidate.lang),
+                    );
+                    let progress = crate::auto::progress::WorkerProgress::new(
+                        status.clone(),
+                        0,
+                        (!live_tty && args.verbose).then(|| {
+                            crate::auto::progress::TerminalProgress::new(
+                                prefix.clone(),
+                                args.verbose,
+                            )
+                        }),
+                    );
                     // Catch a govfuzz-internal panic at the per-target boundary: record it
                     // in the bug report and keep sweeping instead of aborting the whole run
                     // on one malformed input. The panicked target is surfaced as a skip
@@ -1800,12 +1917,16 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                         target: Some(candidate.name.clone()),
                         language: Some(format!("{:?}", candidate.lang)),
                     };
+                    // Per-target budget is read HERE, not captured at startup, so
+                    // `[<]`/`[>]` apply from the next target onward.
+                    let mut target_options = phase_options.clone();
+                    target_options.per_target_time = status.per_target_time();
                     let result = match crate::auto::bug_report::catch(attempt_ctx, || {
                         crate::auto::attempt::attempt_with_progress(
                             &candidate,
                             &work,
                             &idx,
-                            phase_options.clone(),
+                            target_options.clone(),
                             &progress,
                         )
                     }) {
@@ -1820,6 +1941,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                         },
                     };
                     crate::auto::progress::ProgressSink::clear(&progress);
+                    status.worker_finish(0, &result);
                     // Count the completed outcome before rendering it so a success
                     // visibly advances `[fuzzed N/CAP]` on its own result line. The
                     // next target's live phase prefix then starts from that same N.
@@ -1835,12 +1957,15 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                         &candidate.harness_id,
                         &candidate.name,
                         fuzz_successes,
-                        success_cap,
+                        status.cap(),
                     );
-                    eprintln!("{completed_prefix} → {}", outcome_label(&result.outcome));
-                    if args.verbose {
+                    console.println(&format!(
+                        "{completed_prefix} → {}",
+                        outcome_label(&result.outcome)
+                    ));
+                    if status.verbose() {
                         for line in verbose_detail(&result.outcome) {
-                            eprintln!("    {line}");
+                            console.println(&format!("    {line}"));
                         }
                     }
                     // Persist the full result the moment this target finishes, so a
@@ -1865,16 +1990,16 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 run_parallel_sweep(
                     candidates,
                     total,
-                    jobs,
                     &work,
                     &idx,
                     phase_options,
-                    args.verbose,
                     campaign_deadline,
-                    phase_cap,
                     already_fuzzed,
                     &path,
                     dependency_checkpoint,
+                    &status,
+                    &console,
+                    live_tty,
                 )?
             };
             Ok(results)
@@ -1891,7 +2016,6 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let mut results = sweep_phase(
         candidates,
         &unforced_options,
-        success_cap,
         resumed_successes,
         &mut dependency_checkpoint,
     )?;
@@ -1911,7 +2035,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         results.push(prior);
     }
 
-    if options.force {
+    // Read the LIVE force flag, not the startup one: `[f]` can add the forced pass
+    // to a run that did not ask for it (phase 1 yielded little), or drop the one it
+    // did ask for. The decision point is here, after phase 1, so a toggle any time
+    // during phase 1 is honoured.
+    if status.force() {
         let retry: Vec<crate::auto::candidate::Candidate> = results
             .iter()
             .filter(|r| !reached_fuzz(&r.outcome))
@@ -1920,37 +2048,53 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         let fuzzed_in_phase_one =
             resumed_successes + results.iter().filter(|r| reached_fuzz(&r.outcome)).count();
         let budget_left = campaign_deadline.is_none_or(|d| std::time::Instant::now() < d);
-        let cap_left = success_cap.map(|cap| cap.saturating_sub(fuzzed_in_phase_one));
-        if retry.is_empty() {
-            eprintln!(
-                "govfuzz auto: --force: nothing to retry — every attempted target already fuzzed"
+        let cap_left = status
+            .cap()
+            .map(|cap| cap.saturating_sub(fuzzed_in_phase_one));
+        // `options` carries the startup flag, which is false when forcing was
+        // turned on mid-run — phase 2 would then silently re-run every failure
+        // UNFORCED, spending the run's most expensive pass on a repeat of phase 1.
+        let mut forced_options = options.clone();
+        forced_options.force = true;
+        if status.quitting() {
+            // `q` during phase 1 means "end this run", not "end this pass": a
+            // forced retry of everything phase 1 could not fuzz is the most
+            // expensive part of the run, and starting it after a stop request
+            // would ignore the request for hours.
+            console.println(&format!(
+                "govfuzz auto: --force: skipping the forced pass over {} target(s) — \
+                 stopped by operator",
+                retry.len()
+            ));
+        } else if retry.is_empty() {
+            console.println(
+                "govfuzz auto: --force: nothing to retry — every attempted target already fuzzed",
             );
         } else if !budget_left {
-            eprintln!(
+            console.println(&format!(
                 "govfuzz auto: --force: skipping the forced pass over {} target(s) — \
                  --campaign-time is already spent. The unforced results stand; raise \
                  --campaign-time to give forcing its own budget.",
                 retry.len()
-            );
+            ));
         } else if cap_left == Some(0) {
-            eprintln!(
-                "govfuzz auto: --force: skipping the forced pass — --max-targets is already met"
+            console.println(
+                "govfuzz auto: --force: skipping the forced pass — --max-targets is already met",
             );
         } else {
-            eprintln!(
+            console.println(&format!(
                 "govfuzz auto: --force: phase 2 — retrying {} target(s) that did not fuzz, \
                  forced (fabricated parameters, stubs for what the compiler reports \
                  missing; findings are stamped low-confidence)",
                 retry.len()
-            );
+            ));
+            // `already_fuzzed` seeds the sweep's success counter, so the stop
+            // threshold remains the original absolute cap (not the remaining
+            // delta). This also keeps the live `fuzzed N/CAP` denominator stable
+            // across the unforced and forced phases.
             let forced_results = sweep_phase(
                 retry,
-                &options,
-                // `already_fuzzed` seeds the sweep's success counter, so the stop
-                // threshold remains the original absolute cap (not the remaining
-                // delta). This also keeps the live `fuzzed N/CAP` denominator stable
-                // across the unforced and forced phases.
-                success_cap,
+                &forced_options,
                 fuzzed_in_phase_one,
                 &mut dependency_checkpoint,
             )?;
@@ -1971,22 +2115,37 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 })
                 .collect();
             let rescued = merge_forced_retry(&mut results, forced_results);
-            eprintln!(
+            console.println(&format!(
                 "govfuzz auto: --force: phase 2 rescued {rescued} target(s) that phase 1 could not fuzz"
-            );
+            ));
             if !unrescued.is_empty() {
                 let forced_blockers =
                     crate::auto::blocker_histogram::BlockerHistogram::from_results(&unrescued);
                 if !forced_blockers.is_empty() {
-                    eprintln!(
+                    gfeprintln!(
                         "\ngovfuzz auto: what stopped the FORCED retry ({} target(s) forcing could \
                          not fuzz — these are the reasons to act on, not the unforced ones above)",
                         unrescued.len()
                     );
-                    eprint!("{}", forced_blockers.render());
+                    gfeprint!("{}", forced_blockers.render());
                 }
             }
         }
+    }
+
+    // The sweep is over: stop the renderer, erase the sticky block and give the
+    // terminal back BEFORE any end-of-run output. A summary printed underneath a
+    // live block gets overwritten by the next redraw, and a raw-mode terminal
+    // left behind outlives the process.
+    let stopped_by_operator = status.quitting();
+    drop(dashboard);
+    drop(controls);
+    console.stop_block();
+    if stopped_by_operator {
+        gfeprintln!(
+            "govfuzz auto: stopped by operator — reporting on the {} target(s) completed so far",
+            results.len()
+        );
     }
 
     // Re-integrate `--resume`-reloaded targets into the report alongside the
@@ -2005,7 +2164,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // the fuzz findings. Runs regardless of per-target build/fuzz outcomes.
     if (args.static_scan && !static_emitted) || args.external_tools {
         let n = crate::auto::report_only::emit_tree_static_findings(&path, &work);
-        eprintln!("govfuzz auto: --static — static scan wrote {n} finding(s) into the report");
+        gfeprintln!("govfuzz auto: --static — static scan wrote {n} finding(s) into the report");
     }
 
     // #486 Phase 3: external static-analysis adapters (gosec/Bandit/semgrep/
@@ -2015,7 +2174,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     if args.external_tools {
         let profile = resolve_license_profile();
         let n = crate::auto::external_tools::run_external_adapters(&path, &work, profile);
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --external-tools ({}) — external analyzers wrote {n} finding(s)",
             profile.as_str()
         );
@@ -2027,7 +2186,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // MSan crash can also confirm a static finding at the same site.
     let msan = crate::auto::msan::run_msan_replay(&work);
     if msan > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: MemorySanitizer — {msan} uninitialized-memory read(s) found by corpus replay"
         );
     }
@@ -2037,7 +2196,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // second fuzz loop. Only targets that spawn threads per input surface a race.
     let tsan = crate::auto::tsan::run_tsan_replay(&work);
     if tsan > 0 {
-        eprintln!("govfuzz auto: ThreadSanitizer — {tsan} data race(s) found by corpus replay");
+        gfeprintln!("govfuzz auto: ThreadSanitizer — {tsan} data race(s) found by corpus replay");
     }
 
     // Memory-consumption profile (C/C++): replay the corpus in fresh processes and
@@ -2045,7 +2204,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // size — uncontrolled memory consumption (CWE-400) a crash-only fuzzer misses.
     let memfindings = crate::auto::memprofile::run_mem_profile(&work);
     if memfindings > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: memory profile — {memfindings} uncontrolled-consumption input(s) found by corpus replay"
         );
     }
@@ -2055,7 +2214,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // harness's sink_report.txt; turn each reached sink into a behavioral finding.
     let jsinks = crate::auto::sink_oracle::run_sink_oracle(&work);
     if jsinks > 0 {
-        eprintln!("govfuzz auto: JVM sink oracle — {jsinks} input-reachable sink(s) recorded");
+        gfeprintln!("govfuzz auto: JVM sink oracle — {jsinks} input-reachable sink(s) recorded");
     }
 
     // COBOL crash attribution: replay each COBOL crash to recover libcob's
@@ -2064,7 +2223,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // CWE-125, zero divide → CWE-369, size overflow → CWE-190, ...).
     let cobol_attributed = crate::auto::cobol_oracle::run_cobol_attribution(&work);
     if cobol_attributed > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: COBOL attribution — {cobol_attributed} crash(es) mapped to a COBOL runtime error + CWE"
         );
     }
@@ -2077,7 +2236,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // raised). Cheap no-op for harnesses with no injected value stubs.
     let prov = crate::auto::provenance::run_stub_provenance(&work, args.mode);
     if prov.total() > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: build-recovery provenance — {} real defect(s) certified, {} crash(es) attributed to a stub artifact",
             prov.real_defects, prov.stub_artifacts
         );
@@ -2091,7 +2250,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // `auto/capabilities.json` and one clustered finding per (harness, kind).
     let capabilities = crate::auto::capability::run_capability_profile(&work);
     if capabilities > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: capability profiling — {capabilities} input-triggered capability finding(s) (GF-668)"
         );
     }
@@ -2103,7 +2262,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // no-op when there are no static or no runtime findings.
     let confirmed = crate::auto::confirm::confirm_static_findings(&work, args.mode).confirmed;
     if confirmed > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: fuzz-confirmation — {confirmed} static finding(s) confirmed by a fuzz/oracle hit"
         );
     }
@@ -2139,7 +2298,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         args.mode,
     );
     if demoted > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: reachability — {demoted} static finding(s) demoted to lab_only (not attacker-reachable)"
         );
     }
@@ -2154,7 +2313,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // oracle is marked `fuzz_exercised` — exercised-and-survived, weak FP evidence.
     let exercised = crate::auto::confirm::mark_fuzz_exercised_findings(&work, args.mode);
     if exercised > 0 {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: negative confirmation — {exercised} static finding(s) marked fuzz_exercised (line executed, no crash/oracle)"
         );
     }
@@ -2168,13 +2327,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             Ok(spec) => {
                 let diffs = crate::auto::differential_post::run_differential(&work, &spec);
                 if diffs > 0 {
-                    eprintln!(
+                    gfeprintln!(
                         "govfuzz auto: differential ({}:{}) — {diffs} cross-compiler divergence(s) found by corpus replay (GF-301)",
                         spec.cc_a, spec.cc_b
                     );
                 }
             }
-            Err(error) => eprintln!("govfuzz auto: --differential ignored: {error}"),
+            Err(error) => gfeprintln!("govfuzz auto: --differential ignored: {error}"),
         }
     }
 
@@ -2193,6 +2352,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         discovered_total,
         args.static_dynamic,
         args.force,
+        stopped_by_operator,
     )?;
     crate::auto::discovery::gfprof("auto:write_reports", _twr);
 
@@ -2204,11 +2364,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             serde_json::from_str::<crate::auto::dep_manifest::DependencyManifest>(&s).ok()
         }) {
             Some(manifest) if !manifest.is_empty() => {
-                eprintln!("govfuzz auto: --install-deps — fetching missing dependencies (online)");
+                gfeprintln!(
+                    "govfuzz auto: --install-deps — fetching missing dependencies (online)"
+                );
                 let report = crate::auto::install_deps::run_installs(&manifest);
-                eprint!("{}", report.render());
+                gfeprint!("{}", report.render());
             }
-            _ => eprintln!("govfuzz auto: --install-deps — no missing dependencies to fetch"),
+            _ => gfeprintln!("govfuzz auto: --install-deps — no missing dependencies to fetch"),
         }
     }
 
@@ -2220,16 +2382,17 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         &results,
         resumed,
         discovered_total,
+        stopped_by_operator,
     );
 
     let rendered = summary.render();
-    eprintln!();
-    eprint!("{rendered}");
+    gfeprintln!();
+    gfeprint!("{rendered}");
     // Persist the same block next to the reports so it survives the
     // scrollback and can be grepped/attached later.
     let summary_path = work.join("auto").join("summary.txt");
     if let Err(error) = std::fs::write(&summary_path, &rendered) {
-        eprintln!(
+        gfeprintln!(
             "warning: could not write {}: {error}",
             summary_path.display()
         );
@@ -2243,7 +2406,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // and reading the histogram without knowing which is which wastes a fix
     // round on a phantom blocker.
     if crate::command_output::campaign_budget_exhausted() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: the --campaign-time budget was exhausted; build steps still \
              running were cut off, so some failures below are budget cut-offs rather \
              than real blockers. Re-run with a larger --campaign-time to tell them apart."
@@ -2251,26 +2414,26 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     }
     let blockers = crate::auto::blocker_histogram::BlockerHistogram::from_results(&results);
     if !blockers.is_empty() {
-        eprint!("{}", blockers.render());
+        gfeprint!("{}", blockers.render());
         let blockers_path = work.join("auto").join("blockers.json");
         match serde_json::to_vec_pretty(&blockers.to_json()) {
             Ok(bytes) => {
                 if let Err(error) = std::fs::write(&blockers_path, &bytes) {
-                    eprintln!(
+                    gfeprintln!(
                         "warning: could not write {}: {error}",
                         blockers_path.display()
                     );
                 }
             }
-            Err(error) => eprintln!("warning: could not serialize residual blockers: {error}"),
+            Err(error) => gfeprintln!("warning: could not serialize residual blockers: {error}"),
         }
     }
 
     // End-of-run UX: the most severe findings (what matters, with a reproduce command)
     // followed by a next-steps triage (aggregate failure causes → the exact lever),
     // so the operator doesn't have to open run.json / the SARIF to know what to do.
-    eprint!("{}", crate::auto::triage::render_top_findings(&work, 8));
-    eprint!(
+    gfeprint!("{}", crate::auto::triage::render_top_findings(&work, 8));
+    gfeprint!(
         "{}",
         crate::auto::triage::render_triage(&crate::auto::triage::TriageInputs {
             built_and_fuzzed: summary.built_and_fuzzed,
@@ -2294,7 +2457,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
 
     // Keep this as the final terminal feedback: it is the handoff list an
     // offline operator needs after the campaign scrollback ends.
-    eprintln!(
+    gfeprintln!(
         "govfuzz auto: requirements: {}",
         crate::auto::report::dependency_manifest_pointer(&work)
     );
@@ -2339,7 +2502,7 @@ impl DependencyPointerGuard {
 impl Drop for DependencyPointerGuard {
     fn drop(&mut self) {
         if self.armed {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: requirements: {}",
                 crate::auto::report::dependency_manifest_pointer(&self.work)
             );
@@ -2361,7 +2524,7 @@ fn emit_campaign_sbom(root: &Path, work: &Path) {
     };
     match governance::write_sbom(&options) {
         Ok(summary) => {
-            eprintln!(
+            gfeprintln!(
                 "govfuzz auto: --sbom wrote {} component(s), {} vulnerability match(es) to {}",
                 summary.components,
                 summary.matches,
@@ -2375,7 +2538,7 @@ fn emit_campaign_sbom(root: &Path, work: &Path) {
             // none. Say so, and note the common footgun of scanning a subdirectory
             // below where the manifests live.
             if summary.components == 0 {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz auto: --sbom found no dependency manifests under {} \
                      (Cargo.toml / package.json / go.mod / pom.xml / requirements.txt / …); \
                      an SBOM catalogs DECLARED dependencies, so a manifest-less tree yields an \
@@ -2386,7 +2549,7 @@ fn emit_campaign_sbom(root: &Path, work: &Path) {
             }
         }
         Err(error) => {
-            eprintln!("govfuzz auto: --sbom bundle could not be written: {error:#}");
+            gfeprintln!("govfuzz auto: --sbom bundle could not be written: {error:#}");
         }
     }
 }
@@ -2464,12 +2627,12 @@ fn discover_or_reuse(
     }
     let _ = crate::auto::report::atomic_write(&files_record, serialized.as_bytes());
     if fresh {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: --fresh-discovery: ignoring any cache at {} and recomputing discovery (fingerprint {fingerprint})",
             cache_file.display()
         );
     } else if let Some(cached) = discovery_cache::load_if_valid(&cache_file, path, &fingerprint) {
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: discovery loaded from cache {} ({} target(s); source tree unchanged, fingerprint {fingerprint})",
             cache_file.display(),
             cached.len()
@@ -2479,7 +2642,7 @@ fn discover_or_reuse(
         // Distinguish WHY it missed so a surprising re-discovery is explainable
         // (absent vs format-version vs fingerprint vs root mismatch).
         let reason = discovery_cache::miss_reason(&cache_file, path, &fingerprint);
-        eprintln!(
+        gfeprintln!(
             "govfuzz auto: discovery cache miss at {} ({reason}); recomputing discovery (fingerprint {fingerprint}). \
              Pass --no-discovery-cache to disable caching.",
             cache_file.display()
@@ -2493,12 +2656,12 @@ fn discover_or_reuse(
     // is a re-run optimization, so a write failure is logged, never fatal.
     let cache = DiscoveryCache::build(path, fingerprint, &candidates);
     match discovery_cache::write(&cache_file, &cache) {
-        Ok(()) => eprintln!(
+        Ok(()) => gfeprintln!(
             "govfuzz auto: discovery computed ({} target(s)); cache written to {}",
             candidates.len(),
             cache_file.display()
         ),
-        Err(error) => eprintln!(
+        Err(error) => gfeprintln!(
             "govfuzz auto: discovery computed ({} target(s)); could not write discovery cache to {}: {error}",
             candidates.len(),
             cache_file.display()
@@ -2657,22 +2820,87 @@ fn merge_forced_retry(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// The one-block answer to "what is this run going to do, and what ends it".
+///
+/// Stop conditions are listed together because they compete: `--max-targets 50`
+/// on a 26k-candidate tree with a 30-minute budget ends on whichever binds
+/// first, and which one that is decides whether the operator should wait.
+fn run_plan(
+    candidates: usize,
+    phase_total: usize,
+    success_cap: Option<usize>,
+    campaign_time: Option<u64>,
+    jobs: usize,
+    jobs_ceiling: usize,
+) -> String {
+    let phases = if phase_total > 1 {
+        "1 unforced → 2 forced (--force)".to_owned()
+    } else {
+        "1 (add --force for a second, forced pass)".to_owned()
+    };
+    let mut stops = Vec::new();
+    if let Some(cap) = success_cap {
+        stops.push(format!("{cap} target(s) fuzzed (--max-targets)"));
+    }
+    if let Some(secs) = campaign_time {
+        stops.push(format!(
+            "{} elapsed (--campaign-time)",
+            crate::auto::run_status::human_duration(std::time::Duration::from_secs(secs))
+        ));
+    }
+    stops.push(format!("all {candidates} candidate(s) attempted"));
+    format!(
+        "\ngovfuzz auto: run plan\n  \
+         candidates: {candidates} ranked\n  \
+         phases:     {phases}\n  \
+         stops at:   {}\n  \
+         jobs:       {jobs} (ceiling {jobs_ceiling})",
+        stops.join("  ·  "),
+    )
+}
+
+/// Whether a parked worker may take the next candidate.
+///
+/// The pool cannot wedge at zero admitted workers: `limit` is clamped to at least
+/// 1, so `current >= limit` implies some worker holds a permit and will release
+/// it. That is why no slot needs an exemption — an exemption would let the pool
+/// exceed the operator's `--jobs`, which is the one thing admission control is
+/// there to prevent.
+fn may_admit(current: usize, limit: usize) -> bool {
+    current < limit
+}
+
+/// Releases a worker's concurrency permit when its candidate finishes, however
+/// it finishes — including the `?`-free error paths and a panic caught further
+/// up. A leaked permit permanently lowers the sweep's effective `--jobs`.
+struct AdmissionGuard<'a>(&'a std::sync::atomic::AtomicUsize);
+
+impl Drop for AdmissionGuard<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn run_parallel_sweep(
     candidates: Vec<crate::auto::candidate::Candidate>,
     total: usize,
-    jobs: usize,
     work: &Path,
     idx: &DeclarationIndex,
     options: &AttemptOptions,
-    verbose: bool,
     campaign_deadline: Option<std::time::Instant>,
-    // #94: cap on targets that reach the fuzz phase; workers stop handing out new
-    // candidates once it is reached (in-flight ones finish). `initial_successes`
-    // seeds it with resumed successes.
-    success_cap: Option<usize>,
+    // #94: the cap on targets that reach the fuzz phase lives in `status` (it is
+    // operator-adjustable mid-run); workers stop handing out new candidates once
+    // it is reached and the in-flight ones finish. `initial_successes` seeds the
+    // counter with resumed successes.
     initial_successes: usize,
     source_root: &Path,
     checkpoint_base: &crate::auto::dep_manifest::DependencyManifest,
+    // The concurrency level lives here rather than in a parameter: `+`/`-` retune
+    // it mid-sweep, so it is read per candidate, not once at spawn.
+    status: &std::sync::Arc<crate::auto::run_status::RunStatus>,
+    console: &crate::auto::dashboard::Console,
+    live_tty: bool,
 ) -> Result<Vec<crate::auto::attempt::AttemptResult>> {
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Mutex;
@@ -2702,23 +2930,98 @@ fn run_parallel_sweep(
     // campaign symptom: `gnat1: Cannot find: crypto.ads`). Serialize only Ada
     // attempts; C/C++ and interpreted targets retain full `--jobs` parallelism.
     let ada_attempt_lock = Mutex::new(());
-    let worker_count = jobs.min(n);
+    // Spawn to the CEILING, not to `--jobs`: a thread that is not currently
+    // allowed to run parks in `admit` below. Raising concurrency at runtime then
+    // costs nothing but a permit — spawning new threads into a live
+    // `thread::scope` is not possible, so a pool sized to the initial `--jobs`
+    // could never grow.
+    let worker_count = status.jobs_ceiling().min(n);
+    // Workers currently holding a permit. Compared against the live `--jobs`
+    // value on every iteration, so lowering concurrency parks the surplus workers
+    // as they finish their current target rather than killing it mid-build.
+    let admitted = AtomicUsize::new(0);
+    // Admission control for one candidate. Returns false when the worker should
+    // park (over the current limit) — the caller retries after a short sleep, so
+    // a raise takes effect within one poll interval.
+    let admit = || -> bool {
+        // [p]: park every worker. Checked here so a pause costs nothing but a
+        // failed admission — in-flight targets are never interrupted.
+        if status.paused() {
+            return false;
+        }
+        let limit = status.jobs();
+        let mut current = admitted.load(Ordering::SeqCst);
+        loop {
+            if !may_admit(current, limit) {
+                return false;
+            }
+            match admitted.compare_exchange(
+                current,
+                current + 1,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => return true,
+                Err(actual) => current = actual,
+            }
+        }
+    };
 
+    // Shadow every shared value with a reference so the per-worker closure can be
+    // `move` — it must be, to take its own `slot` by value — while still sharing
+    // one cursor, one tally and one checkpoint across all workers.
+    let (
+        stopped,
+        cursor,
+        reached,
+        admitted,
+        candidates,
+        success_count,
+        stderr_lock,
+        ada_attempt_lock,
+        dependency_checkpoint,
+        slots,
+        admit,
+    ) = (
+        &stopped,
+        &cursor,
+        &reached,
+        &admitted,
+        &candidates,
+        &success_count,
+        &stderr_lock,
+        &ada_attempt_lock,
+        &dependency_checkpoint,
+        &slots,
+        &admit,
+    );
     std::thread::scope(|scope| {
-        for _ in 0..worker_count {
-            scope.spawn(|| loop {
+        for slot in 0..worker_count {
+            scope.spawn(move || loop {
                 if stopped.load(Ordering::SeqCst) {
+                    break;
+                }
+                // `q`: finish what is in flight, start nothing new.
+                if status.quitting() {
                     break;
                 }
                 if let Some(deadline) = campaign_deadline {
                     if std::time::Instant::now() >= deadline {
                         stopped.store(true, Ordering::SeqCst);
                         if std::env::var_os("GOVFUZZ_PROFILE").is_some() {
-                            eprintln!("[prof] worker stopping: campaign deadline reached");
+                            gfeprintln!("[prof] worker stopping: campaign deadline reached");
                         }
                         break;
                     }
                 }
+                if !admit() {
+                    // Parked: over the current `--jobs`. Poll rather than block on
+                    // a condvar so a raise, a `q`, or the campaign deadline is
+                    // noticed without another wakeup path.
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    continue;
+                }
+                let _admission = AdmissionGuard(admitted);
                 let i = cursor.fetch_add(1, Ordering::SeqCst);
                 if i >= n {
                     break;
@@ -2730,14 +3033,28 @@ fn run_parallel_sweep(
                     &candidate.harness_id,
                     &candidate.name,
                     success_count.load(Ordering::SeqCst),
-                    success_cap,
+                    status.cap(),
                 );
-                {
+                if !live_tty {
                     let _g = stderr_lock.lock().unwrap();
-                    eprintln!("{prefix} … attempting");
+                    console.println(&format!("{prefix} … attempting"));
                 }
-                // NoProgress sink (via `attempt`): concurrent in-place TTY line
-                // rewrites would corrupt the terminal, so use static lines.
+                // Each worker owns one dashboard slot, so concurrent live progress
+                // no longer means concurrent rewrites of a single terminal line
+                // (which is why this path used to run blind, with `NoProgress`).
+                status.worker_begin(
+                    slot,
+                    &candidate.harness_id,
+                    &candidate.name,
+                    crate::auto::candidate::lang_tag(candidate.lang),
+                );
+                let progress = crate::auto::progress::WorkerProgress::new(
+                    std::sync::Arc::clone(status),
+                    slot,
+                    (!live_tty && status.verbose()).then(|| {
+                        crate::auto::progress::TerminalProgress::new(prefix.clone(), true)
+                    }),
+                );
                 // Catch a per-target govfuzz-internal panic (recorded in the bug
                 // report) so one bad input doesn't kill the whole parallel sweep.
                 let attempt_ctx = crate::auto::bug_report::IssueContext {
@@ -2753,8 +3070,18 @@ fn run_parallel_sweep(
                     None
                 };
                 let _ta = std::time::Instant::now();
+                // Read per candidate so `[<]`/`[>]` reach the next target rather
+                // than only the next run.
+                let mut target_options = options.clone();
+                target_options.per_target_time = status.per_target_time();
                 let mut result = match crate::auto::bug_report::catch(attempt_ctx, || {
-                    crate::auto::attempt::attempt(candidate, work, idx, options.clone())
+                    crate::auto::attempt::attempt_with_progress(
+                        candidate,
+                        work,
+                        idx,
+                        target_options.clone(),
+                        &progress,
+                    )
                 }) {
                     Ok(inner) => inner,
                     Err(reason) => Ok(crate::auto::attempt::AttemptResult {
@@ -2781,7 +3108,7 @@ fn run_parallel_sweep(
                     )
                 ) {
                     let fuzzed = success_count.fetch_add(1, Ordering::SeqCst) + 1;
-                    if let Some(cap) = success_cap {
+                    if let Some(cap) = status.cap() {
                         if fuzzed >= cap {
                             stopped.store(true, Ordering::SeqCst);
                         }
@@ -2790,26 +3117,35 @@ fn run_parallel_sweep(
                 } else {
                     success_count.load(Ordering::SeqCst)
                 };
+                match &result {
+                    Ok(completed) => status.worker_finish(slot, completed),
+                    Err(_) => status.worker_failed(slot),
+                }
                 let completed_prefix = candidate_progress_prefix(
                     i + 1,
                     total,
                     &candidate.harness_id,
                     &candidate.name,
                     fuzzed,
-                    success_cap,
+                    status.cap(),
                 );
                 {
                     let _g = stderr_lock.lock().unwrap();
                     match &result {
                         Ok(r) => {
-                            eprintln!("{completed_prefix} → {}", outcome_label(&r.outcome));
-                            if verbose {
+                            console.println(&format!(
+                                "{completed_prefix} → {}",
+                                outcome_label(&r.outcome)
+                            ));
+                            if status.verbose() {
                                 for line in verbose_detail(&r.outcome) {
-                                    eprintln!("    {line}");
+                                    console.println(&format!("    {line}"));
                                 }
                             }
                         }
-                        Err(error) => eprintln!("{completed_prefix} → error: {error:#}"),
+                        Err(error) => {
+                            console.println(&format!("{completed_prefix} → error: {error:#}"))
+                        }
                     }
                 }
                 // Persist and checkpoint inside the worker, before the result is
@@ -2826,15 +3162,21 @@ fn run_parallel_sweep(
                         completed,
                     ) {
                         let _g = stderr_lock.lock().unwrap();
-                        eprintln!(
+                        console.println(&format!(
                             "warning: could not checkpoint offline requirements after {}: {error:#}",
                             completed.candidate.harness_id
-                        );
+                        ));
                         result = Err(anyhow::anyhow!(
                             "could not checkpoint offline requirements after {}: {error:#}",
                             completed.candidate.harness_id
                         ));
                     }
+                }
+                // The collector below returns the FIRST error and discards every
+                // later result, so sweeping on after one is spent effort. Stopping
+                // here is what gives the pool the serial loop's fail-fast.
+                if result.is_err() {
+                    stopped.store(true, Ordering::SeqCst);
                 }
                 reached.fetch_add(1, Ordering::SeqCst);
                 slots.lock().unwrap()[i] = Some(result);
@@ -2844,14 +3186,19 @@ fn run_parallel_sweep(
 
     let done = reached.load(Ordering::SeqCst);
     if done < n {
-        eprintln!(
-            "govfuzz auto: stopped after {done} of {total} candidate(s) — --max-targets success cap or --campaign-time deadline reached"
-        );
+        let why = if status.quitting() {
+            "operator pressed q"
+        } else {
+            "--max-targets success cap or --campaign-time deadline reached"
+        };
+        console.println(&format!(
+            "govfuzz auto: stopped after {done} of {total} candidate(s) — {why}"
+        ));
     }
 
     // Collect in index order; propagate the first error (serial fail-fast parity).
     let mut results = Vec::with_capacity(done);
-    for slot in slots.into_inner().unwrap() {
+    for slot in std::mem::take(&mut *slots.lock().unwrap()) {
         match slot {
             Some(Ok(r)) => {
                 results.push(r);
@@ -2880,6 +3227,10 @@ struct AutoSummary {
     discovered_total: usize,
     /// `--resume`: targets skipped because they completed in a prior sweep.
     resumed: usize,
+    /// The operator pressed `q`. The unattempted remainder is then NOT "dropped
+    /// by cap" — reporting it that way would blame a flag for a decision the
+    /// person watching made.
+    stopped_by_operator: bool,
     built_and_fuzzed: usize,
     /// #417: of `built_and_fuzzed`, the FALSE-CLEAN subset whose harness fuzzed
     /// only blind stubs and never the real library. Surfaced distinctly in the
@@ -2929,6 +3280,7 @@ impl AutoSummary {
         results: &[crate::auto::attempt::AttemptResult],
         resumed: usize,
         discovered_total: usize,
+        stopped_by_operator: bool,
     ) -> Self {
         use crate::auto::attempt::Outcome::*;
         use crate::auto::candidate::Lang;
@@ -3056,6 +3408,7 @@ impl AutoSummary {
             discovered: results.len(),
             discovered_total: discovered_total.max(results.len()),
             resumed,
+            stopped_by_operator,
             executions,
             total_elapsed_secs,
             coverage_edges,
@@ -3131,13 +3484,18 @@ impl AutoSummary {
         // #6: when a cap dropped lower-ranked targets, annotate the discovered
         // count so the swept figure is never read as the full discovered set.
         let dropped_by_cap = self.discovered_total.saturating_sub(self.discovered);
-        let cap_note = if dropped_by_cap > 0 {
+        let cap_note = if dropped_by_cap == 0 {
+            String::new()
+        } else if self.stopped_by_operator {
+            format!(
+                " (of {} ranked, {dropped_by_cap} not attempted — stopped by operator)",
+                self.discovered_total
+            )
+        } else {
             format!(
                 " (of {} ranked, {dropped_by_cap} dropped by cap)",
                 self.discovered_total
             )
-        } else {
-            String::new()
         };
         let _ = writeln!(
             s,
@@ -3983,6 +4341,48 @@ mod tests {
             candidate_progress_prefix(3, 191, "H-C0042", "inflate", 0, None),
             "[   3/ 191] H-C0042 inflate"
         );
+    }
+
+    #[test]
+    fn run_plan_lists_every_competing_stop_condition() {
+        let plan = run_plan(26_409, 2, Some(50), Some(1800), 3, 16);
+        // Both phases named up front: a `--force` run is two sweeps, and the
+        // second is the expensive one.
+        assert!(
+            plan.contains("phases:     1 unforced → 2 forced (--force)"),
+            "{plan}"
+        );
+        // All three stop conditions, because whichever binds first ends the run.
+        assert!(
+            plan.contains("50 target(s) fuzzed (--max-targets)"),
+            "{plan}"
+        );
+        assert!(plan.contains("30m00s elapsed (--campaign-time)"), "{plan}");
+        assert!(plan.contains("all 26409 candidate(s) attempted"), "{plan}");
+        assert!(plan.contains("jobs:       3 (ceiling 16)"), "{plan}");
+    }
+
+    #[test]
+    fn run_plan_without_limits_says_the_candidate_list_is_the_limit() {
+        let plan = run_plan(191, 1, None, None, 1, 8);
+        assert!(
+            plan.contains("stops at:   all 191 candidate(s) attempted"),
+            "{plan}"
+        );
+        assert!(!plan.contains("--max-targets"), "{plan}");
+        assert!(plan.contains("add --force for a second"), "{plan}");
+    }
+
+    #[test]
+    fn admission_respects_a_lowered_jobs_value_but_never_starves_the_pool() {
+        // Three permits already out, limit lowered to 2: surplus workers park as
+        // they finish rather than being killed mid-build.
+        assert!(!may_admit(3, 2));
+        assert!(may_admit(1, 2));
+        // At `--jobs 1` a second worker never joins, so a lowered run really does
+        // become serial rather than merely reporting that it has.
+        assert!(!may_admit(1, 1));
+        assert!(may_admit(0, 1));
     }
 
     #[test]
@@ -5133,6 +5533,7 @@ mod tests {
             &results,
             0,
             0,
+            false,
         );
         assert_eq!(summary.discovered, 3);
         // discovered_total clamps up to the swept count when no cap was passed.
@@ -5200,6 +5601,7 @@ mod tests {
             std::slice::from_ref(&result),
             0,
             0,
+            false,
         );
         assert_eq!(summary.built_and_fuzzed, 0, "must NEVER count as fuzzed");
         assert_eq!(summary.built_not_entered, 1);
@@ -5216,6 +5618,7 @@ mod tests {
     #[test]
     fn render_lists_stats_and_output_locations() {
         let summary = AutoSummary {
+            stopped_by_operator: false,
             source: PathBuf::from("/src"),
             work: PathBuf::from("/w"),
             mode: actionability::RunMode::Reporting,
@@ -5269,6 +5672,7 @@ mod tests {
     #[test]
     fn render_omits_findings_dir_when_no_findings() {
         let summary = AutoSummary {
+            stopped_by_operator: false,
             source: PathBuf::from("/src"),
             work: PathBuf::from("/w"),
             mode: actionability::RunMode::Reporting,
@@ -5306,6 +5710,7 @@ mod tests {
         // #6: when --max-targets / the campaign split dropped lower-ranked
         // candidates, the console line surfaces the pre-cap total + dropped delta.
         let summary = AutoSummary {
+            stopped_by_operator: false,
             source: PathBuf::from("/src"),
             work: PathBuf::from("/w"),
             mode: actionability::RunMode::Reporting,
@@ -5336,5 +5741,45 @@ mod tests {
             out.contains("20 discovered (of 150 ranked, 130 dropped by cap)"),
             "{out}"
         );
+    }
+
+    #[test]
+    fn render_blames_the_operator_not_a_cap_when_the_run_was_stopped_by_key() {
+        // Pressing `q` leaves the same shortfall a cap would, and attributing it
+        // to "dropped by cap" reports a flag the operator may not even have passed
+        // as the reason for their own decision.
+        let summary = AutoSummary {
+            stopped_by_operator: true,
+            source: PathBuf::from("/src"),
+            work: PathBuf::from("/w"),
+            mode: actionability::RunMode::Reporting,
+            duration: std::time::Duration::from_secs(3),
+            discovered: 2,
+            discovered_total: 5,
+            resumed: 0,
+            built_and_fuzzed: 2,
+            fuzzed_stub_only: 0,
+            built: 0,
+            built_not_entered: 0,
+            skipped: 0,
+            skipped_missing_package: 0,
+            failed_build: 0,
+            link_errors: 0,
+            runtime_errors: 0,
+            report_only: 0,
+            findings: 0,
+            executions: 0,
+            total_elapsed_secs: 0.0,
+            coverage_edges: 0,
+            files_fuzzed: 2,
+            files_with_targets: 2,
+            per_language: vec![("C", 2, 2)],
+        };
+        let out = summary.render();
+        assert!(
+            out.contains("2 discovered (of 5 ranked, 3 not attempted — stopped by operator)"),
+            "{out}"
+        );
+        assert!(!out.contains("dropped by cap"), "{out}");
     }
 }

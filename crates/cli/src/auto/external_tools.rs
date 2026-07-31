@@ -177,14 +177,14 @@ fn run_tool(adapter: &Adapter, root: &Path) -> Option<String> {
     )
     .ok()?;
     if captured.timed_out {
-        eprintln!(
+        gfeprintln!(
             "govfuzz: external analyzer '{}' exceeded its 30-minute timeout; skipping its output",
             adapter.binary
         );
         return None;
     }
     if captured.stdout_truncated {
-        eprintln!(
+        gfeprintln!(
             "govfuzz: external analyzer '{}' exceeded the {} MiB output cap; skipping its \
              incomplete report (raise GOVFUZZ_MAX_EXTERNAL_TOOL_OUTPUT_BYTES if needed)",
             adapter.binary,
@@ -193,7 +193,7 @@ fn run_tool(adapter: &Adapter, root: &Path) -> Option<String> {
         return None;
     }
     if captured.stderr_truncated {
-        eprintln!(
+        gfeprintln!(
             "govfuzz: external analyzer '{}' stderr exceeded the bounded capture; diagnostics were truncated",
             adapter.binary
         );

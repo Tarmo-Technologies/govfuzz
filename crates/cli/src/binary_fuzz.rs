@@ -106,7 +106,7 @@ pub fn run(args: BinaryFuzzArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }
@@ -203,7 +203,7 @@ fn resolve_binary_engine(engine: BinaryFuzzEngine) -> anyhow::Result<ResolvedEng
         BinaryFuzzEngine::Auto => match resolve_afl_qemu() {
             Ok(aq) => Ok(ResolvedEngine::AflQemu(aq)),
             Err(reason) => {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz binary-fuzz: {reason}; falling back to the builtin \
                      seed-replay engine (no coverage-guided mutation)"
                 );
@@ -473,11 +473,11 @@ pub(crate) fn replay_binary_finding(finding_dir: &Path, binary: &Path) -> i32 {
             0
         }
         Ok(false) => {
-            eprintln!("MISMATCH binary crash signature changed");
+            gfeprintln!("MISMATCH binary crash signature changed");
             3
         }
         Err(error) => {
-            eprintln!("error: {error:#}");
+            gfeprintln!("error: {error:#}");
             1
         }
     }

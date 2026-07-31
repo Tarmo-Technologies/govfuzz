@@ -31,7 +31,7 @@ pub struct CleanArgs {
 
 pub fn run(args: CleanArgs) -> i32 {
     if !args.work_dir.is_dir() {
-        eprintln!("work directory not found: {}", args.work_dir.display());
+        gfeprintln!("work directory not found: {}", args.work_dir.display());
         return 3;
     }
 
@@ -47,7 +47,7 @@ pub fn run(args: CleanArgs) -> i32 {
             Ok(RemoveOutcome::Removed) => println!("removed {}", path.display()),
             Ok(RemoveOutcome::Missing) => {}
             Err(error) => {
-                eprintln!("clean {}: {error}", path.display());
+                gfeprintln!("clean {}: {error}", path.display());
                 return 1;
             }
         }

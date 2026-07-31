@@ -60,7 +60,7 @@ fn list(args: ListArgs) -> i32 {
                 0
             }
             Err(error) => {
-                eprintln!("serialize rule catalog: {error}");
+                gfeprintln!("serialize rule catalog: {error}");
                 1
             }
         }
@@ -92,7 +92,7 @@ fn show(args: ShowArgs) -> i32 {
     {
         Some(rule) => rule,
         None => {
-            eprintln!(
+            gfeprintln!(
                 "rule '{}' not found. Try `govfuzz rules list` for known ids.",
                 args.rule
             );
@@ -107,7 +107,7 @@ fn show(args: ShowArgs) -> i32 {
                 0
             }
             Err(error) => {
-                eprintln!("serialize rule: {error}");
+                gfeprintln!("serialize rule: {error}");
                 1
             }
         }

@@ -297,7 +297,7 @@ fn ranked_targets(args: ListTargetsArgs) -> Result<Vec<(PathBuf, ListedTarget)>>
         let ceiling = static_analysis::MemoryGuard::ceiling_kb()
             .map(|kb| format!("{} MiB", kb / 1024))
             .unwrap_or_else(|| "the configured ceiling".to_owned());
-        eprintln!(
+        gfeprintln!(
             "govfuzz: discovery reached its memory ceiling ({ceiling}) and skipped \
              {skipped_for_memory} file(s); this target list is PARTIAL. Raise it with \
              GOVFUZZ_MAX_MEMORY_KB, or list a subdirectory."
@@ -465,7 +465,7 @@ fn warn_if_parser_recovered<F: FnOnce() -> usize>(path: &Path, found_none: bool,
     if errors == 0 {
         return;
     }
-    eprintln!(
+    gfeprintln!(
         "warning: {}: parser found 0 targets and {errors} tree-sitter ERROR/MISSING node(s). \
          Macro-heavy code or a non-standard dialect can confuse tree-sitter; consider \
          preprocessing with `cpp -E` before passing to govfuzz.",

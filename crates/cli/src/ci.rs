@@ -279,7 +279,7 @@ pub fn run(args: CiArgs) -> i32 {
     let scoped_files = match resolve_changed_scope(&args) {
         Ok(scope) => scope,
         Err(error) => {
-            eprintln!("error: could not compute changed-file scope: {error:#}");
+            gfeprintln!("error: could not compute changed-file scope: {error:#}");
             return 1;
         }
     };
@@ -302,7 +302,7 @@ pub fn run(args: CiArgs) -> i32 {
     let findings = match bucket_findings(&work_dir) {
         Ok(findings) => findings,
         Err(error) => {
-            eprintln!("error: CI gate could not read findings: {error:#}");
+            gfeprintln!("error: CI gate could not read findings: {error:#}");
             return 1;
         }
     };
@@ -317,10 +317,10 @@ pub fn run(args: CiArgs) -> i32 {
         Ok(actionability) => actionability,
         Err(error) => {
             if gate_needs_actionability {
-                eprintln!("error: CI gate could not read findings: {error:#}");
+                gfeprintln!("error: CI gate could not read findings: {error:#}");
                 return 1;
             }
-            eprintln!("warning: CI could not read actionability: {error:#}");
+            gfeprintln!("warning: CI could not read actionability: {error:#}");
             ActionabilityBuckets::default()
         }
     };
@@ -329,7 +329,7 @@ pub fn run(args: CiArgs) -> i32 {
     if let Some(path) = summary_target {
         let markdown = render_summary(&work_dir, total, &findings);
         if let Err(error) = append_summary(&path, &markdown) {
-            eprintln!(
+            gfeprintln!(
                 "warning: could not write CI summary to {}: {error}",
                 path.display()
             );
@@ -372,7 +372,7 @@ pub fn run(args: CiArgs) -> i32 {
                 };
             }
             Err(error) => {
-                eprintln!("warning: could not evaluate CI policy gate: {error:#}");
+                gfeprintln!("warning: could not evaluate CI policy gate: {error:#}");
                 exit_code = 1;
             }
         }
@@ -387,7 +387,7 @@ pub fn run(args: CiArgs) -> i32 {
             exit_code,
         );
         if let Err(error) = fs::write(path, serde_json::to_vec_pretty(&ci).unwrap_or_default()) {
-            eprintln!(
+            gfeprintln!(
                 "warning: could not write --ci-json {}: {error}",
                 path.display()
             );
@@ -405,7 +405,7 @@ pub fn run(args: CiArgs) -> i32 {
             governance::write_json(&path, &value)?;
             Ok(value)
         }) {
-            eprintln!("warning: could not write CI dashboard JSON: {error:#}");
+            gfeprintln!("warning: could not write CI dashboard JSON: {error:#}");
         }
     }
     exit_code
@@ -418,7 +418,7 @@ fn report_nothing_to_do(args: &CiArgs) -> i32 {
         "### GovFuzz CI\n\n- No fuzzable source files changed in this diff — nothing to do. ✅\n";
     if let Some(path) = summary_path_resolution(args.summary_file.as_deref()) {
         if let Err(error) = append_summary(&path, summary) {
-            eprintln!(
+            gfeprintln!(
                 "warning: could not write CI summary to {}: {error}",
                 path.display()
             );
@@ -436,7 +436,7 @@ fn report_nothing_to_do(args: &CiArgs) -> i32 {
             "nothing_to_do": true,
         });
         if let Err(error) = fs::write(path, serde_json::to_vec_pretty(&ci).unwrap_or_default()) {
-            eprintln!(
+            gfeprintln!(
                 "warning: could not write --ci-json {}: {error}",
                 path.display()
             );
@@ -543,7 +543,7 @@ fn maybe_emit_sarif(args: &CiArgs, work_dir: &Path) -> Option<String> {
                 let _ = fs::create_dir_all(parent);
             }
             if let Err(error) = fs::copy(&produced, requested) {
-                eprintln!(
+                gfeprintln!(
                     "warning: could not copy SARIF to {}: {error}",
                     requested.display()
                 );
@@ -552,7 +552,7 @@ fn maybe_emit_sarif(args: &CiArgs, work_dir: &Path) -> Option<String> {
             Some(requested.to_string_lossy().into_owned())
         }
         Err(error) => {
-            eprintln!("warning: could not emit SARIF: {error}");
+            gfeprintln!("warning: could not emit SARIF: {error}");
             None
         }
     }
@@ -604,7 +604,7 @@ fn bucket_findings(work_dir: &Path) -> anyhow::Result<BTreeMap<String, usize>> {
         {
             Some(value) => finding_severity(&value),
             None => {
-                eprintln!(
+                gfeprintln!(
                     "warning: unreadable/malformed {}; counting as an unknown-severity finding",
                     finding_json.display()
                 );
@@ -670,7 +670,7 @@ fn bucket_actionability(work_dir: &Path) -> anyhow::Result<ActionabilityBuckets>
                 )
             }
             None => {
-                eprintln!(
+                gfeprintln!(
                     "warning: unreadable/malformed {}; counting as an unknown-verdict finding",
                     finding_json.display()
                 );

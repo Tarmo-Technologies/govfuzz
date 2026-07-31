@@ -113,7 +113,7 @@ pub fn init(debug: bool) {
         if THREAD_IN_CATCH.with(|c| c.get()) {
             // Caught at a per-target/per-file boundary: hand off to `catch` via the
             // thread-local, and print a concise line (detail goes to the report).
-            eprintln!(
+            gfeprintln!(
                 "govfuzz: internal panic{}: {message} (recorded in bug-report.json{})",
                 location
                     .as_ref()
@@ -149,7 +149,7 @@ pub fn init(debug: bool) {
                 occurrences: 1,
             });
             if let Some(path) = flush_report() {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz: internal panic — bug report written to {}",
                     path.display()
                 );

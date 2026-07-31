@@ -65,7 +65,7 @@ fn write_summary(
         Ok(summary) => {
             if let Some(out) = out {
                 if let Err(error) = governance::write_json(&out, &summary) {
-                    eprintln!("{error:#}");
+                    gfeprintln!("{error:#}");
                     return 1;
                 }
             } else {
@@ -77,7 +77,7 @@ fn write_summary(
             0
         }
         Err(error) => {
-            eprintln!("{error:#}");
+            gfeprintln!("{error:#}");
             1
         }
     }

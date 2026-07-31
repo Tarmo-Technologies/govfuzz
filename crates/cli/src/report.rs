@@ -71,7 +71,7 @@ pub fn run(args: ReportArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("error: {error}");
+            gfeprintln!("error: {error}");
             1
         }
     }

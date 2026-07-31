@@ -270,7 +270,7 @@ pub fn run(args: SupportReportArgs) -> i32 {
     match run_inner(args) {
         Ok(path) => {
             if !bundle_mode {
-                eprintln!(
+                gfeprintln!(
                     "govfuzz: compact scrubbed support report written to {}",
                     path.display()
                 );
@@ -278,7 +278,7 @@ pub fn run(args: SupportReportArgs) -> i32 {
             0
         }
         Err(error) => {
-            eprintln!("govfuzz bug-report: {error:#}");
+            gfeprintln!("govfuzz bug-report: {error:#}");
             2
         }
     }
@@ -406,7 +406,7 @@ fn emit_bundle(args: &SupportReportArgs, report: &str) -> Result<PathBuf> {
     if !status.success() {
         bail!("`tar` failed to build the bundle archive");
     }
-    eprintln!(
+    gfeprintln!(
         "govfuzz: bug-report bundle written to {} ({} scrubbed field(s), self-test PASS)",
         bundle_path.display(),
         files.len()

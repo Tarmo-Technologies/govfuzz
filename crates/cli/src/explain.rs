@@ -36,12 +36,12 @@ pub fn run(args: ExplainArgs) -> i32 {
     let findings = match collect(&args.work_dir, args.finding_id.as_deref()) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("error: {e}");
+            gfeprintln!("error: {e}");
             return 1;
         }
     };
     if findings.is_empty() {
-        eprintln!(
+        gfeprintln!(
             "govfuzz explain: no runtime crash findings in {} to explain",
             args.work_dir.display()
         );

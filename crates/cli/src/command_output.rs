@@ -255,6 +255,22 @@ pub(crate) fn output_with_timeout(command: &mut Command, timeout: Duration) -> i
         .map(|captured| captured.output)
 }
 
+/// As [`output_with_timeout`], plus whether the child was KILLED for exceeding its
+/// wall clock.
+///
+/// A timed-out child is reported to the caller as a normal non-success exit, which
+/// is indistinguishable from the target itself failing — so a consumer that treats
+/// "not a success" as a measured result silently converts "we never finished
+/// looking" into "we looked and found nothing". Callers whose conclusion depends on
+/// the run having COMPLETED (the sanitizer replays) need the distinction.
+pub(crate) fn output_with_timeout_flagged(
+    command: &mut Command,
+    timeout: Duration,
+) -> io::Result<(Output, bool)> {
+    capture_with_timeout(command, clamp_to_campaign(timeout), max_stream_bytes())
+        .map(|captured| (captured.output, captured.timed_out))
+}
+
 /// Variant for consumers (notably external analyzer JSON) that need to reject a
 /// truncated stream rather than treating the bounded head/tail as complete data.
 pub(crate) fn capture_with_timeout(

@@ -185,7 +185,7 @@ fn tsan_replay_writes_gf556_for_target_source_data_race() {
     // Any corpus input drives the (unconditional) race.
     std::fs::write(queue.join("seed"), b"anything").unwrap();
 
-    let written = run_tsan_replay(&work);
+    let written = run_tsan_replay(&work).findings;
     if written == 0 {
         let binary = hdir.join("main_tsan");
         assert!(

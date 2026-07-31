@@ -54,20 +54,41 @@ fn have(bin: &str, arg: &str) -> bool {
 }
 
 /// Resolve the `sharpfuzz` instrumentation tool: on PATH, or the default dotnet
-/// global-tools location `~/.dotnet/tools/sharpfuzz`.
-fn locate_sharpfuzz() -> Option<PathBuf> {
+/// global-tools location (`~/.dotnet/tools`), which `dotnet tool install
+/// --global` writes to and which is NOT on PATH unless the user added it.
+///
+/// This is also what the preflight banner reports on, so the two agree. They did
+/// not: preflight resolved on PATH only, so a host with the tool installed
+/// exactly where dotnet puts it was told the C# lane was MISSING while the lane
+/// went on to build and fuzz. On an offline host — where the reported fix is
+/// `dotnet tool install`, a command that cannot run — a false MISSING is worse
+/// than useless.
+pub(crate) fn locate_sharpfuzz() -> Option<PathBuf> {
+    // `.exe` on Windows, where `dotnet tool` also installs a shim of that name.
+    const NAMES: [&str; 2] = ["sharpfuzz", "sharpfuzz.exe"];
     if let Ok(paths) = std::env::var("PATH") {
         for dir in std::env::split_paths(&paths) {
-            let c = dir.join("sharpfuzz");
-            if c.is_file() {
-                return Some(c);
+            for name in NAMES {
+                let c = dir.join(name);
+                if c.is_file() {
+                    return Some(c);
+                }
             }
         }
     }
-    if let Some(home) = std::env::var_os("HOME") {
-        let c = PathBuf::from(home).join(".dotnet/tools/sharpfuzz");
-        if c.is_file() {
-            return Some(c);
+    // HOME on unix, USERPROFILE on Windows — the previous HOME-only lookup never
+    // fired on Windows, where a plain `dotnet tool install --global` leaves the
+    // shim in %USERPROFILE%\.dotnet\tools.
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
+    if let Some(home) = home {
+        for name in NAMES {
+            let c = PathBuf::from(&home)
+                .join(".dotnet")
+                .join("tools")
+                .join(name);
+            if c.is_file() {
+                return Some(c);
+            }
         }
     }
     None

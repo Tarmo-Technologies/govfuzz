@@ -63,7 +63,14 @@ impl PreflightReport {
 }
 
 fn have(tool: &str) -> bool {
-    which::which(tool).is_ok()
+    // A few tools are installed somewhere the build step knows about but PATH
+    // does not. Resolving them here with the SAME function the build uses is
+    // what keeps the banner and the run from disagreeing — a lane reported
+    // MISSING that then builds fine teaches operators to ignore the banner.
+    match tool {
+        "sharpfuzz" => crate::auto::csharp_build::locate_sharpfuzz().is_some(),
+        _ => which::which(tool).is_ok(),
+    }
 }
 
 /// `Some(display)` when a required tool group is satisfied by any alternative; `None`
@@ -75,6 +82,27 @@ fn missing_group<'a>(alternatives: &[&'a str]) -> Option<&'a str> {
         alternatives.first().copied()
     }
 }
+
+/// The C# lane's install hint.
+///
+/// Named separately because it is the one hint that cannot be a single package
+/// command. Two things the old hint got wrong on an offline host, which is where
+/// this lane is most often set up:
+///
+///   * `dotnet tool install --global` needs the network, so the stated fix was
+///     impossible on exactly the machines that see it most;
+///   * it omitted NuGet entirely. The generated harness references
+///     `SharpFuzz 2.3.0` plus every `<PackageReference>` copied from the target's
+///     csproj, so `dotnet build` restores — and an offline host with both `dotnet`
+///     and `sharpfuzz` present passes preflight and then fails EVERY target at
+///     restore. Naming it here is the difference between one staging trip and
+///     three.
+const CSHARP_HINT: &str = concat!(
+    "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`; ",
+    "offline: extract the SDK tarball and set DOTNET_ROOT, copy ~/.dotnet/tools (incl. .store) ",
+    "from a staging host, and stage the NuGet packages the harness restores ",
+    "(SharpFuzz 2.3.0 + the target's own PackageReferences) into NUGET_PACKAGES",
+);
 
 /// The required toolchain groups (each group = interchangeable alternatives) and the
 /// install hint for a language lane.
@@ -122,9 +150,7 @@ fn install_hint(lang: Lang, windows: bool) -> &'static str {
             Lang::Go => "install Go for Windows",
             Lang::Cobol => "install a Windows GnuCOBOL toolchain or use WSL/Linux",
             Lang::Fortran => "install a Windows gfortran toolchain or use WSL/Linux",
-            Lang::CSharp => {
-                "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`"
-            }
+            Lang::CSharp => CSHARP_HINT,
             Lang::Js => "install Node.js for Windows",
             Lang::Ts => "install Node.js + esbuild (`npm i -g esbuild`)",
             Lang::Ruby => "install Ruby 2.0+ for Windows",
@@ -146,9 +172,7 @@ fn install_hint(lang: Lang, windows: bool) -> &'static str {
         Lang::Go => "install go",
         Lang::Cobol => "install GnuCOBOL with your OS package manager",
         Lang::Fortran => "install gfortran with your OS package manager",
-        Lang::CSharp => {
-            "install the .NET SDK + `dotnet tool install --global SharpFuzz.CommandLine`"
-        }
+        Lang::CSharp => CSHARP_HINT,
         Lang::Js => "install Node.js",
         Lang::Ts => "install Node.js + esbuild (`npm i -g esbuild`)",
         Lang::Ruby => "install Ruby 2.0+ with your OS package manager",
@@ -202,8 +226,14 @@ pub fn run(candidates: &[Candidate]) -> PreflightReport {
 mod tests {
     use super::*;
 
+    /// `have` reads HOME/PATH, so the tests that rewrite them cannot overlap.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn missing_group_reports_first_alternative_when_none_present() {
+        // Resolves `sh` on PATH, and a sibling test rewrites PATH: env is
+        // process-global, so both must hold the same lock or they race.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         assert_eq!(
             missing_group(&["definitely-not-a-real-tool-xyz"]),
             Some("definitely-not-a-real-tool-xyz")
@@ -212,6 +242,77 @@ mod tests {
         assert_eq!(missing_group(&["sh"]), None);
         // Any alternative present satisfies the group.
         assert_eq!(missing_group(&["nope-xyz", "sh"]), None);
+    }
+
+    #[test]
+    fn sharpfuzz_resolves_where_dotnet_installs_it_not_only_on_path() {
+        // `dotnet tool install --global` writes to ~/.dotnet/tools, which is not
+        // on PATH by default. Preflight used `which` alone and reported MISSING
+        // for a host whose C# lane then built and fuzzed fine.
+        let home = std::env::temp_dir().join(format!(
+            "govfuzz-preflight-sharpfuzz-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let tools = home.join(".dotnet").join("tools");
+        std::fs::create_dir_all(&tools).unwrap();
+
+        // Isolate from the real environment: empty PATH, HOME pointed at the
+        // fixture. Serialised against the other env-mutating test below.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let old_home = std::env::var_os("HOME");
+        let old_path = std::env::var_os("PATH");
+        std::env::set_var("HOME", &home);
+        std::env::set_var("PATH", "");
+
+        assert!(!have("sharpfuzz"), "no shim staged yet");
+        std::fs::write(tools.join("sharpfuzz"), b"#!/bin/sh\n").unwrap();
+        assert!(
+            have("sharpfuzz"),
+            "the shim dotnet actually installs must satisfy preflight"
+        );
+        // A tool with no special resolution is unaffected by the fallback.
+        assert!(!have("definitely-not-a-real-tool-xyz"));
+
+        match old_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+        match old_path {
+            Some(v) => std::env::set_var("PATH", v),
+            None => std::env::remove_var("PATH"),
+        }
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn install_hints_carry_no_stray_whitespace() {
+        // A `\`-continued literal keeps its source indentation INSIDE the string
+        // if rustfmt joins the lines, and the hint is printed verbatim in the
+        // banner. This caught exactly that on the C# hint.
+        for lang in LANES {
+            let (name, _, hint) = requirements(lang);
+            assert!(
+                !hint.contains("  "),
+                "{name} hint has a double space: {hint}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_csharp_hint_covers_the_offline_path_and_the_nuget_requirement() {
+        let (_, _, hint) = requirements(Lang::CSharp);
+        // The online one-liner stays for the common case...
+        assert!(hint.contains("dotnet tool install --global SharpFuzz.CommandLine"));
+        // ...but an offline host cannot run it, and needs to be told so.
+        assert!(hint.contains("offline"), "{hint}");
+        assert!(hint.contains("DOTNET_ROOT"), "{hint}");
+        // The requirement preflight does NOT probe, and that fails every target
+        // at restore once dotnet and sharpfuzz are both present.
+        assert!(hint.contains("NUGET_PACKAGES"), "{hint}");
+        assert!(hint.contains("SharpFuzz 2.3.0"), "{hint}");
     }
 
     #[test]

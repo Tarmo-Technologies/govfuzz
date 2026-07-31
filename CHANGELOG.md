@@ -2,6 +2,72 @@
 
 # Changelog
 
+## 0.2.29 - 2026-07-31
+
+**`auto` now shows where the run is, and lets you steer it without killing it.**
+The sweep printed one line per target — position, name, outcome — which answers
+"what is happening" but not "how far along is this", "is it yielding anything",
+or "which of the two `--force` phases am I in". On a 26k-candidate tree the
+position counter is also the wrong progress signal: with `--max-targets 50` the
+run ends at 50 *fuzzed*, and `[213/26409]` says nothing about that.
+
+A terminal run now keeps a status block pinned below the scrolling results,
+carrying the constraint that will actually end the run (with an ETA derived from
+the binding one — success rate under a cap, attempt rate otherwise, never past a
+`--campaign-time` deadline), a live yield tally with the most common blocker, host
+CPU/RSS against the run's own budget, and one line per in-flight target showing
+its stage, execs/s, edges, and how long since it last found anything. `--force`
+phase 2 is named in the block rather than only in a banner that has scrolled away.
+
+**The run is also steerable from the keyboard.** Every one of these previously
+meant killing the sweep and restarting with different flags, discarding every
+completed target:
+
+* `q` stops cleanly — no new targets start, in-flight ones finish and are
+  persisted, and the report and summary are written. Ctrl-C's outcome (a run
+  killed mid-sweep) was previously the only way to stop early. A forced phase 2 is
+  skipped rather than started after a stop request.
+* `p` pauses and resumes, for when the box is needed elsewhere.
+* `+` / `-` retune `--jobs`, clamped to 1..cores.
+* `]` / `[` retune `--max-targets`, never below what has already fuzzed. An
+  uncapped run can be capped down but not raised — it is already unlimited, and
+  inventing a ceiling would silently restrict it.
+* `>` / `<` retune `--per-target-time`, applied from the next target (the running
+  one keeps its planned pass cascade). Refused when a `--campaign-time` split owns
+  the budget rather than fighting it.
+* `f` adds or drops the forced phase 2 — decided at the phase boundary, so it
+  works on a run that never passed `--force`.
+* `v` toggles per-target detail.
+
+Nothing baked into discovery or a harness build (`--sanitizers`, `--cxx-std`,
+`--build-command`) is adjustable: changing those mid-sweep would make targets
+within one report incomparable.
+
+None of it requires knowing the keys in advance. The legend is a permanent line
+of the block and picks one of three widths so a narrow terminal shortens it
+instead of cutting it off mid-list — a truncated legend hides that the remaining
+keys exist at all. `?` expands it in place into what each key does and what each
+value currently is; any key that does something dismisses it again. The block is
+also now capped to the terminal height, reporting what it hid: a block taller
+than the screen cannot be erased correctly, because the cursor cannot walk up
+past the top.
+
+The parallel sweep gained live per-target progress in the process: it previously
+ran with no progress sink at all, because concurrent rewrites of a single terminal
+line corrupt the display. Each worker now owns a dashboard slot instead. Piped and
+CI output is unchanged; `--verbose` adds a run-level heartbeat every 30 s.
+
+Ctrl-C behaviour is untouched — the key reader disables line buffering and echo
+but leaves `ISIG` on.
+
+Two smaller corrections fell out of the same work. Every `eprintln!` in the crate
+now routes through the run's console (`gfeprintln!`): a bare write landing inside
+the sticky region desynchronised the erase, which wiped the message and stranded
+block fragments in the scrollback — observed in a real sweep, not theorised. And
+the console summary and `run.md` no longer report the shortfall left by an
+operator stop as "dropped by cap", which blamed flags the operator may never have
+passed.
+
 ## 0.2.28 - 2026-07-30
 
 **GF-440 no longer reports govfuzz deleting its own temp input as a target

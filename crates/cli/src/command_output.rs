@@ -218,12 +218,50 @@ pub(crate) fn run_target_beside_binary(command: &mut Command, binary: &std::path
 /// death-signalled it SURVIVED govfuzz being killed: orphaned `gprbuild`/`gcc`/
 /// `gnat1` processes were found still running 39 hours after their sweep,
 /// stealing CPU from every later run on the machine.
+/// Spawn, riding out the two transient failures that make an `exec` of a FRESHLY
+/// WRITTEN executable fail.
+///
+/// `ExecutableFileBusy` (`ETXTBSY`): the kernel refuses to exec a file that is
+/// still open for writing ANYWHERE. govfuzz's whole shape is build-then-run — a
+/// harness build followed immediately by a fuzz or replay of the binary it just
+/// produced — and in a multi-threaded process a child forked by one thread
+/// inherits a write descriptor another thread has not closed yet. The window is
+/// microseconds, so it surfaces only under load: as an intermittent CI failure
+/// that reads like a broken harness rather than a race.
+///
+/// `WouldBlock` (`EAGAIN`) covers a transient fork failure when a loaded box is
+/// briefly out of process slots.
+///
+/// Placed here, at the one spawn every bounded subprocess goes through, rather
+/// than at each call site: `replay` got its own copy of this in 0.2.27 and the
+/// multicore worker spawn and the TSan/MSan corpus replays were all still exposed.
+/// Matched on `ErrorKind` rather than raw errno so it compiles on every target.
+fn spawn_riding_out_transients(command: &mut Command) -> io::Result<std::process::Child> {
+    const RETRY_DELAY: Duration = Duration::from_millis(25);
+    const RETRIES: usize = 40; // ~1s total, far longer than either window lasts
+    for _ in 0..RETRIES {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error) => {
+                if !matches!(
+                    error.kind(),
+                    io::ErrorKind::ExecutableFileBusy | io::ErrorKind::WouldBlock
+                ) {
+                    return Err(error);
+                }
+                std::thread::sleep(RETRY_DELAY);
+            }
+        }
+    }
+    command.spawn()
+}
+
 pub(crate) fn status_with_timeout(
     command: &mut Command,
     timeout: Duration,
 ) -> io::Result<std::process::ExitStatus> {
     prepare_child(command);
-    let mut child = command.spawn()?;
+    let mut child = spawn_riding_out_transients(command)?;
     let deadline = Instant::now() + clamp_to_campaign(timeout);
     loop {
         match child.try_wait() {
@@ -280,7 +318,7 @@ pub(crate) fn capture_with_timeout(
 ) -> io::Result<BoundedOutput> {
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     prepare_child(command);
-    let mut child = command.spawn()?;
+    let mut child = spawn_riding_out_transients(command)?;
     let stdout = child
         .stdout
         .take()
@@ -332,6 +370,55 @@ pub(crate) fn capture_with_timeout(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(unix)]
+    fn a_freshly_written_executable_still_open_for_writing_is_retried_not_failed() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+
+        // The build-then-run shape of govfuzz: a harness is written and executed
+        // moments later. Holding the writer open reproduces deterministically the
+        // ETXTBSY a loaded host hits by accident, which used to surface as a hard
+        // "failed to start" — and, in the sanitizer replays, as a silent zero.
+        let dir = std::env::temp_dir().join(format!(
+            "govfuzz-etxtbsy-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("fresh.sh");
+        let mut writer = std::fs::File::create(&script).unwrap();
+        writer.write_all(b"#!/bin/sh\nexit 0\n").unwrap();
+        writer.flush().unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let bare = Command::new(&script).spawn();
+        let reproduced = matches!(
+            &bare,
+            Err(e) if e.kind() == io::ErrorKind::ExecutableFileBusy
+        );
+        if let Ok(mut child) = bare {
+            let _ = child.wait();
+        }
+
+        let releaser = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(60));
+            drop(writer);
+        });
+        let out = output_with_timeout(&mut Command::new(&script), Duration::from_secs(10));
+        releaser.join().unwrap();
+        assert!(
+            out.is_ok(),
+            "a bounded spawn must ride out ETXTBSY, got {:?}",
+            out.err()
+        );
+        assert!(out.unwrap().status.success());
+        if !reproduced {
+            eprintln!("note: this filesystem did not produce ETXTBSY for an open writer");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     #[cfg(unix)]

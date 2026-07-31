@@ -963,6 +963,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/cli/src/auto/controls.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/cli/src/auto/coverage_replay.rs",
       "license": "Apache-2.0"
     },
@@ -976,6 +980,10 @@
     },
     {
       "path": "crates/cli/src/auto/csharp_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/dashboard.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1040,6 +1048,10 @@
     },
     {
       "path": "crates/cli/src/auto/lit_scan.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/load.rs",
       "license": "Apache-2.0"
     },
     {
@@ -1124,6 +1136,10 @@
     },
     {
       "path": "crates/cli/src/auto/ruby_build.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/run_status.rs",
       "license": "Apache-2.0"
     },
     {

@@ -32,6 +32,17 @@ const MAX_INPUTS: usize = 2000;
 /// is deterministically broken.
 const TSAN_RUN_RETRIES: usize = 4;
 
+/// Executions per harness that never completed (timeout or spawn failure) before
+/// the replay stops retrying them. A starved or oversubscribed host can push a
+/// tiny TSan binary past its per-run timeout, and one transient stall should not
+/// cost the harness its race coverage — but a target that genuinely hangs must
+/// not be retried into a multi-hour replay either.
+const TSAN_TIMEOUT_LIMIT: usize = 16;
+
+/// Wall clock for one replayed input. Injectable so the timeout path can be
+/// tested in milliseconds instead of costing the suite five real 30s stalls.
+const TSAN_RUN_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Consecutive explicit shadow-memory initialization failures tolerated across a
 /// harness. High-entropy ASLR can make TSan fail many very fast startups in a row,
 /// even immediately before the same binary runs successfully. Keep this budget
@@ -39,13 +50,34 @@ const TSAN_RUN_RETRIES: usize = 4;
 /// corpus input.
 const TSAN_MAPPING_FAILURE_LIMIT: usize = 256;
 
+/// What a replay produced, and what it could not measure.
+///
+/// `unmeasured` exists because a corpus input whose TSan run never completed is
+/// NOT evidence that the input is race-free — but the replay used to report it
+/// exactly as if it were, by returning only a finding count. A silent
+/// "0 races found" that actually means "0 races observed, 200 inputs never ran"
+/// is the same false-clean this codebase rejects elsewhere (`stub_only`,
+/// `built_not_entered`, budget cut-offs in the blocker histogram).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct TsanReplay {
+    /// GF-556 findings written.
+    pub findings: usize,
+    /// Corpus inputs whose TSan execution never completed (timeout or spawn
+    /// failure), after retries.
+    pub unmeasured: usize,
+}
+
 /// Replay every C harness's corpus through its TSan build, writing a GF-556 finding
-/// per distinct data-race site. Returns the number of findings written.
-pub fn run_tsan_replay(work_dir: &Path) -> usize {
+/// per distinct data-race site.
+pub fn run_tsan_replay(work_dir: &Path) -> TsanReplay {
+    run_tsan_replay_with(work_dir, TSAN_RUN_TIMEOUT)
+}
+
+fn run_tsan_replay_with(work_dir: &Path, run_timeout: Duration) -> TsanReplay {
     let Ok(harnesses) = std::fs::read_dir(work_dir.join("harnesses")) else {
-        return 0;
+        return TsanReplay::default();
     };
-    let mut written = 0usize;
+    let mut total = TsanReplay::default();
     let mut index = 0usize;
     for entry in harnesses.flatten() {
         let hdir = entry.path();
@@ -56,14 +88,22 @@ pub fn run_tsan_replay(work_dir: &Path) -> usize {
         else {
             continue;
         };
-        written += replay_one(work_dir, &hdir, &harness_id, &mut index);
+        let one = replay_one(work_dir, &hdir, &harness_id, &mut index, run_timeout);
+        total.findings += one.findings;
+        total.unmeasured += one.unmeasured;
     }
-    written
+    total
 }
 
-fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize) -> usize {
+fn replay_one(
+    work_dir: &Path,
+    hdir: &Path,
+    harness_id: &str,
+    index: &mut usize,
+    run_timeout: Duration,
+) -> TsanReplay {
     if !hdir.join("Makefile").is_file() {
-        return 0;
+        return TsanReplay::default();
     }
     // Build the TSan variant. C++ harnesses have no `tsan` target -> make fails ->
     // skip. A genuine TSan build error also skips.
@@ -75,16 +115,18 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
     .unwrap_or(false);
     let bin = hdir.join("main_tsan");
     if !built || !bin.is_file() {
-        return 0;
+        return TsanReplay::default();
     }
 
     let queue = work_dir.join("corpus").join(harness_id).join("queue");
     let Ok(inputs) = std::fs::read_dir(&queue) else {
-        return 0;
+        return TsanReplay::default();
     };
     let mut sites: BTreeSet<(String, u64)> = BTreeSet::new();
     let mut replayed = 0usize;
     let mut consecutive_mapping_failures = 0usize;
+    let mut unmeasured = 0usize;
+    let mut harness_timeouts = 0usize;
     'inputs: for input in inputs.flatten() {
         if replayed >= MAX_INPUTS {
             break;
@@ -100,14 +142,33 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
         // initialization failures do not consume that per-input retry budget;
         // they use a larger harness-wide bound because target code never ran.
         let mut run_retries = 0usize;
+        let mut never_completed = false;
         loop {
-            let Ok(out) = crate::command_output::output_with_timeout(
+            let run = crate::command_output::output_with_timeout_flagged(
                 Command::new(&bin)
                     .arg(&path)
                     .env("TSAN_OPTIONS", "halt_on_error=1:exitcode=86"),
-                Duration::from_secs(30),
-            ) else {
-                break;
+                run_timeout,
+            );
+            // A killed-for-timeout run and a spawn failure mean the same thing
+            // here: this input was never actually examined for races. A timeout
+            // arrives as a normal non-success exit, so without the explicit flag
+            // it fell into the generic abnormal-exit path, was retried, and then
+            // dropped — leaving the harness reported race-free on evidence that
+            // does not exist. Retry (a loaded host can push a small TSan binary
+            // past 30s), bounded per input AND per harness so a target that truly
+            // hangs cannot turn the replay into a multi-hour stall.
+            let out = match run {
+                Ok((out, false)) => out,
+                Ok((_, true)) | Err(_) => {
+                    harness_timeouts += 1;
+                    if run_retries < TSAN_RUN_RETRIES && harness_timeouts < TSAN_TIMEOUT_LIMIT {
+                        run_retries += 1;
+                        continue;
+                    }
+                    never_completed = true;
+                    break;
+                }
             };
             let stderr = String::from_utf8_lossy(&out.stderr);
             if stderr.contains("data race") {
@@ -140,6 +201,9 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
             }
             run_retries += 1;
         }
+        if never_completed {
+            unmeasured += 1;
+        }
     }
 
     let mut written = 0usize;
@@ -150,7 +214,10 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, index: &mut usize)
             written += 1;
         }
     }
-    written
+    TsanReplay {
+        findings: written,
+        unmeasured,
+    }
 }
 
 fn is_tsan_mapping_failure(stderr: &str) -> bool {
@@ -314,7 +381,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(run_tsan_replay(&work), 1);
+        assert_eq!(run_tsan_replay(&work).findings, 1);
         assert_eq!(
             std::fs::read_to_string(hdir.join("attempts"))
                 .unwrap()
@@ -325,6 +392,61 @@ mod tests {
             std::fs::read_to_string(work.join("findings/F-TSAN-0000/finding.json")).unwrap();
         assert!(finding.contains("GF-556"));
         assert!(finding.contains("race.c"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn an_input_whose_run_never_completes_is_unmeasured_not_clean() {
+        // A binary that hangs past the per-run timeout. Before this, the replay
+        // dropped the input and returned a bare 0 — indistinguishable from
+        // "ran fine, no race", which is a false clean on a target that was never
+        // actually examined.
+        let tmp = std::env::temp_dir().join(format!(
+            "govfuzz-tsan-timeout-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let work = tmp.join("work");
+        let hdir = work.join("harnesses").join("H-C0001");
+        let queue = work.join("corpus").join("H-C0001").join("queue");
+        std::fs::create_dir_all(&hdir).unwrap();
+        std::fs::create_dir_all(&queue).unwrap();
+        std::fs::write(queue.join("seed"), b"input").unwrap();
+        std::fs::write(hdir.join("Makefile"), "tsan:\n\tchmod +x main_tsan\n").unwrap();
+        // Sleeps past the 30s per-run timeout; every attempt is recorded so the
+        // retry bound is observable.
+        std::fs::write(
+            hdir.join("main_tsan"),
+            "#!/bin/sh\n\
+             attempts=\"$(dirname \"$0\")/attempts\"\n\
+             count=0\n\
+             [ ! -f \"$attempts\" ] || count=$(cat \"$attempts\")\n\
+             printf '%s\\n' \"$((count + 1))\" > \"$attempts\"\n\
+             sleep 5\n",
+        )
+        .unwrap();
+
+        let result = run_tsan_replay_with(&work, Duration::from_millis(300));
+        assert_eq!(result.findings, 0, "a hung run cannot yield a finding");
+        assert_eq!(
+            result.unmeasured, 1,
+            "the input must be reported as unmeasured, not silently dropped"
+        );
+        // Retried rather than abandoned on the first stall — a loaded host is the
+        // common cause — but bounded.
+        let attempts: usize = std::fs::read_to_string(hdir.join("attempts"))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        assert_eq!(
+            attempts,
+            TSAN_RUN_RETRIES + 1,
+            "expected the initial run plus its retry budget"
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }

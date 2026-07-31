@@ -2195,8 +2195,21 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // separate TSan build to surface data races (CWE-362) that ASan/UBSan miss — no
     // second fuzz loop. Only targets that spawn threads per input surface a race.
     let tsan = crate::auto::tsan::run_tsan_replay(&work);
-    if tsan > 0 {
-        gfeprintln!("govfuzz auto: ThreadSanitizer — {tsan} data race(s) found by corpus replay");
+    if tsan.findings > 0 {
+        gfeprintln!(
+            "govfuzz auto: ThreadSanitizer — {} data race(s) found by corpus replay",
+            tsan.findings
+        );
+    }
+    // Say what was NOT measured. A replay that reports no races because its runs
+    // never completed has found nothing, and reporting only the finding count let
+    // that read as a clean result.
+    if tsan.unmeasured > 0 {
+        gfeprintln!(
+            "govfuzz auto: ThreadSanitizer — {} corpus input(s) never completed a replay run \
+             (timeout); those inputs are UNMEASURED for data races, not clean",
+            tsan.unmeasured
+        );
     }
 
     // Memory-consumption profile (C/C++): replay the corpus in fresh processes and

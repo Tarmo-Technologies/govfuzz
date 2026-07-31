@@ -75,6 +75,41 @@ impl WorkerCount {
     }
 }
 
+/// Spawn a worker, retrying the two transient failures that make an `exec` of a
+/// FRESHLY WRITTEN executable fail.
+///
+/// `ExecutableFileBusy` (`ETXTBSY`): the kernel refuses to exec a file that is
+/// still open for writing ANYWHERE. govfuzz builds a harness and then fuzzes it,
+/// and a multicore run forks several workers at once — a child forked by one
+/// thread inherits a write descriptor another thread has not closed yet, so the
+/// exec of that path fails. Load- and filesystem-dependent, which is why it shows
+/// up as an intermittent CI failure and never locally.
+///
+/// `replay` was given this treatment in 0.2.27 (see `replay_min::spawn_harness`);
+/// the multicore worker spawn has the same window and was missed, surfacing as
+/// `worker 0 failed to spawn: Text file busy` on a loaded runner.
+///
+/// Matched on `ErrorKind` rather than raw errno so it compiles on every target.
+fn spawn_worker(command: &mut Command) -> std::io::Result<std::process::Child> {
+    const RETRY_DELAY: Duration = Duration::from_millis(25);
+    const RETRIES: usize = 40; // ~1s total, far longer than either window lasts
+    for _ in 0..RETRIES {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error) => {
+                if !matches!(
+                    error.kind(),
+                    std::io::ErrorKind::ExecutableFileBusy | std::io::ErrorKind::WouldBlock
+                ) {
+                    return Err(error);
+                }
+                std::thread::sleep(RETRY_DELAY);
+            }
+        }
+    }
+    command.spawn()
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum MulticoreError {
     #[error("work dir does not exist: {0}")]
@@ -198,8 +233,7 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
         for (k, v) in &worker_env {
             cmd.env(k, v);
         }
-        let child = cmd
-            .spawn()
+        let child = spawn_worker(&mut cmd)
             .map_err(|source| MulticoreError::WorkerSpawn { worker_id, source })?;
         children.push((worker_id, worker_dir, env_keys, child));
     }
@@ -664,6 +698,61 @@ mod tests {
     /// report — and file:line is exactly what joins a crash to the static finding
     /// on the same line, so every `fuzz_confirmed` static finding silently
     /// downgraded to `fuzz_exercised`.
+    #[test]
+    #[cfg(unix)]
+    fn worker_spawn_retries_a_freshly_written_executable_that_is_still_open() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+
+        // ETXTBSY: the kernel refuses to exec a file that is still open for
+        // WRITING anywhere. Holding the writer open reproduces deterministically
+        // what a loaded CI runner hits by accident when one thread is still
+        // finishing a write while another forks.
+        let dir = std::env::temp_dir().join(format!(
+            "govfuzz-mc-etxtbsy-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("worker.sh");
+        let mut writer = std::fs::File::create(&script).unwrap();
+        writer.write_all(b"#!/bin/sh\nexit 0\n").unwrap();
+        writer.flush().unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        // Still-open writer -> a bare spawn fails.
+        let bare = Command::new(&script).spawn();
+        let bare_failed_busy = matches!(
+            &bare,
+            Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy
+        );
+        if let Ok(mut child) = bare {
+            let _ = child.wait();
+        }
+
+        // Release the descriptor from another thread while the retry loop runs,
+        // exactly as the real race resolves itself.
+        let handle = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(60));
+            drop(writer);
+        });
+        let mut cmd = Command::new(&script);
+        let spawned = spawn_worker(&mut cmd);
+        handle.join().unwrap();
+        assert!(
+            spawned.is_ok(),
+            "spawn_worker must ride out ETXTBSY, got {:?}",
+            spawned.err()
+        );
+        let _ = spawned.unwrap().wait();
+        // Only meaningful if the platform actually produced the race; say so
+        // rather than silently passing a test that proved nothing.
+        if !bare_failed_busy {
+            eprintln!("note: this filesystem did not produce ETXTBSY for an open writer");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn builtin_children_keep_symbolization_for_the_fuzz_confirmation_join() {
         assert!(

@@ -2,6 +2,55 @@
 
 # Changelog
 
+## 0.2.30 - 2026-07-31
+
+**A freshly built executable is no longer a coin flip to launch.** The kernel
+refuses to `exec` a file that is still open for writing anywhere (`ETXTBSY`), and
+govfuzz's whole shape is build-then-run: a harness build followed immediately by a
+fuzz or replay of the binary it just produced. In a multi-threaded process a child
+forked by one thread inherits a write descriptor another thread has not closed yet,
+so the window is real but microseconds wide — it surfaces only under load, as an
+intermittent failure that reads like a broken harness rather than a race.
+
+0.2.27 fixed this for `replay` alone. Two other paths were still exposed and both
+were failing in CI:
+
+  * the multicore worker spawn — `worker 0 failed to spawn: Text file busy`, which
+    had been misattributed to an unrelated dependency bump;
+  * the ThreadSanitizer and MemorySanitizer corpus replays, which `make` a
+    sanitizer binary and exec it immediately. There the failure was SILENT: the
+    spawn error was indistinguishable from a completed run, so the replay reported
+    zero findings — a clean bill of health for a binary that never started. The
+    TSan case was diagnosed from its CI timing: the test failed in 0.69s, where the
+    timeout path it was first attributed to would have taken 150s.
+
+The retry now lives at the single spawn every bounded subprocess goes through, so
+harness builds, replays, fuzz children and the multicore workers are all covered
+rather than three call sites being patched one incident at a time. `WouldBlock`
+(`EAGAIN`) is retried alongside it, for a loaded box briefly out of process slots.
+
+**A ThreadSanitizer replay run that never completed is now reported as UNMEASURED
+rather than counted as clean.** `run_tsan_replay` returns findings AND the number of
+corpus inputs whose run never finished, and `auto` prints the latter, saying those
+inputs are not clean. A timed-out child arrives as an ordinary non-success exit —
+`output_with_timeout` kills it and discards the `timed_out` flag — so the replay had
+no way to tell "ran, no race" from "never ran"; `output_with_timeout_flagged` exposes
+it. This is the same false-clean class as `stub_only` (#417) and `built_not_entered`
+(#95).
+
+**The C# lane reports itself accurately, and tells an offline host what it needs.**
+The preflight banner resolved `sharpfuzz` on PATH only while the build also accepts
+the default dotnet global-tools location, so a host that had run
+`dotnet tool install --global` — which writes to `~/.dotnet/tools`, not on PATH —
+was told "C# MISSING sharpfuzz" and then built and fuzzed the lane anyway. Both now
+share one resolver, which also gained the Windows path
+(`%USERPROFILE%\.dotnet\tools\sharpfuzz.exe`) it never had. The install hint named
+a command that needs the network, on the hosts least able to run it, and omitted
+NuGet entirely — yet the generated harness references SharpFuzz 2.3.0 plus every
+`PackageReference` copied from the target csproj, so an offline host with both tools
+staged passed preflight and then failed EVERY target at restore. The hint now names
+the offline path and `NUGET_PACKAGES`.
+
 ## 0.2.29 - 2026-07-31
 
 **`auto` now shows where the run is, and lets you steer it without killing it.**

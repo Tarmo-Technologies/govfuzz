@@ -385,6 +385,133 @@ fn is_literal(arg: &str) -> bool {
         .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == 'x' || c == 'X')
 }
 
+/// Ordered call evidence mined from the same test/example sources.
+///
+/// A recipe says how to BUILD a value. It says nothing about ORDER, and order is
+/// most of what a stateful API's contract is: zlib's own `test_flush` spells
+/// `deflateInit` -> `deflate` -> `deflateEnd`, libarchive's tests spell
+/// `archive_read_new` -> `archive_read_open_memory` -> `archive_read_next_header`.
+/// Generated sequences ordered ops by declaration line, which is arbitrary with
+/// respect to the contract.
+///
+/// The evidence is deliberately weak and local: ordered pairs observed on the
+/// SAME first argument inside one file. It is used to prefer an order, never to
+/// forbid one, so a wrong guess costs ordering quality and not reachability.
+pub(crate) type CallOrder = BTreeMap<(String, String), usize>;
+
+/// Extract ordered `(earlier, later)` call pairs that share a first argument.
+///
+/// The shared first argument is what makes this evidence about ONE object's
+/// lifecycle rather than about two unrelated calls that happen to be adjacent.
+pub(crate) fn mine_call_order(text: &str) -> CallOrder {
+    let mut per_receiver: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.starts_with("//") || line.starts_with('*') || line.starts_with('#') {
+            continue;
+        }
+        for (name, receiver) in calls_in_line(line) {
+            per_receiver.entry(receiver).or_default().push(name);
+        }
+    }
+    let mut order = CallOrder::new();
+    for calls in per_receiver.values() {
+        // Every ordered pair, not just adjacent ones: `deflateInit` precedes
+        // `deflateEnd` in zlib's own test even though a `deflate` sits between
+        // them, and that is exactly the constraint worth knowing.
+        for (i, earlier) in calls.iter().enumerate() {
+            for later in calls.iter().skip(i + 1) {
+                if earlier == later {
+                    continue;
+                }
+                *order.entry((earlier.clone(), later.clone())).or_insert(0) += 1;
+            }
+        }
+    }
+    order
+}
+
+/// `name(arg0, ...)` occurrences in a line, paired with the first argument's
+/// leading identifier (with any `&` / `*` stripped).
+fn calls_in_line(line: &str) -> Vec<(String, String)> {
+    let bytes = line.as_bytes();
+    let mut out = Vec::new();
+    let mut index = 0usize;
+    while let Some(open) = line[index..].find('(').map(|at| at + index) {
+        let name_end = open;
+        let mut name_start = name_end;
+        while name_start > 0 {
+            let ch = bytes[name_start - 1] as char;
+            if ch.is_ascii_alphanumeric() || ch == '_' {
+                name_start -= 1;
+            } else {
+                break;
+            }
+        }
+        let name = &line[name_start..name_end];
+        // Skip control keywords, which take a parenthesis but are not calls.
+        let is_keyword = matches!(
+            name,
+            "if" | "for" | "while" | "switch" | "return" | "sizeof" | ""
+        );
+        if !is_keyword {
+            let rest = &line[open + 1..];
+            let first_arg = rest
+                .split([',', ')'])
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_start_matches(['&', '*'])
+                .trim();
+            let receiver: String = first_arg
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if !receiver.is_empty() && !receiver.chars().next().is_some_and(|c| c.is_ascii_digit())
+            {
+                out.push((name.to_owned(), receiver));
+            }
+        }
+        index = open + 1;
+    }
+    out
+}
+
+/// Mined call order for the project owning `source_path`, cached per project
+/// like [`for_source`].
+pub(crate) fn call_order_for(source_path: &Path) -> CallOrder {
+    let Some(root) = project_root_of(source_path) else {
+        return CallOrder::new();
+    };
+    let mut order = CallOrder::new();
+    let mut budget = MAX_FILES;
+    for dir in recipe_dirs(&root) {
+        for file in source_files(&dir, &["c", "cc", "cpp", "cxx", "h", "hpp"], &mut budget) {
+            let Ok(text) = std::fs::read_to_string(&file) else {
+                continue;
+            };
+            for (pair, count) in mine_call_order(&text) {
+                *order.entry(pair).or_insert(0) += count;
+            }
+        }
+    }
+    order
+}
+
+/// Whether the mined evidence says `earlier` is called before `later` more often
+/// than the reverse. `None` when the pair was never observed in either order.
+pub(crate) fn precedes(order: &CallOrder, earlier: &str, later: &str) -> Option<bool> {
+    let forward = order
+        .get(&(earlier.to_owned(), later.to_owned()))
+        .copied()
+        .unwrap_or(0);
+    let backward = order
+        .get(&(later.to_owned(), earlier.to_owned()))
+        .copied()
+        .unwrap_or(0);
+    (forward + backward > 0).then_some(forward > backward)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -495,5 +622,49 @@ mod tests {
             "the recipe must come from the test tree"
         );
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn call_order_is_mined_from_the_shape_zlibs_own_test_uses() {
+        // zlib's test/example.c drives the stream `deflateInit` -> `deflate` ->
+        // `deflateEnd` on one `z_stream`. That order IS the contract, and nothing
+        // in a declaration states it — ops were previously ordered by declaration
+        // line, which is arbitrary with respect to the API.
+        let text = r#"
+            int test_flush(Byte *compr, uLong *comprLen) {
+                z_stream c_stream;
+                err = deflateInit(&c_stream, Z_DEFAULT_COMPRESSION);
+                err = deflate(&c_stream, Z_FULL_FLUSH);
+                err = deflate(&c_stream, Z_FINISH);
+                err = deflateEnd(&c_stream);
+            }
+        "#;
+        let order = mine_call_order(text);
+        assert_eq!(precedes(&order, "deflateInit", "deflate"), Some(true));
+        assert_eq!(precedes(&order, "deflate", "deflateEnd"), Some(true));
+        // ...and the reverse reads as false rather than as "no evidence".
+        assert_eq!(precedes(&order, "deflateEnd", "deflateInit"), Some(false));
+        // A pair never seen together has no opinion, which must not be confused
+        // with an ordering claim.
+        assert_eq!(precedes(&order, "deflateInit", "inflateEnd"), None);
+    }
+
+    #[test]
+    fn calls_on_different_objects_are_not_ordered_against_each_other() {
+        // The shared first argument is what makes this evidence about ONE
+        // object's lifecycle. Two unrelated calls that happen to be adjacent
+        // must not manufacture a contract.
+        let text = "open_a(&left); close_b(&right);";
+        let order = mine_call_order(text);
+        assert_eq!(precedes(&order, "open_a", "close_b"), None);
+    }
+
+    #[test]
+    fn control_keywords_are_not_mistaken_for_calls() {
+        let text = "if (thing) { use(thing); } while (thing) { step(thing); }";
+        let order = mine_call_order(text);
+        assert_eq!(precedes(&order, "use", "step"), Some(true));
+        assert_eq!(precedes(&order, "if", "use"), None);
+        assert_eq!(precedes(&order, "while", "step"), None);
     }
 }

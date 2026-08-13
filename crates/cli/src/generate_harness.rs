@@ -2490,7 +2490,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         }
     }
     let sequence_cluster = if args.kind == "sequence" {
-        Some(c_lifecycle_steps(&function, &functions)?)
+        Some(c_lifecycle_steps(&function, &functions, &source_path)?)
     } else {
         None
     };
@@ -3469,6 +3469,7 @@ fn c_type_has_complete_definition(handle_type: &str, defs: &[c_parser::CTypeDefs
 fn c_lifecycle_steps(
     target: &c_parser::CFunction,
     functions: &[c_parser::CFunction],
+    source_path: &Path,
 ) -> Result<CLifecycleCluster> {
     let Some(handle_type) = c_handle_base_type(target) else {
         bail!("C --kind sequence requires a first-parameter struct handle target");
@@ -3497,9 +3498,31 @@ fn c_lifecycle_steps(
     cluster.sort_by_key(|function| function.line);
     let requires_source_include = cluster.iter().any(|function| function.is_static);
 
-    let init_step = cluster
+    // When several functions carry an init verb — libarchive has both
+    // `archive_read_new` and `archive_read_open_memory` — declaration order
+    // decides, and declaration order is arbitrary with respect to the API's
+    // contract. The project's own tests are not: they call the constructor
+    // first. Prefer the candidate the mined call order never places after
+    // another candidate.
+    let call_order = crate::auto::recipe_mining::call_order_for(source_path);
+    let init_candidates: Vec<_> = cluster
         .iter()
-        .find(|function| is_c_lifecycle_init(&function.name))
+        .filter(|function| is_c_lifecycle_init(&function.name))
+        .collect();
+    let init_step = init_candidates
+        .iter()
+        .find(|function| {
+            init_candidates.iter().all(|other| {
+                other.name == function.name
+                    || crate::auto::recipe_mining::precedes(
+                        &call_order,
+                        &function.name,
+                        &other.name,
+                    )
+                    .unwrap_or(false)
+            })
+        })
+        .or(init_candidates.first())
         .map(|function| c_lifecycle_function_to_step(function));
     if init_step.is_none() {
         gfeprintln!(

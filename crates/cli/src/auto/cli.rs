@@ -1310,6 +1310,23 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             ada_dep_dirs.len()
         );
     }
+    // Say so when the tree ships its own harnesses. They are excluded from being
+    // TARGETS for good reason, but their existence is the only expert baseline
+    // there is — and a coverage number is far more meaningful measured against
+    // what the project's own maintainers wrote than in isolation.
+    let expert_harnesses = crate::auto::discovery::existing_harness_sources(&path);
+    if !expert_harnesses.is_empty() {
+        gfeprintln!(
+            "govfuzz auto: this tree ships {} of its own fuzz harness(es) (e.g. {}); \
+             they are excluded as targets, but they are the baseline this run's coverage \
+             can be compared against",
+            expert_harnesses.len(),
+            expert_harnesses
+                .first()
+                .map(|p| p.display().to_string())
+                .unwrap_or_default()
+        );
+    }
     let mut user_seeds = load_seed_inputs(&args.seed_files, &args.seed_dirs);
     if !user_seeds.is_empty() {
         gfeprintln!(

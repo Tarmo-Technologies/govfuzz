@@ -1194,6 +1194,72 @@ fn is_libfuzzer_hook(name: &str) -> bool {
 /// be govfuzz's own generated output. It is dropped when a real library target
 /// coexists, but kept as the PASSTHROUGH target when it is the sole candidate
 /// (#408/#410) — so the caller decides, not this predicate.
+/// The project's OWN fuzz harnesses — the ones discovery deliberately excludes
+/// from being targets.
+///
+/// They are excluded for a good reason (a project's harness must not out-rank
+/// its parser), but excluding them also threw away the fact of their existence.
+/// They are the only expert baseline there is: a govfuzz run over a tree that
+/// ships them can be compared against what its own maintainers wrote, which is
+/// the difference between "1,400 lines" and "1,400 of the 4,413 an expert
+/// reaches".
+///
+/// Enumeration only. BUILDING them is deliberately not automated: each project
+/// needs its own flags, generated config headers and disabled optional backends,
+/// and a wrong build would silently produce a baseline that measures the build
+/// rather than the harness.
+pub fn existing_harness_sources(root: &Path) -> Vec<PathBuf> {
+    let mut found: Vec<PathBuf> = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    // Bounded like every other tree walk here: this is a reporting nicety and
+    // must never dominate discovery.
+    let mut budget = 20_000usize;
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            if budget == 0 {
+                break;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                let skip = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with('.') || n == "target" || n == "node_modules")
+                    .unwrap_or(false);
+                if !skip {
+                    stack.push(path);
+                }
+                continue;
+            }
+            budget -= 1;
+            let is_source = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| matches!(e, "c" | "cc" | "cpp" | "cxx" | "rs" | "java"))
+                .unwrap_or(false);
+            if !is_source {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            // The three entry points a project's own harness uses: libFuzzer's
+            // C/C++ one, cargo-fuzz's macro, and Jazzer's JVM method.
+            if text.contains("LLVMFuzzerTestOneInput")
+                || text.contains("fuzz_target!")
+                || text.contains("fuzzerTestOneInput")
+            {
+                found.push(path);
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
 fn is_libfuzzer_test_one_input(name: &str) -> bool {
     bare_name(name) == "LLVMFuzzerTestOneInput"
 }
@@ -3473,6 +3539,47 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+
+    #[test]
+    fn a_projects_own_harnesses_are_enumerable_even_though_they_are_not_targets() {
+        // Discovery excludes them so a project's harness cannot out-rank its
+        // parser — but excluding them also threw away the fact of their
+        // existence, and they are the only expert baseline there is.
+        let root = std::env::temp_dir().join(format!("govfuzz-experts-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("fuzz")).unwrap();
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(
+            root.join("fuzz/xml_parse_fuzzer.c"),
+            "int LLVMFuzzerTestOneInput(const unsigned char *d, unsigned long n) { return 0; }",
+        )
+        .unwrap();
+        fs::write(
+            root.join("fuzz/rust_target.rs"),
+            "fuzz_target!(|data: &[u8]| { let _ = data; });",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/lib.c"),
+            "int parse(const char *s) { return 0; }",
+        )
+        .unwrap();
+
+        let found = existing_harness_sources(&root);
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            names.contains(&"xml_parse_fuzzer.c".to_owned()),
+            "{names:?}"
+        );
+        assert!(names.contains(&"rust_target.rs".to_owned()), "{names:?}");
+        // Ordinary library source is not a harness.
+        assert!(!names.contains(&"lib.c".to_owned()), "{names:?}");
+
+        let _ = fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn a_file_local_helper_is_never_claimed_attacker_reachable() {

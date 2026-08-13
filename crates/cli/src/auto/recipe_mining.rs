@@ -512,6 +512,98 @@ pub(crate) fn precedes(order: &CallOrder, earlier: &str, later: &str) -> Option<
     (forward + backward > 0).then_some(forward > backward)
 }
 
+/// Directories that hold test DATA rather than test code: the real `.tar`,
+/// `.zip`, `.xml` and `.gz` inputs a project keeps for its own suite.
+const SEED_DIRS: &[&str] = &[
+    "testdata",
+    "test_data",
+    "fixtures",
+    "corpus",
+    "corpora",
+    "seeds",
+    "samples",
+    "data",
+    "inputs",
+    "files",
+];
+
+/// Extensions that are SOURCE, not data. A `.c` file is not a seed — feeding
+/// the fuzzer its own target's source wastes budget on inputs the parser was
+/// never going to accept.
+const NON_SEED_EXTENSIONS: &[&str] = &[
+    "c", "h", "cc", "cpp", "cxx", "hpp", "hxx", "rs", "py", "pl", "rb", "go", "java", "cs", "js",
+    "ts", "lua", "php", "ads", "adb", "gpr", "md", "txt", "toml", "yaml", "yml", "json", "cmake",
+    "am", "ac", "in", "sh", "bat", "mk", "o", "a", "so", "exe",
+];
+
+/// Largest seed to lift out of a tree, and how many. A seed corpus is a
+/// nice-to-have; it must never turn discovery into a whole-repository copy.
+const MAX_SEED_BYTES: u64 = 256 * 1024;
+const MAX_SEEDS: usize = 64;
+
+/// Harvest a seed corpus from the project's own test-data directories.
+///
+/// Expert harness quality is not all in the harness: a parser reached through
+/// random bytes spends its budget bouncing off the header check, while the same
+/// harness given one real `.tar` starts inside the format. Projects already ship
+/// those files — libarchive, libexpat and zlib all keep real inputs beside their
+/// tests — and govfuzz walked straight past them, seeding only from `--seed-dir`.
+pub(crate) fn mine_seed_corpus(root: &Path) -> Vec<std::path::PathBuf> {
+    let mut seeds = Vec::new();
+    let mut budget = MAX_FILES;
+    for dir in recipe_dirs(root) {
+        collect_seed_files(&dir, &mut seeds, &mut budget);
+    }
+    seeds.sort();
+    seeds.truncate(MAX_SEEDS);
+    seeds
+}
+
+fn collect_seed_files(dir: &Path, out: &mut Vec<std::path::PathBuf>, budget: &mut usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if *budget == 0 || out.len() >= MAX_SEEDS {
+            return;
+        }
+        let path = entry.path();
+        if path.is_dir() {
+            let named_data = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| SEED_DIRS.contains(&n.to_ascii_lowercase().as_str()))
+                .unwrap_or(false);
+            if named_data {
+                collect_seed_files(&path, out, budget);
+            }
+            continue;
+        }
+        *budget -= 1;
+        if !is_seed_candidate(&path) {
+            continue;
+        }
+        out.push(path);
+    }
+}
+
+fn is_seed_candidate(path: &Path) -> bool {
+    let Ok(meta) = std::fs::metadata(path) else {
+        return false;
+    };
+    if !meta.is_file() || meta.len() == 0 || meta.len() > MAX_SEED_BYTES {
+        return false;
+    }
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .unwrap_or_default();
+    // An extensionless file in a data directory is usually a fixture; a known
+    // SOURCE extension never is.
+    !NON_SEED_EXTENSIONS.contains(&extension.as_str())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -666,5 +758,60 @@ mod tests {
         assert_eq!(precedes(&order, "use", "step"), Some(true));
         assert_eq!(precedes(&order, "if", "use"), None);
         assert_eq!(precedes(&order, "while", "step"), None);
+    }
+
+    #[test]
+    fn seeds_are_mined_from_test_data_but_never_from_source() {
+        // libarchive, libexpat and zlib all ship real inputs beside their tests.
+        // A parser reached through random bytes bounces off the header check;
+        // the same harness given one real archive starts inside the format.
+        let root = std::env::temp_dir().join(format!("govfuzz-seedmine-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("tests/testdata")).unwrap();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("tests/testdata/sample.tar"), b"ustar-ish bytes").unwrap();
+        std::fs::write(root.join("tests/testdata/doc.xml"), b"<x/>").unwrap();
+        std::fs::write(root.join("tests/testdata/README.md"), b"notes").unwrap();
+        std::fs::write(root.join("tests/helper.c"), b"int helper(void){return 0;}").unwrap();
+        // Shipped source is not test data and must not be harvested.
+        std::fs::write(root.join("src/lib.c"), b"int lib(void){return 0;}").unwrap();
+
+        let seeds = mine_seed_corpus(&root);
+        let names: Vec<String> = seeds
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+
+        assert!(names.contains(&"sample.tar".to_owned()), "{names:?}");
+        assert!(names.contains(&"doc.xml".to_owned()), "{names:?}");
+        // Source and prose are not seeds: feeding the fuzzer its own target's
+        // source spends budget on inputs the parser was never going to accept.
+        assert!(!names.contains(&"helper.c".to_owned()), "{names:?}");
+        assert!(!names.contains(&"README.md".to_owned()), "{names:?}");
+        assert!(!names.contains(&"lib.c".to_owned()), "{names:?}");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_oversized_or_empty_file_is_not_a_seed() {
+        let root = std::env::temp_dir().join(format!("govfuzz-seedcap-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("tests/corpus")).unwrap();
+        std::fs::write(root.join("tests/corpus/empty.bin"), b"").unwrap();
+        std::fs::write(
+            root.join("tests/corpus/huge.bin"),
+            vec![0u8; (MAX_SEED_BYTES + 1) as usize],
+        )
+        .unwrap();
+        std::fs::write(root.join("tests/corpus/ok.bin"), b"fine").unwrap();
+
+        let names: Vec<String> = mine_seed_corpus(&root)
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["ok.bin".to_owned()], "{names:?}");
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

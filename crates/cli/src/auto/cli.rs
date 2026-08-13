@@ -1310,12 +1310,32 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             ada_dep_dirs.len()
         );
     }
-    let user_seeds = load_seed_inputs(&args.seed_files, &args.seed_dirs);
+    let mut user_seeds = load_seed_inputs(&args.seed_files, &args.seed_dirs);
     if !user_seeds.is_empty() {
         gfeprintln!(
             "govfuzz auto: {} user seed input(s) added to each target's corpus",
             user_seeds.len()
         );
+    }
+    // No seeds given: harvest the project's own test-data files. A parser
+    // reached through random bytes spends its budget bouncing off the header
+    // check, while the same harness given one real archive or document starts
+    // INSIDE the format. Projects already ship those files next to their tests;
+    // govfuzz used to walk straight past them. Explicit `--seed-*` wins, so this
+    // can never override what an operator asked for.
+    if user_seeds.is_empty() {
+        let mined = crate::auto::recipe_mining::mine_seed_corpus(&path);
+        if !mined.is_empty() {
+            let mined_seeds = load_seed_inputs(&mined, &[]);
+            if !mined_seeds.is_empty() {
+                gfeprintln!(
+                    "govfuzz auto: {} seed input(s) mined from the tree's own test data \
+                     (pass --seed-dir to override)",
+                    mined_seeds.len()
+                );
+                user_seeds = mined_seeds;
+            }
+        }
     }
     // Dependency-scan mode builds each target (stubbing as it goes) but runs no
     // fuzz passes — an empty pass list makes `attempt` return `Built`, and the

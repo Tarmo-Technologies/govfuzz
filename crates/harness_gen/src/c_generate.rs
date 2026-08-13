@@ -313,6 +313,8 @@ struct CSequenceTemplateContext {
     /// Bytes reserved at the END of the input for the op program, so the
     /// argument cursor can be clamped away from them.
     op_ctrl_len: usize,
+    /// Typed slots carrying an op's return value to a later op's argument.
+    thread_slots: Vec<CThreadSlot>,
     #[serde(skip_serializing_if = "Option::is_none")]
     end_step: Option<CSequenceStepEmission>,
 }
@@ -325,6 +327,9 @@ struct CSequenceStepEmission {
     return_type_present: bool,
     /// Liveness role, so the op loop can gate on it (see [`CStepRole`]).
     role: CStepRole,
+    /// Slot this op's return value is stored into, when some other op consumes
+    /// that type as an argument.
+    produces_slot: Option<String>,
     /// True when this step's return is a 0==success status int (#12). Used on the
     /// init step to guard the op-loop + teardown on the constructor succeeding.
     is_status_return: bool,
@@ -2147,6 +2152,14 @@ fn build_c_sequence_context(
         })
         .transpose()?;
 
+    // Result threading. An op's RETURN value can be the argument a later op
+    // needs — `id = add(x); remove(id); get(id)`, `p = alloc(); use(p)`. Without
+    // it every argument is decoded fresh from the input and no value produced by
+    // the sequence is ever consumed by it, which puts the whole handle/id
+    // threading bug class out of reach by construction.
+    let thread_slots = thread_slots_for(&op_steps, &args.op_steps);
+    apply_result_threading(&mut op_steps, &args.op_steps, &thread_slots);
+
     Ok(CSequenceTemplateContext {
         harness_id: args.harness_id.clone(),
         target_includes: args.target_includes.clone(),
@@ -2173,6 +2186,7 @@ fn build_c_sequence_context(
         op_step_max: op_steps.len().saturating_sub(1),
         op_max_steps: MAX_SEQUENCE_STEPS,
         op_ctrl_len: 1 + MAX_SEQUENCE_STEPS * 5,
+        thread_slots,
         op_steps,
         end_step,
     })
@@ -2218,6 +2232,129 @@ fn split_c_compile_context(flags: &[String]) -> (Vec<String>, String, bool, Stri
         provenance,
         dropped,
     )
+}
+
+/// A typed slot carrying an op's return value to a later op's argument.
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CThreadSlot {
+    /// Identifier-safe suffix for the generated variable names.
+    slug: String,
+    /// The C type the slot holds.
+    c_type: String,
+}
+
+/// Slugify a C type into something usable in an identifier.
+fn slot_slug(c_type: &str) -> String {
+    let mut out = String::new();
+    for ch in c_type.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch);
+        } else if !out.ends_with('_') {
+            out.push('_');
+        }
+    }
+    out.trim_matches('_').to_owned()
+}
+
+/// A return type is threadable when some op both PRODUCES it and some op
+/// CONSUMES it as a parameter.
+///
+/// Status ints are excluded: a `0 == success` code is a control signal, not a
+/// value the API passes back in — feeding it as an argument would be noise, and
+/// the loop already gates on it.
+fn thread_slots_for(
+    op_steps: &[CSequenceStepEmission],
+    declared: &[CLifecycleStep],
+) -> Vec<CThreadSlot> {
+    // Parameter types come from the DECLARED steps, not the emissions: a decoder
+    // may normalise `pool_id` to its underlying `unsigned long`, and comparing
+    // a declared return spelling against a normalised parameter spelling never
+    // matches.
+    let declared_param_types: Vec<String> = declared
+        .iter()
+        .flat_map(|step| step.params.iter())
+        .map(|param| emit_c_type(&param.c_type).trim().to_owned())
+        .collect();
+    let mut slots: Vec<CThreadSlot> = Vec::new();
+    for producer in op_steps {
+        if !producer.return_type_present || producer.is_status_return {
+            continue;
+        }
+        let produced = emit_c_type(producer.return_type.trim());
+        let produced = produced.trim();
+        if produced.is_empty() || produced == "void" {
+            continue;
+        }
+        let consumed = declared_param_types.iter().any(|ty| ty == produced);
+        if !consumed {
+            continue;
+        }
+        let slug = slot_slug(produced);
+        if slug.is_empty() || slots.iter().any(|slot| slot.slug == slug) {
+            continue;
+        }
+        slots.push(CThreadSlot {
+            slug,
+            c_type: produced.to_owned(),
+        });
+    }
+    slots
+}
+
+/// Rewrite each consuming parameter so it can take the live slot value instead
+/// of a freshly decoded one, chosen per call from one input byte.
+///
+/// The freshly decoded value is still emitted and still the default: threading
+/// ADDS the ability to pass back a value the API produced, it does not remove
+/// the ability to pass an arbitrary one. A slot is only read once something has
+/// stored into it, so an unthreaded prefix behaves exactly as before.
+fn apply_result_threading(
+    op_steps: &mut [CSequenceStepEmission],
+    declared: &[CLifecycleStep],
+    slots: &[CThreadSlot],
+) {
+    if slots.is_empty() {
+        return;
+    }
+    for step in op_steps.iter_mut() {
+        let produced = if step.return_type_present {
+            emit_c_type(step.return_type.trim()).trim().to_owned()
+        } else {
+            String::new()
+        };
+        step.produces_slot = slots
+            .iter()
+            .find(|slot| slot.c_type == produced)
+            .map(|slot| slot.slug.clone());
+        // Match this emission back to its declaration by NAME so parameter types
+        // are read from the source spelling rather than a normalised decoder one.
+        let declared_params = declared
+            .iter()
+            .find(|d| d.name == step.name)
+            .map(|d| d.params.as_slice())
+            .unwrap_or(&[]);
+        for (index, param) in step.params.iter_mut().enumerate() {
+            let declared_type = declared_params
+                .get(index)
+                .map(|p| emit_c_type(&p.c_type).trim().to_owned())
+                .unwrap_or_default();
+            let Some(slot) = slots.iter().find(|slot| slot.c_type == declared_type) else {
+                continue;
+            };
+            let slug = &slot.slug;
+            let choose = format!("{}_use{index}", param.arg);
+            param.decl = format!(
+                "{}; int {choose} = (int)gf_u8(&Cur)",
+                param.decl.trim_end_matches(';')
+            );
+            // Live-gated: an empty slot must never be passed as if it held a
+            // value the API returned.
+            param.arg = format!(
+                "((_gf_slot_{slug}_live && ({choose} & 1)) ? _gf_slot_{slug} : {})",
+                param.arg
+            );
+        }
+    }
 }
 
 fn build_c_sequence_step_emission(
@@ -2295,6 +2432,7 @@ fn build_c_sequence_step_emission(
         return_type_present,
         is_status_return,
         role: step.role,
+        produces_slot: None,
         result_name: result_name.to_owned(),
     })
 }
@@ -5963,6 +6101,99 @@ mod tests {
         assert!(
             dead_break < close_pos,
             "the loop must break BEFORE teardown, which is still owed: {main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn an_ops_return_value_can_become_a_later_ops_argument() {
+        // `id = add(x); remove(id); get(id)` — use-after-remove and off-by-one
+        // index bugs need the sequence to CONSUME a value it produced. With every
+        // argument decoded fresh from the input, that whole class is unreachable
+        // by construction.
+        let out = temp_dir("seq-thread");
+        let header_source = r#"
+            typedef struct pool { int n; } pool;
+            typedef unsigned long pool_id;
+            int pool_init(pool *p);
+            pool_id pool_add(pool *p, unsigned value);
+            int pool_remove(pool *p, pool_id id);
+            int pool_free(pool *p);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-POOL".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/pool.c"),
+            target: cfunction("pool_add"),
+            handle_type: "pool".to_owned(),
+            init_step: Some(CLifecycleStep {
+                name: "pool_init".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                // Returns an ID, not a 0==success status. A bare `int` return is
+                // treated as a status code and deliberately NOT threaded — the
+                // loop already gates on it, and feeding a success code back in
+                // as an argument would be noise.
+                CLifecycleStep {
+                    name: "pool_add".to_owned(),
+                    params: vec![CParameter {
+                        name: "value".to_owned(),
+                        c_type: "unsigned".to_owned(),
+                    }],
+                    return_type: "pool_id".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "pool_remove".to_owned(),
+                    params: vec![CParameter {
+                        name: "id".to_owned(),
+                        c_type: "pool_id".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+            ],
+            end_step: Some(CLifecycleStep {
+                name: "pool_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["pool.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/pool.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        // A slot exists for the produced type, and the producer stores into it.
+        assert!(
+            main.contains("pool_id _gf_slot_pool_id;"),
+            "slot declared:\n{main}"
+        );
+        assert!(
+            main.contains("_gf_slot_pool_id = _gf_step0_result;")
+                && main.contains("_gf_slot_pool_id_live = 1;"),
+            "the producer must store its result:\n{main}"
+        );
+        // The consumer can take the slot instead of a freshly decoded value...
+        assert!(
+            main.contains("_gf_slot_pool_id_live && ") && main.contains("? _gf_slot_pool_id :"),
+            "the consumer must be able to take the threaded value:\n{main}"
+        );
+        // ...but never before something has stored one, and the fresh decode is
+        // still there as the alternative.
+        assert!(
+            main.contains("_gf_step1_id = "),
+            "the fresh decode must remain as the other branch:\n{main}"
         );
         let _ = fs::remove_dir_all(&out);
     }

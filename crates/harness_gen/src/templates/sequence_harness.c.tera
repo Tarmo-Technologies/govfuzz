@@ -147,6 +147,15 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * entitled to crash, so a crash there would be manufactured here rather
      * than found in the library. */
     int _gf_handle_live = 1;
+{%- for slot in thread_slots %}
+    /* Result threading: an op's return value becomes an argument a later op can
+     * take, so sequences like `id = add(x); remove(id); get(id)` are reachable.
+     * The `_live` flag keeps an empty slot from being passed as if it held a
+     * value the API had returned. */
+    {{ slot.c_type }} _gf_slot_{{ slot.slug }};
+    memset(&_gf_slot_{{ slot.slug }}, 0, sizeof _gf_slot_{{ slot.slug }});
+    int _gf_slot_{{ slot.slug }}_live = 0;
+{%- endfor %}
     for (size_t _gf_lifecycle_index = 0; _gf_lifecycle_index < _gf_lifecycle_count; ++_gf_lifecycle_index) {
         switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, {{ op_max_steps }}, {{ op_steps | length }})) {
 {%- for step in op_steps %}
@@ -170,6 +179,10 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
             if ({{ step.result_name }} != 0) {
                 _gf_handle_dead = 1;
             }
+{%- endif %}
+{%- if step.produces_slot %}
+            _gf_slot_{{ step.produces_slot }} = {{ step.result_name }};
+            _gf_slot_{{ step.produces_slot }}_live = 1;
 {%- endif %}
 {%- if step.role == "close" %}
             _gf_handle_live = 0;

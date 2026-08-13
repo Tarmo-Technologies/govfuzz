@@ -1117,6 +1117,12 @@ pub fn is_standard_libc_symbol(name: &str) -> bool {
         | "pipe" | "fcntl" | "ioctl" | "access" | "unlink" | "link" | "symlink" | "readlink"
         | "stat" | "fstat" | "lstat" | "chmod" | "chown" | "mkdir" | "rmdir" | "getcwd"
         | "chdir" | "opendir" | "readdir" | "closedir" | "isatty" | "sysconf"
+        // temp-file and truncation calls. govfuzz's own `c_runtime` decoder
+        // calls `mkstemp` and `ftruncate`, so mis-classifying either as a
+        // project macro and `#define`-ing it away breaks the generated harness
+        // itself rather than the target.
+        | "mkstemp" | "mkostemp" | "mkdtemp" | "tmpnam" | "tempnam" | "mktemp"
+        | "ftruncate" | "truncate" | "fsync" | "fdatasync" | "getpagesize"
         // process / signal / time
         | "fork" | "execv" | "execvp" | "execve" | "waitpid" | "wait" | "kill" | "signal"
         | "sigaction" | "getpid" | "getppid" | "sleep" | "usleep" | "nanosleep"

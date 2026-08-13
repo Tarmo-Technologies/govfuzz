@@ -1448,6 +1448,7 @@ pub fn apply_repair_with_source(
                 &cpp_includes_path,
                 &format!("#include \"{escaped}\"\n"),
                 type_name,
+                target_source,
             )?;
             Ok(ApplyOutcome {
                 extra_sources: vec![],
@@ -2219,6 +2220,7 @@ fn insert_type_header_before_consumer(
     path: &Path,
     include_line: &str,
     _type_name: &str,
+    target_source: Option<&str>,
 ) -> std::io::Result<()> {
     let existing = std::fs::read_to_string(path).unwrap_or_default();
     let mut lines = existing
@@ -2231,6 +2233,23 @@ fn insert_type_header_before_consumer(
     if !lines.iter().any(|line| line.trim() == include_line.trim()) {
         lines.push(include_line.to_owned());
     }
+    // A project header is not necessarily self-contained: it may spell its own
+    // declarations through a macro that a SIBLING header defines, with only the
+    // consuming .c file including the two in the working order (libexpat's
+    // `internal.h` -> `xmltok.h`, where `PTRCALL` lives in the former). This file
+    // is force-included at the top of every TU, so pulling the consumer in alone
+    // would make it unparseable everywhere. Bring the prologue with it.
+    for prerequisite in absolute_quoted_include_path(include_line)
+        .map(PathBuf::from)
+        .as_deref()
+        .map(|header| target_source_include_prologue(target_source, header))
+        .unwrap_or_default()
+    {
+        let line = format!("#include \"{}\"\n", prerequisite.to_string_lossy());
+        if !lines.iter().any(|existing| existing.trim() == line.trim()) {
+            lines.push(line);
+        }
+    }
 
     let mut headers = Vec::new();
     for line in &lines {
@@ -2242,6 +2261,7 @@ fn insert_type_header_before_consumer(
             line: format!("#include \"{header_path}\"\n"),
             path: PathBuf::from(header_path),
             defined_types: header_defined_type_names(&source),
+            defined_macros: header_defined_macro_names(&source),
             source,
         });
     }
@@ -2270,6 +2290,95 @@ struct RecoveredTypeHeader {
     path: PathBuf,
     source: String,
     defined_types: Vec<String>,
+    defined_macros: Vec<String>,
+}
+
+/// The project headers `target_source` includes BEFORE `header`, resolved next
+/// to `header` itself, in source order.
+///
+/// Only the target's own include order is evidence of a working prologue, so an
+/// absent target source — or one that never includes `header` — yields nothing
+/// rather than a guess. Resolution is restricted to siblings that exist on disk,
+/// which keeps a `#include "sys/foo.h"` from the system path out of the result.
+fn target_source_include_prologue(target_source: Option<&str>, header: &Path) -> Vec<PathBuf> {
+    let Some(source) = target_source else {
+        return Vec::new();
+    };
+    let Some(dir) = header.parent() else {
+        return Vec::new();
+    };
+    let wanted = header.file_name();
+    let mut prologue = Vec::new();
+    for line in source.lines() {
+        let Some(name) = line
+            .trim()
+            .strip_prefix("#include \"")
+            .and_then(|rest| rest.split('"').next())
+        else {
+            continue;
+        };
+        let candidate = dir.join(name);
+        if candidate.file_name() == wanted {
+            return prologue;
+        }
+        if candidate.is_file() && is_reincludable_header(&candidate) {
+            prologue.push(candidate);
+        }
+    }
+    // `header` is never included by the target source, so its includes say
+    // nothing about the order this header needs.
+    Vec::new()
+}
+
+/// Whether a file may be added to the force-included prologue, i.e. whether
+/// including it a second time is harmless.
+///
+/// The prologue reaches every TU, including the target's own source, so a file
+/// that file already `#include`s textually would be pulled in twice. Expat
+/// includes `xcsinc.c` — function DEFINITIONS, no include guard — from
+/// `xmlparse.c`, and force-including it produces `redefinition of 'xcslen'`.
+/// Require both a header extension and idempotent inclusion.
+fn is_reincludable_header(path: &Path) -> bool {
+    let header_extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| matches!(ext, "h" | "H" | "hh" | "hpp" | "hxx" | "h++"));
+    if !header_extension {
+        return false;
+    }
+    let Ok(source) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    source.contains("#pragma once")
+        || source
+            .lines()
+            .any(|line| line.trim_start().starts_with("#ifndef"))
+}
+
+/// Object- and function-like macro names `#define`d by a header.
+///
+/// Ordering used to consider only type definitions, which misses the header that
+/// exists purely to supply a calling-convention or attribute macro its sibling
+/// spells declarations with.
+fn header_defined_macro_names(source: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    for line in source.lines() {
+        let Some(rest) = line.trim_start().strip_prefix('#') else {
+            continue;
+        };
+        let Some(rest) = rest.trim_start().strip_prefix("define") else {
+            continue;
+        };
+        let rest = rest.trim_start();
+        let name: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect();
+        if !name.is_empty() && !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    names
 }
 
 fn absolute_quoted_include_path(line: &str) -> Option<String> {
@@ -2300,7 +2409,19 @@ fn order_recovered_type_headers(headers: Vec<RecoveredTypeHeader>) -> Vec<Recove
                     .iter()
                     .filter(|name| !headers[consumer].defined_types.contains(name))
                     .any(|name| contains_identifier(&headers[consumer].source, name));
-            if (direct_forward || type_dependency) && !edges[prerequisite].contains(&consumer) {
+            // A header that spells its declarations through a sibling's macro
+            // (`typedef int(PTRCALL *SCANNER)(...)`) does not parse at all until
+            // that sibling has been seen, so a macro use is as ordering-relevant
+            // as a type use.
+            let macro_dependency = !direct_reverse
+                && headers[prerequisite]
+                    .defined_macros
+                    .iter()
+                    .filter(|name| !headers[consumer].defined_macros.contains(name))
+                    .any(|name| contains_identifier(&headers[consumer].source, name));
+            if (direct_forward || type_dependency || macro_dependency)
+                && !edges[prerequisite].contains(&consumer)
+            {
                 edges[prerequisite].push(consumer);
                 indegree[consumer] += 1;
             }
@@ -3286,14 +3407,16 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                     });
                 }
             }
-            calling_convention_macro_from_error(tail).and_then(|name| {
-                let key = format!("macro:{name}");
-                (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
-                    name,
-                    as_value: false,
-                    function_like: false,
+            calling_convention_macro_from_error(tail)
+                .filter(|name| !c_stub_gen::is_standard_libc_symbol(name))
+                .and_then(|name| {
+                    let key = format!("macro:{name}");
+                    (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
+                        name,
+                        as_value: false,
+                        function_like: false,
+                    })
                 })
-            })
         }
         // A forward-declared-but-undefined type (pimpl) must NOT be repaired: a
         // `void *` typedef would collide with its `class X;` forward declaration.
@@ -3419,14 +3542,16 @@ pub(crate) fn plan_repair_forced_with_source_policy(
             // `CJSON_PUBLIC(type)`. Recover only that narrow identity-wrapper
             // form; arbitrary body-less generated declarators still have no safe
             // automated repair because rewriting project sources is out of scope.
-            declaration_wrapper_macro_at(file, *line).and_then(|name| {
-                let key = format!("macro:{name}");
-                (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
-                    name,
-                    as_value: false,
-                    function_like: false,
+            declaration_wrapper_macro_at(file, *line)
+                .filter(|name| !c_stub_gen::is_standard_libc_symbol(name))
+                .and_then(|name| {
+                    let key = format!("macro:{name}");
+                    (!attempted.already_attempted(&key)).then_some(Repair::MacroDefine {
+                        name,
+                        as_value: false,
+                        function_like: false,
+                    })
                 })
-            })
         }
         BuildErrorKind::ConfigGuardError { file, line, .. } => {
             // A configure-style header that stops the build because its build
@@ -5471,6 +5596,97 @@ mod tests {
         assert!(forced.starts_with("#include \""), "{forced}");
         assert!(forced.contains("bzlib.h"), "{forced}");
         assert!(!forced.contains("typedef struct bz_stream"), "{forced}");
+    }
+
+    #[test]
+    fn a_standard_libc_call_is_never_defined_away_as_a_calling_convention_macro() {
+        // An empty `#define mkstemp` erases the CALL in govfuzz's own decoder
+        // (`c_runtime/govfuzz_decode.h`: `fd = mkstemp(path_buf);` becomes
+        // `fd = (path_buf);`), so the repair breaks the harness rather than the
+        // target. Every symbol the runtime calls must be off-limits.
+        for symbol in [
+            "mkstemp",
+            "ftruncate",
+            "mmap",
+            "dup2",
+            "pipe",
+            "getpagesize",
+        ] {
+            assert!(
+                c_stub_gen::is_standard_libc_symbol(symbol),
+                "{symbol} is called by c_runtime and must be recognised as standard"
+            );
+            let tail = format!(
+                "/tmp/p/foo.h:12:5: error: expected ';' after top level declarator\n   12 | {symbol} int foo(void);\n"
+            );
+            let root = tmpdir();
+            let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+            let planned = plan_repair_with_attempts(
+                &BuildErrorKind::Other { tail },
+                &idx,
+                &RepairManifest::default(),
+            );
+            assert!(
+                !matches!(&planned, Some(Repair::MacroDefine { name, .. }) if name == symbol),
+                "{symbol} must not be macro-defined away, got {planned:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_force_included_header_carries_the_macro_prologue_the_project_uses() {
+        // libexpat's shape: `xmltok.h` spells its typedefs through the `PTRCALL`
+        // macro, which `internal.h` defines and which `xmltok.h` does NOT include
+        // — upstream `xmlparse.c` includes them in that order. Force-including
+        // `xmltok.h` alone at the top of every TU makes `SCANNER` unparseable,
+        // which is the very error the repair is applied to fix.
+        let root = tmpdir();
+        let internal = root.join("internal.h");
+        let xmltok = root.join("xmltok.h");
+        let inlined = root.join("xcsinc.c");
+        fs::write(
+            &internal,
+            "#ifndef INTERNAL_H\n#define INTERNAL_H\n#define PTRCALL\n#endif\n",
+        )
+        .unwrap();
+        fs::write(
+            &xmltok,
+            "typedef int(PTRCALL *SCANNER)(const char *);\nstruct encoding { SCANNER scanners[2]; };\n",
+        )
+        .unwrap();
+        // Definitions with no include guard, textually included by the target —
+        // force-including these too would double-define them in the target's TU.
+        fs::write(&inlined, "int xcslen(const char *s) { return 0; }\n").unwrap();
+        let target_source = "#include \"internal.h\"\n#include \"xcsinc.c\"\n#include \"xmltok.h\"\nint main(void){return 0;}\n";
+
+        let idx = crate::auto::decl_index::DeclarationIndex::build(&root).unwrap();
+        let repairs = root.join("repairs");
+        fs::create_dir_all(&repairs).unwrap();
+        apply_repair_with_source(
+            &Repair::IncludeTypeHeader {
+                type_name: "SCANNER".to_owned(),
+                header: xmltok.clone(),
+            },
+            &repairs,
+            &idx,
+            Some(target_source),
+            &mut std::collections::HashMap::new(),
+        )
+        .unwrap();
+
+        let forced = fs::read_to_string(repairs.join(AUTO_CPP_INCLUDES_FILE)).unwrap();
+        let internal_pos = forced
+            .find(internal.to_str().unwrap())
+            .unwrap_or_else(|| panic!("prerequisite header missing from:\n{forced}"));
+        let xmltok_pos = forced.find(xmltok.to_str().unwrap()).unwrap();
+        assert!(
+            internal_pos < xmltok_pos,
+            "the macro prologue must precede its consumer:\n{forced}"
+        );
+        assert!(
+            !forced.contains("xcsinc.c"),
+            "a textually-included definition file must stay out of the forced prologue:\n{forced}"
+        );
     }
 
     #[test]

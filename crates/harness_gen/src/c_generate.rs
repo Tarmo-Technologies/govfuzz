@@ -92,6 +92,13 @@ pub struct CDriveStep {
     pub breaks_on_null: bool,
 }
 
+/// Upper bound on operations driven in one execution, and therefore the size of
+/// the op program: the control region is one count byte plus one selector slot
+/// per possible step. Kept small so the reserved tail stays a negligible slice
+/// of a typical input while still allowing a sequence long enough to reach
+/// close/reopen cycles.
+const MAX_SEQUENCE_STEPS: usize = 8;
+
 #[derive(Debug, Clone)]
 pub struct CLifecycleStep {
     pub name: String,
@@ -178,6 +185,11 @@ pub fn generate_c_direct_harness(
     })
 }
 
+/// Sidecar naming the op program's geometry, written next to the generated
+/// sequence harness and read by the engine to build an
+/// `OperationSequenceLayout` for whatever input it is about to mutate.
+pub const SEQUENCE_LAYOUT_FILE: &str = "sequence-layout.json";
+
 pub fn generate_c_sequence_harness(
     args: GenerateCSequenceArgs,
 ) -> Result<GeneratedCFiles, HarnessGenError> {
@@ -197,6 +209,19 @@ pub fn generate_c_sequence_harness(
     let makefile_path = args.output_dir.join("Makefile");
     fs::write(&main_path, main_c)?;
     fs::write(&makefile_path, makefile)?;
+    // Describe the op program's geometry so the engine can build a
+    // structure-aware mutation layout for an input of any length. Without it
+    // the sequence mutator has nothing to describe, and every op program is
+    // mutated as opaque bytes.
+    fs::write(
+        args.output_dir.join(SEQUENCE_LAYOUT_FILE),
+        format!(
+            "{{\n  \"operation_count\": {},\n  \"max_steps\": {},\n  \"control_len\": {}\n}}\n",
+            context.op_steps.len(),
+            context.op_max_steps,
+            context.op_ctrl_len,
+        ),
+    )?;
 
     Ok(GeneratedCFiles {
         main_c: main_path,
@@ -282,6 +307,12 @@ struct CSequenceTemplateContext {
     guard_op_loop_on_init: bool,
     op_steps: Vec<CSequenceStepEmission>,
     op_step_max: usize,
+    /// Upper bound on steps in one execution. Also fixes the size of the
+    /// control region: one count byte plus one selector slot per possible step.
+    op_max_steps: usize,
+    /// Bytes reserved at the END of the input for the op program, so the
+    /// argument cursor can be clamped away from them.
+    op_ctrl_len: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     end_step: Option<CSequenceStepEmission>,
 }
@@ -2140,6 +2171,8 @@ fn build_c_sequence_context(
         guard_op_loop_on_init: init_step.as_ref().is_some_and(|s| s.is_status_return),
         init_step,
         op_step_max: op_steps.len().saturating_sub(1),
+        op_max_steps: MAX_SEQUENCE_STEPS,
+        op_ctrl_len: 1 + MAX_SEQUENCE_STEPS * 5,
         op_steps,
         end_step,
     })
@@ -6109,8 +6142,15 @@ mod tests {
         assert!(main.contains("struct session _gf_handle"));
         assert!(main.contains("memset(&_gf_handle, 0, sizeof _gf_handle)"));
         assert!(main.contains("int _gf_init_result = session_init(&_gf_handle, _gf_init_seed)"));
-        assert!(main.contains("size_t _gf_lifecycle_count = (size_t)gf_bounded_i32(&Cur, 0, 16)"));
-        assert!(main.contains("switch (gf_bounded_i32(&Cur, 0, 1))"));
+        // The op PROGRAM comes from the fixed-stride control region at the end
+        // of the input, never from the forward argument cursor — otherwise a
+        // length-changing edit to an argument re-frames every later operation.
+        assert!(main.contains("size_t _gf_lifecycle_count = gf_ctrl_step_count(Data, Size, 8)"));
+        assert!(main.contains("switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, 8, 2))"));
+        assert!(
+            main.contains("gf_cursor Cur = gf_open_data(Data, Size, 41)"),
+            "the argument cursor must be clamped away from the control region:\n{main}"
+        );
         assert!(main.contains("session_step(&_gf_handle, _gf_step0_delta)"));
         assert!(main.contains("session_reset(&_gf_handle)"));
         assert!(main.contains("session_end(&_gf_handle)"));
@@ -6259,6 +6299,6 @@ mod tests {
             !main.contains("session_find"),
             "unsupported secondary op should be skipped:\n{main}"
         );
-        assert!(main.contains("switch (gf_bounded_i32(&Cur, 0, 0))"));
+        assert!(main.contains("switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, 8, 1))"));
     }
 }

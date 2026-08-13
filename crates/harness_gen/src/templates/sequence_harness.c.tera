@@ -102,7 +102,10 @@ extern void govfuzz_target_enter(void);
 #endif
 int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     GOVFUZZ_PUBLISH_INPUT(Data, Size);
-    gf_cursor Cur = gf_open(Data, Size);
+    /* Argument bytes only: the op program lives in a fixed-stride control
+     * region at the END of the input (see gf_open_data / gf_ctrl_op), so a
+     * length-changing edit to an argument cannot re-frame the program. */
+    gf_cursor Cur = gf_open_data(Data, Size, {{ op_ctrl_len }});
     {{ handle_type }} _gf_handle;
     memset(&_gf_handle, 0, sizeof _gf_handle);
 {%- if init_step %}
@@ -127,7 +130,7 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * double-frees — both harness artifacts, not target bugs. */
     if ({{ init_step.result_name }} == 0) {
 {%- endif %}
-    size_t _gf_lifecycle_count = (size_t)gf_bounded_i32(&Cur, 0, 16);
+    size_t _gf_lifecycle_count = gf_ctrl_step_count(Data, Size, {{ op_max_steps }});
     /* A status-returning op that FAILS leaves the object in an unspecified
      * state; the target's own contract does not promise the next call is legal.
      * Driving on regardless explores garbage state and produces harness-artifact
@@ -145,7 +148,7 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * than found in the library. */
     int _gf_handle_live = 1;
     for (size_t _gf_lifecycle_index = 0; _gf_lifecycle_index < _gf_lifecycle_count; ++_gf_lifecycle_index) {
-        switch (gf_bounded_i32(&Cur, 0, {{ op_step_max }})) {
+        switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, {{ op_max_steps }}, {{ op_steps | length }})) {
 {%- for step in op_steps %}
         case {{ loop.index0 }}: {
 {%- if step.role == "open" %}

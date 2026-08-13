@@ -9,7 +9,7 @@ use corpus::{
 use event_log::{group_into_testcases, Event, EventReader, Testcase};
 use fuzz_engine_builtin::{
     generate_symbolic_seeds, Dictionary, Grammar, MutationInput, MutationRng, MutatorConfig,
-    MutatorSuite, SymbolicSeedSource,
+    MutatorSuite, OperationSequenceLayout, OperationStepSpan, SymbolicSeedSource,
 };
 use serde::Serialize;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -2158,6 +2158,12 @@ fn run_builtin_with_progress(
         .map(|(_, v)| PathBuf::from(v));
     let mut dictionary_token_set: HashSet<Vec<u8>> = dictionary_tokens.iter().cloned().collect();
     let mut dictionary = Dictionary::from_tokens(dictionary_tokens.clone());
+    // Op-program geometry for a sequence harness, if this is one. Present only
+    // when the generator wrote the sidecar, so a direct harness is unaffected.
+    let sequence_geometry = prepared
+        .harness_path
+        .parent()
+        .and_then(SequenceGeometry::load);
     let mut corpus_new = 0_usize;
     let mut corpus_duplicates = 0_usize;
     let mut non_reproducible = 0_usize;
@@ -2323,6 +2329,7 @@ fn run_builtin_with_progress(
                 cmplog_log.as_ref(),
                 grammar.as_ref(),
                 mutator_config(prepared.structured_inputs, effective_max_len),
+                sequence_geometry,
                 &mut rng,
             )
         };
@@ -4155,6 +4162,80 @@ pub(crate) fn load_grammar_for_run(path: Option<&Path>) -> Result<Option<Grammar
     Grammar::from_rules(&rules, None).map(Some)
 }
 
+/// The op program's geometry, read from the sidecar a sequence harness writes.
+///
+/// The harness reserves a fixed-stride control block at the END of every input:
+/// one count byte followed by one selector byte per possible step. Knowing that
+/// shape lets the engine hand the mutator ordered, non-overlapping spans for the
+/// program itself, so a structure-aware edit can reorder or retarget an
+/// operation instead of corrupting the encoding by accident.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SequenceGeometry {
+    operation_count: usize,
+    max_steps: usize,
+    control_len: usize,
+}
+
+impl SequenceGeometry {
+    fn load(harness_dir: &Path) -> Option<Self> {
+        let text = std::fs::read_to_string(
+            harness_dir.join(harness_gen::c_generate::SEQUENCE_LAYOUT_FILE),
+        )
+        .ok()?;
+        let field = |name: &str| -> Option<usize> {
+            let key = format!("\"{name}\"");
+            let start = text.find(&key)? + key.len();
+            let rest = text[start..].trim_start().strip_prefix(':')?;
+            rest.trim_start()
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect::<String>()
+                .parse()
+                .ok()
+        };
+        let geometry = Self {
+            operation_count: field("operation_count")?,
+            max_steps: field("max_steps")?,
+            control_len: field("control_len")?,
+        };
+        (geometry.operation_count > 0 && geometry.max_steps > 0).then_some(geometry)
+    }
+
+    /// Describe `input`'s op program as byte spans. Returns `None` when the
+    /// input is too short to carry a control block, in which case there is no
+    /// program to preserve and flat-byte mutation is correct.
+    fn layout_for(&self, input: &[u8]) -> Option<OperationSequenceLayout> {
+        if input.len() < self.control_len {
+            return None;
+        }
+        let base = input.len() - self.control_len;
+        // One slot per possible step: selector byte plus a 4-byte value, the
+        // encoding the engine's bounded-value decoder understands and the
+        // harness's `gf_ctrl_bounded` mirrors byte for byte.
+        const SLOT: usize = 5;
+        let steps = (0..self.max_steps)
+            .map(|step| {
+                let at = base + 1 + step * SLOT;
+                OperationStepSpan::new(at..at + SLOT, at..at + SLOT)
+            })
+            .collect();
+        // No step-count range: the engine's decoder for that field expects a
+        // 5-byte selector-plus-value encoding, while the harness spends a single
+        // byte on it. Describing it wrongly invalidates the WHOLE layout (the
+        // validator rejects it, and the op program silently reverts to opaque
+        // bytes), and widening the harness's count to 5 bytes would cost four
+        // bytes of every input to describe a value the fixed-stride block
+        // already bounds. The selector spans are the part worth describing.
+        Some(OperationSequenceLayout::new(
+            None,
+            0,
+            self.max_steps,
+            self.operation_count,
+            steps,
+        ))
+    }
+}
+
 /// Build one mutated child from pool entry `base_index`. Prefers that entry's
 /// per-input RedQueen cmplog (#400) so `CmpLogSplice` injects the operands it
 /// observed at the offsets they were compared; falls back to the global
@@ -4167,6 +4248,7 @@ fn mutate_from_pool(
     global_cmplog: Option<&cmplog::CmpLog>,
     grammar: Option<&Grammar>,
     config: MutatorConfig,
+    sequence: Option<SequenceGeometry>,
     rng: &mut MutationRng,
 ) -> Vec<u8> {
     let suite = MutatorSuite::new(config);
@@ -4188,6 +4270,14 @@ fn mutate_from_pool(
     }
     if let Some(g) = grammar {
         mutation_input = mutation_input.with_grammar(g);
+    }
+    // A sequence harness's op program lives in a fixed-stride control block, so
+    // it can be described to the mutator as ordered spans instead of being
+    // edited blind. Computed per base: the block sits at the end, so its offsets
+    // move with the input's length.
+    let sequence_layout = sequence.and_then(|geometry| geometry.layout_for(base));
+    if let Some(layout) = sequence_layout.as_ref() {
+        mutation_input = mutation_input.with_operation_sequence(layout);
     }
 
     let bytes = suite
@@ -7539,5 +7629,96 @@ mod redqueen_cmplog_tests {
         tracker.restore(&snap);
         assert_eq!(tracker.count(), 2);
         let _ = std::fs::remove_file(path);
+    }
+}
+
+#[cfg(test)]
+mod sequence_layout_tests {
+    use super::*;
+
+    fn geometry() -> SequenceGeometry {
+        // What the generator writes for a 3-op harness with the default cap.
+        SequenceGeometry {
+            operation_count: 3,
+            max_steps: 8,
+            control_len: 41,
+        }
+    }
+
+    #[test]
+    fn the_layout_describes_the_control_block_and_validates() {
+        // The mutator rejects overlapping or out-of-range spans outright, so a
+        // layout that does not validate is the same as no layout at all — the
+        // op program would silently go back to being mutated as opaque bytes.
+        let geometry = geometry();
+        let input = vec![0xAB_u8; 64];
+        let layout = geometry
+            .layout_for(&input)
+            .expect("an input longer than the control block has a program");
+        layout
+            .validate_for_input(&input)
+            .expect("spans must be ascending, non-overlapping and in range");
+
+        // The count byte opens the control block; the selectors follow it, one
+        // per step, ascending — the same geometry `gf_ctrl_op` reads.
+        let base = input.len() - geometry.control_len;
+        assert_eq!(layout.step_count_range, None);
+        assert_eq!(layout.steps.len(), geometry.max_steps);
+        assert_eq!(layout.steps[0].range, base + 1..base + 6);
+        assert_eq!(
+            layout.steps[geometry.max_steps - 1].range,
+            input.len() - 5..input.len()
+        );
+        assert_eq!(layout.operation_count, 3);
+    }
+
+    #[test]
+    fn the_engine_and_the_harness_select_the_same_operations() {
+        // The whole point of describing the control block is that the engine's
+        // structure-aware edits land on the operation the HARNESS will actually
+        // run. If the two decoders disagreed, the mutator would be retargeting
+        // operations that are never selected — silently worse than leaving the
+        // program as opaque bytes.
+        //
+        // Expected values produced by compiling c_runtime/govfuzz_decode.h and
+        // printing `gf_ctrl_op` for this exact buffer (see the C runtime's
+        // gf_ctrl_bounded, which mirrors `decode_bounded_range`).
+        let geometry = geometry();
+        let input: Vec<u8> = (0..128u32).map(|i| (i * 37 + 11) as u8).collect();
+        let layout = geometry.layout_for(&input).expect("program present");
+        layout.validate_for_input(&input).expect("valid layout");
+
+        let harness_selected = [1u32, 0, 0, 1, 1, 0, 2, 1];
+        for (step, expected) in harness_selected.iter().enumerate() {
+            let span = &layout.steps[step].op_index_range;
+            let selector = input[span.start];
+            let decoded = if selector % 4 == 0 {
+                let raw: u32 = match selector % 6 {
+                    0 => 0,
+                    1 => 1,
+                    2 => geometry.operation_count as u32 - 2,
+                    3 => geometry.operation_count as u32 - 1,
+                    4 => 0,
+                    _ => u32::MAX,
+                };
+                raw.clamp(0, geometry.operation_count as u32 - 1)
+            } else {
+                let raw =
+                    u32::from_le_bytes(input[span.start + 1..span.start + 5].try_into().unwrap());
+                raw % geometry.operation_count as u32
+            };
+            assert_eq!(
+                decoded, *expected,
+                "step {step}: engine decodes {decoded}, harness runs {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_input_too_short_for_a_control_block_has_no_program() {
+        // Below the control length the harness reads no program at all
+        // (`gf_ctrl_step_count` returns 0), so there is nothing to preserve and
+        // flat-byte mutation is the correct behaviour.
+        assert!(geometry().layout_for(&[0u8; 4]).is_none());
     }
 }

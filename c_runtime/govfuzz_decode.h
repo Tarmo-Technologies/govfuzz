@@ -43,6 +43,101 @@ static inline size_t gf_remaining(const gf_cursor *c) {
     return c->size > c->pos ? c->size - c->pos : 0;
 }
 
+/* ---- op-program control channel -------------------------------------------
+ *
+ * A sequence harness needs two things from one input: an ordered program of
+ * OPERATIONS, and the ARGUMENT bytes each operation consumes. Drawing both from
+ * the same forward cursor makes the program byte-fragile — `gf_c_string`
+ * consumes a 2-byte length prefix plus a payload, so a single length-changing
+ * edit anywhere re-frames every downstream operation selector, and the engine's
+ * structure-aware sequence mutator cannot describe the input at all.
+ *
+ * So the control channel is a CONTIGUOUS block reserved at the END of the
+ * input, at a FIXED stride of one byte per slot — the same separation
+ * libFuzzer's own FuzzedDataProvider makes, for the same reason:
+ *
+ *     [ argument data, forward ...... | count | slot_0 | slot_1 | ... ]
+ *                                       ^ size - ctrl_len        ^ size - 1
+ *
+ * Each slot is GF_CTRL_SLOT bytes wide.
+ *
+ * A mutation in the argument region no longer re-frames a selector, so the op
+ * program survives havoc, splice and cmplog edits that change length. Slot i
+ * lives at `size - ctrl_len + 1 + i`: one byte per step, ASCENDING with step
+ * order, which is what lets the engine describe the program as ordered,
+ * non-overlapping byte spans.
+ *
+ * Reads past the front of the control region return 0, so a short input is a
+ * short program rather than an out-of-bounds read. */
+/* One selector byte plus a 4-byte value per operation slot — the encoding the
+ * engine's bounded-value decoder understands. */
+#define GF_CTRL_SLOT 5
+/* One count byte, then one slot per possible step. */
+#define GF_CTRL_LEN(max_steps) ((size_t)1 + (size_t)(max_steps) * GF_CTRL_SLOT)
+
+/* Open a cursor over the ARGUMENT region only, so argument decoding can never
+ * consume a control byte (which would make one byte mean two things and couple
+ * an argument edit to a program edit). `ctrl_len` is 1 count byte plus one slot
+ * per possible step. A too-short input yields an empty data region, which the
+ * decoders already handle as "no bytes". */
+static inline gf_cursor gf_open_data(const uint8_t *data, size_t size, size_t ctrl_len) {
+    gf_cursor c;
+    c.data = data;
+    c.size = size > ctrl_len ? size - ctrl_len : 0;
+    c.pos = 0;
+    return c;
+}
+
+static inline size_t gf_ctrl_step_count(const uint8_t *data, size_t size, size_t max_steps) {
+    size_t ctrl_len = GF_CTRL_LEN(max_steps);
+    if (max_steps == 0 || size < ctrl_len) return 0;
+    return (size_t)data[size - ctrl_len] % (max_steps + 1);
+}
+
+/* Decode one bounded control value, byte-for-byte the way the engine's
+ * `decode_bounded_range` does. The two MUST agree: the engine describes these
+ * slots to its structure-aware sequence mutator, and if the harness read them
+ * by a different rule the mutator would be retargeting operations the harness
+ * never selects.
+ *
+ * Slot layout is a selector byte plus a 4-byte little-endian value. A selector
+ * divisible by 4 means "take a boundary value" (min, min+1, max-1, max, ...);
+ * anything else means "take the 32-bit value, modulo the range". */
+static inline uint32_t gf_ctrl_bounded(const uint8_t *data, size_t at, uint32_t min,
+                                       uint32_t max) {
+    uint8_t selector;
+    uint32_t raw;
+    if (max <= min) return min;
+    selector = data[at];
+    if (selector % 4 == 0) {
+        switch (selector % 6) {
+        case 0: raw = min; break;
+        case 1: raw = min + 1; break;
+        case 2: raw = max - 1; break;
+        case 3: raw = max; break;
+        case 4: raw = 0; break;
+        default: raw = 0xffffffffu; break;
+        }
+        if (raw < min) raw = min;
+        if (raw > max) raw = max;
+        return raw;
+    }
+    raw = (uint32_t)data[at + 1]
+        | ((uint32_t)data[at + 2] << 8)
+        | ((uint32_t)data[at + 3] << 16)
+        | ((uint32_t)data[at + 4] << 24);
+    return min + raw % (max - min + 1);
+}
+
+static inline uint32_t gf_ctrl_op(const uint8_t *data, size_t size, size_t step,
+                                  size_t max_steps, uint32_t op_count) {
+    size_t ctrl_len = GF_CTRL_LEN(max_steps);
+    size_t at;
+    if (op_count == 0 || step >= max_steps || size < ctrl_len) return 0;
+    at = size - ctrl_len + 1 + step * GF_CTRL_SLOT;
+    return gf_ctrl_bounded(data, at, 0, op_count - 1);
+}
+
 static inline uint8_t gf_u8(gf_cursor *c) {
     if (gf_remaining(c) == 0) return 0;
     return c->data[c->pos++];

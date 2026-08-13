@@ -3583,14 +3583,33 @@ fn c_lifecycle_function_to_step(
     c_lifecycle_function_to_step_with_role(function, c_step_role_of(&function.name))
 }
 
-/// Classify an op by what it does to the handle's lifetime, from its name verbs
-/// — the same evidence `is_c_lifecycle_init` / `is_c_lifecycle_end` already use
-/// to pick the constructor and teardown.
+/// Classify an op by what it does to the handle's LIFETIME.
+///
+/// Only allocation and deallocation change liveness. `open`/`close` do not:
+/// they attach and detach a source on a handle that is already allocated, which
+/// is an ordinary operation on a live object. libarchive is the clear case —
+/// `archive_read_new` allocates, then `archive_read_open_memory` must be called
+/// ON the live handle, and treating `open` as a re-open would gate it behind the
+/// handle being closed, where it could never run.
+///
+/// So `free`/`destroy` clear liveness and `new`/`create`/`alloc` restore it,
+/// which is exactly the cycle leveldb's own fuzzer spells as `kReopenDb`
+/// (`db.reset()` then re-open).
 fn c_step_role_of(name: &str) -> harness_gen::c_generate::CStepRole {
     use harness_gen::c_generate::CStepRole;
-    if is_c_lifecycle_end(name) {
+    let tokens = c_lifecycle_name_tokens(name);
+    let has = |needles: &[&str]| {
+        needles.iter().any(|needle| {
+            tokens
+                .iter()
+                .any(|token| token_matches_lifecycle_verb(token, needle, C_END_GLUE_VERBS))
+        })
+    };
+    if has(&[
+        "free", "destroy", "delete", "release", "dispose", "deinit", "fini",
+    ]) {
         CStepRole::Close
-    } else if is_c_lifecycle_init(name) {
+    } else if has(&["new", "create", "alloc"]) {
         CStepRole::Open
     } else {
         CStepRole::Operation
@@ -10644,6 +10663,7 @@ fn push_unique_string(values: &mut Vec<String>, value: String) {
 
 #[cfg(test)]
 mod tests {
+    use super::c_step_role_of;
     use super::{
         auto_detect_c_headers, auto_detect_c_result_cleanup, auto_detect_project_includes,
         bare_library_resolves, build_harness_ast, c_build_flags_for_source,
@@ -18707,4 +18727,32 @@ package body State is
    end Top;
 end State;
 "#;
+
+    #[test]
+    fn only_allocation_and_deallocation_change_handle_liveness() {
+        use harness_gen::c_generate::CStepRole;
+        // libarchive: `archive_read_new` allocates, and `archive_read_open_memory`
+        // then runs ON the live handle. Treating `open` as a re-open would gate
+        // it behind the handle being CLOSED, where it could never run — which is
+        // exactly how libarchive lost its opener.
+        assert_eq!(c_step_role_of("archive_read_new"), CStepRole::Open);
+        assert_eq!(
+            c_step_role_of("archive_read_open_memory"),
+            CStepRole::Operation
+        );
+        assert_eq!(
+            c_step_role_of("archive_read_next_header"),
+            CStepRole::Operation
+        );
+        assert_eq!(c_step_role_of("archive_read_free"), CStepRole::Close);
+
+        // Deallocation then allocation is the cycle leveldb's own fuzzer spells
+        // as `kReopenDb`.
+        assert_eq!(c_step_role_of("db_destroy"), CStepRole::Close);
+        assert_eq!(c_step_role_of("db_create"), CStepRole::Open);
+
+        // `close` detaches a source; it does not deallocate, so it stays an
+        // ordinary op on a live handle.
+        assert_eq!(c_step_role_of("archive_read_close"), CStepRole::Operation);
+    }
 }

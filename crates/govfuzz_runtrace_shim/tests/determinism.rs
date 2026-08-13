@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Clock and randomness determinism.
+//! Randomness determinism.
 //!
 //! Determinism is the premise of the whole replay and env-capsule story: a
 //! saved input is a reproducer only if the second run makes the same decisions
-//! as the first. Nothing in the shim used to intercept time or randomness, so a
-//! target branching on `clock_gettime` / `time` / `rand` / `getrandom` could take
-//! a different path on replay and a crash found once might never reproduce.
+//! as the first. Nothing in the shim used to intercept randomness, so a target
+//! seeding a hash or minting an id from `rand`/`getrandom` could take a
+//! different path on replay and a crash found once might never reproduce.
 //!
 //! The probe prints the values it observes. Two runs WITH the gate must agree
-//! byte for byte; two runs WITHOUT it must still see the real, moving clock, so
-//! the plugin cannot silently distort an ordinary run.
+//! byte for byte; a run WITHOUT it must still see real entropy, so the plugin
+//! cannot silently distort an ordinary run.
 
 #![cfg(target_os = "linux")]
 
@@ -53,13 +53,10 @@ fn cc() -> Option<&'static str> {
 const PROBE: &str = r#"
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <sys/random.h>
 int main(void) {
-    struct timespec ts; unsigned char buf[4];
-    clock_gettime(CLOCK_REALTIME, &ts);
-    printf("%ld.%09ld|%ld|%d,%d|", (long)ts.tv_sec, (long)ts.tv_nsec,
-           (long)time(NULL), rand(), rand());
+    unsigned char buf[4];
+    printf("%d,%d|", rand(), rand());
     if (getrandom(buf, sizeof buf, 0) != (long)sizeof buf) return 2;
     printf("%02x%02x%02x%02x\n", buf[0], buf[1], buf[2], buf[3]);
     return 0;
@@ -78,7 +75,7 @@ fn run(probe: &PathBuf, shim: &PathBuf, deterministic: bool) -> String {
 }
 
 #[test]
-fn the_clock_and_randomness_replay_identically_under_the_gate() {
+fn randomness_replays_identically_under_the_gate() {
     let Some(shim) = shim_so() else {
         eprintln!("skipping: shim cdylib not built yet");
         return;
@@ -108,19 +105,15 @@ fn the_clock_and_randomness_replay_identically_under_the_gate() {
     let second = run(&bin, &shim, true);
     assert_eq!(
         first, second,
-        "two gated runs must observe identical time and randomness"
+        "two gated runs must observe identical randomness"
     );
 
     // ...and the plugin must not distort an ordinary run: without the gate the
-    // real clock is still moving, so it cannot read as the synthetic epoch.
+    // real entropy source still shows through.
     let ungated = run(&bin, &shim, false);
     assert_ne!(
         ungated, first,
-        "without the gate the real clock/randomness must show through"
-    );
-    assert!(
-        !ungated.starts_with("1577836800."),
-        "the synthetic epoch must not leak into an ungated run: {ungated}"
+        "without the gate real entropy must show through"
     );
 
     let _ = std::fs::remove_dir_all(&dir);

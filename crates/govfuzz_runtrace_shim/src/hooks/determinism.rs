@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Determinism plugin: when `GOVFUZZ_FAKE_DETERMINISM=1` is set, the clock and
-//! the randomness sources return fixed, reproducible values.
+//! Determinism plugin: when `GOVFUZZ_FAKE_DETERMINISM=1` is set, the randomness
+//! sources return a fixed, reproducible stream.
 //!
 //! Determinism is the premise of the whole replay and env-capsule story — a
-//! saved input is only a reproducer if the second run makes the same decisions
-//! as the first. That premise did not hold: nothing in the shim intercepted
-//! time or randomness, so any target that branches on `clock_gettime`, `time`,
-//! `rand` or `getrandom` could take a different path on replay, and a crash
-//! found once might never reproduce.
+//! saved input is a reproducer only if the second run makes the same decisions
+//! as the first. Nothing in the shim intercepted randomness, so any target that
+//! seeds a hash, salts a table or mints an id from `rand`/`getrandom` could take
+//! a different path on replay, and a crash found once might never reproduce.
 //!
-//! The clock is MONOTONIC but synthetic: each observation advances a counter by
-//! a fixed tick rather than returning a constant. A frozen clock deadlocks any
-//! target that polls "has the timeout elapsed yet?", while a counter both
-//! reproduces exactly and always eventually satisfies a deadline.
+//! The stream is xorshift64*, seeded from `GOVFUZZ_RUNTRACE_SEED` when present
+//! so a campaign can vary it across runs while any single run stays replayable.
+//! `srand` still honours the target's own seed.
 //!
-//! Randomness is a deterministic xorshift64* stream, seeded from
-//! `GOVFUZZ_RUNTRACE_SEED` when present so a campaign can vary the stream
-//! across runs while any single run stays replayable.
+//! The CLOCK is deliberately not interposed. It was, and it broke targets:
+//! `clock_gettime`/`gettimeofday` are resolved through the vDSO and versioned
+//! symbols, and the lazy `dlsym` a pass-through needs can run under the loader
+//! lock. Measured effect was targets that built and were then NEVER ENTERED —
+//! a silent loss far worse than a non-reproducible timestamp. A clock fake needs
+//! eager resolution at load time (or a `LD_PRELOAD`-free mechanism) before it
+//! can be reintroduced.
 //!
 //! Allocation discipline matches the other hook modules: no malloc / Box / Vec
 //! / String inside the hooks, and the env gate is read once.
@@ -31,19 +33,30 @@ use crate::jsonl::Builder;
 use crate::reentrancy::HookGuard;
 use crate::sdk::FakeResource;
 
+use crate::dlsym::ResolvedFn;
+
+// Resolved ONCE into statics, like every other hook module. Building a
+// `ResolvedFn` as a temporary per call re-resolves on every invocation, and
+// nothing then guards against the lookup returning THIS symbol — which is an
+// unbounded recursion that kills the harness before it reaches the target.
+static REAL_RAND: ResolvedFn = ResolvedFn::new(b"rand\0");
+static REAL_RANDOM: ResolvedFn = ResolvedFn::new(b"random\0");
+static REAL_SRAND: ResolvedFn = ResolvedFn::new(b"srand\0");
+static REAL_GETRANDOM: ResolvedFn = ResolvedFn::new(b"getrandom\0");
+
+/// The real implementation, or null when the lookup found only OURSELVES —
+/// calling that would recurse forever.
+fn real_of(resolved: &ResolvedFn, hook: *const ()) -> *const () {
+    let real = resolved.ptr() as *const ();
+    if real.is_null() || real == hook {
+        return core::ptr::null();
+    }
+    real
+}
+
 const ENV_VAR: &[u8] = b"GOVFUZZ_FAKE_DETERMINISM\0";
 const SEED_VAR: &[u8] = b"GOVFUZZ_RUNTRACE_SEED\0";
 
-/// Wall-clock origin for the synthetic clock: 2020-01-01T00:00:00Z. A fixed,
-/// plausible date rather than 0, so a target that formats or subtracts dates
-/// sees something sane.
-const EPOCH_SECONDS: i64 = 1_577_836_800;
-/// Advance per observation. One millisecond is small enough that a target
-/// measuring a short operation sees a believable duration, and large enough
-/// that a polling loop reaches its deadline in a bounded number of calls.
-const TICK_NANOS: u64 = 1_000_000;
-
-static ELAPSED_NANOS: AtomicU64 = AtomicU64::new(0);
 static RNG_STATE: AtomicU64 = AtomicU64::new(0);
 
 /// Reads `GOVFUZZ_FAKE_DETERMINISM` once via libc::getenv. True iff exactly "1".
@@ -61,11 +74,6 @@ pub fn env_enabled() -> bool {
     };
     CACHED.store(u8::from(enabled), Ordering::Relaxed);
     enabled
-}
-
-/// Nanoseconds since the synthetic epoch, advanced one tick per observation.
-fn next_nanos() -> u64 {
-    ELAPSED_NANOS.fetch_add(TICK_NANOS, Ordering::Relaxed) + TICK_NANOS
 }
 
 /// xorshift64*, seeded from `GOVFUZZ_RUNTRACE_SEED` when set. Never returns a
@@ -119,98 +127,20 @@ impl FakeResource for Determinism {
         "determinism"
     }
     fn intercepts(&self) -> &'static [&'static [u8]] {
-        &[
-            b"time\0",
-            b"clock_gettime\0",
-            b"gettimeofday\0",
-            b"rand\0",
-            b"srand\0",
-            b"random\0",
-            b"getrandom\0",
-        ]
+        &[b"rand\0", b"srand\0", b"random\0", b"getrandom\0"]
     }
     fn is_enabled(&self) -> bool {
         env_enabled()
     }
     fn describe(&self) -> &'static str {
-        "fixed clock and deterministic randomness so a saved input replays identically"
+        "deterministic randomness so a saved input replays identically"
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn time(out: *mut libc::time_t) -> libc::time_t {
-    if !env_enabled() {
-        return real_time(out);
-    }
-    let seconds = EPOCH_SECONDS + (next_nanos() / 1_000_000_000) as i64;
-    if !out.is_null() {
-        *out = seconds as libc::time_t;
-    }
-    emit_audit(b"time", seconds);
-    seconds as libc::time_t
-}
-
-unsafe fn real_time(out: *mut libc::time_t) -> libc::time_t {
-    let real = crate::dlsym::ResolvedFn::new(b"time\0").ptr() as *const ();
-    if real.is_null() {
-        return 0;
-    }
-    let real: unsafe extern "C" fn(*mut libc::time_t) -> libc::time_t = std::mem::transmute(real);
-    real(out)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn clock_gettime(
-    clock_id: libc::clockid_t,
-    tp: *mut libc::timespec,
-) -> libc::c_int {
-    if !env_enabled() {
-        let real = crate::dlsym::ResolvedFn::new(b"clock_gettime\0").ptr() as *const ();
-        if real.is_null() {
-            return -1;
-        }
-        let real: unsafe extern "C" fn(libc::clockid_t, *mut libc::timespec) -> libc::c_int =
-            std::mem::transmute(real);
-        return real(clock_id, tp);
-    }
-    if tp.is_null() {
-        return -1;
-    }
-    let nanos = next_nanos();
-    (*tp).tv_sec = (EPOCH_SECONDS + (nanos / 1_000_000_000) as i64) as libc::time_t;
-    (*tp).tv_nsec = (nanos % 1_000_000_000) as _;
-    emit_audit(b"clock_gettime", (*tp).tv_sec);
-    0
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn gettimeofday(
-    tv: *mut libc::timeval,
-    _tz: *mut libc::c_void,
-) -> libc::c_int {
-    if !env_enabled() {
-        let real = crate::dlsym::ResolvedFn::new(b"gettimeofday\0").ptr() as *const ();
-        if real.is_null() {
-            return -1;
-        }
-        let real: unsafe extern "C" fn(*mut libc::timeval, *mut libc::c_void) -> libc::c_int =
-            std::mem::transmute(real);
-        return real(tv, _tz);
-    }
-    if tv.is_null() {
-        return -1;
-    }
-    let nanos = next_nanos();
-    (*tv).tv_sec = (EPOCH_SECONDS + (nanos / 1_000_000_000) as i64) as libc::time_t;
-    (*tv).tv_usec = ((nanos % 1_000_000_000) / 1_000) as _;
-    emit_audit(b"gettimeofday", (*tv).tv_sec);
-    0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rand() -> libc::c_int {
     if !env_enabled() {
-        let real = crate::dlsym::ResolvedFn::new(b"rand\0").ptr() as *const ();
+        let real = real_of(&REAL_RAND, rand as *const ());
         if real.is_null() {
             return 0;
         }
@@ -224,7 +154,7 @@ pub unsafe extern "C" fn rand() -> libc::c_int {
 #[no_mangle]
 pub unsafe extern "C" fn random() -> libc::c_long {
     if !env_enabled() {
-        let real = crate::dlsym::ResolvedFn::new(b"random\0").ptr() as *const ();
+        let real = real_of(&REAL_RANDOM, random as *const ());
         if real.is_null() {
             return 0;
         }
@@ -237,7 +167,7 @@ pub unsafe extern "C" fn random() -> libc::c_long {
 #[no_mangle]
 pub unsafe extern "C" fn srand(seed: libc::c_uint) {
     if !env_enabled() {
-        let real = crate::dlsym::ResolvedFn::new(b"srand\0").ptr() as *const ();
+        let real = real_of(&REAL_SRAND, srand as *const ());
         if !real.is_null() {
             let real: unsafe extern "C" fn(libc::c_uint) = std::mem::transmute(real);
             real(seed);
@@ -259,7 +189,7 @@ pub unsafe extern "C" fn getrandom(
     flags: libc::c_uint,
 ) -> libc::ssize_t {
     if !env_enabled() {
-        let real = crate::dlsym::ResolvedFn::new(b"getrandom\0").ptr() as *const ();
+        let real = real_of(&REAL_GETRANDOM, getrandom as *const ());
         if real.is_null() {
             return -1;
         }
@@ -288,20 +218,6 @@ pub unsafe extern "C" fn getrandom(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_synthetic_clock_advances_monotonically() {
-        // A frozen clock deadlocks any target that polls "has the timeout
-        // elapsed?", so the clock must move — while still being reproducible.
-        ELAPSED_NANOS.store(0, Ordering::Relaxed);
-        let first = next_nanos();
-        let second = next_nanos();
-        assert!(
-            second > first,
-            "the clock must advance: {first} -> {second}"
-        );
-        assert_eq!(second - first, TICK_NANOS);
-    }
 
     #[test]
     fn the_random_stream_is_reproducible_from_a_seed() {

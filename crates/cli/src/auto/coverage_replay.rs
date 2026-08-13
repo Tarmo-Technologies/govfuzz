@@ -22,17 +22,36 @@ use std::time::{Duration, Instant};
 const MAX_INPUTS: usize = 2000;
 const REPLAY_BUDGET: Duration = Duration::from_secs(30);
 
+/// Aggregate coverage across the harnesses a replay measured.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CoverageTotals {
+    pub harnesses: usize,
+    pub covered_lines: usize,
+    pub instrumented_lines: usize,
+}
+
+impl CoverageTotals {
+    /// Fraction of instrumented lines the campaign executed, or `None` when
+    /// nothing was instrumented — which is a different statement from 0%, and
+    /// must not be reported as one.
+    pub fn fraction(&self) -> Option<f64> {
+        (self.instrumented_lines > 0)
+            .then(|| self.covered_lines as f64 / self.instrumented_lines as f64)
+    }
+}
+
 /// Build + replay every C/C++ harness's corpus under source coverage, writing each
-/// harness's executed `(file:line)` set to `<harness>/covered-lines.txt`. Returns the
-/// number of harnesses for which a covered-lines set was written.
-pub fn run_coverage_replay(work_dir: &Path) -> usize {
+/// harness's executed `(file:line)` set to `<harness>/covered-lines.txt` and its
+/// covered/instrumented counts to `coverage-summary.json`. Returns the totals.
+pub fn run_coverage_replay(work_dir: &Path) -> CoverageTotals {
     let (Some(profdata), Some(cov)) = (llvm_tool("llvm-profdata"), llvm_tool("llvm-cov")) else {
-        return 0; // no llvm-cov toolchain -> the interpreted-lane path still works.
+        // no llvm-cov toolchain -> the interpreted-lane path still works.
+        return CoverageTotals::default();
     };
     let Ok(harnesses) = std::fs::read_dir(work_dir.join("harnesses")) else {
-        return 0;
+        return CoverageTotals::default();
     };
-    let mut wrote = 0usize;
+    let mut totals = CoverageTotals::default();
     for entry in harnesses.flatten() {
         let hdir = entry.path();
         let Some(harness_id) = hdir
@@ -42,20 +61,30 @@ pub fn run_coverage_replay(work_dir: &Path) -> usize {
         else {
             continue;
         };
-        if replay_one(work_dir, &hdir, &harness_id, &profdata, &cov) {
-            wrote += 1;
+        if let Some((covered, instrumented)) =
+            replay_one(work_dir, &hdir, &harness_id, &profdata, &cov)
+        {
+            totals.harnesses += 1;
+            totals.covered_lines += covered;
+            totals.instrumented_lines += instrumented;
         }
     }
-    wrote
+    totals
 }
 
-fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, cov: &str) -> bool {
+fn replay_one(
+    work_dir: &Path,
+    hdir: &Path,
+    harness_id: &str,
+    profdata: &str,
+    cov: &str,
+) -> Option<(usize, usize)> {
     if !hdir.join("Makefile").is_file() {
-        return false;
+        return None;
     }
     // Don't clobber a covered-lines set an interpreted lane already wrote.
     if hdir.join("covered-lines.txt").is_file() {
-        return false;
+        return None;
     }
     let built = crate::command_output::output_with_timeout(
         Command::new("make").arg("cov").current_dir(hdir),
@@ -65,18 +94,18 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     .unwrap_or(false);
     let bin = hdir.join("main_cov");
     if !built || !bin.is_file() {
-        return false;
+        return None;
     }
     let deadline = Instant::now() + REPLAY_BUDGET;
 
     let queue = work_dir.join("corpus").join(harness_id).join("queue");
     let Ok(inputs) = std::fs::read_dir(&queue) else {
-        return false;
+        return None;
     };
     let prof_dir = hdir.join("cov_profraw");
     let _ = std::fs::remove_dir_all(&prof_dir);
     if std::fs::create_dir_all(&prof_dir).is_err() {
-        return false;
+        return None;
     }
     let mut replayed = 0usize;
     for (i, input) in inputs.flatten().enumerate() {
@@ -99,11 +128,11 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
         .map(|output| !matches!(output.status.code(), Some(124 | 137)))
         .unwrap_or(false);
         if !completed {
-            return false;
+            return None;
         }
     }
     if replayed == 0 {
-        return false;
+        return None;
     }
 
     // Merge the raw profiles, then export covered lines.
@@ -117,7 +146,7 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
         })
         .unwrap_or_default();
     if raws.is_empty() {
-        return false;
+        return None;
     }
     let merge_ok = crate::command_output::output_with_timeout(
         Command::new(profdata)
@@ -131,7 +160,7 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     .map(|o| o.status.success())
     .unwrap_or(false);
     if !merge_ok {
-        return false;
+        return None;
     }
     let Ok(export) = crate::command_output::output_with_timeout(
         Command::new(cov)
@@ -140,10 +169,10 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
             .arg(&bin),
         Duration::from_secs(300),
     ) else {
-        return false;
+        return None;
     };
     if !export.status.success() {
-        return false;
+        return None;
     }
     let export_text = String::from_utf8_lossy(&export.stdout);
     if export_text.contains("[govfuzz: subprocess output truncated]") {
@@ -155,7 +184,7 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
     let (covered, instrumented) = parse_lcov(&export_text);
     let _ = std::fs::remove_dir_all(&prof_dir);
     if covered.is_empty() {
-        return false;
+        return None;
     }
     // The denominator, next to the covered set. `1,400 lines covered` says
     // nothing without knowing whether the target has 2,000 or 200,000; the
@@ -169,7 +198,9 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
             covered.len()
         ),
     );
-    std::fs::write(hdir.join("covered-lines.txt"), covered.join("\n")).is_ok()
+    std::fs::write(hdir.join("covered-lines.txt"), covered.join("\n"))
+        .ok()
+        .map(|()| (covered.len(), instrumented))
 }
 
 /// Coverage is a best-effort post-pass. Bound every replay so a target that hangs
@@ -270,5 +301,22 @@ end_of_record\n";
         let (covered, instrumented) = parse_lcov(lcov);
         assert!(covered.is_empty());
         assert_eq!(instrumented, 3);
+    }
+
+    #[test]
+    fn a_fraction_needs_a_denominator() {
+        // "0%" and "nothing was instrumented" are different statements, and
+        // reporting the second as the first is how a broken coverage build gets
+        // mistaken for a target the fuzzer failed to reach.
+        let nothing = CoverageTotals::default();
+        assert_eq!(nothing.fraction(), None);
+
+        let measured = CoverageTotals {
+            harnesses: 2,
+            covered_lines: 589,
+            instrumented_lines: 2458,
+        };
+        let fraction = measured.fraction().expect("instrumented lines present");
+        assert!((fraction - 0.2396).abs() < 0.001, "got {fraction}");
     }
 }

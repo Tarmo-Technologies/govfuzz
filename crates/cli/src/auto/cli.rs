@@ -2319,12 +2319,26 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // Compiled-lane line coverage for negative confirmation: build a source-coverage
     // variant of each C/C++ harness and replay the corpus to learn which lines the
     // campaign executed (the interpreted lanes get this from their tracers directly).
-    let coverage_harnesses = crate::auto::coverage_replay::run_coverage_replay(&work);
-    if coverage_harnesses > 0 {
-        gfeprintln!(
-            "govfuzz auto: line coverage recorded for {coverage_harnesses} harness(es) \
-             (covered-lines.txt + coverage-summary.json per harness)"
-        );
+    let coverage = crate::auto::coverage_replay::run_coverage_replay(&work);
+    if coverage.harnesses > 0 {
+        // Report the fraction, not a bare popcount: "589 lines" is
+        // uninterpretable without knowing whether the target has 2,000 or
+        // 200,000.
+        match coverage.fraction() {
+            Some(fraction) => gfeprintln!(
+                "govfuzz auto: line coverage {}/{} ({:.1}%) across {} harness(es) \
+                 (covered-lines.txt + coverage-summary.json per harness)",
+                coverage.covered_lines,
+                coverage.instrumented_lines,
+                fraction * 100.0,
+                coverage.harnesses
+            ),
+            None => gfeprintln!(
+                "govfuzz auto: line coverage recorded for {} harness(es), but nothing was \
+                 instrumented — that is not 0% coverage, it is no measurement",
+                coverage.harnesses
+            ),
+        }
     }
 
     // Negative fuzz-confirmation: a static finding whose exact line the fuzzer

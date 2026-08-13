@@ -115,16 +115,26 @@ pub unsafe extern "C" fn ioctl(
     if errno != libc::ENOTTY && errno != libc::EINVAL {
         return result;
     }
-    let mut filled = 0usize;
-    if let Some(size) = readable_payload(request as u32) {
-        if !arg.is_null() {
-            // Exactly the byte count the request itself declares — never a
-            // guess at the shape of an untyped `void *`.
-            crate::fakes::memfd::fill_region(b"ioctl", arg as *mut u8, size);
-            filled = size;
-        }
+    // Answer ONLY a request that states what it wants back. Two reasons, and
+    // the second is the load-bearing one.
+    //
+    // The payload size is what bounds the fill, so without it there is nothing
+    // safe to write. And a request with no _IOC-encoded readable payload is
+    // usually not a device query at all but a legacy terminal ioctl: `isatty`
+    // asks TCGETS (0x5401, no encoded direction) and treats success as "this is
+    // a tty". Answering that made EVERY descriptor look like a terminal, which
+    // changed stdio buffering and broke the harness's own framed protocol —
+    // measured as targets that built and then were never entered.
+    let Some(size) = readable_payload(request as u32) else {
+        return result;
+    };
+    if arg.is_null() {
+        return result;
     }
-    log_ioctl(request, filled, true);
+    // Exactly the byte count the request itself declares — never a guess at the
+    // shape of an untyped `void *`.
+    crate::fakes::memfd::fill_region(b"ioctl", arg as *mut u8, size);
+    log_ioctl(request, size, true);
     *libc::__errno_location() = 0;
     0
 }
@@ -154,5 +164,17 @@ mod tests {
         assert_eq!(readable_payload(ioc(1, 64)), None, "write-only direction");
         assert_eq!(readable_payload(ioc(0, 64)), None, "no direction");
         assert_eq!(readable_payload(ioc(IOC_READ, 0)), None, "no size");
+    }
+
+    #[test]
+    fn a_legacy_terminal_ioctl_is_never_answered() {
+        // TCGETS is 0x5401: a legacy number with no _IOC-encoded direction, so
+        // it declares no readable payload. `isatty` asks it and reads success as
+        // "this is a tty"; answering it made every descriptor look like a
+        // terminal, changed stdio buffering, and broke the harness's framed
+        // protocol — targets built and were then never entered.
+        assert_eq!(readable_payload(0x5401), None);
+        assert_eq!(readable_payload(0x5402), None, "TCSETS");
+        assert_eq!(readable_payload(0x5413), None, "TIOCGWINSZ");
     }
 }

@@ -189,16 +189,13 @@ pub const MANIFEST: &[ManifestEntry] = &[
     ManifestEntry::gated(
         "determinism",
         &[
-            b"time\0",
-            b"clock_gettime\0",
-            b"gettimeofday\0",
             b"rand\0",
             b"srand\0",
             b"random\0",
             b"getrandom\0",
         ],
         "GOVFUZZ_FAKE_DETERMINISM",
-        "fixed clock and deterministic randomness so a saved input replays identically",
+        "deterministic randomness so a saved input replays identically",
     ),
     ManifestEntry::always_on(
         "ioctl",

@@ -104,6 +104,34 @@ static inline char *gf_c_string(gf_cursor *c, size_t max) {
     return out;
 }
 
+/* Like gf_c_string, but the ALLOCATION is a fixed `cap` rather than a
+ * fuzzer-chosen length.
+ *
+ * A WRITABLE `char *` parameter is an output (or in-out) buffer: the callee may
+ * write into it, and the capacity it requires is stated only at the call site,
+ * never in the signature. Sizing the allocation from the input therefore makes
+ * any write into it a guaranteed heap overflow reported against the target.
+ * Measured on libexpat's `getXMLCharset(const char *buf, char *charset)`, which
+ * does `strcpy(charset, "us-ascii")` and whose only real caller declares
+ * `char buf[CHARSET_MAX]`: a 1-byte fuzzer-chosen allocation made ASan fire on
+ * correct library code.
+ *
+ * The CONTENT is still fuzz-driven — up to `cap` input bytes are copied — so an
+ * in-out or plain input use loses nothing. Caller frees with free(). */
+static inline char *gf_c_string_out(gf_cursor *c, size_t cap) {
+    size_t avail;
+    size_t want;
+    char *out;
+    out = (char *)malloc(cap + 1);
+    if (!out) return NULL;
+    memset(out, 0, cap + 1);
+    avail = gf_remaining(c);
+    want = avail < cap ? avail : cap;
+    if (want > 0) memcpy(out, c->data + c->pos, want);
+    c->pos += want;
+    return out;
+}
+
 /* Like gf_c_string, but NEUTRALISES printf-style format specifiers by replacing
  * every '%' with a space. A variadic format function (log.c's
  * `log_log(..., const char *fmt, ...)`) takes a format string, but the harness

@@ -955,9 +955,16 @@ fn legacy_select_c_decoder(c_type: &str, name: &str) -> Option<CParamEmission> {
             c_type: "const char *".to_owned(),
             free: Some(format!("free({name})")),
         }),
+        // A WRITABLE `char *` is an output/in-out buffer. Its required capacity
+        // is stated at the call site, never in the signature, so sizing the
+        // ALLOCATION from the input turns any write by the callee into a
+        // guaranteed heap overflow attributed to the target — measured on
+        // libexpat's `getXMLCharset(const char *, char *charset)`, which
+        // `strcpy`s 9 bytes into whatever it is given. Fixed capacity, still
+        // fuzz-filled.
         "char *" | "char*" => Some(CParamEmission {
             support: None,
-            decl: format!("char *{name} = gf_c_string(&Cur, 4096)"),
+            decl: format!("char *{name} = gf_c_string_out(&Cur, 4096)"),
             arg: name.to_owned(),
             c_type: "char *".to_owned(),
             free: Some(format!("free({name})")),
@@ -1095,7 +1102,16 @@ fn emit_top_level_value(
             Ok(name.to_owned())
         }
         TypeShape::CString => {
-            ctx.push(format!("char *{name} = gf_c_string(&Cur, 4096)"));
+            // A WRITABLE `char *` is an output/in-out buffer whose required
+            // capacity lives at the call site, not in the signature, so its
+            // ALLOCATION must not be fuzzer-sized — see `gf_c_string_out`. A
+            // `const char *` is input-only and keeps the length-driven decode.
+            let decoder = if is_const_pointee(c_type) {
+                "gf_c_string"
+            } else {
+                "gf_c_string_out"
+            };
+            ctx.push(format!("char *{name} = {decoder}(&Cur, 4096)"));
             ctx.cleanups.push(format!("free({name})"));
             Ok(name.to_owned())
         }
@@ -1138,6 +1154,32 @@ fn emit_top_level_value(
             "opaque type '{raw}' for parameter '{name}' needs lifecycle support (Phase C)"
         ))),
     }
+}
+
+/// Whether `raw` resolves to a record with a function-pointer member, directly
+/// or through a nested record or array.
+///
+/// Such a record cannot be fabricated from fuzz bytes: the callee dispatches
+/// through the member and lands on a fuzzer-chosen address, which is a harness
+/// defect reported as a target crash.
+fn record_contains_function_pointer(registry: &TypeRegistry, raw: &str) -> bool {
+    fn walk(shape: &TypeShape, seen: &mut HashSet<String>) -> bool {
+        match shape {
+            TypeShape::FuncPtr => true,
+            TypeShape::Array { elem, .. } => walk(elem, seen),
+            // A pointer FIELD is left NULL or separately decoded rather than
+            // being read out of the fuzz bytes, so it is not itself a dispatch
+            // hazard unless it is a function pointer (handled above).
+            TypeShape::Struct { name, fields } | TypeShape::Union { name, fields } => {
+                if !name.is_empty() && !seen.insert(name.clone()) {
+                    return false;
+                }
+                fields.iter().any(|field| walk(&field.shape, seen))
+            }
+            _ => false,
+        }
+    }
+    walk(&registry.resolve(raw), &mut HashSet::new())
 }
 
 fn emit_top_level_pointer(
@@ -1347,7 +1389,20 @@ fn emit_top_level_pointer(
             // being skipped. The const-pointee gate keeps mutable handle pointers
             // — which the callee may write through, and which are not the input —
             // out of this path; a lifecycle pair (checked above) handles those.
+            // ...but only for a PLAIN-DATA record. A struct carrying function
+            // pointers (libexpat's `struct encoding`, whose `SCANNER scanners[]`
+            // members are called through) is not a wire format: pointing it at
+            // fuzz bytes makes the callee call a fuzzer-chosen address, so every
+            // resulting crash is manufactured by the harness. Measured on expat,
+            // where `(const ENCODING *)Data` produced ASan reports against a
+            // library OSS-Fuzz has fuzzed for years.
             if raw != "void" && is_const_pointee(c_type) {
+                if record_contains_function_pointer(ctx.registry, raw) {
+                    return Err(CDecoderError::new(format!(
+                        "opaque type '{raw}' for pointer parameter '{name}' holds function \
+                         pointers; backing it with fuzz bytes would call a fuzzer-chosen address"
+                    )));
+                }
                 ctx.push(format!("{c_type} {name} = ({c_type})Data"));
                 return Ok(name.to_owned());
             }
@@ -3083,6 +3138,79 @@ mod tests {
         let reg = registry("struct unrelated { int x; };");
         let e = select_c_decoder_with_registry("const widget_t *", "msg", &reg)
             .expect("const opaque pointer should overlay the fuzz input");
+        assert!(
+            e.decl.contains("(const widget_t *)Data"),
+            "expected byte overlay of the input, got: {}",
+            e.decl
+        );
+    }
+
+    #[test]
+    fn a_writable_char_buffer_gets_a_fixed_capacity_not_a_fuzzer_chosen_one() {
+        // libexpat's `getXMLCharset(const char *buf, char *charset)` does
+        // `strcpy(charset, "us-ascii")`; its only real caller passes
+        // `char buf[CHARSET_MAX]`. A fuzzer-chosen allocation for `charset` can
+        // be 1 byte, so ASan fires on correct library code.
+        let reg = registry("struct unrelated { int x; };");
+        let out = select_c_decoder_with_registry("char *", "charset", &reg)
+            .expect("a writable char buffer should decode");
+        assert!(
+            out.decl.contains("gf_c_string_out(&Cur, 4096)"),
+            "an output buffer needs a FIXED capacity, got: {}",
+            out.decl
+        );
+
+        // The input-only case must keep its length-driven decode.
+        let input = select_c_decoder_with_registry("const char *", "buf", &reg)
+            .expect("a const char buffer should decode");
+        assert!(
+            input.decl.contains("gf_c_string(&Cur, 4096)")
+                && !input.decl.contains("gf_c_string_out"),
+            "a const input string must keep the length-driven decode, got: {}",
+            input.decl
+        );
+    }
+
+    #[test]
+    fn const_pointer_to_a_record_of_function_pointers_is_refused() {
+        // libexpat's `const ENCODING *`: `struct encoding` is a dispatch vtable
+        // whose `SCANNER scanners[]` members are CALLED. Overlaying fuzz bytes
+        // makes the callee jump to a fuzzer-chosen address, so every crash is
+        // manufactured — measured as ASan reports against expat, a library
+        // OSS-Fuzz has fuzzed for years. Refusing the parameter is correct.
+        let reg = registry(
+            "typedef int(*SCANNER)(const char *); \
+             struct encoding { SCANNER scanners[2]; int minBytesPerChar; }; \
+             typedef struct encoding ENCODING;",
+        );
+        assert!(
+            record_contains_function_pointer(&reg, "ENCODING"),
+            "a record whose members are called through must be recognised"
+        );
+        // When the definition IS visible the decoder builds the struct and
+        // installs trampolines, which is safe. What must never happen is the
+        // raw-byte overlay, whichever path is taken.
+        let e = select_c_decoder_with_registry("const ENCODING *", "enc", &reg)
+            .expect("a visible vtable record is constructible via trampolines");
+        assert!(
+            !e.decl.contains(")Data"),
+            "a vtable-shaped record must never be overlaid on fuzz input, got: {}",
+            e.decl
+        );
+        assert!(
+            e.support.is_some_and(|s| s.contains("trampoline")),
+            "its function-pointer members must be given real trampolines"
+        );
+    }
+
+    #[test]
+    fn a_plain_data_record_is_not_mistaken_for_a_vtable() {
+        // The guard must not cost the genuine wire-format case. A POD packet
+        // header has no dispatch members, so an opaque one stays overlaid.
+        let reg = registry("struct pkt_hdr { unsigned char ver; unsigned short len; };");
+        assert!(!record_contains_function_pointer(&reg, "struct pkt_hdr"));
+        let e = select_c_decoder_with_registry("const widget_t *", "msg", &reg)
+            .expect("an opaque plain-data pointer should still overlay the fuzz input");
         assert!(
             e.decl.contains("(const widget_t *)Data"),
             "expected byte overlay of the input, got: {}",

@@ -476,6 +476,21 @@ fn build_param_decoders(
             pair_consumed = true;
             continue;
         }
+        // Two adjacent pointers that BRACKET one buffer (`const char *ptr,
+        // const char *end`). Expat's scanners and `matchkey(start, end, key)`
+        // walk `for (; start != end; start++)`. Decoding them as two independent
+        // allocations makes that walk run off one heap block toward an unrelated
+        // address, which ASan reports as a heap-buffer-overflow in correct
+        // library code — measured as false findings on libexpat. Bind both ends
+        // to the same libFuzzer span.
+        if i + 1 < params.len() && is_begin_end_pointer_pair(&params[i], &params[i + 1]) {
+            let (begin_decl, end_decl) = pair_begin_end_span(&params[i], &params[i + 1]);
+            out.push(begin_decl);
+            out.push(end_decl);
+            i += 2;
+            pair_consumed = true;
+            continue;
+        }
         if i + 1 < params.len()
             && is_output_buffer_param(&params[i].c_type, registry)
             && is_length_pointer_param(&params[i + 1].c_type)
@@ -1615,6 +1630,72 @@ fn pair_input_buffer_length_pointer(
         }
     };
     (buf_emission, len_emission)
+}
+
+/// Whether two adjacent parameters are the `[begin, end)` bounds of ONE buffer.
+///
+/// Requires identical const byte-pointer spellings — a pair that brackets a
+/// buffer is always the same type at both ends — plus an end-sentinel name on
+/// the second. Name evidence is required because `(const char *a, const char *b)`
+/// is just as often two unrelated strings (`strcmp`).
+fn is_begin_end_pointer_pair(begin: &CParameter, end: &CParameter) -> bool {
+    let begin_type = emit_c_type(&begin.c_type);
+    let end_type = emit_c_type(&end.c_type);
+    if begin_type != end_type || !is_const_byte_pointer_spelling(&begin_type) {
+        return false;
+    }
+    let end_name = end.name.trim().to_ascii_lowercase();
+    let is_end_sentinel = matches!(
+        end_name.as_str(),
+        "end" | "endptr" | "end_ptr" | "e" | "limit" | "last" | "stop" | "tail" | "finish"
+    ) || end_name.ends_with("_end")
+        || end_name.ends_with("end");
+    let begin_name = begin.name.trim().to_ascii_lowercase();
+    let is_begin = matches!(
+        begin_name.as_str(),
+        "ptr" | "p" | "s" | "start" | "begin" | "buf" | "buffer" | "data" | "cur" | "first"
+    ) || begin_name.ends_with("_start")
+        || begin_name.ends_with("_begin")
+        || begin_name.ends_with("ptr");
+    is_end_sentinel && is_begin
+}
+
+/// `const char *` / `const unsigned char *` / `const uint8_t *` and friends.
+fn is_const_byte_pointer_spelling(spelling: &str) -> bool {
+    let normalized = spelling.split_whitespace().collect::<Vec<_>>().join(" ");
+    matches!(
+        normalized.as_str(),
+        "const char *"
+            | "const unsigned char *"
+            | "const signed char *"
+            | "const uint8_t *"
+            | "const int8_t *"
+            | "const void *"
+    )
+}
+
+/// Bind both ends of a `[begin, end)` pair to the single libFuzzer span, so the
+/// callee's walk stays inside one live allocation.
+fn pair_begin_end_span(begin: &CParameter, end: &CParameter) -> (CParamEmission, CParamEmission) {
+    let ty = emit_c_type(&begin.c_type);
+    let begin_name = &begin.name;
+    let end_name = &end.name;
+    (
+        CParamEmission {
+            support: None,
+            decl: format!("{ty} {begin_name} = ({ty})Data"),
+            arg: begin_name.clone(),
+            c_type: ty.clone(),
+            free: None,
+        },
+        CParamEmission {
+            support: None,
+            decl: format!("{ty} {end_name} = ({ty})Data + Size"),
+            arg: end_name.clone(),
+            c_type: ty,
+            free: None,
+        },
+    )
 }
 
 fn pair_output_buffer_length(
@@ -3477,6 +3558,67 @@ mod tests {
         assert!(
             !main.contains("free(value)"),
             "pair-detected buffer borrows Data; no free()",
+        );
+    }
+
+    #[test]
+    fn begin_end_pointer_pair_brackets_one_span() {
+        // libexpat's `matchkey(const char *start, const char *end, const char *key)`
+        // walks `for (; start != end; start++)`. Two independent allocations make
+        // that walk leave one heap block toward an unrelated address, which ASan
+        // reports as a heap-buffer-overflow in correct library code.
+        let out = temp_dir("emit-begin-end");
+        let args = GenerateCDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            lifecycle: Vec::new(),
+            drive_plan: None,
+            harness_id: "H-C005".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/xmlmime.c"),
+            target: cfunction("matchkey"),
+            params: vec![
+                CParameter {
+                    name: "start".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParameter {
+                    name: "end".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParameter {
+                    name: "key".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            target_includes: Vec::new(),
+            target_includes_dirs: Vec::new(),
+            target_sources: vec![PathBuf::from("/tmp/xmlmime.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: false,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: Vec::new(),
+            result_cleanup: None,
+        };
+
+        let main = fs::read_to_string(&generate_c_direct_harness(args).unwrap().main_c).unwrap();
+        assert!(
+            main.contains("const char * start = (const char *)Data"),
+            "the begin pointer must borrow the span, got:\n{main}"
+        );
+        assert!(
+            main.contains("const char * end = (const char *)Data + Size"),
+            "the end pointer must be the SAME span's end, got:\n{main}"
+        );
+        assert!(
+            !main.contains("free(start)") && !main.contains("free(end)"),
+            "a bracketing pair borrows Data; no free()"
+        );
+        // The unrelated third string is still decoded independently.
+        assert!(
+            main.contains("key = gf_c_string(&Cur"),
+            "an unpaired string must keep its own decoder, got:\n{main}"
         );
     }
 

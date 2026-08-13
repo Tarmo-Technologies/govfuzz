@@ -315,6 +315,9 @@ struct CSequenceTemplateContext {
     op_ctrl_len: usize,
     /// Typed slots carrying an op's return value to a later op's argument.
     thread_slots: Vec<CThreadSlot>,
+    /// True when some op returns a NEW handle derived from the live one, so the
+    /// harness keeps a derived slot and can drive ops against it.
+    derives_handle: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     end_step: Option<CSequenceStepEmission>,
 }
@@ -330,6 +333,14 @@ struct CSequenceStepEmission {
     /// Slot this op's return value is stored into, when some other op consumes
     /// that type as an argument.
     produces_slot: Option<String>,
+    /// True when this op returns a NEW handle derived from the live one.
+    produces_derived_handle: bool,
+    /// Expression for the object this op is called ON. `&_gf_handle` unless the
+    /// harness has a derived object to choose between.
+    receiver: String,
+    /// Name of the per-call byte that chooses the receiver, when there is a
+    /// choice to make.
+    receiver_selector: Option<String>,
     /// True when this step's return is a 0==success status int (#12). Used on the
     /// init step to guard the op-loop + teardown on the constructor succeeding.
     is_status_return: bool,
@@ -2160,6 +2171,16 @@ fn build_c_sequence_context(
     let thread_slots = thread_slots_for(&op_steps, &args.op_steps);
     apply_result_threading(&mut op_steps, &args.op_steps, &thread_slots);
 
+    // Derived objects. An op can take the live handle and return a NEW one
+    // derived from it — libexpat's
+    // `XML_ExternalEntityParserCreate(parentParser, ...)` builds a child parser
+    // from a still-live parent, and driving that child is worth more measured
+    // coverage on expat than any other single technique. Without it the harness
+    // only ever drives the one object it constructed, and the entire subsystem
+    // reachable through a derived object is unreachable.
+    let handle_pointer = format!("{} *", emit_c_type(&args.handle_type));
+    let derives_handle = mark_derived_handle_producers(&mut op_steps, &handle_pointer);
+
     Ok(CSequenceTemplateContext {
         harness_id: args.harness_id.clone(),
         target_includes: args.target_includes.clone(),
@@ -2187,6 +2208,7 @@ fn build_c_sequence_context(
         op_max_steps: MAX_SEQUENCE_STEPS,
         op_ctrl_len: 1 + MAX_SEQUENCE_STEPS * 5,
         thread_slots,
+        derives_handle,
         op_steps,
         end_step,
     })
@@ -2232,6 +2254,44 @@ fn split_c_compile_context(flags: &[String]) -> (Vec<String>, String, bool, Stri
         provenance,
         dropped,
     )
+}
+
+/// Mark ops that return a NEW handle derived from the live one, and give every
+/// op a receiver expression that can select the derived object.
+///
+/// libexpat's `XML_ExternalEntityParserCreate(parentParser, ...)` is the shape:
+/// a child built from a still-live parent, whose own subsystem is reachable no
+/// other way. Measured on expat, driving derived parsers was worth +594 library
+/// lines — more than any other single technique in the ablation.
+///
+/// The receiver is chosen per call from one input byte and only while a derived
+/// object exists, so an unproductive prefix behaves exactly as before.
+fn mark_derived_handle_producers(
+    op_steps: &mut [CSequenceStepEmission],
+    handle_pointer: &str,
+) -> bool {
+    let normalized = handle_pointer
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut any = false;
+    for step in op_steps.iter_mut() {
+        let produced = emit_c_type(step.return_type.trim());
+        let produced = produced.split_whitespace().collect::<Vec<_>>().join(" ");
+        if step.return_type_present && produced == normalized {
+            step.produces_derived_handle = true;
+            any = true;
+        }
+    }
+    if any {
+        for (index, step) in op_steps.iter_mut().enumerate() {
+            step.receiver = format!(
+                "((_gf_derived_live && (_gf_recv{index} & 1)) ? _gf_derived : &_gf_handle)"
+            );
+            step.receiver_selector = Some(format!("_gf_recv{index}"));
+        }
+    }
+    any
 }
 
 /// A typed slot carrying an op's return value to a later op's argument.
@@ -2433,6 +2493,9 @@ fn build_c_sequence_step_emission(
         is_status_return,
         role: step.role,
         produces_slot: None,
+        produces_derived_handle: false,
+        receiver: "&_gf_handle".to_owned(),
+        receiver_selector: None,
         result_name: result_name.to_owned(),
     })
 }
@@ -6101,6 +6164,96 @@ mod tests {
         assert!(
             dead_break < close_pos,
             "the loop must break BEFORE teardown, which is still owed: {main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn an_op_returning_a_child_handle_lets_later_ops_drive_the_child() {
+        // libexpat's `XML_ExternalEntityParserCreate(parentParser, ...)` builds a
+        // child parser from a STILL-LIVE parent, and the DTD/entity subsystem is
+        // reachable only through that child. In the ablation this was worth +594
+        // library lines on expat — more than any other single technique — and
+        // without it the harness only ever drives the object it constructed.
+        let out = temp_dir("seq-derived");
+        let header_source = r#"
+            typedef struct parser { int depth; } parser;
+            int parser_init(parser *p);
+            int parser_feed(parser *p, unsigned byte);
+            parser *parser_child(parser *p, unsigned kind);
+            int parser_free(parser *p);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let arg = |name: &str| CParameter {
+            name: name.to_owned(),
+            c_type: "unsigned".to_owned(),
+        };
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-PARSER".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/parser.c"),
+            target: cfunction("parser_feed"),
+            handle_type: "parser".to_owned(),
+            init_step: Some(CLifecycleStep {
+                name: "parser_init".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                CLifecycleStep {
+                    name: "parser_feed".to_owned(),
+                    params: vec![arg("byte")],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "parser_child".to_owned(),
+                    params: vec![arg("kind")],
+                    return_type: "parser *".to_owned(),
+                    role: CStepRole::Operation,
+                },
+            ],
+            end_step: Some(CLifecycleStep {
+                name: "parser_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["parser.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/parser.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        assert!(
+            main.contains("parser *_gf_derived = 0;") && main.contains("int _gf_derived_live = 0;"),
+            "a derived slot must exist:\n{main}"
+        );
+        // The producer stores the child — but only a non-NULL one, since the
+        // API is entitled to decline and driving NULL would be our own bug.
+        assert!(
+            main.contains("_gf_derived = _gf_step1_result;")
+                && main.contains("_gf_derived_live = 1;"),
+            "the child must be captured:\n{main}"
+        );
+        assert!(
+            main.contains("if (_gf_step1_result) {"),
+            "a NULL child must not be captured:\n{main}"
+        );
+        // ...and later ops can be driven against it instead of the parent.
+        assert!(
+            main.contains("? _gf_derived : &_gf_handle"),
+            "ops must be able to run on the child:\n{main}"
+        );
+        assert!(
+            main.contains("parser_feed(((_gf_derived_live"),
+            "the target op itself must reach the child:\n{main}"
         );
         let _ = fs::remove_dir_all(&out);
     }

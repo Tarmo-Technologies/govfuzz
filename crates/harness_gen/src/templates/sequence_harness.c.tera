@@ -147,6 +147,14 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * entitled to crash, so a crash there would be manufactured here rather
      * than found in the library. */
     int _gf_handle_live = 1;
+{%- if derives_handle %}
+    /* A derived object: an op can take the live handle and return a NEW one
+     * built from it (libexpat's `XML_ExternalEntityParserCreate(parent, ...)`).
+     * The subsystem reachable through a child is reachable no other way, so ops
+     * may be driven against it once one exists. */
+    {{ handle_type }} *_gf_derived = 0;
+    int _gf_derived_live = 0;
+{%- endif %}
 {%- for slot in thread_slots %}
     /* Result threading: an op's return value becomes an argument a later op can
      * take, so sequences like `id = add(x); remove(id); get(id)` are reachable.
@@ -165,13 +173,16 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- else %}
             if (!_gf_handle_live) { break; }
 {%- endif %}
+{%- if step.receiver_selector %}
+            int {{ step.receiver_selector }} = (int)gf_u8(&Cur);
+{%- endif %}
 {%- for p in step.params %}
             {{ p.decl }};
 {%- endfor %}
 {%- if loop.first %}
             GOVFUZZ_TARGET_ENTER();
 {%- endif %}
-            {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}(&_gf_handle{% for p in step.params %}, {{ p.arg }}{% endfor %});
+            {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}({{ step.receiver }}{% for p in step.params %}, {{ p.arg }}{% endfor %});
 {%- if step.return_type_present %}
             GOVFUZZ_KEEP_RESULT({{ step.result_name }});
 {%- endif %}
@@ -183,6 +194,12 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- if step.produces_slot %}
             _gf_slot_{{ step.produces_slot }} = {{ step.result_name }};
             _gf_slot_{{ step.produces_slot }}_live = 1;
+{%- endif %}
+{%- if step.produces_derived_handle %}
+            if ({{ step.result_name }}) {
+                _gf_derived = {{ step.result_name }};
+                _gf_derived_live = 1;
+            }
 {%- endif %}
 {%- if step.role == "close" %}
             _gf_handle_live = 0;
@@ -210,6 +227,28 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
         }
     }
 {%- if end_step %}
+{%- if derives_handle %}
+    /* Release the derived object first. It is the same type as the handle, so
+     * the handle's own teardown is its destructor — which is exactly the order
+     * libexpat's fuzzer uses, freeing each child parser before the parent.
+     * Leaving it would be a leak the HARNESS caused, and under LeakSanitizer
+     * that reads as a finding in the target. */
+    if (_gf_derived_live) {
+{%- for p in end_step.params %}
+        {{ p.decl }};
+{%- endfor %}
+        {% if end_step.return_type_present %}{{ end_step.return_type }} _gf_derived_end = {% endif %}{{ end_step.name }}(_gf_derived{% for p in end_step.params %}, {{ p.arg }}{% endfor %});
+{%- if end_step.return_type_present %}
+        GOVFUZZ_KEEP_RESULT(_gf_derived_end);
+{%- endif %}
+{%- for p in end_step.params %}
+{%- if p.free %}
+        {{ p.free }};
+{%- endif %}
+{%- endfor %}
+        _gf_derived_live = 0;
+    }
+{%- endif %}
     /* Teardown is owed only for a handle that is still OPEN. A close-verb op in
      * the loop above may already have released it, and closing twice is a
      * double-free the harness would be committing itself. */

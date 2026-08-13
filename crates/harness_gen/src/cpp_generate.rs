@@ -2939,7 +2939,13 @@ mod tests {
         assert!(makefile.contains("diff: main_diff"));
         assert!(makefile.contains("DIFF_CXX ?= clang++"));
         assert!(makefile.contains("govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)"));
-        assert!(makefile.contains("$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) -c"));
+        // The driver TU is compiled as C with the driver flags. It also needs the
+        // POSIX feature-test macros: the driver calls `mkstemp`/`ftruncate`, and a
+        // strict `-std=` from the project's compile database otherwise leaves them
+        // undeclared.
+        assert!(makefile.contains("$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS)"));
+        assert!(makefile.contains("$(FEATURE_TEST_FLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)"));
+        assert!(makefile.contains("FEATURE_TEST_FLAGS ?= -D_GNU_SOURCE -D_DEFAULT_SOURCE"));
         assert!(makefile.contains("-DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp"));
         // The afl target is declared; target sources live in the recipe, not the
         // prerequisites (an absolute Windows source path carries a drive-letter

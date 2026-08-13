@@ -152,11 +152,23 @@ fn replay_one(work_dir: &Path, hdir: &Path, harness_id: &str, profdata: &str, co
              negative-confirmation coverage is partial"
         );
     }
-    let covered = parse_lcov_covered(&export_text);
+    let (covered, instrumented) = parse_lcov(&export_text);
     let _ = std::fs::remove_dir_all(&prof_dir);
     if covered.is_empty() {
         return false;
     }
+    // The denominator, next to the covered set. `1,400 lines covered` says
+    // nothing without knowing whether the target has 2,000 or 200,000; the
+    // zero-hit `DA:` records that carry it are dropped from the covered set, so
+    // the count is recorded here, at the only place that sees them.
+    let _ = std::fs::write(
+        hdir.join("coverage-summary.json"),
+        format!(
+            "{{\n  \"harness_id\": \"{harness_id}\",\n  \"covered_lines\": {},\n  \
+             \"instrumented_lines\": {instrumented}\n}}\n",
+            covered.len()
+        ),
+    );
     std::fs::write(hdir.join("covered-lines.txt"), covered.join("\n")).is_ok()
 }
 
@@ -172,10 +184,18 @@ fn replay_command(bin: &Path) -> Command {
     }
 }
 
-/// Parse an LCOV export into `<file>:<line>` for each line with a non-zero hit count.
+/// Parse an LCOV export into the covered `<file>:<line>` set plus the number of
+/// lines INSTRUMENTED — every `DA:` record, hit or not.
+///
 /// LCOV: `SF:<file>` opens a file section, `DA:<line>,<count>` is a line record.
-fn parse_lcov_covered(lcov: &str) -> Vec<String> {
+///
+/// Without the second number a coverage figure has no denominator: "1,400 lines"
+/// is uninterpretable without knowing whether the target has 2,000 or 200,000.
+/// The zero-hit records that carry it are exactly the ones the covered set
+/// drops, so they are counted here, at the only place that sees them.
+fn parse_lcov(lcov: &str) -> (Vec<String>, usize) {
     let mut out = Vec::new();
+    let mut instrumented = 0usize;
     let mut file = String::new();
     for line in lcov.lines() {
         if line.contains("[govfuzz: subprocess output truncated]") {
@@ -187,13 +207,17 @@ fn parse_lcov_covered(lcov: &str) -> Vec<String> {
             let (Some(line_no), Some(count)) = (parts.next(), parts.next()) else {
                 continue;
             };
+            if file.is_empty() {
+                continue;
+            }
+            instrumented += 1;
             let hit = count.trim().parse::<u64>().unwrap_or(0);
-            if hit > 0 && !file.is_empty() {
+            if hit > 0 {
                 out.push(format!("{file}:{}", line_no.trim()));
             }
         }
     }
-    out
+    (out, instrumented)
 }
 
 /// Resolve an llvm tool, preferring the versioned name available in this image
@@ -220,7 +244,31 @@ end_of_record\n\
 SF:/proj/other.c\n\
 DA:1,0\n\
 end_of_record\n";
-        let covered = parse_lcov_covered(lcov);
+        let (covered, instrumented) = parse_lcov(lcov);
         assert_eq!(covered, vec!["/proj/parse.c:5", "/proj/parse.c:6"]);
+        // The denominator counts every instrumented line, including the zero-hit
+        // records the covered set drops. Without it, "2 lines covered" cannot be
+        // turned into a coverage figure.
+        assert_eq!(
+            instrumented, 4,
+            "all four DA records are instrumented lines, hit or not"
+        );
+    }
+
+    #[test]
+    fn a_wholly_unexecuted_file_still_contributes_to_the_denominator() {
+        // The pathological case the old covered-only parse hid: a target whose
+        // corpus reached nothing at all reported an empty set and no scale, so
+        // "0 lines" and "no coverage build" were indistinguishable.
+        let lcov = "\
+TN:\n\
+SF:/proj/never.c\n\
+DA:1,0\n\
+DA:2,0\n\
+DA:3,0\n\
+end_of_record\n";
+        let (covered, instrumented) = parse_lcov(lcov);
+        assert!(covered.is_empty());
+        assert_eq!(instrumented, 3);
     }
 }

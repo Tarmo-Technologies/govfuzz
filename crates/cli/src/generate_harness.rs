@@ -3519,10 +3519,34 @@ fn c_lifecycle_steps(
         );
     }
 
+    // Only the two functions actually driven as the explicit constructor and
+    // teardown leave the alphabet. Every OTHER open/close-verb sibling stays an
+    // op, gated on handle liveness in the template.
+    //
+    // Filtering all of them (the previous behaviour) cost two things. It made
+    // close/reopen and re-init-over-live-state unreachable BY CONSTRUCTION —
+    // among the highest-yield stateful bug classes. And because
+    // `is_c_lifecycle_init` counts both `new` and `open` as init verbs while
+    // only the FIRST match becomes the constructor, a library with both
+    // (libarchive's `archive_read_new` plus `archive_read_open_memory`) lost the
+    // second one entirely, so the harness could never open anything.
+    let chosen: Vec<(u32, String)> = init_step
+        .iter()
+        .chain(end_step.iter())
+        .map(|step| step.name.clone())
+        .filter_map(|name| {
+            cluster
+                .iter()
+                .find(|function| function.name == name)
+                .map(|function| (function.line, function.name.clone()))
+        })
+        .collect();
     let mut op_functions = cluster
         .into_iter()
         .filter(|function| {
-            !is_c_lifecycle_init(&function.name) && !is_c_lifecycle_end(&function.name)
+            !chosen
+                .iter()
+                .any(|(line, name)| *line == function.line && *name == function.name)
         })
         .collect::<Vec<_>>();
     if let Some(pos) = op_functions
@@ -3556,6 +3580,27 @@ fn c_lifecycle_steps(
 fn c_lifecycle_function_to_step(
     function: &c_parser::CFunction,
 ) -> harness_gen::c_generate::CLifecycleStep {
+    c_lifecycle_function_to_step_with_role(function, c_step_role_of(&function.name))
+}
+
+/// Classify an op by what it does to the handle's lifetime, from its name verbs
+/// — the same evidence `is_c_lifecycle_init` / `is_c_lifecycle_end` already use
+/// to pick the constructor and teardown.
+fn c_step_role_of(name: &str) -> harness_gen::c_generate::CStepRole {
+    use harness_gen::c_generate::CStepRole;
+    if is_c_lifecycle_end(name) {
+        CStepRole::Close
+    } else if is_c_lifecycle_init(name) {
+        CStepRole::Open
+    } else {
+        CStepRole::Operation
+    }
+}
+
+fn c_lifecycle_function_to_step_with_role(
+    function: &c_parser::CFunction,
+    role: harness_gen::c_generate::CStepRole,
+) -> harness_gen::c_generate::CLifecycleStep {
     harness_gen::c_generate::CLifecycleStep {
         name: function.name.clone(),
         params: function
@@ -3568,6 +3613,7 @@ fn c_lifecycle_function_to_step(
             })
             .collect(),
         return_type: function.return_type.clone(),
+        role,
     }
 }
 

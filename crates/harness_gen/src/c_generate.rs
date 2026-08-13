@@ -97,6 +97,30 @@ pub struct CLifecycleStep {
     pub name: String,
     pub params: Vec<CParameter>,
     pub return_type: String,
+    /// What this op does to the handle's LIFETIME. Ops that open or close the
+    /// handle used to be filtered out of the alphabet entirely, which made
+    /// close/reopen and re-init-over-live-state unreachable by construction —
+    /// two of the highest-yield stateful bug classes.
+    pub role: CStepRole,
+}
+
+/// An op's effect on handle liveness.
+///
+/// Liveness is tracked so the generated sequence can CYCLE the handle
+/// (close then reopen, the shape leveldb's own fuzzer spells as `kReopenDb`)
+/// without ever driving use-after-close. Calling an ordinary op on a closed
+/// handle is API misuse: the target is entitled to crash, so a crash there
+/// would be manufactured by the harness rather than found in the library.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CStepRole {
+    /// Ordinary operation; legal only while the handle is live.
+    #[default]
+    Operation,
+    /// Opens/initialises the handle; legal only while it is NOT live.
+    Open,
+    /// Closes/releases the handle; legal only while it is live.
+    Close,
 }
 
 #[derive(Debug, Clone)]
@@ -268,6 +292,8 @@ struct CSequenceStepEmission {
     params: Vec<CParamEmission>,
     return_type: String,
     return_type_present: bool,
+    /// Liveness role, so the op loop can gate on it (see [`CStepRole`]).
+    role: CStepRole,
     /// True when this step's return is a 0==success status int (#12). Used on the
     /// init step to guard the op-loop + teardown on the constructor succeeding.
     is_status_return: bool,
@@ -2235,6 +2261,7 @@ fn build_c_sequence_step_emission(
         },
         return_type_present,
         is_status_return,
+        role: step.role,
         result_name: result_name.to_owned(),
     })
 }
@@ -2954,6 +2981,7 @@ mod tests {
                 },
             ],
             return_type: "ssize_t".to_owned(),
+            role: CStepRole::Operation,
         };
         let emission = build_c_sequence_step_emission(
             &step,
@@ -2987,6 +3015,7 @@ mod tests {
                 c_type: "int".to_owned(),
             }],
             return_type: "int".to_owned(),
+            role: CStepRole::Operation,
         };
         let emission = build_c_sequence_step_emission(
             &step,
@@ -5848,6 +5877,7 @@ mod tests {
                     },
                 ],
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }),
             op_steps: vec![CLifecycleStep {
                 name: "mtar_read".to_owned(),
@@ -5856,11 +5886,13 @@ mod tests {
                     c_type: "unsigned".to_owned(),
                 }],
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }],
             end_step: Some(CLifecycleStep {
                 name: "mtar_close".to_owned(),
                 params: Vec::new(),
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }),
             target_includes: vec!["microtar.h".to_owned()],
             target_includes_dirs: vec![PathBuf::from("/tmp")],
@@ -5899,6 +5931,98 @@ mod tests {
             dead_break < close_pos,
             "the loop must break BEFORE teardown, which is still owed: {main}"
         );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn open_and_close_ops_cycle_the_handle_without_use_after_close() {
+        // libarchive's shape: `archive_read_new` is the constructor, but
+        // `archive_read_open_memory` is ALSO an open verb and used to be filtered
+        // out of the alphabet with it, so the harness could never open anything.
+        // Keeping it as an op — gated on liveness — reaches close/reopen and
+        // re-init-over-live-state without ever driving an ordinary op on a
+        // closed handle, which would be API misuse rather than a library bug.
+        let out = temp_dir("seq-cycle");
+        let header_source = r#"
+            typedef struct arc { void *stream; int pos; } arc;
+            int arc_new(arc *a);
+            int arc_open_memory(arc *a, unsigned size);
+            int arc_next_header(arc *a, unsigned n);
+            int arc_close(arc *a);
+            int arc_free(arc *a);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let step = |name: &str, role: CStepRole| CLifecycleStep {
+            name: name.to_owned(),
+            params: vec![CParameter {
+                name: "n".to_owned(),
+                c_type: "unsigned".to_owned(),
+            }],
+            return_type: "int".to_owned(),
+            role,
+        };
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-ARC".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/arc.c"),
+            target: cfunction("arc_next_header"),
+            handle_type: "arc".to_owned(),
+            init_step: Some(CLifecycleStep {
+                name: "arc_new".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                step("arc_next_header", CStepRole::Operation),
+                step("arc_open_memory", CStepRole::Open),
+                step("arc_close", CStepRole::Close),
+            ],
+            end_step: Some(CLifecycleStep {
+                name: "arc_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["arc.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/arc.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        // The second open verb survived into the alphabet.
+        assert!(
+            main.contains("arc_open_memory(&_gf_handle"),
+            "the sibling open verb must be an op, got:\n{main}"
+        );
+        // Ordinary and close ops require a live handle; the open op requires a
+        // closed one. Those two guards are what keep use-after-close out.
+        assert!(
+            main.contains("if (!_gf_handle_live) { break; }"),
+            "ordinary/close ops must be gated on liveness:\n{main}"
+        );
+        assert!(
+            main.contains("if (_gf_handle_live) { break; }"),
+            "an open op must be gated on the handle being closed:\n{main}"
+        );
+        // Closing clears liveness, reopening restores it — that is the cycle.
+        assert!(main.contains("_gf_handle_live = 0;"), "{main}");
+        assert!(
+            main.contains("_gf_handle_live = (_gf_step1_result == 0);"),
+            "a status-returning open revives the handle only on success:\n{main}"
+        );
+        // Teardown is owed only for a handle still open, or the harness
+        // double-frees on its own account.
+        let free_pos = main.find("arc_free(&_gf_handle").expect("teardown emitted");
+        let guard_pos = main[..free_pos]
+            .rfind("if (_gf_handle_live) {")
+            .expect("teardown must sit behind a liveness guard");
+        assert!(guard_pos < free_pos);
         let _ = fs::remove_dir_all(&out);
     }
 
@@ -5946,6 +6070,7 @@ mod tests {
                     c_type: "int".to_owned(),
                 }],
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }),
             op_steps: vec![
                 CLifecycleStep {
@@ -5955,17 +6080,20 @@ mod tests {
                         c_type: "int".to_owned(),
                     }],
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
                 CLifecycleStep {
                     name: "session_reset".to_owned(),
                     params: Vec::new(),
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
             ],
             end_step: Some(CLifecycleStep {
                 name: "session_end".to_owned(),
                 params: Vec::new(),
                 return_type: "void".to_owned(),
+                role: CStepRole::Operation,
             }),
             target_includes: vec!["session.h".to_owned()],
             target_includes_dirs: vec![work.clone()],
@@ -6048,6 +6176,7 @@ mod tests {
                     c_type: "int".to_owned(),
                 }],
                 return_type: "void".to_owned(),
+                role: CStepRole::Operation,
             }],
             end_step: None,
             target_includes: vec!["map.h".to_owned()],
@@ -6101,6 +6230,7 @@ mod tests {
                         c_type: "int".to_owned(),
                     }],
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
                 CLifecycleStep {
                     name: "session_find".to_owned(),
@@ -6109,6 +6239,7 @@ mod tests {
                         c_type: "struct hidden_state *".to_owned(),
                     }],
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
             ],
             end_step: None,

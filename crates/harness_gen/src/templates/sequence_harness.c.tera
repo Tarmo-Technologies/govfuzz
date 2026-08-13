@@ -135,10 +135,24 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * one call later. Stop driving the handle and go straight to teardown, which
      * is still owed because construction succeeded. */
     int _gf_handle_dead = 0;
+    /* Handle liveness. An op that CLOSES the handle clears it; an op that OPENS
+     * one sets it. Ordinary ops run only while live, a close only while live,
+     * and an open only while closed — so the sequence can cycle the object
+     * (close then reopen, the shape leveldb's own fuzzer spells `kReopenDb`)
+     * and re-init over live state, WITHOUT ever driving use-after-close.
+     * Calling an ordinary op on a closed handle is API misuse: the target is
+     * entitled to crash, so a crash there would be manufactured here rather
+     * than found in the library. */
+    int _gf_handle_live = 1;
     for (size_t _gf_lifecycle_index = 0; _gf_lifecycle_index < _gf_lifecycle_count; ++_gf_lifecycle_index) {
         switch (gf_bounded_i32(&Cur, 0, {{ op_step_max }})) {
 {%- for step in op_steps %}
         case {{ loop.index0 }}: {
+{%- if step.role == "open" %}
+            if (_gf_handle_live) { break; }
+{%- else %}
+            if (!_gf_handle_live) { break; }
+{%- endif %}
 {%- for p in step.params %}
             {{ p.decl }};
 {%- endfor %}
@@ -153,6 +167,16 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
             if ({{ step.result_name }} != 0) {
                 _gf_handle_dead = 1;
             }
+{%- endif %}
+{%- if step.role == "close" %}
+            _gf_handle_live = 0;
+{%- elif step.role == "open" %}
+{%- if step.is_status_return %}
+            _gf_handle_live = ({{ step.result_name }} == 0);
+            _gf_handle_dead = 0;
+{%- else %}
+            _gf_handle_live = 1;
+{%- endif %}
 {%- endif %}
 {%- for p in step.params %}
 {%- if p.free %}
@@ -170,6 +194,10 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
         }
     }
 {%- if end_step %}
+    /* Teardown is owed only for a handle that is still OPEN. A close-verb op in
+     * the loop above may already have released it, and closing twice is a
+     * double-free the harness would be committing itself. */
+    if (_gf_handle_live) {
 {%- for p in end_step.params %}
     {{ p.decl }};
 {%- endfor %}
@@ -182,6 +210,7 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     {{ p.free }};
 {%- endif %}
 {%- endfor %}
+    }
 {%- endif %}
 {%- if guard_op_loop_on_init %}
     }

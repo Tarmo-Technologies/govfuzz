@@ -3323,7 +3323,10 @@ pub(crate) fn plan_repair_forced_with_source_policy(
                     }
                 }
             }
-            if let Some(decl) = decl_index.lookup_c(name) {
+            if let Some(decl) = decl_index
+                .lookup_c(name)
+                .filter(|decl| c_stub_gen::is_emittable_c_return_type(&decl.return_type))
+            {
                 Some(Repair::StubDeclared {
                     symbol: name.clone(),
                     return_type: decl.return_type.clone(),
@@ -5596,6 +5599,34 @@ mod tests {
         assert!(forced.starts_with("#include \""), "{forced}");
         assert!(forced.contains("bzlib.h"), "{forced}");
         assert!(!forced.contains("typedef struct bz_stream"), "{forced}");
+    }
+
+    #[test]
+    fn an_unparseable_return_type_is_never_emitted_into_the_shared_stub_tu() {
+        // libexpat's `XmlGetUtf8InternalEncodingNS` is declared through macros and
+        // parses to the fragment `const *`. Emitting
+        // `__attribute__((weak)) const * f(void)` makes auto_stubs.c uncompilable,
+        // and the recovery for that is to drop the WHOLE file — taking down every
+        // other stub in it, including the one the link was waiting on.
+        for bad in ["const *", "*", "const", "", "  ", "const * *"] {
+            assert!(
+                !c_stub_gen::is_emittable_c_return_type(bad),
+                "{bad:?} does not name a type and must not be emitted"
+            );
+        }
+        for good in [
+            "void",
+            "int",
+            "const ENCODING *",
+            "unsigned long",
+            "struct foo *",
+            "uint8_t",
+        ] {
+            assert!(
+                c_stub_gen::is_emittable_c_return_type(good),
+                "{good:?} is a real type and must still be stubbed"
+            );
+        }
     }
 
     #[test]

@@ -698,9 +698,42 @@ pub fn synth_c_forward_declaration<D: DeclarationView>(decl: &D) -> Option<Strin
     render_c_declaration(decl, &rt)
 }
 
+/// Whether a parsed return type is a spelling that can actually be EMITTED.
+///
+/// A macro-mangled declaration can leave the base type behind and yield a
+/// qualifier-and-punctuation fragment — libexpat's
+/// `XmlGetUtf8InternalEncodingNS` parses to `const *`. Emitting that produces
+/// `extern const * f(void);` (or a `const *`-returning stub body), which the
+/// compiler reports as implicit-int plus a conflicting redeclaration. Worse, a
+/// single such line makes the SHARED stubs/includes file uncompilable, and the
+/// recovery for that is to drop the whole file — taking down every other stub in
+/// it, including the one the link was actually waiting on.
+///
+/// Declining here lets the caller fall through to a path that knows the real
+/// type (the C++ declaration index) or to a blind stub.
+pub fn is_emittable_c_return_type(return_type: &str) -> bool {
+    let stripped = return_type
+        .split_whitespace()
+        .filter(|word| {
+            !matches!(
+                *word,
+                "const" | "volatile" | "restrict" | "static" | "extern"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    // Whatever survives must still NAME a type, not just pointer/array punctuation.
+    stripped
+        .chars()
+        .any(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 fn render_c_declaration<D: DeclarationView>(decl: &D, rt: &str) -> Option<String> {
     let name = decl.name().trim();
     if name.is_empty() {
+        return None;
+    }
+    if !is_emittable_c_return_type(rt) {
         return None;
     }
     let mut params = named_param_list(decl.param_types());

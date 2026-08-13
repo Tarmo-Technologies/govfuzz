@@ -681,6 +681,30 @@ fn macro_definition_body_lines(source: &str) -> std::collections::HashSet<u32> {
     lines
 }
 
+/// Temper a signature-derived reachability verdict with the target's LINKAGE.
+///
+/// `classify_input_reachability` reads parameter shapes and names, so a
+/// file-local helper taking `const char *` looks exactly like a public parser
+/// and is labelled `AttackerReachable`. It is not: a `static` function has no
+/// external linkage, so nothing outside its translation unit can call it and no
+/// attacker can reach it directly. It may still be reachable THROUGH a public
+/// caller, which is precisely `ReachabilityUnproven`.
+///
+/// This changes only the claim, never the ranking — an internal helper is still
+/// worth fuzzing. Measured on libexpat, where the file-local `matchkey`,
+/// `xcslen` and `attlist2` were each reported `critical` and
+/// `attacker_reachable`, having been driven directly by the harness with
+/// fabricated arguments no public caller would pass.
+fn reachability_for_linkage(
+    reachability: target_rank::InputReachability,
+    is_static: bool,
+) -> target_rank::InputReachability {
+    if is_static && reachability == target_rank::InputReachability::AttackerReachable {
+        return target_rank::InputReachability::ReachabilityUnproven;
+    }
+    reachability
+}
+
 pub fn discover(root: &Path) -> Result<Vec<Candidate>> {
     discover_with_dir_filter(root, &DirFilter::default())
 }
@@ -2004,7 +2028,10 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     score: tgt.score,
                     is_static,
                     foreign_guard,
-                    input_reachability: Some(tgt.input_reachability),
+                    input_reachability: Some(reachability_for_linkage(
+                        tgt.input_reachability,
+                        is_static,
+                    )),
                     dialect,
                 });
             }
@@ -2102,7 +2129,10 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     },
                     is_static,
                     foreign_guard,
-                    input_reachability: Some(tgt.input_reachability),
+                    input_reachability: Some(reachability_for_linkage(
+                        tgt.input_reachability,
+                        is_static,
+                    )),
                     dialect,
                 });
             }
@@ -3443,6 +3473,35 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+
+    #[test]
+    fn a_file_local_helper_is_never_claimed_attacker_reachable() {
+        use target_rank::InputReachability as R;
+        // libexpat's `matchkey(const char *start, const char *end, const char *key)`
+        // is `static`. Its parameter shapes read as a parser, so the signature
+        // classifier says AttackerReachable — but nothing outside the TU can call
+        // it, so a crash the harness drove directly is not attacker-reachable.
+        assert_eq!(
+            reachability_for_linkage(R::AttackerReachable, true),
+            R::ReachabilityUnproven,
+            "a static helper must not claim attacker reachability"
+        );
+        // External linkage keeps the signature verdict.
+        assert_eq!(
+            reachability_for_linkage(R::AttackerReachable, false),
+            R::AttackerReachable
+        );
+        // Other verdicts are untouched in both directions — this tempers the
+        // positive claim only, it does not invent one.
+        for verdict in [
+            R::ReachabilityUnproven,
+            R::OutputSerializer,
+            R::IpcChannelReachable,
+        ] {
+            assert_eq!(reachability_for_linkage(verdict, true), verdict);
+            assert_eq!(reachability_for_linkage(verdict, false), verdict);
+        }
+    }
 
     #[test]
     fn cpp_windows_framework_guard_flags_mfc_atl_but_not_bare_windows_h() {

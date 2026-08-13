@@ -5885,6 +5885,20 @@ mod tests {
             guard < close_pos,
             "teardown must be inside the success guard: {main}"
         );
+        // A status-returning op that fails leaves the object in an unspecified
+        // state. Driving on explores garbage and manufactures crashes — the same
+        // failure the constructor guard prevents, one call later.
+        assert!(
+            main.contains("if (_gf_step0_result != 0) {") && main.contains("_gf_handle_dead = 1;"),
+            "a failed status-returning op must mark the handle dead: {main}"
+        );
+        let dead_break = main
+            .find("if (_gf_handle_dead) {")
+            .expect("the op loop must stop once the handle is dead");
+        assert!(
+            dead_break < close_pos,
+            "the loop must break BEFORE teardown, which is still owed: {main}"
+        );
         let _ = fs::remove_dir_all(&out);
     }
 

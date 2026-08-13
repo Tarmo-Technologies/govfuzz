@@ -128,6 +128,13 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     if ({{ init_step.result_name }} == 0) {
 {%- endif %}
     size_t _gf_lifecycle_count = (size_t)gf_bounded_i32(&Cur, 0, 16);
+    /* A status-returning op that FAILS leaves the object in an unspecified
+     * state; the target's own contract does not promise the next call is legal.
+     * Driving on regardless explores garbage state and produces harness-artifact
+     * crashes — the same failure the constructor guard above exists to prevent,
+     * one call later. Stop driving the handle and go straight to teardown, which
+     * is still owed because construction succeeded. */
+    int _gf_handle_dead = 0;
     for (size_t _gf_lifecycle_index = 0; _gf_lifecycle_index < _gf_lifecycle_count; ++_gf_lifecycle_index) {
         switch (gf_bounded_i32(&Cur, 0, {{ op_step_max }})) {
 {%- for step in op_steps %}
@@ -142,6 +149,11 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- if step.return_type_present %}
             GOVFUZZ_KEEP_RESULT({{ step.result_name }});
 {%- endif %}
+{%- if step.is_status_return %}
+            if ({{ step.result_name }} != 0) {
+                _gf_handle_dead = 1;
+            }
+{%- endif %}
 {%- for p in step.params %}
 {%- if p.free %}
             {{ p.free }};
@@ -151,6 +163,9 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
         }
 {%- endfor %}
         default:
+            break;
+        }
+        if (_gf_handle_dead) {
             break;
         }
     }

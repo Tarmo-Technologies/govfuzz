@@ -101,6 +101,75 @@ fn auto_builds_fuzzes_and_finds_index_oob_cwe125() {
     let _ = std::fs::remove_dir_all(&work);
 }
 
+/// The Go lane advertises "real edge coverage" of the TARGET. `go build -cover`
+/// instruments only the packages being built, which is just the generated
+/// harness `main` — the target module arrives as a dependency through the
+/// module `replace`, so without `-coverpkg` the lane measures the harness
+/// fuzzing itself and reports it as target coverage.
+#[test]
+fn go_coverage_instruments_the_target_module_not_just_the_harness() {
+    if !have_go() {
+        eprintln!("skipping: no go toolchain on PATH (GNAT-less rule)");
+        return;
+    }
+    let src = std::env::temp_dir().join(format!("gf_golane_cov_s_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&src);
+    copy_dir(&fixture(), &src).expect("copy go fixture module");
+    let work = std::env::temp_dir().join(format!("gf_golane_cov_w_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&work);
+
+    let out = Command::new(govfuzz_bin())
+        .args([
+            "auto",
+            "--per-target-time",
+            "5",
+            "--max-targets",
+            "1",
+            "--single-pass",
+            "--work-dir",
+            work.to_str().unwrap(),
+            src.to_str().unwrap(),
+        ])
+        .output()
+        .expect("run govfuzz auto");
+    assert!(
+        out.status.success(),
+        "govfuzz auto exited non-zero: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // Go embeds one coverage-meta entry per instrumented source file. The
+    // fixture module's own files must be there; if only the harness were
+    // instrumented, none would be.
+    let mut binaries = Vec::new();
+    for entry in std::fs::read_dir(work.join("harnesses")).expect("harnesses dir") {
+        let bin = entry.expect("harness entry").path().join("main");
+        if bin.is_file() {
+            binaries.push(std::fs::read(&bin).expect("read harness binary"));
+        }
+    }
+    assert!(
+        !binaries.is_empty(),
+        "no built Go harness binary to inspect"
+    );
+    // The coverage metadata spells each instrumented file as a STANDALONE
+    // NUL-delimited string `<import path>/<file>.go`. The bare import path
+    // appears in any build (it is the package reference), so the file-suffixed
+    // form is what distinguishes instrumented from merely linked.
+    let instrumented = binaries.iter().any(|bytes| {
+        let needle = b"govfuzz.example/recordlib/recordparser/parser.go";
+        bytes.windows(needle.len()).any(|window| window == needle)
+    });
+    assert!(
+        instrumented,
+        "the target module's files are absent from the coverage metadata, so \
+         -coverpkg did not reach it and the lane is measuring only the harness"
+    );
+
+    let _ = std::fs::remove_dir_all(&src);
+    let _ = std::fs::remove_dir_all(&work);
+}
+
 fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)? {

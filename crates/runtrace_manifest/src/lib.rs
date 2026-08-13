@@ -200,6 +200,11 @@ pub const MANIFEST: &[ManifestEntry] = &[
         "GOVFUZZ_FAKE_DETERMINISM",
         "fixed clock and deterministic randomness so a saved input replays identically",
     ),
+    ManifestEntry::always_on(
+        "ioctl",
+        &[b"ioctl\0"],
+        "answer device capability ioctls so a driver reaches the virtualized register window",
+    ),
 ];
 
 #[cfg(test)]

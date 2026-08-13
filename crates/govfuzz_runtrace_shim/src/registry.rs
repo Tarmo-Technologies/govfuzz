@@ -6,8 +6,8 @@
 
 use crate::hooks::{
     assertion::Assertion, cmplog::CmpLog, determinism::Determinism, dl::Dl, dlsym::Dlsym, env::Env,
-    format::Format, fs::Fs, identity::Identity, mem::Mem, mqueue::Mqueue, net::Net, proc::Proc,
-    sql::Sql,
+    format::Format, fs::Fs, identity::Identity, ioctl::Ioctl, mem::Mem, mqueue::Mqueue, net::Net,
+    proc::Proc, sql::Sql,
 };
 use crate::sdk::FakeResource;
 
@@ -26,6 +26,7 @@ pub static REGISTRY: &[&'static dyn FakeResource] = &[
     &Mqueue,
     &Sql,
     &Determinism,
+    &Ioctl,
 ];
 
 /// Iterator over plugins whose `is_enabled()` returns true. Useful

@@ -2491,6 +2491,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/ioctl.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/govfuzz_runtrace_shim/src/hooks/mem.rs",
       "license": "Apache-2.0"
     },
@@ -2540,6 +2544,10 @@
     },
     {
       "path": "crates/govfuzz_runtrace_shim/tests/determinism.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/ioctl_control_plane.rs",
       "license": "Apache-2.0"
     },
     {

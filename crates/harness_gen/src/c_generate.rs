@@ -128,6 +128,10 @@ pub enum CStepRole {
     Open,
     /// Closes/releases the handle; legal only while it is live.
     Close,
+    /// Configures an already-constructed handle: registers a callback, enables a
+    /// format, sets an option. Run once unconditionally after construction, and
+    /// still available in the loop so the sequence can re-configure.
+    Configure,
 }
 
 #[derive(Debug, Clone)]
@@ -318,6 +322,8 @@ struct CSequenceTemplateContext {
     /// True when some op returns a NEW handle derived from the live one, so the
     /// harness keeps a derived slot and can drive ops against it.
     derives_handle: bool,
+    /// Configuration calls run once between construction and use.
+    configure_steps: Vec<CSequenceStepEmission>,
     #[serde(skip_serializing_if = "Option::is_none")]
     end_step: Option<CSequenceStepEmission>,
 }
@@ -2181,6 +2187,28 @@ fn build_c_sequence_context(
     let handle_pointer = format!("{} *", emit_c_type(&args.handle_type));
     let derives_handle = mark_derived_handle_producers(&mut op_steps, &handle_pointer);
 
+    // Configuration runs ONCE, unconditionally, between construction and use —
+    // the step every expert harness performs and a fuzzed op program only
+    // performs by luck. Emitted with its own variable prefix so it can coexist
+    // with the same op still being selectable inside the loop.
+    let mut configure_steps = Vec::new();
+    for (index, step) in args
+        .op_steps
+        .iter()
+        .filter(|step| step.role == CStepRole::Configure)
+        .enumerate()
+    {
+        if let Ok(emission) = build_c_sequence_step_emission(
+            step,
+            &format!("_gf_cfg{index}"),
+            &format!("_gf_cfg{index}_result"),
+            &registry,
+            args.decoder_limits,
+        ) {
+            configure_steps.push(emission);
+        }
+    }
+
     Ok(CSequenceTemplateContext {
         harness_id: args.harness_id.clone(),
         target_includes: args.target_includes.clone(),
@@ -2209,6 +2237,7 @@ fn build_c_sequence_context(
         op_ctrl_len: 1 + MAX_SEQUENCE_STEPS * 5,
         thread_slots,
         derives_handle,
+        configure_steps,
         op_steps,
         end_step,
     })
@@ -6164,6 +6193,88 @@ mod tests {
         assert!(
             dead_break < close_pos,
             "the loop must break BEFORE teardown, which is still owed: {main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn configuration_runs_between_construction_and_use() {
+        // libarchive's own tests call `archive_read_support_format_all`
+        // immediately after `archive_read_new` — without it the reader supports
+        // NOTHING and every input dies at the first header. A fuzzed op program
+        // performs that step only by luck, so most executions never reach the
+        // code the target exists to run. Measured on expat, installing handlers
+        // was worth +323 library lines.
+        let out = temp_dir("seq-config");
+        let header_source = r#"
+            typedef struct arc { int fmt; } arc;
+            int arc_new(arc *a);
+            int arc_support_format_all(arc *a);
+            int arc_next_header(arc *a, unsigned n);
+            int arc_free(arc *a);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-ARCCFG".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/arc.c"),
+            target: cfunction("arc_next_header"),
+            handle_type: "arc".to_owned(),
+            init_step: Some(CLifecycleStep {
+                name: "arc_new".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                CLifecycleStep {
+                    name: "arc_next_header".to_owned(),
+                    params: vec![CParameter {
+                        name: "n".to_owned(),
+                        c_type: "unsigned".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "arc_support_format_all".to_owned(),
+                    params: Vec::new(),
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Configure,
+                },
+            ],
+            end_step: Some(CLifecycleStep {
+                name: "arc_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["arc.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/arc.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        // Configuration is unconditional, and sits after construction but before
+        // the op loop.
+        let configured = main
+            .find("arc_support_format_all(&_gf_handle)")
+            .expect("configuration must be emitted");
+        let constructed = main.find("arc_new(&_gf_handle)").expect("constructor");
+        let loop_start = main.find("_gf_lifecycle_count").expect("op loop");
+        assert!(
+            constructed < configured && configured < loop_start,
+            "configuration must run between construction and the op loop:\n{main}"
+        );
+        // ...and remains selectable in the loop, so the sequence can reconfigure.
+        assert!(
+            main.matches("arc_support_format_all(").count() >= 2,
+            "configuration must still be an op the sequence can repeat:\n{main}"
         );
         let _ = fs::remove_dir_all(&out);
     }

@@ -3634,6 +3634,24 @@ fn c_step_role_of(name: &str) -> harness_gen::c_generate::CStepRole {
         CStepRole::Close
     } else if has(&["new", "create", "alloc"]) {
         CStepRole::Open
+    } else if has(&[
+        "set",
+        "support",
+        "register",
+        "enable",
+        "configure",
+        "option",
+        "opt",
+        "handler",
+    ]) {
+        // Configuration: the step every expert harness performs between
+        // construction and use. libarchive's tests call
+        // `archive_read_support_filter_all` + `support_format_all` immediately
+        // after `archive_read_new` — without them the reader supports NOTHING
+        // and every input fails at the first header. libexpat installs its
+        // element and character handlers, without which the whole callback and
+        // entity machinery never runs (+323 library lines in the ablation).
+        CStepRole::Configure
     } else {
         CStepRole::Operation
     }

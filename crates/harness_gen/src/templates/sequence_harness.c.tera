@@ -130,6 +130,24 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * double-frees — both harness artifacts, not target bugs. */
     if ({{ init_step.result_name }} == 0) {
 {%- endif %}
+{%- for step in configure_steps %}
+    /* Configuration, run unconditionally between construction and use. An op
+     * program only performs this by luck, and without it a reader supports no
+     * formats and a parser has no handlers installed — so most executions never
+     * reach the code the target exists to run. */
+{%- for p in step.params %}
+    {{ p.decl }};
+{%- endfor %}
+    {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}(&_gf_handle{% for p in step.params %}, {{ p.arg }}{% endfor %});
+{%- if step.return_type_present %}
+    GOVFUZZ_KEEP_RESULT({{ step.result_name }});
+{%- endif %}
+{%- for p in step.params %}
+{%- if p.free %}
+    {{ p.free }};
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
     size_t _gf_lifecycle_count = gf_ctrl_step_count(Data, Size, {{ op_max_steps }});
     /* A status-returning op that FAILS leaves the object in an unspecified
      * state; the target's own contract does not promise the next call is legal.

@@ -2459,6 +2459,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/govfuzz_runtrace_shim/src/hooks/determinism.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/govfuzz_runtrace_shim/src/hooks/dl.rs",
       "license": "Apache-2.0"
     },
@@ -2532,6 +2536,10 @@
     },
     {
       "path": "crates/govfuzz_runtrace_shim/src/sdk.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/govfuzz_runtrace_shim/tests/determinism.rs",
       "license": "Apache-2.0"
     },
     {

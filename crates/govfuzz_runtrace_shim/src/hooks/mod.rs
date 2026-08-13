@@ -6,6 +6,7 @@
 
 pub mod assertion;
 pub mod cmplog;
+pub mod determinism;
 pub mod dl;
 pub mod dlsym;
 pub mod env;

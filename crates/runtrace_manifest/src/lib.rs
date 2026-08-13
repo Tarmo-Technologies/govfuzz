@@ -68,8 +68,14 @@ pub const MANIFEST: &[ManifestEntry] = &[
             b"open\0",
             b"openat\0",
             b"close\0",
-            b"stat\0",
-            b"fopen\0",
+            // `__xstat` only — glibc <2.33 routed stat()/lstat() through it,
+            // while 2.33+ compiles them to direct fstatat syscalls that bypass
+            // the hook (hooks/fs.rs:498). Advertising a bare `stat` claimed an
+            // interposition that does not fire on a modern host. There is no
+            // `fopen` interposer at all, so it is not listed either: a
+            // capability report that overstates coverage is worse than a short
+            // one, because an operator plans around it.
+            b"__xstat\0",
             b"unlink\0",
             b"unlinkat\0",
             b"remove\0",

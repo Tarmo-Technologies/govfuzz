@@ -36,6 +36,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static REAL_MQ_OPEN: ResolvedFn = ResolvedFn::new(b"mq_open\0");
 static REAL_MQ_RECEIVE: ResolvedFn = ResolvedFn::new(b"mq_receive\0");
 static REAL_MQ_TIMEDRECEIVE: ResolvedFn = ResolvedFn::new(b"mq_timedreceive\0");
+static REAL_MQ_SEND: ResolvedFn = ResolvedFn::new(b"mq_send\0");
 
 /// Max fuzz-driven messages delivered per process before `mq_receive` reports
 /// "empty" (EAGAIN). Generous enough for multi-message protocols, bounded so a
@@ -181,14 +182,33 @@ pub unsafe extern "C" fn mq_timedreceive(
 
 #[no_mangle]
 pub unsafe extern "C" fn mq_send(
-    _mqdes: libc::mqd_t,
-    _msg_ptr: *const libc::c_char,
-    _msg_len: libc::size_t,
-    _msg_prio: libc::c_uint,
+    mqdes: libc::mqd_t,
+    msg_ptr: *const libc::c_char,
+    msg_len: libc::size_t,
+    msg_prio: libc::c_uint,
 ) -> libc::c_int {
-    // Faking: swallow the send (no peer partition); audit: best-effort success.
     log_mq(b"mq_send", 0);
-    0
+    // Faking: swallow the send — the queue is a private memfd with no peer
+    // partition to receive it.
+    if crate::fakes::mode::current().is_faking() {
+        return 0;
+    }
+    // Audit mode must be TRANSPARENT, like every other hook here. Returning a
+    // bare success without forwarding made a real send silently vanish for any
+    // process running under the shim — including the audit pass and the
+    // capability probe, whose unrecognised mode string parses as Audit.
+    let real = REAL_MQ_SEND.ptr() as *const ();
+    if real.is_null() {
+        set_errno(libc::ENOSYS);
+        return -1;
+    }
+    let real: unsafe extern "C" fn(
+        libc::mqd_t,
+        *const libc::c_char,
+        libc::size_t,
+        libc::c_uint,
+    ) -> libc::c_int = std::mem::transmute(real);
+    real(mqdes, msg_ptr, msg_len, msg_prio)
 }
 
 #[no_mangle]

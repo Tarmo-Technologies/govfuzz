@@ -823,8 +823,12 @@ impl crate::sdk::FakeResource for Fs {
             b"open\0",
             b"openat\0",
             b"close\0",
-            b"stat\0",
-            b"fopen\0",
+            // `__xstat` is the only stat-family symbol this module defines, and
+            // it is legacy: glibc 2.33+ compiles stat()/lstat() to direct
+            // fstatat syscalls that bypass it (see the note above the hook).
+            // There is no `fopen` interposer at all. Both were advertised by
+            // `--list-fakes`, overstating what the shim actually sees.
+            b"__xstat\0",
             b"unlink\0",
             b"unlinkat\0",
             b"remove\0",

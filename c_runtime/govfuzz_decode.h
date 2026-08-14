@@ -77,13 +77,14 @@ static inline size_t gf_remaining(const gf_cursor *c) {
 
 /* Open a cursor over the ARGUMENT region only, so argument decoding can never
  * consume a control byte (which would make one byte mean two things and couple
- * an argument edit to a program edit). `ctrl_len` is 1 count byte plus one slot
- * per possible step. A too-short input yields an empty data region, which the
- * decoders already handle as "no bytes". */
+ * an argument edit to a program edit). `ctrl_len` includes an optional
+ * portfolio byte, one count byte, and one slot per possible step. A too-short
+ * input has no encoded control tail, so all of it remains argument data; tiny
+ * bootstrap/project seeds therefore reach the target immediately. */
 static inline gf_cursor gf_open_data(const uint8_t *data, size_t size, size_t ctrl_len) {
     gf_cursor c;
     c.data = data;
-    c.size = size > ctrl_len ? size - ctrl_len : 0;
+    c.size = size > ctrl_len ? size - ctrl_len : size;
     c.pos = 0;
     return c;
 }

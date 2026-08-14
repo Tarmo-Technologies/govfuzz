@@ -1,0 +1,31 @@
+project	commit	target	status	verdict	generated_lines	expert_lines	overlap_lines	expert_only_lines	generated_only_lines	ratio	common_files	portfolio_lanes	exit_code	diagnostic
+brotli	8e10eeb3378f6c459dbaf033ca6727e9816afccb	BrotliDecoderDecompress	built_and_fuzzed	expert_parity	1527	1527	1527	0	0	1.0	9	0	0	-
+cjson	fb16e5cf358798aabb049655975cde8427101056	cJSON_ParseWithLengthOpts	built_and_fuzzed	expert_has_marginal_coverage	532	530	525	5	7	1.0037735849056604	1	0	0	-
+cmark	7042d9978b20fea86ca9cc98bda55f10be392e69	cmark_parse_document	built_and_fuzzed	expert_parity	2938	2938	2938	0	0	1.0	14	0	0	-
+expat	7a3215e827662296c0a38e28988c6eb509baafd5	XML_Parse	built_and_fuzzed	expert_has_marginal_coverage	1792	1648	1636	12	156	1.087378640776699	7	0	0	-
+inih	577ae2dee1f0d9c2d11c7f10375c1715f3d6940c	ini_parse_string_length	built_and_fuzzed	generated_exceeds_expert	150	149	149	0	1	1.0067114093959733	1	0	0	-
+jansson	851a2145e3256f2e67e5dfe24b0e456bf198b741	json_loadb	built_and_fuzzed	expert_has_marginal_coverage	1005	1007	1000	7	5	0.9980139026812314	10	0	0	-
+json-c	c0d4626175806817e82b8000114799c7f55f1d00	json_tokener_parse_ex	built_and_fuzzed	expert_has_marginal_coverage	1243	1136	1133	3	110	1.0941901408450705	8	0	0	-
+libarchive	0c0196b78ebc689b146b1fa7b32f1d05718a34be	archive_read_open_memory2	built_and_fuzzed	expert_has_marginal_coverage	6755	4756	4658	98	2097	1.4203111858704793	54	0	0	-
+libcsv	b1d5212831842ee5869d99bc208a21837e4037d5	csv_parse	built_and_fuzzed	expert_has_marginal_coverage	204	197	173	24	31	1.0355329949238579	1	0	0	-
+libjpeg-turbo	b9132f0ad099e06d951867e2b6f3d358eebc1f19	jpeg_read_header	built_and_fuzzed	expert_parity	368	368	368	0	0	1.0	64	0	0	-
+libpng	d1d0abeffede1cc898ddc3d0e600839cf026d749	png_image_begin_read_from_memory	built_and_fuzzed	expert_has_marginal_coverage	596	530	527	3	69	1.1245283018867924	17	0	0	-
+libucl	93beea87cf36b2f4300c99c135bcad46a5aa237c	ucl_parser_add_chunk	built_and_fuzzed	expert_has_marginal_coverage	1627	1644	1627	17	0	0.9896593673965937	7	0	0	-
+libwebp	f6dd1d9c7e46d0ab355de6df436777f76efff1de	WebPDecodeRGBAInto	built_and_fuzzed	expert_has_marginal_coverage	1058	985	950	35	108	1.0741116751269035	40	0	0	-
+libxml2	c63248941708bc1d2e3a4292954593312212f6ca	xmlReadMemory	built_and_fuzzed	expert_has_marginal_coverage	8253	8020	7897	123	356	1.0290523690773068	33	0	0	-
+libyaml	893682bb98d5ed663a3e314c46dceaf9b1c8802f	yaml_parser_parse	built_and_fuzzed	generated_exceeds_expert	1925	1890	1890	0	35	1.0185185185185186	4	0	0	-
+lua	7579fc9d7ed90240487251dfb69168f8e64e9294	luaL_loadbufferx	built_and_fuzzed	generated_exceeds_expert	79	52	52	0	27	1.5192307692307692	1	0	0	-
+lz4	0774d05537f9762f838f7ab541b7765f1a729cb5	LZ4_decompress_safe_usingDict	built_and_fuzzed	expert_has_marginal_coverage	345	178	172	6	173	1.9382022471910112	1	0	0	-
+miniz	77d0dce8627735138c51770d1799a1ef48f2117d	mz_uncompress2	built_and_fuzzed	expert_parity	547	547	547	0	0	1.0	3	0	0	-
+msgpack-c	1be50ee5dadc4b85f79945c51df362582ccb2631	msgpack_unpack_next	built_and_fuzzed	expert_parity	259	259	259	0	0	1.0	2	0	0	-
+pcre2	742bdd225de98900a5861f4914411b0cf0ef1ebe	pcre2_regcomp	built_and_fuzzed	expert_has_marginal_coverage	2813	2696	2688	8	125	1.0433976261127595	19	0	0	-
+pugixml	27b68329de32cf9c601ca8eb6c588fd639960c40	pugi::xml_document::load_buffer	built_and_fuzzed	expert_has_marginal_coverage	1123	965	953	12	170	1.1637305699481866	1	0	0	-
+re2	972a15cedd008d846f1a39b2e88ce48d7f166cbd	re2::Regexp::Parse	built_and_fuzzed	expert_parity	1213	1213	1213	0	0	1.0	5	0	0	-
+snappy	747488a9f3d0daf9b639b6704d7188fba48af179	snappy::Uncompress(const char *, size_t, std::string *)	built_and_fuzzed	expert_parity	282	282	282	0	0	1.0	4	0	0	-
+sqlite	14385e5a25cbb3537e465d1812b03afef5935267	sqlite3_prepare_v2	built_and_fuzzed	generated_exceeds_expert	10093	10078	10078	0	15	1.0014883905536813	1	0	0	-
+tinyxml2	8224e427b655b83dae5e2298f1e6919523a78737	tinyxml2::XMLDocument::Parse(const char *, size_t)	built_and_fuzzed	generated_exceeds_expert	733	602	602	0	131	1.217607973421927	1	0	0	-
+tomlc99	29076dfd095bbbbd50a3c1b2760d29f4b83e74ac	toml_parse	built_and_fuzzed	expert_parity	913	913	913	0	0	1.0	1	0	0	-
+utf8proc	0075ed7d0adba45682ee6bf7a83b10f8fd110163	utf8proc_map	built_and_fuzzed	generated_exceeds_expert	365	201	201	0	164	1.8159203980099503	1	0	0	-
+yyjson	9365ddc7061033df656578bf86040048b5b5531a	yyjson_read	built_and_fuzzed	expert_has_marginal_coverage	1109	846	759	87	350	1.3108747044917257	1	0	0	-
+zlib	e3dc0a85b7032e98380dec011bc8f2c2ee0d8fca	uncompress2	built_and_fuzzed	expert_parity	252	252	252	0	0	1.0	7	0	0	-
+zstd	82d322c4973d9e2968d94047a40892bc6d9a9bdf	ZSTD_decompress	built_and_fuzzed	expert_parity	371	371	371	0	0	1.0	8	0	0	-

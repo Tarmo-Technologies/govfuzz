@@ -139,6 +139,18 @@ fn mixed_knr_and_ansi_c_discovers_both_functions() {
         names.iter().any(|n| n.contains("oldstyle")),
         "the K&R helper must still be discovered: {names:?}"
     );
+    let parser = run["targets"]
+        .as_array()
+        .and_then(|targets| {
+            targets
+                .iter()
+                .find(|target| target["name"] == "parse_packet")
+        })
+        .expect("ANSI parser result");
+    assert_ne!(
+        parser["outcome"]["outcome"], "report_only",
+        "a modern function in a mixed TU must not inherit the helper's K&R dialect"
+    );
     let _ = std::fs::remove_dir_all(&root);
     let _ = std::fs::remove_dir_all(&work);
 }

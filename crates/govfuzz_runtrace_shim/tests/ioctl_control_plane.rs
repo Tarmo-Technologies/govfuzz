@@ -55,11 +55,21 @@ const PROBE: &str = r#"
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <string.h>
+#include <unistd.h>
 /* _IOR encodes direction and payload size in the request, which is what lets
    the shim fill exactly 16 bytes and no more. */
 #define GF_CAPS _IOR('g', 1, unsigned char[16])
 int main(void) {
     unsigned char caps[16];
+    int pipefd[2];
+    if (pipe(pipefd) != 0) return 5;
+    memset(caps, 0, sizeof caps);
+    /* ENOTTY alone is not permission to fake: an ordinary pipe must retain its
+       real failure and must not have its caller buffer populated. */
+    if (ioctl(pipefd[0], GF_CAPS, caps) == 0) return 6;
+    for (unsigned i = 0; i < sizeof caps; i++) if (caps[i] != 0) return 7;
+    close(pipefd[0]);
+    close(pipefd[1]);
     int fd = open("/dev/uio0", O_RDWR);
     if (fd < 0) return 2;                       /* no shim: device absent */
     memset(caps, 0, sizeof caps);

@@ -688,6 +688,13 @@ int main(int argc, char **argv) {
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
+{%- for step in protocol_steps %}
+{%- for p in step.params %}
+{%- if p.support %}
+{{ p.support }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
 extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     GOVFUZZ_PUBLISH_INPUT(Data, Size);
     // The body is wrapped in try/catch to swallow expected C++ exceptions from
@@ -698,6 +705,17 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 #if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
     try {
 #endif
+{%- if expert_re2_parse %}
+    /* Public RE2 parser lifecycle. Feed the complete testcase as the regex;
+     * parser flags are configuration, not a prefix stolen from the pattern. */
+    re2::RegexpStatus _gf_status;
+    GOVFUZZ_TARGET_ENTER();
+    re2::Regexp *R = re2::Regexp::Parse(
+        absl::string_view(reinterpret_cast<const char *>(Data), Size),
+        re2::Regexp::LikePerl, &_gf_status);
+    GOVFUZZ_KEEP_RESULT(R);
+    if (R) R->Decref();
+{%- else %}
     gf_cursor Cur = gf_open(Data, Size);
 {%- for p in params %}
     {{ p.decl }};
@@ -745,6 +763,27 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
     {{ receiver_class }} _gf_receiver{% if constructor_params %}({% for p in constructor_params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %};
 {%- endif %}
+{%- if protocol_steps %}
+    // Project-mined expert protocol: declaration-checked calls run once in the
+    // observed order, retaining safe literals and coherent input/size bindings.
+{%- for step in protocol_steps %}
+{%- for p in step.params %}
+    {{ p.decl }};
+{%- endfor %}
+{%- if step.marks_target %}
+    GOVFUZZ_TARGET_ENTER();
+{%- endif %}
+    {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% else %}(void){% endif %}_gf_receiver.{{ step.name }}({% for p in step.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- if step.return_type_present %}
+    (void){{ step.result_name }};
+{%- endif %}
+{%- for p in step.params %}
+{%- if p.free %}
+    {{ p.free }};
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+{%- endif %}
 {%- if lifecycle_steps %}
     size_t _gf_lifecycle_count = (size_t)(gf_u8(&Cur) % ({{ lifecycle_step_count }} + 1));
     for (size_t _gf_lifecycle_index = 0; _gf_lifecycle_index < _gf_lifecycle_count; ++_gf_lifecycle_index) {
@@ -772,7 +811,7 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     }
     // RAII destructors run when _gf_receiver leaves scope.
 {%- endif %}
-{%- if not target_is_constructor %}
+{%- if not target_is_constructor and not protocol_steps %}
     GOVFUZZ_TARGET_ENTER();
     {% if return_type_present %}{{ return_type }} R = {% endif %}_gf_receiver.{{ target_name }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
@@ -789,10 +828,10 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     {% if return_type_present %}{{ return_type }} R = {% endif %}{{ qualified_target_name }}{{ target_template_suffix }}({% for p in params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
     (void)Cur;
-{%- if return_type_present and not byte_stream %}
+{%- if return_type_present and not byte_stream and not protocol_steps %}
     GOVFUZZ_KEEP_RESULT(R);
 {%- endif %}
-{%- if result_cleanup and not byte_stream %}
+{%- if result_cleanup and not byte_stream and not protocol_steps %}
     {{ result_cleanup }};
 {%- endif %}
 {%- for p in params %}
@@ -811,6 +850,7 @@ extern "C" int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     {{ p.free }};
 {%- endif %}
 {%- endfor %}
+{%- endif %}
 {%- endif %}
     return 0;
 #if defined(__cpp_exceptions) || defined(__EXCEPTIONS)

@@ -545,6 +545,9 @@ pub unsafe extern "C" fn close(fd: libc::c_int) -> libc::c_int {
     };
     let saved_errno = save_errno();
     if result == 0 {
+        // Clear virtual-device provenance before this numeric descriptor can be
+        // reused for an unrelated file or pipe.
+        crate::fakes::memfd::clear_fake_fd(fd);
         if let Some(_g) = HookGuard::acquire() {
             log_fd_close(fd, result);
         }

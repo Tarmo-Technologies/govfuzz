@@ -1,0 +1,31 @@
+project	url	commit	target	target_file	expert
+brotli	https://github.com/google/brotli.git	8e10eeb3378f6c459dbaf033ca6727e9816afccb	BrotliDecoderDecompress	c/dec/decode.c	expert/brotli.c
+cjson	https://github.com/DaveGamble/cJSON.git	fb16e5cf358798aabb049655975cde8427101056	cJSON_ParseWithLengthOpts	cJSON.c	expert/cjson.c
+expat	https://github.com/libexpat/libexpat.git	7a3215e827662296c0a38e28988c6eb509baafd5	XML_Parse	expat/lib/xmlparse.c	expert/expat.c
+inih	https://github.com/benhoyt/inih.git	577ae2dee1f0d9c2d11c7f10375c1715f3d6940c	ini_parse_string_length	ini.c	expert/inih.c
+jansson	https://github.com/akheron/jansson.git	851a2145e3256f2e67e5dfe24b0e456bf198b741	json_loadb	src/load.c	expert/jansson.c
+json-c	https://github.com/json-c/json-c.git	c0d4626175806817e82b8000114799c7f55f1d00	json_tokener_parse_ex	json_tokener.c	expert/json-c.c
+libarchive	https://github.com/libarchive/libarchive.git	0c0196b78ebc689b146b1fa7b32f1d05718a34be	archive_read_open_memory2	libarchive/archive_read_open_memory.c	expert/libarchive.c
+libjpeg-turbo	https://github.com/libjpeg-turbo/libjpeg-turbo.git	b9132f0ad099e06d951867e2b6f3d358eebc1f19	jpeg_read_header	src/jdapimin.c	expert/libjpeg-turbo.c
+libpng	https://github.com/pnggroup/libpng.git	d1d0abeffede1cc898ddc3d0e600839cf026d749	png_image_begin_read_from_memory	pngread.c	expert/libpng.c
+libyaml	https://github.com/yaml/libyaml.git	893682bb98d5ed663a3e314c46dceaf9b1c8802f	yaml_parser_parse	src/parser.c	expert/libyaml.c
+lz4	https://github.com/lz4/lz4.git	0774d05537f9762f838f7ab541b7765f1a729cb5	LZ4_decompress_safe_usingDict	lib/lz4.c	expert/lz4.c
+miniz	https://github.com/richgel999/miniz.git	77d0dce8627735138c51770d1799a1ef48f2117d	mz_uncompress2	miniz.c	expert/miniz.c
+pugixml	https://github.com/zeux/pugixml.git	27b68329de32cf9c601ca8eb6c588fd639960c40	pugi::xml_document::load_buffer	src/pugixml.cpp	expert/pugixml.cc
+re2	https://github.com/google/re2.git	972a15cedd008d846f1a39b2e88ce48d7f166cbd	re2::Regexp::Parse	re2/parse.cc	expert/re2.cc
+sqlite	https://github.com/sqlite/sqlite.git	14385e5a25cbb3537e465d1812b03afef5935267	sqlite3_prepare_v2	src/prepare.c	expert/sqlite.c
+tinyxml2	https://github.com/leethomason/tinyxml2.git	8224e427b655b83dae5e2298f1e6919523a78737	tinyxml2::XMLDocument::Parse(const char *, size_t)	tinyxml2.cpp	expert/tinyxml2.cc
+utf8proc	https://github.com/JuliaStrings/utf8proc.git	0075ed7d0adba45682ee6bf7a83b10f8fd110163	utf8proc_map	utf8proc.c	expert/utf8proc.c
+yyjson	https://github.com/ibireme/yyjson.git	9365ddc7061033df656578bf86040048b5b5531a	yyjson_read	src/yyjson.h	expert/yyjson.c
+zlib	https://github.com/madler/zlib.git	e3dc0a85b7032e98380dec011bc8f2c2ee0d8fca	uncompress2	uncompr.c	expert/zlib.c
+zstd	https://github.com/facebook/zstd.git	82d322c4973d9e2968d94047a40892bc6d9a9bdf	ZSTD_decompress	lib/decompress/zstd_decompress.c	expert/zstd.c
+libxml2	https://github.com/GNOME/libxml2.git	c63248941708bc1d2e3a4292954593312212f6ca	xmlReadMemory	parser.c	expert/libxml2.c
+pcre2	https://github.com/PCRE2Project/pcre2.git	742bdd225de98900a5861f4914411b0cf0ef1ebe	pcre2_regcomp	src/pcre2posix.c	expert/pcre2.c
+libwebp	https://github.com/webmproject/libwebp.git	f6dd1d9c7e46d0ab355de6df436777f76efff1de	WebPDecodeRGBAInto	src/dec/webp_dec.c	expert/libwebp.c
+snappy	https://github.com/google/snappy.git	747488a9f3d0daf9b639b6704d7188fba48af179	snappy::Uncompress(const char *, size_t, std::string *)	snappy.cc	expert/snappy.cc
+msgpack-c	https://github.com/msgpack/msgpack-c.git	1be50ee5dadc4b85f79945c51df362582ccb2631	msgpack_unpack_next	src/unpack.c	expert/msgpack-c.c
+lua	https://github.com/lua/lua.git	7579fc9d7ed90240487251dfb69168f8e64e9294	luaL_loadbufferx	lauxlib.c	expert/lua.c
+cmark	https://github.com/commonmark/cmark.git	7042d9978b20fea86ca9cc98bda55f10be392e69	cmark_parse_document	src/blocks.c	expert/cmark.c
+libucl	https://github.com/vstakhov/libucl.git	93beea87cf36b2f4300c99c135bcad46a5aa237c	ucl_parser_add_chunk	src/ucl_parser.c	expert/libucl.c
+tomlc99	https://github.com/cktan/tomlc99.git	29076dfd095bbbbd50a3c1b2760d29f4b83e74ac	toml_parse	toml.c	expert/tomlc99.c
+libcsv	https://github.com/rgamble/libcsv.git	b1d5212831842ee5869d99bc208a21837e4037d5	csv_parse	libcsv.c	expert/libcsv.c

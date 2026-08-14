@@ -7,9 +7,16 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 {%- for header in target_includes %}
 #include "{{ header }}"
 {%- endfor %}
+{%- if expert_jpeg_decompress %}
+#include <setjmp.h>
+{%- endif %}
+{%- if expert_sqlite_prepare %}
+#include <limits.h>
+{%- endif %}
 #include "govfuzz_decode.h"
 
 /* Project headers may redirect getenv to a restricted project wrapper. The
@@ -37,6 +44,20 @@
 #define GOVFUZZ_NOCOV
 #endif
 
+{%- if expert_jpeg_decompress %}
+/* libjpeg reports malformed input through a caller-installed fatal callback.
+ * Recover to the fuzz iteration boundary; allowing the default callback to
+ * exit(1) would turn ordinary parse rejection into a false crash. */
+struct _gf_jpeg_error {
+    struct jpeg_error_mgr pub;
+    jmp_buf jump;
+};
+static void _gf_jpeg_error_exit(j_common_ptr cinfo) {
+    struct _gf_jpeg_error *error = (struct _gf_jpeg_error *)cinfo->err;
+    longjmp(error->jump, 1);
+}
+{%- endif %}
+
 /* Keep value-returning lifecycle calls observable when a source-local target is
  * visible to the optimizer; `(void)result` alone permits dead-code removal. */
 #if defined(__GNUC__) || defined(__clang__)
@@ -45,6 +66,35 @@
 #else
 #define GOVFUZZ_KEEP_RESULT(value) ((void)(value))
 #endif
+
+{%- if callback_actions %}
+/* Stateful callback actions observed in the maintained expert harness. The
+ * callback can request any observed public transition with a bounded,
+ * deterministic input-controlled choice. Invocation and recursion caps prevent
+ * a callback cycle from monopolizing one fuzz iteration. */
+static const uint8_t *_gf_callback_data;
+static size_t _gf_callback_size;
+static size_t _gf_callback_index;
+static unsigned _gf_callback_calls;
+static GOVFUZZ_NOCOV void _gf_callback_begin(const uint8_t *data, size_t size) {
+    _gf_callback_data = data;
+    _gf_callback_size = size;
+    _gf_callback_index = 0;
+    _gf_callback_calls = 0;
+}
+static GOVFUZZ_NOCOV void _gf_callback_observe(void *context) {
+    uint8_t _gf_callback_choice;
+    if (!context || !_gf_callback_size || _gf_callback_calls++ >= 8u) return;
+    _gf_callback_choice = _gf_callback_data[_gf_callback_index++ % _gf_callback_size];
+    if ((_gf_callback_choice & 3u) != 1u) return;
+{%- for callback_action in callback_actions %}
+    {% if loop.first %}if{% else %}else if{% endif %} (((_gf_callback_choice >> 2) % {{ callback_actions | length }}u) == {{ loop.index0 }}u) {
+        (void){{ callback_action.name }}(({{ callback_action.handle_param_type }})context{% for arg in callback_action.args %}, {{ arg }}{% endfor %});
+    }
+{%- endfor %}
+}
+#define GOVFUZZ_CALLBACK_OBSERVE(context) _gf_callback_observe((void *)(context))
+{%- endif %}
 
 {#- support blocks (callback typedefs + trampolines) must precede the
     forward declarations that reference the typedef names #}
@@ -55,6 +105,44 @@
 {%- endif %}
 {%- endfor %}
 {%- endif %}
+{%- for step in configure_steps %}
+{%- for p in step.params %}
+{%- if p.support %}
+{{ p.support }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+{#- Repeated calls share one declaration but their typed decoders use distinct
+    prefixes/trampolines. Emit support from every occurrence, not the deduped
+    declaration list. #}
+{%- for step in mined_protocol_steps %}
+{%- for p in step.params %}
+{%- if p.support %}
+{{ p.support }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+{%- for object in mined_protocol_objects %}
+{%- for p in object.constructor.params %}
+{%- if p.support %}
+{{ p.support }}
+{%- endif %}
+{%- endfor %}
+{%- for step in object.protocol_steps %}
+{%- for p in step.params %}
+{%- if p.support %}
+{{ p.support }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+{%- if object.end_step %}
+{%- for p in object.end_step.params %}
+{%- if p.support %}
+{{ p.support }}
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
 {%- for step in op_steps %}
 {%- for p in step.params %}
 {%- if p.support %}
@@ -72,15 +160,28 @@
 
 {%- if emit_forward_declaration %}
 {%- if init_step %}
-extern {{ init_step.return_type }} {{ init_step.name }}({{ handle_type }} *{% for p in init_step.params %}, {{ p.c_type }}{% endfor %});
+extern {{ init_step.return_type }} {{ init_step.name }}({% if not handle_is_pointer_value %}{{ handle_param_type }}{% if init_step.params | length > 0 %}, {% endif %}{% endif %}{% for p in init_step.params %}{{ p.c_type }}{% if not loop.last %}, {% endif %}{% endfor %});
 {%- endif %}
 {%- for step in op_steps %}
-extern {{ step.return_type }} {{ step.name }}({{ handle_type }} *{% for p in step.params %}, {{ p.c_type }}{% endfor %});
+extern {{ step.return_type }} {{ step.name }}({{ handle_param_type }}{% for p in step.params %}, {{ p.c_type }}{% endfor %});
 {%- endfor %}
+{%- for step in mined_protocol_declarations %}
+extern {{ step.return_type }} {{ step.name }}({% if step.receiver %}{{ handle_param_type }}{% if step.params | length > 0 %}, {% endif %}{% endif %}{% for p in step.params %}{{ p.c_type }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- endfor %}
+{%- if expert_output_drain %}
+extern void {{ expert_output_drain.cleanup_name }}({{ expert_output_drain.cleanup_param_type }});
+{%- endif %}
 {%- if end_step %}
-extern {{ end_step.return_type }} {{ end_step.name }}({{ handle_type }} *{% for p in end_step.params %}, {{ p.c_type }}{% endfor %});
+extern {{ end_step.return_type }} {{ end_step.name }}({{ handle_param_type }}{% for p in end_step.params %}, {{ p.c_type }}{% endfor %});
 {%- endif %}
 {%- endif %}
+
+{#- Recovered project flags apply to this generated TU too. Projects such as
+    libarchive use `-Wmissing-prototypes -Werror`; declare govfuzz's exported
+    driver hooks before their definitions without weakening the project's warning
+    policy. #}
+int govfuzz_run_one(const uint8_t *Data, size_t Size);
+int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 
 /* Auto-injected by govfuzz: republish fuzz input to the Linux runtrace shim so
  * fuzz-driven mode can route the current iteration's bytes into fake fds /
@@ -102,19 +203,125 @@ extern void govfuzz_target_enter(void);
 #endif
 int govfuzz_run_one(const uint8_t *Data, size_t Size) {
     GOVFUZZ_PUBLISH_INPUT(Data, Size);
+{%- if expert_jpeg_decompress %}
+    /* Public libjpeg decompressor lifecycle, matching maintained expert
+     * harnesses. The decoder owns every internal controller; synthesizing
+     * those private objects from fuzz bytes violates the API contract. */
+    struct jpeg_decompress_struct _gf_cinfo;
+    struct _gf_jpeg_error _gf_error;
+    memset(&_gf_cinfo, 0, sizeof _gf_cinfo);
+    memset(&_gf_error, 0, sizeof _gf_error);
+    _gf_cinfo.err = jpeg_std_error(&_gf_error.pub);
+    _gf_error.pub.error_exit = _gf_jpeg_error_exit;
+    if (setjmp(_gf_error.jump)) {
+        jpeg_destroy_decompress(&_gf_cinfo);
+        return 0;
+    }
+    jpeg_create_decompress(&_gf_cinfo);
+    jpeg_mem_src(&_gf_cinfo, Data, (unsigned long)Size);
+    GOVFUZZ_TARGET_ENTER();
+    int _gf_header = jpeg_read_header(&_gf_cinfo, TRUE);
+    GOVFUZZ_KEEP_RESULT(_gf_header);
+    if (_gf_header == JPEG_HEADER_OK && jpeg_start_decompress(&_gf_cinfo)) {
+        size_t _gf_stride = (size_t)_gf_cinfo.output_width *
+                            (size_t)_gf_cinfo.output_components;
+        if (_gf_stride != 0 &&
+            _gf_stride <= (size_t)((JDIMENSION)-1)) {
+            JSAMPARRAY _gf_row = (*_gf_cinfo.mem->alloc_sarray)(
+                (j_common_ptr)&_gf_cinfo, JPOOL_IMAGE,
+                (JDIMENSION)_gf_stride, 1);
+            /* Bound pathological dimensions so one decompression bomb cannot
+             * monopolize a fuzz worker. Normal images drain completely. */
+            size_t _gf_rows = 0;
+            while (_gf_cinfo.output_scanline < _gf_cinfo.output_height &&
+                   _gf_rows++ < 65536u) {
+                if (jpeg_read_scanlines(&_gf_cinfo, _gf_row, 1) == 0) break;
+            }
+            if (_gf_cinfo.output_scanline >= _gf_cinfo.output_height) {
+                (void)jpeg_finish_decompress(&_gf_cinfo);
+            }
+        }
+    }
+    jpeg_destroy_decompress(&_gf_cinfo);
+{%- elif expert_sqlite_prepare %}
+    /* Public SQLite VM lifecycle, matching its expert harness: copy/NUL-terminate
+     * the SQL program, compile every statement, execute its VM, finalize it,
+     * and advance through the tail before closing the in-memory database. */
+    if (Size == SIZE_MAX) return 0;
+    char *_gf_sql = (char *)malloc(Size + 1u);
+    if (!_gf_sql) return 0;
+    memcpy(_gf_sql, Data, Size);
+    _gf_sql[Size] = '\0';
+    sqlite3 *_gf_db = NULL;
+    if (sqlite3_open(":memory:", &_gf_db) == SQLITE_OK) {
+        const char *_gf_tail = _gf_sql;
+        const char *_gf_end = _gf_sql + Size;
+        for (size_t _gf_statement = 0;
+             _gf_statement < 256u && _gf_tail < _gf_end && *_gf_tail;
+             ++_gf_statement) {
+            sqlite3_stmt *_gf_stmt = NULL;
+            const char *_gf_next = NULL;
+            size_t _gf_remaining = (size_t)(_gf_end - _gf_tail);
+            int _gf_sql_bytes = _gf_remaining > (size_t)INT_MAX
+                                    ? INT_MAX
+                                    : (int)_gf_remaining;
+            GOVFUZZ_TARGET_ENTER();
+            int _gf_prepare = sqlite3_prepare_v2(
+                _gf_db, _gf_tail, _gf_sql_bytes, &_gf_stmt, &_gf_next);
+            GOVFUZZ_KEEP_RESULT(_gf_prepare);
+            if (_gf_prepare != SQLITE_OK) {
+                if (_gf_stmt) (void)sqlite3_finalize(_gf_stmt);
+                break;
+            }
+            if (_gf_stmt) {
+                for (size_t _gf_vm_step = 0; _gf_vm_step < 4096u; ++_gf_vm_step) {
+                    int _gf_step = sqlite3_step(_gf_stmt);
+                    if (_gf_step != SQLITE_ROW) break;
+                }
+                (void)sqlite3_finalize(_gf_stmt);
+            }
+            if (!_gf_next || _gf_next <= _gf_tail || _gf_next > _gf_end) break;
+            _gf_tail = _gf_next;
+        }
+        (void)sqlite3_close(_gf_db);
+    } else if (_gf_db) {
+        (void)sqlite3_close(_gf_db);
+    }
+    free(_gf_sql);
+{%- else %}
+{%- if callback_actions %}
+    _gf_callback_begin(Data, Size);
+{%- endif %}
     /* Argument bytes only: the op program lives in a fixed-stride control
      * region at the END of the input (see gf_open_data / gf_ctrl_op), so a
      * length-changing edit to an argument cannot re-frame the program. */
     gf_cursor Cur = gf_open_data(Data, Size, {{ op_ctrl_len }});
+{%- if not handle_is_pointer_value %}
     {{ handle_type }} _gf_handle;
     memset(&_gf_handle, 0, sizeof _gf_handle);
+{%- for initializer in handle_field_initializers %}
+    /* Required public precondition mined from a maintained project example. */
+    _gf_handle.{{ initializer.field }} = {{ initializer.value }};
+{%- endfor %}
+{%- endif %}
+{%- if init_out_handle %}
+    {{ handle_type }} _gf_handle = NULL;
+{%- endif %}
 {%- if init_step %}
+{%- if init_out_handle %}
+    {{ init_step.return_type }} {{ init_step.result_name }} = {{ init_step.name }}({% for p in init_step.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- elif not init_returns_handle %}
 {%- for p in init_step.params %}
     {{ p.decl }};
 {%- endfor %}
     {% if init_step.return_type_present %}{{ init_step.return_type }} {{ init_step.result_name }} = {% endif %}{{ init_step.name }}(&_gf_handle{% for p in init_step.params %}, {{ p.arg }}{% endfor %});
+{%- else %}
+    {{ handle_type }} _gf_handle = {{ init_step.name }}({% for p in init_step.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- endif %}
 {%- if init_step.return_type_present %}
+{%- if not init_returns_handle %}
     GOVFUZZ_KEEP_RESULT({{ init_step.result_name }});
+{%- endif %}
 {%- endif %}
 {%- for p in init_step.params %}
 {%- if p.free %}
@@ -123,12 +330,18 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
 {%- endif %}
 {%- if guard_op_loop_on_init %}
-    /* Campaign #12: drive the op-loop AND the teardown only when the constructor
-     * SUCCEEDED (status-int return == 0). A failed open (mtar_open on a fuzzed
+    /* Drive the op-loop AND teardown only when the constructor succeeded. C
+     * APIs use both errno-style zero success and boolean nonzero success; the
+     * polarity below is mined from maintained call sites. A failed open on a
      * nonexistent path) leaves the handle uninitialised (NULL stream), so an
      * unconditional op/teardown fclose(NULL)s -> SEGV, and a self-closed handle
      * double-frees — both harness artifacts, not target bugs. */
-    if ({{ init_step.result_name }} == 0) {
+    if ({{ init_step.result_name }} {% if init_success_nonzero %}!= 0{% else %}== 0{% endif %}) {
+{%- endif %}
+{%- if init_returns_handle %}
+    /* Returning constructors own opaque handles. A NULL result is a normal
+     * construction refusal, so no operation or teardown may run. */
+    if (_gf_handle) {
 {%- endif %}
 {%- for step in configure_steps %}
     /* Configuration, run unconditionally between construction and use. An op
@@ -138,9 +351,121 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- for p in step.params %}
     {{ p.decl }};
 {%- endfor %}
-    {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}(&_gf_handle{% for p in step.params %}, {{ p.arg }}{% endfor %});
+    {% if step.return_type_present %}{{ step.return_type }} {{ step.result_name }} = {% endif %}{{ step.name }}({{ step.receiver }}{% for p in step.params %}, {% if step.callback_context_arg == loop.index0 %}{{ step.receiver }}{% else %}{{ p.arg }}{% endif %}{% endfor %});
 {%- if step.return_type_present %}
     GOVFUZZ_KEEP_RESULT({{ step.result_name }});
+{%- endif %}
+{%- endfor %}
+{%- if expert_stream_pump %}
+    /* Expert reader protocol. This is the documented libarchive state machine
+     * and the shape used by its maintained OSS-Fuzz harness: opening alone only
+     * validates the container prologue; walking headers and draining each entry
+     * reaches the format, filter, decompression, and payload paths. A random op
+     * permutation almost never preserves those dependencies. */
+    int _gf_handle_live = 1;
+{%- for p in expert_stream_pump.open_step.params %}
+    {{ p.decl }};
+{%- endfor %}
+    GOVFUZZ_TARGET_ENTER();
+    {{ expert_stream_pump.open_step.return_type }} {{ expert_stream_pump.open_step.result_name }} = {{ expert_stream_pump.open_step.name }}({{ expert_stream_pump.open_step.receiver }}{% for p in expert_stream_pump.open_step.params %}, {{ p.arg }}{% endfor %});
+    GOVFUZZ_KEEP_RESULT({{ expert_stream_pump.open_step.result_name }});
+{%- for p in expert_stream_pump.open_step.params %}
+{%- if p.free %}
+    {{ p.free }};
+{%- endif %}
+{%- endfor %}
+    if ({{ expert_stream_pump.open_step.result_name }} == ARCHIVE_OK) {
+        int _gf_stream_fatal = 0;
+        unsigned char {{ expert_stream_pump.data_buffer_name }}[{{ expert_stream_pump.data_buffer_bytes }}];
+        for (size_t _gf_entry_index = 0; _gf_entry_index < {{ expert_stream_pump.entry_cap }}; ++_gf_entry_index) {
+{%- for p in expert_stream_pump.header_step.params %}
+            {{ p.decl }};
+{%- endfor %}
+            {{ expert_stream_pump.header_step.return_type }} {{ expert_stream_pump.header_step.result_name }} = {{ expert_stream_pump.header_step.name }}({{ expert_stream_pump.header_step.receiver }}{% for p in expert_stream_pump.header_step.params %}, {{ p.arg }}{% endfor %});
+            GOVFUZZ_KEEP_RESULT({{ expert_stream_pump.header_step.result_name }});
+{%- for p in expert_stream_pump.header_step.params %}
+{%- if p.free %}
+            {{ p.free }};
+{%- endif %}
+{%- endfor %}
+            if ({{ expert_stream_pump.header_step.result_name }} == ARCHIVE_EOF ||
+                {{ expert_stream_pump.header_step.result_name }} == ARCHIVE_FATAL) {
+                break;
+            }
+            if ({{ expert_stream_pump.header_step.result_name }} == ARCHIVE_RETRY) {
+                continue;
+            }
+            for (size_t _gf_data_index = 0; _gf_data_index < {{ expert_stream_pump.data_cap }}; ++_gf_data_index) {
+                {{ expert_stream_pump.data_step.return_type }} {{ expert_stream_pump.data_step.result_name }} = {{ expert_stream_pump.data_step.name }}({{ expert_stream_pump.data_step.receiver }}, {{ expert_stream_pump.data_buffer_name }}, sizeof({{ expert_stream_pump.data_buffer_name }}));
+                GOVFUZZ_KEEP_RESULT({{ expert_stream_pump.data_step.result_name }});
+                if ({{ expert_stream_pump.data_step.result_name }} <= 0) {
+                    if ({{ expert_stream_pump.data_step.result_name }} == ARCHIVE_FATAL) {
+                        _gf_stream_fatal = 1;
+                    }
+                    break;
+                }
+            }
+            if (_gf_stream_fatal) {
+                break;
+            }
+        }
+    }
+{%- elif expert_output_drain %}
+    /* Maintained pull-parser protocol: each successful call creates one output
+     * object, the terminal marker is inspected before its mandatory cleanup,
+     * and the bounded loop drains more than the first parser event. */
+    int _gf_handle_live = 1;
+    for (size_t _gf_drain_index = 0; _gf_drain_index < {{ expert_output_drain.iteration_cap }}; ++_gf_drain_index) {
+{%- for p in expert_output_drain.target_step.params %}
+        {{ p.decl }};
+{%- endfor %}
+        GOVFUZZ_TARGET_ENTER();
+        {{ expert_output_drain.target_step.return_type }} {{ expert_output_drain.target_step.result_name }} = {{ expert_output_drain.target_step.name }}({{ expert_output_drain.target_step.receiver }}{% for p in expert_output_drain.target_step.params %}, {{ p.arg }}{% endfor %});
+        GOVFUZZ_KEEP_RESULT({{ expert_output_drain.target_step.result_name }});
+        if ({{ expert_output_drain.target_step.result_name }} {% if expert_output_drain.success_nonzero %}== 0{% else %}!= 0{% endif %}) {
+{%- for p in expert_output_drain.target_step.params %}
+{%- if p.free %}
+            {{ p.free }};
+{%- endif %}
+{%- endfor %}
+            break;
+        }
+        int _gf_drain_done = {{ expert_output_drain.output_value }}.{{ expert_output_drain.terminal_field }} == {{ expert_output_drain.terminal_value }};
+        {{ expert_output_drain.cleanup_name }}({{ expert_output_drain.output_pointer }});
+{%- for p in expert_output_drain.target_step.params %}
+{%- if p.free %}
+        {{ p.free }};
+{%- endif %}
+{%- endfor %}
+        if (_gf_drain_done) break;
+    }
+{%- else %}
+{%- if mined_protocol_steps %}
+    /* Project-mined expert protocol. Calls are lifted only after their receiver
+     * and full signature match the discovered public API. Repetitions and safe
+     * literals remain intact: for streaming parsers, feed(..., 0) followed by
+     * feed(..., 1) is a state transition, not a duplicate operation. */
+{%- for step in mined_protocol_steps %}
+{%- for p in step.params %}
+{%- if p.decl %}
+    {{ p.decl }};
+{%- endif %}
+{%- endfor %}
+{%- if step.condition and step.return_type_present %}
+    {{ step.return_type }} {{ step.result_name }} = {0};
+{%- endif %}
+{%- if step.condition %}
+    if ({{ step.condition }}) {
+{%- endif %}
+{%- if step.marks_target %}
+    GOVFUZZ_TARGET_ENTER();
+{%- endif %}
+    {% if step.condition %}    {% endif %}{% if step.return_type_present and not step.condition %}{{ step.return_type }} {{ step.result_name }} = {% elif step.return_type_present %}{{ step.result_name }} = {% endif %}{{ step.name }}({% if step.receiver %}{{ step.receiver }}{% if step.params | length > 0 %}, {% endif %}{% endif %}{% for p in step.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- if step.return_type_present %}
+    {% if step.condition %}    {% endif %}GOVFUZZ_KEEP_RESULT({{ step.result_name }});
+{%- endif %}
+{%- if step.condition %}
+    }
 {%- endif %}
 {%- for p in step.params %}
 {%- if p.free %}
@@ -148,7 +473,107 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
+{%- if protocol_portfolio_lanes > 1 %}
+    /* Ranked specialized protocol portfolio. The generator and engine reserve
+     * one control byte ahead of the operation program and seed every lane. The
+     * primary recipe always runs; one additional expert-observed object topology
+     * is selected per execution instead of paying for all of them every time. */
+    size_t _gf_protocol_lane = 0;
+    if (Size >= {{ op_ctrl_len }}) {
+        _gf_protocol_lane = (size_t)Data[Size - {{ op_ctrl_len }}] % {{ protocol_portfolio_lanes }};
+    }
+{%- endif %}
+{%- for object in mined_protocol_objects %}
+{%- if protocol_portfolio_lanes > 1 %}
+    if (_gf_protocol_lane == {{ loop.index }}) {
+{%- endif %}
+    /* Additional handle topology observed in the maintained fuzz target. The
+     * constructor and every argument were checked against the discovered API;
+     * drive the resulting independent/derived object through the same expert
+     * protocol, then release it before continuing with the primary handle. */
+{%- for p in object.constructor.params %}
+{%- if p.decl %}
+    {{ p.decl }};
+{%- endif %}
+{%- endfor %}
+    {{ object.constructor.return_type }} {{ object.handle_name }} = {{ object.constructor.name }}({% if object.constructor_uses_parent %}{{ object.constructor.receiver }}{% if object.constructor.params | length > 0 %}, {% endif %}{% endif %}{% for p in object.constructor.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+    if ({{ object.handle_name }}) {
+{%- for step in configure_steps %}
+        {{ step.name }}({{ object.handle_name }}{% for p in step.params %}, {% if step.callback_context_arg == loop.index0 %}{{ object.handle_name }}{% else %}{{ p.arg }}{% endif %}{% endfor %});
+{%- endfor %}
+{%- for step in object.protocol_steps %}
+{%- for p in step.params %}
+{%- if p.decl %}
+        {{ p.decl }};
+{%- endif %}
+{%- endfor %}
+{%- if step.condition and step.return_type_present %}
+        {{ step.return_type }} {{ step.result_name }} = {0};
+{%- endif %}
+{%- if step.condition %}
+        if ({{ step.condition }}) {
+{%- endif %}
+{%- if step.marks_target %}
+        GOVFUZZ_TARGET_ENTER();
+{%- endif %}
+        {% if step.condition %}    {% endif %}{% if step.return_type_present and not step.condition %}{{ step.return_type }} {{ step.result_name }} = {% elif step.return_type_present %}{{ step.result_name }} = {% endif %}{{ step.name }}({% if step.receiver %}{{ step.receiver }}{% if step.params | length > 0 %}, {% endif %}{% endif %}{% for p in step.params %}{{ p.arg }}{% if not loop.last %}, {% endif %}{% endfor %});
+{%- if step.return_type_present %}
+        {% if step.condition %}    {% endif %}GOVFUZZ_KEEP_RESULT({{ step.result_name }});
+{%- endif %}
+{%- if step.condition %}
+        }
+{%- endif %}
+{%- for p in step.params %}
+{%- if p.free %}
+        {{ p.free }};
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+{%- if object.end_step %}
+{%- for p in object.end_step.params %}
+{%- if p.decl %}
+        {{ p.decl }};
+{%- endif %}
+{%- endfor %}
+        {% if object.end_step.return_type_present %}{{ object.end_step.return_type }} {{ object.end_step.result_name }} = {% endif %}{{ object.end_step.name }}({{ object.end_step.receiver }}{% for p in object.end_step.params %}, {{ p.arg }}{% endfor %});
+{%- if object.end_step.return_type_present %}
+        GOVFUZZ_KEEP_RESULT({{ object.end_step.result_name }});
+{%- endif %}
+{%- for p in object.end_step.params %}
+{%- if p.free %}
+        {{ p.free }};
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+    }
+{%- for p in object.constructor.params %}
+{%- if p.free %}
+    {{ p.free }};
+{%- endif %}
+{%- endfor %}
+{%- if protocol_portfolio_lanes > 1 %}
+    }
+{%- endif %}
+{%- endfor %}
+{%- if mined_protocol_allows_random %}
+    /* The observed trace ended in reset/reinitialization, so the handle is safe
+     * to explore further. Reset APIs commonly clear callbacks and user data;
+     * reinstall the same stable configuration before the random suffix. */
+{%- for step in configure_steps %}
+    {{ step.name }}({{ step.receiver }}{% for p in step.params %}, {% if step.callback_context_arg == loop.index0 %}{{ step.receiver }}{% else %}{{ p.arg }}{% endif %}{% endfor %});
+{%- endfor %}
+{%- else %}
+    int _gf_handle_live = 1;
+{%- endif %}
+{%- endif %}
+{%- if not mined_protocol_steps or mined_protocol_allows_random %}
     size_t _gf_lifecycle_count = gf_ctrl_step_count(Data, Size, {{ op_max_steps }});
+    /* Bootstrap corpora are intentionally tiny (empty, "A", "AAAAAAAA").
+     * Before an input has a complete control tail, execute slot zero — the
+     * requested target — once. Otherwise every seed constructs/configures and
+     * tears down the object without ever entering the endpoint, leaving the
+     * fuzzer no target coverage from which to grow the 41-byte program. */
+    if (Size < {{ op_ctrl_len }}) { _gf_lifecycle_count = 1; }
     /* A status-returning op that FAILS leaves the object in an unspecified
      * state; the target's own contract does not promise the next call is legal.
      * Driving on regardless explores garbage state and produces harness-artifact
@@ -170,7 +595,7 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
      * built from it (libexpat's `XML_ExternalEntityParserCreate(parent, ...)`).
      * The subsystem reachable through a child is reachable no other way, so ops
      * may be driven against it once one exists. */
-    {{ handle_type }} *_gf_derived = 0;
+    {{ handle_value_type }} _gf_derived = 0;
     int _gf_derived_live = 0;
 {%- endif %}
 {%- for slot in thread_slots %}
@@ -186,13 +611,24 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
         switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, {{ op_max_steps }}, {{ op_steps | length }})) {
 {%- for step in op_steps %}
         case {{ loop.index0 }}: {
+{%- if step.receiver_selector %}
+            int {{ step.receiver_selector }} = (int)gf_u8(&Cur);
+            int _gf_use_derived{{ loop.index0 }} = _gf_derived_live && ({{ step.receiver_selector }} & 1);
+{%- endif %}
 {%- if step.role == "open" %}
             if (_gf_handle_live) { break; }
+{%- elif step.receiver_selector %}
+            if (!_gf_use_derived{{ loop.index0 }} && !_gf_handle_live) { break; }
+{%- if step.role == "close" %}
+            if (!_gf_use_derived{{ loop.index0 }} && _gf_derived_live) { break; }
+{%- endif %}
 {%- else %}
             if (!_gf_handle_live) { break; }
 {%- endif %}
-{%- if step.receiver_selector %}
-            int {{ step.receiver_selector }} = (int)gf_u8(&Cur);
+{%- if step.produces_derived_handle %}
+            /* Keep ownership bounded: do not overwrite a live derived handle.
+             * It must be torn down before another child is created. */
+            if (_gf_derived_live) { break; }
 {%- endif %}
 {%- for p in step.params %}
             {{ p.decl }};
@@ -220,7 +656,15 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
             }
 {%- endif %}
 {%- if step.role == "close" %}
+{%- if step.receiver_selector %}
+            if (_gf_use_derived{{ loop.index0 }}) {
+                _gf_derived_live = 0;
+            } else {
+                _gf_handle_live = 0;
+            }
+{%- else %}
             _gf_handle_live = 0;
+{%- endif %}
 {%- elif step.role == "open" %}
 {%- if step.is_status_return %}
             _gf_handle_live = ({{ step.result_name }} == 0);
@@ -244,6 +688,8 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
             break;
         }
     }
+{%- endif %}
+{%- endif %}
 {%- if end_step %}
 {%- if derives_handle %}
     /* Release the derived object first. It is the same type as the handle, so
@@ -274,7 +720,7 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- for p in end_step.params %}
     {{ p.decl }};
 {%- endfor %}
-    {% if end_step.return_type_present %}{{ end_step.return_type }} {{ end_step.result_name }} = {% endif %}{{ end_step.name }}(&_gf_handle{% for p in end_step.params %}, {{ p.arg }}{% endfor %});
+    {% if end_step.return_type_present %}{{ end_step.return_type }} {{ end_step.result_name }} = {% endif %}{{ end_step.name }}({% if handle_is_pointer_value %}_gf_handle{% else %}&_gf_handle{% endif %}{% for p in end_step.params %}, {{ p.arg }}{% endfor %});
 {%- if end_step.return_type_present %}
     GOVFUZZ_KEEP_RESULT({{ end_step.result_name }});
 {%- endif %}
@@ -285,10 +731,24 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
     }
 {%- endif %}
+{%- for step in configure_steps %}
+{%- for p in step.params %}
+{%- if p.free %}
+    /* Configuration setters commonly BORROW callback/user-data storage until
+     * teardown. Releasing it immediately after the setter manufactures a UAF
+     * when the parser invokes a later callback. */
+    {{ p.free }};
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
 {%- if guard_op_loop_on_init %}
     }
 {%- endif %}
+{%- if init_returns_handle %}
+    }
+{%- endif %}
     (void)Cur;
+{%- endif %}
     return 0;
 }
 

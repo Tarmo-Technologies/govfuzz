@@ -751,6 +751,29 @@ pub(crate) fn try_run_c_make_build_with_target(
     make_target: Option<&str>,
     cxx_std: Option<&str>,
 ) -> std::process::Output {
+    try_run_c_make_build_with_target_and_ldflags(
+        work_dir,
+        harness_id,
+        extra_sources,
+        extra_includes,
+        compiler,
+        make_target,
+        cxx_std,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn try_run_c_make_build_with_target_and_ldflags(
+    work_dir: &Path,
+    harness_id: &str,
+    extra_sources: &[PathBuf],
+    extra_includes: &[PathBuf],
+    compiler: Option<&CFamilyCompilerOverride>,
+    make_target: Option<&str>,
+    cxx_std: Option<&str>,
+    extra_ldflags: Option<&str>,
+) -> std::process::Output {
     let harness_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
     let mut cmd = std::process::Command::new("make");
     cmd.current_dir(&harness_dir);
@@ -795,8 +818,30 @@ pub(crate) fn try_run_c_make_build_with_target(
         &force_includes,
         compiler,
     );
+    if let Some(extra_ldflags) = extra_ldflags.filter(|value| !value.trim().is_empty()) {
+        append_command_env_flags(&mut cmd, "AUTO_EXTRA_LDFLAGS", extra_ldflags);
+    }
     crate::command_output::output_with_timeout(&mut cmd, std::time::Duration::from_secs(30 * 60))
         .expect("spawn make")
+}
+
+/// Append flags to an environment value already staged on a command.
+///
+/// Reading the parent process environment here is incorrect: C/C++ context
+/// recovery may just have placed an inferred value (notably a libstdc++ `-L`)
+/// directly on `cmd`. Coverage replay appends its portable system libraries
+/// after that step, so it must preserve the command-local value.
+fn append_command_env_flags(cmd: &mut std::process::Command, key: &str, extra: &str) {
+    let current = cmd
+        .get_envs()
+        .find(|(candidate, _)| *candidate == std::ffi::OsStr::new(key))
+        .and_then(|(_, value)| value)
+        .map(|value| value.to_string_lossy().into_owned())
+        .filter(|value| !value.trim().is_empty());
+    let combined = current
+        .map(|value| format!("{value} {extra}"))
+        .unwrap_or_else(|| extra.to_owned());
+    cmd.env(key, combined);
 }
 
 /// The (make target, staged artifact) for an AFL build — the Makefile's `afl`
@@ -1109,7 +1154,7 @@ fn candidate_libstdcxx_include_sets_from_root(include_root: &Path) -> Vec<Vec<Pa
 /// pass it through `-L`. Returns `None` if libstdc++ is already on
 /// the default path or genuinely missing — both cases let the build
 /// proceed and the classifier surface the real diagnostic.
-fn detect_libstdcxx_search_path() -> Option<String> {
+pub(crate) fn detect_libstdcxx_search_path() -> Option<String> {
     use std::process::Command;
     // Ask clang where it would find libstdc++ by default. If
     // -print-file-name returns the bare filename (no absolute path),
@@ -1800,6 +1845,25 @@ mod tests {
             .expect("AUTO_EXTRA_LDFLAGS is set");
         assert!(ldflags.contains("-Wl,--as-needed"));
         assert!(ldflags.contains("-L/usr/lib/gcc/x86_64-linux-gnu/13"));
+    }
+
+    #[test]
+    fn appending_coverage_ldflags_preserves_command_local_recovery() {
+        let mut command = std::process::Command::new("make");
+        command.env("AUTO_EXTRA_LDFLAGS", "-L/usr/lib/gcc/x86_64-linux-gnu/13");
+
+        append_command_env_flags(&mut command, "AUTO_EXTRA_LDFLAGS", "-lm -ldl -lpthread");
+
+        let value = command
+            .get_envs()
+            .find(|(key, _)| *key == std::ffi::OsStr::new("AUTO_EXTRA_LDFLAGS"))
+            .and_then(|(_, value)| value)
+            .expect("command-local linker flags")
+            .to_string_lossy();
+        assert_eq!(
+            value,
+            "-L/usr/lib/gcc/x86_64-linux-gnu/13 -lm -ldl -lpthread"
+        );
     }
 
     #[test]

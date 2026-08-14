@@ -397,6 +397,15 @@ fn add_declared_generated_outputs(
     source_root: &Path,
     work_dir: &Path,
 ) {
+    let cmake_project = source_root.join("CMakeLists.txt").is_file();
+    // A compile database in govfuzz's CMake probe directory is written only
+    // after configuration completed. At that point configure_file outputs have
+    // either been materialized in the binary tree or were transient CMake test
+    // artifacts; continuing to call them source-drop blockers is a false alarm.
+    let cmake_configured = source_root
+        .join(crate::auto::build_probe::PROBE_DIR)
+        .join("compile_commands.json")
+        .is_file();
     let mut stack = vec![(source_root.to_path_buf(), 0usize)];
     let mut seen = 0usize;
     while let Some((dir, depth)) = stack.pop() {
@@ -420,6 +429,7 @@ fn add_declared_generated_outputs(
                         name.as_ref(),
                         ".git"
                             | ".govfuzz-build"
+                            | ".govfuzz-build-cov"
                             | "target"
                             | "node_modules"
                             | "CMakeFiles"
@@ -431,8 +441,14 @@ fn add_declared_generated_outputs(
                 continue;
             }
             if entry.file_name() == "CMakeLists.txt" {
-                scan_cmake_generated_outputs(manifest, source_root, &path);
-            } else if path.extension().and_then(|ext| ext.to_str()) == Some("in") {
+                scan_cmake_generated_outputs(manifest, source_root, &path, cmake_configured);
+            } else if !cmake_project && path.extension().and_then(|ext| ext.to_str()) == Some("in")
+            {
+                // In CMake projects, `.in` files are not necessarily emitted
+                // beside the template (normally they go to the binary tree).
+                // `configure_file` declarations above are the authoritative
+                // mapping. The adjacency heuristic remains useful for Autotools
+                // and simple configure-script projects.
                 scan_configure_template(manifest, source_root, &path);
             }
         }
@@ -485,6 +501,7 @@ fn scan_cmake_generated_outputs(
     manifest: &mut DependencyManifest,
     source_root: &Path,
     cmake_file: &Path,
+    configured: bool,
 ) {
     let Ok(text) = std::fs::read_to_string(cmake_file) else {
         return;
@@ -497,7 +514,10 @@ fn scan_cmake_generated_outputs(
         let input = trim_cmake_token(&captures[1]);
         let output = trim_cmake_token(&captures[2]);
         generated_outputs.insert(output.to_owned());
-        if generated_output_present(source_root, cmake_file, output) {
+        if configured
+            || cmake_transient_output(output)
+            || generated_output_present(source_root, cmake_file, output)
+        {
             continue;
         }
         manifest.push_merge_detailed(
@@ -532,7 +552,9 @@ fn scan_cmake_generated_outputs(
             .unwrap_or(tokens.len());
         for output in &tokens[output_at + 1..end] {
             generated_outputs.insert(output.clone());
-            if output.starts_with('$') || generated_output_present(source_root, cmake_file, output)
+            if configured
+                || output.starts_with('$')
+                || generated_output_present(source_root, cmake_file, output)
             {
                 continue;
             }
@@ -570,6 +592,13 @@ fn scan_cmake_generated_outputs(
         &text,
         &generated_outputs,
     );
+}
+
+fn cmake_transient_output(output: &str) -> bool {
+    let normalized = output.replace('\\', "/").to_ascii_lowercase();
+    normalized.contains("cmake_files_directory")
+        || normalized.contains("/cmakefiles/cmaketmp/")
+        || normalized.contains("/cmaketmp/")
 }
 
 fn scan_cmake_missing_literal_sources(
@@ -837,6 +866,64 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("CMakeLists.txt"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn successful_cmake_probe_satisfies_declared_binary_tree_outputs() {
+        let root = tmpdir();
+        std::fs::write(
+            root.join("CMakeLists.txt"),
+            "configure_file(config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)\n\
+             configure_file(config.h.in ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/confdefs.h)\n\
+             add_library(codec STATIC codec.c)\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("config.h.in"), "#undef FEATURE\n").unwrap();
+        std::fs::write(root.join("codec.c"), "int codec(void) { return 0; }\n").unwrap();
+
+        let before = scan(
+            &root,
+            &[],
+            &PreflightReport { lanes: Vec::new() },
+            &[],
+            &root.join("work"),
+            false,
+        );
+        assert!(before.has(
+            DepKind::GeneratedSource,
+            "${CMAKE_CURRENT_BINARY_DIR}/config.h"
+        ));
+        assert!(
+            !before
+                .entries
+                .iter()
+                .any(|entry| entry.name.contains("confdefs.h")),
+            "CMakeTmp feature-test output is transient, not a source dependency"
+        );
+        assert!(
+            !before.has(DepKind::GeneratedSource, "config.h"),
+            "a CMake .in template is not assumed to emit beside itself"
+        );
+
+        let probe = root.join(crate::auto::build_probe::PROBE_DIR);
+        std::fs::create_dir_all(&probe).unwrap();
+        std::fs::write(probe.join("compile_commands.json"), "[]\n").unwrap();
+        let after = scan(
+            &root,
+            &[],
+            &PreflightReport { lanes: Vec::new() },
+            &[],
+            &root.join("work"),
+            true,
+        );
+        assert!(
+            !after
+                .entries
+                .iter()
+                .any(|entry| entry.kind == DepKind::GeneratedSource),
+            "completed CMake configuration satisfies declared binary-tree outputs: {after:?}"
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 

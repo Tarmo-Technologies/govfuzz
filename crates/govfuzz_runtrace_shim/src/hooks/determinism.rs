@@ -9,9 +9,12 @@
 //! seeds a hash, salts a table or mints an id from `rand`/`getrandom` could take
 //! a different path on replay, and a crash found once might never reproduce.
 //!
-//! The stream is xorshift64*, seeded from `GOVFUZZ_RUNTRACE_SEED` when present
-//! so a campaign can vary it across runs while any single run stays replayable.
-//! `srand` still honours the target's own seed.
+//! The stream is xorshift64*, reset from the current fuzz input (and mixed with
+//! `GOVFUZZ_RUNTRACE_SEED` when present) at every harness iteration. Resetting is
+//! essential for the persistent fork-server: a process-global stream would make
+//! input N observe RNG state left by inputs 0..N-1, while standalone replay would
+//! observe the initial state and fail to reproduce. `srand` still honours the
+//! target's own seed after the per-input reset.
 //!
 //! The CLOCK is deliberately not interposed. It was, and it broke targets:
 //! `clock_gettime`/`gettimeofday` are resolved through the vDSO and versioned
@@ -109,6 +112,32 @@ fn seed_from_env() -> u64 {
         acc = acc.wrapping_mul(10).wrapping_add(u64::from(byte - b'0'));
     }
     acc
+}
+
+/// Reset the deterministic stream at an input boundary. FNV-1a is used only as
+/// a fast stable mixer, not for security; the goal is that the same testcase
+/// observes the same pseudo-random decisions regardless of corpus order or how
+/// many earlier iterations ran in the persistent process.
+pub(crate) fn reset_for_input(input: &[u8]) {
+    if !env_enabled() {
+        return;
+    }
+    RNG_STATE.store(input_seed(input, seed_from_env()), Ordering::Relaxed);
+}
+
+fn input_seed(input: &[u8], campaign_seed: u64) -> u64 {
+    let mut state = 0xcbf2_9ce4_8422_2325u64 ^ campaign_seed;
+    for byte in input {
+        state ^= u64::from(*byte);
+        state = state.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    // Include length so an empty input and a hypothetical sequence of bytes
+    // that returns to the offset basis cannot share the trivial seed.
+    state ^= input.len() as u64;
+    if state == 0 {
+        state = 0x9E37_79B9_7F4A_7C15;
+    }
+    state
 }
 
 fn emit_audit(symbol: &[u8], value: i64) {
@@ -218,9 +247,16 @@ pub unsafe extern "C" fn getrandom(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // The production state is intentionally process-global. Serialise tests
+    // that overwrite it so Rust's parallel test runner cannot splice two
+    // pseudo-random streams together and make the determinism assertions flaky.
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn the_random_stream_is_reproducible_from_a_seed() {
+        let _guard = TEST_LOCK.lock().unwrap();
         // Determinism is the point: the same seed must give the same bytes, or
         // a saved crash input is not a reproducer.
         RNG_STATE.store(12345, Ordering::Relaxed);
@@ -237,8 +273,25 @@ mod tests {
 
     #[test]
     fn a_zero_state_never_stalls_the_stream() {
+        let _guard = TEST_LOCK.lock().unwrap();
         // xorshift is absorbing at zero; a zero seed must be replaced.
         RNG_STATE.store(0, Ordering::Relaxed);
         assert_ne!(next_random(), 0);
+    }
+
+    #[test]
+    fn persistent_iterations_reset_randomness_from_each_input() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        // Simulate A, B, A in one persistent process. The second A must see the
+        // exact stream the first A did; otherwise a saved A is not a standalone
+        // reproducer after B (or any corpus prefix) has run.
+        RNG_STATE.store(input_seed(b"same-input", 0), Ordering::Relaxed);
+        let first: Vec<u64> = (0..4).map(|_| next_random()).collect();
+        RNG_STATE.store(input_seed(b"different-input", 0), Ordering::Relaxed);
+        let different: Vec<u64> = (0..4).map(|_| next_random()).collect();
+        RNG_STATE.store(input_seed(b"same-input", 0), Ordering::Relaxed);
+        let replay: Vec<u64> = (0..4).map(|_| next_random()).collect();
+        assert_eq!(first, replay);
+        assert_ne!(first, different);
     }
 }

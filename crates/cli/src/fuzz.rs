@@ -380,6 +380,7 @@ impl FuzzArgs {
 }
 
 const DEFAULT_ITERATIONS: usize = 256;
+const PORTFOLIO_FEEDBACK_FILE: &str = "portfolio-feedback.json";
 
 /// Default maximum generated input length, matching the built-in mutator's
 /// historical fixed cap (and libFuzzer's default).
@@ -1713,15 +1714,15 @@ impl CoverageTracker {
         count
     }
 
-    /// Whether the just-executed input grew edge coverage. Stateful: updates the
+    /// Number of edges the just-executed input added. Stateful: updates the
     /// running maximum, so call exactly once per exec.
-    fn input_increased_coverage(&mut self) -> bool {
+    fn input_increased_coverage(&mut self) -> usize {
         let now = self.count();
-        let grew = now > self.last_count;
-        if grew {
+        let added = now.saturating_sub(self.last_count);
+        if added > 0 {
             self.last_count = now;
         }
-        grew
+        added
     }
 
     /// Copy the raw edge bitmap (#400 colorization). Used to save the cumulative
@@ -1763,14 +1764,14 @@ impl CoverageTracker {
     /// Stateful: folds each newly-seen `(edge, bucket)` into `virgin_buckets`, so
     /// call exactly once per main exec, AFTER the exec and BEFORE `zero_counts`
     /// for the next one. No-op (false) when the count map is absent.
-    fn input_grew_buckets(&mut self) -> bool {
+    fn input_grew_buckets(&mut self) -> usize {
         if self.cnt_map.is_null() {
-            return false;
+            return 0;
         }
         // SAFETY: when non-null, `self.cnt_map`/`self.cnt_len` is a valid mapping
         // for the tracker's lifetime; `virgin_buckets` is sized to `cnt_len`.
         let counts = unsafe { std::slice::from_raw_parts(self.cnt_map as *const u8, self.cnt_len) };
-        let mut novel = false;
+        let mut novel = 0usize;
         for (edge, &count) in counts.iter().enumerate() {
             // count 0 == edge not hit this exec; only bucket edges actually run.
             if count == 0 {
@@ -1780,7 +1781,7 @@ impl CoverageTracker {
             let seen = &mut self.virgin_buckets[edge];
             if *seen & bit == 0 {
                 *seen |= bit;
-                novel = true;
+                novel += 1;
             }
         }
         novel
@@ -1806,15 +1807,15 @@ impl CoverageTracker {
     /// and energized exactly like new edge coverage. Stateful: call exactly once
     /// per main exec, AFTER the exec and BEFORE `zero_progress` for the next one.
     /// No-op (false) when the progress map is absent.
-    fn input_advanced_comparisons(&mut self) -> bool {
+    fn input_advanced_comparisons(&mut self) -> usize {
         if self.cmpp_map.is_null() {
-            return false;
+            return 0;
         }
         // SAFETY: when non-null, `self.cmpp_map`/`self.cmpp_len` is a valid mapping
         // for the tracker's lifetime; `virgin_progress` is sized to `cmpp_len`.
         let progress =
             unsafe { std::slice::from_raw_parts(self.cmpp_map as *const u8, self.cmpp_len) };
-        let mut novel = false;
+        let mut novel = 0usize;
         for (site, &level) in progress.iter().enumerate() {
             // level 0 == no leading-byte match (or site not hit this exec); only a
             // positive leading-match is a gradient signal.
@@ -1827,7 +1828,7 @@ impl CoverageTracker {
             let seen = &mut self.virgin_progress[site];
             if *seen & bit == 0 {
                 *seen |= bit;
-                novel = true;
+                novel += 1;
             }
         }
         novel
@@ -1854,8 +1855,8 @@ impl CoverageTracker {
     fn count(&self) -> usize {
         0
     }
-    fn input_increased_coverage(&mut self) -> bool {
-        false
+    fn input_increased_coverage(&mut self) -> usize {
+        0
     }
     fn snapshot(&self) -> Vec<u8> {
         Vec::new()
@@ -1863,12 +1864,12 @@ impl CoverageTracker {
     fn zero(&self) {}
     fn restore(&self, _snapshot: &[u8]) {}
     fn zero_counts(&self) {}
-    fn input_grew_buckets(&mut self) -> bool {
-        false
+    fn input_grew_buckets(&mut self) -> usize {
+        0
     }
     fn zero_progress(&self) {}
-    fn input_advanced_comparisons(&mut self) -> bool {
-        false
+    fn input_advanced_comparisons(&mut self) -> usize {
+        0
     }
 }
 
@@ -1892,6 +1893,31 @@ struct PoolEntry {
     /// at the offset they were compared instead of every occurrence of a common
     /// byte. `None` until captured; mutation draws from it when present.
     colored: Option<Vec<u8>>,
+}
+
+/// Quantitative marginal feedback from one execution. Keeping the channel
+/// counts (instead of collapsing them to a boolean) lets the entropic scheduler
+/// distinguish a portfolio lane that opens hundreds of new target edges from a
+/// lane that contributes one incidental bucket.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct CoverageNovelty {
+    new_edges: usize,
+    new_buckets: usize,
+    comparison_advances: usize,
+}
+
+impl CoverageNovelty {
+    fn made_progress(self) -> bool {
+        self.new_edges > 0 || self.new_buckets > 0 || self.comparison_advances > 0
+    }
+
+    fn scheduling_energy(self) -> u32 {
+        self.new_edges
+            .saturating_mul(8)
+            .saturating_add(self.new_buckets.saturating_mul(2))
+            .saturating_add(self.comparison_advances)
+            .clamp(1, 4096) as u32
+    }
 }
 
 impl PoolEntry {
@@ -2164,6 +2190,16 @@ fn run_builtin_with_progress(
         .harness_path
         .parent()
         .and_then(SequenceGeometry::load);
+    let mut portfolio_feedback = sequence_geometry
+        .filter(|geometry| geometry.portfolio_lanes > 1)
+        .map(|geometry| {
+            (0..geometry.portfolio_lanes)
+                .map(|lane| PortfolioLaneFeedback {
+                    lane,
+                    ..PortfolioLaneFeedback::default()
+                })
+                .collect::<Vec<_>>()
+        });
     let mut corpus_new = 0_usize;
     let mut corpus_duplicates = 0_usize;
     let mut non_reproducible = 0_usize;
@@ -2333,6 +2369,7 @@ fn run_builtin_with_progress(
                 &mut rng,
             )
         };
+        let portfolio_lane = sequence_geometry.and_then(|geometry| geometry.portfolio_lane(&input));
         // Empty inputs end the harness loop (an empty frame is the degenerate
         // "no input"), so they always go through the per-spawn path; everything
         // else uses the persistent fork-server when enabled, falling back to a
@@ -2411,15 +2448,20 @@ fn run_builtin_with_progress(
         // The three channels are OR'd into the same progress signal, so a
         // comparison-progress advance retains the input in the corpus and feeds the
         // scheduler (`input_energy`) exactly like edge novelty does.
-        let input_new_coverage = cov_tracker
+        let input_novelty = cov_tracker
             .as_mut()
             .map(|t| {
                 let new_edges = t.input_increased_coverage();
                 let new_buckets = t.input_grew_buckets();
-                let new_cmp_progress = t.input_advanced_comparisons();
-                new_edges || new_buckets || new_cmp_progress
+                let comparison_advances = t.input_advanced_comparisons();
+                CoverageNovelty {
+                    new_edges,
+                    new_buckets,
+                    comparison_advances,
+                }
             })
-            .unwrap_or(false);
+            .unwrap_or_default();
+        let input_new_coverage = input_novelty.made_progress();
         // Fold newly-mined value-profile operands into the dictionary every 2048
         // execs so the mutator can splice magic bytes it just observed (#398).
         if let Some(vp) = &vp_path {
@@ -2507,7 +2549,25 @@ fn run_builtin_with_progress(
         // driver path) new edge coverage — is its scheduling energy, captured here
         // before the finding loop drains the set. Rare-coverage seeds get more
         // mutation energy.
-        let input_energy = (new_signatures.len() as u32 + u32::from(input_new_coverage)).max(1);
+        let input_energy = input_novelty
+            .scheduling_energy()
+            .saturating_add((new_signatures.len() as u32).saturating_mul(16))
+            .clamp(1, 4096);
+        if let Some(lane) = portfolio_lane.and_then(|lane| {
+            portfolio_feedback
+                .as_mut()
+                .and_then(|stats| stats.get_mut(lane))
+        }) {
+            lane.executions = lane.executions.saturating_add(1);
+            lane.new_edges = lane.new_edges.saturating_add(input_novelty.new_edges);
+            lane.new_buckets = lane.new_buckets.saturating_add(input_novelty.new_buckets);
+            lane.comparison_advances = lane
+                .comparison_advances
+                .saturating_add(input_novelty.comparison_advances);
+            lane.scheduling_energy_awarded = lane
+                .scheduling_energy_awarded
+                .saturating_add(u64::from(input_energy));
+        }
 
         // New coverage found while fuzzing in the EXTENDED zone (past the default cap)
         // proves this target is length-sensitive, so the last ceiling raise paid off.
@@ -2675,6 +2735,13 @@ fn run_builtin_with_progress(
             && pool.len() < corpus_limits.entries
             && pool_bytes.saturating_add(input.len()) <= corpus_limits.bytes;
         if !input.is_empty() && keep {
+            if let Some(lane) = portfolio_lane.and_then(|lane| {
+                portfolio_feedback
+                    .as_mut()
+                    .and_then(|stats| stats.get_mut(lane))
+            }) {
+                lane.retained_inputs = lane.retained_inputs.saturating_add(1);
+            }
             pool_bytes = pool_bytes.saturating_add(input.len());
             pool.push(PoolEntry {
                 bytes: input,
@@ -2793,6 +2860,19 @@ fn run_builtin_with_progress(
             0
         }
     };
+    if let (Some(harness_dir), Some(lanes)) = (prepared.harness_path.parent(), portfolio_feedback) {
+        let payload = serde_json::json!({
+            "schema_version": 1,
+            "strategy": "marginal_coverage_entropic",
+            "lanes": lanes,
+        });
+        if let Ok(bytes) = serde_json::to_vec_pretty(&payload) {
+            let _ = crate::auto::report::atomic_write(
+                &harness_dir.join(PORTFOLIO_FEEDBACK_FILE),
+                &bytes,
+            );
+        }
+    }
 
     // #15: the harness REJECTED every input it executed (incl. the empty seed run
     // first) — it never actually fuzzed (an input gate with no valid seed, or a
@@ -4174,6 +4254,7 @@ pub(crate) struct SequenceGeometry {
     operation_count: usize,
     max_steps: usize,
     control_len: usize,
+    portfolio_lanes: usize,
 }
 
 impl SequenceGeometry {
@@ -4197,6 +4278,7 @@ impl SequenceGeometry {
             operation_count: field("operation_count")?,
             max_steps: field("max_steps")?,
             control_len: field("control_len")?,
+            portfolio_lanes: field("portfolio_lanes").unwrap_or(1).max(1),
         };
         (geometry.operation_count > 0 && geometry.max_steps > 0).then_some(geometry)
     }
@@ -4213,9 +4295,10 @@ impl SequenceGeometry {
         // encoding the engine's bounded-value decoder understands and the
         // harness's `gf_ctrl_bounded` mirrors byte for byte.
         const SLOT: usize = 5;
+        let program_prefix = 1 + usize::from(self.portfolio_lanes > 1);
         let steps = (0..self.max_steps)
             .map(|step| {
-                let at = base + 1 + step * SLOT;
+                let at = base + program_prefix + step * SLOT;
                 OperationStepSpan::new(at..at + SLOT, at..at + SLOT)
             })
             .collect();
@@ -4233,6 +4316,51 @@ impl SequenceGeometry {
             self.operation_count,
             steps,
         ))
+    }
+
+    fn expand_portfolio_seeds(&self, seeds: &mut Vec<Vec<u8>>) {
+        if self.portfolio_lanes <= 1 || self.portfolio_lanes > u8::MAX as usize {
+            return;
+        }
+        let original = std::mem::take(seeds);
+        let mut expanded = Vec::with_capacity(original.len() * self.portfolio_lanes);
+        for seed in original {
+            for lane in 0..self.portfolio_lanes {
+                let mut variant = Vec::with_capacity(seed.len() + self.control_len);
+                variant.extend_from_slice(&seed);
+                variant.resize(seed.len() + self.control_len, 0);
+                variant[seed.len()] = lane as u8;
+                if !expanded.contains(&variant) {
+                    expanded.push(variant);
+                }
+            }
+        }
+        *seeds = expanded;
+    }
+
+    fn portfolio_lane(&self, input: &[u8]) -> Option<usize> {
+        if self.portfolio_lanes <= 1 || input.len() < self.control_len {
+            return None;
+        }
+        let base = input.len() - self.control_len;
+        Some(usize::from(input[base]) % self.portfolio_lanes)
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+struct PortfolioLaneFeedback {
+    lane: usize,
+    executions: usize,
+    retained_inputs: usize,
+    new_edges: usize,
+    new_buckets: usize,
+    comparison_advances: usize,
+    scheduling_energy_awarded: u64,
+}
+
+pub(crate) fn expand_sequence_portfolio_seeds(harness_dir: &Path, seeds: &mut Vec<Vec<u8>>) {
+    if let Some(geometry) = SequenceGeometry::load(harness_dir) {
+        geometry.expand_portfolio_seeds(seeds);
     }
 }
 
@@ -4252,14 +4380,16 @@ fn mutate_from_pool(
     rng: &mut MutationRng,
 ) -> Vec<u8> {
     let suite = MutatorSuite::new(config);
-    let base = pool
+    let full_base = pool
         .get(base_index)
         .map(PoolEntry::mutation_base)
         .unwrap_or(&[]);
-    let peer = pool
+    let base = &full_base[..full_base.len().min(config.max_len)];
+    let full_peer = pool
         .get((base_index + 1) % pool.len().max(1))
         .map(PoolEntry::mutation_base)
         .unwrap_or(&[]);
+    let peer = &full_peer[..full_peer.len().min(config.max_len)];
     let mut mutation_input = MutationInput::new(base, dictionary).with_peer(peer);
     let cmplog = pool
         .get(base_index)
@@ -5592,7 +5722,7 @@ mod dedup_seed_tests {
 
 #[cfg(test)]
 mod entropic_tests {
-    use super::{choose_entropic_index_pool, entropic_weight, PoolEntry};
+    use super::{choose_entropic_index_pool, entropic_weight, CoverageNovelty, PoolEntry};
     use fuzz_engine_builtin::MutationRng;
 
     #[test]
@@ -5627,6 +5757,23 @@ mod entropic_tests {
             counts[1] > counts[0] * 10,
             "entropic choice should strongly favor the rare seed: {counts:?}"
         );
+    }
+
+    #[test]
+    fn marginal_coverage_awards_more_energy_than_incidental_progress() {
+        let broad_lane = CoverageNovelty {
+            new_edges: 40,
+            new_buckets: 3,
+            comparison_advances: 1,
+        };
+        let narrow_lane = CoverageNovelty {
+            new_edges: 0,
+            new_buckets: 1,
+            comparison_advances: 0,
+        };
+        assert!(broad_lane.scheduling_energy() > narrow_lane.scheduling_energy() * 100);
+        assert!(broad_lane.made_progress());
+        assert!(!CoverageNovelty::default().made_progress());
     }
 }
 
@@ -5741,20 +5888,20 @@ mod coverage_tracker_tests {
 
         let mut tracker = CoverageTracker::new(&env).expect("tracker maps the bitmap");
         // Empty bitmap: the first exec hit nothing new.
-        assert!(!tracker.input_increased_coverage());
+        assert_eq!(tracker.input_increased_coverage(), 0);
 
         // An input that lights two fresh edges is interesting (retained).
         set_edge(&path, 10);
         set_edge(&path, 4096);
-        assert!(tracker.input_increased_coverage());
+        assert_eq!(tracker.input_increased_coverage(), 2);
 
         // A redundant input (no new edges) is not retained.
-        assert!(!tracker.input_increased_coverage());
+        assert_eq!(tracker.input_increased_coverage(), 0);
 
         // One more new edge is interesting again.
         set_edge(&path, GOVFUZZ_COV_BITS as u64 - 1);
-        assert!(tracker.input_increased_coverage());
-        assert!(!tracker.input_increased_coverage());
+        assert_eq!(tracker.input_increased_coverage(), 1);
+        assert_eq!(tracker.input_increased_coverage(), 0);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -5810,7 +5957,7 @@ mod coverage_tracker_tests {
         // The engine zeroes the count map, the harness writes this exec's counts,
         // the engine reads bucket novelty. First time edge 100 reaches each bucket
         // is novel; a repeat within the same bucket is not.
-        let exec = |tracker: &mut CoverageTracker, count: u8| -> bool {
+        let exec = |tracker: &mut CoverageTracker, count: u8| -> usize {
             tracker.zero_counts();
             set_count(&cnt, edge, count);
             tracker.input_grew_buckets()
@@ -5818,34 +5965,37 @@ mod coverage_tracker_tests {
 
         // Bucket transitions 1->2->4->8 each register exactly once.
         assert!(
-            exec(&mut tracker, 1),
+            exec(&mut tracker, 1) > 0,
             "count 1 (bucket 0) is novel the first time"
         );
         assert!(
-            !exec(&mut tracker, 1),
+            exec(&mut tracker, 1) == 0,
             "count 1 again is within-bucket noise"
         );
-        assert!(exec(&mut tracker, 2), "count 2 crosses into bucket 1");
+        assert!(exec(&mut tracker, 2) > 0, "count 2 crosses into bucket 1");
         assert!(
-            !exec(&mut tracker, 2),
+            exec(&mut tracker, 2) == 0,
             "count 2 again is within-bucket noise"
         );
-        assert!(exec(&mut tracker, 4), "count 4 crosses into bucket 3");
+        assert!(exec(&mut tracker, 4) > 0, "count 4 crosses into bucket 3");
         // Noise WITHIN bucket 3 (4..=7) does not register.
-        assert!(!exec(&mut tracker, 5), "count 5 stays in bucket 3");
-        assert!(!exec(&mut tracker, 6), "count 6 stays in bucket 3");
-        assert!(!exec(&mut tracker, 7), "count 7 stays in bucket 3");
+        assert_eq!(exec(&mut tracker, 5), 0, "count 5 stays in bucket 3");
+        assert_eq!(exec(&mut tracker, 6), 0, "count 6 stays in bucket 3");
+        assert_eq!(exec(&mut tracker, 7), 0, "count 7 stays in bucket 3");
         // Crossing into bucket 4 (8..=15) registers again.
-        assert!(exec(&mut tracker, 8), "count 8 crosses into bucket 4");
-        assert!(!exec(&mut tracker, 15), "count 15 stays in bucket 4");
+        assert!(exec(&mut tracker, 8) > 0, "count 8 crosses into bucket 4");
+        assert_eq!(exec(&mut tracker, 15), 0, "count 15 stays in bucket 4");
         // A deeper loop crossing into the top bucket registers once more.
-        assert!(exec(&mut tracker, 200), "count 200 crosses into bucket 7");
-        assert!(!exec(&mut tracker, 255), "count 255 stays in bucket 7");
+        assert!(
+            exec(&mut tracker, 200) > 0,
+            "count 200 crosses into bucket 7"
+        );
+        assert_eq!(exec(&mut tracker, 255), 0, "count 255 stays in bucket 7");
 
         // Re-visiting a LOWER, already-seen bucket is not novel (virgin is a
         // per-edge bitmask of every bucket ever seen, not a high-water mark only).
         assert!(
-            !exec(&mut tracker, 1),
+            exec(&mut tracker, 1) == 0,
             "bucket 0 was already seen for this edge"
         );
 
@@ -5853,7 +6003,7 @@ mod coverage_tracker_tests {
         tracker.zero_counts();
         set_count(&cnt, 7777, 9); // edge 7777, bucket 4
         assert!(
-            tracker.input_grew_buckets(),
+            tracker.input_grew_buckets() > 0,
             "a fresh edge's first bucket is novel regardless of other edges"
         );
 
@@ -5899,7 +6049,7 @@ mod coverage_tracker_tests {
         let mut tracker = CoverageTracker::new(&env).expect("tracker maps progress map");
         let site = 100u64; // arbitrary hashed compare site
 
-        let exec = |tracker: &mut CoverageTracker, progress: u8| -> bool {
+        let exec = |tracker: &mut CoverageTracker, progress: u8| -> usize {
             tracker.zero_progress();
             set_progress(&cmpp, site, progress);
             tracker.input_advanced_comparisons()
@@ -5907,32 +6057,35 @@ mod coverage_tracker_tests {
 
         // Matching one leading byte is novel the first time; the same level again
         // is not (no new gradient).
-        assert!(exec(&mut tracker, 1), "first 1-byte leading match is novel");
         assert!(
-            !exec(&mut tracker, 1),
+            exec(&mut tracker, 1) > 0,
+            "first 1-byte leading match is novel"
+        );
+        assert!(
+            exec(&mut tracker, 1) == 0,
             "same match level again is not novel"
         );
         // Matching deeper (2, then 3 leading bytes) each registers once.
-        assert!(exec(&mut tracker, 2), "2-byte leading match is novel");
-        assert!(exec(&mut tracker, 3), "3-byte leading match is novel");
+        assert!(exec(&mut tracker, 2) > 0, "2-byte leading match is novel");
+        assert!(exec(&mut tracker, 3) > 0, "3-byte leading match is novel");
         // Re-seeing an intermediate level already observed is not novel.
-        assert!(!exec(&mut tracker, 2), "level 2 was already seen");
+        assert_eq!(exec(&mut tracker, 2), 0, "level 2 was already seen");
         // Progress 0 (no leading-byte match) is indistinguishable from "site not
         // hit" and never registers novelty.
         assert!(
-            !exec(&mut tracker, 0),
+            exec(&mut tracker, 0) == 0,
             "zero leading-byte match is not progress"
         );
         // Levels saturate at 7 (an 8-byte compare matching all 8 passes the gate
         // and lights a real edge): 7 is novel once, and a >7 value maps to 7.
-        assert!(exec(&mut tracker, 7), "level 7 is novel the first time");
-        assert!(!exec(&mut tracker, 8), "level >7 caps to 7, already seen");
+        assert!(exec(&mut tracker, 7) > 0, "level 7 is novel the first time");
+        assert_eq!(exec(&mut tracker, 8), 0, "level >7 caps to 7, already seen");
 
         // A DIFFERENT compare site is tracked independently.
         tracker.zero_progress();
         set_progress(&cmpp, 7777, 4);
         assert!(
-            tracker.input_advanced_comparisons(),
+            tracker.input_advanced_comparisons() > 0,
             "a fresh site's first leading match is novel regardless of other sites"
         );
 
@@ -5957,9 +6110,9 @@ mod coverage_tracker_tests {
         let env = vec![("GOVFUZZ_COV_SHM".to_owned(), cov.display().to_string())];
         let mut tracker = CoverageTracker::new(&env).expect("tracker maps the bitmap");
 
-        assert!(!tracker.input_advanced_comparisons());
+        assert_eq!(tracker.input_advanced_comparisons(), 0);
         tracker.zero_progress(); // no panic, no effect
-        assert!(!tracker.input_advanced_comparisons());
+        assert_eq!(tracker.input_advanced_comparisons(), 0);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -5983,15 +6136,15 @@ mod coverage_tracker_tests {
         let mut tracker = CoverageTracker::new(&env).expect("tracker maps the bitmap");
 
         // Bucket channel is a no-op without a count map.
-        assert!(!tracker.input_grew_buckets());
+        assert_eq!(tracker.input_grew_buckets(), 0);
         tracker.zero_counts(); // no panic, no effect
 
         // Presence still works exactly as before.
         set_edge(&cov, 42);
-        assert!(tracker.input_increased_coverage());
-        assert!(!tracker.input_increased_coverage());
+        assert_eq!(tracker.input_increased_coverage(), 1);
+        assert_eq!(tracker.input_increased_coverage(), 0);
         // Still inert after presence growth.
-        assert!(!tracker.input_grew_buckets());
+        assert_eq!(tracker.input_grew_buckets(), 0);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -7642,6 +7795,7 @@ mod sequence_layout_tests {
             operation_count: 3,
             max_steps: 8,
             control_len: 41,
+            portfolio_lanes: 1,
         }
     }
 
@@ -7715,10 +7869,34 @@ mod sequence_layout_tests {
     }
 
     #[test]
+    fn portfolio_seeds_cover_every_ranked_lane_without_polluting_argument_bytes() {
+        let geometry = SequenceGeometry {
+            operation_count: 3,
+            max_steps: 8,
+            control_len: 42,
+            portfolio_lanes: 4,
+        };
+        let mut seeds = vec![b"<x/>".to_vec()];
+        geometry.expand_portfolio_seeds(&mut seeds);
+        assert_eq!(seeds.len(), 4);
+        for (lane, seed) in seeds.iter().enumerate() {
+            assert_eq!(&seed[..4], b"<x/>");
+            assert_eq!(seed[4], lane as u8);
+            assert_eq!(seed.len(), 46);
+            let layout = geometry.layout_for(seed).expect("portfolio control tail");
+            assert_eq!(layout.steps[0].range, 6..11);
+            layout.validate_for_input(seed).expect("portfolio layout");
+            assert_eq!(geometry.portfolio_lane(seed), Some(lane));
+        }
+        assert_eq!(geometry.portfolio_lane(b"tiny"), None);
+    }
+
+    #[test]
     fn an_input_too_short_for_a_control_block_has_no_program() {
-        // Below the control length the harness reads no program at all
-        // (`gf_ctrl_step_count` returns 0), so there is nothing to preserve and
-        // flat-byte mutation is the correct behaviour.
+        // Below the control length there is no mutable program to describe, so
+        // flat-byte mutation is correct. The sequence harness still executes
+        // its slot-zero TARGET once as a bootstrap default; that implicit call
+        // has no control span for the structure-aware mutator to preserve.
         assert!(geometry().layout_for(&[0u8; 4]).is_none());
     }
 }

@@ -47,6 +47,7 @@ pub const DEFAULT_MAX_REPAIR_ROUNDS: usize = 16;
 /// records the action in `run.json` and makes [`stub_execution_summary`] count it as
 /// real linked code (not a stub).
 const WHOLE_LIBRARY_ARCHIVE_SYMBOL: &str = "<whole-library archive>";
+const WHOLE_LIBRARY_LINK_DEP_SYMBOL: &str = "<whole-library link dependency>";
 
 /// Placeholder "symbol" recorded in the repair ledger when the §26.1 SECONDARY
 /// whole-library fallback compiles+links the library's full recovered translation-
@@ -1256,9 +1257,38 @@ pub fn attempt_with_progress(
         )?,
     };
     let result = if matches!(result.outcome, Outcome::FailedBuild { .. })
-        && auto_sequence_candidate(candidate)
-    {
+        && auto_sequence_candidate(
+            candidate,
+            Some(&decl_index.c_type_defs),
+            &decl_index.c_tree_lifecycle,
+        ) {
+        let (sequence_retries, sequence_errors) = match &result.outcome {
+            Outcome::FailedBuild {
+                retries,
+                last_errors,
+                ..
+            } => (*retries, format!("{last_errors:?}")),
+            _ => unreachable!("guarded by FailedBuild"),
+        };
         let mut direct = run_attempt(candidate, work_dir, decl_index, options, progress, true)?;
+        // This is a BUILD-time degradation, distinct from generation's own
+        // sequence->direct fallback. Preserve it after the direct attempt
+        // regenerates the directory; otherwise the final metadata erases the
+        // fact that the deeper stateful harness could not be linked.
+        let fallback = serde_json::json!({
+            "schema_version": 1,
+            "from": "sequence",
+            "to": "direct",
+            "phase": "build",
+            "retries": sequence_retries,
+            "reason": sequence_errors,
+        });
+        if let Ok(bytes) = serde_json::to_vec_pretty(&fallback) {
+            let _ = crate::auto::report::atomic_write(
+                &direct.harness_dir.join("generation-fallback.json"),
+                &bytes,
+            );
+        }
         if matches!(
             direct.outcome,
             Outcome::BuiltAndFuzzed { .. }
@@ -1759,6 +1789,10 @@ fn run_attempt(
     std::fs::create_dir_all(&harness_dir)?;
     let repairs_dir = harness_dir.join("repairs");
     reset_repairs_dir(&repairs_dir)?;
+    // A reused work directory must not retain the successful repair closure
+    // from an earlier attempt if this attempt later fails or chooses a different
+    // generation path. Coverage without a fresh recipe is honestly unavailable.
+    crate::auto::coverage_replay::clear_build_recipe(&harness_dir);
     let mut manifest = RepairManifest::default();
     // Seed user-supplied `--extra-source` files so a multi-file library's real
     // translation units are compiled+linked on the first build attempt — the
@@ -2527,6 +2561,39 @@ fn run_attempt(
     let run_afl = target_engines.contains(&FuzzEngine::AflPlusPlus) && cross_runner.is_none();
     let run_builtin = target_engines.contains(&FuzzEngine::Builtin) || !run_afl;
 
+    // Resolve probe archives before generation. If one compiled under this
+    // exact sanitizer contract exports the target, it must be the sole target
+    // provider: compiling the defining TU as well is invalid for amalgamated
+    // archives whose one member already contains that definition (SQLite).
+    let tree_root = options
+        .source_root
+        .clone()
+        .or_else(|| candidate.source_path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| work_dir.to_path_buf());
+    let is_c_family = matches!(
+        candidate.lang,
+        crate::auto::candidate::Lang::C | crate::auto::candidate::Lang::Cpp
+    );
+    let library_archives: Vec<PathBuf> = if is_c_family {
+        crate::auto::build_probe::discover_static_libraries(&tree_root)
+    } else {
+        Vec::new()
+    };
+    let library_archive_symbols =
+        crate::auto::build_probe::index_static_library_symbols(&library_archives);
+    let compatible_probe_archives = if is_c_family {
+        crate::auto::build_probe::compatible_probe_static_libraries(&tree_root, &options.sanitizers)
+    } else {
+        Vec::new()
+    };
+    let compatible_probe_index =
+        crate::auto::build_probe::index_static_library_symbols(&compatible_probe_archives);
+    let archive_backed = !crate::auto::build_probe::static_libraries_defining_any(
+        &compatible_probe_index,
+        [&candidate.name],
+    )
+    .is_empty();
+
     // Step 1: try to generate the harness up-front. (Rust + Java already generated
     // + built in Step 0, so they skip this C/Ada harness-gen path.)
     if !is_prebuilt {
@@ -2544,6 +2611,7 @@ fn run_attempt(
             }),
             &options.decoder_limits,
             options.force,
+            archive_backed,
         ) {
             Ok(()) => {}
             Err(reason) => {
@@ -2639,19 +2707,47 @@ fn run_attempt(
     // for a tree that ships no archive. Used to close a harness link that fails
     // with undefined externals naming no in-tree definition (a multi-TU library's
     // sibling objects that live only in the archive — zstd's lib/common, miniz).
-    let library_archives: Vec<PathBuf> = if matches!(
-        candidate.lang,
-        crate::auto::candidate::Lang::C | crate::auto::candidate::Lang::Cpp
+    // An explicit build probe now emits sanitizer/coverage-compatible static
+    // libraries. Seed only the archive that actually owns the selected target,
+    // not every archive in the build tree. The target source remains compiled
+    // directly; normal static-link semantics pull from the archive only the
+    // sibling objects needed by that source and by the stateful harness. This is
+    // the expert build shape and avoids discovering libarchive/zstd one missing
+    // translation unit per repair round.
+    for archive in crate::auto::build_probe::static_libraries_defining_any(
+        &compatible_probe_index,
+        [&candidate.name],
     ) {
-        let tree_root = options
-            .source_root
-            .clone()
-            .or_else(|| candidate.source_path.parent().map(Path::to_path_buf))
-            .unwrap_or_else(|| work_dir.to_path_buf());
-        crate::auto::build_probe::discover_static_libraries(&tree_root)
-    } else {
-        Vec::new()
-    };
+        if extra_sources.contains(&archive) {
+            continue;
+        }
+        extra_sources.push(archive.clone());
+        manifest.repairs.push(Repair::AddSource {
+            symbol: WHOLE_LIBRARY_ARCHIVE_SYMBOL.to_owned(),
+            source_path: archive.clone(),
+        });
+        gfeprintln!(
+            "govfuzz auto: {}: linking probe-built instrumented library {}",
+            candidate.harness_id,
+            archive.display()
+        );
+        // A static archive does not encode its transitive dependencies. Reuse
+        // the concrete library files from CMake's successful consumer link line
+        // so optional codecs/crypto backends remain real code instead of being
+        // synthesized as stubs after the archive is selected.
+        for dependency in
+            crate::auto::build_probe::probe_archive_link_dependencies(&tree_root, &archive)
+        {
+            if extra_sources.contains(&dependency) {
+                continue;
+            }
+            extra_sources.push(dependency.clone());
+            manifest.repairs.push(Repair::AddSource {
+                symbol: WHOLE_LIBRARY_LINK_DEP_SYMBOL.to_owned(),
+                source_path: dependency,
+            });
+        }
+    }
 
     // §26.1 SECONDARY fallback set: the library's full recovered translation-unit
     // set, used ONLY when no prebuilt archive exists and the link fails with
@@ -2733,6 +2829,31 @@ fn run_attempt(
             round,
         ) {
             BuildOutcome::Success => {
+                if matches!(
+                    candidate.lang,
+                    crate::auto::candidate::Lang::C | crate::auto::candidate::Lang::Cpp
+                ) {
+                    let is_cpp = candidate.lang == crate::auto::candidate::Lang::Cpp;
+                    let explicit_standard = is_cpp
+                        .then(|| std::env::var("GOVFUZZ_CXX_STD").ok())
+                        .flatten()
+                        .map(|value| value.trim().to_owned())
+                        .filter(|value| !value.is_empty());
+                    let cached_standard = std::fs::read_to_string(cxx_dialect_cache_path(
+                        work_dir,
+                        &candidate.harness_id,
+                    ))
+                    .ok()
+                    .map(|value| value.trim().to_owned())
+                    .filter(|value| !value.is_empty());
+                    crate::auto::coverage_replay::persist_build_recipe(
+                        &harness_dir,
+                        &extra_sources,
+                        &extra_includes,
+                        explicit_standard.or(cached_standard),
+                        cross_compiler.is_none(),
+                    );
+                }
                 // Drive a cascade of fuzz passes against the freshly
                 // built harness. Three tiny seeds + 1024 iterations is
                 // enough to surface low-hanging crashes per pass; the
@@ -2750,6 +2871,7 @@ fn run_attempt(
                 // examples rather than only empty/`A` bytes.
                 let mut seeds = vec![b"".to_vec(), b"A".to_vec(), b"AAAAAAAA".to_vec()];
                 seeds.extend(options.user_seeds.iter().cloned());
+                crate::fuzz::expand_sequence_portfolio_seeds(&harness_dir, &mut seeds);
                 // Start each target's edge-coverage bitmap empty; passes then
                 // accumulate into it (#385).
                 let _ = std::fs::remove_file(harness_dir.join("coverage.shm"));
@@ -3353,15 +3475,35 @@ fn run_attempt(
                 // the in-tree-unresolvable case triggers it, so a symbol with a
                 // real sibling source still takes the AddSource path below (no
                 // duplicate-definition link error from linking both).
-                if !library_archives.is_empty()
+                let undefined_names: Vec<&str> = errors
+                    .iter()
+                    .filter_map(|error| match error {
+                        BuildErrorKind::UndefinedSymbol { name } => Some(name.as_str()),
+                        _ => None,
+                    })
+                    .collect();
+                let mut matching_archives = crate::auto::build_probe::static_libraries_defining_any(
+                    &library_archive_symbols,
+                    undefined_names.iter().copied(),
+                );
+                // If symbol indexing is unavailable, preserve the older fallback
+                // for a genuinely out-of-tree symbol. When indexing works, use
+                // its precise answer even for an in-tree definition: that is the
+                // important stateful-harness case where a prebuilt library can
+                // resolve the whole dependency closure immediately.
+                if matching_archives.is_empty()
+                    && library_archive_symbols.is_empty()
                     && errors.iter().any(|e| {
                         matches!(e, BuildErrorKind::UndefinedSymbol { name }
                             if undefined_symbol_needs_library_link(name, decl_index))
                     })
                 {
+                    matching_archives = library_archives.clone();
+                }
+                if !matching_archives.is_empty() {
                     let mut linked_any = false;
-                    for archive in &library_archives {
-                        if extra_sources.contains(archive) {
+                    for archive in matching_archives {
+                        if extra_sources.contains(&archive) {
                             continue;
                         }
                         extra_sources.push(archive.clone());
@@ -3369,6 +3511,18 @@ fn run_attempt(
                             symbol: WHOLE_LIBRARY_ARCHIVE_SYMBOL.to_owned(),
                             source_path: archive.clone(),
                         });
+                        for dependency in crate::auto::build_probe::probe_archive_link_dependencies(
+                            &tree_root, &archive,
+                        ) {
+                            if extra_sources.contains(&dependency) {
+                                continue;
+                            }
+                            extra_sources.push(dependency.clone());
+                            manifest.repairs.push(Repair::AddSource {
+                                symbol: WHOLE_LIBRARY_LINK_DEP_SYMBOL.to_owned(),
+                                source_path: dependency,
+                            });
+                        }
                         gfeprintln!(
                             "govfuzz auto: {}: undefined externals unresolved in the swept tree; \
                              linking recovered static library {} to close the link (§26.1)",
@@ -4160,79 +4314,78 @@ fn generate_harness_for(
     tree_type_defs: Option<crate::generate_harness::TreeTypeDefs>,
     decoder_limits: &crate::generate_harness::DecoderLimitArgs,
     force: bool,
+    archive_backed: bool,
 ) -> std::result::Result<(), String> {
     let fallback_path = dir.join("generation-fallback.json");
     let _ = std::fs::remove_file(&fallback_path);
+    // Regeneration can switch from sequence to direct. This sidecar changes
+    // engine mutation semantics; retaining it would make a direct harness
+    // reserve and mutate a nonexistent sequence-control tail.
+    let _ = std::fs::remove_file(dir.join(harness_gen::c_generate::SEQUENCE_LAYOUT_FILE));
     let output_dir = dir.parent().expect("harness dir has parent").to_path_buf();
     let prefer_servant = ada_auto_servant_candidate(c);
-    let prefer_sequence = !force_direct && auto_sequence_candidate(c);
-    let res = if prefer_servant {
-        crate::generate_harness::generate_for_path_with_kind(
-            &c.source_path,
-            &c.name,
-            Some(c.line),
-            &output_dir,
-            &c.harness_id,
-            "servant_direct",
-            None,
-            source_root,
-            ada_dep_dirs,
-            tree_type_defs.clone(),
-            decoder_limits.clone(),
-            force,
-        )
-    } else if prefer_sequence {
-        crate::generate_harness::generate_for_path_with_kind(
-            &c.source_path,
-            &c.name,
-            Some(c.line),
-            &output_dir,
-            &c.harness_id,
-            "sequence",
-            None,
-            source_root,
-            ada_dep_dirs,
-            tree_type_defs.clone(),
-            decoder_limits.clone(),
-            force,
-        )
-    } else {
-        crate::generate_harness::generate_for_path(
-            &c.source_path,
-            &c.name,
-            Some(c.line),
-            &output_dir,
-            &c.harness_id,
-            None,
-            source_root,
-            ada_dep_dirs,
-            tree_type_defs.clone(),
-            decoder_limits.clone(),
-            force,
-        )
-    };
-    match res {
-        Ok(()) => Ok(()),
-        Err(servant_error) if prefer_servant => {
-            let direct = crate::generate_harness::generate_for_path(
+    let prefer_sequence = !force_direct
+        && auto_sequence_candidate(
+            c,
+            tree_type_defs.as_ref().map(|tree| tree.c.as_ref()),
+            tree_type_defs
+                .as_ref()
+                .map(|tree| tree.c_lifecycle.as_slice())
+                .unwrap_or_default(),
+        );
+    let generate = |kind: &str, tree_type_defs| {
+        if archive_backed {
+            crate::generate_harness::generate_for_path_with_kind_archive_backed(
                 &c.source_path,
                 &c.name,
                 Some(c.line),
                 &output_dir,
                 &c.harness_id,
+                kind,
                 None,
                 source_root,
                 ada_dep_dirs,
-                tree_type_defs.clone(),
+                tree_type_defs,
                 decoder_limits.clone(),
                 force,
-            );
+            )
+        } else {
+            crate::generate_harness::generate_for_path_with_kind(
+                &c.source_path,
+                &c.name,
+                Some(c.line),
+                &output_dir,
+                &c.harness_id,
+                kind,
+                None,
+                source_root,
+                ada_dep_dirs,
+                tree_type_defs,
+                decoder_limits.clone(),
+                force,
+            )
+        }
+    };
+    let res = if prefer_servant {
+        generate("servant_direct", tree_type_defs.clone())
+    } else if prefer_sequence {
+        generate("sequence", tree_type_defs.clone())
+    } else {
+        generate("direct", tree_type_defs.clone())
+    };
+    match res {
+        Ok(()) => Ok(()),
+        Err(servant_error) if prefer_servant => {
+            let direct = generate("direct", tree_type_defs.clone());
             match direct {
                 Ok(()) => {
-                    let _ = std::fs::write(
-                        &fallback_path,
-                        br#"{"schema_version":1,"from":"servant_direct","to":"direct"}"#,
-                    );
+                    let record = serde_json::json!({
+                        "schema_version": 1,
+                        "from": "servant_direct",
+                        "to": "direct",
+                        "reason": format!("{servant_error:#}"),
+                    });
+                    let _ = std::fs::write(&fallback_path, record.to_string());
                     Ok(())
                 }
                 Err(direct_error) => Err(format!(
@@ -4241,25 +4394,16 @@ fn generate_harness_for(
             }
         }
         Err(sequence_error) if prefer_sequence => {
-            let direct = crate::generate_harness::generate_for_path(
-                &c.source_path,
-                &c.name,
-                Some(c.line),
-                &output_dir,
-                &c.harness_id,
-                None,
-                source_root,
-                ada_dep_dirs,
-                tree_type_defs.clone(),
-                decoder_limits.clone(),
-                force,
-            );
+            let direct = generate("direct", tree_type_defs.clone());
             match direct {
                 Ok(()) => {
-                    let _ = std::fs::write(
-                        &fallback_path,
-                        br#"{"schema_version":1,"from":"sequence","to":"direct"}"#,
-                    );
+                    let record = serde_json::json!({
+                        "schema_version": 1,
+                        "from": "sequence",
+                        "to": "direct",
+                        "reason": format!("{sequence_error:#}"),
+                    });
+                    let _ = std::fs::write(&fallback_path, record.to_string());
                     Ok(())
                 }
                 Err(direct_error) => Err(format!(
@@ -4384,9 +4528,15 @@ mod generation_outcome_tests {
     }
 }
 
-fn auto_sequence_candidate(c: &Candidate) -> bool {
+fn auto_sequence_candidate(
+    c: &Candidate,
+    tree_c_types: Option<&c_parser::CTypeDefs>,
+    tree_lifecycle: &[harness_gen::c_generate::CHandleLifecycle],
+) -> bool {
     match c.lang {
-        crate::auto::candidate::Lang::C => c_auto_sequence_candidate(c),
+        crate::auto::candidate::Lang::C => {
+            c_auto_sequence_candidate(c, tree_c_types, tree_lifecycle)
+        }
         crate::auto::candidate::Lang::Cpp => cpp_auto_sequence_candidate(c),
         crate::auto::candidate::Lang::Ada => false,
         // Rust is pre-skipped before this is reached (M1.2). Stateful Rust
@@ -4476,7 +4626,11 @@ fn cpp_static_free_function_candidate(c: &Candidate) -> bool {
         .is_some_and(|function| function.is_static && !function.api.is_method)
 }
 
-fn c_auto_sequence_candidate(c: &Candidate) -> bool {
+fn c_auto_sequence_candidate(
+    c: &Candidate,
+    tree_c_types: Option<&c_parser::CTypeDefs>,
+    tree_lifecycle: &[harness_gen::c_generate::CHandleLifecycle],
+) -> bool {
     let Ok(source) = crate::source_text::read_source_text(&c.source_path) else {
         return false;
     };
@@ -4490,45 +4644,48 @@ fn c_auto_sequence_candidate(c: &Candidate) -> bool {
     else {
         return false;
     };
-    if target.is_static {
-        return false;
+    let source_defs = c_parser::parse_c_type_defs(&source).unwrap_or_default();
+    let mut defs = vec![source_defs];
+    if let Some(tree) = tree_c_types {
+        defs.push(tree.clone());
     }
-    let Some(target_handle) = target
-        .params
-        .first()
-        .map(|param| canonical_c_lifecycle_type(&param.c_type))
-        .filter(|ty| is_c_lifecycle_handle_type(ty))
-    else {
+    let registry = type_model::TypeRegistry::from_defs(defs.iter());
+    let Some(target_handle) = target.params.first().and_then(|param| {
+        crate::generate_harness::c_lifecycle_handle_key(&param.c_type, &registry)
+    }) else {
         return false;
     };
-    if is_c_lifecycle_init(&target.name) || is_c_lifecycle_end(&target.name) {
+    if crate::generate_harness::c_step_role_of(&target.name)
+        == harness_gen::c_generate::CStepRole::Open
+        || is_c_lifecycle_end(&target.name)
+    {
         return false;
     }
-    // A real returning constructor is stronger evidence than an in-place helper
-    // that merely starts with `Initialize`. Prefer the direct harness in that
-    // case: it uses the constructor lifecycle table instead of zero-constructing
-    // internal state (BrotliDecoderCreateInstance vs the static
-    // InitializeCompoundDictionaryCopy helper).
-    let has_returning_constructor = functions.iter().any(|function| {
-        !function.is_static
-            && is_c_lifecycle_init(&function.name)
-            && canonical_c_lifecycle_type(&function.return_type) == target_handle
-            && crate::generate_harness::c_neutral_ctor_args(
-                function.params.iter().map(|param| param.c_type.as_str()),
-            )
-            .is_some()
-    });
-    if has_returning_constructor {
-        return false;
+    // A sequence needs a proven constructor, not merely a destructor. A
+    // destructor-only output contract (`regcomp(regex_t*)` + `regfree`) means
+    // the selected target itself constructs the object; treating arbitrary
+    // siblings as sequence operations lets `regexec` run first on a zeroed,
+    // never-compiled regex. Keep that shape direct, where target success guards
+    // cleanup. Both returning and in-place constructors from the tree qualify.
+    if tree_lifecycle.iter().any(|entry| {
+        entry.init.is_some()
+            && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
+                == harness_gen::c_decoders::normalize_handle_key(&target_handle)
+    }) {
+        return true;
     }
-    functions.iter().any(|function| {
-        function.name != target.name
-            && function
-                .params
-                .first()
-                .is_some_and(|param| canonical_c_lifecycle_type(&param.c_type) == target_handle)
-            && (is_c_lifecycle_init(&function.name) || is_c_lifecycle_end(&function.name))
-    })
+    // Reuse the signature-aware lifecycle table for same-file constructors.
+    // Looking only for an init-shaped function whose *first parameter* is the
+    // handle misses returning constructors: their handle is the return value and
+    // their parameters are allocator/config inputs. The table also excludes
+    // private-static helpers and never promotes a destructor-only entry.
+    crate::generate_harness::c_direct_lifecycle_table(&functions, &[], &registry)
+        .iter()
+        .any(|entry| {
+            entry.init.is_some()
+                && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
+                    == harness_gen::c_decoders::normalize_handle_key(&target_handle)
+        })
 }
 
 #[cfg(test)]
@@ -4537,7 +4694,7 @@ mod c_auto_sequence_candidate_tests {
     use crate::auto::candidate::{Candidate, Lang};
 
     #[test]
-    fn returning_constructor_outranks_static_initialize_helper() {
+    fn returning_constructor_enables_opaque_handle_sequence() {
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -4569,8 +4726,123 @@ mod c_auto_sequence_candidate_tests {
             dialect: None,
         };
         assert!(
-            !c_auto_sequence_candidate(&candidate),
-            "the direct harness must construct the handle through DecoderCreateInstance"
+            c_auto_sequence_candidate(&candidate, None, &[]),
+            "the sequence harness must construct the opaque handle through DecoderCreateInstance"
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn private_static_lifecycle_helpers_do_not_enable_auto_sequence() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("govfuzz-c-sequence-private-{nonce}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("session.c");
+        std::fs::write(
+            &source,
+            "struct session { int state; };\n\
+             static int session_init(struct session *s) { return 0; }\n\
+             int session_step(struct session *s, int value) { return value; }\n\
+             static void session_free(struct session *s) {}\n",
+        )
+        .unwrap();
+        let candidate = Candidate {
+            harness_id: "H-CPRIVATE".to_owned(),
+            lang: Lang::C,
+            source_path: source,
+            line: 3,
+            name: "session_step".to_owned(),
+            score: 1,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        assert!(
+            !c_auto_sequence_candidate(&candidate, None, &[]),
+            "auto must not expose file-private lifecycle helpers by including the whole source"
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn destructor_only_output_contract_stays_direct() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("govfuzz-c-output-only-{nonce}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("regex.c");
+        std::fs::write(
+            &source,
+            "typedef struct { void *code; } regex_t;\n\
+             int pcre2_regcomp(regex_t *r, const char *p, int flags) { return 0; }\n\
+             int pcre2_regexec(regex_t *r, const char *p, unsigned n, void *m, int flags) { return 0; }\n\
+             void pcre2_regfree(regex_t *r) { (void)r; }\n",
+        )
+        .unwrap();
+        let candidate = Candidate {
+            harness_id: "H-CREGCOMP".to_owned(),
+            lang: Lang::C,
+            source_path: source,
+            line: 2,
+            name: "pcre2_regcomp".to_owned(),
+            score: 1,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        assert!(
+            !c_auto_sequence_candidate(&candidate, None, &[]),
+            "a destructor alone cannot prove an initially live sequence handle"
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn static_operation_uses_proven_public_returning_lifecycle() {
+        use harness_gen::c_generate::CHandleLifecycle;
+
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("govfuzz-c-static-sequence-ctor-{nonce}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("reader.c");
+        std::fs::write(
+            &source,
+            "struct reader;\n\
+             static int reader_open_memory(struct reader *r, const void *p, unsigned long n) { return 0; }\n",
+        )
+        .unwrap();
+        let candidate = Candidate {
+            harness_id: "H-CSTATICCTOR".to_owned(),
+            lang: Lang::C,
+            source_path: source,
+            line: 2,
+            name: "reader_open_memory".to_owned(),
+            score: 1,
+            is_static: true,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        let lifecycle = vec![CHandleLifecycle {
+            handle_type: "reader".to_owned(),
+            init: Some("reader_new".to_owned()),
+            delete: Some("reader_free".to_owned()),
+            init_returns_handle: true,
+            init_args: Vec::new(),
+        }];
+        assert!(
+            c_auto_sequence_candidate(&candidate, None, &lifecycle),
+            "a file-private operation can be sequenced when construction and destruction are proven public"
         );
         std::fs::remove_dir_all(dir).ok();
     }
@@ -4782,9 +5054,7 @@ fn cpp_same_lifecycle_class(
 // Lifecycle clustering predicates are shared with harness generation
 // (crate::generate_harness) so the auto eligibility gate can never
 // disagree with the cluster the generator builds.
-use crate::generate_harness::{
-    canonical_c_lifecycle_type, is_c_lifecycle_end, is_c_lifecycle_handle_type, is_c_lifecycle_init,
-};
+use crate::generate_harness::is_c_lifecycle_end;
 
 #[allow(clippy::too_many_arguments)]
 fn try_build(

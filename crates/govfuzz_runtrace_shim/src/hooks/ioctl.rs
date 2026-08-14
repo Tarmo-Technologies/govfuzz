@@ -107,6 +107,12 @@ pub unsafe extern "C" fn ioctl(
     if !crate::fakes::mode::current().is_faking() {
         return result;
     }
+    // ENOTTY is not provenance: regular files, pipes, and sockets commonly
+    // return it. Only a descriptor the MMIO/device open hook replaced with a
+    // govfuzz-owned memfd may receive a synthesized device response.
+    if !crate::fakes::memfd::is_fake_mmio_fd(fd) {
+        return result;
+    }
     // The real call declined. Under a faking pass the fd is typically the
     // memfd standing in for a device, which answers every ioctl with ENOTTY —
     // so the driver's capability negotiation would fail before it ever reads a

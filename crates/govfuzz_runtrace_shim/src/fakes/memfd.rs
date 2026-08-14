@@ -5,6 +5,37 @@
 //! substitute on open()/openat() ENOENT.
 
 use crate::fakes::data::fill_bytes;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+// Allocation-free provenance for descriptors created specifically as virtual
+// MMIO/device handles. ioctl must never infer provenance merely from ENOTTY:
+// ordinary files and pipes return it too. 65,536 descriptors is well above the
+// usual RLIMIT_NOFILE; an out-of-range fd simply cannot receive synthesized
+// control-plane answers.
+const TRACKED_FDS: usize = 65_536;
+const FD_WORDS: usize = TRACKED_FDS / 64;
+static FAKE_MMIO_FDS: [AtomicU64; FD_WORDS] = [const { AtomicU64::new(0) }; FD_WORDS];
+
+fn fd_slot(fd: i32) -> Option<(usize, u64)> {
+    let fd = usize::try_from(fd).ok()?;
+    (fd < TRACKED_FDS).then(|| (fd / 64, 1u64 << (fd % 64)))
+}
+
+fn mark_fake_mmio(fd: i32) {
+    if let Some((word, bit)) = fd_slot(fd) {
+        FAKE_MMIO_FDS[word].fetch_or(bit, Ordering::Relaxed);
+    }
+}
+
+pub(crate) fn clear_fake_fd(fd: i32) {
+    if let Some((word, bit)) = fd_slot(fd) {
+        FAKE_MMIO_FDS[word].fetch_and(!bit, Ordering::Relaxed);
+    }
+}
+
+pub(crate) fn is_fake_mmio_fd(fd: i32) -> bool {
+    fd_slot(fd).is_some_and(|(word, bit)| FAKE_MMIO_FDS[word].load(Ordering::Relaxed) & bit != 0)
+}
 
 /// Max bytes we'll pre-fill into a fake fd. Big enough for most
 /// config files / etc-style content; small enough that even a
@@ -189,5 +220,28 @@ pub unsafe fn create_fake_mmio_fd(resource_name: &[u8]) -> i32 {
     // return zero.
     let _ = libc::ftruncate(fd, FAKE_MMIO_CAPACITY);
     let _ = libc::lseek(fd, 0, libc::SEEK_SET);
+    mark_fake_mmio(fd);
     fd
+}
+
+#[cfg(test)]
+mod provenance_tests {
+    use super::*;
+
+    #[test]
+    fn only_marked_mmio_descriptors_have_device_provenance() {
+        let fd = 1234;
+        clear_fake_fd(fd);
+        assert!(!is_fake_mmio_fd(fd));
+        mark_fake_mmio(fd);
+        assert!(is_fake_mmio_fd(fd));
+        clear_fake_fd(fd);
+        assert!(!is_fake_mmio_fd(fd));
+    }
+
+    #[test]
+    fn out_of_range_descriptors_are_never_assumed_fake() {
+        assert!(!is_fake_mmio_fd(-1));
+        assert!(!is_fake_mmio_fd(TRACKED_FDS as i32));
+    }
 }

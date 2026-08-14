@@ -2928,6 +2928,125 @@ fn locate_c_runtime_dir() -> Option<PathBuf> {
 
 /// Generate the harness crate + driver into `harness_dir` and build it to
 /// `<work>/harnesses/<id>/main`. The single public entry point of the lane.
+fn apply_mined_rust_protocol(
+    harness: &mut harness_gen::rust_generate::GeneratedRustHarness,
+    candidate: &Candidate,
+    resolved: &ResolvedTarget,
+) -> Result<(), String> {
+    if resolved.receiver.is_none()
+        || resolved.in_fuzz_target
+        || resolved.target.is_static
+        || resolved.target.is_unsafe_fn
+    {
+        return Ok(());
+    }
+    let source = crate::source_text::read_source_text(&candidate.source_path)
+        .map_err(|error| format!("read Rust protocol source: {error}"))?;
+    let Some(owner) = enclosing_impl_type(&source, resolved.target.line) else {
+        return Ok(());
+    };
+    let declarations = rust_parser::parse_rust_functions(&source)
+        .map_err(|_| "parse Rust protocol declarations".to_owned())?;
+    if !rust_method_borrows_receiver(&source, resolved.target.line) {
+        return Ok(());
+    }
+
+    let target_needle = format!("    let _ = recv.{}(", resolved.target.name);
+    let Some(target_at) = harness.harness_rs.find(&target_needle) else {
+        return Ok(());
+    };
+    let line_end = harness.harness_rs[target_at..]
+        .find('\n')
+        .map(|offset| target_at + offset + 1)
+        .unwrap_or(harness.harness_rs.len());
+    let target_line = harness.harness_rs[target_at..line_end]
+        .trim_end_matches('\n')
+        .to_owned();
+
+    let protocol = crate::auto::recipe_mining::rust_protocol_traces_for(&candidate.source_path)
+        .into_iter()
+        .filter(|trace| trace.iter().any(|call| call.name == resolved.target.name))
+        .filter(|trace| trace.len() <= 16)
+        .find_map(|trace| {
+            let mut lines = Vec::new();
+            let mut target_calls = 0usize;
+            for call in trace {
+                if call.name == resolved.target.name {
+                    lines.push(target_line.clone());
+                    target_calls += 1;
+                    continue;
+                }
+                let declaration = declarations.iter().find(|function| {
+                    function.name == call.name
+                        && !function.is_static
+                        && function.visibility == rust_parser::RustVisibility::Pub
+                        && function.params.len() == call.arguments.len()
+                        && enclosing_impl_type(&source, function.line).as_deref()
+                            == Some(owner.as_str())
+                        && rust_method_borrows_receiver(&source, function.line)
+                })?;
+                let _ = declaration;
+                let arguments = call
+                    .arguments
+                    .iter()
+                    .map(|argument| safe_rust_protocol_literal(argument))
+                    .collect::<Option<Vec<_>>>()?;
+                lines.push(format!(
+                    "    let _ = recv.{}({});",
+                    call.name,
+                    arguments.join(", ")
+                ));
+            }
+            (lines.len() >= 2 && target_calls > 0).then_some(lines)
+        });
+    let Some(protocol) = protocol else {
+        return Ok(());
+    };
+    let replacement = format!("{}\n", protocol.join("\n"));
+    harness
+        .harness_rs
+        .replace_range(target_at..line_end, &replacement);
+    Ok(())
+}
+
+fn rust_method_borrows_receiver(source: &str, line: u32) -> bool {
+    let start = line.saturating_sub(1) as usize;
+    let signature = source
+        .lines()
+        .skip(start)
+        .take(8)
+        .take_while(|line| !line.contains('{') && !line.trim_end().ends_with(';'))
+        .chain(source.lines().skip(start).take(1))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .replace(char::is_whitespace, "");
+    signature.contains("&self")
+        || signature.contains("&mutself")
+        || signature.contains("self:&Self")
+        || signature.contains("self:&mutSelf")
+}
+
+fn safe_rust_protocol_literal(expression: &str) -> Option<String> {
+    let value = expression.trim();
+    if matches!(value, "true" | "false" | "None")
+        || ((value.starts_with('"') && value.ends_with('"'))
+            || (value.starts_with('\'') && value.ends_with('\'')))
+            && value.len() >= 2
+    {
+        return Some(value.to_owned());
+    }
+    let number = value.trim_start_matches(['+', '-']);
+    (!number.is_empty()
+        && number
+            .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_digit())
+        && number
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'x' | b'X' | b'_')))
+    .then(|| value.to_owned())
+}
+
 pub fn build_rust_harness(
     candidate: &Candidate,
     work_dir: &Path,
@@ -2965,7 +3084,7 @@ pub fn build_rust_harness(
     };
 
     // Generate the harness source.
-    let harness = if resolved.in_fuzz_target && !resolved.target.is_static {
+    let mut harness = if resolved.in_fuzz_target && !resolved.target.is_static {
         // A non-callable existing-harness file: wrap the resolved byte entry.
         match generate_rust_existing_fuzz_target(&resolved.call_path) {
             Ok(h) => h,
@@ -2997,6 +3116,9 @@ pub fn build_rust_harness(
             }
         }
     };
+    if let Err(reason) = apply_mined_rust_protocol(&mut harness, candidate, &resolved) {
+        return RustBuildResult::Failed { reason, skip: true };
+    }
 
     // §27.10: an in-crate target builds the harness AS A MODULE of a copy of the
     // target crate (so a private-module `crate::internal::...` path is reachable),
@@ -6116,5 +6238,61 @@ mod tests {
         let cand = mk_candidate(&src.join("lib.rs"), "visit", 2);
         let err = resolve_target(&cand).unwrap_err();
         assert!(err.contains("not auto-harnessable"), "{err}");
+    }
+
+    #[test]
+    fn mined_rust_protocol_wraps_target_in_observed_public_borrowed_methods() {
+        let tmp = tempfile::tempdir().unwrap();
+        let src = tmp.path().join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::create_dir_all(tmp.path().join("tests")).unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"proto\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("lib.rs"),
+            "pub struct Parser;\n\
+             impl Parser {\n\
+                 pub fn new() -> Self { Self }\n\
+                 pub fn configure(&mut self, _mode: u8) {}\n\
+                 pub fn parse(&mut self, data: &[u8]) -> usize { data.len() }\n\
+                 pub fn finish(&mut self) {}\n\
+             }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join("tests/expert.rs"),
+            "fn expert(data: &[u8]) {\n\
+                 parser.configure(7);\n\
+                 parser.parse(data);\n\
+                 parser.finish();\n\
+             }\n",
+        )
+        .unwrap();
+        let candidate = mk_candidate(&src.join("lib.rs"), "parse", 5);
+        let resolved = resolve_target(&candidate).expect("target resolves");
+        let mut harness = generate_rust_direct_harness(&GenerateRustDirectArgs {
+            call_path: resolved.call_path.clone(),
+            target: resolved.target.clone(),
+            receiver: resolved.receiver.clone(),
+            receiver_ctor_params: resolved.receiver_ctor_params.clone(),
+            receiver_unwrap: resolved.receiver_unwrap,
+            param_decoders: resolved.param_decoders.clone(),
+            receiver_ctor_param_decoders: resolved.receiver_ctor_param_decoders.clone(),
+            ufcs_trait: resolved.ufcs_trait.clone(),
+            method_trait_import: resolved.method_trait_import.clone(),
+        })
+        .unwrap();
+        apply_mined_rust_protocol(&mut harness, &candidate, &resolved).unwrap();
+        let configure = harness.harness_rs.find("recv.configure(7)").unwrap();
+        let parse = harness.harness_rs.find("recv.parse(").unwrap();
+        let finish = harness.harness_rs.find("recv.finish()").unwrap();
+        assert!(
+            configure < parse && parse < finish,
+            "{}",
+            harness.harness_rs
+        );
     }
 }

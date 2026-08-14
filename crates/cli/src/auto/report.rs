@@ -1314,6 +1314,7 @@ fn write_findings_csv(
 /// Load + backfill one finding into a [`CsvFinding`]. Returns `None` when the file
 /// is missing or unparseable (the finding is still counted in the run summary; a
 /// malformed sidecar must not abort the whole report).
+#[allow(clippy::too_many_arguments)]
 fn load_csv_finding(
     path: &Path,
     fid: &str,
@@ -2202,6 +2203,17 @@ pub fn write_dependency_checkpoint(
     manifest.mark_checkpoint(results.len(), false);
     write_dependency_manifest_files(work_dir, &manifest)?;
     Ok(manifest)
+}
+
+/// Mark an already-written checkpoint final for an early-success mode such as
+/// `--dry-run` or `--list-targets`. These modes have no attempt results and do
+/// not call the full report writer, but they still completed all promised work.
+pub fn finalize_dependency_checkpoint(
+    work_dir: &Path,
+    manifest: &mut crate::auto::dep_manifest::DependencyManifest,
+) -> Result<()> {
+    manifest.mark_checkpoint(manifest.completed_targets, true);
+    write_dependency_manifest_files(work_dir, manifest)
 }
 
 /// Extend an existing durable checkpoint with one newly completed target. This
@@ -3899,6 +3911,17 @@ mod tests {
         let text = std::fs::read_to_string(work.join("auto/missing-deps.txt")).unwrap();
         assert!(text.contains("run still in progress"), "{text}");
         assert!(text.contains("Required toolchains"), "{text}");
+
+        finalize_dependency_checkpoint(&work, &mut durable).unwrap();
+        let final_checkpoint = load_dependency_manifest(&work).expect("final checkpoint");
+        assert!(final_checkpoint.complete);
+        assert_eq!(final_checkpoint.completed_targets, 1);
+        let final_text = std::fs::read_to_string(work.join("auto/missing-deps.txt")).unwrap();
+        assert!(final_text.contains("final."), "{final_text}");
+        assert!(
+            !final_text.contains("run still in progress"),
+            "{final_text}"
+        );
         assert!(std::fs::read_dir(work.join("auto"))
             .unwrap()
             .flatten()

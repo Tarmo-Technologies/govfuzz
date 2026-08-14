@@ -387,6 +387,10 @@ fn select_c_decoder_inner(
         return Ok(emission);
     }
 
+    if let Some(emission) = typed_character_string(c_type, name) {
+        return Ok(emission);
+    }
+
     if let Some(signature) = registry.function_pointer_signature(c_type) {
         return callback_trampoline(c_type, name, &signature);
     }
@@ -534,6 +538,7 @@ fn build_callback_trampoline(
     let trampoline = format!("_gf_{}_trampoline", sanitize_ident(name));
     let mut decl_params = Vec::new();
     let mut param_names = Vec::new();
+    let mut callback_context = None::<String>;
     let mut body = String::new();
     for (index, param) in parsed.params.iter().enumerate() {
         // A variadic `...` (tinycbor's `CborStreamFunction(void *, const char *,
@@ -550,6 +555,18 @@ fn build_callback_trampoline(
             Some(param_name) => {
                 decl_params.push(param.clone());
                 body.push_str(&format!("    (void){param_name};\n"));
+                let lower_name = param_name.to_ascii_lowercase();
+                let lower_param = param.to_ascii_lowercase();
+                if callback_context.is_none()
+                    && !lower_param.contains("const")
+                    && lower_param.contains("void")
+                    && lower_param.contains('*')
+                    && ["user", "userdata", "user_data", "context", "ctx", "opaque"]
+                        .iter()
+                        .any(|candidate| lower_name == *candidate)
+                {
+                    callback_context = Some(param_name.clone());
+                }
                 param_names.push(param_name);
             }
             None => {
@@ -559,6 +576,9 @@ fn build_callback_trampoline(
                 param_names.push(synthesized);
             }
         }
+    }
+    if let Some(context) = callback_context.as_deref() {
+        body.push_str(&format!("    GOVFUZZ_CALLBACK_OBSERVE({context});\n"));
     }
     let params = if decl_params.is_empty() {
         "void".to_owned()
@@ -598,8 +618,13 @@ fn build_callback_trampoline(
             .collect::<Vec<_>>()
             .join(" ")
     };
+    let callback_observer_fallback = if callback_context.is_some() {
+        "#ifndef GOVFUZZ_CALLBACK_OBSERVE\n#define GOVFUZZ_CALLBACK_OBSERVE(context) ((void)(context))\n#endif\n"
+    } else {
+        ""
+    };
     let support = format!(
-        "typedef {};\nstatic {} {}({}) {{\n{}}}",
+        "typedef {};\n{callback_observer_fallback}static {} {}({}) {{\n{}}}",
         signature.replacen("(*)", &format!("(*{typedef_name})"), 1),
         parsed.return_type,
         trampoline,
@@ -1920,6 +1945,46 @@ fn pointer_base_owned(c_type: &str) -> Option<String> {
         .map(storage_c_type)
 }
 
+/// Decode a read-only pointer through a character-named typedef as a typed,
+/// NUL-terminated string. Headers commonly hide the active character width
+/// behind conditional typedefs (`XML_Char`, `TCHAR`, `UChar`). The raw parser
+/// can see an inactive wide typedef first, so resolving the pointee merely as a
+/// scalar and passing `&one_scalar` lets strlen-like consumers walk off the
+/// stack. Keeping the declared element type makes this safe in both narrow and
+/// wide builds.
+fn typed_character_string(c_type: &str, name: &str) -> Option<CParamEmission> {
+    if !is_const_pointee(c_type) {
+        return None;
+    }
+    let base = pointer_base_owned(c_type)?;
+    let leaf = base
+        .rsplit("::")
+        .next()
+        .unwrap_or(&base)
+        .to_ascii_lowercase();
+    let character_named = matches!(leaf.as_str(), "tchar" | "uchar")
+        || leaf.ends_with("_char")
+        || leaf.ends_with("char_t");
+    if !character_named || base.split_whitespace().count() != 1 {
+        return None;
+    }
+    let len = format!("_gf_len_{name}");
+    let index = format!("_gf_i_{name}");
+    Some(CParamEmission {
+        support: None,
+        decl: format!(
+            "size_t {len} = gf_bounded_length(&Cur, 0, 4096); \
+             {base} *{name} = ({base} *)calloc({len} + 1, sizeof({base})); \
+             for (size_t {index} = 0; {name} && {index} < {len}; ++{index}) {{ \
+                 {name}[{index}] = ({base})gf_u8(&Cur); \
+             }}"
+        ),
+        arg: name.to_owned(),
+        c_type: emit_c_type(c_type),
+        free: Some(format!("free({name})")),
+    })
+}
+
 fn array_base_c_type(c_type: &str) -> Option<&str> {
     c_type.find('[').map(|open| c_type[..open].trim())
 }
@@ -1949,7 +2014,7 @@ fn scalar_shape_c_type(shape: &TypeShape) -> Option<String> {
     )
 }
 
-/// Strip leading declaration-specifier noise from a type string so it is usable
+/// Strip declaration-specifier noise from a type string so it is usable
 /// as a result-variable or parameter declaration. C/C++ functions carry storage
 /// (`static`/`inline`/`constexpr`), calling-convention (`__vectorcall`), and
 /// decoration macros (`SIMDJSON_INLINE`, `HB_UNUSED`, `simdjson_warn_unused`,
@@ -1966,7 +2031,7 @@ pub fn strip_type_decoration(ty: &str) -> String {
     // illegally applies to a local result variable; the bare inner type is what
     // we want. Then remove `__attribute__((...))` / `__declspec(...)` runs.
     let unwrapped = unwrap_type_macro(ty);
-    let cleaned = remove_attr_runs(&unwrapped);
+    let cleaned = remove_annotation_macro_runs(&remove_attr_runs(&unwrapped));
     let toks: Vec<&str> = cleaned.split_whitespace().collect();
     if toks.len() <= 1 {
         return cleaned.trim().to_owned();
@@ -1975,7 +2040,85 @@ pub fn strip_type_decoration(ty: &str) -> String {
     while i + 1 < toks.len() && is_leading_decl_noise(toks[i]) {
         i += 1;
     }
-    toks[i..].join(" ")
+    // Calling-convention macros can sit BETWEEN a function's return type and
+    // name, which tree-sitter records at the end of the return type:
+    // `XML_Parser XMLCALL XML_ExternalEntityParserCreate(...)`. Leaving XMLCALL
+    // on a local result also prevents type-identity matching from recognizing
+    // the returned value as a derived XML_Parser handle.
+    let mut end = toks.len();
+    while end > i + 1 && is_leading_decl_noise(toks[end - 1]) {
+        end -= 1;
+    }
+    toks[i..end].join(" ")
+}
+
+/// Remove bounds/nullability annotation macros embedded after a parameter's
+/// core type (`const uint8_t * WEBP_COUNTED_BY(size)`). They are source-level
+/// contracts, not part of the C declarator. Leaving the parentheses in the type
+/// makes the registry misclassify the byte pointer as a function pointer and
+/// codegen emits a callback trampoline in place of input/output storage.
+///
+/// Keep this deliberately narrower than "all uppercase macros": a project may
+/// use a function-like macro as its actual type. Annotation names have a small,
+/// recognizable vocabulary and removing them preserves the declared core type.
+fn remove_annotation_macro_runs(ty: &str) -> String {
+    let bytes = ty.as_bytes();
+    let mut out = String::with_capacity(ty.len());
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if !(bytes[index] as char).is_ascii_alphabetic() && bytes[index] != b'_' {
+            out.push(bytes[index] as char);
+            index += 1;
+            continue;
+        }
+        let start = index;
+        index += 1;
+        while index < bytes.len()
+            && ((bytes[index] as char).is_ascii_alphanumeric() || bytes[index] == b'_')
+        {
+            index += 1;
+        }
+        let name = &ty[start..index];
+        let mut open = index;
+        while open < bytes.len() && (bytes[open] as char).is_ascii_whitespace() {
+            open += 1;
+        }
+        let upper = name.to_ascii_uppercase();
+        let annotation = [
+            "COUNTED_BY",
+            "SIZED_BY",
+            "BOUNDED_BY",
+            "NULLABLE",
+            "NONNULL",
+            "NOESCAPE",
+        ]
+        .iter()
+        .any(|marker| upper.contains(marker));
+        if annotation && bytes.get(open) == Some(&b'(') {
+            let mut depth = 0usize;
+            let mut end = open;
+            while end < bytes.len() {
+                match bytes[end] {
+                    b'(' => depth += 1,
+                    b')' => {
+                        depth = depth.saturating_sub(1);
+                        if depth == 0 {
+                            end += 1;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+                end += 1;
+            }
+            if depth == 0 {
+                index = end;
+                continue;
+            }
+        }
+        out.push_str(name);
+    }
+    out
 }
 
 /// Unwrap a function-like export macro that wraps the *entire* type, e.g.
@@ -2820,7 +2963,7 @@ fn is_control_flag_param_name(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     matches!(
         n.as_str(),
-        "flags" | "flag" | "mode" | "modes" | "options" | "option" | "opts"
+        "flags" | "flag" | "cflags" | "eflags" | "mode" | "modes" | "options" | "option" | "opts"
     ) || n.ends_with("_flags")
         || n.ends_with("_flag")
         || n.ends_with("_mode")
@@ -2902,6 +3045,12 @@ mod tests {
         let suffixed = select_c_decoder_with_registry("uint32_t", "parse_flags", &registry(""))
             .expect("supported");
         assert_eq!(suffixed.decl, "uint32_t parse_flags = 0");
+        let posix_compile =
+            select_c_decoder_with_registry("int", "cflags", &registry("")).expect("supported");
+        assert_eq!(posix_compile.decl, "int cflags = 0");
+        let posix_exec =
+            select_c_decoder_with_registry("int", "eflags", &registry("")).expect("supported");
+        assert_eq!(posix_exec.decl, "int eflags = 0");
         // control_flag_pinned itself only matches discriminator names + integer types.
         assert!(control_flag_pinned("int", "width").is_none());
         assert!(control_flag_pinned("int", "level").is_none());
@@ -2991,8 +3140,18 @@ mod tests {
         // surface there is.
         assert_eq!(strip_type_decoration("JNIEXPORT jint"), "jint");
         assert_eq!(strip_type_decoration("EGLAPI EGLBoolean"), "EGLBoolean");
-        // Still LEADING-only by contract: a calling-convention macro that TRAILS
-        // the return type is a different shape, and a lone token is never noise.
+        // Calling-convention macros may trail the return type (between type and
+        // function name) and must be stripped too; a lone token is never noise.
+        assert_eq!(strip_type_decoration("XML_Parser XMLCALL"), "XML_Parser");
+        assert_eq!(strip_type_decoration("void JNICALL"), "void");
+        assert_eq!(
+            strip_type_decoration("const uint8_t * WEBP_COUNTED_BY(data_size)"),
+            "const uint8_t *"
+        );
+        assert_eq!(
+            strip_type_decoration("uint8_t * WEBP_COUNTED_BY(output_size)"),
+            "uint8_t *"
+        );
         assert_eq!(strip_type_decoration("JNICALL"), "JNICALL");
         // Function-like export macros that take the type as an argument (cJSON's
         // `CJSON_PUBLIC(cJSON *)`, `MYLIB_API(int)`) wrap the whole type and must
@@ -3103,6 +3262,23 @@ mod tests {
             free.contains("free((void *)x.start)") && free.contains("free((void *)x.end)"),
             "const char* field frees must cast through void*, got: {free}"
         );
+    }
+
+    #[test]
+    fn character_typedef_pointer_gets_a_typed_nul_terminated_string() {
+        // Expat conditionally typedefs XML_Char to wchar_t, unsigned short, or
+        // char. The raw header contains all three branches; codegen must remain
+        // safe regardless of which one the compiler selects.
+        let reg = registry(
+            "typedef wchar_t XML_Char; typedef unsigned short XML_Char; \
+             typedef char XML_Char;",
+        );
+        let e = select_c_decoder_with_registry("const XML_Char *", "context", &reg)
+            .expect("a character typedef pointer should decode");
+        assert!(e.decl.contains("XML_Char *context"), "{}", e.decl);
+        assert!(e.decl.contains("calloc") && e.decl.contains("sizeof(XML_Char)"));
+        assert!(!e.decl.contains("_gf_out_context"), "{}", e.decl);
+        assert_eq!(e.free.as_deref(), Some("free(context)"));
     }
 
     #[test]

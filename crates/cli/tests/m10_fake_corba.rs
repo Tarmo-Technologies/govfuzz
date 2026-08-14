@@ -404,7 +404,12 @@ fn legacy_idl_acceptance_fixture_is_present_and_generates_mapping() {
     assert!(packages.contains(&"Legacy.Telemetry.Monitor.Helper"));
     assert!(packages.contains(&"Legacy.Telemetry.Admin"));
     assert!(packages.contains(&"Legacy.Control.Controller"));
-    assert!(packages.contains(&"Sequence_Of_Legacy_Telemetry_Reading_Bound_8"));
+    // A sequence over a type declared in a module is declared inside that
+    // module: a unit of its own would have to `with` the module while the
+    // module `with`s it back, which Ada rejects as a circular dependency.
+    assert!(!packages.contains(&"Sequence_Of_Legacy_Telemetry_Reading_Bound_8"));
+    assert!(unit_contents(&output, "Legacy.Telemetry")
+        .contains("type Sequence_Of_Legacy_Telemetry_Reading_Bound_8 is record"));
     assert!(unit_contents(&output, "Legacy.Telemetry.Monitor").contains(
         "Repository_Id : constant String := \"IDL:legacy.example/Legacy/Telemetry/Monitor:2.4\";"
     ));
@@ -494,8 +499,10 @@ fn fake_corba_subcommand_writes_ros_interface_mapping_files() {
     let contents = fs::read_to_string(&package).expect("ROS package mapping is readable");
     assert!(contents.contains("LIMIT : constant Integer := 8;"));
     assert!(contents.contains("type Sample is record"));
-    assert!(contents.contains("label : Standard.String;"));
-    assert!(contents.contains("key : CORBA.Octet;"));
+    // Constrained, and the ROS bound survives into the Ada component type.
+    assert!(contents.contains("label : Standard.String (1 .. 32);"));
+    // A fixed-size ROS array maps to a real Ada array, not to its element type.
+    assert!(contents.contains("key : Array_Of_CORBA_Octet_4.Value;"));
     assert!(contents.contains("values : Sequence_Of_Integer.Sequence;"));
 
     for path in [package, sequence] {

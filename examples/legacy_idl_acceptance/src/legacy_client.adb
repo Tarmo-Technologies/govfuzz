@@ -13,7 +13,6 @@ with Legacy.Telemetry.Monitor;
 with Legacy.Telemetry.Monitor.Helper;
 with Legacy.Telemetry.Monitor.Skel;
 with Legacy.Telemetry.Monitor.Stub;
-with Sequence_Of_Legacy_Telemetry_Reading_Bound_8;
 
 package body Legacy_Client is
    use type Legacy.Telemetry.Status;
@@ -22,7 +21,7 @@ package body Legacy_Client is
       Monitor : Legacy.Telemetry.Monitor.Ref;
       Admin : Legacy.Telemetry.Admin.Ref;
       Obj : CORBA.Object.Ref;
-      Samples : Sequence_Of_Legacy_Telemetry_Reading_Bound_8.Sequence;
+      Samples : Legacy.Telemetry.Sequence_Of_Legacy_Telemetry_Reading_Bound_8;
       Any_Value : CORBA.Any.Value;
       Code : CORBA.TypeCode.Object := CORBA.Any.Get_Type (Any_Value);
       State : Legacy.Telemetry.Status := Legacy.Telemetry.Status_Ok;

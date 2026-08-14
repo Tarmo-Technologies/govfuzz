@@ -567,9 +567,7 @@ fn write_idl_ast(
             )
         })?;
     }
-    for warning in &output.warnings {
-        gfeprintln!("IDL mapping warning: {warning}");
-    }
+    report_idl_warnings(&output.warnings);
     write_idl_recovery_report(
         output_dir,
         &output.warnings,
@@ -586,6 +584,39 @@ fn write_idl_ast(
         })?;
     write_idl_dictionary(output_dir, &dictionary_tokens)?;
     Ok(written.len())
+}
+
+/// How many distinct IDL warnings reach the terminal before the rest are rolled
+/// up into a count. A tree with hundreds of `.idl` files otherwise buries the
+/// run's real output under repeats of the same recovery note; every warning is
+/// still written in full to `idl_recovery_report.json`.
+const MAX_REPORTED_IDL_WARNINGS: usize = 20;
+
+fn report_idl_warnings(warnings: &[String]) {
+    for line in reportable_idl_warnings(warnings) {
+        gfeprintln!("IDL mapping warning: {line}");
+    }
+}
+
+/// The warning lines worth putting on the terminal: each distinct warning once,
+/// up to [`MAX_REPORTED_IDL_WARNINGS`], then a single count of the remainder.
+fn reportable_idl_warnings(warnings: &[String]) -> Vec<String> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut reported = Vec::new();
+    let mut suppressed = 0usize;
+    for warning in warnings {
+        if !seen.insert(warning.as_str()) || seen.len() > MAX_REPORTED_IDL_WARNINGS {
+            suppressed += 1;
+            continue;
+        }
+        reported.push(warning.clone());
+    }
+    if suppressed > 0 {
+        reported.push(format!(
+            "{suppressed} further warning(s) suppressed; see idl_recovery_report.json"
+        ));
+    }
+    reported
 }
 
 fn write_idl_recovery_report(
@@ -616,8 +647,40 @@ fn write_idl_recovery_report(
                 ("vendor_pragma", false)
             } else if lower.contains("unsupported idl constant expression")
                 || lower.contains("nonliteral idl bound")
+                || lower.contains("noninteger idl array dimension")
+                || lower.contains("nonliteral idl fixed<>")
             {
                 ("lossy_expression", true)
+            } else if lower.contains("hoisted to the enclosing scope") {
+                // The nested type is still emitted, just in the enclosing scope
+                // rather than the interface's own, so nothing is lost.
+                ("hoisted_declaration", false)
+            } else if lower.contains("ignored idl annotation") {
+                // `@key`, `@topic`, `@optional` and friends annotate a
+                // declaration that is still mapped in full. Counting them as
+                // blocking reported every ordinary annotated DDS `.idl` as
+                // partial.
+                ("ignored_annotation", false)
+            } else if lower.contains("explicit idl enumerator value") {
+                ("lossy_enumerator", true)
+            } else if lower.contains("outside the signed 64-bit range") {
+                ("narrowed_constant", true)
+            } else if lower.contains("native idl type") {
+                ("native_placeholder", true)
+            } else if lower.contains("idl bitset") {
+                ("bitset_placeholder", true)
+            } else if lower.contains("the inherited fields are not mapped") {
+                ("unmapped_inheritance", true)
+            } else if lower.contains("is referenced but not mapped") {
+                // The generated Ada names a type this run never emitted, so the
+                // unit that uses it will not compile.
+                ("unmapped_type", true)
+            } else if lower.contains("holds characters beyond latin-1") {
+                ("unrepresentable_literal", true)
+            } else if lower.contains("mapped to long_float placeholder") {
+                ("fixed_placeholder", true)
+            } else if lower.contains("emitted as declaration comments") {
+                ("union_comments", true)
             } else if lower.contains("unsupported") {
                 ("unsupported_mapping", true)
             } else {
@@ -775,10 +838,45 @@ fn absolutize(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{auto_generate_from_tree, find_idl_files, idl_include_dirs, write_idl_mapping};
+    use super::{
+        auto_generate_from_tree, find_idl_files, idl_include_dirs, reportable_idl_warnings,
+        write_idl_mapping, MAX_REPORTED_IDL_WARNINGS,
+    };
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn repeated_idl_warnings_collapse_to_one_line_each_plus_a_count() {
+        let mut warnings = vec!["ignored IDL annotation '@key'".to_owned(); 40];
+        warnings.push("ignored IDL annotation '@topic'".to_owned());
+
+        let reported = reportable_idl_warnings(&warnings);
+
+        assert_eq!(
+            reported,
+            vec![
+                "ignored IDL annotation '@key'".to_owned(),
+                "ignored IDL annotation '@topic'".to_owned(),
+                "39 further warning(s) suppressed; see idl_recovery_report.json".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn distinct_idl_warnings_are_capped_before_they_flood_the_terminal() {
+        let warnings = (0..MAX_REPORTED_IDL_WARNINGS + 5)
+            .map(|index| format!("nonliteral IDL bound 'MAX_{index}' treated as unbounded"))
+            .collect::<Vec<_>>();
+
+        let reported = reportable_idl_warnings(&warnings);
+
+        assert_eq!(reported.len(), MAX_REPORTED_IDL_WARNINGS + 1);
+        assert_eq!(
+            reported[MAX_REPORTED_IDL_WARNINGS],
+            "5 further warning(s) suppressed; see idl_recovery_report.json"
+        );
+    }
 
     #[test]
     fn auto_generate_maps_in_tree_idl_into_fake_corba() {

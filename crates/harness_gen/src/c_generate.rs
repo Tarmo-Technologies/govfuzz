@@ -92,11 +92,171 @@ pub struct CDriveStep {
     pub breaks_on_null: bool,
 }
 
+/// Upper bound on operations driven in one execution, and therefore the size of
+/// the op program: the control region is one count byte plus one selector slot
+/// per possible step. Kept small so the reserved tail stays a negligible slice
+/// of a typical input while still allowing a sequence long enough to reach
+/// close/reopen cycles.
+const MAX_SEQUENCE_STEPS: usize = 8;
+
 #[derive(Debug, Clone)]
 pub struct CLifecycleStep {
     pub name: String,
     pub params: Vec<CParameter>,
     pub return_type: String,
+    /// What this op does to the handle's LIFETIME. Ops that open or close the
+    /// handle used to be filtered out of the alphabet entirely, which made
+    /// close/reopen and re-init-over-live-state unreachable by construction —
+    /// two of the highest-yield stateful bug classes.
+    pub role: CStepRole,
+}
+
+/// How an argument observed in project-owned protocol code is reproduced.
+/// Only literals and the canonical fuzz input mappings bypass the normal typed
+/// decoder. Everything else remains decoded, so mining can improve call order
+/// without trusting arbitrary test-local expressions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CProtocolArg {
+    Decode,
+    InputData,
+    /// A bounded suffix of the canonical input (`data + N`, `&data[N]`).
+    InputDataOffset(usize),
+    InputSize,
+    /// The remaining length paired with [`Self::InputDataOffset`].
+    InputSizeMinus(usize),
+    /// A stable fractional length such as `size / 2` used by streaming tests.
+    InputSizeDivisor(u64),
+    /// One byte consumed as a scalar option/flag, optionally masked.
+    InputByte {
+        index: usize,
+        mask: Option<u64>,
+    },
+    Receiver,
+    /// Result of an earlier declaration-checked call in this protocol.
+    PriorResult(usize),
+    Literal(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CProtocolComparison {
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+/// A bounded control dependency on an earlier call in the same mined trace.
+/// `producer_step` is an index into `GenerateCSequenceArgs::protocol_steps`.
+/// Codegen verifies that the producer has an observable result before emitting
+/// the comparison and independently validates `value`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CProtocolCondition {
+    pub producer_step: usize,
+    /// Optional public bit mask applied to the earlier result before comparing.
+    pub bitmask: Option<String>,
+    pub comparison: CProtocolComparison,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CProtocolInputSource {
+    Size,
+    Byte(usize),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CProtocolInputTransform {
+    Identity,
+    Modulo(u64),
+    BitAnd(u64),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CProtocolInputCondition {
+    pub source: CProtocolInputSource,
+    pub transform: CProtocolInputTransform,
+    pub comparison: CProtocolComparison,
+    pub value: String,
+}
+
+/// One call in a mined expert protocol. `step.params` excludes the receiver,
+/// exactly like an ordinary [`CLifecycleStep`]; `args` is position-aligned with
+/// those remaining parameters.
+#[derive(Debug, Clone)]
+pub struct CProtocolStep {
+    pub step: CLifecycleStep,
+    pub args: Vec<CProtocolArg>,
+    /// Whether codegen prepends the lifecycle object before `args`. Dependent
+    /// helpers such as `XML_ErrorString(XML_GetErrorCode(parser))` have no
+    /// direct handle receiver and carry their complete parameter list in args.
+    pub has_receiver: bool,
+    pub marks_target: bool,
+    pub condition: Option<CProtocolCondition>,
+    pub input_condition: Option<CProtocolInputCondition>,
+}
+
+/// An additional handle construction observed in a maintained fuzz target.
+/// `constructor.params` excludes the parent receiver when
+/// `uses_primary_as_parent` is true; otherwise it contains the complete
+/// constructor parameter list.
+#[derive(Debug, Clone)]
+pub struct CProtocolObject {
+    pub constructor: CLifecycleStep,
+    pub args: Vec<CProtocolArg>,
+    pub uses_primary_as_parent: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CHandleFieldInitializer {
+    pub field: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct COutputDrainProtocol {
+    /// Parameter index after the lifecycle receiver.
+    pub output_argument: usize,
+    pub cleanup_name: String,
+    pub cleanup_param_type: String,
+    pub terminal_field: String,
+    pub terminal_value: String,
+    /// True for boolean APIs (`nonzero == success`), false for errno/status APIs.
+    pub success_nonzero: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CCallbackAction {
+    pub step: CLifecycleStep,
+    /// Additional public transitions observed in the same registered callback.
+    /// The callback trampoline chooses among them from the current input.
+    pub alternative_steps: Vec<CLifecycleStep>,
+    pub configuration_name: String,
+    pub configuration_arg: usize,
+}
+
+/// An op's effect on handle liveness.
+///
+/// Liveness is tracked so the generated sequence can CYCLE the handle
+/// (close then reopen, the shape leveldb's own fuzzer spells as `kReopenDb`)
+/// without ever driving use-after-close. Calling an ordinary op on a closed
+/// handle is API misuse: the target is entitled to crash, so a crash there
+/// would be manufactured by the harness rather than found in the library.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CStepRole {
+    /// Ordinary operation; legal only while the handle is live.
+    #[default]
+    Operation,
+    /// Opens/initialises the handle; legal only while it is NOT live.
+    Open,
+    /// Closes/releases the handle; legal only while it is live.
+    Close,
+    /// Configures an already-constructed handle: registers a callback, enables a
+    /// format, sets an option. Run once unconditionally after construction, and
+    /// still available in the loop so the sequence can re-configure.
+    Configure,
 }
 
 #[derive(Debug, Clone)]
@@ -105,9 +265,46 @@ pub struct GenerateCSequenceArgs {
     pub output_dir: PathBuf,
     pub source_path: PathBuf,
     pub target: CFunction,
+    /// C type stored in `_gf_handle`. For an in-place lifecycle this is the
+    /// complete aggregate (`struct session`); for a returning lifecycle it is
+    /// the public pointer/opaque-handle spelling (`struct archive *`,
+    /// `XML_Parser`).
     pub handle_type: String,
+    /// Exact type of the receiver parameter accepted by every operation.
+    /// Keeping this separate from `handle_type` lets a returning constructor
+    /// use an opaque pointer typedef without pretending the pointee is complete.
+    pub handle_param_type: String,
+    /// The constructor returns the live handle instead of initializing caller
+    /// storage through its first argument.
+    pub init_returns_handle: bool,
+    /// Parameter receiving the live handle for a status-returning constructor
+    /// (`sqlite3_open(path, sqlite3 **)`). Unlike an in-place aggregate init,
+    /// the stored handle is itself a pointer value.
+    pub init_out_handle_argument: Option<usize>,
+    /// Some C initializers use boolean success (nonzero) rather than errno-style
+    /// status success (zero). This polarity is mined from maintained call sites.
+    pub init_success_nonzero: bool,
+    /// Public aggregate fields that maintained examples initialize before the
+    /// selected endpoint. Codegen verifies both the field declaration and the
+    /// bounded literal/constant grammar before emitting them.
+    pub handle_field_initializers: Vec<CHandleFieldInitializer>,
+    pub output_drain_protocol: Option<COutputDrainProtocol>,
     pub init_step: Option<CLifecycleStep>,
     pub op_steps: Vec<CLifecycleStep>,
+    /// Ordered calls mined from maintained fuzz/tests and checked against the
+    /// same-handle declarations selected by the CLI.
+    pub protocol_steps: Vec<CProtocolStep>,
+    /// Extra independent/derived objects the expert harness constructs and then
+    /// drives through the same protocol.
+    pub protocol_objects: Vec<CProtocolObject>,
+    /// Configuration calls whose maintained recipe passes the live handle back
+    /// as user/context data. This is required before a callback-time lifecycle
+    /// action can safely recover its owning object.
+    pub receiver_configuration_names: Vec<String>,
+    /// A public, type-checked state transition observed inside a registered
+    /// expert callback (e.g. `XML_StopParser`). Codegen drives it through a
+    /// bounded callback hook controlled by the current fuzz input.
+    pub callback_action: Option<CCallbackAction>,
     pub end_step: Option<CLifecycleStep>,
     pub target_includes: Vec<String>,
     pub target_includes_dirs: Vec<PathBuf>,
@@ -154,6 +351,12 @@ pub fn generate_c_direct_harness(
     })
 }
 
+/// Sidecar naming the op program's geometry, written next to the generated
+/// sequence harness and read by the engine to build an
+/// `OperationSequenceLayout` for whatever input it is about to mutate.
+pub const SEQUENCE_LAYOUT_FILE: &str = "sequence-layout.json";
+pub const PROTOCOL_PORTFOLIO_FILE: &str = "protocol-portfolio.json";
+
 pub fn generate_c_sequence_harness(
     args: GenerateCSequenceArgs,
 ) -> Result<GeneratedCFiles, HarnessGenError> {
@@ -173,6 +376,44 @@ pub fn generate_c_sequence_harness(
     let makefile_path = args.output_dir.join("Makefile");
     fs::write(&main_path, main_c)?;
     fs::write(&makefile_path, makefile)?;
+    // Describe the op program's geometry so the engine can build a
+    // structure-aware mutation layout for an input of any length. Without it
+    // the sequence mutator has nothing to describe, and every op program is
+    // mutated as opaque bytes.
+    fs::write(
+        args.output_dir.join(SEQUENCE_LAYOUT_FILE),
+        format!(
+            "{{\n  \"operation_count\": {},\n  \"max_steps\": {},\n  \"control_len\": {},\n  \"portfolio_lanes\": {}\n}}\n",
+            context.op_steps.len(),
+            context.op_max_steps,
+            context.op_ctrl_len,
+            context.protocol_portfolio_lanes,
+        ),
+    )?;
+    if context.protocol_portfolio_lanes > 1 {
+        let mut lanes = vec!["    {\"lane\": 0, \"rank\": 0, \"recipe\": \"primary\"}".to_owned()];
+        lanes.extend(
+            context
+                .mined_protocol_objects
+                .iter()
+                .enumerate()
+                .map(|(index, object)| {
+                    format!(
+                        "    {{\"lane\": {}, \"rank\": {}, \"recipe\": \"{}\"}}",
+                        index + 1,
+                        index + 1,
+                        object.constructor.name
+                    )
+                }),
+        );
+        fs::write(
+            args.output_dir.join(PROTOCOL_PORTFOLIO_FILE),
+            format!(
+                "{{\n  \"strategy\": \"ranked_specialized_protocol_lanes\",\n  \"lanes\": [\n{}\n  ]\n}}\n",
+                lanes.join(",\n")
+            ),
+        )?;
+    }
 
     Ok(GeneratedCFiles {
         main_c: main_path,
@@ -250,28 +491,147 @@ struct CSequenceTemplateContext {
     compiler_is_gcc: bool,
     c_runtime_include: String,
     emit_forward_declaration: bool,
+    /// Exact public libjpeg decompressor lifecycle. `jpeg_read_header` cannot
+    /// be called on a field-by-field synthesized `jpeg_decompress_struct`: the
+    /// macro constructor, error manager, source manager, and ordered scanline
+    /// drain are all mandatory parts of the API contract.
+    expert_jpeg_decompress: bool,
+    /// Exact public SQLite prepare/step/finalize lifecycle over an in-memory DB.
+    /// Preparing once without stepping/finalizing leaves most of the VM surface
+    /// unreachable and leaks every successfully prepared statement.
+    expert_sqlite_prepare: bool,
     handle_type: String,
+    handle_param_type: String,
+    /// Type of a value passed as an operation receiver. This is always pointer-
+    /// shaped even when the backing storage is an in-place aggregate.
+    handle_value_type: String,
+    init_returns_handle: bool,
+    init_out_handle: bool,
+    handle_is_pointer_value: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     init_step: Option<CSequenceStepEmission>,
     /// Campaign #12: when true, the op-loop and teardown are wrapped in a
     /// `if (init_result == 0)` guard so they run only on a successful constructor.
     guard_op_loop_on_init: bool,
+    init_success_nonzero: bool,
+    handle_field_initializers: Vec<CHandleFieldInitializer>,
     op_steps: Vec<CSequenceStepEmission>,
     op_step_max: usize,
+    /// Upper bound on steps in one execution. Also fixes the size of the
+    /// control region: one count byte plus one selector slot per possible step.
+    op_max_steps: usize,
+    /// Bytes reserved at the END of the input for the op program, so the
+    /// argument cursor can be clamped away from them.
+    op_ctrl_len: usize,
+    /// Typed slots carrying an op's return value to a later op's argument.
+    thread_slots: Vec<CThreadSlot>,
+    /// True when some op returns a NEW handle derived from the live one, so the
+    /// harness keeps a derived slot and can drive ops against it.
+    derives_handle: bool,
+    /// Configuration calls run once between construction and use.
+    configure_steps: Vec<CSequenceStepEmission>,
+    /// A deterministic, declaration-checked state-machine trace mined from the
+    /// project itself. It replaces random operation permutation when present:
+    /// ordering and repeated calls are the protocol (stream then finalize).
+    mined_protocol_steps: Vec<CSequenceStepEmission>,
+    /// True only when the observed trace ends by restoring the handle to a
+    /// reusable initial state. In that case the deterministic expert prefix and
+    /// the exploratory random program can safely compose in one iteration.
+    mined_protocol_allows_random: bool,
+    /// Unique signatures needed for support blocks/forward declarations; the
+    /// execution list above deliberately retains repetitions.
+    mined_protocol_declarations: Vec<CSequenceStepEmission>,
+    mined_protocol_objects: Vec<CProtocolObjectEmission>,
+    protocol_portfolio_lanes: usize,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    callback_actions: Vec<CCallbackActionEmission>,
+    /// A structurally proven reader pipeline matching the hand-written
+    /// libarchive harness: open the memory image, walk every header, and drain
+    /// every entry. Randomly permuting these dependent calls reaches far less
+    /// parser code because almost every ordering is semantically dead.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expert_stream_pump: Option<CExpertStreamPump>,
+    /// Evidence-backed pull-parser loop over a non-const output aggregate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expert_output_drain: Option<CExpertOutputDrain>,
     #[serde(skip_serializing_if = "Option::is_none")]
     end_step: Option<CSequenceStepEmission>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct CSequenceStepEmission {
     name: String,
     params: Vec<CParamEmission>,
     return_type: String,
     return_type_present: bool,
+    /// Liveness role, so the op loop can gate on it (see [`CStepRole`]).
+    role: CStepRole,
+    /// Slot this op's return value is stored into, when some other op consumes
+    /// that type as an argument.
+    produces_slot: Option<String>,
+    /// True when this op returns a NEW handle derived from the live one.
+    produces_derived_handle: bool,
+    /// Expression for the object this op is called ON. `&_gf_handle` unless the
+    /// harness has a derived object to choose between.
+    receiver: String,
+    /// Name of the per-call byte that chooses the receiver, when there is a
+    /// choice to make.
+    receiver_selector: Option<String>,
     /// True when this step's return is a 0==success status int (#12). Used on the
     /// init step to guard the op-loop + teardown on the constructor succeeding.
     is_status_return: bool,
     result_name: String,
+    /// True for every repeated occurrence of the requested endpoint in a mined
+    /// protocol, so external drivers still delimit target execution correctly.
+    marks_target: bool,
+    /// Index of a configuration parameter bound to the current live receiver
+    /// (typically a user-data/context pointer). Object-topology calls substitute
+    /// their own handle at this position rather than retaining the primary.
+    callback_context_arg: Option<usize>,
+    /// Safe comparison against a previously declared protocol result.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    condition: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct CExpertStreamPump {
+    open_step: CSequenceStepEmission,
+    header_step: CSequenceStepEmission,
+    data_step: CSequenceStepEmission,
+    data_buffer_name: String,
+    data_buffer_bytes: usize,
+    entry_cap: usize,
+    data_cap: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct CExpertOutputDrain {
+    target_step: CSequenceStepEmission,
+    output_value: String,
+    output_pointer: String,
+    cleanup_name: String,
+    cleanup_param_type: String,
+    terminal_field: String,
+    terminal_value: String,
+    success_nonzero: bool,
+    iteration_cap: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct CProtocolObjectEmission {
+    handle_name: String,
+    constructor: CSequenceStepEmission,
+    constructor_uses_parent: bool,
+    protocol_steps: Vec<CSequenceStepEmission>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    end_step: Option<CSequenceStepEmission>,
+}
+
+#[derive(Debug, Serialize)]
+struct CCallbackActionEmission {
+    name: String,
+    handle_param_type: String,
+    args: Vec<String>,
 }
 
 /// Drop a callback param's leading `typedef …;` line from its support code (the
@@ -457,6 +817,26 @@ fn build_param_decoders(
     // produces obviously-wrong harnesses.
     let mut pair_consumed = false;
     while i < params.len() {
+        // libarchive documents this as an I/O buffer size, not semantic input.
+        // Experts use a stable non-zero block (commonly 10 KiB); fuzzing zero or
+        // tiny values makes valid file-backed seeds fail in setup and spends
+        // mutation energy on buffering rather than archive structure.
+        if is_exact_libarchive_file_reader_open(function_name)
+            && params[i].name.to_ascii_lowercase().contains("block_size")
+            && (is_length_param(&params[i].c_type)
+                || registry_resolves_to_length(&params[i].c_type, registry))
+        {
+            let ty = emit_c_type(&params[i].c_type);
+            out.push(CParamEmission {
+                support: None,
+                decl: format!("{ty} {} = ({ty})10240", params[i].name),
+                arg: params[i].name.clone(),
+                c_type: ty,
+                free: None,
+            });
+            i += 1;
+            continue;
+        }
         // Streaming decoders commonly expose an in/out count followed by an
         // in/out byte cursor (`size_t *available_in, const uint8_t **next_in` and
         // `size_t *available_out, uint8_t **next_out`). The count and storage
@@ -476,11 +856,62 @@ fn build_param_decoders(
             pair_consumed = true;
             continue;
         }
+        // Some public APIs spell the same ownership contracts in the reverse
+        // order: `(input_size, const input_buffer, output_size*, output_buffer)`.
+        // BrotliDecoderDecompress is the representative case. Treating those
+        // four values independently makes the input length a tiny fuzz-derived
+        // prefix and initializes the output size to the input size instead of
+        // the allocated output capacity, leaving much of the decoder
+        // unreachable compared with an expert harness.
+        if i + 1 < params.len()
+            && is_length_param(&params[i].c_type)
+            && is_raw_buffer_param(&params[i + 1].c_type, registry)
+            && looks_like_reverse_input_length_buffer_pair(&params[i], &params[i + 1])
+        {
+            let (len_decl, buf_decl) = pair_input_length_buffer(&params[i], &params[i + 1]);
+            out.push(len_decl);
+            out.push(buf_decl);
+            i += 2;
+            pair_consumed = true;
+            continue;
+        }
+        if i + 1 < params.len()
+            && is_length_pointer_param(&params[i].c_type)
+            && is_output_buffer_param(&params[i + 1].c_type, registry)
+            && looks_like_reverse_output_length_buffer_pair(
+                &params[i],
+                &params[i + 1],
+                function_name,
+            )
+        {
+            let (len_decl, buf_decl) =
+                pair_output_length_buffer(&params[i], &params[i + 1], function_name);
+            out.push(len_decl);
+            out.push(buf_decl);
+            i += 2;
+            continue;
+        }
+        // Two adjacent pointers that BRACKET one buffer (`const char *ptr,
+        // const char *end`). Expat's scanners and `matchkey(start, end, key)`
+        // walk `for (; start != end; start++)`. Decoding them as two independent
+        // allocations makes that walk run off one heap block toward an unrelated
+        // address, which ASan reports as a heap-buffer-overflow in correct
+        // library code — measured as false findings on libexpat. Bind both ends
+        // to the same libFuzzer span.
+        if i + 1 < params.len() && is_begin_end_pointer_pair(&params[i], &params[i + 1]) {
+            let (begin_decl, end_decl) = pair_begin_end_span(&params[i], &params[i + 1]);
+            out.push(begin_decl);
+            out.push(end_decl);
+            i += 2;
+            pair_consumed = true;
+            continue;
+        }
         if i + 1 < params.len()
             && is_output_buffer_param(&params[i].c_type, registry)
             && is_length_pointer_param(&params[i + 1].c_type)
         {
-            let (buf_decl, len_decl) = pair_output_buffer_length(&params[i], &params[i + 1]);
+            let (buf_decl, len_decl) =
+                pair_output_buffer_length(&params[i], &params[i + 1], function_name);
             out.push(buf_decl);
             out.push(len_decl);
             i += 2;
@@ -518,9 +949,10 @@ fn build_param_decoders(
         if i + 1 < params.len()
             && is_output_buffer_param(&params[i].c_type, registry)
             && is_length_param(&params[i + 1].c_type)
-            && looks_like_output_capacity_pair(&params[i], &params[i + 1])
+            && looks_like_output_capacity_pair(&params[i], &params[i + 1], function_name)
         {
-            let (buf_decl, len_decl) = pair_output_buffer_capacity(&params[i], &params[i + 1]);
+            let (buf_decl, len_decl) =
+                pair_output_buffer_capacity(&params[i], &params[i + 1], function_name);
             out.push(buf_decl);
             out.push(len_decl);
             i += 2;
@@ -537,7 +969,11 @@ fn build_param_decoders(
             // Without this, `(const char *file, int line)` mis-paired as
             // (buffer, length) — a heap-buffer-overflow false positive (log_log).
             && (looks_like_count_name(&params[i + 1].name)
-                || looks_like_buffer_name(&params[i].name))
+                || looks_like_buffer_name(&params[i].name)
+                || (is_synthetic_param_name(&params[i].name)
+                    && is_synthetic_param_name(&params[i + 1].name)
+                    && (looks_like_explicit_binary_pointer(&params[i].c_type)
+                        || looks_like_in_memory_input_function(function_name))))
         {
             let (buf_decl, len_decl) =
                 pair_buffer_length(&params[i], &params[i + 1], nul_terminate_input_buffers);
@@ -546,6 +982,24 @@ fn build_param_decoders(
             i += 2;
             pair_consumed = true;
             continue;
+        }
+        // A plural file-path vector is NULL-terminated, not paired with the
+        // following scalar. libarchive's
+        // `archive_read_open_filenames(a, filenames, block_size)` exposed both
+        // failure modes of treating it as `(string_array, count)`: `block_size`
+        // was replaced with the number of strings, and a full N-element array
+        // had no N+1 NULL sentinel for the callee's walk. Model the expert setup
+        // directly: one real temp file containing the complete fuzz input and a
+        // terminating NULL. The following block size remains independently
+        // decoded as the API intends.
+        if crate::c_decoders::is_file_io_function_name(function_name)
+            && looks_like_plural_file_path_name(&params[i].name)
+        {
+            if let Some(paths) = file_path_array_param(&params[i]) {
+                out.push(paths);
+                i += 1;
+                continue;
+            }
         }
         // Array of C-strings + element count (cJSON `cJSON_CreateStringArray(const
         // char *const *strings, int count)`). A bare `char **` decoder hands the
@@ -562,6 +1016,22 @@ fn build_param_decoders(
             let (arr_decl, count_decl) = pair_string_array_count(&params[i], &params[i + 1]);
             out.push(arr_decl);
             out.push(count_decl);
+            i += 2;
+            continue;
+        }
+        // The same typed-array/count contract appears in reverse order in
+        // POSIX-style APIs (`size_t nmatch, regmatch_t *pmatch`). A scalar count
+        // decoded independently from a one-element struct scratch lets the
+        // callee write `pmatch[1..nmatch]` out of bounds. Declare the backing
+        // array alongside the count while preserving argument order.
+        if i + 1 < params.len()
+            && is_length_param(&params[i].c_type)
+            && looks_like_count_name(&params[i].name)
+            && is_typed_array_pointer(&params[i + 1].c_type, registry)
+        {
+            let (count_decl, arr_decl) = pair_reverse_typed_array_count(&params[i], &params[i + 1]);
+            out.push(count_decl);
+            out.push(arr_decl);
             i += 2;
             continue;
         }
@@ -602,7 +1072,7 @@ fn build_param_decoders(
                 continue;
             }
             if let Some(scratch) =
-                out_param_struct_scratch(&params[i].c_type, &params[i].name, registry)
+                out_param_struct_scratch(&params[i].c_type, &params[i].name, registry, lifecycle)
             {
                 out.push(scratch);
                 i += 1;
@@ -809,6 +1279,7 @@ fn out_param_struct_scratch(
     c_type: &str,
     name: &str,
     registry: &TypeRegistry,
+    lifecycle: &[CHandleLifecycle],
 ) -> Option<CParamEmission> {
     let canonical = canonical_c_type(c_type);
     // A const/volatile pointee is read by the callee — never zero it out.
@@ -832,12 +1303,31 @@ fn out_param_struct_scratch(
         return None;
     }
     let local = format!("_gf_out_{name}");
+    let key = crate::c_decoders::normalize_handle_key(base);
+    let object_lifecycle = lifecycle.iter().find(|entry| {
+        !entry.init_returns_handle
+            && crate::c_decoders::normalize_handle_key(&entry.handle_type) == key
+    });
+    let decl = match object_lifecycle.and_then(|entry| entry.init.as_deref()) {
+        Some(init) => {
+            format!("{base} {local}; memset(&{local}, 0, sizeof {local}); (void){init}(&{local})")
+        }
+        None => format!("{base} {local}; memset(&{local}, 0, sizeof {local})"),
+    };
+    // An explicitly initialized in-place object remains valid for destruction
+    // even when the parser reports malformed input. This is the ordinary
+    // `result_init(&r); parse(&r,...); result_destroy(&r)` contract used by
+    // msgpack and similar APIs.
+    let free = object_lifecycle
+        .filter(|entry| entry.init.is_some())
+        .and_then(|entry| entry.delete.as_deref())
+        .map(|delete| format!("{delete}(&{local})"));
     Some(CParamEmission {
         support: None,
-        decl: format!("{base} {local}; memset(&{local}, 0, sizeof {local})"),
+        decl,
         arg: format!("&{local}"),
         c_type: format!("{base} *"),
-        free: None,
+        free,
     })
 }
 
@@ -1095,7 +1585,8 @@ fn pair_stream_count_byte_cursor(
                 support: None,
                 decl: format!(
                     "size_t {cap} = Size <= (1024 * 1024) ? (size_t)Size + 65536 : (1024 * 1024 + 65536); \
-                     {len_base} {len_storage} = ({len_base}){cap}; {len_type} {len_name} = &{len_storage}"
+                     {inner_type} {buffer} = ({inner_type})malloc({cap} ? {cap} : 1); \
+                     {len_base} {len_storage} = ({len_base})({buffer} ? {cap} : 0); {len_type} {len_name} = &{len_storage}"
                 ),
                 arg: len_name.to_owned(),
                 c_type: len_type,
@@ -1104,8 +1595,7 @@ fn pair_stream_count_byte_cursor(
             let cursor_emission = CParamEmission {
                 support: None,
                 decl: format!(
-                    "{inner_type} {buffer} = ({inner_type})malloc({cap} ? {cap} : 1); \
-                     {inner_type} {ptr_storage} = {buffer}; {cursor_type} {cursor_name} = &{ptr_storage}"
+                    "{inner_type} {ptr_storage} = {buffer}; {cursor_type} {cursor_name} = &{ptr_storage}"
                 ),
                 arg: cursor_name.to_owned(),
                 c_type: cursor_type,
@@ -1181,6 +1671,7 @@ fn is_typed_array_pointer(c_type: &str, registry: &TypeRegistry) -> bool {
 pub(crate) fn looks_like_count_name(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     n == "n"
+        || n == "nmatch"
         || [
             "count", "num", "nmemb", "nitem", "ntok", "nelem", "len", "size", "cap", "length",
             // `nbyte`/`nBytes` is a ubiquitous byte-length name (tinyxml2
@@ -1378,15 +1869,6 @@ fn pair_buffer_length(
     let len_name = &length.name;
     let len_type = emit_c_type(&length.c_type);
 
-    let len_decl = format!("{len_type} {len_name} = ({len_type})Size");
-    let len_emission = CParamEmission {
-        support: None,
-        decl: len_decl,
-        arg: len_name.to_owned(),
-        c_type: len_type,
-        free: None,
-    };
-
     if is_const_pointer_type(&canonical_c_type(&buffer.c_type)) {
         // #468: when the function exposes a NUL-terminated MODE (a sibling enum
         // flag like `UTF8PROC_NULLTERM` that makes the callee ignore the length and
@@ -1399,9 +1881,11 @@ fn pair_buffer_length(
         // over-read past the declared length (no real-bug-detection regression).
         if nul_terminate {
             let copy = format!("_gf_ntbuf_{buf_name}");
+            let copy_len = format!("_gf_ntlen_{buf_name}");
             let buf_decl = format!(
-                "char *{copy} = (char *)malloc((size_t)Size + 1); \
-                 if ({copy}) {{ if (Size) memcpy({copy}, Data, Size); {copy}[Size] = 0; }} \
+                "size_t {copy_len} = Size <= (1024 * 1024) ? (size_t)Size : (1024 * 1024); \
+                 char *{copy} = (char *)malloc({copy_len} + 1); \
+                 if ({copy}) {{ if ({copy_len}) memcpy({copy}, Data, {copy_len}); {copy}[{copy_len}] = 0; }} \
                  {buf_type} {buf_name} = ({buf_type}){copy}"
             );
             let buf_emission = CParamEmission {
@@ -1410,6 +1894,13 @@ fn pair_buffer_length(
                 arg: buf_name.to_owned(),
                 c_type: buf_type,
                 free: Some(format!("free({copy})")),
+            };
+            let len_emission = CParamEmission {
+                support: None,
+                decl: format!("{len_type} {len_name} = ({len_type})({copy} ? {copy_len} : 0)"),
+                arg: len_name.to_owned(),
+                c_type: len_type,
+                free: None,
             };
             return (buf_emission, len_emission);
         }
@@ -1421,14 +1912,21 @@ fn pair_buffer_length(
             c_type: buf_type,
             free: None,
         };
+        let len_emission = CParamEmission {
+            support: None,
+            decl: format!("{len_type} {len_name} = ({len_type})Size"),
+            arg: len_name.to_owned(),
+            c_type: len_type,
+            free: None,
+        };
         return (buf_emission, len_emission);
     }
 
     let cap_name = format!("_gf_cap_{buf_name}");
     let buf_decl = format!(
-        "size_t {cap_name} = (size_t)Size + 65536; \
-         {buf_type} {buf_name} = ({buf_type})malloc({cap_name}); \
-         if ({buf_name} && Size) memcpy({buf_name}, Data, Size)"
+        "size_t {cap_name} = Size <= (1024 * 1024) ? (size_t)Size : (1024 * 1024); \
+         {buf_type} {buf_name} = ({buf_type})malloc({cap_name} ? {cap_name} : 1); \
+         if ({buf_name} && {cap_name}) memcpy({buf_name}, Data, {cap_name})"
     );
     let buf_emission = CParamEmission {
         support: None,
@@ -1436,6 +1934,13 @@ fn pair_buffer_length(
         arg: buf_name.to_owned(),
         c_type: buf_type,
         free: Some(format!("free({buf_name})")),
+    };
+    let len_emission = CParamEmission {
+        support: None,
+        decl: format!("{len_type} {len_name} = ({len_type})({buf_name} ? {cap_name} : 0)"),
+        arg: len_name.to_owned(),
+        c_type: len_type,
+        free: None,
     };
     (buf_emission, len_emission)
 }
@@ -1468,7 +1973,8 @@ fn pair_typed_array_count(
         free: Some(format!("free((void *){arr_name})")),
     };
 
-    let count_decl = format!("{count_type} {count_name} = ({count_type}){n_name}");
+    let count_decl =
+        format!("{count_type} {count_name} = ({count_type})({arr_name} ? {n_name} : 0)");
     let count_emission = CParamEmission {
         support: None,
         decl: count_decl,
@@ -1477,6 +1983,42 @@ fn pair_typed_array_count(
         free: None,
     };
     (arr_emission, count_emission)
+}
+
+/// Reverse-order counterpart of [`pair_typed_array_count`]: `(count, T *array)`.
+/// The first emission owns both declarations because the generated call argument
+/// list must retain source order; the second carries the array argument and its
+/// cleanup without redeclaring the storage.
+fn pair_reverse_typed_array_count(
+    count: &CParameter,
+    array: &CParameter,
+) -> (CParamEmission, CParamEmission) {
+    let count_type = emit_c_type(&count.c_type);
+    let count_name = &count.name;
+    let arr_type = emit_c_type(&array.c_type);
+    let arr_name = &array.name;
+    let n_name = format!("_gf_n_{arr_name}");
+    let count_decl = format!(
+        "size_t {n_name} = gf_bounded_length(&Cur, 0, 64); \
+         {arr_type} {arr_name} = ({arr_type})calloc({n_name} ? {n_name} : 1, sizeof(*{arr_name})); \
+         {count_type} {count_name} = ({count_type})({arr_name} ? {n_name} : 0)"
+    );
+    (
+        CParamEmission {
+            support: None,
+            decl: count_decl,
+            arg: count_name.to_owned(),
+            c_type: count_type,
+            free: None,
+        },
+        CParamEmission {
+            support: None,
+            decl: "/* backing array declared with its preceding count */".to_owned(),
+            arg: arr_name.to_owned(),
+            c_type: arr_type,
+            free: Some(format!("free((void *){arr_name})")),
+        },
+    )
 }
 
 /// Emit a `(char **strings, count)` pair: allocate `count` decoded NUL-terminated
@@ -1493,12 +2035,18 @@ fn pair_string_array_count(
     let count_type = emit_c_type(&count.c_type);
     let count_name = &count.name;
     let n = format!("_gf_n_{arr_name}");
+    let actual = format!("_gf_count_{arr_name}");
     let i = format!("_gf_i_{arr_name}");
 
     let arr_decl = format!(
         "size_t {n} = gf_bounded_length(&Cur, 0, 16); \
          {elem} **{arr_name} = ({elem} **)calloc({n} ? {n} : 1, sizeof({elem} *)); \
-         for (size_t {i} = 0; {arr_name} && {i} < {n}; ++{i}) {arr_name}[{i}] = gf_c_string(&Cur, 256)"
+         size_t {actual} = 0; \
+         for (size_t {i} = 0; {arr_name} && {i} < {n}; ++{i}) {{ \
+             {arr_name}[{i}] = gf_c_string(&Cur, 256); \
+             if (!{arr_name}[{i}]) break; \
+             {actual}++; \
+         }}"
     );
     let arr_emission = CParamEmission {
         support: None,
@@ -1509,7 +2057,7 @@ fn pair_string_array_count(
             "if ({arr_name}) {{ for (size_t {i} = 0; {i} < {n}; ++{i}) free((void *){arr_name}[{i}]); free((void *){arr_name}); }}"
         )),
     };
-    let count_decl = format!("{count_type} {count_name} = ({count_type}){n}");
+    let count_decl = format!("{count_type} {count_name} = ({count_type}){actual}");
     let count_emission = CParamEmission {
         support: None,
         decl: count_decl,
@@ -1520,9 +2068,78 @@ fn pair_string_array_count(
     (arr_emission, count_emission)
 }
 
+fn looks_like_plural_file_path_name(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.contains("filenames")
+        || name.contains("file_names")
+        || name == "files"
+        || name.ends_with("_files")
+        || name == "paths"
+        || name.ends_with("_paths")
+}
+
+/// Decode a NULL-terminated vector of file paths as one fuzz-backed temp file.
+/// Supports both narrow and wide public path APIs; the generated temp path is
+/// ASCII, so widening its bytes is locale-independent.
+fn file_path_array_param(param: &CParameter) -> Option<CParamEmission> {
+    let canonical = canonical_c_type(&param.c_type);
+    let stars = canonical
+        .split_whitespace()
+        .filter(|token| *token == "*")
+        .count();
+    if stars != 2 {
+        return None;
+    }
+    let wide = canonical.split_whitespace().any(|token| token == "wchar_t");
+    let narrow = canonical.split_whitespace().any(|token| token == "char");
+    if !wide && !narrow {
+        return None;
+    }
+
+    let name = &param.name;
+    let ty = emit_c_type(&param.c_type);
+    let path = format!("_gf_path_{name}");
+    let made = format!("_gf_path_made_{name}");
+    let storage = format!("_gf_paths_{name}");
+    let decl = if wide {
+        let wide_path = format!("_gf_wpath_{name}");
+        let index = format!("_gf_wpath_i_{name}");
+        format!(
+            "char {path}[gf_tempfile_path_len]; \
+             const char *{made} = gf_make_tempfile(Data, Size, {path}); \
+             wchar_t {wide_path}[gf_tempfile_path_len]; \
+             size_t {index} = 0; \
+             if ({made}) {{ \
+                 while ({index} + 1 < gf_tempfile_path_len && {path}[{index}]) {{ \
+                     {wide_path}[{index}] = (wchar_t)(unsigned char){path}[{index}]; \
+                     {index}++; \
+                 }} \
+             }} \
+             {wide_path}[{index}] = 0; \
+             const wchar_t *{storage}[2] = {{ {wide_path}, NULL }}; \
+             {ty} {name} = ({ty}){storage}"
+        )
+    } else {
+        format!(
+            "char {path}[gf_tempfile_path_len]; \
+             const char *{made} = gf_make_tempfile(Data, Size, {path}); \
+             const char *{storage}[2] = {{ {made} ? {path} : \"\", NULL }}; \
+             {ty} {name} = ({ty}){storage}"
+        )
+    };
+    Some(CParamEmission {
+        support: None,
+        decl,
+        arg: name.to_owned(),
+        c_type: ty,
+        free: Some(format!("if ({made}) unlink({path})")),
+    })
+}
+
 fn pair_output_buffer_capacity(
     buffer: &CParameter,
     length: &CParameter,
+    function_name: &str,
 ) -> (CParamEmission, CParamEmission) {
     let buf_type = emit_c_type(&buffer.c_type);
     let len_type = emit_c_type(&length.c_type);
@@ -1530,8 +2147,9 @@ fn pair_output_buffer_capacity(
     let len_name = &length.name;
     let cap_name = format!("_gf_cap_{buf_name}");
 
+    let capacity = output_buffer_capacity_expression(function_name);
     let buf_decl = format!(
-        "size_t {cap_name} = Size < (1024 * 1024) ? Size + 65536 : (1024 * 1024 + 65536); \
+        "size_t {cap_name} = {capacity}; \
          {buf_type} {buf_name} = ({buf_type})malloc({cap_name} ? {cap_name} : 1)"
     );
     let buf_emission = CParamEmission {
@@ -1541,7 +2159,10 @@ fn pair_output_buffer_capacity(
         c_type: buf_type,
         free: Some(format!("free({buf_name})")),
     };
-    let len_decl = format!("{len_type} {len_name} = ({len_type}){cap_name}");
+    // Allocation failure must not leave a non-zero advertised capacity beside
+    // NULL. Passing `(NULL, 65536)` turns ordinary memory pressure into a target
+    // crash that the harness manufactured itself.
+    let len_decl = format!("{len_type} {len_name} = ({len_type})({buf_name} ? {cap_name} : 0)");
     let len_emission = CParamEmission {
         support: None,
         decl: len_decl,
@@ -1552,8 +2173,185 @@ fn pair_output_buffer_capacity(
     (buf_emission, len_emission)
 }
 
-fn looks_like_output_capacity_pair(buffer: &CParameter, length: &CParameter) -> bool {
-    looks_outputish(&buffer.name) || looks_outputish(&length.name)
+fn output_buffer_capacity_expression(function_name: &str) -> &'static str {
+    let lower = function_name.to_ascii_lowercase();
+    if lower.contains("decompress") || lower.contains("uncompress") || lower.contains("inflate") {
+        // One-shot decompressors routinely expand tiny inputs by orders of
+        // magnitude. A Size-relative output allocation rejects structurally
+        // valid compressed seeds before their block loops run. One MiB matches
+        // the bounded expert-harness convention used by OSS-Fuzz-style targets
+        // without permitting decompression bombs to grow without limit.
+        "1024 * 1024"
+    } else {
+        "Size < (1024 * 1024) ? Size + 65536 : (1024 * 1024 + 65536)"
+    }
+}
+
+fn looks_like_reverse_input_length_buffer_pair(length: &CParameter, buffer: &CParameter) -> bool {
+    looks_like_count_name(&length.name)
+        && (looks_like_buffer_name(&buffer.name)
+            || shared_parameter_stem(&length.name, &buffer.name))
+}
+
+fn looks_like_reverse_output_length_buffer_pair(
+    length: &CParameter,
+    buffer: &CParameter,
+    function_name: &str,
+) -> bool {
+    looks_like_count_name(&length.name)
+        && looks_like_output_producing_function(function_name)
+        && (looks_outputish(&length.name)
+            || looks_outputish(&buffer.name)
+            || shared_parameter_stem(&length.name, &buffer.name))
+}
+
+fn shared_parameter_stem(left: &str, right: &str) -> bool {
+    fn stems(name: &str) -> impl Iterator<Item = &str> {
+        name.split('_').filter(|part| {
+            !part.is_empty()
+                && !matches!(
+                    part.to_ascii_lowercase().as_str(),
+                    "size" | "len" | "length" | "count" | "buffer" | "buf" | "data" | "ptr"
+                )
+        })
+    }
+    stems(left)
+        .any(|left_stem| stems(right).any(|right_stem| left_stem.eq_ignore_ascii_case(right_stem)))
+}
+
+fn pair_input_length_buffer(
+    length: &CParameter,
+    buffer: &CParameter,
+) -> (CParamEmission, CParamEmission) {
+    let len_type = emit_c_type(&length.c_type);
+    let buf_type = emit_c_type(&buffer.c_type);
+    (
+        CParamEmission {
+            support: None,
+            decl: format!("{len_type} {} = ({len_type})Size", length.name),
+            arg: length.name.clone(),
+            c_type: len_type,
+            free: None,
+        },
+        CParamEmission {
+            support: None,
+            decl: format!("{buf_type} {} = ({buf_type})Data", buffer.name),
+            arg: buffer.name.clone(),
+            c_type: buf_type,
+            free: None,
+        },
+    )
+}
+
+fn pair_output_length_buffer(
+    length: &CParameter,
+    buffer: &CParameter,
+    function_name: &str,
+) -> (CParamEmission, CParamEmission) {
+    let len_type = emit_c_type(&length.c_type);
+    let len_base = pointer_base(&len_type)
+        .expect("caller checked length pointer")
+        .to_owned();
+    let buf_type = emit_c_type(&buffer.c_type);
+    let cap_name = format!("_gf_cap_{}", buffer.name);
+    let len_storage = format!("_gf_out_{}", length.name);
+    let capacity = output_buffer_capacity_expression(function_name);
+    let declaration = format!(
+        "size_t {cap_name} = {capacity}; \
+         {buf_type} {} = ({buf_type})malloc({cap_name} ? {cap_name} : 1); \
+         {len_base} {len_storage} = ({len_base})({} ? {cap_name} : 0); \
+         {len_base} *{} = &{len_storage}",
+        buffer.name, buffer.name, length.name
+    );
+    (
+        CParamEmission {
+            support: None,
+            decl: declaration,
+            arg: length.name.clone(),
+            c_type: len_type,
+            free: None,
+        },
+        CParamEmission {
+            support: None,
+            decl: String::new(),
+            arg: buffer.name.clone(),
+            c_type: buf_type,
+            free: Some(format!("free({})", buffer.name)),
+        },
+    )
+}
+
+fn looks_like_output_capacity_pair(
+    buffer: &CParameter,
+    length: &CParameter,
+    function_name: &str,
+) -> bool {
+    looks_outputish(&buffer.name)
+        || looks_outputish(&length.name)
+        // Public headers often omit parameter names. The parser then gives us
+        // `arg1`/`arg2`, so name-only evidence disappears precisely for APIs like
+        // `archive_read_data(struct archive *, void *, size_t)`. Decoding that
+        // writable buffer and capacity independently can pass a 64 KiB length
+        // with a one-byte allocation and manufacture a harness-side ASan crash.
+        // Restrict the structural fallback to strongly output-producing API
+        // names; a generic unnamed `(void *, size_t)` can just as easily be an
+        // input buffer and must not be rewritten as output.
+        || (is_synthetic_param_name(&buffer.name)
+            && is_synthetic_param_name(&length.name)
+            && looks_like_output_producing_function(function_name))
+}
+
+fn is_synthetic_param_name(name: &str) -> bool {
+    // Sequence emission scopes every name (`_gf_step5_arg1`), so inspect the
+    // final component as well as the direct-harness spelling (`arg1` or
+    // `_gf_arg1`).
+    let leaf = name.rsplit('_').next().unwrap_or(name);
+    let mut stem = leaf.trim_start_matches('_');
+    if let Some(rest) = stem.strip_prefix("gf_") {
+        stem = rest;
+    }
+    stem.strip_prefix("arg")
+        .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+}
+
+fn looks_like_output_producing_function(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower == "read"
+        || lower.starts_with("read_")
+        || lower.contains("_read_")
+        || lower.ends_with("_read")
+        || lower.starts_with("fread")
+        || lower.starts_with("pread")
+        || lower.contains("recv")
+        || lower.contains("receive")
+        || lower.contains("decode")
+        || lower.contains("decompress")
+        || lower.contains("uncompress")
+        || lower.contains("inflate")
+        || lower.contains("extract")
+}
+
+fn looks_like_explicit_binary_pointer(c_type: &str) -> bool {
+    let compact = c_type
+        .to_ascii_lowercase()
+        .split_whitespace()
+        .collect::<String>();
+    compact.contains("void*")
+        || compact.contains("uint8_t*")
+        || compact.contains("int8_t*")
+        || compact.contains("unsignedchar*")
+        || compact.contains("std::byte*")
+}
+
+fn looks_like_in_memory_input_function(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.contains("_memory")
+        || lower.contains("_mem_")
+        || lower.ends_with("_mem")
+        || lower.contains("_buffer")
+        || lower.ends_with("_bytes")
+        || lower.contains("write_data")
+        || lower.contains("send_data")
 }
 
 fn looks_outputish(name: &str) -> bool {
@@ -1581,45 +2379,120 @@ fn pair_input_buffer_length_pointer(
         .to_owned();
     let len_name = &length.name;
     let len_storage = format!("_gf_in_{len_name}");
-    let len_decl = format!(
-        "{len_base} {len_storage} = ({len_base})Size; {len_base} *{len_name} = &{len_storage}"
-    );
-    let len_emission = CParamEmission {
-        support: None,
-        decl: len_decl,
-        arg: len_name.to_owned(),
-        c_type: len_type,
-        free: None,
-    };
-
-    let buf_emission = if is_const_pointer_type(&canonical_c_type(&buffer.c_type)) {
-        CParamEmission {
+    if is_const_pointer_type(&canonical_c_type(&buffer.c_type)) {
+        let buf_emission = CParamEmission {
             support: None,
             decl: format!("{buf_type} {buf_name} = ({buf_type})Data"),
             arg: buf_name.to_owned(),
             c_type: buf_type,
             free: None,
-        }
-    } else {
-        let cap_name = format!("_gf_cap_{buf_name}");
-        CParamEmission {
+        };
+        let len_emission = CParamEmission {
             support: None,
             decl: format!(
-                "size_t {cap_name} = (size_t)Size + 65536; \
-                 {buf_type} {buf_name} = ({buf_type})malloc({cap_name}); \
-                 if ({buf_name} && Size) memcpy({buf_name}, Data, Size)"
+                "{len_base} {len_storage} = ({len_base})Size; {len_base} *{len_name} = &{len_storage}"
             ),
-            arg: buf_name.to_owned(),
-            c_type: buf_type,
-            free: Some(format!("free({buf_name})")),
-        }
+            arg: len_name.to_owned(),
+            c_type: len_type,
+            free: None,
+        };
+        return (buf_emission, len_emission);
+    }
+
+    let cap_name = format!("_gf_cap_{buf_name}");
+    let buf_emission = CParamEmission {
+        support: None,
+        decl: format!(
+            "size_t {cap_name} = Size <= (1024 * 1024) ? (size_t)Size : (1024 * 1024); \
+             {buf_type} {buf_name} = ({buf_type})malloc({cap_name} ? {cap_name} : 1); \
+             if ({buf_name} && {cap_name}) memcpy({buf_name}, Data, {cap_name})"
+        ),
+        arg: buf_name.to_owned(),
+        c_type: buf_type,
+        free: Some(format!("free({buf_name})")),
+    };
+    let len_emission = CParamEmission {
+        support: None,
+        decl: format!(
+            "{len_base} {len_storage} = ({len_base})({buf_name} ? {cap_name} : 0); {len_base} *{len_name} = &{len_storage}"
+        ),
+        arg: len_name.to_owned(),
+        c_type: len_type,
+        free: None,
     };
     (buf_emission, len_emission)
+}
+
+/// Whether two adjacent parameters are the `[begin, end)` bounds of ONE buffer.
+///
+/// Requires identical const byte-pointer spellings — a pair that brackets a
+/// buffer is always the same type at both ends — plus an end-sentinel name on
+/// the second. Name evidence is required because `(const char *a, const char *b)`
+/// is just as often two unrelated strings (`strcmp`).
+fn is_begin_end_pointer_pair(begin: &CParameter, end: &CParameter) -> bool {
+    let begin_type = emit_c_type(&begin.c_type);
+    let end_type = emit_c_type(&end.c_type);
+    if begin_type != end_type || !is_const_byte_pointer_spelling(&begin_type) {
+        return false;
+    }
+    let end_name = end.name.trim().to_ascii_lowercase();
+    let is_end_sentinel = matches!(
+        end_name.as_str(),
+        "end" | "endptr" | "end_ptr" | "e" | "limit" | "last" | "stop" | "tail" | "finish"
+    ) || end_name.ends_with("_end")
+        || end_name.ends_with("end");
+    let begin_name = begin.name.trim().to_ascii_lowercase();
+    let is_begin = matches!(
+        begin_name.as_str(),
+        "ptr" | "p" | "s" | "start" | "begin" | "buf" | "buffer" | "data" | "cur" | "first"
+    ) || begin_name.ends_with("_start")
+        || begin_name.ends_with("_begin")
+        || begin_name.ends_with("ptr");
+    is_end_sentinel && is_begin
+}
+
+/// `const char *` / `const unsigned char *` / `const uint8_t *` and friends.
+fn is_const_byte_pointer_spelling(spelling: &str) -> bool {
+    let normalized = spelling.split_whitespace().collect::<Vec<_>>().join(" ");
+    matches!(
+        normalized.as_str(),
+        "const char *"
+            | "const unsigned char *"
+            | "const signed char *"
+            | "const uint8_t *"
+            | "const int8_t *"
+            | "const void *"
+    )
+}
+
+/// Bind both ends of a `[begin, end)` pair to the single libFuzzer span, so the
+/// callee's walk stays inside one live allocation.
+fn pair_begin_end_span(begin: &CParameter, end: &CParameter) -> (CParamEmission, CParamEmission) {
+    let ty = emit_c_type(&begin.c_type);
+    let begin_name = &begin.name;
+    let end_name = &end.name;
+    (
+        CParamEmission {
+            support: None,
+            decl: format!("{ty} {begin_name} = ({ty})Data"),
+            arg: begin_name.clone(),
+            c_type: ty.clone(),
+            free: None,
+        },
+        CParamEmission {
+            support: None,
+            decl: format!("{ty} {end_name} = ({ty})Data + Size"),
+            arg: end_name.clone(),
+            c_type: ty,
+            free: None,
+        },
+    )
 }
 
 fn pair_output_buffer_length(
     buffer: &CParameter,
     length: &CParameter,
+    function_name: &str,
 ) -> (CParamEmission, CParamEmission) {
     let buf_type = emit_c_type(&buffer.c_type);
     let len_type = emit_c_type(&length.c_type);
@@ -1631,8 +2504,9 @@ fn pair_output_buffer_length(
     let cap_name = format!("_gf_cap_{buf_name}");
     let len_storage = format!("_gf_out_{len_name}");
 
+    let capacity = output_buffer_capacity_expression(function_name);
     let buf_decl = format!(
-        "size_t {cap_name} = Size < (1024 * 1024) ? Size + 65536 : (1024 * 1024 + 65536); \
+        "size_t {cap_name} = {capacity}; \
          {buf_type} {buf_name} = ({buf_type})malloc({cap_name} ? {cap_name} : 1)"
     );
     let buf_emission = CParamEmission {
@@ -1642,8 +2516,9 @@ fn pair_output_buffer_length(
         c_type: buf_type,
         free: Some(format!("free({buf_name})")),
     };
-    let len_decl =
-        format!("{len_base} {len_storage} = ({len_base}){cap_name}; {len_base} *{len_name} = &{len_storage}");
+    let len_decl = format!(
+        "{len_base} {len_storage} = ({len_base})({buf_name} ? {cap_name} : 0); {len_base} *{len_name} = &{len_storage}"
+    );
     let len_emission = CParamEmission {
         support: None,
         decl: len_decl,
@@ -1747,6 +2622,35 @@ fn build_c_context(args: &GenerateCDirectArgs) -> Result<CTemplateContext, Harne
     // `<type> R = ...` result capture is valid (`__vectorcall`, `SIMDJSON_INLINE`).
     let return_type = crate::c_decoders::strip_type_decoration(args.return_type.trim());
     let return_type_present = !return_type.is_empty() && !c_return_is_void(&return_type);
+    // A destructor-only lifecycle on an aggregate out-parameter means the
+    // callee constructs the object on success (POSIX regcomp/regfree is the
+    // canonical contract). The scratch decoder names these objects `_gf_out_*`.
+    // Release them only after a conventional zero-success status so malformed
+    // inputs never send an unconstructed object to its destructor.
+    if return_type_present && c_type_is_status_int(&return_type) {
+        for (source_param, emission) in decoder_params.iter().zip(params.iter_mut()) {
+            if emission.free.is_some() || !emission.arg.starts_with("&_gf_out_") {
+                continue;
+            }
+            let Some(base) = registry.pointer_base_spelling(&source_param.c_type) else {
+                continue;
+            };
+            let key = crate::c_decoders::normalize_handle_key(base.trim());
+            let Some(delete) = args
+                .lifecycle
+                .iter()
+                .find(|entry| {
+                    entry.init.is_none()
+                        && !entry.init_returns_handle
+                        && crate::c_decoders::normalize_handle_key(&entry.handle_type) == key
+                })
+                .and_then(|entry| entry.delete.as_deref())
+            else {
+                continue;
+            };
+            emission.free = Some(format!("if (R == 0) {delete}({})", emission.arg));
+        }
+    }
     // §26.4: a target whose RESULT type is an incomplete (forward-declared,
     // body-less) struct/union returned BY VALUE cannot be harnessed — the
     // generated `<IncompleteType> R = target(...);` is rejected with "variable has
@@ -1935,22 +2839,104 @@ fn build_c_sequence_context(
         build_context_provenance,
         build_context_dropped,
     ) = split_c_compile_context(&args.compile_flags);
+    let expert_jpeg_decompress = is_exact_libjpeg_header_reader(args);
+    let expert_sqlite_prepare = is_exact_sqlite_prepare(args);
+    if expert_jpeg_decompress || expert_sqlite_prepare {
+        let mut target_includes = if expert_jpeg_decompress {
+            // The target implementation includes private controller headers such
+            // as jdmaster.h whose structs are intentionally incomplete outside
+            // their owning translation units. An expert harness uses only the
+            // stable public API, and carrying those private headers forward can
+            // make even that public harness ill-formed.
+            Vec::new()
+        } else {
+            args.target_includes.clone()
+        };
+        // Auto mode can identify the exact public symbol before its dependency
+        // closure has promoted jpeglib.h to a direct include.  The fixed recipe
+        // uses only that public API, so make the required public header explicit
+        // instead of falling back to synthesizing libjpeg's private controller
+        // structs from the implementation translation unit.
+        if expert_jpeg_decompress
+            && !target_includes.iter().any(|header| {
+                Path::new(header)
+                    .file_name()
+                    .is_some_and(|name| name == "jpeglib.h")
+            })
+        {
+            target_includes.push("jpeglib.h".to_owned());
+        }
+        return Ok(CSequenceTemplateContext {
+            harness_id: args.harness_id.clone(),
+            target_includes,
+            target_includes_dirs: args
+                .target_includes_dirs
+                .iter()
+                .map(|p| crate::build_safety::make_path(p))
+                .collect(),
+            target_sources: args
+                .target_sources
+                .iter()
+                .map(|p| crate::build_safety::make_path(p))
+                .collect(),
+            compile_flags,
+            build_context_provenance,
+            build_context_dropped,
+            c_compiler,
+            compiler_is_gcc,
+            c_runtime_include: crate::build_safety::make_path(&args.c_runtime_include),
+            emit_forward_declaration: false,
+            expert_jpeg_decompress,
+            expert_sqlite_prepare,
+            handle_type: String::new(),
+            handle_param_type: String::new(),
+            handle_value_type: String::new(),
+            init_returns_handle: false,
+            init_out_handle: false,
+            handle_is_pointer_value: false,
+            init_step: None,
+            guard_op_loop_on_init: false,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            op_steps: Vec::new(),
+            op_step_max: 0,
+            op_max_steps: 0,
+            op_ctrl_len: 0,
+            thread_slots: Vec::new(),
+            derives_handle: false,
+            configure_steps: Vec::new(),
+            mined_protocol_steps: Vec::new(),
+            mined_protocol_allows_random: false,
+            mined_protocol_declarations: Vec::new(),
+            mined_protocol_objects: Vec::new(),
+            protocol_portfolio_lanes: 1,
+            callback_actions: Vec::new(),
+            expert_stream_pump: None,
+            expert_output_drain: None,
+            end_step: None,
+        });
+    }
     if args.op_steps.is_empty() {
         return Err(HarnessGenError::UnsupportedParamType(
             "C sequence harness requires at least one lifecycle operation".to_owned(),
         ));
     }
     let registry = TypeRegistry::from_defs(args.type_defs.iter());
-    // GAP #6: the sequence harness stack-allocates `{handle_type} _gf_handle;` and
-    // drives the lifecycle through `&_gf_handle`, which REQUIRES a complete handle
-    // type (there is no by-value / returning-handle form in the template). When the
+    // An in-place sequence stack-allocates `{handle_type} _gf_handle;` and drives
+    // the lifecycle through `&_gf_handle`, which REQUIRES a complete handle type.
+    // A returning lifecycle stores the constructor's opaque pointer value instead
+    // and deliberately does not require the pointee definition. When the in-place
     // handle's struct is merely forward-declared in the harness's headers — its body
     // lives only in a non-included `.c`, e.g. tidwall/hashmap.c's `struct hashmap`
     // (`hashmap_new` needs caller-supplied hash/compare function pointers, so it is
     // unconstructible) — that declaration is an illegal "variable has incomplete
     // type". The registry resolves such a handle to `Opaque`; SKIP cleanly instead
     // of emitting an un-compilable harness that fails the build.
-    if matches!(registry.resolve(&args.handle_type), TypeShape::Opaque(_)) {
+    let handle_is_pointer_value =
+        args.init_returns_handle || args.init_out_handle_argument.is_some();
+    if !handle_is_pointer_value
+        && matches!(registry.resolve(&args.handle_type), TypeShape::Opaque(_))
+    {
         return Err(HarnessGenError::UnsupportedParamType(format!(
             "C sequence handle '{}' is incomplete in the harness's included headers \
              (its full definition is visible only in a non-included source); cannot \
@@ -1958,27 +2944,91 @@ fn build_c_sequence_context(
             args.handle_type
         )));
     }
-    let init_step = args
+    let handle_field_initializers = if handle_is_pointer_value {
+        Vec::new()
+    } else {
+        let declared_fields = match registry.resolve(&args.handle_type) {
+            TypeShape::Struct { fields, .. } | TypeShape::Union { fields, .. } => fields,
+            _ => Vec::new(),
+        };
+        args.handle_field_initializers
+            .iter()
+            .filter(|initializer| {
+                safe_c_protocol_constant(&initializer.value)
+                    && declared_fields.iter().any(|field| {
+                        field.name == initializer.field
+                            && matches!(
+                                &field.shape,
+                                TypeShape::Scalar(_)
+                                    | TypeShape::Enum { .. }
+                                    | TypeShape::Pointer(_)
+                            )
+                    })
+            })
+            .cloned()
+            .collect()
+    };
+    let mut init_step = args
         .init_step
         .as_ref()
         .map(|step| {
-            build_c_sequence_step_emission(
-                step,
-                "_gf_init",
-                "_gf_init_result",
-                &registry,
-                args.decoder_limits,
-            )
+            if args.init_returns_handle {
+                build_c_returning_init_emission(
+                    step,
+                    "_gf_init_result",
+                    &registry,
+                    args.decoder_limits,
+                )
+            } else if let Some(output_argument) = args.init_out_handle_argument {
+                build_c_out_handle_init_emission(step, output_argument, "_gf_init_result")
+            } else {
+                build_c_sequence_step_emission(
+                    step,
+                    "_gf_init",
+                    "_gf_init_result",
+                    &registry,
+                    args.decoder_limits,
+                    true,
+                )
+            }
         })
         .transpose()?;
+    if handle_is_pointer_value && init_step.is_none() {
+        return Err(HarnessGenError::UnsupportedParamType(
+            "C returning-handle sequence requires a constructor".to_owned(),
+        ));
+    }
+    // The selected target is the baseline operation and must occupy slot zero.
+    // Short bootstrap seeds do not yet contain the 41-byte control block; the
+    // template deliberately executes slot zero once for them so every campaign
+    // reaches the requested endpoint before structure-aware mutation grows a
+    // full sequence program.
+    // Configuration is emitted once from stable storage below and is not also a
+    // selectable op. Repeating a setter with a case-local allocated user-data
+    // pointer would leave the library holding freed memory after the case exits;
+    // it also wastes scarce sequence slots on setup an expert performs once.
+    let mut ordered_op_specs = args
+        .op_steps
+        .iter()
+        .filter(|step| step.role != CStepRole::Configure)
+        .cloned()
+        .collect::<Vec<_>>();
+    if let Some(index) = ordered_op_specs
+        .iter()
+        .position(|step| step.name == args.target.name)
+    {
+        let target_step = ordered_op_specs.remove(index);
+        ordered_op_specs.insert(0, target_step);
+    }
     let mut op_steps = Vec::new();
-    for (index, step) in args.op_steps.iter().enumerate() {
+    for (index, step) in ordered_op_specs.iter().enumerate() {
         match build_c_sequence_step_emission(
             step,
             &format!("_gf_step{index}"),
             &format!("_gf_step{index}_result"),
             &registry,
             args.decoder_limits,
+            step.role == CStepRole::Open,
         ) {
             Ok(emission) => op_steps.push(emission),
             Err(error) if index > 0 => {
@@ -1995,7 +3045,7 @@ fn build_c_sequence_context(
             "C sequence harness requires at least one decodable lifecycle operation".to_owned(),
         ));
     }
-    let end_step = args
+    let mut end_step = args
         .end_step
         .as_ref()
         .map(|step| {
@@ -2005,9 +3055,349 @@ fn build_c_sequence_context(
                 "_gf_end_result",
                 &registry,
                 args.decoder_limits,
+                false,
             )
         })
         .transpose()?;
+
+    // Result threading. An op's RETURN value can be the argument a later op
+    // needs — `id = add(x); remove(id); get(id)`, `p = alloc(); use(p)`. Without
+    // it every argument is decoded fresh from the input and no value produced by
+    // the sequence is ever consumed by it, which puts the whole handle/id
+    // threading bug class out of reach by construction.
+    let thread_slots = thread_slots_for(&op_steps, &ordered_op_specs);
+    apply_result_threading(&mut op_steps, &ordered_op_specs, &thread_slots);
+
+    if handle_is_pointer_value {
+        for step in &mut op_steps {
+            step.receiver = "_gf_handle".to_owned();
+        }
+    }
+
+    // Derived objects. An op can take the live handle and return a NEW one
+    // derived from it — libexpat's
+    // `XML_ExternalEntityParserCreate(parentParser, ...)` builds a child parser
+    // from a still-live parent, and driving that child is worth more measured
+    // coverage on expat than any other single technique. Without it the harness
+    // only ever drives the one object it constructed, and the entire subsystem
+    // reachable through a derived object is unreachable.
+    let handle_value_type = if handle_is_pointer_value {
+        emit_c_type(&args.handle_type)
+    } else {
+        format!("{} *", emit_c_type(&args.handle_type))
+    };
+    let mut derives_handle =
+        mark_derived_handle_producers(&mut op_steps, &handle_value_type, handle_is_pointer_value);
+
+    // Configuration runs ONCE, unconditionally, between construction and use —
+    // the step every expert harness performs and a fuzzed op program only
+    // performs by luck. Emitted with its own variable prefix so it can coexist
+    // with the same op still being selectable inside the loop.
+    let mut configure_steps = Vec::new();
+    let exact_libarchive_reader = is_exact_libarchive_reader_open(&args.target.name);
+    for (index, step) in args
+        .op_steps
+        .iter()
+        .filter(|step| {
+            if step.role != CStepRole::Configure {
+                return false;
+            }
+            // The fixed reader pump mirrors libarchive's maintained fuzz
+            // harness. Once every filter and format is enabled, an unrelated
+            // value-taking setter (notably archive_read_set_format with a
+            // random `int`) can only narrow/disable that surface or fail. Keep
+            // the two proven aggregate setup calls and omit speculative setup
+            // from this exact protocol.
+            !exact_libarchive_reader
+                || matches!(
+                    step.name.as_str(),
+                    "archive_read_support_filter_all" | "archive_read_support_format_all"
+                )
+        })
+        .enumerate()
+    {
+        if let Ok(mut emission) = build_c_sequence_step_emission(
+            step,
+            &format!("_gf_cfg{index}"),
+            &format!("_gf_cfg{index}_result"),
+            &registry,
+            args.decoder_limits,
+            false,
+        ) {
+            if handle_is_pointer_value {
+                emission.receiver = "_gf_handle".to_owned();
+            }
+            if args.receiver_configuration_names.contains(&step.name) {
+                if let Some(context_index) = step.params.iter().position(|param| {
+                    let c_type = emit_c_type(&param.c_type);
+                    c_type.trim().ends_with('*') && !c_type.contains("(*")
+                }) {
+                    let param = &mut emission.params[context_index];
+                    param.support = None;
+                    param.decl.clear();
+                    param.arg = emission.receiver.clone();
+                    param.free = None;
+                    emission.callback_context_arg = Some(context_index);
+                }
+            }
+            configure_steps.push(emission);
+        }
+    }
+
+    // Reproduce high-confidence call protocols mined from maintained project
+    // fuzzers/tests. Unlike the random op program this keeps repetitions and
+    // stable flags (`parse(..., 0)` then `parse(..., 1)`) intact. Every call was
+    // already declaration/type checked by the CLI; codegen independently
+    // validates argument counts and literal syntax before emitting it.
+    let mut mined_protocol_steps = Vec::new();
+    let mut protocol_supported = true;
+    for (index, observed) in args.protocol_steps.iter().enumerate() {
+        match build_c_protocol_step_emission(
+            observed,
+            &format!("_gf_protocol{index}"),
+            &format!("_gf_protocol{index}_result"),
+            &registry,
+            args.decoder_limits,
+            if handle_is_pointer_value {
+                "_gf_handle"
+            } else {
+                "&_gf_handle"
+            },
+            &mined_protocol_steps,
+        ) {
+            Ok(emission) => mined_protocol_steps.push(emission),
+            Err(error) => {
+                eprintln!(
+                    "warning: ignoring mined C protocol because '{}' cannot be emitted safely: {error}",
+                    observed.step.name
+                );
+                protocol_supported = false;
+                break;
+            }
+        }
+    }
+    if !protocol_supported
+        || mined_protocol_steps.len() < 2
+        || !mined_protocol_steps.iter().any(|step| step.marks_target)
+    {
+        mined_protocol_steps.clear();
+    }
+    let mined_protocol_allows_random = mined_protocol_steps.last().is_some_and(|step| {
+        let lower = step.name.to_ascii_lowercase();
+        lower.contains("reset") || lower.contains("reinit") || lower.contains("reinitialize")
+    });
+    let mut mined_protocol_declarations = Vec::new();
+    for step in &mined_protocol_steps {
+        if !mined_protocol_declarations
+            .iter()
+            .any(|decl: &CSequenceStepEmission| decl.name == step.name)
+        {
+            mined_protocol_declarations.push(step.clone());
+        }
+    }
+    let mut mined_protocol_objects = Vec::new();
+    if !mined_protocol_steps.is_empty() && end_step.is_some() {
+        for (object_index, object) in args.protocol_objects.iter().enumerate() {
+            let built = (|| -> Result<CProtocolObjectEmission, HarnessGenError> {
+                if object.constructor.params.len() != object.args.len() {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined constructor '{}' has {} argument recipes for {} parameters",
+                        object.constructor.name,
+                        object.args.len(),
+                        object.constructor.params.len()
+                    )));
+                }
+                let handle_name = format!("_gf_protocol_object{object_index}");
+                let decoder_constructor =
+                    decoder_safe_protocol_step(&object.constructor, &object.args);
+                let mut constructor = build_c_sequence_step_emission(
+                    &decoder_constructor,
+                    &format!("_gf_object{object_index}_ctor"),
+                    &handle_name,
+                    &registry,
+                    args.decoder_limits,
+                    false,
+                )?;
+                if canonical_c_type(&constructor.return_type)
+                    != canonical_c_type(&handle_value_type)
+                {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined constructor '{}' returns '{}' rather than handle type '{}'",
+                        object.constructor.name, constructor.return_type, handle_value_type
+                    )));
+                }
+                constructor.receiver = if object.uses_primary_as_parent {
+                    "_gf_handle".to_owned()
+                } else {
+                    String::new()
+                };
+                apply_c_protocol_args(
+                    &mut constructor,
+                    &object.constructor.params,
+                    &object.args,
+                    "_gf_handle",
+                    &[],
+                )?;
+
+                let mut object_protocol = Vec::new();
+                for (step_index, observed) in args.protocol_steps.iter().enumerate() {
+                    let emission = build_c_protocol_step_emission(
+                        observed,
+                        &format!("_gf_object{object_index}_protocol{step_index}"),
+                        &format!("_gf_object{object_index}_protocol{step_index}_result"),
+                        &registry,
+                        args.decoder_limits,
+                        &handle_name,
+                        &object_protocol,
+                    )?;
+                    object_protocol.push(emission);
+                }
+                let mut object_end = end_step.clone();
+                if let Some(step) = &mut object_end {
+                    step.receiver = handle_name.clone();
+                    step.receiver_selector = None;
+                }
+                Ok(CProtocolObjectEmission {
+                    handle_name,
+                    constructor,
+                    constructor_uses_parent: object.uses_primary_as_parent,
+                    protocol_steps: object_protocol,
+                    end_step: object_end,
+                })
+            })();
+            match built {
+                Ok(object) => mined_protocol_objects.push(object),
+                Err(error) => eprintln!(
+                    "warning: skipping mined protocol object '{}': {error}",
+                    object.constructor.name
+                ),
+            }
+        }
+    }
+
+    if args.target_declared_in_header {
+        if let Some(step) = &mut init_step {
+            strip_sequence_callback_typedefs(step);
+        }
+        for step in &mut op_steps {
+            strip_sequence_callback_typedefs(step);
+        }
+        for step in &mut configure_steps {
+            strip_sequence_callback_typedefs(step);
+        }
+        for step in &mut mined_protocol_steps {
+            strip_sequence_callback_typedefs(step);
+        }
+        for step in &mut mined_protocol_declarations {
+            strip_sequence_callback_typedefs(step);
+        }
+        for object in &mut mined_protocol_objects {
+            strip_sequence_callback_typedefs(&mut object.constructor);
+            for step in &mut object.protocol_steps {
+                strip_sequence_callback_typedefs(step);
+            }
+            if let Some(step) = &mut object.end_step {
+                strip_sequence_callback_typedefs(step);
+            }
+        }
+        if let Some(step) = &mut end_step {
+            strip_sequence_callback_typedefs(step);
+        }
+    }
+
+    let mut callback_action_bound = false;
+    if let Some(action) = &args.callback_action {
+        if let Some(step) = &mut init_step {
+            disable_sequence_callback_actions(step);
+        }
+        for step in &mut op_steps {
+            disable_sequence_callback_actions(step);
+        }
+        for step in &mut mined_protocol_steps {
+            disable_sequence_callback_actions(step);
+        }
+        for object in &mut mined_protocol_objects {
+            disable_sequence_callback_actions(&mut object.constructor);
+            for step in &mut object.protocol_steps {
+                disable_sequence_callback_actions(step);
+            }
+            if let Some(step) = &mut object.end_step {
+                disable_sequence_callback_actions(step);
+            }
+        }
+        if let Some(step) = &mut end_step {
+            disable_sequence_callback_actions(step);
+        }
+        for step in &mut configure_steps {
+            for (index, param) in step.params.iter_mut().enumerate() {
+                let active =
+                    step.name == action.configuration_name && index == action.configuration_arg;
+                callback_action_bound |= set_sequence_callback_action(param, active);
+            }
+        }
+    }
+
+    let expert_stream_pump = libarchive_expert_stream_pump(args, &op_steps);
+    let expert_output_drain = expert_stream_pump
+        .is_none()
+        .then(|| output_drain_pump(args, &op_steps, &registry))
+        .flatten();
+    if expert_stream_pump.is_some() || expert_output_drain.is_some() {
+        // The bounded libarchive pump models nested header/data loops, which a
+        // flat observed trace cannot express. Keep the structurally richer
+        // recipe when both sources provide evidence.
+        mined_protocol_steps.clear();
+        mined_protocol_declarations.clear();
+        mined_protocol_objects.clear();
+    }
+    if !mined_protocol_steps.is_empty() && !mined_protocol_allows_random {
+        // The mined branch replaces the random op program, so none of that
+        // program's derived-handle producers execute. Do not emit a teardown
+        // for an undeclared/nonexistent derived slot.
+        derives_handle = false;
+    }
+
+    let callback_actions = callback_action_bound
+        .then_some(args.callback_action.as_ref())
+        .flatten()
+        .map(|action| {
+            std::iter::once(&action.step)
+                .chain(&action.alternative_steps)
+                .filter_map(|step| {
+                    let mut action_args = Vec::new();
+                    for (index, param) in step.params.iter().enumerate() {
+                        if !matches!(
+                            registry.resolve(&param.c_type),
+                            TypeShape::Scalar(_) | TypeShape::Enum { .. }
+                        ) {
+                            eprintln!(
+                    "warning: callback action '{}' ignored because parameter '{}' is not scalar",
+                    step.name, param.name
+                );
+                            return None;
+                        }
+                        let c_type = emit_c_type(&param.c_type);
+                        action_args.push(format!(
+                            "({c_type})((_gf_callback_choice >> {}) & 1u)",
+                            index % 8
+                        ));
+                    }
+                    Some(CCallbackActionEmission {
+                        name: step.name.clone(),
+                        handle_param_type: emit_c_type(&args.handle_param_type),
+                        args: action_args,
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let protocol_portfolio_lanes = if mined_protocol_objects.is_empty() {
+        1
+    } else {
+        mined_protocol_objects.len() + 1
+    };
+    let op_ctrl_len = 1 + MAX_SEQUENCE_STEPS * 5 + usize::from(protocol_portfolio_lanes > 1);
 
     Ok(CSequenceTemplateContext {
         harness_id: args.harness_id.clone(),
@@ -2029,13 +3419,277 @@ fn build_c_sequence_context(
         compiler_is_gcc,
         c_runtime_include: crate::build_safety::make_path(&args.c_runtime_include),
         emit_forward_declaration: !args.target_declared_in_header,
+        expert_jpeg_decompress: false,
+        expert_sqlite_prepare: false,
         handle_type: emit_c_type(&args.handle_type),
+        handle_param_type: emit_c_type(&args.handle_param_type),
+        handle_value_type,
+        init_returns_handle: args.init_returns_handle,
+        init_out_handle: args.init_out_handle_argument.is_some(),
+        handle_is_pointer_value,
         guard_op_loop_on_init: init_step.as_ref().is_some_and(|s| s.is_status_return),
+        init_success_nonzero: args.init_success_nonzero,
+        handle_field_initializers,
         init_step,
         op_step_max: op_steps.len().saturating_sub(1),
+        op_max_steps: MAX_SEQUENCE_STEPS,
+        op_ctrl_len,
+        thread_slots,
+        derives_handle,
+        configure_steps,
+        mined_protocol_steps,
+        mined_protocol_allows_random,
+        mined_protocol_declarations,
+        mined_protocol_objects,
+        protocol_portfolio_lanes,
+        callback_actions,
+        expert_stream_pump,
+        expert_output_drain,
         op_steps,
         end_step,
     })
+}
+
+/// A deliberately narrow gate for the public libjpeg decompressor state
+/// machine. The globally canonical target name and exact public arity prevent
+/// this fixed protocol from being applied to an unrelated function.  Header
+/// discovery is deliberately not part of this gate because auto mode may select
+/// the recipe before promoting transitive includes; the context adds jpeglib.h
+/// explicitly. `target_declared_in_header` is also deliberately not required:
+/// jpeglib.h spells the declaration as `EXTERN(int)`, which conservative source
+/// parsing may not recognize even though that exact included header declares it.
+fn is_exact_libjpeg_header_reader(args: &GenerateCSequenceArgs) -> bool {
+    args.target.name == "jpeg_read_header" && args.target.params.len() == 2
+}
+
+/// Exact gate for SQLite's public compile/execute lifecycle. As with the
+/// libjpeg recipe, this is declaration/header shaped rather than a loose name
+/// heuristic, because substituting SQL VM operations into another handle API
+/// would be unsound.
+fn is_exact_sqlite_prepare(args: &GenerateCSequenceArgs) -> bool {
+    if args.target.name != "sqlite3_prepare_v2"
+        || args.target.params.len() != 5
+        || !args.target_includes.iter().any(|header| {
+            Path::new(header).file_name().is_some_and(|name| {
+                // SQLite's canonical source-tree definition is reached through
+                // sqliteInt.h, while installed/amalgamation consumers see the
+                // same public declaration in sqlite3.h.
+                name == "sqlite3.h" || name == "sqliteInt.h"
+            })
+        })
+    {
+        return false;
+    }
+    true
+}
+
+/// Build a bounded, evidence-backed pull-parser loop. The CLI has already
+/// matched the target/cleanup declarations against one maintained loop;
+/// codegen independently verifies that the output pointee is a complete
+/// aggregate with the observed terminal field before replacing the generic
+/// fuzz decoder with stable caller-owned storage.
+fn output_drain_pump(
+    args: &GenerateCSequenceArgs,
+    op_steps: &[CSequenceStepEmission],
+    registry: &TypeRegistry,
+) -> Option<CExpertOutputDrain> {
+    let protocol = args.output_drain_protocol.as_ref()?;
+    if !safe_c_protocol_constant(&protocol.terminal_value)
+        || protocol
+            .terminal_field
+            .chars()
+            .next()
+            .is_none_or(|ch| !(ch.is_ascii_alphabetic() || ch == '_'))
+        || !protocol
+            .terminal_field
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+    {
+        return None;
+    }
+    let declared = args
+        .op_steps
+        .iter()
+        .find(|step| step.name == args.target.name)?;
+    let output_param = declared.params.get(protocol.output_argument)?;
+    if canonical_c_type(&output_param.c_type) != canonical_c_type(&protocol.cleanup_param_type)
+        || output_param
+            .c_type
+            .split_whitespace()
+            .any(|token| token == "const")
+    {
+        return None;
+    }
+    let pointer_type = emit_c_type(&output_param.c_type);
+    let pointee = pointer_base(&pointer_type)?;
+    let fields = match registry.resolve(pointee) {
+        TypeShape::Struct { fields, .. } | TypeShape::Union { fields, .. } => fields,
+        _ => return None,
+    };
+    if !fields.iter().any(|field| {
+        field.name == protocol.terminal_field
+            && matches!(field.shape, TypeShape::Scalar(_) | TypeShape::Enum { .. })
+    }) {
+        return None;
+    }
+
+    let mut target_step = op_steps
+        .iter()
+        .find(|step| step.name == args.target.name)?
+        .clone();
+    if !target_step.return_type_present || protocol.output_argument >= target_step.params.len() {
+        return None;
+    }
+    let output_value = "_gf_drain_output".to_owned();
+    let output_pointer = "_gf_drain_output_ptr".to_owned();
+    target_step.params[protocol.output_argument] = CParamEmission {
+        support: None,
+        decl: format!(
+            "{pointee} {output_value}; memset(&{output_value}, 0, sizeof({output_value})); {pointer_type} {output_pointer} = &{output_value}"
+        ),
+        arg: output_pointer.clone(),
+        c_type: pointer_type,
+        free: None,
+    };
+    target_step.receiver = if args.init_returns_handle || args.init_out_handle_argument.is_some() {
+        "_gf_handle".to_owned()
+    } else {
+        "&_gf_handle".to_owned()
+    };
+    target_step.receiver_selector = None;
+
+    Some(CExpertOutputDrain {
+        target_step,
+        output_value,
+        output_pointer,
+        cleanup_name: protocol.cleanup_name.clone(),
+        cleanup_param_type: emit_c_type(&protocol.cleanup_param_type),
+        terminal_field: protocol.terminal_field.clone(),
+        terminal_value: protocol.terminal_value.clone(),
+        success_nonzero: protocol.success_nonzero,
+        iteration_cap: 256,
+    })
+}
+
+/// Recognise the public libarchive reader protocol whose call dependencies are
+/// strong enough to drive without guessing:
+///
+/// `archive_read_open_memory` -> (`archive_read_next_header` ->
+/// `archive_read_data`*)*.
+///
+/// This is deliberately exact rather than a broad name heuristic. Applying a
+/// nested drain loop to an arbitrary `next`/`read` API could violate a library's
+/// state contract and manufacture crashes. These libarchive functions have a
+/// documented protocol and are also the sequence used by its maintained
+/// OSS-Fuzz harness. Caps keep corrupt, highly-compressed inputs from spending
+/// an unbounded amount of time in one testcase.
+fn libarchive_expert_stream_pump(
+    args: &GenerateCSequenceArgs,
+    op_steps: &[CSequenceStepEmission],
+) -> Option<CExpertStreamPump> {
+    if !is_exact_libarchive_reader_open(&args.target.name) {
+        return None;
+    }
+    let mut open_step = op_steps
+        .iter()
+        .find(|step| step.name == args.target.name)?
+        .clone();
+    let mut header_step = op_steps
+        .iter()
+        .find(|step| step.name == "archive_read_next_header")?
+        .clone();
+    let mut data_step = op_steps
+        .iter()
+        .find(|step| step.name == "archive_read_data")?
+        .clone();
+    if !(open_step.return_type_present
+        && header_step.return_type_present
+        && data_step.return_type_present)
+    {
+        return None;
+    }
+    // `archive_read_data` has the exact public `(archive *, void *, size_t)`
+    // signature. Use one small scratch buffer for the whole drain, matching the
+    // maintained expert harness. The generic output-pair decoder would allocate
+    // and free a ~64 KiB heap block on every read call—up to 4096 times per
+    // entry—which burns fuzzing throughput without adding input entropy.
+    if data_step.params.len() != 2
+        || canonical_c_type(&data_step.params[0].c_type) != "void *"
+        || !is_length_param(&data_step.params[1].c_type)
+    {
+        return None;
+    }
+
+    // The pump always owns/drives the primary reader. Receiver selection is a
+    // sequence-program feature and has no place in this fixed protocol.
+    for step in [&mut open_step, &mut header_step, &mut data_step] {
+        step.receiver = if args.init_returns_handle || args.init_out_handle_argument.is_some() {
+            "_gf_handle".to_owned()
+        } else {
+            "&_gf_handle".to_owned()
+        };
+        step.receiver_selector = None;
+    }
+
+    Some(CExpertStreamPump {
+        open_step,
+        header_step,
+        data_step,
+        data_buffer_name: "_gf_archive_data_buffer".to_owned(),
+        data_buffer_bytes: 4096,
+        entry_cap: 256,
+        data_cap: 4096,
+    })
+}
+
+fn is_exact_libarchive_reader_open(name: &str) -> bool {
+    matches!(
+        name,
+        "archive_read_open_memory"
+            | "archive_read_open_memory2"
+            | "archive_read_open_file"
+            | "archive_read_open_filename"
+            | "archive_read_open_filename_w"
+            | "archive_read_open_filenames"
+            | "archive_read_open_filenames_w"
+    )
+}
+
+fn is_exact_libarchive_file_reader_open(name: &str) -> bool {
+    matches!(
+        name,
+        "archive_read_open_file"
+            | "archive_read_open_filename"
+            | "archive_read_open_filename_w"
+            | "archive_read_open_filenames"
+            | "archive_read_open_filenames_w"
+    )
+}
+
+fn strip_sequence_callback_typedefs(step: &mut CSequenceStepEmission) {
+    step.params = std::mem::take(&mut step.params)
+        .into_iter()
+        .map(strip_redundant_callback_typedef)
+        .collect();
+}
+
+fn set_sequence_callback_action(param: &mut CParamEmission, active: bool) -> bool {
+    let Some(support) = param.support.as_mut() else {
+        return false;
+    };
+    if !support.contains("GOVFUZZ_CALLBACK_OBSERVE") {
+        return false;
+    }
+    if !active {
+        *support = support.replace("GOVFUZZ_CALLBACK_OBSERVE", "GOVFUZZ_CALLBACK_IGNORE");
+    }
+    active
+}
+
+fn disable_sequence_callback_actions(step: &mut CSequenceStepEmission) {
+    for param in &mut step.params {
+        set_sequence_callback_action(param, false);
+    }
 }
 
 fn split_c_compile_context(flags: &[String]) -> (Vec<String>, String, bool, String, String) {
@@ -2080,12 +3734,185 @@ fn split_c_compile_context(flags: &[String]) -> (Vec<String>, String, bool, Stri
     )
 }
 
+/// Mark ops that return a NEW handle derived from the live one, and give every
+/// op a receiver expression that can select the derived object.
+///
+/// libexpat's `XML_ExternalEntityParserCreate(parentParser, ...)` is the shape:
+/// a child built from a still-live parent, whose own subsystem is reachable no
+/// other way. Measured on expat, driving derived parsers was worth +594 library
+/// lines — more than any other single technique in the ablation.
+///
+/// The receiver is chosen per call from one input byte and only while a derived
+/// object exists, so an unproductive prefix behaves exactly as before.
+fn mark_derived_handle_producers(
+    op_steps: &mut [CSequenceStepEmission],
+    handle_pointer: &str,
+    receiver_is_pointer_value: bool,
+) -> bool {
+    let normalized = handle_pointer
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut any = false;
+    for step in op_steps.iter_mut() {
+        let produced = emit_c_type(step.return_type.trim());
+        let produced = produced.split_whitespace().collect::<Vec<_>>().join(" ");
+        if step.return_type_present && produced == normalized {
+            step.produces_derived_handle = true;
+            // A create/new-named method that RETURNS the handle type is a child
+            // producer, not a re-opener of the primary object. Name-based role
+            // classification labels Expat's ExternalEntityParserCreate as Open;
+            // retaining that role gates it on the parent being dead, making the
+            // child path impossible and then incorrectly marks the parent live.
+            step.role = CStepRole::Operation;
+            any = true;
+        }
+    }
+    if any {
+        let primary = if receiver_is_pointer_value {
+            "_gf_handle"
+        } else {
+            "&_gf_handle"
+        };
+        for (index, step) in op_steps.iter_mut().enumerate() {
+            step.receiver =
+                format!("((_gf_derived_live && (_gf_recv{index} & 1)) ? _gf_derived : {primary})");
+            step.receiver_selector = Some(format!("_gf_recv{index}"));
+        }
+    }
+    any
+}
+
+/// A typed slot carrying an op's return value to a later op's argument.
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CThreadSlot {
+    /// Identifier-safe suffix for the generated variable names.
+    slug: String,
+    /// The C type the slot holds.
+    c_type: String,
+}
+
+/// Slugify a C type into something usable in an identifier.
+fn slot_slug(c_type: &str) -> String {
+    let mut out = String::new();
+    for ch in c_type.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch);
+        } else if !out.ends_with('_') {
+            out.push('_');
+        }
+    }
+    out.trim_matches('_').to_owned()
+}
+
+/// A return type is threadable when some op both PRODUCES it and some op
+/// CONSUMES it as a parameter.
+///
+/// Status ints are excluded: a `0 == success` code is a control signal, not a
+/// value the API passes back in — feeding it as an argument would be noise, and
+/// the loop already gates on it.
+fn thread_slots_for(
+    op_steps: &[CSequenceStepEmission],
+    declared: &[CLifecycleStep],
+) -> Vec<CThreadSlot> {
+    // Parameter types come from the DECLARED steps, not the emissions: a decoder
+    // may normalise `pool_id` to its underlying `unsigned long`, and comparing
+    // a declared return spelling against a normalised parameter spelling never
+    // matches.
+    let declared_param_types: Vec<String> = declared
+        .iter()
+        .flat_map(|step| step.params.iter())
+        .map(|param| emit_c_type(&param.c_type).trim().to_owned())
+        .collect();
+    let mut slots: Vec<CThreadSlot> = Vec::new();
+    for producer in op_steps {
+        if !producer.return_type_present || producer.is_status_return {
+            continue;
+        }
+        let produced = emit_c_type(producer.return_type.trim());
+        let produced = produced.trim();
+        if produced.is_empty() || produced == "void" {
+            continue;
+        }
+        let consumed = declared_param_types.iter().any(|ty| ty == produced);
+        if !consumed {
+            continue;
+        }
+        let slug = slot_slug(produced);
+        if slug.is_empty() || slots.iter().any(|slot| slot.slug == slug) {
+            continue;
+        }
+        slots.push(CThreadSlot {
+            slug,
+            c_type: produced.to_owned(),
+        });
+    }
+    slots
+}
+
+/// Rewrite each consuming parameter so it can take the live slot value instead
+/// of a freshly decoded one, chosen per call from one input byte.
+///
+/// The freshly decoded value is still emitted and still the default: threading
+/// ADDS the ability to pass back a value the API produced, it does not remove
+/// the ability to pass an arbitrary one. A slot is only read once something has
+/// stored into it, so an unthreaded prefix behaves exactly as before.
+fn apply_result_threading(
+    op_steps: &mut [CSequenceStepEmission],
+    declared: &[CLifecycleStep],
+    slots: &[CThreadSlot],
+) {
+    if slots.is_empty() {
+        return;
+    }
+    for step in op_steps.iter_mut() {
+        let produced = if step.return_type_present {
+            emit_c_type(step.return_type.trim()).trim().to_owned()
+        } else {
+            String::new()
+        };
+        step.produces_slot = slots
+            .iter()
+            .find(|slot| slot.c_type == produced)
+            .map(|slot| slot.slug.clone());
+        // Match this emission back to its declaration by NAME so parameter types
+        // are read from the source spelling rather than a normalised decoder one.
+        let declared_params = declared
+            .iter()
+            .find(|d| d.name == step.name)
+            .map(|d| d.params.as_slice())
+            .unwrap_or(&[]);
+        for (index, param) in step.params.iter_mut().enumerate() {
+            let declared_type = declared_params
+                .get(index)
+                .map(|p| emit_c_type(&p.c_type).trim().to_owned())
+                .unwrap_or_default();
+            let Some(slot) = slots.iter().find(|slot| slot.c_type == declared_type) else {
+                continue;
+            };
+            let slug = &slot.slug;
+            let choose = format!("{}_use{index}", param.arg);
+            param.decl = format!(
+                "{}; int {choose} = (int)gf_u8(&Cur)",
+                param.decl.trim_end_matches(';')
+            );
+            // Live-gated: an empty slot must never be passed as if it held a
+            // value the API returned.
+            param.arg = format!(
+                "((_gf_slot_{slug}_live && ({choose} & 1)) ? _gf_slot_{slug} : {})",
+                param.arg
+            );
+        }
+    }
+}
+
 fn build_c_sequence_step_emission(
     step: &CLifecycleStep,
     prefix: &str,
     result_name: &str,
     registry: &TypeRegistry,
     limits: DecoderLimits,
+    zero_success_status: bool,
 ) -> Result<CSequenceStepEmission, HarnessGenError> {
     let scoped_params = step
         .params
@@ -2143,7 +3970,12 @@ fn build_c_sequence_step_emission(
     // an illegal `__declspec(dllexport)` on the local `_gf_stepN_result` var.
     let return_type = crate::c_decoders::strip_type_decoration(step.return_type.trim());
     let return_type_present = !return_type.is_empty() && !c_return_is_void(&return_type);
-    let is_status_return = return_type_present && c_type_is_status_int(&return_type);
+    // A signed integer is not universally a 0==success status. Many expert-
+    // harness operations return positive progress (`read`) or a positive success
+    // enum (`XML_Parse`). Only lifecycle sites whose role establishes zero-success
+    // semantics ask for status handling.
+    let is_status_return =
+        zero_success_status && return_type_present && c_type_is_status_int(&return_type);
     Ok(CSequenceStepEmission {
         name: step.name.clone(),
         params,
@@ -2154,7 +3986,566 @@ fn build_c_sequence_step_emission(
         },
         return_type_present,
         is_status_return,
+        role: step.role,
+        produces_slot: None,
+        produces_derived_handle: false,
+        receiver: "&_gf_handle".to_owned(),
+        receiver_selector: None,
         result_name: result_name.to_owned(),
+        marks_target: false,
+        callback_context_arg: None,
+        condition: None,
+    })
+}
+
+fn build_c_protocol_step_emission(
+    observed: &CProtocolStep,
+    prefix: &str,
+    result_name: &str,
+    registry: &TypeRegistry,
+    limits: DecoderLimits,
+    receiver: &str,
+    preceding: &[CSequenceStepEmission],
+) -> Result<CSequenceStepEmission, HarnessGenError> {
+    if observed.step.params.len() != observed.args.len() {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "mined protocol call '{}' has {} argument recipes for {} parameters",
+            observed.step.name,
+            observed.args.len(),
+            observed.step.params.len()
+        )));
+    }
+    if matches!(observed.step.role, CStepRole::Open | CStepRole::Close) {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "mined protocol call '{}' changes ownership/liveness",
+            observed.step.name
+        )));
+    }
+    let decoder_step = decoder_safe_protocol_step(&observed.step, &observed.args);
+    let mut emission = build_c_sequence_step_emission(
+        &decoder_step,
+        prefix,
+        result_name,
+        registry,
+        limits,
+        false,
+    )?;
+    emission.receiver = if observed.has_receiver {
+        receiver.to_owned()
+    } else {
+        String::new()
+    };
+    emission.receiver_selector = None;
+    emission.marks_target = observed.marks_target;
+
+    apply_c_protocol_condition(&mut emission, observed, preceding)?;
+    apply_c_protocol_input_condition(&mut emission, observed)?;
+    for recipe in &observed.args {
+        let CProtocolArg::PriorResult(index) = recipe else {
+            continue;
+        };
+        let producer = preceding.get(*index).ok_or_else(|| {
+            HarnessGenError::UnsupportedParamType(format!(
+                "result dependency index {index} is not an earlier step"
+            ))
+        })?;
+        if producer.condition.is_some() && producer.condition != emission.condition {
+            return Err(HarnessGenError::UnsupportedParamType(format!(
+                "result from conditional call '{}' escapes its guard",
+                producer.name
+            )));
+        }
+    }
+
+    apply_c_protocol_args(
+        &mut emission,
+        &observed.step.params,
+        &observed.args,
+        receiver,
+        preceding,
+    )?;
+    Ok(emission)
+}
+
+fn apply_c_protocol_input_condition(
+    emission: &mut CSequenceStepEmission,
+    observed: &CProtocolStep,
+) -> Result<(), HarnessGenError> {
+    let Some(condition) = &observed.input_condition else {
+        return Ok(());
+    };
+    if !safe_c_protocol_constant(&condition.value) || condition.value.trim_start().starts_with('-')
+    {
+        return Err(HarnessGenError::UnsupportedParamType(
+            "invalid mined input-length condition".to_owned(),
+        ));
+    }
+    let (source, bounds) = match &condition.source {
+        CProtocolInputSource::Size => ("(uint64_t)Cur.size".to_owned(), None),
+        CProtocolInputSource::Byte(index) if *index <= 4096 => (
+            format!("(uint64_t)Cur.data[{index}]"),
+            Some(format!("Cur.size > {index}u")),
+        ),
+        CProtocolInputSource::Byte(_) => {
+            return Err(HarnessGenError::UnsupportedParamType(
+                "invalid mined input-byte condition".to_owned(),
+            ));
+        }
+    };
+    let transformed = match &condition.transform {
+        CProtocolInputTransform::Identity => source,
+        CProtocolInputTransform::Modulo(modulus) if (1..=65_536).contains(modulus) => {
+            format!("({source} % {modulus}u)")
+        }
+        CProtocolInputTransform::BitAnd(mask) => format!("({source} & {mask}u)"),
+        CProtocolInputTransform::Modulo(_) => {
+            return Err(HarnessGenError::UnsupportedParamType(
+                "invalid mined input-length modulus".to_owned(),
+            ));
+        }
+    };
+    let operator = c_protocol_comparison_operator(condition.comparison);
+    let comparison = format!("{transformed} {operator} {}", condition.value);
+    let input = bounds.map_or(comparison.clone(), |bounds| {
+        format!("{bounds} && ({comparison})")
+    });
+    emission.condition = Some(match emission.condition.take() {
+        Some(existing) => format!("({existing}) && ({input})"),
+        None => input,
+    });
+    Ok(())
+}
+
+fn apply_c_protocol_condition(
+    emission: &mut CSequenceStepEmission,
+    observed: &CProtocolStep,
+    preceding: &[CSequenceStepEmission],
+) -> Result<(), HarnessGenError> {
+    let Some(condition) = &observed.condition else {
+        return Ok(());
+    };
+    let Some(producer) = preceding.get(condition.producer_step) else {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "condition producer index {} is not an earlier step",
+            condition.producer_step
+        )));
+    };
+    if !producer.return_type_present {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "condition producer '{}' has no result",
+            producer.name
+        )));
+    }
+    if !safe_c_protocol_constant(&condition.value) {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "unsafe condition constant '{}'",
+            condition.value
+        )));
+    }
+    if let Some(mask) = &condition.bitmask {
+        if !safe_c_protocol_constant(mask) {
+            return Err(HarnessGenError::UnsupportedParamType(format!(
+                "unsafe condition bitmask '{mask}'"
+            )));
+        }
+    }
+    let operator = c_protocol_comparison_operator(condition.comparison);
+    let producer_value = condition.bitmask.as_ref().map_or_else(
+        || producer.result_name.clone(),
+        |mask| format!("({} & {mask})", producer.result_name),
+    );
+    emission.condition = Some(format!(
+        "{} {} {}",
+        producer_value, operator, condition.value
+    ));
+    Ok(())
+}
+
+fn c_protocol_comparison_operator(comparison: CProtocolComparison) -> &'static str {
+    match comparison {
+        CProtocolComparison::Equal => "==",
+        CProtocolComparison::NotEqual => "!=",
+        CProtocolComparison::Less => "<",
+        CProtocolComparison::LessEqual => "<=",
+        CProtocolComparison::Greater => ">",
+        CProtocolComparison::GreaterEqual => ">=",
+    }
+}
+
+/// Literal/input/receiver recipes replace the decoder completely, so an opaque
+/// typedef at that position must not reject the whole observed call before the
+/// replacement is applied (`XML_Char nsSep` with observed literal `'!'`). Feed
+/// the decoder a harmless placeholder shape for those positions, then restore
+/// the declaration's exact type in [`apply_c_protocol_args`].
+fn decoder_safe_protocol_step(step: &CLifecycleStep, recipes: &[CProtocolArg]) -> CLifecycleStep {
+    let mut safe = step.clone();
+    for (param, recipe) in safe.params.iter_mut().zip(recipes) {
+        param.c_type = match recipe {
+            CProtocolArg::Decode => continue,
+            CProtocolArg::InputData | CProtocolArg::InputDataOffset(_) => {
+                "const unsigned char *".to_owned()
+            }
+            CProtocolArg::InputSize
+            | CProtocolArg::InputSizeMinus(_)
+            | CProtocolArg::InputSizeDivisor(_)
+            | CProtocolArg::InputByte { .. } => "size_t".to_owned(),
+            CProtocolArg::Receiver => "void *".to_owned(),
+            CProtocolArg::PriorResult(_) => "int".to_owned(),
+            CProtocolArg::Literal(_) => "int".to_owned(),
+        };
+    }
+    safe
+}
+
+fn apply_c_protocol_args(
+    emission: &mut CSequenceStepEmission,
+    declared_params: &[CParameter],
+    recipes: &[CProtocolArg],
+    receiver: &str,
+    preceding: &[CSequenceStepEmission],
+) -> Result<(), HarnessGenError> {
+    if emission.params.len() != declared_params.len() || declared_params.len() != recipes.len() {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "mined call '{}' argument recipe count does not match its declaration",
+            emission.name
+        )));
+    }
+    for ((param, declared), recipe) in emission.params.iter_mut().zip(declared_params).zip(recipes)
+    {
+        match recipe {
+            CProtocolArg::Decode => {}
+            CProtocolArg::InputData => {
+                let c_type = emit_c_type(&declared.c_type);
+                if !c_type.trim().ends_with('*') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-data argument '{}' is not pointer-shaped ({c_type})",
+                        declared.name
+                    )));
+                }
+                param.decl = format!("{c_type} {} = ({c_type})Cur.data", param.arg);
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::InputDataOffset(offset) => {
+                if *offset > 4096 {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-data offset for '{}' is too large ({offset})",
+                        declared.name
+                    )));
+                }
+                let c_type = emit_c_type(&declared.c_type);
+                if !c_type.trim().ends_with('*') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-data argument '{}' is not pointer-shaped ({c_type})",
+                        declared.name
+                    )));
+                }
+                param.decl = format!(
+                    "{c_type} {} = ({c_type})(Cur.data + (Cur.size < {offset}u ? Cur.size : {offset}u))",
+                    param.arg
+                );
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::InputSize => {
+                let c_type = emit_c_type(&declared.c_type);
+                if c_type.contains('*') || c_type.contains('[') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-size argument '{}' is not scalar ({c_type})",
+                        declared.name
+                    )));
+                }
+                param.decl = format!("{c_type} {} = ({c_type})Cur.size", param.arg);
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::InputSizeMinus(offset) => {
+                if *offset > 4096 {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-size offset for '{}' is too large ({offset})",
+                        declared.name
+                    )));
+                }
+                let c_type = emit_c_type(&declared.c_type);
+                if c_type.contains('*') || c_type.contains('[') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-size argument '{}' is not scalar ({c_type})",
+                        declared.name
+                    )));
+                }
+                param.decl = format!(
+                    "{c_type} {} = ({c_type})(Cur.size > {offset}u ? Cur.size - {offset}u : 0u)",
+                    param.arg
+                );
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::InputSizeDivisor(divisor) => {
+                if !(2..=65_536).contains(divisor) {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "invalid mined input-size divisor {divisor}"
+                    )));
+                }
+                let c_type = emit_c_type(&declared.c_type);
+                if c_type.contains('*') || c_type.contains('[') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-size argument '{}' is not scalar ({c_type})",
+                        declared.name
+                    )));
+                }
+                param.decl = format!("{c_type} {} = ({c_type})(Cur.size / {divisor}u)", param.arg);
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::InputByte { index, mask } => {
+                if *index > 4096 {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-byte index for '{}' is too large ({index})",
+                        declared.name
+                    )));
+                }
+                let c_type = emit_c_type(&declared.c_type);
+                if c_type.contains('*') || c_type.contains('[') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined input-byte argument '{}' is not scalar ({c_type})",
+                        declared.name
+                    )));
+                }
+                let value = match mask {
+                    Some(mask) => format!(
+                        "((Cur.size > {index}u ? (uint64_t)Cur.data[{index}] : 0u) & {mask}u)"
+                    ),
+                    None => format!("(Cur.size > {index}u ? (uint64_t)Cur.data[{index}] : 0u)"),
+                };
+                param.decl = format!("{c_type} {} = ({c_type}){value}", param.arg);
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::Receiver => {
+                let c_type = emit_c_type(&declared.c_type);
+                if !c_type.trim().ends_with('*') {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "mined receiver argument '{}' is not pointer-shaped ({c_type})",
+                        declared.name
+                    )));
+                }
+                param.decl = format!("{c_type} {} = ({c_type}){receiver}", param.arg);
+                param.c_type = c_type;
+                param.free = None;
+            }
+            CProtocolArg::PriorResult(index) => {
+                let producer = preceding.get(*index).ok_or_else(|| {
+                    HarnessGenError::UnsupportedParamType(format!(
+                        "result dependency index {index} is not an earlier step"
+                    ))
+                })?;
+                if !producer.return_type_present {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "result dependency '{}' returns void",
+                        producer.name
+                    )));
+                }
+                let expected = canonical_c_type(&emit_c_type(&declared.c_type));
+                let actual = canonical_c_type(&producer.return_type);
+                if expected != actual {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "result dependency '{}' has type '{}' but '{}' expects '{}'",
+                        producer.name, producer.return_type, emission.name, declared.c_type
+                    )));
+                }
+                param.support = None;
+                param.decl.clear();
+                param.arg = producer.result_name.clone();
+                param.c_type = emit_c_type(&declared.c_type);
+                param.free = None;
+            }
+            CProtocolArg::Literal(value) => {
+                if !safe_c_protocol_literal(value) {
+                    return Err(HarnessGenError::UnsupportedParamType(format!(
+                        "unsafe mined literal for '{}': {value}",
+                        declared.name
+                    )));
+                }
+                param.support = None;
+                param.decl.clear();
+                param.arg = value.clone();
+                param.c_type = emit_c_type(&declared.c_type);
+                param.free = None;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn safe_c_protocol_literal(value: &str) -> bool {
+    let value = value.trim();
+    if matches!(value, "NULL" | "0" | "true" | "false") {
+        return true;
+    }
+    if ((value.starts_with('"') && value.ends_with('"'))
+        || (value.starts_with('\'') && value.ends_with('\'')))
+        && value.len() >= 2
+    {
+        return !value.contains(['\n', '\r']);
+    }
+    let numeric = value.strip_prefix('-').unwrap_or(value);
+    !numeric.is_empty()
+        && numeric.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+        && numeric
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | 'x' | 'X'))
+}
+
+fn safe_c_protocol_constant(value: &str) -> bool {
+    if safe_c_protocol_literal(value) {
+        return true;
+    }
+    let value = value.trim();
+    value.contains('_')
+        && value
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_uppercase() || ch == '_')
+        && value
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+}
+
+/// Build a constructor call whose return value IS the opaque handle. Lifecycle
+/// discovery admits only neutral pointer/callback parameters for this form; call
+/// them with NULL defaults just as an expert harness does (`XML_ParserCreate(NULL)`,
+/// `archive_read_new()`) instead of decoding arbitrary invalid configuration
+/// objects from the fuzz input.
+fn build_c_returning_init_emission(
+    step: &CLifecycleStep,
+    result_name: &str,
+    _registry: &TypeRegistry,
+    _limits: DecoderLimits,
+) -> Result<CSequenceStepEmission, HarnessGenError> {
+    let mut params = Vec::with_capacity(step.params.len());
+    for param in &step.params {
+        let canonical = emit_c_type(&param.c_type);
+        let lower = canonical.to_ascii_lowercase();
+        if !(canonical.trim().ends_with('*')
+            || lower.ends_with("_func")
+            || lower.ends_with("_fn")
+            || lower.ends_with("_callback")
+            || lower.ends_with("_cb"))
+        {
+            return Err(HarnessGenError::UnsupportedParamType(format!(
+                "returning constructor '{}' needs non-neutral parameter '{}' ({})",
+                step.name, param.name, param.c_type
+            )));
+        }
+        params.push(CParamEmission {
+            support: None,
+            decl: String::new(),
+            arg: "NULL".to_owned(),
+            c_type: canonical,
+            free: None,
+        });
+    }
+    let return_type = crate::c_decoders::strip_type_decoration(step.return_type.trim());
+    let return_type_present = !return_type.is_empty() && !c_return_is_void(&return_type);
+    if !return_type_present {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "returning constructor '{}' has no handle return value",
+            step.name
+        )));
+    }
+    Ok(CSequenceStepEmission {
+        name: step.name.clone(),
+        params,
+        return_type,
+        return_type_present: true,
+        is_status_return: false,
+        role: step.role,
+        produces_slot: None,
+        produces_derived_handle: false,
+        receiver: String::new(),
+        receiver_selector: None,
+        result_name: result_name.to_owned(),
+        marks_target: false,
+        callback_context_arg: None,
+        condition: None,
+    })
+}
+
+/// Build a status-returning constructor that writes the opaque live handle
+/// through one pointer-to-pointer argument. Constructor configuration remains
+/// stable: pointer options use neutral values, while path-like opens receive an
+/// in-memory name so fuzz bytes are reserved for the API under test.
+fn build_c_out_handle_init_emission(
+    step: &CLifecycleStep,
+    output_argument: usize,
+    result_name: &str,
+) -> Result<CSequenceStepEmission, HarnessGenError> {
+    if output_argument >= step.params.len() {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "out-handle constructor '{}' has no parameter {output_argument}",
+            step.name
+        )));
+    }
+    let mut params = Vec::with_capacity(step.params.len());
+    for (index, param) in step.params.iter().enumerate() {
+        let c_type = emit_c_type(&param.c_type);
+        let arg = if index == output_argument {
+            "&_gf_handle".to_owned()
+        } else if c_type.trim().ends_with('*') {
+            let lower_name = param.name.to_ascii_lowercase();
+            if step.name.to_ascii_lowercase().contains("open")
+                && (index == 0
+                    || lower_name.contains("file")
+                    || lower_name.contains("path")
+                    || lower_name.contains("name"))
+                && canonical_c_type(&c_type).contains("char")
+            {
+                "\":memory:\"".to_owned()
+            } else {
+                "NULL".to_owned()
+            }
+        } else if matches!(
+            TypeRegistry::default().resolve(&c_type),
+            TypeShape::Scalar(_) | TypeShape::Enum { .. }
+        ) {
+            "0".to_owned()
+        } else {
+            return Err(HarnessGenError::UnsupportedParamType(format!(
+                "out-handle constructor '{}' needs non-neutral parameter '{}' ({})",
+                step.name, param.name, param.c_type
+            )));
+        };
+        params.push(CParamEmission {
+            support: None,
+            decl: String::new(),
+            arg,
+            c_type,
+            free: None,
+        });
+    }
+    let return_type = crate::c_decoders::strip_type_decoration(step.return_type.trim());
+    let return_type_present = !return_type.is_empty() && !c_return_is_void(&return_type);
+    if !return_type_present {
+        return Err(HarnessGenError::UnsupportedParamType(format!(
+            "out-handle constructor '{}' has no status return value",
+            step.name
+        )));
+    }
+    Ok(CSequenceStepEmission {
+        name: step.name.clone(),
+        params,
+        return_type: return_type.clone(),
+        return_type_present,
+        is_status_return: c_type_is_status_int(&return_type),
+        role: CStepRole::Open,
+        produces_slot: None,
+        produces_derived_handle: false,
+        receiver: String::new(),
+        receiver_selector: None,
+        result_name: result_name.to_owned(),
+        marks_target: false,
+        callback_context_arg: None,
+        condition: None,
     })
 }
 
@@ -2671,12 +5062,77 @@ mod tests {
             main.contains("strings[_gf_i_strings] = gf_c_string(&Cur, 256)"),
             "{main}"
         );
-        assert!(main.contains("int count = (int)_gf_n_strings"), "{main}");
+        assert!(
+            main.contains("int count = (int)_gf_count_strings"),
+            "{main}"
+        );
         // The strings and the array are freed.
         assert!(
             main.contains("free((void *)strings[_gf_i_strings])"),
             "{main}"
         );
+    }
+
+    #[test]
+    fn plural_file_paths_use_one_real_null_terminated_tempfile_vector() {
+        for (name, c_type, expected_storage) in [
+            (
+                "filenames",
+                "const char **",
+                "const char *_gf_paths_filenames[2]",
+            ),
+            (
+                "wfilenames",
+                "const wchar_t **",
+                "const wchar_t *_gf_paths_wfilenames[2]",
+            ),
+        ] {
+            let params = vec![
+                CParameter {
+                    name: name.to_owned(),
+                    c_type: c_type.to_owned(),
+                },
+                CParameter {
+                    name: "block_size".to_owned(),
+                    c_type: "size_t".to_owned(),
+                },
+            ];
+            let emissions = build_param_decoders(
+                &params,
+                &TypeRegistry::default(),
+                &[],
+                None,
+                false,
+                false,
+                DecoderLimits::default(),
+                "archive_read_open_filenames",
+                false,
+            )
+            .unwrap();
+            assert_eq!(emissions.len(), 2);
+            assert!(
+                emissions[0].decl.contains("gf_make_tempfile(Data, Size")
+                    && emissions[0].decl.contains(expected_storage)
+                    && emissions[0].decl.contains("NULL"),
+                "plural file input must be a fuzz-backed, NULL-terminated path vector: {}",
+                emissions[0].decl
+            );
+            assert!(
+                emissions[0]
+                    .free
+                    .as_deref()
+                    .is_some_and(|free| free.contains("unlink")),
+                "temp file must be removed"
+            );
+            assert!(
+                emissions[1].decl.contains("block_size")
+                    && emissions[1].decl.contains("10240")
+                    && !emissions[1].decl.contains("_gf_count")
+                    && !emissions[1].decl.contains("_gf_n_filenames"),
+                "block_size is a stable read chunk size, not fuzz data or the number of filenames: {}",
+                emissions[1].decl
+            );
+        }
     }
 
     #[test]
@@ -2731,7 +5187,9 @@ mod tests {
         let with = generate_c_direct_harness(mk(true)).unwrap();
         let m = fs::read_to_string(&with.main_c).unwrap();
         assert!(
-            m.contains("malloc((size_t)Size + 1)") && m.contains("[Size] = 0"),
+            m.contains("char *_gf_ntbuf_str = (char *)malloc(_gf_ntlen_str + 1)")
+                && m.contains("_gf_ntbuf_str[_gf_ntlen_str] = 0")
+                && m.contains("len = (size_t)(_gf_ntbuf_str ? _gf_ntlen_str : 0)"),
             "NULLTERM-mode enum present -> NUL-terminated copy: {m}"
         );
         assert!(
@@ -2748,7 +5206,7 @@ mod tests {
             "no NULLTERM mode -> zero-copy raw Data preserved (no regression): {m2}"
         );
         assert!(
-            !m2.contains("malloc((size_t)Size + 1)"),
+            !m2.contains("_gf_ntbuf_str"),
             "must NOT NUL-terminate an ordinary length-delimited buffer: {m2}"
         );
     }
@@ -2873,6 +5331,7 @@ mod tests {
                 },
             ],
             return_type: "ssize_t".to_owned(),
+            role: CStepRole::Operation,
         };
         let emission = build_c_sequence_step_emission(
             &step,
@@ -2880,6 +5339,7 @@ mod tests {
             "_gf_step0_result",
             &registry,
             DecoderLimits::default(),
+            false,
         )
         .expect("emission");
         let strlen_decl = &emission.params[0].decl;
@@ -2906,6 +5366,7 @@ mod tests {
                 c_type: "int".to_owned(),
             }],
             return_type: "int".to_owned(),
+            role: CStepRole::Operation,
         };
         let emission = build_c_sequence_step_emission(
             &step,
@@ -2913,6 +5374,7 @@ mod tests {
             "_gf_step0_result",
             &registry,
             DecoderLimits::default(),
+            false,
         )
         .expect("emission");
         assert!(
@@ -2928,7 +5390,7 @@ mod tests {
         let registry = TypeRegistry::from_defs([&defs]);
         // Non-const pointer to a concrete struct: a parser's output -> zeroed
         // scratch passed by address, consuming no fuzz cursor.
-        let e = out_param_struct_scratch("wav_t *", "pWav", &registry).expect("scratch");
+        let e = out_param_struct_scratch("wav_t *", "pWav", &registry, &[]).expect("scratch");
         assert!(e.decl.contains("wav_t _gf_out_pWav;"), "{}", e.decl);
         assert!(
             e.decl
@@ -2938,10 +5400,94 @@ mod tests {
         );
         assert_eq!(e.arg, "&_gf_out_pWav");
         // A const pointee is a genuine input the callee reads -> never zeroed.
-        assert!(out_param_struct_scratch("const wav_t *", "in", &registry).is_none());
+        assert!(out_param_struct_scratch("const wav_t *", "in", &registry, &[]).is_none());
         // Scalars and unresolvable/opaque pointees are not stack-declarable structs.
-        assert!(out_param_struct_scratch("int *", "n", &registry).is_none());
-        assert!(out_param_struct_scratch("unknown_t *", "x", &registry).is_none());
+        assert!(out_param_struct_scratch("int *", "n", &registry, &[]).is_none());
+        assert!(out_param_struct_scratch("unknown_t *", "x", &registry, &[]).is_none());
+    }
+
+    #[test]
+    fn out_param_struct_scratch_uses_visible_inplace_lifecycle() {
+        let defs = c_parser::parse_c_type_defs(
+            "typedef struct { void *zone; int value; } msgpack_unpacked;",
+        )
+        .unwrap();
+        let registry = TypeRegistry::from_defs([&defs]);
+        let lifecycle = vec![CHandleLifecycle {
+            handle_type: "msgpack_unpacked".to_owned(),
+            init: Some("msgpack_unpacked_init".to_owned()),
+            delete: Some("msgpack_unpacked_destroy".to_owned()),
+            init_returns_handle: false,
+            init_args: Vec::new(),
+        }];
+        let emission =
+            out_param_struct_scratch("msgpack_unpacked *", "result", &registry, &lifecycle)
+                .expect("lifecycle-backed output scratch");
+        assert!(
+            emission
+                .decl
+                .contains("msgpack_unpacked_init(&_gf_out_result)"),
+            "{}",
+            emission.decl
+        );
+        assert_eq!(
+            emission.free.as_deref(),
+            Some("msgpack_unpacked_destroy(&_gf_out_result)")
+        );
+    }
+
+    #[test]
+    fn status_constructed_output_uses_delete_only_lifecycle_after_success() {
+        let out = temp_dir("status-output-cleanup");
+        let defs =
+            c_parser::parse_c_type_defs("typedef struct { void *code; int flags; } regex_t;")
+                .unwrap();
+        let args = GenerateCDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            lifecycle: vec![CHandleLifecycle {
+                handle_type: "regex_t".to_owned(),
+                init: None,
+                delete: Some("regfree".to_owned()),
+                init_returns_handle: false,
+                init_args: Vec::new(),
+            }],
+            drive_plan: None,
+            harness_id: "H-REGCOMP".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/regex.c"),
+            target: cfunction("regcomp"),
+            params: vec![
+                CParameter {
+                    name: "preg".to_owned(),
+                    c_type: "regex_t *".to_owned(),
+                },
+                CParameter {
+                    name: "pattern".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParameter {
+                    name: "cflags".to_owned(),
+                    c_type: "int".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            target_includes: vec!["regex.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/regex.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+            result_cleanup: None,
+        };
+        let generated = generate_c_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&generated.main_c).unwrap();
+        assert!(
+            main.contains("if (R == 0) regfree(&_gf_out_preg)"),
+            "{main}"
+        );
+        let _ = fs::remove_dir_all(out);
     }
 
     #[test]
@@ -2956,7 +5502,7 @@ mod tests {
         .unwrap();
         let registry = TypeRegistry::from_defs([&defs]);
         assert!(
-            out_param_struct_scratch("cbor_callbacks *", "cb", &registry).is_none(),
+            out_param_struct_scratch("cbor_callbacks *", "cb", &registry, &[]).is_none(),
             "out-param scratch must decline a fn-pointer-bearing struct"
         );
         assert!(
@@ -2966,7 +5512,7 @@ mod tests {
         // A plain POD struct is still accepted as scratch.
         let pod = c_parser::parse_c_type_defs("typedef struct { int a; int b; } pod_t;").unwrap();
         let reg2 = TypeRegistry::from_defs([&pod]);
-        assert!(out_param_struct_scratch("pod_t *", "o", &reg2).is_some());
+        assert!(out_param_struct_scratch("pod_t *", "o", &reg2, &[]).is_some());
     }
 
     #[test]
@@ -3011,7 +5557,10 @@ mod tests {
             target_includes_dirs: vec![PathBuf::from("/tmp")],
             target_sources: vec![],
             compile_flags: vec![],
-            target_declared_in_header: true,
+            // Macro-wrapped public declarations (libjpeg's real EXTERN form)
+            // can evade the declaration scanner; the exact recipe must still
+            // activate from the canonical included header.
+            target_declared_in_header: false,
             c_runtime_include: PathBuf::from("/tmp/c_runtime"),
             type_defs: Vec::new(),
             // The destroy is folded into the if(R) block, so a separately
@@ -3481,6 +6030,67 @@ mod tests {
     }
 
     #[test]
+    fn begin_end_pointer_pair_brackets_one_span() {
+        // libexpat's `matchkey(const char *start, const char *end, const char *key)`
+        // walks `for (; start != end; start++)`. Two independent allocations make
+        // that walk leave one heap block toward an unrelated address, which ASan
+        // reports as a heap-buffer-overflow in correct library code.
+        let out = temp_dir("emit-begin-end");
+        let args = GenerateCDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            lifecycle: Vec::new(),
+            drive_plan: None,
+            harness_id: "H-C005".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/xmlmime.c"),
+            target: cfunction("matchkey"),
+            params: vec![
+                CParameter {
+                    name: "start".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParameter {
+                    name: "end".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParameter {
+                    name: "key".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            target_includes: Vec::new(),
+            target_includes_dirs: Vec::new(),
+            target_sources: vec![PathBuf::from("/tmp/xmlmime.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: false,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: Vec::new(),
+            result_cleanup: None,
+        };
+
+        let main = fs::read_to_string(&generate_c_direct_harness(args).unwrap().main_c).unwrap();
+        assert!(
+            main.contains("const char * start = (const char *)Data"),
+            "the begin pointer must borrow the span, got:\n{main}"
+        );
+        assert!(
+            main.contains("const char * end = (const char *)Data + Size"),
+            "the end pointer must be the SAME span's end, got:\n{main}"
+        );
+        assert!(
+            !main.contains("free(start)") && !main.contains("free(end)"),
+            "a bracketing pair borrows Data; no free()"
+        );
+        // The unrelated third string is still decoded independently.
+        assert!(
+            main.contains("key = gf_c_string(&Cur"),
+            "an unpaired string must keep its own decoder, got:\n{main}"
+        );
+    }
+
+    #[test]
     fn cstring_with_int_out_param_nul_terminates_and_does_not_mispair() {
         // te_interp(const char *expression, int *error): `error` is an OUT-PARAM
         // error flag, NOT a length. It must NOT pair with the buffer (which bound
@@ -3811,7 +6421,9 @@ mod tests {
             "{main}"
         );
         assert!(
-            main.contains("_gf_stream_available_out = (size_t)_gf_cap_next_out"),
+            main.contains(
+                "_gf_stream_available_out = (size_t)(_gf_buf_next_out ? _gf_cap_next_out : 0)"
+            ),
             "{main}"
         );
         assert!(
@@ -3877,7 +6489,7 @@ mod tests {
             "output array must be sized to the count (calloc'd), got:\n{main}",
         );
         assert!(
-            main.contains("element_size = (cgltf_size)_gf_n_out"),
+            main.contains("element_size = (cgltf_size)(out ? _gf_n_out : 0)"),
             "count must equal the array's element count, got:\n{main}",
         );
         assert!(
@@ -4138,13 +6750,49 @@ mod tests {
             "array must be calloc'd to the count, got:\n{main}",
         );
         assert!(
-            main.contains("(size_t)_gf_n_tokens"),
+            main.contains("(size_t)(tokens ? _gf_n_tokens : 0)"),
             "num_tokens must mirror the array length, not be independently fuzzed, got:\n{main}",
         );
         assert!(
             main.contains("free((void *)tokens)"),
             "the allocated array must be freed, got:\n{main}",
         );
+    }
+
+    #[test]
+    fn reverse_count_typed_array_pair_preserves_order_and_shared_extent() {
+        let defs =
+            c_parser::parse_c_type_defs("typedef struct { int start; int end; } regmatch_t;")
+                .unwrap();
+        let registry = TypeRegistry::from_defs([&defs]);
+        let params = vec![
+            CParameter {
+                name: "nmatch".to_owned(),
+                c_type: "size_t".to_owned(),
+            },
+            CParameter {
+                name: "pmatch".to_owned(),
+                c_type: "regmatch_t *".to_owned(),
+            },
+        ];
+        let emissions = build_param_decoders(
+            &params,
+            &registry,
+            &[],
+            None,
+            false,
+            false,
+            DecoderLimits::default(),
+            "regexec",
+            false,
+        )
+        .expect("reverse typed-array pair");
+        assert_eq!(emissions[0].arg, "nmatch");
+        assert_eq!(emissions[1].arg, "pmatch");
+        assert!(emissions[0].decl.contains("_gf_n_pmatch"));
+        assert!(emissions[0].decl.contains("calloc"));
+        assert!(emissions[0].decl.contains("nmatch ="));
+        assert_eq!(emissions[1].free.as_deref(), Some("free((void *)pmatch)"));
     }
 
     #[test]
@@ -4239,8 +6887,12 @@ mod tests {
             "non-const output buffer should be heap-allocated:\n{main}",
         );
         assert!(
-            main.contains("memcpy(buffer, Data, Size)"),
+            main.contains("memcpy(buffer, Data, _gf_cap_buffer)"),
             "allocated buffer should be seeded with the fuzz bytes:\n{main}",
+        );
+        assert!(
+            main.contains("buffer_size = (size_t)(buffer ? _gf_cap_buffer : 0)"),
+            "the advertised length must be zero on allocation failure:\n{main}",
         );
         assert!(
             main.contains("free(buffer)"),
@@ -4342,7 +6994,7 @@ mod tests {
             "output byte buffer should be heap-allocated, got:\n{main}",
         );
         assert!(
-            main.contains("uLongf _gf_out_destLen = (uLongf)_gf_cap_dest"),
+            main.contains("uLongf _gf_out_destLen = (uLongf)(dest ? _gf_cap_dest : 0)"),
             "output length pointer should be initialized to buffer capacity, got:\n{main}",
         );
         assert!(
@@ -4365,6 +7017,74 @@ mod tests {
             main.contains("free(dest)"),
             "heap-allocated output buffer should be released, got:\n{main}",
         );
+    }
+
+    #[test]
+    fn reverse_size_buffer_pairs_match_brotli_one_shot_contract() {
+        let out = temp_dir("emit-brotli-decompress");
+        let args = GenerateCDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            lifecycle: Vec::new(),
+            drive_plan: None,
+            harness_id: "H-C-BROTLI".to_owned(),
+            output_dir: out,
+            source_path: PathBuf::from("/tmp/decode.c"),
+            target: cfunction("BrotliDecoderDecompress"),
+            params: vec![
+                CParameter {
+                    name: "encoded_size".to_owned(),
+                    c_type: "size_t".to_owned(),
+                },
+                CParameter {
+                    name: "encoded_buffer".to_owned(),
+                    c_type: "const uint8_t *".to_owned(),
+                },
+                CParameter {
+                    name: "decoded_size".to_owned(),
+                    c_type: "size_t *".to_owned(),
+                },
+                CParameter {
+                    name: "decoded_buffer".to_owned(),
+                    c_type: "uint8_t *".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            target_includes: vec!["brotli/decode.h".to_owned()],
+            target_includes_dirs: Vec::new(),
+            target_sources: vec![PathBuf::from("/tmp/decode.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: Vec::new(),
+            result_cleanup: None,
+        };
+
+        let result = generate_c_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_c).unwrap();
+        assert!(
+            main.contains("size_t encoded_size = (size_t)Size"),
+            "reverse input length must cover the whole Data span:\n{main}"
+        );
+        assert!(
+            main.contains("const uint8_t * encoded_buffer = (const uint8_t *)Data"),
+            "reverse input pointer must borrow Data:\n{main}"
+        );
+        assert!(
+            main.contains("size_t _gf_cap_decoded_buffer = 1024 * 1024"),
+            "one-shot decompression needs a bounded expansion budget:\n{main}"
+        );
+        assert!(
+            main.contains(
+                "size_t _gf_out_decoded_size = (size_t)(decoded_buffer ? _gf_cap_decoded_buffer : 0)"
+            ),
+            "reverse output length must advertise the allocated capacity:\n{main}"
+        );
+        assert!(
+            main.contains("BrotliDecoderDecompress(encoded_size, encoded_buffer, decoded_size, decoded_buffer)"),
+            "argument order must remain the public API order:\n{main}"
+        );
+        assert!(main.contains("free(decoded_buffer)"), "{main}");
     }
 
     #[test]
@@ -4416,7 +7136,7 @@ mod tests {
             "mutable output buffer with scalar capacity should be heap-allocated, got:\n{main}",
         );
         assert!(
-            main.contains("size_t out_buf_len = (size_t)_gf_cap_pOut_buf"),
+            main.contains("size_t out_buf_len = (size_t)(pOut_buf ? _gf_cap_pOut_buf : 0)"),
             "output scalar capacity should mirror the heap buffer capacity, got:\n{main}",
         );
         assert!(
@@ -4434,6 +7154,37 @@ mod tests {
         assert!(
             main.contains("free(pOut_buf)"),
             "heap-allocated output buffer should be released, got:\n{main}",
+        );
+    }
+
+    #[test]
+    fn unnamed_read_buffer_capacity_stays_coupled_to_its_allocation() {
+        let buffer = CParameter {
+            name: "arg1".to_owned(),
+            c_type: "void *".to_owned(),
+        };
+        let length = CParameter {
+            name: "arg2".to_owned(),
+            c_type: "size_t".to_owned(),
+        };
+
+        assert!(looks_like_output_capacity_pair(
+            &buffer,
+            &length,
+            "archive_read_data"
+        ));
+        assert!(
+            !looks_like_output_capacity_pair(&buffer, &length, "archive_write_data"),
+            "an unnamed writable pointer on a write API is input, not output"
+        );
+
+        let (buffer_emission, length_emission) =
+            pair_output_buffer_capacity(&buffer, &length, "archive_read_data");
+        assert!(buffer_emission.decl.contains("size_t _gf_cap_arg1"));
+        assert!(buffer_emission.decl.contains("malloc(_gf_cap_arg1"));
+        assert_eq!(
+            length_emission.decl,
+            "size_t arg2 = (size_t)(arg1 ? _gf_cap_arg1 : 0)"
         );
     }
 
@@ -4511,6 +7262,11 @@ mod tests {
             int parse_stream(FILE *stream);
         "#;
         fs::write(&header, header_source).unwrap();
+        fs::write(
+            work.join("jdmaster.h"),
+            "struct jpeg_decomp_master; struct hostile_private { struct jpeg_decomp_master pub; };\n",
+        )
+        .unwrap();
         let out = work.join("harness");
         let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../c_runtime")
@@ -5672,6 +8428,246 @@ mod tests {
     }
 
     #[test]
+    fn mined_protocol_keeps_stream_then_finalize_calls_and_safe_literals() {
+        let out = temp_dir("seq-mined-protocol");
+        let parse_step = CLifecycleStep {
+            name: "XML_Parse".to_owned(),
+            params: vec![
+                CParameter {
+                    name: "data".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParameter {
+                    name: "size".to_owned(),
+                    c_type: "int".to_owned(),
+                },
+                CParameter {
+                    name: "is_final".to_owned(),
+                    c_type: "int".to_owned(),
+                },
+            ],
+            return_type: "int".to_owned(),
+            role: CStepRole::Operation,
+        };
+        let reset_step = CLifecycleStep {
+            name: "XML_ParserReset".to_owned(),
+            params: vec![CParameter {
+                name: "encoding".to_owned(),
+                c_type: "const char *".to_owned(),
+            }],
+            return_type: "int".to_owned(),
+            role: CStepRole::Operation,
+        };
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-PROTOCOL".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/xmlparse.c"),
+            target: cfunction("XML_Parse"),
+            handle_type: "XML_Parser".to_owned(),
+            handle_param_type: "XML_Parser".to_owned(),
+            init_returns_handle: true,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "XML_ParserCreate".to_owned(),
+                params: vec![CParameter {
+                    name: "encoding".to_owned(),
+                    c_type: "const char *".to_owned(),
+                }],
+                return_type: "XML_Parser".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![parse_step.clone()],
+            protocol_steps: vec![
+                CProtocolStep {
+                    step: parse_step.clone(),
+                    args: vec![
+                        CProtocolArg::InputData,
+                        CProtocolArg::InputSize,
+                        CProtocolArg::Literal("0".to_owned()),
+                    ],
+                    has_receiver: true,
+                    marks_target: true,
+                    condition: None,
+                    input_condition: None,
+                },
+                CProtocolStep {
+                    step: parse_step,
+                    args: vec![
+                        CProtocolArg::InputData,
+                        CProtocolArg::InputSize,
+                        CProtocolArg::Literal("1".to_owned()),
+                    ],
+                    has_receiver: true,
+                    marks_target: true,
+                    condition: None,
+                    input_condition: None,
+                },
+                CProtocolStep {
+                    step: CLifecycleStep {
+                        name: "XML_GetErrorCode".to_owned(),
+                        params: Vec::new(),
+                        return_type: "enum XML_Error".to_owned(),
+                        role: CStepRole::Operation,
+                    },
+                    args: Vec::new(),
+                    has_receiver: true,
+                    marks_target: false,
+                    condition: Some(CProtocolCondition {
+                        producer_step: 1,
+                        bitmask: None,
+                        comparison: CProtocolComparison::Equal,
+                        value: "XML_STATUS_ERROR".to_owned(),
+                    }),
+                    input_condition: None,
+                },
+                CProtocolStep {
+                    step: CLifecycleStep {
+                        name: "XML_ErrorString".to_owned(),
+                        params: vec![CParameter {
+                            name: "code".to_owned(),
+                            c_type: "enum XML_Error".to_owned(),
+                        }],
+                        return_type: "const char *".to_owned(),
+                        role: CStepRole::Operation,
+                    },
+                    args: vec![CProtocolArg::PriorResult(2)],
+                    has_receiver: false,
+                    marks_target: false,
+                    condition: Some(CProtocolCondition {
+                        producer_step: 1,
+                        bitmask: None,
+                        comparison: CProtocolComparison::Equal,
+                        value: "XML_STATUS_ERROR".to_owned(),
+                    }),
+                    input_condition: None,
+                },
+                CProtocolStep {
+                    step: CLifecycleStep {
+                        name: "XML_GetCurrentLineNumber".to_owned(),
+                        params: Vec::new(),
+                        return_type: "long".to_owned(),
+                        role: CStepRole::Operation,
+                    },
+                    args: Vec::new(),
+                    has_receiver: true,
+                    marks_target: false,
+                    condition: None,
+                    input_condition: None,
+                },
+                CProtocolStep {
+                    step: reset_step,
+                    args: vec![CProtocolArg::Literal("NULL".to_owned())],
+                    has_receiver: true,
+                    marks_target: false,
+                    condition: None,
+                    input_condition: Some(CProtocolInputCondition {
+                        source: CProtocolInputSource::Size,
+                        transform: CProtocolInputTransform::Modulo(2),
+                        comparison: CProtocolComparison::NotEqual,
+                        value: "0".to_owned(),
+                    }),
+                },
+            ],
+            protocol_objects: vec![CProtocolObject {
+                constructor: CLifecycleStep {
+                    name: "XML_ParserCreateNS".to_owned(),
+                    params: vec![
+                        CParameter {
+                            name: "encoding".to_owned(),
+                            c_type: "const char *".to_owned(),
+                        },
+                        CParameter {
+                            name: "separator".to_owned(),
+                            c_type: "char".to_owned(),
+                        },
+                    ],
+                    return_type: "XML_Parser".to_owned(),
+                    role: CStepRole::Open,
+                },
+                args: vec![
+                    CProtocolArg::Literal("NULL".to_owned()),
+                    CProtocolArg::Literal("'!'".to_owned()),
+                ],
+                uses_primary_as_parent: false,
+            }],
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "XML_ParserFree".to_owned(),
+                params: Vec::new(),
+                return_type: "void".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["expat.h".to_owned()],
+            target_includes_dirs: Vec::new(),
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: Vec::new(),
+        };
+
+        let generated = generate_c_sequence_harness(args).unwrap();
+        let main = fs::read_to_string(generated.main_c).unwrap();
+        assert!(main.contains("Project-mined expert protocol"), "{main}");
+        assert!(
+            main.contains("_gf_protocol0_result = XML_Parse(_gf_handle"),
+            "{main}"
+        );
+        assert!(
+            main.contains("_gf_protocol1_result = XML_Parse(_gf_handle"),
+            "{main}"
+        );
+        assert!(main.contains(", 0);"), "{main}");
+        assert!(main.contains(", 1);"), "{main}");
+        assert!(
+            main.contains("XML_GetCurrentLineNumber(_gf_handle)"),
+            "{main}"
+        );
+        assert!(
+            main.contains("XML_ErrorString(_gf_protocol2_result)"),
+            "{main}"
+        );
+        assert!(
+            main.contains("if (_gf_protocol1_result == XML_STATUS_ERROR)"),
+            "{main}"
+        );
+        assert!(main.contains("XML_ParserReset(_gf_handle, NULL)"), "{main}");
+        assert!(
+            main.contains("if (((uint64_t)Cur.size % 2u) != 0)"),
+            "input-dependent expert guard must survive emission: {main}"
+        );
+        assert!(
+            main.contains("XML_Parser _gf_protocol_object0 = XML_ParserCreateNS(NULL, '!')"),
+            "{main}"
+        );
+        assert!(
+            main.contains("XML_Parse(_gf_protocol_object0"),
+            "the mined namespace object must run the same parse protocol: {main}"
+        );
+        assert!(
+            main.contains("_gf_protocol_lane == 1")
+                && main.contains("gf_cursor Cur = gf_open_data(Data, Size, 42)"),
+            "additional topologies must become ranked, control-separated lanes: {main}"
+        );
+        let portfolio = fs::read_to_string(out.join(PROTOCOL_PORTFOLIO_FILE)).unwrap();
+        assert!(portfolio.contains("ranked_specialized_protocol_lanes"));
+        assert!(portfolio.contains("XML_ParserCreateNS"));
+        assert!(
+            main.contains("XML_ParserFree(_gf_protocol_object0)"),
+            "the additional object must be released: {main}"
+        );
+        assert!(
+            main.contains("switch ((int)gf_ctrl_op"),
+            "a reset-terminated expert prefix should compose with random exploration: {main}"
+        );
+    }
+
+    #[test]
     fn sequence_harness_guards_oploop_and_teardown_on_init_status() {
         // Campaign #12: microtar's `int mtar_open(mtar_t*, const char*, const char*)`
         // returns a status; on a failed open (fuzzed nonexistent path) the handle's
@@ -5693,6 +8689,12 @@ mod tests {
             source_path: PathBuf::from("/tmp/microtar.c"),
             target: cfunction("mtar_read"),
             handle_type: "mtar_t".to_owned(),
+            handle_param_type: "mtar_t *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
             init_step: Some(CLifecycleStep {
                 name: "mtar_open".to_owned(),
                 params: vec![
@@ -5706,6 +8708,7 @@ mod tests {
                     },
                 ],
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }),
             op_steps: vec![CLifecycleStep {
                 name: "mtar_read".to_owned(),
@@ -5714,11 +8717,17 @@ mod tests {
                     c_type: "unsigned".to_owned(),
                 }],
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
             end_step: Some(CLifecycleStep {
                 name: "mtar_close".to_owned(),
                 params: Vec::new(),
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }),
             target_includes: vec!["microtar.h".to_owned()],
             target_includes_dirs: vec![PathBuf::from("/tmp")],
@@ -5730,6 +8739,16 @@ mod tests {
         };
         let result = generate_c_sequence_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_c).unwrap();
+        let run_one_decl = main
+            .find("int govfuzz_run_one(const uint8_t *Data, size_t Size);")
+            .expect("sequence driver needs a prototype under -Wmissing-prototypes");
+        let run_one_def = main
+            .find("int govfuzz_run_one(const uint8_t *Data, size_t Size) {")
+            .expect("sequence driver definition");
+        let libfuzzer_decl = main
+            .find("int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);")
+            .expect("libFuzzer entry needs a prototype under -Wmissing-prototypes");
+        assert!(run_one_decl < run_one_def && libfuzzer_decl < run_one_def);
         let guard = main
             .find("if (_gf_init_result == 0) {")
             .expect("op-loop must be guarded on constructor success");
@@ -5743,6 +8762,665 @@ mod tests {
             guard < close_pos,
             "teardown must be inside the success guard: {main}"
         );
+        // A plain signed integer returned by an ordinary operation is often
+        // positive progress, not a 0==success status (`read`, parser enums).
+        // Do not terminate the sequence merely because it is nonzero.
+        assert!(
+            !main.contains("if (_gf_step0_result != 0) {"),
+            "an ordinary integer result must not be treated as a status: {main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn configuration_runs_between_construction_and_use() {
+        // libarchive's own tests call `archive_read_support_format_all`
+        // immediately after `archive_read_new` — without it the reader supports
+        // NOTHING and every input dies at the first header. A fuzzed op program
+        // performs that step only by luck, so most executions never reach the
+        // code the target exists to run. Measured on expat, installing handlers
+        // was worth +323 library lines.
+        let out = temp_dir("seq-config");
+        let header_source = r#"
+            typedef struct arc { int fmt; } arc;
+            typedef void (*arc_handler)(void *opaque);
+            int arc_new(arc *a);
+            int arc_support_format_all(arc *a);
+            void arc_set_handler(arc *a, arc_handler handler);
+            void arc_set_user_data(arc *a, void *opaque);
+            int arc_stop(arc *a, int resumable);
+            int arc_next_header(arc *a, unsigned n);
+            int arc_free(arc *a);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-ARCCFG".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/arc.c"),
+            target: cfunction("arc_next_header"),
+            handle_type: "arc".to_owned(),
+            handle_param_type: "arc *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: vec![
+                CHandleFieldInitializer {
+                    field: "fmt".to_owned(),
+                    value: "7".to_owned(),
+                },
+                CHandleFieldInitializer {
+                    field: "not_declared".to_owned(),
+                    value: "9".to_owned(),
+                },
+            ],
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "arc_new".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                CLifecycleStep {
+                    name: "arc_next_header".to_owned(),
+                    params: vec![CParameter {
+                        name: "n".to_owned(),
+                        c_type: "unsigned".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "arc_support_format_all".to_owned(),
+                    params: Vec::new(),
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Configure,
+                },
+                CLifecycleStep {
+                    name: "arc_set_handler".to_owned(),
+                    params: vec![CParameter {
+                        name: "handler".to_owned(),
+                        c_type: "arc_handler".to_owned(),
+                    }],
+                    return_type: "void".to_owned(),
+                    role: CStepRole::Configure,
+                },
+                CLifecycleStep {
+                    name: "arc_set_user_data".to_owned(),
+                    params: vec![CParameter {
+                        name: "opaque".to_owned(),
+                        c_type: "void *".to_owned(),
+                    }],
+                    return_type: "void".to_owned(),
+                    role: CStepRole::Configure,
+                },
+            ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: vec!["arc_set_user_data".to_owned()],
+            callback_action: Some(CCallbackAction {
+                step: CLifecycleStep {
+                    name: "arc_stop".to_owned(),
+                    params: vec![CParameter {
+                        name: "resumable".to_owned(),
+                        c_type: "int".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                alternative_steps: Vec::new(),
+                configuration_name: "arc_set_handler".to_owned(),
+                configuration_arg: 0,
+            }),
+            end_step: Some(CLifecycleStep {
+                name: "arc_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["arc.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/arc.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        let initialized = main
+            .find("_gf_handle.fmt = 7;")
+            .expect("maintained public-field precondition must be emitted");
+        assert!(initialized < main.find("arc_new(&_gf_handle)").unwrap());
+        assert!(!main.contains("_gf_handle.not_declared"));
+
+        // Configuration is unconditional, and sits after construction but before
+        // the op loop.
+        let configured = main
+            .find("arc_support_format_all(&_gf_handle)")
+            .expect("configuration must be emitted");
+        let constructed = main.find("arc_new(&_gf_handle)").expect("constructor");
+        let loop_start = main.find("_gf_lifecycle_count").expect("op loop");
+        assert!(
+            constructed < configured && configured < loop_start,
+            "configuration must run between construction and the op loop:\n{main}"
+        );
+        // It is deliberately not repeated as a fuzz-selected op: pointer-valued
+        // setters borrow stable storage through teardown, while a case-local
+        // allocation would become dangling as soon as that switch arm exits.
+        assert!(
+            main.matches("arc_support_format_all(").count() == 1,
+            "configuration must run exactly once from stable setup storage:\n{main}"
+        );
+        assert!(
+            main.contains("static void _gf__gf_cfg1_handler_trampoline(void *opaque)"),
+            "unconditional callback configuration needs its own trampoline support:\n{main}"
+        );
+        assert!(
+            main.contains("arc_set_user_data(&_gf_handle, &_gf_handle)"),
+            "an expert receiver-as-user-data recipe must retain the live handle:\n{main}"
+        );
+        assert!(
+            !main.contains("free(_gf_cfg2_opaque)"),
+            "receiver-bound user data is owned by the lifecycle, not decoder storage:\n{main}"
+        );
+        assert!(
+            main.contains("GOVFUZZ_CALLBACK_OBSERVE(opaque)")
+                && main.contains("(void)arc_stop((arc *)context"),
+            "a registered callback action must be bounded and input-controlled:\n{main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn libarchive_memory_reader_uses_the_expert_nested_drain_protocol() {
+        let out = temp_dir("seq-libarchive-pump");
+        let header_source = r#"
+            struct archive;
+            struct archive_entry;
+            typedef long la_ssize_t;
+            struct archive *archive_read_new(void);
+            int archive_read_support_filter_all(struct archive *);
+            int archive_read_support_format_all(struct archive *);
+            int archive_read_set_format(struct archive *, int);
+            int archive_read_open_memory(struct archive *, const void *, size_t);
+            int archive_read_next_header(struct archive *, struct archive_entry **);
+            la_ssize_t archive_read_data(struct archive *, void *, size_t);
+            int archive_read_free(struct archive *);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-LIBARCHIVE".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/archive_read.c"),
+            target: cfunction("archive_read_open_memory"),
+            handle_type: "struct archive *".to_owned(),
+            handle_param_type: "struct archive *".to_owned(),
+            init_returns_handle: true,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "archive_read_new".to_owned(),
+                params: Vec::new(),
+                return_type: "struct archive *".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                CLifecycleStep {
+                    name: "archive_read_open_memory".to_owned(),
+                    params: vec![
+                        CParameter {
+                            name: "arg1".to_owned(),
+                            c_type: "const void *".to_owned(),
+                        },
+                        CParameter {
+                            name: "arg2".to_owned(),
+                            c_type: "size_t".to_owned(),
+                        },
+                    ],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "archive_read_next_header".to_owned(),
+                    params: vec![CParameter {
+                        name: "arg1".to_owned(),
+                        c_type: "struct archive_entry **".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "archive_read_data".to_owned(),
+                    params: vec![
+                        CParameter {
+                            name: "arg1".to_owned(),
+                            c_type: "void *".to_owned(),
+                        },
+                        CParameter {
+                            name: "arg2".to_owned(),
+                            c_type: "size_t".to_owned(),
+                        },
+                    ],
+                    return_type: "la_ssize_t".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "archive_read_support_filter_all".to_owned(),
+                    params: Vec::new(),
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Configure,
+                },
+                CLifecycleStep {
+                    name: "archive_read_support_format_all".to_owned(),
+                    params: Vec::new(),
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Configure,
+                },
+                CLifecycleStep {
+                    name: "archive_read_set_format".to_owned(),
+                    params: vec![CParameter {
+                        name: "format".to_owned(),
+                        c_type: "int".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Configure,
+                },
+            ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "archive_read_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["archive.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/archive_read.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let mut wide_args = args.clone();
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        let configured = main.find("archive_read_support_format_all").unwrap();
+        let opened = main.find("archive_read_open_memory(_gf_handle").unwrap();
+        let header = main.find("archive_read_next_header(_gf_handle").unwrap();
+        let data = main.find("archive_read_data(_gf_handle").unwrap();
+        let freed = main.rfind("archive_read_free(_gf_handle").unwrap();
+        assert!(configured < opened && opened < header && header < data && data < freed);
+        assert!(
+            !main.contains("archive_read_set_format("),
+            "the expert all-format setup must not be undone by an unconstrained format selector:\n{main}"
+        );
+        assert!(main.contains("_gf_entry_index < 256"), "{main}");
+        assert!(main.contains("_gf_data_index < 4096"), "{main}");
+        assert!(main.contains("== ARCHIVE_RETRY"), "{main}");
+        assert!(main.contains("== ARCHIVE_FATAL"), "{main}");
+        assert!(
+            main.contains("const void * _gf_step0_arg1 = (const void *)Data")
+                && main.contains("size_t _gf_step0_arg2 = (size_t)Size"),
+            "the unnamed memory-image pointer and length must describe the same fuzz span:\n{main}"
+        );
+        assert!(
+            !main.contains("_gf_lifecycle_count"),
+            "the proven reader protocol must replace random call ordering:\n{main}"
+        );
+        assert!(
+            main.contains("unsigned char _gf_archive_data_buffer[4096]")
+                && main.contains(
+                    "archive_read_data(_gf_handle, _gf_archive_data_buffer, sizeof(_gf_archive_data_buffer))"
+                )
+                && !main.contains("malloc(_gf_cap__gf_step2_arg1"),
+            "the expert drain should reuse one fixed scratch buffer instead of allocating per read:\n{main}"
+        );
+
+        wide_args.harness_id = "H-LIBARCHIVE-WIDE".to_owned();
+        wide_args.target = cfunction("archive_read_open_filenames_w");
+        wide_args.op_steps[0].name = "archive_read_open_filenames_w".to_owned();
+        wide_args.op_steps[0].params = vec![
+            CParameter {
+                name: "wfilenames".to_owned(),
+                c_type: "const wchar_t **".to_owned(),
+            },
+            CParameter {
+                name: "block_size".to_owned(),
+                c_type: "size_t".to_owned(),
+            },
+        ];
+        let wide =
+            fs::read_to_string(&generate_c_sequence_harness(wide_args).unwrap().main_c).unwrap();
+        assert!(wide.contains("archive_read_support_filter_all(_gf_handle)"));
+        assert!(wide.contains("archive_read_support_format_all(_gf_handle)"));
+        assert!(wide.contains("const wchar_t *_gf_paths__gf_step0_wfilenames[2]"));
+        assert!(wide.contains("archive_read_open_filenames_w(_gf_handle"));
+        assert!(wide.contains("archive_read_next_header(_gf_handle"));
+        assert!(wide.contains("archive_read_data(_gf_handle"));
+        assert!(
+            !wide.contains("_gf_lifecycle_count"),
+            "every exact libarchive reader variant must use the proven drain protocol:\n{wide}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn an_op_returning_a_child_handle_lets_later_ops_drive_the_child() {
+        // libexpat's `XML_ExternalEntityParserCreate(parentParser, ...)` builds a
+        // child parser from a STILL-LIVE parent, and the DTD/entity subsystem is
+        // reachable only through that child. In the ablation this was worth +594
+        // library lines on expat — more than any other single technique — and
+        // without it the harness only ever drives the object it constructed.
+        let out = temp_dir("seq-derived");
+        let header_source = r#"
+            typedef struct parser { int depth; } parser;
+            int parser_init(parser *p);
+            int parser_feed(parser *p, unsigned byte);
+            parser *parser_child(parser *p, unsigned kind);
+            int parser_free(parser *p);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let arg = |name: &str| CParameter {
+            name: name.to_owned(),
+            c_type: "unsigned".to_owned(),
+        };
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-PARSER".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/parser.c"),
+            target: cfunction("parser_feed"),
+            handle_type: "parser".to_owned(),
+            handle_param_type: "parser *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "parser_init".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                CLifecycleStep {
+                    name: "parser_feed".to_owned(),
+                    params: vec![arg("byte")],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "parser_child".to_owned(),
+                    params: vec![arg("kind")],
+                    return_type: "parser *".to_owned(),
+                    // Real APIs commonly call this Create/New; it must still be
+                    // treated as a derived producer while the parent is live.
+                    role: CStepRole::Open,
+                },
+            ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "parser_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["parser.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/parser.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        assert!(
+            main.contains("parser * _gf_derived = 0;")
+                && main.contains("int _gf_derived_live = 0;"),
+            "a derived slot must exist:\n{main}"
+        );
+        // The producer stores the child — but only a non-NULL one, since the
+        // API is entitled to decline and driving NULL would be our own bug.
+        assert!(
+            main.contains("_gf_derived = _gf_step1_result;")
+                && main.contains("_gf_derived_live = 1;"),
+            "the child must be captured:\n{main}"
+        );
+        assert!(
+            main.contains("if (_gf_step1_result) {"),
+            "a NULL child must not be captured:\n{main}"
+        );
+        assert!(
+            !main.contains("if (_gf_handle_live) { break; }"),
+            "a derived producer must run on a live parent, not be gated as a primary reopen:\n{main}"
+        );
+        // ...and later ops can be driven against it instead of the parent.
+        assert!(
+            main.contains("? _gf_derived : &_gf_handle"),
+            "ops must be able to run on the child:\n{main}"
+        );
+        assert!(
+            main.contains("parser_feed(((_gf_derived_live"),
+            "the target op itself must reach the child:\n{main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn an_ops_return_value_can_become_a_later_ops_argument() {
+        // `id = add(x); remove(id); get(id)` — use-after-remove and off-by-one
+        // index bugs need the sequence to CONSUME a value it produced. With every
+        // argument decoded fresh from the input, that whole class is unreachable
+        // by construction.
+        let out = temp_dir("seq-thread");
+        let header_source = r#"
+            typedef struct pool { int n; } pool;
+            typedef unsigned long pool_id;
+            int pool_init(pool *p);
+            pool_id pool_add(pool *p, unsigned value);
+            int pool_remove(pool *p, pool_id id);
+            int pool_free(pool *p);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-POOL".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/pool.c"),
+            target: cfunction("pool_add"),
+            handle_type: "pool".to_owned(),
+            handle_param_type: "pool *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "pool_init".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                // Returns an ID, not a 0==success status. A bare `int` return is
+                // treated as a status code and deliberately NOT threaded — the
+                // loop already gates on it, and feeding a success code back in
+                // as an argument would be noise.
+                CLifecycleStep {
+                    name: "pool_add".to_owned(),
+                    params: vec![CParameter {
+                        name: "value".to_owned(),
+                        c_type: "unsigned".to_owned(),
+                    }],
+                    return_type: "pool_id".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "pool_remove".to_owned(),
+                    params: vec![CParameter {
+                        name: "id".to_owned(),
+                        c_type: "pool_id".to_owned(),
+                    }],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+            ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "pool_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["pool.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/pool.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        // A slot exists for the produced type, and the producer stores into it.
+        assert!(
+            main.contains("pool_id _gf_slot_pool_id;"),
+            "slot declared:\n{main}"
+        );
+        assert!(
+            main.contains("_gf_slot_pool_id = _gf_step0_result;")
+                && main.contains("_gf_slot_pool_id_live = 1;"),
+            "the producer must store its result:\n{main}"
+        );
+        // The consumer can take the slot instead of a freshly decoded value...
+        assert!(
+            main.contains("_gf_slot_pool_id_live && ") && main.contains("? _gf_slot_pool_id :"),
+            "the consumer must be able to take the threaded value:\n{main}"
+        );
+        // ...but never before something has stored one, and the fresh decode is
+        // still there as the alternative.
+        assert!(
+            main.contains("_gf_step1_id = "),
+            "the fresh decode must remain as the other branch:\n{main}"
+        );
+        let _ = fs::remove_dir_all(&out);
+    }
+
+    #[test]
+    fn open_and_close_ops_cycle_the_handle_without_use_after_close() {
+        // libarchive's shape: `archive_read_new` is the constructor, but
+        // `archive_read_open_memory` is ALSO an open verb and used to be filtered
+        // out of the alphabet with it, so the harness could never open anything.
+        // Keeping it as an op — gated on liveness — reaches close/reopen and
+        // re-init-over-live-state without ever driving an ordinary op on a
+        // closed handle, which would be API misuse rather than a library bug.
+        let out = temp_dir("seq-cycle");
+        let header_source = r#"
+            typedef struct arc { void *stream; int pos; } arc;
+            int arc_new(arc *a);
+            int arc_open_memory(arc *a, unsigned size);
+            int arc_next_header(arc *a, unsigned n);
+            int arc_close(arc *a);
+            int arc_free(arc *a);
+        "#;
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let step = |name: &str, role: CStepRole| CLifecycleStep {
+            name: name.to_owned(),
+            params: vec![CParameter {
+                name: "n".to_owned(),
+                c_type: "unsigned".to_owned(),
+            }],
+            return_type: "int".to_owned(),
+            role,
+        };
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-ARC".to_owned(),
+            output_dir: out.clone(),
+            source_path: PathBuf::from("/tmp/arc.c"),
+            target: cfunction("arc_next_header"),
+            handle_type: "arc".to_owned(),
+            handle_param_type: "arc *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "arc_new".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                step("arc_next_header", CStepRole::Operation),
+                step("arc_open_memory", CStepRole::Open),
+                step("arc_close", CStepRole::Close),
+            ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "arc_free".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["arc.h".to_owned()],
+            target_includes_dirs: vec![PathBuf::from("/tmp")],
+            target_sources: vec![PathBuf::from("/tmp/arc.c")],
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: PathBuf::from("/tmp/c_runtime"),
+            type_defs: vec![defs],
+        };
+        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+
+        // The second open verb survived into the alphabet.
+        assert!(
+            main.contains("arc_open_memory(&_gf_handle"),
+            "the sibling open verb must be an op, got:\n{main}"
+        );
+        // Ordinary and close ops require a live handle; the open op requires a
+        // closed one. Those two guards are what keep use-after-close out.
+        assert!(
+            main.contains("if (!_gf_handle_live) { break; }"),
+            "ordinary/close ops must be gated on liveness:\n{main}"
+        );
+        assert!(
+            main.contains("if (_gf_handle_live) { break; }"),
+            "an open op must be gated on the handle being closed:\n{main}"
+        );
+        // Closing clears liveness, reopening restores it — that is the cycle.
+        assert!(main.contains("_gf_handle_live = 0;"), "{main}");
+        assert!(
+            main.contains("_gf_handle_live = (_gf_step1_result == 0);"),
+            "a status-returning open revives the handle only on success:\n{main}"
+        );
+        // Teardown is owed only for a handle still open, or the harness
+        // double-frees on its own account.
+        let free_pos = main.find("arc_free(&_gf_handle").expect("teardown emitted");
+        let guard_pos = main[..free_pos]
+            .rfind("if (_gf_handle_live) {")
+            .expect("teardown must sit behind a liveness guard");
+        assert!(guard_pos < free_pos);
         let _ = fs::remove_dir_all(&out);
     }
 
@@ -5783,6 +9461,12 @@ mod tests {
             source_path: header.clone(),
             target: cfunction("session_step"),
             handle_type: "struct session".to_owned(),
+            handle_param_type: "struct session *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
             init_step: Some(CLifecycleStep {
                 name: "session_init".to_owned(),
                 params: vec![CParameter {
@@ -5790,6 +9474,7 @@ mod tests {
                     c_type: "int".to_owned(),
                 }],
                 return_type: "int".to_owned(),
+                role: CStepRole::Operation,
             }),
             op_steps: vec![
                 CLifecycleStep {
@@ -5799,17 +9484,24 @@ mod tests {
                         c_type: "int".to_owned(),
                     }],
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
                 CLifecycleStep {
                     name: "session_reset".to_owned(),
                     params: Vec::new(),
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
             ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
             end_step: Some(CLifecycleStep {
                 name: "session_end".to_owned(),
                 params: Vec::new(),
                 return_type: "void".to_owned(),
+                role: CStepRole::Operation,
             }),
             target_includes: vec!["session.h".to_owned()],
             target_includes_dirs: vec![work.clone()],
@@ -5825,9 +9517,17 @@ mod tests {
         assert!(main.contains("struct session _gf_handle"));
         assert!(main.contains("memset(&_gf_handle, 0, sizeof _gf_handle)"));
         assert!(main.contains("int _gf_init_result = session_init(&_gf_handle, _gf_init_seed)"));
-        assert!(main.contains("size_t _gf_lifecycle_count = (size_t)gf_bounded_i32(&Cur, 0, 16)"));
-        assert!(main.contains("switch (gf_bounded_i32(&Cur, 0, 1))"));
-        assert!(main.contains("session_step(&_gf_handle, _gf_step0_delta)"));
+        // The op PROGRAM comes from the fixed-stride control region at the end
+        // of the input, never from the forward argument cursor — otherwise a
+        // length-changing edit to an argument re-frames every later operation.
+        assert!(main.contains("size_t _gf_lifecycle_count = gf_ctrl_step_count(Data, Size, 8)"));
+        assert!(main.contains("if (Size < 41) { _gf_lifecycle_count = 1; }"));
+        assert!(main.contains("switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, 8, 2))"));
+        assert!(
+            main.contains("gf_cursor Cur = gf_open_data(Data, Size, 41)"),
+            "the argument cursor must be clamped away from the control region:\n{main}"
+        );
+        assert!(main.contains("session_step(&_gf_handle"));
         assert!(main.contains("session_reset(&_gf_handle)"));
         assert!(main.contains("session_end(&_gf_handle)"));
 
@@ -5858,6 +9558,500 @@ mod tests {
     }
 
     #[test]
+    fn returning_opaque_handle_sequence_constructs_drives_and_destroys_values() {
+        let work = temp_dir("emit-c-returning-sequence");
+        let header = work.join("parser.h");
+        let header_source = r#"
+            typedef struct parser_impl *parser_t;
+            parser_t parser_create(const char *encoding);
+            int parser_parse(parser_t p, const char *data, size_t size);
+            parser_t parser_child(parser_t p, const char *context);
+            void parser_free(parser_t p);
+        "#;
+        fs::write(&header, header_source).unwrap();
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../c_runtime")
+            .canonicalize()
+            .unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-CRETSEQ".to_owned(),
+            output_dir: work.join("harness"),
+            source_path: header.clone(),
+            target: cfunction("parser_parse"),
+            handle_type: "parser_t".to_owned(),
+            handle_param_type: "parser_t".to_owned(),
+            init_returns_handle: true,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "parser_create".to_owned(),
+                params: vec![CParameter {
+                    name: "encoding".to_owned(),
+                    c_type: "const char *".to_owned(),
+                }],
+                return_type: "parser_t".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![
+                CLifecycleStep {
+                    name: "parser_parse".to_owned(),
+                    params: vec![
+                        CParameter {
+                            name: "data".to_owned(),
+                            c_type: "const char *".to_owned(),
+                        },
+                        CParameter {
+                            name: "size".to_owned(),
+                            c_type: "size_t".to_owned(),
+                        },
+                    ],
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
+                    name: "parser_child".to_owned(),
+                    params: vec![CParameter {
+                        name: "context".to_owned(),
+                        c_type: "const char *".to_owned(),
+                    }],
+                    return_type: "parser_t".to_owned(),
+                    role: CStepRole::Operation,
+                },
+            ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "parser_free".to_owned(),
+                params: Vec::new(),
+                return_type: "void".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["parser.h".to_owned()],
+            target_includes_dirs: vec![work.clone()],
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: runtime.clone(),
+            type_defs: vec![defs],
+        };
+
+        let result = generate_c_sequence_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_c).unwrap();
+        assert!(
+            main.contains("parser_t _gf_handle = parser_create(NULL);"),
+            "{main}"
+        );
+        assert!(main.contains("if (_gf_handle) {"), "{main}");
+        assert!(!main.contains("memset(&_gf_handle"), "{main}");
+        assert!(main.contains("parser_parse(((_gf_derived_live"), "{main}");
+        assert!(main.contains("parser_free(_gf_derived)"), "{main}");
+        assert!(main.contains("parser_free(_gf_handle)"), "{main}");
+        assert!(!main.contains("parser_free(&_gf_handle)"), "{main}");
+
+        if Command::new("clang").arg("--version").output().is_ok() {
+            let output = Command::new("clang")
+                .arg("-std=c99")
+                .arg("-I")
+                .arg(&work)
+                .arg("-I")
+                .arg(runtime)
+                .arg("-c")
+                .arg(&result.main_c)
+                .arg("-o")
+                .arg(work.join("returning-sequence.o"))
+                .output()
+                .expect("spawn clang");
+            assert!(
+                output.status.success(),
+                "clang failed:\n{}\n{main}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn out_parameter_handle_sequence_opens_drives_and_closes_pointer_value() {
+        let work = temp_dir("emit-c-out-handle-sequence");
+        let header = work.join("db.h");
+        let header_source = r#"
+            #include <stddef.h>
+            typedef struct db db;
+            int db_open(const char *filename, db **out);
+            int db_exec(db *handle, const char *sql, size_t size);
+            int db_close(db *handle);
+        "#;
+        fs::write(&header, header_source).unwrap();
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../c_runtime")
+            .canonicalize()
+            .unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-COUTSEQ".to_owned(),
+            output_dir: work.join("harness"),
+            source_path: header.clone(),
+            target: cfunction("db_exec"),
+            handle_type: "db *".to_owned(),
+            handle_param_type: "db *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: Some(1),
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: Some(CLifecycleStep {
+                name: "db_open".to_owned(),
+                params: vec![
+                    CParameter {
+                        name: "filename".to_owned(),
+                        c_type: "const char *".to_owned(),
+                    },
+                    CParameter {
+                        name: "out".to_owned(),
+                        c_type: "db **".to_owned(),
+                    },
+                ],
+                return_type: "int".to_owned(),
+                role: CStepRole::Open,
+            }),
+            op_steps: vec![CLifecycleStep {
+                name: "db_exec".to_owned(),
+                params: vec![
+                    CParameter {
+                        name: "sql".to_owned(),
+                        c_type: "const char *".to_owned(),
+                    },
+                    CParameter {
+                        name: "size".to_owned(),
+                        c_type: "size_t".to_owned(),
+                    },
+                ],
+                return_type: "int".to_owned(),
+                role: CStepRole::Operation,
+            }],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: Some(CLifecycleStep {
+                name: "db_close".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Close,
+            }),
+            target_includes: vec!["db.h".to_owned()],
+            target_includes_dirs: vec![work.clone()],
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: runtime.clone(),
+            type_defs: vec![defs],
+        };
+
+        let result = generate_c_sequence_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_c).unwrap();
+        assert!(main.contains("db * _gf_handle = NULL;"), "{main}");
+        assert!(
+            main.contains("db_open(\":memory:\", &_gf_handle)"),
+            "{main}"
+        );
+        assert!(main.contains("db_exec(_gf_handle"), "{main}");
+        assert!(main.contains("db_close(_gf_handle)"), "{main}");
+        assert!(!main.contains("db_close(&_gf_handle)"), "{main}");
+
+        if Command::new("clang").arg("--version").output().is_ok() {
+            let output = Command::new("clang")
+                .arg("-std=c99")
+                .arg("-I")
+                .arg(&work)
+                .arg("-I")
+                .arg(runtime)
+                .arg("-c")
+                .arg(&result.main_c)
+                .arg("-o")
+                .arg(work.join("out-handle-sequence.o"))
+                .output()
+                .expect("spawn clang");
+            assert!(
+                output.status.success(),
+                "clang failed:\n{}\n{main}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn jpeg_header_reader_uses_public_error_and_scanline_protocol() {
+        let work = temp_dir("emit-c-jpeg-sequence");
+        let header = work.join("jpeglib.h");
+        let header_source = r#"
+            #include <stddef.h>
+            typedef int boolean;
+            typedef unsigned int JDIMENSION;
+            typedef unsigned char JSAMPLE;
+            typedef JSAMPLE *JSAMPROW;
+            typedef JSAMPROW *JSAMPARRAY;
+            struct jpeg_error_mgr;
+            struct jpeg_common_struct { struct jpeg_error_mgr *err; };
+            typedef struct jpeg_common_struct *j_common_ptr;
+            struct jpeg_memory_mgr {
+              JSAMPARRAY (*alloc_sarray)(j_common_ptr, int, JDIMENSION, JDIMENSION);
+            };
+            struct jpeg_decompress_struct {
+              struct jpeg_error_mgr *err;
+              JDIMENSION output_width;
+              int output_components;
+              JDIMENSION output_scanline;
+              JDIMENSION output_height;
+              struct jpeg_memory_mgr *mem;
+            };
+            typedef struct jpeg_decompress_struct *j_decompress_ptr;
+            struct jpeg_error_mgr { void (*error_exit)(j_common_ptr); };
+            struct jpeg_error_mgr *jpeg_std_error(struct jpeg_error_mgr *);
+            void jpeg_CreateDecompress(j_decompress_ptr, int, size_t);
+            void jpeg_destroy_decompress(j_decompress_ptr);
+            void jpeg_mem_src(j_decompress_ptr, const unsigned char *, unsigned long);
+            int jpeg_read_header(j_decompress_ptr, boolean);
+            boolean jpeg_start_decompress(j_decompress_ptr);
+            JDIMENSION jpeg_read_scanlines(j_decompress_ptr, JSAMPARRAY, JDIMENSION);
+            boolean jpeg_finish_decompress(j_decompress_ptr);
+            #define TRUE 1
+            #define JPEG_HEADER_OK 1
+            #define JPOOL_IMAGE 1
+            #define JPEG_LIB_VERSION 80
+            #define jpeg_create_decompress(cinfo) \
+              jpeg_CreateDecompress((cinfo), JPEG_LIB_VERSION, sizeof(struct jpeg_decompress_struct))
+        "#;
+        fs::write(&header, header_source).unwrap();
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../c_runtime")
+            .canonicalize()
+            .unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-CJPEGSEQ".to_owned(),
+            output_dir: work.join("harness"),
+            source_path: header.clone(),
+            target: CFunction {
+                name: "jpeg_read_header".to_owned(),
+                line: 1,
+                return_type: "int".to_owned(),
+                params: vec![
+                    c_parser::CParamDescriptor {
+                        name: "cinfo".to_owned(),
+                        c_type: "j_decompress_ptr".to_owned(),
+                    },
+                    c_parser::CParamDescriptor {
+                        name: "require_image".to_owned(),
+                        c_type: "boolean".to_owned(),
+                    },
+                ],
+                ..Default::default()
+            },
+            handle_type: "struct jpeg_decompress_struct".to_owned(),
+            handle_param_type: "j_decompress_ptr".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: None,
+            op_steps: vec![CLifecycleStep {
+                name: "jpeg_read_header".to_owned(),
+                params: vec![CParameter {
+                    name: "require_image".to_owned(),
+                    c_type: "boolean".to_owned(),
+                }],
+                return_type: "int".to_owned(),
+                role: CStepRole::Operation,
+            }],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: None,
+            // Auto initially sees private implementation headers too. The exact
+            // public recipe must discard those and retain only jpeglib.h.
+            target_includes: vec!["jpeglib.h".to_owned(), "jdmaster.h".to_owned()],
+            target_includes_dirs: vec![work.clone()],
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: runtime.clone(),
+            type_defs: vec![defs],
+        };
+
+        let result = generate_c_sequence_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_c).unwrap();
+        assert!(
+            main.contains("_gf_error.pub.error_exit = _gf_jpeg_error_exit"),
+            "{main}"
+        );
+        assert!(
+            main.contains("jpeg_create_decompress(&_gf_cinfo)"),
+            "{main}"
+        );
+        assert!(main.contains("jpeg_mem_src(&_gf_cinfo, Data"), "{main}");
+        assert!(
+            main.contains("jpeg_read_header(&_gf_cinfo, TRUE)"),
+            "{main}"
+        );
+        assert!(main.contains("jpeg_read_scanlines(&_gf_cinfo"), "{main}");
+        assert!(
+            main.contains("jpeg_destroy_decompress(&_gf_cinfo)"),
+            "{main}"
+        );
+        assert!(!main.contains("struct jpeg_decomp_master"), "{main}");
+        assert!(!main.contains("#include \"jdmaster.h\""), "{main}");
+
+        if Command::new("clang").arg("--version").output().is_ok() {
+            let output = Command::new("clang")
+                .arg("-std=c99")
+                .arg("-I")
+                .arg(&work)
+                .arg("-I")
+                .arg(runtime)
+                .arg("-c")
+                .arg(&result.main_c)
+                .arg("-o")
+                .arg(work.join("jpeg-sequence.o"))
+                .output()
+                .expect("spawn clang");
+            assert!(
+                output.status.success(),
+                "clang failed:\n{}\n{main}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn sqlite_prepare_uses_nul_terminated_multi_statement_vm_protocol() {
+        let work = temp_dir("emit-c-sqlite-sequence");
+        // The canonical repository target is declared through sqliteInt.h;
+        // installed consumers use sqlite3.h. Exercise the source-tree spelling
+        // that the real auto-harness selection sees.
+        let header = work.join("sqliteInt.h");
+        let header_source = r#"
+            typedef struct sqlite3 sqlite3;
+            typedef struct sqlite3_stmt sqlite3_stmt;
+            #define SQLITE_OK 0
+            #define SQLITE_ROW 100
+            int sqlite3_open(const char *, sqlite3 **);
+            int sqlite3_prepare_v2(sqlite3 *, const char *, int, sqlite3_stmt **, const char **);
+            int sqlite3_step(sqlite3_stmt *);
+            int sqlite3_finalize(sqlite3_stmt *);
+            int sqlite3_close(sqlite3 *);
+        "#;
+        fs::write(&header, header_source).unwrap();
+        let defs = c_parser::parse_c_type_defs(header_source).unwrap();
+        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../c_runtime")
+            .canonicalize()
+            .unwrap();
+        let args = GenerateCSequenceArgs {
+            decoder_limits: Default::default(),
+            harness_id: "H-CSQLITESEQ".to_owned(),
+            output_dir: work.join("harness"),
+            source_path: header.clone(),
+            target: CFunction {
+                name: "sqlite3_prepare_v2".to_owned(),
+                line: 1,
+                return_type: "int".to_owned(),
+                params: vec![
+                    c_parser::CParamDescriptor {
+                        name: "db".to_owned(),
+                        c_type: "sqlite3 *".to_owned(),
+                    },
+                    c_parser::CParamDescriptor {
+                        name: "sql".to_owned(),
+                        c_type: "const char *".to_owned(),
+                    },
+                    c_parser::CParamDescriptor {
+                        name: "bytes".to_owned(),
+                        c_type: "int".to_owned(),
+                    },
+                    c_parser::CParamDescriptor {
+                        name: "stmt".to_owned(),
+                        c_type: "sqlite3_stmt **".to_owned(),
+                    },
+                    c_parser::CParamDescriptor {
+                        name: "tail".to_owned(),
+                        c_type: "const char **".to_owned(),
+                    },
+                ],
+                ..Default::default()
+            },
+            handle_type: "sqlite3 *".to_owned(),
+            handle_param_type: "sqlite3 *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: Some(1),
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
+            init_step: None,
+            op_steps: vec![CLifecycleStep {
+                name: "sqlite3_prepare_v2".to_owned(),
+                params: Vec::new(),
+                return_type: "int".to_owned(),
+                role: CStepRole::Operation,
+            }],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
+            end_step: None,
+            target_includes: vec!["sqliteInt.h".to_owned()],
+            target_includes_dirs: vec![work.clone()],
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            target_declared_in_header: true,
+            c_runtime_include: runtime.clone(),
+            type_defs: vec![defs],
+        };
+
+        let result = generate_c_sequence_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_c).unwrap();
+        assert!(main.contains("_gf_sql[Size] = '\\0'"), "{main}");
+        assert!(
+            main.contains("sqlite3_open(\":memory:\", &_gf_db)"),
+            "{main}"
+        );
+        assert!(main.contains("sqlite3_prepare_v2("), "{main}");
+        assert!(main.contains("sqlite3_step(_gf_stmt)"), "{main}");
+        assert!(main.contains("sqlite3_finalize(_gf_stmt)"), "{main}");
+        assert!(main.contains("sqlite3_close(_gf_db)"), "{main}");
+        assert!(!main.contains("gf_open_data"), "{main}");
+
+        if Command::new("clang").arg("--version").output().is_ok() {
+            let output = Command::new("clang")
+                .arg("-std=c99")
+                .arg("-I")
+                .arg(&work)
+                .arg("-I")
+                .arg(runtime)
+                .arg("-c")
+                .arg(&result.main_c)
+                .arg("-o")
+                .arg(work.join("sqlite-sequence.o"))
+                .output()
+                .expect("spawn clang");
+            assert!(
+                output.status.success(),
+                "clang failed:\n{}\n{main}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[test]
     fn generate_c_sequence_harness_skips_incomplete_handle() {
         // GAP #6 (tidwall/hashmap.c): the sequence handle `struct hashmap` is only
         // FORWARD-declared in the harness's headers — its body is in hashmap.c, which
@@ -5884,6 +10078,12 @@ mod tests {
             source_path: header.clone(),
             target: cfunction("hashmap_set_with_hash"),
             handle_type: "struct hashmap".to_owned(),
+            handle_param_type: "struct hashmap *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
             init_step: None,
             op_steps: vec![CLifecycleStep {
                 name: "hashmap_clear".to_owned(),
@@ -5892,7 +10092,12 @@ mod tests {
                     c_type: "int".to_owned(),
                 }],
                 return_type: "void".to_owned(),
+                role: CStepRole::Operation,
             }],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
             end_step: None,
             target_includes: vec!["map.h".to_owned()],
             target_includes_dirs: vec![work.clone()],
@@ -5936,6 +10141,12 @@ mod tests {
             source_path: header.clone(),
             target: cfunction("session_step"),
             handle_type: "struct session".to_owned(),
+            handle_param_type: "struct session *".to_owned(),
+            init_returns_handle: false,
+            init_out_handle_argument: None,
+            init_success_nonzero: false,
+            handle_field_initializers: Vec::new(),
+            output_drain_protocol: None,
             init_step: None,
             op_steps: vec![
                 CLifecycleStep {
@@ -5945,6 +10156,7 @@ mod tests {
                         c_type: "int".to_owned(),
                     }],
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
                 CLifecycleStep {
                     name: "session_find".to_owned(),
@@ -5953,8 +10165,13 @@ mod tests {
                         c_type: "struct hidden_state *".to_owned(),
                     }],
                     return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
                 },
             ],
+            protocol_steps: Vec::new(),
+            protocol_objects: Vec::new(),
+            receiver_configuration_names: Vec::new(),
+            callback_action: None,
             end_step: None,
             target_includes: vec!["session.h".to_owned()],
             target_includes_dirs: vec![work.clone()],
@@ -5967,11 +10184,11 @@ mod tests {
 
         let result = generate_c_sequence_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_c).unwrap();
-        assert!(main.contains("session_step(&_gf_handle, _gf_step0_delta)"));
+        assert!(main.contains("session_step(&_gf_handle"));
         assert!(
             !main.contains("session_find"),
             "unsupported secondary op should be skipped:\n{main}"
         );
-        assert!(main.contains("switch (gf_bounded_i32(&Cur, 0, 0))"));
+        assert!(main.contains("switch ((int)gf_ctrl_op(Data, Size, _gf_lifecycle_index, 8, 1))"));
     }
 }

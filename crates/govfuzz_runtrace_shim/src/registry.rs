@@ -5,14 +5,28 @@
 //! `registry_and_manifest_match` keeps the two in sync.
 
 use crate::hooks::{
-    assertion::Assertion, cmplog::CmpLog, dl::Dl, dlsym::Dlsym, env::Env, format::Format, fs::Fs,
-    identity::Identity, mem::Mem, mqueue::Mqueue, net::Net, proc::Proc, sql::Sql,
+    assertion::Assertion, cmplog::CmpLog, determinism::Determinism, dl::Dl, dlsym::Dlsym, env::Env,
+    format::Format, fs::Fs, identity::Identity, ioctl::Ioctl, mem::Mem, mqueue::Mqueue, net::Net,
+    proc::Proc, sql::Sql,
 };
 use crate::sdk::FakeResource;
 
 pub static REGISTRY: &[&'static dyn FakeResource] = &[
-    &Env, &Net, &Fs, &Dl, &Dlsym, &Proc, &Format, &Assertion, &Identity, &CmpLog, &Mem, &Mqueue,
+    &Env,
+    &Net,
+    &Fs,
+    &Dl,
+    &Dlsym,
+    &Proc,
+    &Format,
+    &Assertion,
+    &Identity,
+    &CmpLog,
+    &Mem,
+    &Mqueue,
     &Sql,
+    &Determinism,
+    &Ioctl,
 ];
 
 /// Iterator over plugins whose `is_enabled()` returns true. Useful

@@ -681,6 +681,30 @@ fn macro_definition_body_lines(source: &str) -> std::collections::HashSet<u32> {
     lines
 }
 
+/// Temper a signature-derived reachability verdict with the target's LINKAGE.
+///
+/// `classify_input_reachability` reads parameter shapes and names, so a
+/// file-local helper taking `const char *` looks exactly like a public parser
+/// and is labelled `AttackerReachable`. It is not: a `static` function has no
+/// external linkage, so nothing outside its translation unit can call it and no
+/// attacker can reach it directly. It may still be reachable THROUGH a public
+/// caller, which is precisely `ReachabilityUnproven`.
+///
+/// This changes only the claim, never the ranking — an internal helper is still
+/// worth fuzzing. Measured on libexpat, where the file-local `matchkey`,
+/// `xcslen` and `attlist2` were each reported `critical` and
+/// `attacker_reachable`, having been driven directly by the harness with
+/// fabricated arguments no public caller would pass.
+fn reachability_for_linkage(
+    reachability: target_rank::InputReachability,
+    is_static: bool,
+) -> target_rank::InputReachability {
+    if is_static && reachability == target_rank::InputReachability::AttackerReachable {
+        return target_rank::InputReachability::ReachabilityUnproven;
+    }
+    reachability
+}
+
 pub fn discover(root: &Path) -> Result<Vec<Candidate>> {
     discover_with_dir_filter(root, &DirFilter::default())
 }
@@ -1170,6 +1194,72 @@ fn is_libfuzzer_hook(name: &str) -> bool {
 /// be govfuzz's own generated output. It is dropped when a real library target
 /// coexists, but kept as the PASSTHROUGH target when it is the sole candidate
 /// (#408/#410) — so the caller decides, not this predicate.
+/// The project's OWN fuzz harnesses — the ones discovery deliberately excludes
+/// from being targets.
+///
+/// They are excluded for a good reason (a project's harness must not out-rank
+/// its parser), but excluding them also threw away the fact of their existence.
+/// They are the only expert baseline there is: a govfuzz run over a tree that
+/// ships them can be compared against what its own maintainers wrote, which is
+/// the difference between "1,400 lines" and "1,400 of the 4,413 an expert
+/// reaches".
+///
+/// Enumeration only. BUILDING them is deliberately not automated: each project
+/// needs its own flags, generated config headers and disabled optional backends,
+/// and a wrong build would silently produce a baseline that measures the build
+/// rather than the harness.
+pub fn existing_harness_sources(root: &Path) -> Vec<PathBuf> {
+    let mut found: Vec<PathBuf> = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    // Bounded like every other tree walk here: this is a reporting nicety and
+    // must never dominate discovery.
+    let mut budget = 20_000usize;
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            if budget == 0 {
+                break;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                let skip = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with('.') || n == "target" || n == "node_modules")
+                    .unwrap_or(false);
+                if !skip {
+                    stack.push(path);
+                }
+                continue;
+            }
+            budget -= 1;
+            let is_source = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| matches!(e, "c" | "cc" | "cpp" | "cxx" | "rs" | "java"))
+                .unwrap_or(false);
+            if !is_source {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            // The three entry points a project's own harness uses: libFuzzer's
+            // C/C++ one, cargo-fuzz's macro, and Jazzer's JVM method.
+            if text.contains("LLVMFuzzerTestOneInput")
+                || text.contains("fuzz_target!")
+                || text.contains("fuzzerTestOneInput")
+            {
+                found.push(path);
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
 fn is_libfuzzer_test_one_input(name: &str) -> bool {
     bare_name(name) == "LLVMFuzzerTestOneInput"
 }
@@ -1929,7 +2019,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // This never misclassifies modern C as K&R, and never drops a modern
             // file because of a K&R false positive.
             let knr = c_parser::parse_knr_functions(&source);
-            let (fns, dialect) = if !knr.is_empty() {
+            let knr_names = knr
+                .iter()
+                .map(|function| function.name.clone())
+                .collect::<std::collections::HashSet<_>>();
+            let fns = if !knr.is_empty() {
                 // #5 (offline-legacy audit): a transitional 1990s TU commonly MIXES
                 // a few old-style K&R helpers with ANSI-prototyped public parsers
                 // (the real fuzz targets). The K&R extractor only returns old-style
@@ -1937,14 +2031,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 // in the file. Merge instead: keep each K&R function's
                 // decl-block-derived signature (the modern parser sees old-style
                 // defs as zero-param), and add the modern parser's functions that
-                // the K&R parser did not recognize (by name). The dialect stays K&R
-                // — the whole TU must build under a K&R-tolerant std because an
-                // old-style definition is an error under C99+.
+                // the K&R parser did not recognize (by name). Dialect is attached
+                // per function below: a modern public parser in a mixed TU remains
+                // fuzzable (project probe archives already compile the whole TU),
+                // while the actual old-style helper stays in the report-only lane.
                 let mut merged = knr;
-                let knr_names: std::collections::HashSet<String> = merged
-                    .iter()
-                    .map(|function| function.name.clone())
-                    .collect();
                 if let Ok(modern) =
                     parse_c_functions_preprocessed(&source, preprocess, &preprocessor_defines)
                 {
@@ -1954,7 +2045,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                         }
                     }
                 }
-                (merged, Some(lang_profile::Dialect::CKAndR))
+                merged
             } else {
                 let modern = match parse_c_functions_preprocessed(
                     &source,
@@ -1967,7 +2058,7 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                         return record_discovery_drop(path, "c", "parse", &format!("{error:?}"))
                     }
                 };
-                (modern, Some(lang_profile::Dialect::C99))
+                modern
             };
             let fns = dedup_c_functions(fns);
             // A function declarator inside a multi-line `#define` is a macro
@@ -1987,6 +2078,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // Loop-invariant: depends only on the path. Same hoist as the C++ arm.
             let path_guard = foreign_platform_path_guard(path);
             for tgt in target_rank::rank_c_targets(&fns) {
+                let target_dialect = if knr_names.contains(&tgt.name) {
+                    lang_profile::Dialect::CKAndR
+                } else {
+                    lang_profile::Dialect::C99
+                };
                 let (is_static, foreign_guard) = {
                     let m = meta.get(&(tgt.name.as_str(), tgt.line));
                     (
@@ -2004,8 +2100,11 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     score: tgt.score,
                     is_static,
                     foreign_guard,
-                    input_reachability: Some(tgt.input_reachability),
-                    dialect,
+                    input_reachability: Some(reachability_for_linkage(
+                        tgt.input_reachability,
+                        is_static,
+                    )),
+                    dialect: Some(target_dialect),
                 });
             }
         }
@@ -2102,7 +2201,10 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     },
                     is_static,
                     foreign_guard,
-                    input_reachability: Some(tgt.input_reachability),
+                    input_reachability: Some(reachability_for_linkage(
+                        tgt.input_reachability,
+                        is_static,
+                    )),
                     dialect,
                 });
             }
@@ -3443,6 +3545,76 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+
+    #[test]
+    fn a_projects_own_harnesses_are_enumerable_even_though_they_are_not_targets() {
+        // Discovery excludes them so a project's harness cannot out-rank its
+        // parser — but excluding them also threw away the fact of their
+        // existence, and they are the only expert baseline there is.
+        let root = std::env::temp_dir().join(format!("govfuzz-experts-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("fuzz")).unwrap();
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(
+            root.join("fuzz/xml_parse_fuzzer.c"),
+            "int LLVMFuzzerTestOneInput(const unsigned char *d, unsigned long n) { return 0; }",
+        )
+        .unwrap();
+        fs::write(
+            root.join("fuzz/rust_target.rs"),
+            "fuzz_target!(|data: &[u8]| { let _ = data; });",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/lib.c"),
+            "int parse(const char *s) { return 0; }",
+        )
+        .unwrap();
+
+        let found = existing_harness_sources(&root);
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            names.contains(&"xml_parse_fuzzer.c".to_owned()),
+            "{names:?}"
+        );
+        assert!(names.contains(&"rust_target.rs".to_owned()), "{names:?}");
+        // Ordinary library source is not a harness.
+        assert!(!names.contains(&"lib.c".to_owned()), "{names:?}");
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_file_local_helper_is_never_claimed_attacker_reachable() {
+        use target_rank::InputReachability as R;
+        // libexpat's `matchkey(const char *start, const char *end, const char *key)`
+        // is `static`. Its parameter shapes read as a parser, so the signature
+        // classifier says AttackerReachable — but nothing outside the TU can call
+        // it, so a crash the harness drove directly is not attacker-reachable.
+        assert_eq!(
+            reachability_for_linkage(R::AttackerReachable, true),
+            R::ReachabilityUnproven,
+            "a static helper must not claim attacker reachability"
+        );
+        // External linkage keeps the signature verdict.
+        assert_eq!(
+            reachability_for_linkage(R::AttackerReachable, false),
+            R::AttackerReachable
+        );
+        // Other verdicts are untouched in both directions — this tempers the
+        // positive claim only, it does not invent one.
+        for verdict in [
+            R::ReachabilityUnproven,
+            R::OutputSerializer,
+            R::IpcChannelReachable,
+        ] {
+            assert_eq!(reachability_for_linkage(verdict, true), verdict);
+            assert_eq!(reachability_for_linkage(verdict, false), verdict);
+        }
+    }
 
     #[test]
     fn cpp_windows_framework_guard_flags_mfc_atl_but_not_bare_windows_h() {

@@ -7,10 +7,11 @@ use crate::ast::{
 };
 use crate::error::{IdlParseError, Span};
 use crate::lexer::{lex, Token, TokenKind};
-use std::collections::VecDeque;
+use crate::literal::{decode_idl_literal_body, literal_body};
+use std::collections::{HashMap, VecDeque};
 
 pub fn parse_source(source: &str) -> Result<IdlFile, IdlParseError> {
-    let trimmed = source.trim_start();
+    let trimmed = source.trim_start_matches('\u{feff}').trim_start();
     if trimmed.starts_with('#') && !starts_with_pragma_directive(trimmed) {
         return Err(IdlParseError::new(
             "unexpected preprocessor directive after CPP-lite preprocessing",
@@ -27,6 +28,9 @@ pub fn parse_source(source: &str) -> Result<IdlFile, IdlParseError> {
         warnings: Vec::new(),
         pending_declarations: VecDeque::new(),
         depth: 0,
+        scope: Vec::new(),
+        constants: HashMap::new(),
+        type_bracket_depth: 0,
     }
     .parse_file()
 }
@@ -36,6 +40,10 @@ pub fn parse_source(source: &str) -> Result<IdlFile, IdlParseError> {
 /// recurse until the parser thread's stack overflows (security review, LOW). The
 /// `#include` preprocessor has its own separate `MAX_INCLUDE_DEPTH` cap.
 const MAX_NEST_DEPTH: usize = 256;
+
+/// The largest `fixed<>` precision IDL defines; also the fallback when a
+/// `fixed<>` argument names a constant this parser cannot resolve.
+const MAX_FIXED_DIGITS: u16 = 31;
 
 struct Parser<'a> {
     source: &'a str,
@@ -47,6 +55,19 @@ struct Parser<'a> {
     /// Current recursive-descent nesting depth (modules + constructed types),
     /// bounded by [`MAX_NEST_DEPTH`]. Incremented by [`Parser::enter_nesting`].
     depth: usize,
+    /// Enclosing module / interface names, innermost last. Used to qualify the
+    /// constants recorded in [`Parser::constants`] and to resolve a relative
+    /// scoped name the way IDL does: innermost enclosing scope outwards.
+    scope: Vec<String>,
+    /// Integer-valued `const` declarations seen so far, keyed by their fully
+    /// qualified name (`Mod::Iface::MAX`). Lets a named constant act as a real
+    /// `positive_int_const` in a sequence/string bound or an array dimension
+    /// instead of degrading to "unbounded" / dimension 0.
+    constants: HashMap<String, i128>,
+    /// How many `<…>` type brackets enclose the expression being parsed. Inside
+    /// one, `>>` closes two nested `sequence<sequence<T, MAX>>` brackets and is
+    /// never a right-shift operator.
+    type_bracket_depth: usize,
 }
 
 impl Parser<'_> {
@@ -124,7 +145,21 @@ impl Parser<'_> {
         if self.consume_keyword("union") {
             return self.parse_union();
         }
+        if self.consume_keyword("native") {
+            return self.parse_native();
+        }
+        if self.consume_keyword("typeprefix") {
+            return self.parse_type_prefix();
+        }
+        if self.consume_keyword("bitset") {
+            return self.parse_bitset();
+        }
         let is_abstract = self.consume_keyword("abstract");
+        // `abstract interface` is IDL3; without this the `abstract` was consumed
+        // and the `interface` then failed the declaration dispatch entirely.
+        if self.consume_keyword("interface") {
+            return self.parse_interface();
+        }
         if self.consume_keyword("valuetype") {
             return self.parse_valuetype(is_abstract);
         }
@@ -198,6 +233,7 @@ impl Parser<'_> {
         self.enter_nesting()?;
         let name = self.expect_identifier()?;
         self.expect_text("{")?;
+        self.scope.push(name.clone());
         let mut declarations = Vec::new();
         loop {
             if let Some(declaration) = self.pending_declarations.pop_front() {
@@ -209,6 +245,7 @@ impl Parser<'_> {
             }
             declarations.push(self.parse_declaration()?);
         }
+        self.scope.pop();
         self.expect_text(";")?;
         self.depth -= 1;
         Ok(Declaration::Module(Module { name, declarations }))
@@ -250,16 +287,122 @@ impl Parser<'_> {
             }));
         }
         self.expect_text("{")?;
+        self.scope.push(name.clone());
         let mut members = Vec::new();
         while !self.consume_text("}") {
+            if self.parse_nested_scope_declaration(&name)? {
+                continue;
+            }
             members.push(self.parse_interface_member()?);
         }
+        self.scope.pop();
         self.expect_text(";")?;
         Ok(Declaration::Interface(Interface {
             name,
             inherits,
             members,
         }))
+    }
+
+    /// IDL lets an `interface` (or `valuetype`) body declare its own types and
+    /// constants. `Interface` carries only operations and attributes, so a nested
+    /// declaration is hoisted to the enclosing scope — the type still reaches the
+    /// generated harness instead of the whole `.idl` being skipped. Returns
+    /// `false` when the next token does not start a nested declaration.
+    fn parse_nested_scope_declaration(&mut self, owner: &str) -> Result<bool, IdlParseError> {
+        let token = self.peek().clone();
+        if token.kind != TokenKind::Identifier {
+            return Ok(false);
+        }
+        let keyword = token.text.to_ascii_lowercase();
+        if !matches!(
+            keyword.as_str(),
+            "const"
+                | "typedef"
+                | "struct"
+                | "union"
+                | "enum"
+                | "bitmask"
+                | "bitset"
+                | "exception"
+                | "native"
+                | "typeprefix"
+        ) {
+            return Ok(false);
+        }
+        // Every name matched above is an IDL reserved word, so it can only start
+        // a declaration here — it can never be an operation's return type.
+        let keyword_index = self.pos;
+        self.bump();
+        let start = self.pending_declarations.len();
+        let declaration = match keyword.as_str() {
+            "const" => self.parse_const()?,
+            "typedef" => self.parse_typedef()?,
+            "struct" => self.parse_struct()?,
+            "union" => self.parse_union()?,
+            "enum" => self.parse_enum()?,
+            "bitmask" => self.parse_bitmask()?,
+            "bitset" => self.parse_bitset()?,
+            "exception" => self.parse_exception()?,
+            "native" => self.parse_native()?,
+            _ => self.parse_type_prefix()?,
+        };
+        self.warnings.push(self.warning_at(
+            keyword_index,
+            format!("IDL declaration nested in '{owner}' hoisted to the enclosing scope"),
+        ));
+        self.pending_declarations.insert(start, declaration);
+        Ok(true)
+    }
+
+    /// `bitset Header { bitfield<3> flags; };` — IDL4 / DDS-XTypes. The bit
+    /// layout has no Ada mapping here, so the body is skipped and the name is
+    /// kept as a placeholder rather than failing the whole file.
+    fn parse_bitset(&mut self) -> Result<Declaration, IdlParseError> {
+        let name = self.expect_identifier()?;
+        let _inherits = self.parse_optional_type_inherits()?;
+        if !self.consume_text(";") {
+            self.skip_braced_body()?;
+            self.expect_text(";")?;
+        }
+        self.warnings.push(format!(
+            "IDL bitset '{name}' mapped to an opaque placeholder"
+        ));
+        Ok(Declaration::ValueType(ValueType {
+            name,
+            inherits: Vec::new(),
+            is_abstract: false,
+        }))
+    }
+
+    /// `native Cookie;` — an opaque, language-mapped type. Recorded as a named
+    /// placeholder so references to it resolve.
+    fn parse_native(&mut self) -> Result<Declaration, IdlParseError> {
+        let name = self.expect_identifier()?;
+        self.expect_text(";")?;
+        self.warnings.push(format!(
+            "native IDL type '{name}' mapped to an opaque placeholder"
+        ));
+        Ok(Declaration::ValueType(ValueType {
+            name,
+            inherits: Vec::new(),
+            is_abstract: false,
+        }))
+    }
+
+    /// `typeprefix Target "prefix";` — the IDL3 spelling of `#pragma prefix`.
+    fn parse_type_prefix(&mut self) -> Result<Declaration, IdlParseError> {
+        let line = self.peek().span.line;
+        let _target = self.parse_scoped_name()?;
+        let prefix = self.expect_string_literal()?;
+        self.expect_text(";")?;
+        let pragma = IdlPragma {
+            name: "prefix".to_owned(),
+            line,
+            kind: IdlPragmaKind::Prefix(prefix),
+        };
+        self.pragmas.push(pragma.clone());
+        Ok(Declaration::Pragma(pragma))
     }
 
     fn parse_exception(&mut self) -> Result<Declaration, IdlParseError> {
@@ -281,7 +424,15 @@ impl Parser<'_> {
                 fields: Vec::new(),
             }));
         }
-        let _inherits = self.parse_optional_type_inherits()?;
+        let inherits = self.parse_optional_type_inherits()?;
+        for base in &inherits {
+            // `Struct` carries no base, so the inherited fields are dropped.
+            // Silently emitting a short struct would misreport the wire layout.
+            self.warnings.push(format!(
+                "IDL struct '{name}' inherits '{}'; the inherited fields are not mapped",
+                format_scoped_name(base)
+            ));
+        }
         self.expect_text("{")?;
         let mut fields = Vec::new();
         while !self.consume_text("}") {
@@ -309,11 +460,30 @@ impl Parser<'_> {
         if !self.consume_text("}") {
             loop {
                 self.skip_annotations()?;
-                variants.push(self.expect_identifier()?);
+                let variant = self.expect_identifier()?;
+                // `RED = 5` is not OMG IDL — IDL4 spells it `@value(5)` — but it
+                // is common in vendor and MIDL-flavoured `.idl`, and rejecting it
+                // costs the whole file.
+                if self.consume_text("=") {
+                    let start = self.pos;
+                    let (_, numeric) = self.parse_const_value_and_numeric()?;
+                    let text = self.source_text_between(start, self.pos);
+                    self.warnings.push(self.warning_at(
+                        start,
+                        format!("explicit IDL enumerator value '{variant} = {text}' ignored"),
+                    ));
+                    self.register_constant(&variant, numeric);
+                }
+                self.skip_annotations()?;
+                variants.push(variant);
                 if self.consume_text("}") {
                     break;
                 }
                 self.expect_text(",")?;
+                // A trailing comma before `}` is accepted by most IDL compilers.
+                if self.consume_text("}") {
+                    break;
+                }
             }
         }
         self.expect_text(";")?;
@@ -360,9 +530,31 @@ impl Parser<'_> {
         let ty = self.parse_type()?;
         let name = self.expect_identifier()?;
         self.expect_text("=")?;
-        let value = self.parse_const_value()?;
+        let (value, numeric) = self.parse_const_value_and_numeric()?;
         self.expect_text(";")?;
+        self.register_constant(&name, numeric);
         Ok(Declaration::Const(Const { name, ty, value }))
+    }
+
+    /// A `fixed<digits, scale>` argument, which IDL allows to be any constant
+    /// expression. An unresolvable one falls back to `fallback` with a warning
+    /// rather than failing the whole file, because `ada_emit` maps every
+    /// `fixed<>` to the same `Long_Float` placeholder anyway.
+    fn parse_fixed_argument(&mut self, role: &str, fallback: i64) -> Result<i64, IdlParseError> {
+        let start = self.pos;
+        let expression = self.parse_bracketed_const_expression()?;
+        if let Some(value) = expression
+            .numeric_value
+            .and_then(|value| i64::try_from(value).ok())
+        {
+            return Ok(value);
+        }
+        let text = self.source_text_between(start, self.pos);
+        self.warnings.push(self.warning_at(
+            start,
+            format!("nonliteral IDL fixed<> {role} '{text}' mapped to {fallback}"),
+        ));
+        Ok(fallback)
     }
 
     fn parse_union(&mut self) -> Result<Declaration, IdlParseError> {
@@ -580,12 +772,21 @@ impl Parser<'_> {
             });
         }
         if self.consume_keyword("fixed") {
-            self.expect_text("<")?;
-            let digits = self.expect_u64()? as u16;
+            if !self.consume_text("<") {
+                // Unparameterised `fixed` is the CORBA "any fixed" placeholder.
+                return Ok(TypeRef::Fixed {
+                    digits: MAX_FIXED_DIGITS,
+                    scale: 0,
+                });
+            }
+            let digits = self.parse_fixed_argument("digits", i64::from(MAX_FIXED_DIGITS))?;
             self.expect_text(",")?;
-            let scale = self.expect_i64()? as i16;
+            let scale = self.parse_fixed_argument("scale", 0)?;
             self.expect_text(">")?;
-            return Ok(TypeRef::Fixed { digits, scale });
+            return Ok(TypeRef::Fixed {
+                digits: u16::try_from(digits).unwrap_or(MAX_FIXED_DIGITS),
+                scale: i16::try_from(scale).unwrap_or(0),
+            });
         }
         if self.consume_keyword("string") {
             return Ok(TypeRef::String {
@@ -654,21 +855,30 @@ impl Parser<'_> {
     }
 
     fn parse_bound(&mut self) -> Result<Option<u64>, IdlParseError> {
-        let token = self.peek().clone();
-        if token.kind == TokenKind::Number {
-            return self.expect_u64().map(Some);
-        }
         let start = self.pos;
-        let _ = self.parse_const_value()?;
-        let text = self.tokens[start..self.pos]
-            .iter()
-            .map(|token| token.text.as_str())
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.warnings.push(format!(
-            "nonliteral IDL bound '{text}' treated as unbounded"
+        let expression = self.parse_bracketed_const_expression()?;
+        if let Some(bound) = expression
+            .numeric_value
+            .and_then(|value| u64::try_from(value).ok())
+        {
+            return Ok(Some(bound));
+        }
+        let text = self.source_text_between(start, self.pos);
+        self.warnings.push(self.warning_at(
+            start,
+            format!("nonliteral IDL bound '{text}' treated as unbounded"),
         ));
         Ok(None)
+    }
+
+    /// Parse a constant expression that sits between `<` and `>` — a sequence /
+    /// string / map bound or a `fixed<>` argument — so `>>` is read as two
+    /// closing brackets instead of a right shift.
+    fn parse_bracketed_const_expression(&mut self) -> Result<ConstExpression, IdlParseError> {
+        self.type_bracket_depth += 1;
+        let expression = self.parse_const_expression(MIN_CONST_PRECEDENCE);
+        self.type_bracket_depth -= 1;
+        expression
     }
 
     fn parse_scoped_name_list(&mut self) -> Result<Vec<ScopedName>, IdlParseError> {
@@ -731,12 +941,17 @@ impl Parser<'_> {
     }
 
     fn parse_array_dimension(&mut self) -> Result<u64, IdlParseError> {
-        match self.parse_const_value()? {
-            ConstValue::Integer(value) => u64::try_from(value)
+        let start = self.pos;
+        let expression = self.parse_const_expression(MIN_CONST_PRECEDENCE)?;
+        match expression.numeric_value {
+            Some(value) => u64::try_from(value)
                 .map_err(|_| self.error_here("expected nonnegative array dimension")),
-            _ => {
-                self.warnings
-                    .push("noninteger IDL array dimension mapped to 0".to_owned());
+            None => {
+                let text = self.source_text_between(start, self.pos);
+                self.warnings.push(self.warning_at(
+                    start,
+                    format!("noninteger IDL array dimension '{text}' mapped to 0"),
+                ));
                 Ok(0)
             }
         }
@@ -769,25 +984,68 @@ impl Parser<'_> {
     }
 
     fn parse_const_value(&mut self) -> Result<ConstValue, IdlParseError> {
+        Ok(self.parse_const_value_and_numeric()?.0)
+    }
+
+    /// Parse a constant expression, returning both the mapped [`ConstValue`] and
+    /// the folded integer value when the expression has one. The integer is what
+    /// makes a named constant usable as a bound / array dimension and what lets
+    /// `const long B = A;` re-export `A`'s value under `B`.
+    fn parse_const_value_and_numeric(
+        &mut self,
+    ) -> Result<(ConstValue, Option<i128>), IdlParseError> {
+        let start = self.pos;
         let expression = self.parse_const_expression(MIN_CONST_PRECEDENCE)?;
         if expression.has_operator {
             if let Some(value) = expression.numeric_value {
-                return Ok(ConstValue::Integer(value));
+                let narrowed = self.narrow_const_integer(value, start);
+                return Ok((ConstValue::Integer(narrowed), Some(value)));
             }
-            self.warnings.push(format!(
-                "unsupported IDL constant expression '{}' mapped to 0",
-                expression.text
+            // `2.0 * 3.14159`: a floating expression folds to a floating value.
+            // Falling through to the integer path would map it to 0.
+            if let Some(value) = expression.float_value.filter(|value| value.is_finite()) {
+                return Ok((ConstValue::Float(render_float_literal(value)), None));
+            }
+            let text = self.source_text_between(start, self.pos);
+            self.warnings.push(self.warning_at(
+                start,
+                format!("unsupported IDL constant expression '{text}' mapped to 0"),
             ));
-            return Ok(ConstValue::Integer(0));
+            return Ok((ConstValue::Integer(0), None));
         }
-        Ok(expression.value)
+        if let (ConstValue::Integer(_), Some(value)) = (&expression.value, expression.numeric_value)
+        {
+            let narrowed = self.narrow_const_integer(value, start);
+            return Ok((ConstValue::Integer(narrowed), Some(value)));
+        }
+        Ok((expression.value, expression.numeric_value))
+    }
+
+    /// Constants are folded in `i128` so a full-width `unsigned long long` mask
+    /// or `1 << 63` can be evaluated at all, but the AST carries `i64`. Values
+    /// outside that range keep their bit pattern and say so, instead of failing
+    /// the parse (which skipped the whole file) or wrapping in silence.
+    fn narrow_const_integer(&mut self, value: i128, index: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(value) => value,
+            Err(_) => {
+                let wrapped = wrap_const_integer(value);
+                self.warnings.push(self.warning_at(
+                    index,
+                    format!(
+                        "IDL constant {value} is outside the signed 64-bit range; kept as the {wrapped} bit pattern"
+                    ),
+                ));
+                wrapped
+            }
+        }
     }
 
     fn parse_const_expression(
         &mut self,
         min_precedence: u8,
     ) -> Result<ConstExpression, IdlParseError> {
-        let mut left = self.parse_const_atom()?;
+        let mut left = self.parse_const_unary()?;
         loop {
             let Some(operator) = self.peek_const_operator() else {
                 break;
@@ -803,9 +1061,14 @@ impl Parser<'_> {
                 (Some(left), Some(right)) => eval_integer_operator(operator, left, right),
                 _ => None,
             };
+            let float_value = match (numeric_value, left.float_value, right.float_value) {
+                (None, Some(left), Some(right)) => eval_float_operator(operator, left, right),
+                _ => None,
+            };
             left = ConstExpression {
-                value: numeric_value.map_or(ConstValue::Integer(0), ConstValue::Integer),
+                value: const_expression_value(numeric_value, float_value),
                 numeric_value,
+                float_value,
                 text: format!("{} {operator} {}", left.text, right.text),
                 has_operator: true,
             };
@@ -813,11 +1076,87 @@ impl Parser<'_> {
         Ok(left)
     }
 
+    /// `const_exp` unary layer: `+`, `-` and `~` bind tighter than every binary
+    /// operator and apply to any operand, not just a literal — `-MAX`, `~(1 << N)`
+    /// and `+5` are all ordinary IDL constant expressions.
+    fn parse_const_unary(&mut self) -> Result<ConstExpression, IdlParseError> {
+        let token = self.peek().clone();
+        let operator = match token.text.as_str() {
+            "-" | "+" | "~" if token.kind == TokenKind::Punctuation => token.text,
+            _ => return self.parse_const_atom(),
+        };
+        self.bump();
+        self.enter_nesting()?;
+        let operand = self.parse_const_unary();
+        self.depth -= 1;
+        let operand = operand?;
+
+        // A signed floating literal is still a floating literal: `-1.5` maps to
+        // the value -1.5, not to an integer expression the folder can evaluate.
+        if let ConstValue::Float(literal) = &operand.value {
+            if operator != "~" && !operand.has_operator {
+                let text = if operator == "-" {
+                    match literal.strip_prefix('-') {
+                        Some(positive) => positive.to_owned(),
+                        None => format!("-{literal}"),
+                    }
+                } else {
+                    literal.clone()
+                };
+                return Ok(ConstExpression {
+                    value: ConstValue::Float(text.clone()),
+                    numeric_value: None,
+                    float_value: parse_float_literal(&text),
+                    text,
+                    has_operator: false,
+                });
+            }
+        }
+
+        let numeric_value = operand
+            .numeric_value
+            .and_then(|value| match operator.as_str() {
+                "-" => value.checked_neg(),
+                "+" => Some(value),
+                _ => Some(!value),
+            });
+        let float_value = match (numeric_value, operand.float_value) {
+            (None, Some(value)) if operator != "~" => {
+                Some(if operator == "-" { -value } else { value })
+            }
+            _ => None,
+        };
+        Ok(ConstExpression {
+            value: const_expression_value(numeric_value, float_value),
+            numeric_value,
+            float_value,
+            text: format!("{operator}{}", operand.text),
+            has_operator: true,
+        })
+    }
+
     fn parse_const_atom(&mut self) -> Result<ConstExpression, IdlParseError> {
+        if self.peek().kind == TokenKind::Punctuation && self.peek().text == "(" {
+            self.bump();
+            self.enter_nesting()?;
+            // A `>>` inside the parentheses is a shift again, even when the whole
+            // expression sits in a `sequence<…>` bound.
+            let outer_brackets = std::mem::take(&mut self.type_bracket_depth);
+            let inner = self.parse_const_expression(MIN_CONST_PRECEDENCE);
+            self.type_bracket_depth = outer_brackets;
+            self.depth -= 1;
+            let inner = inner?;
+            self.expect_text(")")?;
+            return Ok(ConstExpression {
+                text: format!("({})", inner.text),
+                ..inner
+            });
+        }
         if self.consume_keyword("true") {
             return Ok(ConstExpression {
                 value: ConstValue::Boolean(true),
                 numeric_value: Some(1),
+                float_value: None,
                 text: "true".to_owned(),
                 has_operator: false,
             });
@@ -826,6 +1165,7 @@ impl Parser<'_> {
             return Ok(ConstExpression {
                 value: ConstValue::Boolean(false),
                 numeric_value: Some(0),
+                float_value: None,
                 text: "false".to_owned(),
                 has_operator: false,
             });
@@ -837,82 +1177,126 @@ impl Parser<'_> {
                 .get(self.pos + 1)
                 .is_some_and(|token| token.kind == TokenKind::StringLiteral)
         {
-            let prefix = self.peek().text.clone();
+            // `L"wide"` / `L'a'`: the prefix marks the literal as wide, it is not
+            // part of the value. Keeping it made the constant's value literally
+            // `L"wide"`, which then reached the generated Ada verbatim.
             self.bump();
-            let literal = self.peek().text.clone();
-            self.bump();
-            let text = format!("{prefix}{literal}");
+            let text = self.parse_string_literal_run();
             return Ok(ConstExpression {
                 value: ConstValue::String(text.clone()),
                 numeric_value: None,
+                float_value: None,
                 text,
                 has_operator: false,
             });
         }
-        let negative = self.consume_text("-");
         let token = self.peek().clone();
-        if negative && token.kind != TokenKind::Number {
-            return Err(self.error_here("expected numeric constant after '-'"));
-        }
         match token.kind {
             TokenKind::Number => {
                 self.bump();
-                if token.text.contains('.') {
-                    let value = if negative {
-                        format!("-{}", token.text)
-                    } else {
-                        token.text
-                    };
+                if is_floating_literal(&token.text) {
                     Ok(ConstExpression {
-                        value: ConstValue::Float(value.clone()),
+                        value: ConstValue::Float(token.text.clone()),
                         numeric_value: None,
-                        text: value,
+                        float_value: parse_float_literal(&token.text),
+                        text: token.text,
                         has_operator: false,
                     })
                 } else {
                     let value = parse_integer_literal(&token.text).ok_or_else(|| {
                         IdlParseError::new("expected integer literal", token.span)
                     })?;
-                    let value = if negative { -value } else { value };
                     Ok(ConstExpression {
-                        value: ConstValue::Integer(value),
+                        value: ConstValue::Integer(wrap_const_integer(value)),
                         numeric_value: Some(value),
+                        float_value: Some(value as f64),
                         text: value.to_string(),
                         has_operator: false,
                     })
                 }
             }
             TokenKind::StringLiteral => {
-                self.bump();
+                let text = self.parse_string_literal_run();
                 Ok(ConstExpression {
-                    value: ConstValue::String(token.text.clone()),
+                    value: ConstValue::String(text.clone()),
                     numeric_value: None,
-                    text: token.text,
-                    has_operator: false,
-                })
-            }
-            TokenKind::Identifier => {
-                let name = self.parse_scoped_name()?;
-                let text = format_scoped_name(&name);
-                Ok(ConstExpression {
-                    value: ConstValue::ScopedName(name),
-                    numeric_value: None,
+                    float_value: None,
                     text,
                     has_operator: false,
                 })
             }
-            TokenKind::Punctuation if token.text == "::" => {
-                let name = self.parse_scoped_name()?;
-                let text = format_scoped_name(&name);
-                Ok(ConstExpression {
-                    value: ConstValue::ScopedName(name),
-                    numeric_value: None,
-                    text,
-                    has_operator: false,
-                })
-            }
+            TokenKind::Identifier => self.parse_scoped_name_atom(),
+            TokenKind::Punctuation if token.text == "::" => self.parse_scoped_name_atom(),
             _ => Err(self.error_here("expected constant value")),
         }
+    }
+
+    /// Consume a run of adjacent string literals, which IDL concatenates into
+    /// one value (`"line one " "line two"`). The mapped value keeps the source
+    /// spelling — one pair of quotes around the joined bodies.
+    fn parse_string_literal_run(&mut self) -> String {
+        let first = self.peek().text.clone();
+        self.bump();
+        let quote = first.chars().next().unwrap_or('"');
+        let mut body = literal_body(&first).to_owned();
+        while self.peek().kind == TokenKind::StringLiteral {
+            body.push_str(literal_body(&self.peek().text));
+            self.bump();
+        }
+        format!("{quote}{body}{quote}")
+    }
+
+    /// A named constant used as a value: resolve it against the constants
+    /// recorded so far so it can serve as a real bound or array dimension. The
+    /// `ScopedName` is kept as the mapped value either way, so an unresolved
+    /// name still round-trips symbolically.
+    fn parse_scoped_name_atom(&mut self) -> Result<ConstExpression, IdlParseError> {
+        let name = self.parse_scoped_name()?;
+        let text = format_scoped_name(&name);
+        let numeric_value = self.lookup_constant(&name);
+        Ok(ConstExpression {
+            value: ConstValue::ScopedName(name),
+            numeric_value,
+            float_value: numeric_value.map(|value| value as f64),
+            text,
+            has_operator: false,
+        })
+    }
+
+    /// Resolve a scoped name against [`Parser::constants`], walking from the
+    /// innermost enclosing scope outwards the way IDL name lookup does.
+    fn lookup_constant(&self, name: &ScopedName) -> Option<i128> {
+        let suffix = name.parts.join("::");
+        if name.absolute {
+            return self.constants.get(&suffix).copied();
+        }
+        for depth in (0..=self.scope.len()).rev() {
+            let mut key = String::new();
+            for part in &self.scope[..depth] {
+                key.push_str(part);
+                key.push_str("::");
+            }
+            key.push_str(&suffix);
+            if let Some(value) = self.constants.get(&key) {
+                return Some(*value);
+            }
+        }
+        None
+    }
+
+    /// Record an integer `const` under its fully qualified name so later bounds,
+    /// array dimensions and constant expressions can resolve it.
+    fn register_constant(&mut self, name: &str, value: Option<i128>) {
+        let Some(value) = value else {
+            return;
+        };
+        let mut key = String::new();
+        for part in &self.scope {
+            key.push_str(part);
+            key.push_str("::");
+        }
+        key.push_str(name);
+        self.constants.insert(key, value);
     }
 
     fn peek_const_operator(&self) -> Option<&'static str> {
@@ -924,10 +1308,13 @@ impl Parser<'_> {
             {
                 Some("<<")
             }
-            ">" if self
-                .tokens
-                .get(self.pos + 1)
-                .is_some_and(|token| token.text == ">") =>
+            // Inside `sequence<sequence<octet, MAX>>` the `>>` closes both type
+            // brackets; only outside a type bracket is it a right shift.
+            ">" if self.type_bracket_depth == 0
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|token| token.text == ">") =>
             {
                 Some(">>")
             }
@@ -938,6 +1325,7 @@ impl Parser<'_> {
             "-" => Some("-"),
             "*" => Some("*"),
             "/" => Some("/"),
+            "%" => Some("%"),
             _ => None,
         }
     }
@@ -1043,31 +1431,6 @@ impl Parser<'_> {
         self.source[start..end].trim().to_owned()
     }
 
-    fn expect_u64(&mut self) -> Result<u64, IdlParseError> {
-        let token = self.peek().clone();
-        if token.kind == TokenKind::Number {
-            self.bump();
-            parse_integer_literal(&token.text)
-                .and_then(|value| u64::try_from(value).ok())
-                .ok_or_else(|| IdlParseError::new("expected unsigned integer", token.span))
-        } else {
-            Err(self.error_here("expected unsigned integer"))
-        }
-    }
-
-    fn expect_i64(&mut self) -> Result<i64, IdlParseError> {
-        let negative = self.consume_text("-");
-        let token = self.peek().clone();
-        if token.kind == TokenKind::Number {
-            self.bump();
-            let value = parse_integer_literal(&token.text)
-                .ok_or_else(|| IdlParseError::new("expected integer", token.span))?;
-            Ok(if negative { -value } else { value })
-        } else {
-            Err(self.error_here("expected integer"))
-        }
-    }
-
     fn expect_keyword(&mut self, keyword: &str) -> Result<(), IdlParseError> {
         if self.consume_keyword(keyword) {
             Ok(())
@@ -1128,6 +1491,38 @@ impl Parser<'_> {
     fn error_here(&self, message: impl Into<String>) -> IdlParseError {
         IdlParseError::new(message, self.peek().span)
     }
+
+    /// The source text the tokens `[start, end)` were lexed from, whitespace
+    /// normalised. Warnings quote this instead of a reconstruction, so the user
+    /// sees `M::MAX` and `3.40023E+16` rather than `M :: MAX` and `3.40023E + 16`.
+    fn source_text_between(&self, start: usize, end: usize) -> String {
+        let Some(first) = self.tokens.get(start) else {
+            return String::new();
+        };
+        let last = end
+            .checked_sub(1)
+            .and_then(|index| self.tokens.get(index))
+            .map_or(first.span.end, |token| token.span.end);
+        self.source
+            .get(first.span.start..last)
+            .unwrap_or_default()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Append the source location of token `index` to a warning. Without it a
+    /// warning like "noninteger IDL array dimension" names no file position at
+    /// all, which is unactionable in a run over hundreds of `.idl` files.
+    fn warning_at(&self, index: usize, message: String) -> String {
+        match self.tokens.get(index) {
+            Some(token) => format!(
+                "{message} at line {}, column {}",
+                token.span.line, token.span.column
+            ),
+            None => message,
+        }
+    }
 }
 
 fn format_scoped_name(name: &ScopedName) -> String {
@@ -1156,16 +1551,57 @@ fn param_direction_from_attributes(attributes: &[String]) -> ParamDirection {
 #[derive(Debug, Clone)]
 struct ConstExpression {
     value: ConstValue,
-    numeric_value: Option<i64>,
+    /// The folded integer value, in `i128` so a full-width `unsigned long long`
+    /// constant can be evaluated before it is narrowed for the AST.
+    numeric_value: Option<i128>,
+    /// The folded floating value, so `2.0 * 3.14159` maps to a floating constant
+    /// rather than to integer 0.
+    float_value: Option<f64>,
     text: String,
     has_operator: bool,
+}
+
+/// The [`ConstValue`] a folded expression carries. Integers win over floats so
+/// `7 / 2` keeps IDL's integer division semantics.
+fn const_expression_value(numeric: Option<i128>, float: Option<f64>) -> ConstValue {
+    if let Some(value) = numeric {
+        return ConstValue::Integer(wrap_const_integer(value));
+    }
+    match float.filter(|value| value.is_finite()) {
+        Some(value) => ConstValue::Float(render_float_literal(value)),
+        None => ConstValue::Integer(0),
+    }
+}
+
+/// Keep the low 64 bits of an out-of-range constant. Callers that can warn go
+/// through [`Parser::narrow_const_integer`] instead.
+fn wrap_const_integer(value: i128) -> i64 {
+    value as u64 as i64
+}
+
+/// Render a folded floating value as a literal that is valid in both IDL and
+/// the generated Ada — Ada rejects an exponent with no decimal point (`1e300`).
+fn render_float_literal(value: f64) -> String {
+    let text = format!("{value:?}");
+    match text.find(['e', 'E']) {
+        Some(index) if !text[..index].contains('.') => {
+            format!("{}.0{}", &text[..index], &text[index..])
+        }
+        _ => text,
+    }
+}
+
+fn parse_float_literal(text: &str) -> Option<f64> {
+    text.trim_end_matches(['d', 'D', 'f', 'F'])
+        .parse::<f64>()
+        .ok()
 }
 
 const MIN_CONST_PRECEDENCE: u8 = 1;
 
 fn const_operator_precedence(operator: &str) -> u8 {
     match operator {
-        "*" | "/" => 6,
+        "*" | "/" | "%" => 6,
         "+" | "-" => 5,
         "<<" | ">>" => 4,
         "&" => 3,
@@ -1175,7 +1611,19 @@ fn const_operator_precedence(operator: &str) -> u8 {
     }
 }
 
-fn eval_integer_operator(operator: &str, left: i64, right: i64) -> Option<i64> {
+fn eval_float_operator(operator: &str, left: f64, right: f64) -> Option<f64> {
+    let value = match operator {
+        "+" => left + right,
+        "-" => left - right,
+        "*" => left * right,
+        // Bitwise and shift operators have no floating meaning in IDL.
+        "/" => left / right,
+        _ => return None,
+    };
+    value.is_finite().then_some(value)
+}
+
+fn eval_integer_operator(operator: &str, left: i128, right: i128) -> Option<i128> {
     match operator {
         "<<" => u32::try_from(right)
             .ok()
@@ -1196,12 +1644,49 @@ fn eval_integer_operator(operator: &str, left: i64, right: i64) -> Option<i64> {
                 left.checked_div(right)
             }
         }
+        "%" => {
+            if right == 0 {
+                None
+            } else {
+                left.checked_rem(right)
+            }
+        }
         _ => None,
     }
 }
 
-fn parse_integer_literal(text: &str) -> Option<i64> {
+/// Whether an IDL numeric literal is a floating (or fixed-point) literal rather
+/// than an integer one: it has a fraction part, a decimal exponent, or a `d`/`D`
+/// fixed-point suffix. Hexadecimal literals are excluded so `0x1E` stays an
+/// integer and its `E` is a digit, not an exponent marker.
+fn is_floating_literal(text: &str) -> bool {
+    if text.starts_with("0x") || text.starts_with("0X") {
+        return false;
+    }
+    if text.contains('.') {
+        return true;
+    }
+    if text.strip_suffix(['d', 'D']).is_some_and(|digits| {
+        !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit())
+    }) {
+        return true;
+    }
+    text.char_indices().any(|(index, ch)| {
+        if index == 0 || !matches!(ch, 'e' | 'E') {
+            return false;
+        }
+        let exponent = &text[index + 1..];
+        let digits = exponent.strip_prefix(['+', '-']).unwrap_or(exponent);
+        digits.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+    })
+}
+
+fn parse_integer_literal(text: &str) -> Option<i128> {
     let normalized = text.replace('_', "");
+    // `100UL`, `0xFFu`, `1ll`: the width/signedness suffix carries no value.
+    // None of `u`/`U`/`l`/`L` is a decimal or hexadecimal digit, so trimming
+    // them can never eat part of the number itself.
+    let normalized = normalized.trim_end_matches(['u', 'U', 'l', 'L']).to_owned();
     let (digits, radix) = if let Some(hex) = normalized
         .strip_prefix("0x")
         .or_else(|| normalized.strip_prefix("0X"))
@@ -1215,7 +1700,7 @@ fn parse_integer_literal(text: &str) -> Option<i64> {
     if digits.is_empty() {
         return Some(0);
     }
-    i64::from_str_radix(digits, radix).ok()
+    i128::from_str_radix(digits, radix).ok()
 }
 
 fn primitive_type(name: &str) -> Option<PrimitiveType> {
@@ -1229,6 +1714,17 @@ fn primitive_type(name: &str) -> Option<PrimitiveType> {
         "double" => Some(PrimitiveType::Double),
         "any" => Some(PrimitiveType::Any),
         "object" => Some(PrimitiveType::Object),
+        // IDL4 / DDS-XTypes explicit-width names. Without these every `int32`
+        // field became a reference to an undefined user type. `int8` maps to the
+        // 8-bit `octet`: same width and byte layout, only the signedness of the
+        // Ada placeholder differs.
+        "int8" | "uint8" => Some(PrimitiveType::Octet),
+        "int16" => Some(PrimitiveType::Short),
+        "uint16" => Some(PrimitiveType::UShort),
+        "int32" => Some(PrimitiveType::Long),
+        "uint32" => Some(PrimitiveType::ULong),
+        "int64" => Some(PrimitiveType::LongLong),
+        "uint64" => Some(PrimitiveType::ULongLong),
         _ => None,
     }
 }
@@ -1255,23 +1751,9 @@ fn decode_string_literal(text: &str) -> Result<String, &'static str> {
     if !text.ends_with(quote) || text.len() < 2 {
         return Err("unterminated string literal");
     }
-    let body = &text[quote.len_utf8()..text.len() - quote.len_utf8()];
-    let mut decoded = String::with_capacity(body.len());
-    let mut escaped = false;
-    for ch in body.chars() {
-        if escaped {
-            decoded.push(ch);
-            escaped = false;
-        } else if ch == '\\' {
-            escaped = true;
-        } else {
-            decoded.push(ch);
-        }
-    }
-    if escaped {
-        decoded.push('\\');
-    }
-    Ok(decoded)
+    Ok(decode_idl_literal_body(
+        &text[quote.len_utf8()..text.len() - quote.len_utf8()],
+    ))
 }
 
 fn is_major_minor_version(text: &str) -> bool {
@@ -1612,17 +2094,28 @@ mod tests {
         let ast = crate::parse_idl("const wchar Letter = L'a'; const wstring Greeting = L\"hi\";")
             .expect("IDL parses");
 
+        // The `L` marks the literal as wide; the declared type already records
+        // that, so it must not end up inside the constant's value.
         let Declaration::Const(letter_decl) = &ast.declarations[0] else {
             panic!("const expected")
         };
-        assert_eq!(letter_decl.value, ConstValue::String("L'a'".to_owned()));
+        assert_eq!(letter_decl.value, ConstValue::String("'a'".to_owned()));
+        assert_eq!(
+            letter_decl.ty,
+            TypeRef::Primitive(PrimitiveType::WChar),
+            "wideness is carried by the type"
+        );
 
         let Declaration::Const(greeting_decl) = &ast.declarations[1] else {
             panic!("const expected")
         };
+        assert_eq!(greeting_decl.value, ConstValue::String("\"hi\"".to_owned()));
         assert_eq!(
-            greeting_decl.value,
-            ConstValue::String("L\"hi\"".to_owned())
+            greeting_decl.ty,
+            TypeRef::String {
+                wide: true,
+                bound: None
+            }
         );
     }
 
@@ -1809,7 +2302,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_named_string_and_sequence_bounds_as_unbounded() {
+    fn resolves_named_string_and_sequence_bounds_to_their_constant() {
         let ast = crate::parse_idl(
             "const long LIMIT = 32; typedef string<LIMIT> Name; typedef sequence<octet, LIMIT> Bytes;",
         )
@@ -1822,7 +2315,7 @@ mod tests {
             name_typedef.ty,
             TypeRef::String {
                 wide: false,
-                bound: None
+                bound: Some(32)
             }
         );
 
@@ -1831,12 +2324,88 @@ mod tests {
         };
         assert!(matches!(
             bytes_typedef.ty,
-            TypeRef::Sequence { bound: None, .. }
+            TypeRef::Sequence {
+                bound: Some(32),
+                ..
+            }
         ));
-        assert!(ast
-            .warnings
-            .iter()
-            .any(|warning| warning.contains("nonliteral IDL bound")));
+        assert!(
+            ast.warnings.is_empty(),
+            "a resolvable bound must not warn: {:?}",
+            ast.warnings
+        );
+    }
+
+    #[test]
+    fn resolves_bounds_and_dimensions_through_expressions_and_module_scopes() {
+        let ast = crate::parse_idl(
+            "module M { const long BASE = 4; }; const long EXTRA = 2;
+             typedef sequence<octet, M::BASE * EXTRA> Payload;
+             struct Grid { long cells[M::BASE + 1][EXTRA]; };",
+        )
+        .expect("IDL parses");
+
+        let Declaration::Typedef(payload) = &ast.declarations[2] else {
+            panic!("typedef expected")
+        };
+        assert!(matches!(
+            payload.ty,
+            TypeRef::Sequence { bound: Some(8), .. }
+        ));
+
+        let Declaration::Struct(grid) = &ast.declarations[3] else {
+            panic!("struct expected")
+        };
+        assert!(matches!(
+            grid.fields[0].ty,
+            TypeRef::Array { dimensions: ref dims, .. } if dims == &[5, 2]
+        ));
+        assert!(ast.warnings.is_empty(), "{:?}", ast.warnings);
+    }
+
+    #[test]
+    fn reports_unresolvable_bounds_and_dimensions_with_source_locations() {
+        let ast = crate::parse_idl(
+            "typedef sequence<octet, EXTERNAL_MAX> Bytes;\nstruct S { long cells[OTHER_MAX]; };",
+        )
+        .expect("IDL parses");
+
+        let Declaration::Typedef(bytes) = &ast.declarations[0] else {
+            panic!("typedef expected")
+        };
+        assert!(matches!(bytes.ty, TypeRef::Sequence { bound: None, .. }));
+        assert!(
+            ast.warnings.iter().any(|warning| warning
+                == "nonliteral IDL bound 'EXTERNAL_MAX' treated as unbounded at line 1, column 25"),
+            "{:?}",
+            ast.warnings
+        );
+        assert!(
+            ast.warnings.iter().any(|warning| warning
+                == "noninteger IDL array dimension 'OTHER_MAX' mapped to 0 at line 2, column 23"),
+            "{:?}",
+            ast.warnings
+        );
+    }
+
+    #[test]
+    fn parses_nested_sequence_bounded_by_a_named_constant() {
+        // The `>>` closing two type brackets must not be read as a right shift.
+        let ast =
+            crate::parse_idl("const long MAX = 8; typedef sequence<sequence<octet, MAX>> Blobs;")
+                .expect("IDL parses");
+
+        let Declaration::Typedef(blobs) = &ast.declarations[1] else {
+            panic!("typedef expected")
+        };
+        let TypeRef::Sequence { element, bound } = &blobs.ty else {
+            panic!("sequence expected")
+        };
+        assert_eq!(*bound, None);
+        assert!(matches!(
+            **element,
+            TypeRef::Sequence { bound: Some(8), .. }
+        ));
     }
 
     #[test]
@@ -1919,10 +2488,291 @@ mod tests {
     }
 
     #[test]
-    fn rejects_negative_scoped_const_value() {
-        let error =
-            crate::parse_idl("const Color DefaultColor = -RED;").expect_err("IDL is rejected");
-        assert!(error.to_string().contains("expected numeric constant"));
+    fn degrades_negated_nonnumeric_const_value_instead_of_skipping_the_file() {
+        // `-RED` is not a legal IDL constant expression, but failing the parse
+        // would drop every other declaration in the file along with it.
+        let ast = crate::parse_idl("const Color DefaultColor = -RED; struct Keep { long a; };")
+            .expect("IDL parses with a warning");
+
+        let Declaration::Const(const_decl) = &ast.declarations[0] else {
+            panic!("const expected")
+        };
+        assert_eq!(const_decl.value, ConstValue::Integer(0));
+        assert!(matches!(&ast.declarations[1], Declaration::Struct(item) if item.name == "Keep"));
+        assert!(
+            ast.warnings.iter().any(|warning| warning
+                == "unsupported IDL constant expression '-RED' mapped to 0 at line 1, column 28"),
+            "{:?}",
+            ast.warnings
+        );
+    }
+
+    #[test]
+    fn parses_the_full_const_expression_grammar() {
+        let ast = crate::parse_idl(
+            "const long Grouped = (1 + 2) * 3;
+             const long Complement = ~0;
+             const long Positive = +5;
+             const long Remainder = 17 % 5;
+             const long Suffixed = 100UL;
+             const long Hex = 0x1E + 2;
+             const double Exponent = 3.40023E+16;
+             const double Small = 1.0e-5;
+             const double Negative = -1.5;",
+        )
+        .expect("IDL parses");
+
+        let values = ast
+            .declarations
+            .iter()
+            .map(|declaration| {
+                let Declaration::Const(item) = declaration else {
+                    panic!("const expected")
+                };
+                (item.name.as_str(), item.value.clone())
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            values,
+            vec![
+                ("Grouped", ConstValue::Integer(9)),
+                ("Complement", ConstValue::Integer(-1)),
+                ("Positive", ConstValue::Integer(5)),
+                ("Remainder", ConstValue::Integer(2)),
+                ("Suffixed", ConstValue::Integer(100)),
+                ("Hex", ConstValue::Integer(32)),
+                ("Exponent", ConstValue::Float("3.40023E+16".to_owned())),
+                ("Small", ConstValue::Float("1.0e-5".to_owned())),
+                ("Negative", ConstValue::Float("-1.5".to_owned())),
+            ]
+        );
+        assert!(ast.warnings.is_empty(), "{:?}", ast.warnings);
+    }
+
+    #[test]
+    fn hoists_declarations_nested_in_an_interface_body() {
+        let ast = crate::parse_idl(
+            "interface Session {
+                 const long MAX_KEYS = 4;
+                 typedef sequence<octet, MAX_KEYS> Keys;
+                 struct Token { long id; };
+                 exception Denied { long code; };
+                 native Cookie;
+                 Token issue(in Keys keys);
+             };",
+        )
+        .expect("IDL parses");
+
+        let Declaration::Interface(interface) = &ast.declarations[0] else {
+            panic!("interface expected")
+        };
+        assert_eq!(interface.members.len(), 1, "only the operation stays");
+
+        let names = ast
+            .declarations
+            .iter()
+            .map(|declaration| match declaration {
+                Declaration::Const(item) => item.name.clone(),
+                Declaration::Typedef(item) => item.name.clone(),
+                Declaration::Struct(item) => item.name.clone(),
+                Declaration::Exception(item) => item.name.clone(),
+                Declaration::ValueType(item) => item.name.clone(),
+                Declaration::Interface(item) => item.name.clone(),
+                other => panic!("unexpected declaration {other:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            vec!["Session", "MAX_KEYS", "Keys", "Token", "Denied", "Cookie"]
+        );
+
+        let Declaration::Typedef(keys) = &ast.declarations[2] else {
+            panic!("typedef expected")
+        };
+        assert!(
+            matches!(keys.ty, TypeRef::Sequence { bound: Some(4), .. }),
+            "an interface-scoped const still resolves: {:?}",
+            keys.ty
+        );
+    }
+
+    #[test]
+    fn folds_floating_constant_expressions_into_floating_values() {
+        let ast = crate::parse_idl(
+            "const double TWO_PI = 2.0 * 3.14159265358979;
+             const float  HALF   = 1.0 / 2.0;
+             const double SUM    = 1.5 + 2;
+             const long   IDIV   = 7 / 2;",
+        )
+        .expect("IDL parses");
+
+        let values = ast
+            .declarations
+            .iter()
+            .map(|declaration| {
+                let Declaration::Const(item) = declaration else {
+                    panic!("const expected")
+                };
+                item.value.clone()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            values,
+            vec![
+                ConstValue::Float("6.28318530717958".to_owned()),
+                ConstValue::Float("0.5".to_owned()),
+                ConstValue::Float("3.5".to_owned()),
+                // Integer operands keep IDL's integer division.
+                ConstValue::Integer(3),
+            ]
+        );
+        assert!(ast.warnings.is_empty(), "{:?}", ast.warnings);
+    }
+
+    #[test]
+    fn folds_full_width_integer_constants_and_flags_the_narrowing() {
+        let ast = crate::parse_idl(
+            "const unsigned long long MASK = 0xFFFFFFFFFFFFFFFF;
+             const long long MIN = -9223372036854775808;
+             typedef sequence<octet, 0xFFFFFFFF> Huge;",
+        )
+        .expect("IDL parses");
+
+        let Declaration::Const(mask) = &ast.declarations[0] else {
+            panic!("const expected")
+        };
+        assert_eq!(mask.value, ConstValue::Integer(-1), "bit pattern preserved");
+        let Declaration::Const(min) = &ast.declarations[1] else {
+            panic!("const expected")
+        };
+        assert_eq!(min.value, ConstValue::Integer(i64::MIN));
+        let Declaration::Typedef(huge) = &ast.declarations[2] else {
+            panic!("typedef expected")
+        };
+        assert!(matches!(
+            huge.ty,
+            TypeRef::Sequence {
+                bound: Some(4294967295),
+                ..
+            }
+        ));
+
+        assert_eq!(ast.warnings.len(), 1, "{:?}", ast.warnings);
+        assert!(
+            ast.warnings[0].starts_with("IDL constant 18446744073709551615 is outside"),
+            "{:?}",
+            ast.warnings
+        );
+    }
+
+    #[test]
+    fn concatenates_adjacent_string_literals() {
+        let ast = crate::parse_idl("const string BANNER = \"line one \" \"line two\";")
+            .expect("IDL parses");
+
+        let Declaration::Const(banner) = &ast.declarations[0] else {
+            panic!("const expected")
+        };
+        assert_eq!(
+            banner.value,
+            ConstValue::String("\"line one line two\"".to_owned())
+        );
+    }
+
+    #[test]
+    fn accepts_a_utf8_byte_order_mark_at_the_start_of_a_file() {
+        let ast = crate::parse_idl("\u{feff}module M { struct S { long a; }; };")
+            .expect("a BOM must not skip the file");
+
+        assert!(matches!(&ast.declarations[0], Declaration::Module(item) if item.name == "M"));
+    }
+
+    #[test]
+    fn parses_idl4_declarations_that_used_to_abort_the_file() {
+        let ast = crate::parse_idl(
+            "abstract interface Base { long op(); };
+             bitset Header { bitfield<3> flags; };
+             struct Widths { int8 a; uint8 b; int16 c; uint16 d; int32 e; uint32 f; int64 g; uint64 h; };",
+        )
+        .expect("IDL parses");
+
+        assert!(
+            matches!(&ast.declarations[0], Declaration::Interface(item) if item.name == "Base")
+        );
+        assert!(
+            matches!(&ast.declarations[1], Declaration::ValueType(item) if item.name == "Header")
+        );
+        let Declaration::Struct(widths) = &ast.declarations[2] else {
+            panic!("struct expected")
+        };
+        assert_eq!(
+            widths
+                .fields
+                .iter()
+                .map(|field| field.ty.clone())
+                .collect::<Vec<_>>(),
+            vec![
+                TypeRef::Primitive(PrimitiveType::Octet),
+                TypeRef::Primitive(PrimitiveType::Octet),
+                TypeRef::Primitive(PrimitiveType::Short),
+                TypeRef::Primitive(PrimitiveType::UShort),
+                TypeRef::Primitive(PrimitiveType::Long),
+                TypeRef::Primitive(PrimitiveType::ULong),
+                TypeRef::Primitive(PrimitiveType::LongLong),
+                TypeRef::Primitive(PrimitiveType::ULongLong),
+            ]
+        );
+    }
+
+    #[test]
+    fn reports_struct_inheritance_instead_of_dropping_the_base_fields_silently() {
+        let ast = crate::parse_idl("struct B { long x; }; struct D : B { long y; };")
+            .expect("IDL parses");
+
+        let Declaration::Struct(derived) = &ast.declarations[1] else {
+            panic!("struct expected")
+        };
+        assert_eq!(derived.fields.len(), 1);
+        assert!(
+            ast.warnings.iter().any(|warning| warning
+                == "IDL struct 'D' inherits 'B'; the inherited fields are not mapped"),
+            "{:?}",
+            ast.warnings
+        );
+    }
+
+    #[test]
+    fn parses_fixed_types_with_named_arguments() {
+        let ast = crate::parse_idl("const long DIGITS = 9; typedef fixed<DIGITS, 2> Money;")
+            .expect("IDL parses");
+
+        let Declaration::Typedef(money) = &ast.declarations[1] else {
+            panic!("typedef expected")
+        };
+        assert_eq!(
+            money.ty,
+            TypeRef::Fixed {
+                digits: 9,
+                scale: 2
+            }
+        );
+    }
+
+    #[test]
+    fn accepts_explicit_enumerator_values_and_trailing_commas() {
+        let ast = crate::parse_idl("enum Color { RED, GREEN = 5, BLUE, };").expect("IDL parses");
+
+        let Declaration::Enum(color) = &ast.declarations[0] else {
+            panic!("enum expected")
+        };
+        assert_eq!(color.variants, vec!["RED", "GREEN", "BLUE"]);
+        assert!(
+            ast.warnings
+                .iter()
+                .any(|warning| warning.starts_with("explicit IDL enumerator value 'GREEN = 5'")),
+            "{:?}",
+            ast.warnings
+        );
     }
 
     #[test]

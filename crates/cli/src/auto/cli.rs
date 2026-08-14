@@ -343,10 +343,11 @@ pub struct AutoArgs {
     pub verbose: bool,
 
     /// Recover the project's real compile wiring by running its own build
-    /// (CMake configure, or `make` under a compiler-interposing wrapper) once,
+    /// (CMake configure + instrumented static-library targets, or `make` under a
+    /// compiler-interposing wrapper) once,
     /// offline, before harnessing. Produces `<tree>/.govfuzz-build/
-    /// compile_commands.json` (and any generated headers) so each harness builds
-    /// with the exact `-I`/`-D`/`-std` flags of the real translation unit.
+    /// compile_commands.json`, generated headers, and compatible static archives
+    /// so each harness builds with the real translation-unit and link context.
     ///
     /// This EXECUTES the project's untrusted build scripts; it runs under
     /// govfuzz's sandbox (bwrap/firejail) when one is available and degrades to a
@@ -603,16 +604,15 @@ pub struct AutoArgs {
 /// every `--seed-dir`. Unreadable entries are warned and skipped (best-effort —
 /// a missing seed shouldn't abort the sweep).
 ///
-/// Seeds longer than the mutator's max input length are TRUNCATED to it. The
-/// builtin engine never generates an input longer than `DEFAULT_MAX_LEN`
-/// (libFuzzer's `-max_len`, 4096), so the tail of an oversized seed is
-/// unreachable by mutation — keeping it only makes every pass replay and mutate
-/// a huge buffer, which collapses throughput. (Observed: a 5.9 MB SoundFont seed
-/// dropped a tsf run from ~2700 exec/s to 0.2 exec/s — a >10000x slowdown — until
-/// the seed was truncated.) Truncating keeps the structural prefix (RIFF/chunk
-/// headers, where parser bugs live) while restoring normal throughput.
-fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf]) -> Vec<Vec<u8>> {
-    let cap = crate::fuzz::DEFAULT_MAX_LEN;
+/// Seeds are bounded to the run's explicit maximum, or to the adaptive auto
+/// mode's 1 MiB soft ceiling. The previous unconditional 4 KiB prefix corrupted
+/// otherwise-valid archives whose index/trailer lives at EOF (ZIP and related
+/// formats), defeating the entire point of mining expert test corpora. The
+/// engine presents only its current adaptive-length prefix to the mutator, so
+/// preserving a larger initial sample does not clone multi-megabyte inputs on
+/// every mutation. The cap still prevents one huge sample from collapsing a run.
+fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf], cap: usize) -> Vec<Vec<u8>> {
+    let cap = cap.max(1);
     let corpus_entry_limit = crate::fuzz::corpus_limits(cap).entries;
     let mut seeds = Vec::new();
     let mut dropped = 0usize;
@@ -882,6 +882,24 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         std::env::set_var("GOVFUZZ_CXX_STD", s);
     }
 
+    // Parse once before the optional project build. Probe-built archives must
+    // carry the exact same sanitizer/coverage contract as the harnesses that
+    // will link them; parsing this only after the probe produced stale/default
+    // artifacts for `--sanitizers none|msan|tsan|...`.
+    let sanitizers = crate::fuzz::parse_sanitizer_args(&args.sanitizers)
+        .map_err(|error| anyhow::anyhow!(error))?;
+    match &sanitizers {
+        multicore_fuzz::SanitizerSelection::Set(_) => gfeprintln!(
+            "govfuzz auto: arming sanitizer matrix [{}] on each C/C++ harness build + run",
+            args.sanitizers.join(", ")
+        ),
+        multicore_fuzz::SanitizerSelection::None => gfeprintln!(
+            "govfuzz auto: --sanitizers none — building each C/C++ harness with coverage but \
+             no -fsanitize= (native crash-only, zero ASan/UBSan false positives)"
+        ),
+        multicore_fuzz::SanitizerSelection::Default => {}
+    }
+
     // --unsafe-search-and-run-build-commands: the explicit opt-in to auto-executing the
     // project's own build to recover flags (the auto-run 1c gates behind consent). Find
     // a custom build script and route it through the `--build-command` path, and enable
@@ -957,9 +975,14 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             gfeprintln!(
                 "govfuzz auto: --build-command: intercepting `{command}` to recover compile flags"
             );
-            crate::auto::build_probe::probe_build_command(&path, command, sandbox.as_deref())
+            crate::auto::build_probe::probe_build_command(
+                &path,
+                command,
+                sandbox.as_deref(),
+                &sanitizers,
+            )
         } else {
-            crate::auto::build_probe::probe_build(&path, sandbox.as_deref())
+            crate::auto::build_probe::probe_build(&path, sandbox.as_deref(), &sanitizers)
         };
         match recovered {
             Some(db) => gfeprintln!(
@@ -1155,6 +1178,16 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     crate::auto::discovery::gfprof("auto:dependency_checkpoint", _tdc);
     let _tmid = std::time::Instant::now();
 
+    // Planning/listing modes have completed all the work they promised. Their
+    // requirement manifest used to retain `complete=false`, so even a clean
+    // `--list-targets` exit ended by claiming the checkpoint was "in progress".
+    if args.dry_run || args.list_targets {
+        // Finalize BEFORE writing potentially-piped stdout. If `head` has
+        // already closed the pipe, the BrokenPipe return below is still a clean,
+        // fully checkpointed exit.
+        crate::auto::report::finalize_dependency_checkpoint(&work, &mut dependency_checkpoint)?;
+    }
+
     // --dry-run: show the plan (toolchains + ranked targets + build-recovery note) and
     // exit without building or fuzzing, so a long run can be validated first.
     // #94: the preview is bounded by --max-attempts (the actual inspection cap), NOT
@@ -1175,7 +1208,13 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         }
         let planned_candidates = &candidates[..planned_count];
         gfeprintln!("\ngovfuzz auto: --dry-run — plan only, nothing is built or fuzzed:");
-        print_ranked_targets(planned_candidates, &path);
+        if let Err(err) = print_ranked_targets(planned_candidates, &path) {
+            if err.kind() == std::io::ErrorKind::BrokenPipe {
+                finish_dependency_pointer(&work, &mut dependency_pointer_guard);
+                return Ok(0);
+            }
+            return Err(err.into());
+        }
         if let Some((marker, cmd)) = detect_custom_build(&path) {
             gfeprintln!(
                 "  build recovery: this tree has its own build ({marker}); \
@@ -1191,11 +1230,23 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 ""
             }
         );
+        finish_dependency_pointer(&work, &mut dependency_pointer_guard);
         return Ok(0);
     }
 
     if args.list_targets {
-        print_ranked_targets(&candidates, &path);
+        if let Err(err) = print_ranked_targets(&candidates, &path) {
+            // `govfuzz auto --list-targets | head` is an ordinary CLI workflow.
+            // Rust ignores SIGPIPE, and `println!` turns EPIPE into a panic; that
+            // used to emit a bogus internal-bug report after `head` closed the
+            // pipe. Treat the downstream consumer being done as clean success.
+            if err.kind() == std::io::ErrorKind::BrokenPipe {
+                finish_dependency_pointer(&work, &mut dependency_pointer_guard);
+                return Ok(0);
+            }
+            return Err(err.into());
+        }
+        finish_dependency_pointer(&work, &mut dependency_pointer_guard);
         return Ok(0);
     }
     if candidates.is_empty() {
@@ -1310,12 +1361,57 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             ada_dep_dirs.len()
         );
     }
-    let user_seeds = load_seed_inputs(&args.seed_files, &args.seed_dirs);
+    // Say so when the tree ships its own harnesses. They are excluded from being
+    // TARGETS for good reason, but their existence is the only expert baseline
+    // there is — and a coverage number is far more meaningful measured against
+    // what the project's own maintainers wrote than in isolation.
+    let expert_harnesses = crate::auto::discovery::existing_harness_sources(&path);
+    if !expert_harnesses.is_empty() {
+        gfeprintln!(
+            "govfuzz auto: this tree ships {} of its own fuzz harness(es) (e.g. {}); \
+             they are excluded as targets, but they are the baseline this run's coverage \
+             can be compared against",
+            expert_harnesses.len(),
+            expert_harnesses
+                .first()
+                .map(|p| p.display().to_string())
+                .unwrap_or_default()
+        );
+    }
+    let seed_cap = if args.max_len.trim().eq_ignore_ascii_case("auto") {
+        crate::fuzz::AUTO_SOFT_CEILING
+    } else {
+        args.max_len
+            .trim()
+            .parse::<usize>()
+            .unwrap_or(crate::fuzz::DEFAULT_MAX_LEN)
+    };
+    let mut user_seeds = load_seed_inputs(&args.seed_files, &args.seed_dirs, seed_cap);
     if !user_seeds.is_empty() {
         gfeprintln!(
             "govfuzz auto: {} user seed input(s) added to each target's corpus",
             user_seeds.len()
         );
+    }
+    // No seeds given: harvest the project's own test-data files. A parser
+    // reached through random bytes spends its budget bouncing off the header
+    // check, while the same harness given one real archive or document starts
+    // INSIDE the format. Projects already ship those files next to their tests;
+    // govfuzz used to walk straight past them. Explicit `--seed-*` wins, so this
+    // can never override what an operator asked for.
+    if user_seeds.is_empty() {
+        let mined = crate::auto::recipe_mining::mine_seed_corpus(&path);
+        if !mined.is_empty() {
+            let mined_seeds = load_seed_inputs(&mined, &[], seed_cap);
+            if !mined_seeds.is_empty() {
+                gfeprintln!(
+                    "govfuzz auto: {} seed input(s) mined from the tree's own test data \
+                     (pass --seed-dir to override)",
+                    mined_seeds.len()
+                );
+                user_seeds = mined_seeds;
+            }
+        }
     }
     // Dependency-scan mode builds each target (stubbing as it goes) but runs no
     // fuzz passes — an empty pass list makes `attempt` return `Built`, and the
@@ -1380,23 +1476,6 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                  serially; non-Ada targets still use --jobs {jobs}"
             );
         }
-    }
-    // Parse `--sanitizers asan,ubsan,…` once via the same validator the standalone
-    // `govfuzz fuzz` path uses, so every harness in the sweep builds+runs with the
-    // requested matrix. An unknown name aborts the whole sweep with a precise error
-    // rather than silently fuzzing without the sanitizer the operator asked for.
-    let sanitizers = crate::fuzz::parse_sanitizer_args(&args.sanitizers)
-        .map_err(|error| anyhow::anyhow!(error))?;
-    match &sanitizers {
-        multicore_fuzz::SanitizerSelection::Set(_) => gfeprintln!(
-            "govfuzz auto: arming sanitizer matrix [{}] on each C/C++ harness build + run",
-            args.sanitizers.join(", ")
-        ),
-        multicore_fuzz::SanitizerSelection::None => gfeprintln!(
-            "govfuzz auto: --sanitizers none — building each C/C++ harness with coverage but \
-             no -fsanitize= (native crash-only, zero ASan/UBSan false positives)"
-        ),
-        multicore_fuzz::SanitizerSelection::Default => {}
     }
     // `--engine builtin|afl++[,…]`: the per-target fuzz-engine preference list.
     // Parsed once; an unknown name aborts the sweep with a precise error. AFL is
@@ -2319,7 +2398,39 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // Compiled-lane line coverage for negative confirmation: build a source-coverage
     // variant of each C/C++ harness and replay the corpus to learn which lines the
     // campaign executed (the interpreted lanes get this from their tracers directly).
-    crate::auto::coverage_replay::run_coverage_replay(&work);
+    let coverage = crate::auto::coverage_replay::run_coverage_replay(&work);
+    if coverage.harnesses > 0 {
+        // Report the fraction, not a bare popcount: "589 lines" is
+        // uninterpretable without knowing whether the target has 2,000 or
+        // 200,000.
+        match coverage.fraction() {
+            Some(fraction) => gfeprintln!(
+                "govfuzz auto: line coverage {}/{} ({:.1}%) across {} harness(es) \
+                 (covered-lines.txt + coverage-summary.json per harness)",
+                coverage.covered_lines,
+                coverage.instrumented_lines,
+                fraction * 100.0,
+                coverage.harnesses
+            ),
+            None => gfeprintln!(
+                "govfuzz auto: line coverage recorded for {} harness(es), but nothing was \
+                 instrumented — that is not 0% coverage, it is no measurement",
+                coverage.harnesses
+            ),
+        }
+    }
+    // Portable expert covered-line sidecars work for interpreted harnesses and
+    // do not require an LLVM coverage build, so oracle reporting cannot be
+    // nested under the compiled-lane measurement count.
+    if coverage.expert_oracles > 0 {
+        gfeprintln!(
+            "govfuzz auto: expert-harness oracle — {} parity-or-better, {} with marginal \
+             expert coverage, {} expert build unavailable (expert-oracle.json per harness)",
+            coverage.expert_parity_or_better,
+            coverage.expert_marginal_gaps,
+            coverage.expert_build_unavailable
+        );
+    }
 
     // Negative fuzz-confirmation: a static finding whose exact line the fuzzer
     // EXECUTED (recorded in a covered-lines sidecar) yet never crashed/tripped an
@@ -2510,6 +2621,14 @@ impl DependencyPointerGuard {
     fn disarm(&mut self) {
         self.armed = false;
     }
+}
+
+fn finish_dependency_pointer(work: &Path, guard: &mut DependencyPointerGuard) {
+    gfeprintln!(
+        "govfuzz auto: requirements: {}",
+        crate::auto::report::dependency_manifest_pointer(work)
+    );
+    guard.disarm();
 }
 
 impl Drop for DependencyPointerGuard {
@@ -3587,18 +3706,33 @@ fn fmt_duration(d: std::time::Duration) -> String {
 /// harness, best-first, with the signals behind the ranking (language, whether the
 /// input is attacker-reachable, file:line) so the entry-point choice can be judged
 /// at a glance without building anything.
-fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: &Path) {
+fn print_ranked_targets(
+    candidates: &[crate::auto::candidate::Candidate],
+    root: &Path,
+) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    write_ranked_targets(&mut out, candidates, root)
+}
+
+fn write_ranked_targets(
+    out: &mut impl std::io::Write,
+    candidates: &[crate::auto::candidate::Candidate],
+    root: &Path,
+) -> std::io::Result<()> {
     use crate::auto::candidate::Lang;
     use target_rank::InputReachability;
-    println!(
+    writeln!(
+        out,
         "# govfuzz auto: {} ranked target(s) under {} (highest score first; no build)",
         candidates.len(),
         root.display()
-    );
-    println!(
+    )?;
+    writeln!(
+        out,
         "{:>4}  {:>6}  {:<4}  {:<18}  {:<32}  file:line",
         "rank", "score", "lang", "reachability", "target"
-    );
+    )?;
     for (i, c) in candidates.iter().enumerate() {
         let lang = match c.lang {
             Lang::C => "C",
@@ -3628,7 +3762,8 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
             None => "-",
         };
         let rel = c.source_path.strip_prefix(root).unwrap_or(&c.source_path);
-        println!(
+        writeln!(
+            out,
             "{:>4}  {:>6}  {:<4}  {:<18}  {:<32}  {}:{}",
             i + 1,
             c.score,
@@ -3637,8 +3772,9 @@ fn print_ranked_targets(candidates: &[crate::auto::candidate::Candidate], root: 
             c.name,
             rel.display(),
             c.line
-        );
+        )?;
     }
+    Ok(())
 }
 
 /// Number of ranked candidates selected by `--max-targets`. Kept in one helper so
@@ -4342,6 +4478,23 @@ fn build_error_brief(err: &build_classifier::BuildErrorKind) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ranked_target_output_propagates_broken_pipe_without_panicking() {
+        struct BrokenPipe;
+        impl std::io::Write for BrokenPipe {
+            fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::from(std::io::ErrorKind::BrokenPipe))
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let err = write_ranked_targets(&mut BrokenPipe, &[], Path::new("/src"))
+            .expect_err("a closed list-targets pipe must be surfaced to the caller");
+        assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
+    }
     use crate::auto::candidate::{Candidate, Lang};
 
     #[test]
@@ -5026,6 +5179,7 @@ mod tests {
         let seeds = load_seed_inputs(
             &[file, base.join("missing.bin")],
             std::slice::from_ref(&dir),
+            crate::fuzz::DEFAULT_MAX_LEN,
         );
 
         // 1 readable file (missing one skipped) + 2 dir entries.
@@ -5049,7 +5203,7 @@ mod tests {
         let small = base.join("small.bin");
         std::fs::write(&small, b"hello").unwrap();
 
-        let seeds = load_seed_inputs(&[big, small], &[]);
+        let seeds = load_seed_inputs(&[big, small], &[], crate::fuzz::DEFAULT_MAX_LEN);
 
         assert_eq!(seeds.len(), 2);
         // The oversized seed is capped, not dropped, and its prefix is preserved.
@@ -5063,6 +5217,26 @@ mod tests {
         assert!(
             seeds.contains(&b"hello".to_vec()),
             "in-cap seed kept verbatim"
+        );
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn load_seed_inputs_preserves_complete_seed_up_to_adaptive_cap() {
+        let base =
+            std::env::temp_dir().join(format!("govfuzz-adaptive-seed-{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        let archive = base.join("fixture.zip");
+        let mut bytes = vec![0x41; crate::fuzz::DEFAULT_MAX_LEN * 4];
+        bytes.extend_from_slice(b"PK\x05\x06"); // ZIP directory trailer at EOF.
+        std::fs::write(&archive, &bytes).unwrap();
+
+        let seeds = load_seed_inputs(&[archive], &[], crate::fuzz::AUTO_SOFT_CEILING);
+
+        assert_eq!(
+            seeds,
+            vec![bytes],
+            "auto mode must not discard an EOF index"
         );
         let _ = std::fs::remove_dir_all(&base);
     }

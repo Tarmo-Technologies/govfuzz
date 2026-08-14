@@ -545,6 +545,9 @@ pub unsafe extern "C" fn close(fd: libc::c_int) -> libc::c_int {
     };
     let saved_errno = save_errno();
     if result == 0 {
+        // Clear virtual-device provenance before this numeric descriptor can be
+        // reused for an unrelated file or pipe.
+        crate::fakes::memfd::clear_fake_fd(fd);
         if let Some(_g) = HookGuard::acquire() {
             log_fd_close(fd, result);
         }
@@ -823,8 +826,12 @@ impl crate::sdk::FakeResource for Fs {
             b"open\0",
             b"openat\0",
             b"close\0",
-            b"stat\0",
-            b"fopen\0",
+            // `__xstat` is the only stat-family symbol this module defines, and
+            // it is legacy: glibc 2.33+ compiles stat()/lstat() to direct
+            // fstatat syscalls that bypass it (see the note above the hook).
+            // There is no `fopen` interposer at all. Both were advertised by
+            // `--list-fakes`, overstating what the shim actually sees.
+            b"__xstat\0",
             b"unlink\0",
             b"unlinkat\0",
             b"remove\0",

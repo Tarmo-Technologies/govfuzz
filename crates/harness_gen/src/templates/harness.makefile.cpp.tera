@@ -48,6 +48,11 @@ endif
 # build knobs use the AFLPP_ prefix to avoid colliding with it.
 AFLPP_CXX ?= afl-clang-fast++
 AFLPP_CXXFLAGS ?= -O1 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address,undefined -fno-sanitize=function,vptr,alignment -DGOVFUZZ_AFL
+# Source-based coverage build used by auto's corpus replay and expert-harness
+# oracle. Keep sanitizers/edge callbacks out so llvm-cov measures one coherent
+# profile and the coverage binary links against ordinary project archives.
+COV_CXX ?= clang++
+COV_CXXFLAGS ?= -O0 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fprofile-instr-generate -fcoverage-mapping
 # Differential build (two-compiler): a PORTABLE build (no clang-only coverage or
 # UBSan-check subtraction) so the SAME source compiles under clang++ AND g++, and
 # `auto --differential A:B` can replay the corpus through both and flag inputs on
@@ -57,6 +62,12 @@ DIFF_CXX ?= clang++
 DIFF_CXXFLAGS ?= -O2 -g -std=$(CXX_STD) -Wno-reserved-user-defined-literal -fsanitize=address
 GOVFUZZ_DRIVER_SOURCE ?= {{ c_runtime_include }}/govfuzz_driver.c
 GOVFUZZ_DRIVER_CFLAGS ?= -O1 -g
+# POSIX feature-test macros as command-line -D: a force-included project
+# header can lock glibc's feature-test macros in before the harness source's
+# own `#define _GNU_SOURCE` is seen, which under a strict `-std=` from the
+# project's compile database leaves govfuzz's own C runtime without
+# `mkstemp`/`ftruncate`.
+FEATURE_TEST_FLAGS ?= -D_GNU_SOURCE -D_DEFAULT_SOURCE
 INCLUDES = -I . -I {{ c_runtime_include }}{% for inc in target_includes_dirs %} -iquote {{ inc }} -idirafter {{ inc }}{% endfor %}
 BUILD_CONTEXT_PROVENANCE = {{ build_context_provenance }}
 BUILD_CONTEXT_CONFIDENCE = {{ build_context_confidence }}
@@ -68,16 +79,18 @@ BUILD_CONTEXT_LDFLAGS = {% for flag in link_flags %}{{ flag }}{% if not loop.las
 -include repair_context_objects.mk
 CONTEXT_MAIN_OBJECTS ?=
 CONTEXT_AFL_OBJECTS ?=
+CONTEXT_COV_OBJECTS ?=
 CONTEXT_DIFF_OBJECTS ?=
 REPAIR_CONTEXT_MAIN_OBJECTS ?=
 REPAIR_CONTEXT_AFL_OBJECTS ?=
+REPAIR_CONTEXT_COV_OBJECTS ?=
 REPAIR_CONTEXT_DIFF_OBJECTS ?=
 
 ifdef GOVFUZZ_CONTEXT_PREPARE_FAILED
 $(error $(GOVFUZZ_CONTEXT_PREPARE_FAILED))
 endif
 
-.PHONY: all afl diff syntaxcheck clean
+.PHONY: all afl cov diff syntaxcheck clean
 all: main
 
 # Target sources stay OUT of the prerequisites and live only in the recipe: an
@@ -85,10 +98,10 @@ all: main
 # make parses as a target:prereq separator. In the recipe it is just a compiler
 # argument, so the colon is harmless. (The harness dir is regenerated per attempt.)
 govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)
-	$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
+	$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) $(FEATURE_TEST_FLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)
 
 main: main.cpp govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS)
-	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(FEATURE_TEST_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 # Semantic check only: the same translation units under the same flags as
 # `main`, minus code generation and the link. The repair loop reads compiler
@@ -99,12 +112,17 @@ main: main.cpp govfuzz_driver.o $(CONTEXT_MAIN_OBJECTS) $(REPAIR_CONTEXT_MAIN_OB
 # this mode — they are found by the real build, which still runs before any
 # target is called successful.
 syntaxcheck: main.cpp
-	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -fsyntax-only main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES)
+	$(CXX) $(CXXFLAGS) $(SECTION_FLAGS) $(FEATURE_TEST_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -fsyntax-only main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(AUTO_EXTRA_SOURCES)
 
 afl: main_afl
 
 main_afl: main.cpp $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS)
 	$(AFLPP_CXX) $(AFLPP_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_AFL_OBJECTS) $(REPAIR_CONTEXT_AFL_OBJECTS) $(AUTO_EXTRA_SOURCES) $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
+
+cov: main_cov
+
+main_cov: main.cpp govfuzz_driver.o $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS)
+	$(COV_CXX) $(COV_CXXFLAGS) $(SECTION_FLAGS) $(FEATURE_TEST_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_COV_OBJECTS) $(REPAIR_CONTEXT_COV_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 diff: main_diff
 
@@ -112,5 +130,5 @@ main_diff: main.cpp govfuzz_driver.o $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DI
 	$(DIFF_CXX) $(DIFF_CXXFLAGS) $(SECTION_FLAGS) $(COMPILE_DB_FLAGS) $(INCLUDES) $(AUTO_EXTRA_INCLUDES) -DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp{% for src in target_sources %} {{ src }}{% endfor %} $(CONTEXT_DIFF_OBJECTS) $(REPAIR_CONTEXT_DIFF_OBJECTS) $(AUTO_EXTRA_SOURCES) govfuzz_driver.o $(BUILD_CONTEXT_LDFLAGS) $(SECTION_LDFLAGS) $(AUTO_EXTRA_LDFLAGS)
 
 clean:
-	rm -f main main_afl main_diff govfuzz_driver.o
+	rm -f main main_afl main_cov main_diff govfuzz_driver.o
 	rm -rf context_objs repair_context_objs

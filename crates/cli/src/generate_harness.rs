@@ -104,6 +104,15 @@ pub struct GenerateHarnessArgs {
     /// `generate-harness` CLI flag. Default `false` leaves emission unchanged.
     #[arg(skip)]
     pub force: bool,
+
+    /// Auto proved that a sanitizer-compatible static archive exports this
+    /// target. Use public headers for declarations and let that archive provide
+    /// the definition instead of compiling/including the target TU again. This
+    /// is required for amalgamated archives (SQLite): their one object contains
+    /// both the target and every sibling, so mixing it with `prepare.c` creates
+    /// duplicate definitions.
+    #[arg(skip)]
+    pub archive_backed: bool,
 }
 
 /// CLI overrides for the C and C++ harness decoder synthesis caps (§27.11),
@@ -268,6 +277,7 @@ fn write_generation_metadata(
 /// output dir, and stable harness id - this wrapper saves it from
 /// constructing the full clap-derived args struct.
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)] // retained as the non-archive programmatic API
 pub fn generate_for_path(
     source: &Path,
     target: &str,
@@ -312,6 +322,74 @@ pub fn generate_for_path_with_kind(
     decoder_limits: DecoderLimitArgs,
     force: bool,
 ) -> Result<()> {
+    generate_for_path_with_kind_and_linkage(
+        source,
+        target,
+        target_line,
+        output,
+        id,
+        kind,
+        cleanup,
+        source_tree,
+        ada_dep_dirs,
+        tree_type_defs,
+        decoder_limits,
+        force,
+        false,
+    )
+}
+
+/// Auto-only archive-backed generation. The archive is selected independently
+/// under the exact sanitizer contract before this call; this flag controls only
+/// whether codegen also compiles the target translation unit.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn generate_for_path_with_kind_archive_backed(
+    source: &Path,
+    target: &str,
+    target_line: Option<u32>,
+    output: &Path,
+    id: &str,
+    kind: &str,
+    cleanup: Option<&str>,
+    source_tree: Option<&Path>,
+    ada_dep_dirs: &[PathBuf],
+    tree_type_defs: Option<TreeTypeDefs>,
+    decoder_limits: DecoderLimitArgs,
+    force: bool,
+) -> Result<()> {
+    generate_for_path_with_kind_and_linkage(
+        source,
+        target,
+        target_line,
+        output,
+        id,
+        kind,
+        cleanup,
+        source_tree,
+        ada_dep_dirs,
+        tree_type_defs,
+        decoder_limits,
+        force,
+        true,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generate_for_path_with_kind_and_linkage(
+    source: &Path,
+    target: &str,
+    target_line: Option<u32>,
+    output: &Path,
+    id: &str,
+    kind: &str,
+    cleanup: Option<&str>,
+    source_tree: Option<&Path>,
+    ada_dep_dirs: &[PathBuf],
+    tree_type_defs: Option<TreeTypeDefs>,
+    decoder_limits: DecoderLimitArgs,
+    force: bool,
+    archive_backed: bool,
+) -> Result<()> {
     let args = GenerateHarnessArgs {
         source: source.to_path_buf(),
         target: Some(target.to_owned()),
@@ -340,6 +418,7 @@ pub fn generate_for_path_with_kind(
         tree_type_defs,
         decoder_limits,
         force,
+        archive_backed,
     };
     run(args)
 }
@@ -2489,16 +2568,10 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
             target_includes_dirs.push(abs);
         }
     }
-    let sequence_cluster = if args.kind == "sequence" {
-        Some(c_lifecycle_steps(&function, &functions)?)
-    } else {
-        None
-    };
     let static_direct_target =
         args.kind == "direct" && invocation_function.is_static && !is_c_family_header(&source_path);
-    let static_sequence_target = sequence_cluster
-        .as_ref()
-        .is_some_and(|cluster| cluster.requires_source_include)
+    let static_sequence_target_itself = args.kind == "sequence"
+        && invocation_function.is_static
         && !is_c_family_header(&source_path);
     // A non-static target whose defining TU ALSO contains `int main` — a
     // single-file legacy tool or benchmark (http-parser's bench.c defines both
@@ -2519,8 +2592,6 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // in the harness double-includes any without an include guard (jansson's
     // lookup3.h -> "redefinition of 'hashlittle'"). So keep the full header set
     // for type resolution but emit *only* the source there.
-    let includes_target_source_base =
-        static_direct_target || static_sequence_target || direct_main_tu;
     let mut header_includes =
         ordered_c_harness_headers(&source_path, &target_dir, &source, &target_includes_dirs);
     // A C harness is compiled as C; a C++-only header pulled in transitively —
@@ -2569,6 +2640,63 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
             }
         }
     }
+    // A header-complete in-place handle may legitimately have file-private
+    // lifecycle boundaries in the same TU as its public operation. Including
+    // that TU is the only way to drive the real init/use/end protocol (and is
+    // exactly what an expert white-box harness can do). Do not apply this to an
+    // opaque handle with a returning public constructor: libarchive has private
+    // callback helpers such as `memory_read_close`, and exposing those used to
+    // displace its real `archive_read_free` destructor.
+    let target_handle = c_handle_base_type(&function);
+    let target_handle_key = function
+        .params
+        .first()
+        .map(|param| harness_gen::c_decoders::normalize_handle_key(&param.c_type));
+    let has_returning_tree_constructor = target_handle_key.as_ref().is_some_and(|target_key| {
+        args.tree_type_defs.as_ref().is_some_and(|tree| {
+            tree.c_lifecycle.iter().any(|entry| {
+                entry.init_returns_handle
+                    && entry.init.is_some()
+                    && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
+                        == *target_key
+            })
+        })
+    });
+    let has_private_static_boundary = function.params.first().is_some_and(|receiver| {
+        let receiver = canonical_c_lifecycle_type(&receiver.c_type);
+        functions.iter().any(|candidate| {
+            candidate.is_static
+                && (is_c_lifecycle_init(&candidate.name) || is_c_lifecycle_end(&candidate.name))
+                && candidate
+                    .params
+                    .first()
+                    .is_some_and(|param| canonical_c_lifecycle_type(&param.c_type) == receiver)
+        })
+    });
+    let static_in_place_sequence_lifecycle = args.kind == "sequence"
+        && !static_sequence_target_itself
+        // A public open/begin target often wraps its own private initializer.
+        // Calling that helper first duplicates construction and can make every
+        // real target call reject an already-live object (libpng simplified API).
+        && !is_c_lifecycle_init(&function.name)
+        && !c_lifecycle_name_tokens(&function.name)
+            .iter()
+            .any(|token| token == "begin")
+        && !is_c_family_header(&source_path)
+        && !has_returning_tree_constructor
+        && has_private_static_boundary
+        && target_handle.as_ref().is_some_and(|handle| {
+            c_handle_defined_in_headers(
+                handle,
+                &source_path,
+                &header_includes,
+                &target_includes_dirs,
+            )
+        });
+    let static_sequence_target =
+        static_sequence_target_itself || static_in_place_sequence_lifecycle;
+    let includes_target_source_base =
+        static_direct_target || static_sequence_target || direct_main_tu;
     // GAP #6 (tidwall/hashmap.c): a sequence harness stack-allocates + zero-fills the
     // cluster handle and drives it through `&_gf_handle`, which is only valid when the
     // handle's struct is fully defined in a HEADER the harness includes. When the
@@ -2580,23 +2708,6 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // against the HEADERS only and, when the handle is header-opaque, bail so `auto`
     // falls back to the direct path, which then skips it cleanly (instead of emitting a
     // sequence harness that either fails to build or fuzzes an invalid handle).
-    if args.kind == "sequence" {
-        if let Some(cluster) = &sequence_cluster {
-            if !c_handle_defined_in_headers(
-                &cluster.handle_type,
-                &source_path,
-                &header_includes,
-                &target_includes_dirs,
-            ) {
-                bail!(
-                    "C sequence handle '{}' is not fully defined in any included header \
-                     (an opaque API handle); it cannot be zero-constructed, only built via \
-                     its constructor",
-                    cluster.handle_type
-                );
-            }
-        }
-    }
     // A target whose OPAQUE HANDLE parameter is defined only in its own `.c`
     // cannot be driven from the headers alone: the lifecycle path stack-allocates
     // the handle, and the include closure has only a forward declaration, so the
@@ -2643,7 +2754,8 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 .iter()
                 .any(|tag| !aggregate_complete_in(&header_defs, tag))
         };
-    let includes_target_source = includes_target_source_base || private_handle_in_target_tu;
+    let includes_target_source =
+        !args.archive_backed && (includes_target_source_base || private_handle_in_target_tu);
     let target_includes = if includes_target_source {
         let source_include = source_path
             .file_name()
@@ -2658,7 +2770,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     // must NOT also be compiled and linked beside it: every function in it would
     // then have two definitions ("multiple definition of …"). Every reason for
     // taking the whole-TU path shares this consequence.
-    let mut target_sources = if includes_target_source {
+    let mut target_sources = if includes_target_source || args.archive_backed {
         Vec::new()
     } else {
         target_compile_sources(&source_path)
@@ -2690,6 +2802,34 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
     if let Some(tree) = &args.tree_type_defs {
         type_defs.push((*tree.c).clone());
     }
+    let visible_c_declarations = collect_c_declarations_for_harness(
+        &source_path,
+        &source,
+        &target_includes,
+        &target_includes_dirs,
+    );
+    let sequence_cluster = if args.kind == "sequence" {
+        Some(
+            if let Some(cluster) = exact_public_c_sequence_cluster(&function) {
+                cluster
+            } else {
+                c_lifecycle_steps(
+                    &function,
+                    &functions,
+                    &visible_c_declarations,
+                    &type_defs,
+                    args.tree_type_defs
+                        .as_ref()
+                        .map(|tree| tree.c_lifecycle.as_slice())
+                        .unwrap_or_default(),
+                    static_in_place_sequence_lifecycle,
+                    &source_path,
+                )?
+            },
+        )
+    } else {
+        None
+    };
     let dictionary_tokens = collect_c_dictionary_tokens_for_harness(
         &source_path,
         &source,
@@ -2714,8 +2854,35 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 source_path: source_path.clone(),
                 target: function.clone(),
                 handle_type: cluster.handle_type,
+                handle_param_type: cluster.handle_param_type,
+                init_returns_handle: cluster.init_returns_handle,
+                init_out_handle_argument: cluster.init_out_handle_argument,
+                init_success_nonzero: cluster.init_step.as_ref().is_some_and(|step| {
+                    crate::auto::recipe_mining::initializer_success_is_nonzero(
+                        &source_path,
+                        &step.name,
+                    )
+                }),
+                handle_field_initializers:
+                    crate::auto::recipe_mining::c_handle_field_initializers_for(
+                        &source_path,
+                        &function.name,
+                    )
+                    .into_iter()
+                    .map(
+                        |initializer| harness_gen::c_generate::CHandleFieldInitializer {
+                            field: initializer.field,
+                            value: initializer.value,
+                        },
+                    )
+                    .collect(),
+                output_drain_protocol: cluster.output_drain_protocol,
                 init_step: cluster.init_step,
                 op_steps: cluster.op_steps,
+                protocol_steps: cluster.protocol_steps,
+                protocol_objects: cluster.protocol_objects,
+                receiver_configuration_names: cluster.receiver_configuration_names,
+                callback_action: cluster.callback_action,
                 end_step: cluster.end_step,
                 target_includes,
                 target_includes_dirs,
@@ -2734,12 +2901,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         // _dirs (the literal moves them when it sets those fields).
         let mut lifecycle = c_direct_lifecycle_table(
             &functions,
-            &collect_c_declarations_for_harness(
-                &source_path,
-                &source,
-                &target_includes,
-                &target_includes_dirs,
-            ),
+            &visible_c_declarations,
             &type_model::TypeRegistry::from_defs(type_defs.iter()),
         );
         // GAP-L: free a `T **out` output handle (cgltf_parse's `cgltf_data **`)
@@ -3326,6 +3488,28 @@ fn collect_c_declarations_for_harness(
             if let Ok(header_decls) = c_parser::parse_c_declarations(&header_source) {
                 decls.extend(header_decls);
             }
+            // A public header may implement a lifecycle as `static inline`
+            // rather than merely declaring it (msgpack_unpacked_init/destroy).
+            // It is callable from the generated TU precisely because that header
+            // is included, so expose its signature to lifecycle pairing as a
+            // visible declaration. parse_c_declarations intentionally excludes
+            // definitions and would otherwise hide the only expert setup/cleanup
+            // path available for an output object.
+            if let Ok(header_functions) = c_parser::parse_c_functions(&header_source) {
+                decls.extend(header_functions.into_iter().map(|function| {
+                    c_parser::CDeclaration {
+                        name: function.name,
+                        return_type: function.return_type,
+                        param_types: function
+                            .params
+                            .into_iter()
+                            .map(|param| param.c_type)
+                            .collect(),
+                        variadic: function.variadic,
+                        line: function.line,
+                    }
+                }));
+            }
             break;
         }
     }
@@ -3375,7 +3559,7 @@ fn suppress_non_aggregate_cpp_class_defs(
     }
 }
 
-fn include_dirs_from_compile_flags(flags: &[String]) -> Vec<PathBuf> {
+pub(crate) fn include_dirs_from_compile_flags(flags: &[String]) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let mut i = 0;
     while i < flags.len() {
@@ -3399,10 +3583,50 @@ fn include_dirs_from_compile_flags(flags: &[String]) -> Vec<PathBuf> {
 
 struct CLifecycleCluster {
     handle_type: String,
+    handle_param_type: String,
+    init_returns_handle: bool,
+    init_out_handle_argument: Option<usize>,
     init_step: Option<harness_gen::c_generate::CLifecycleStep>,
     op_steps: Vec<harness_gen::c_generate::CLifecycleStep>,
+    protocol_steps: Vec<harness_gen::c_generate::CProtocolStep>,
+    protocol_objects: Vec<harness_gen::c_generate::CProtocolObject>,
+    receiver_configuration_names: Vec<String>,
+    callback_action: Option<harness_gen::c_generate::CCallbackAction>,
+    output_drain_protocol: Option<harness_gen::c_generate::COutputDrainProtocol>,
     end_step: Option<harness_gen::c_generate::CLifecycleStep>,
-    requires_source_include: bool,
+}
+
+/// Exact public protocols do not need generic field-wise lifecycle inference.
+/// Select them before `c_lifecycle_steps`: implementation headers for libraries
+/// such as libjpeg deliberately expose pointers to private incomplete controller
+/// types, and asking the generic decoder to construct those types fails before
+/// the maintained public recipe can take over.
+fn exact_public_c_sequence_cluster(target: &c_parser::CFunction) -> Option<CLifecycleCluster> {
+    let (handle_type, handle_param_type) = match (target.name.as_str(), target.params.len()) {
+        ("jpeg_read_header", 2) => (
+            "struct jpeg_decompress_struct".to_owned(),
+            target.params.first()?.c_type.clone(),
+        ),
+        ("sqlite3_prepare_v2", 5) => (
+            target.params.first()?.c_type.clone(),
+            target.params.first()?.c_type.clone(),
+        ),
+        _ => return None,
+    };
+    Some(CLifecycleCluster {
+        handle_type,
+        handle_param_type,
+        init_returns_handle: false,
+        init_out_handle_argument: None,
+        init_step: None,
+        op_steps: Vec::new(),
+        protocol_steps: Vec::new(),
+        protocol_objects: Vec::new(),
+        receiver_configuration_names: Vec::new(),
+        callback_action: None,
+        output_drain_protocol: None,
+        end_step: None,
+    })
 }
 
 /// Whether a sequence cluster's handle type has a COMPLETE struct/union definition
@@ -3469,38 +3693,383 @@ fn c_type_has_complete_definition(handle_type: &str, defs: &[c_parser::CTypeDefs
 fn c_lifecycle_steps(
     target: &c_parser::CFunction,
     functions: &[c_parser::CFunction],
+    declarations: &[c_parser::CDeclaration],
+    type_defs: &[c_parser::CTypeDefs],
+    tree_lifecycle: &[harness_gen::c_generate::CHandleLifecycle],
+    allow_private_static_lifecycle: bool,
+    source_path: &Path,
 ) -> Result<CLifecycleCluster> {
-    let Some(handle_type) = c_handle_base_type(target) else {
-        bail!("C --kind sequence requires a first-parameter struct handle target");
-    };
-    let Some(target_handle) = target
-        .params
-        .first()
-        .map(|p| canonical_c_lifecycle_type(&p.c_type))
-    else {
-        bail!("C --kind sequence requires a first-parameter struct handle target");
-    };
+    #[derive(Clone)]
+    struct Callable {
+        name: String,
+        line: u32,
+        return_type: String,
+        params: Vec<harness_gen::c_generate::CParameter>,
+        is_static: bool,
+    }
 
-    let mut cluster = functions
-        .iter()
-        .filter(|function| {
-            let same_target = function.name == target.name && function.line == target.line;
-            let static_lifecycle_boundary = function.is_static
-                && (is_c_lifecycle_init(&function.name) || is_c_lifecycle_end(&function.name));
-            (!function.is_static || same_target || static_lifecycle_boundary)
-                && function
+    impl Callable {
+        fn step(&self, skip_receiver: bool) -> harness_gen::c_generate::CLifecycleStep {
+            harness_gen::c_generate::CLifecycleStep {
+                name: self.name.clone(),
+                params: self
                     .params
-                    .first()
-                    .is_some_and(|param| canonical_c_lifecycle_type(&param.c_type) == target_handle)
-        })
-        .collect::<Vec<_>>();
-    cluster.sort_by_key(|function| function.line);
-    let requires_source_include = cluster.iter().any(|function| function.is_static);
+                    .iter()
+                    .skip(usize::from(skip_receiver))
+                    .cloned()
+                    .collect(),
+                return_type: self.return_type.clone(),
+                role: c_step_role_of(&self.name),
+            }
+        }
+    }
 
-    let init_step = cluster
+    let registry = type_model::TypeRegistry::from_defs(type_defs.iter());
+    let Some(first) = target.params.first() else {
+        bail!("C --kind sequence requires a first-parameter lifecycle handle target");
+    };
+    let handle_param_type = harness_gen::c_decoders::strip_type_decoration(&first.c_type);
+    let Some(target_key) = c_lifecycle_handle_key(&handle_param_type, &registry) else {
+        bail!(
+            "C --kind sequence requires a first-parameter lifecycle handle target (got '{}')",
+            first.c_type
+        );
+    };
+
+    // Definitions preserve parameter names and static linkage; visible header
+    // declarations add the cross-translation-unit public API. First occurrence
+    // wins so a definition is never degraded to synthetic `_argN` names.
+    let mut callables = Vec::<Callable>::new();
+    for function in functions {
+        callables.push(Callable {
+            name: function.name.clone(),
+            line: function.line,
+            return_type: function.return_type.clone(),
+            params: function
+                .params
+                .iter()
+                .map(|param| harness_gen::c_generate::CParameter {
+                    name: param.name.clone(),
+                    c_type: param.c_type.clone(),
+                })
+                .collect(),
+            is_static: function.is_static,
+        });
+    }
+    for declaration in declarations {
+        if callables.iter().any(|existing| {
+            existing.name == declaration.name
+                && existing.params.len() == declaration.param_types.len()
+        }) {
+            continue;
+        }
+        callables.push(Callable {
+            name: declaration.name.clone(),
+            line: declaration.line,
+            return_type: declaration.return_type.clone(),
+            params: declaration
+                .param_types
+                .iter()
+                .enumerate()
+                .map(|(index, c_type)| harness_gen::c_generate::CParameter {
+                    name: format!("arg{index}"),
+                    c_type: c_type.clone(),
+                })
+                .collect(),
+            is_static: false,
+        });
+    }
+
+    // A maintained protocol may span implementation files even when the target
+    // TU does not expose the sibling declarations through its parsed include
+    // closure. Recover exact signatures only for calls already observed in a
+    // checked recipe. libyaml's expert workflow is initialize (api.c), set input
+    // (api.c), then parse (parser.c); omitting the middle step makes every input
+    // trip the reader's "input handler is set" assertion.
+    let observed_output_drain =
+        crate::auto::recipe_mining::c_output_drain_protocol_for(source_path, &target.name);
+    let observed_protocol_traces = crate::auto::recipe_mining::protocol_traces_for(source_path);
+    let mut observed_out_handle_constructors = observed_protocol_traces
         .iter()
-        .find(|function| is_c_lifecycle_init(&function.name))
-        .map(|function| c_lifecycle_function_to_step(function));
+        .flat_map(|trace| {
+            trace.iter().enumerate().flat_map(|(target_index, call)| {
+                (call.name == target.name)
+                    .then(|| {
+                        trace[..target_index].iter().rev().find(|prior| {
+                            prior.arguments.iter().any(|argument| {
+                                argument.trim_start().starts_with('&')
+                                    && c_protocol_plain_identifier(argument).as_deref()
+                                        == Some(call.receiver.as_str())
+                            })
+                        })
+                    })
+                    .flatten()
+                    .map(|prior| prior.name.clone())
+            })
+        })
+        .filter(|name| is_c_lifecycle_init(name))
+        .collect::<BTreeSet<_>>();
+    let mut observed_protocol_names = observed_protocol_traces
+        .into_iter()
+        .flatten()
+        .map(|call| call.name)
+        .collect::<BTreeSet<_>>();
+    if let Some(drain) = &observed_output_drain {
+        observed_protocol_names.insert(drain.cleanup_name.clone());
+    }
+    // Public C APIs commonly share a namespace but expose their declarations
+    // only through a transitive umbrella header. Recover a tiny, conventional
+    // constructor/destructor name set from that namespace; the exact signature
+    // checks below still decide whether any candidate is a lifecycle match.
+    let namespace = target
+        .name
+        .split_once('_')
+        .map(|(prefix, _)| prefix.to_ascii_lowercase())
+        .or_else(|| c_lifecycle_name_tokens(&target.name).first().cloned());
+    if let Some(namespace) = namespace {
+        for suffix in [
+            "open", "open_v2", "create", "new", "init", "close", "free", "delete", "destroy",
+        ] {
+            let name = format!("{namespace}_{suffix}");
+            observed_out_handle_constructors.insert(name.clone());
+            observed_protocol_names.insert(name);
+        }
+    }
+    let mut missing_protocol_names = observed_out_handle_constructors
+        .iter()
+        .filter(|name| {
+            !callables
+                .iter()
+                .any(|callable| callable.name.as_str() == name.as_str())
+        })
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    missing_protocol_names.extend(
+        observed_protocol_names
+            .into_iter()
+            .filter(|name| !callables.iter().any(|callable| callable.name == *name))
+            .take(64),
+    );
+    for (name, (return_type, param_types, line, is_static)) in
+        find_tree_c_callable_signatures(source_path, &missing_protocol_names)
+    {
+        callables.push(Callable {
+            name,
+            line,
+            return_type,
+            params: param_types
+                .into_iter()
+                .enumerate()
+                .map(|(index, c_type)| harness_gen::c_generate::CParameter {
+                    name: format!("arg{index}"),
+                    c_type,
+                })
+                .collect(),
+            is_static,
+        });
+    }
+
+    // libarchive decorates public prototypes with `__LA_DECL`, and the plural
+    // wide-path form is public only on Windows while the POSIX source keeps a
+    // static compatibility definition. On the whole-TU sequence path those
+    // conditions can leave the declaration index with the requested open call
+    // but without the four public operations required by the documented reader
+    // protocol. Supply their exact signatures for this exact API family. This is
+    // the same bounded recipe recognized by harness_gen; it deliberately does
+    // not infer arbitrary `next`/`read` calls by name.
+    if is_exact_libarchive_reader_target(&target.name) {
+        let receiver = harness_gen::c_generate::CParameter {
+            name: "archive".to_owned(),
+            c_type: handle_param_type.clone(),
+        };
+        let required = [
+            Callable {
+                name: "archive_read_next_header".to_owned(),
+                line: target.line,
+                return_type: "int".to_owned(),
+                params: vec![
+                    receiver.clone(),
+                    harness_gen::c_generate::CParameter {
+                        name: "entry".to_owned(),
+                        c_type: "struct archive_entry **".to_owned(),
+                    },
+                ],
+                is_static: false,
+            },
+            Callable {
+                name: "archive_read_data".to_owned(),
+                line: target.line,
+                return_type: "la_ssize_t".to_owned(),
+                params: vec![
+                    receiver.clone(),
+                    harness_gen::c_generate::CParameter {
+                        name: "buffer".to_owned(),
+                        c_type: "void *".to_owned(),
+                    },
+                    harness_gen::c_generate::CParameter {
+                        name: "size".to_owned(),
+                        c_type: "size_t".to_owned(),
+                    },
+                ],
+                is_static: false,
+            },
+            Callable {
+                name: "archive_read_support_filter_all".to_owned(),
+                line: target.line,
+                return_type: "int".to_owned(),
+                params: vec![receiver.clone()],
+                is_static: false,
+            },
+            Callable {
+                name: "archive_read_support_format_all".to_owned(),
+                line: target.line,
+                return_type: "int".to_owned(),
+                params: vec![receiver],
+                is_static: false,
+            },
+        ];
+        for callable in required {
+            if !callables
+                .iter()
+                .any(|existing| existing.name == callable.name)
+            {
+                callables.push(callable);
+            }
+        }
+    }
+
+    let mut lifecycle = c_direct_lifecycle_table(functions, declarations, &registry);
+    merge_tree_c_lifecycle(&mut lifecycle, tree_lifecycle);
+    let lifecycle = lifecycle.into_iter().find(|entry| {
+        harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
+            == harness_gen::c_decoders::normalize_handle_key(&target_key)
+    });
+    // The tree-wide lifecycle index can prove an initializer that the target
+    // TU's include parser did not recover. Preserve its exact signature too:
+    // libyaml's parser implementation exposes yaml_parser_parse/delete locally,
+    // while yaml_parser_initialize is defined in api.c. A delete-only sequence
+    // zero-initializes the parser and manufactures an assertion failure on every
+    // input, so falling back to no init is not sound.
+    if let Some(init_name) = lifecycle.as_ref().and_then(|entry| entry.init.as_deref()) {
+        if !callables.iter().any(|callable| callable.name == init_name) {
+            if let Some((return_type, param_types, line, is_static)) =
+                find_tree_c_callable_signature(source_path, init_name)
+            {
+                callables.push(Callable {
+                    name: init_name.to_owned(),
+                    line,
+                    return_type,
+                    params: param_types
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, c_type)| harness_gen::c_generate::CParameter {
+                            name: format!("arg{index}"),
+                            c_type,
+                        })
+                        .collect(),
+                    is_static,
+                });
+            }
+        }
+    }
+    let init_returns_handle = lifecycle
+        .as_ref()
+        .is_some_and(|entry| entry.init_returns_handle && entry.init.is_some());
+
+    let receiver_matches = |callable: &Callable| {
+        callable.params.first().is_some_and(|param| {
+            c_lifecycle_handle_key(&param.c_type, &registry).as_deref() == Some(target_key.as_str())
+        })
+    };
+    let expected_out_handle_type = canonical_c_lifecycle_type(&format!("{handle_param_type} *"));
+    let out_handle_ctor = callables
+        .iter()
+        .filter(|callable| {
+            !callable.is_static
+                && is_c_lifecycle_init(&callable.name)
+                && is_c_scalar_type(&canonical_c_lifecycle_type(&callable.return_type))
+        })
+        .filter_map(|callable| {
+            let output_argument = callable.params.iter().position(|param| {
+                canonical_c_lifecycle_type(&param.c_type) == expected_out_handle_type
+            })?;
+            let other_args_are_neutral = callable
+                .params
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != output_argument)
+                .all(|(_, param)| {
+                    let c_type = canonical_c_lifecycle_type(&param.c_type);
+                    c_type.ends_with('*') || is_c_scalar_type(&c_type)
+                });
+            other_args_are_neutral.then_some((callable, output_argument))
+        })
+        .min_by_key(|(callable, _)| callable.params.len());
+    let init_out_handle_argument = out_handle_ctor.map(|(_, index)| index);
+    let returning_ctor = lifecycle
+        .as_ref()
+        .filter(|_| init_returns_handle)
+        .and_then(|entry| entry.init.as_deref())
+        .and_then(|name| callables.iter().find(|callable| callable.name == name));
+
+    let call_order = crate::auto::recipe_mining::call_order_for(source_path);
+    let in_place_candidates: Vec<_> = callables
+        .iter()
+        .filter(|callable| {
+            (!callable.is_static || target.is_static || allow_private_static_lifecycle)
+                && receiver_matches(callable)
+                && is_c_lifecycle_init(&callable.name)
+        })
+        .collect();
+    let in_place_init = in_place_candidates
+        .iter()
+        .find(|candidate| {
+            in_place_candidates.iter().all(|other| {
+                other.name == candidate.name
+                    || crate::auto::recipe_mining::precedes(
+                        &call_order,
+                        &candidate.name,
+                        &other.name,
+                    )
+                    .unwrap_or(false)
+            })
+        })
+        .or(in_place_candidates.first())
+        .copied();
+    let init_callable = (!init_returns_handle).then_some(in_place_init).flatten();
+    let init_step = if let Some((callable, _)) = out_handle_ctor {
+        Some(callable.step(false))
+    } else if init_returns_handle {
+        returning_ctor
+            .map(|callable| callable.step(false))
+            .or_else(|| {
+                // Tree-wide lifecycle indexing is deliberately more tolerant of
+                // decoration macros than the target-local prototype pass. A
+                // public constructor can therefore be proven even when its
+                // declaration (`__LA_DECL archive_read_new`, for example) did not
+                // survive local parsing. The lifecycle record already contains
+                // one neutral expression per argument; synthesize pointer-shaped
+                // parameters so sequence emission calls those slots as NULL.
+                let entry = lifecycle.as_ref()?;
+                let name = entry.init.as_ref()?;
+                Some(harness_gen::c_generate::CLifecycleStep {
+                    name: name.clone(),
+                    params: entry
+                        .init_args
+                        .iter()
+                        .enumerate()
+                        .map(|(index, _)| harness_gen::c_generate::CParameter {
+                            name: format!("arg{index}"),
+                            c_type: "void *".to_owned(),
+                        })
+                        .collect(),
+                    return_type: handle_param_type.clone(),
+                    role: harness_gen::c_generate::CStepRole::Open,
+                })
+            })
+    } else {
+        init_callable.map(|callable| callable.step(true))
+    };
     if init_step.is_none() {
         gfeprintln!(
             "warning: generated C lifecycle harness for '{}' without init function",
@@ -3508,10 +4077,36 @@ fn c_lifecycle_steps(
         );
     }
 
-    let end_step = cluster
-        .iter()
-        .find(|function| is_c_lifecycle_end(&function.name))
-        .map(|function| c_lifecycle_function_to_step(function));
+    let preferred_delete = lifecycle.as_ref().and_then(|entry| entry.delete.as_deref());
+    let preferred_end_callable =
+        preferred_delete.and_then(|name| callables.iter().find(|callable| callable.name == name));
+    let fallback_end_callable = preferred_delete
+        .is_none()
+        .then(|| {
+            callables.iter().find(|callable| {
+                (!callable.is_static || target.is_static || allow_private_static_lifecycle)
+                    && receiver_matches(callable)
+                    && is_c_lifecycle_end(&callable.name)
+            })
+        })
+        .flatten();
+    let end_step = preferred_end_callable
+        .or(fallback_end_callable)
+        .map(|callable| callable.step(true))
+        .or_else(|| {
+            // Same macro-heavy-header fallback as the returning constructor
+            // above. When the lifecycle table names a preferred destructor, it
+            // is authoritative: do not substitute an arbitrary private
+            // close-shaped callback from the target TU.
+            let entry = lifecycle.as_ref()?;
+            let name = entry.delete.as_ref()?;
+            Some(harness_gen::c_generate::CLifecycleStep {
+                name: name.clone(),
+                params: Vec::new(),
+                return_type: "void".to_owned(),
+                role: harness_gen::c_generate::CStepRole::Close,
+            })
+        });
     if end_step.is_none() {
         gfeprintln!(
             "warning: generated C lifecycle harness for '{}' without end function",
@@ -3519,55 +4114,1084 @@ fn c_lifecycle_steps(
         );
     }
 
-    let mut op_functions = cluster
-        .into_iter()
-        .filter(|function| {
-            !is_c_lifecycle_init(&function.name) && !is_c_lifecycle_end(&function.name)
+    // Keep distinct API families that reuse one opaque type apart. libarchive's
+    // read and write APIs both consume `struct archive *`; the common target/ctor
+    // token prefix (`archive_read`) prevents a read harness from selecting write
+    // operations. Expat naturally shares only `XML`, which retains its parser,
+    // callback, and external-entity surface.
+    let returning_ctor_name = lifecycle
+        .as_ref()
+        .filter(|_| init_returns_handle)
+        .and_then(|entry| entry.init.as_deref());
+    let family_tokens = returning_ctor_name
+        .map(|ctor_name| {
+            c_lifecycle_name_tokens(&target.name)
+                .into_iter()
+                .zip(c_lifecycle_name_tokens(ctor_name))
+                .take_while(|(left, right)| left == right)
+                .map(|(token, _)| token)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let in_family = |name: &str| {
+        if family_tokens.is_empty() || name == target.name {
+            return true;
+        }
+        c_lifecycle_name_tokens(name)
+            .iter()
+            .take(family_tokens.len())
+            .eq(family_tokens.iter())
+    };
+    let chosen_init = init_step.as_ref().map(|step| step.name.as_str());
+    let chosen_end = end_step.as_ref().map(|step| step.name.as_str());
+    let has_combined_element_handler = callables
+        .iter()
+        .any(|callable| callable.name.eq_ignore_ascii_case("XML_SetElementHandler"));
+    let has_support_filter_all = callables
+        .iter()
+        .any(|callable| callable.name.contains("support_filter_all"));
+    let has_support_format_all = callables
+        .iter()
+        .any(|callable| callable.name.contains("support_format_all"));
+    let has_configuration_surface = callables.iter().any(|callable| {
+        c_step_role_of(&callable.name) == harness_gen::c_generate::CStepRole::Configure
+    });
+    // This public protocol is strong enough to model exactly. Keeping every
+    // same-handle sibling in the generic sequence still makes their decoder
+    // support/calls part of the generated TU even when the fixed pump replaces
+    // the random op loop. On libarchive that pulled in deprecated
+    // `archive_read_open_file` (fatal under the recovered project's -Werror)
+    // and unsafe callback-internal shapes, causing the expert sequence to fail
+    // before it could run and silently degrading auto back to a shallow direct
+    // harness. Limit this exact recipe to the calls it actually performs.
+    let exact_libarchive_reader = is_exact_libarchive_reader_target(&target.name);
+
+    // Lift a declaration-checked state-machine trace from maintained project
+    // fuzzers/tests. A flat random operation alphabet cannot express that two
+    // calls to the same endpoint with different stable flags are distinct
+    // transitions (`parse(..., 0)` then `parse(..., 1)`). Only calls whose first
+    // parameter is this exact handle family are admitted; ownership-changing
+    // calls remain under the sequence emitter's liveness machinery.
+    let (protocol_steps, protocol_configuration_names, receiver_configuration_names) =
+        crate::auto::recipe_mining::protocol_traces_for(source_path)
+            .into_iter()
+            .filter_map(|trace| {
+                let receiver = trace.first()?.receiver.clone();
+                let target_calls_in_trace = trace
+                    .iter()
+                    .filter(|call| call.name == target.name)
+                    .count();
+                let trace_reaches_primary_deallocator = chosen_end
+                    .is_some_and(|end| trace.iter().any(|call| call.name == end));
+                let mut steps = Vec::new();
+                let mut admitted_calls =
+                    Vec::<crate::auto::recipe_mining::MinedProtocolCall>::new();
+                let mut configuration_names = Vec::new();
+                let mut receiver_configuration_names = Vec::new();
+                for call in trace {
+                    let Some(callable) = callables.iter().find(|callable| {
+                        callable.name == call.name
+                            && (!callable.is_static || target.is_static)
+                            && (if call.receiver_is_direct {
+                                receiver_matches(callable)
+                            } else {
+                                callable.params.len() == call.arguments.len()
+                            })
+                            && in_family(&callable.name)
+                            && Some(callable.name.as_str()) != chosen_init
+                            && Some(callable.name.as_str()) != chosen_end
+                    }) else {
+                        continue;
+                    };
+                    let role = c_step_role_of(&callable.name);
+                    if role == harness_gen::c_generate::CStepRole::Configure {
+                        if !configuration_names.contains(&callable.name) {
+                            configuration_names.push(callable.name.clone());
+                        }
+                        let passes_receiver_as_context = call
+                            .arguments
+                            .iter()
+                            .skip(1)
+                            .zip(callable.params.iter().skip(1))
+                            .any(|(argument, param)| {
+                                c_protocol_plain_identifier(argument).as_deref()
+                                    == Some(receiver.as_str())
+                                    && harness_gen::c_decoders::strip_type_decoration(&param.c_type)
+                                        .trim()
+                                        .ends_with('*')
+                            });
+                        if passes_receiver_as_context
+                            && !receiver_configuration_names.contains(&callable.name)
+                        {
+                            receiver_configuration_names.push(callable.name.clone());
+                        }
+                        continue;
+                    }
+                    let is_nonowning_finalizer = role
+                        == harness_gen::c_generate::CStepRole::Close
+                        && Some(callable.name.as_str()) != chosen_end
+                        && trace_reaches_primary_deallocator
+                        && admitted_calls.iter().any(|prior| prior.name == target.name)
+                        && c_lifecycle_name_tokens(&callable.name).iter().any(|token| {
+                            matches!(token.as_str(), "fini" | "finalize" | "finish" | "flush")
+                        });
+                    if role == harness_gen::c_generate::CStepRole::Open
+                        || (role == harness_gen::c_generate::CStepRole::Close
+                            && !is_nonowning_finalizer)
+                        || call.arguments.len() != callable.params.len()
+                    {
+                        continue;
+                    }
+                    // A lexical call list is not a control-flow trace. Large
+                    // API conformance tests often put unrelated switch cases
+                    // on the same receiver (Lua's ltests calls luaL_error,
+                    // check-stack helpers, loadbuffer, metatable helpers, ...).
+                    // Replaying every sibling in source order makes an earlier
+                    // non-returning/error case prevent the selected endpoint
+                    // from ever running. Keep the selected endpoint and only a
+                    // non-configuration sibling that is data-dependent on an
+                    // already admitted target result. Configuration calls are
+                    // collected above and emitted through their separate safe
+                    // setup lane.
+                    if callable.name != target.name && !is_nonowning_finalizer {
+                        let depends_on_target = admitted_calls.iter().any(|prior| {
+                                prior.name == target.name
+                                    && (call.arguments.iter().any(|argument| {
+                                        c_protocol_argument_uses_result(argument, prior)
+                                    }) || call.condition.as_ref().is_some_and(|condition| {
+                                        condition.producer_name == prior.name
+                                            && condition.producer_receiver == prior.receiver
+                                    }))
+                            });
+                        if !depends_on_target {
+                            continue;
+                        }
+                    }
+                    let skip = usize::from(call.receiver_is_direct);
+                    let mut args = Vec::new();
+                    for (argument, param) in call
+                        .arguments
+                        .iter()
+                        .skip(skip)
+                        .zip(callable.params.iter().skip(skip))
+                    {
+                        let mut recipe = admitted_calls
+                            .iter()
+                            .rposition(|prior| c_protocol_argument_uses_result(argument, prior))
+                            .map(harness_gen::c_generate::CProtocolArg::PriorResult)
+                            .unwrap_or_else(|| {
+                                c_protocol_argument(argument, &receiver, &param.c_type)
+                            });
+                        // A one-off unit/example call may use a one-byte sample
+                        // (`csv_parse(p, &c, 1, ...)`). If this is the trace's
+                        // only target invocation and its prior argument is the
+                        // canonical fuzz span, preserve the buffer/length
+                        // relationship rather than the sample's literal size.
+                        // Repeated target calls retain literals because those
+                        // can encode intentional streaming transitions.
+                        if callable.name == target.name
+                            && target_calls_in_trace == 1
+                            && matches!(
+                                recipe,
+                                harness_gen::c_generate::CProtocolArg::Literal(_)
+                            )
+                            && args.last().is_some_and(|prior| {
+                                matches!(
+                                    prior,
+                                    harness_gen::c_generate::CProtocolArg::InputData
+                                )
+                            })
+                            && c_protocol_is_size_name(&param.name)
+                        {
+                            recipe = harness_gen::c_generate::CProtocolArg::InputSize;
+                        }
+                        args.push(recipe);
+                    }
+                    let condition = call.condition.as_ref().and_then(|condition| {
+                        let producer_step = admitted_calls.iter().rposition(|prior| {
+                            prior.name == condition.producer_name
+                                && prior.receiver == condition.producer_receiver
+                        })?;
+                        Some(harness_gen::c_generate::CProtocolCondition {
+                            producer_step,
+                            bitmask: condition.bitmask.clone(),
+                            comparison: c_protocol_comparison(condition.comparison),
+                            value: condition.value.clone(),
+                        })
+                    });
+                    let input_condition = call.input_condition.as_ref().map(|condition| {
+                        harness_gen::c_generate::CProtocolInputCondition {
+                            source: match &condition.source {
+                                crate::auto::recipe_mining::MinedProtocolInputSource::Size {
+                                    ..
+                                } => harness_gen::c_generate::CProtocolInputSource::Size,
+                                crate::auto::recipe_mining::MinedProtocolInputSource::Byte {
+                                    index,
+                                    ..
+                                } => harness_gen::c_generate::CProtocolInputSource::Byte(*index),
+                            },
+                            transform: match condition.transform {
+                                crate::auto::recipe_mining::MinedProtocolInputTransform::Identity => {
+                                    harness_gen::c_generate::CProtocolInputTransform::Identity
+                                }
+                                crate::auto::recipe_mining::MinedProtocolInputTransform::Modulo(
+                                    value,
+                                ) => harness_gen::c_generate::CProtocolInputTransform::Modulo(value),
+                                crate::auto::recipe_mining::MinedProtocolInputTransform::BitAnd(
+                                    value,
+                                ) => harness_gen::c_generate::CProtocolInputTransform::BitAnd(value),
+                            },
+                            comparison: c_protocol_comparison(condition.comparison),
+                            value: condition.value.clone(),
+                        }
+                    });
+                    let mut protocol_step = callable.step(call.receiver_is_direct);
+                    if is_nonowning_finalizer {
+                        // The trace also calls the separately selected primary
+                        // deallocator. This call flushes/finalizes parser state
+                        // without transferring ownership, so it must leave the
+                        // sequence handle live for the actual free.
+                        protocol_step.role = harness_gen::c_generate::CStepRole::Operation;
+                    }
+                    steps.push(harness_gen::c_generate::CProtocolStep {
+                        step: protocol_step,
+                        args,
+                        has_receiver: call.receiver_is_direct,
+                        marks_target: callable.name == target.name,
+                        condition,
+                        input_condition,
+                    });
+                    admitted_calls.push(call);
+                    if steps.len() == 16 {
+                        break;
+                    }
+                }
+                (steps.len() >= 2 && steps.iter().any(|step| step.marks_target)).then_some((
+                    steps,
+                    configuration_names,
+                    receiver_configuration_names,
+                ))
+            })
+            .max_by_key(|(steps, _, _)| {
+                (
+                    steps
+                        .iter()
+                        .filter(|step| step.marks_target)
+                        .flat_map(|step| step.args.iter())
+                        .filter(|arg| {
+                            matches!(
+                                arg,
+                                harness_gen::c_generate::CProtocolArg::InputData
+                                    | harness_gen::c_generate::CProtocolArg::InputDataOffset(_)
+                                    | harness_gen::c_generate::CProtocolArg::InputSize
+                                    | harness_gen::c_generate::CProtocolArg::InputSizeMinus(_)
+                                    | harness_gen::c_generate::CProtocolArg::InputSizeDivisor(_)
+                                    | harness_gen::c_generate::CProtocolArg::InputByte { .. }
+                            )
+                        })
+                        .count(),
+                    steps.iter().filter(|step| step.marks_target).count(),
+                    steps.len(),
+                )
+            })
+            .unwrap_or_default();
+
+    let mut protocol_objects = Vec::new();
+    let mut seen_protocol_objects = std::collections::BTreeSet::new();
+    if !protocol_steps.is_empty() && end_step.is_some() {
+        for observed in crate::auto::recipe_mining::protocol_constructions_for(source_path) {
+            let Some(callable) = callables.iter().find(|callable| {
+                callable.name == observed.name
+                    && c_lifecycle_handle_key(&callable.return_type, &registry).as_deref()
+                        == Some(target_key.as_str())
+                    && (!callable.is_static
+                        || declarations.iter().any(|declaration| {
+                            declaration.name == callable.name
+                                && declaration.param_types.len() == callable.params.len()
+                        }))
+            }) else {
+                continue;
+            };
+            let uses_primary_as_parent = receiver_matches(callable);
+            if !uses_primary_as_parent
+                && chosen_init.is_some_and(|init| {
+                    let observed_tokens = c_lifecycle_name_tokens(&callable.name);
+                    let init_tokens = c_lifecycle_name_tokens(init);
+                    observed_tokens.starts_with(&init_tokens)
+                        || init_tokens.starts_with(&observed_tokens)
+                })
+            {
+                // The primary constructor already covers this default family
+                // (`XML_ParserCreate_MM` vs `XML_ParserCreate`). Keep genuinely
+                // distinct variants such as `CreateNS`, but do not drive one
+                // redundant extra object per iteration.
+                continue;
+            }
+            if observed.arguments.len() != callable.params.len() {
+                continue;
+            }
+            let skip = usize::from(uses_primary_as_parent);
+            let params = callable
+                .params
+                .iter()
+                .skip(skip)
+                .cloned()
+                .collect::<Vec<_>>();
+            let mut args = observed
+                .arguments
+                .iter()
+                .skip(skip)
+                .zip(callable.params.iter().skip(skip))
+                .map(|(argument, param)| {
+                    let recipe = c_protocol_argument(argument, &observed.receiver, &param.c_type);
+                    if recipe == harness_gen::c_generate::CProtocolArg::Decode
+                        && harness_gen::c_decoders::strip_type_decoration(&param.c_type)
+                            .trim()
+                            .ends_with('*')
+                    {
+                        // An expert's constructor expression can name a local
+                        // macro/helper (`xstr(ENCODING)`) that cannot be lifted.
+                        // Pointer-shaped constructor options conventionally use
+                        // NULL for defaults; prefer that valid neutral value over
+                        // a random borrowed string with an arbitrary lifetime.
+                        harness_gen::c_generate::CProtocolArg::Literal("NULL".to_owned())
+                    } else {
+                        recipe
+                    }
+                })
+                .collect::<Vec<_>>();
+            if params.len() != args.len() {
+                continue;
+            }
+            let signature = format!("{}({})", callable.name, observed.arguments.join(","));
+            if !seen_protocol_objects.insert(signature) {
+                continue;
+            }
+            protocol_objects.push(harness_gen::c_generate::CProtocolObject {
+                constructor: harness_gen::c_generate::CLifecycleStep {
+                    name: callable.name.clone(),
+                    params,
+                    return_type: callable.return_type.clone(),
+                    role: harness_gen::c_generate::CStepRole::Open,
+                },
+                args: std::mem::take(&mut args),
+                uses_primary_as_parent,
+            });
+            if protocol_objects.len() == 4 {
+                break;
+            }
+        }
+    }
+    // Rank specialized topology lanes by expected marginal state-space gain:
+    // an independent constructor explores a distinct initialization surface;
+    // among derived objects, non-default literals precede the all-default form.
+    // Stable name/argument tiebreakers make the portfolio reproducible.
+    protocol_objects.sort_by_key(|object| {
+        let non_default_literals = object
+            .args
+            .iter()
+            .filter(|arg| {
+                matches!(
+                    arg,
+                    harness_gen::c_generate::CProtocolArg::Literal(value)
+                        if !matches!(value.as_str(), "NULL" | "0" | "false")
+                )
+            })
+            .count();
+        (
+            object.uses_primary_as_parent,
+            std::cmp::Reverse(non_default_literals),
+            object.constructor.name.clone(),
+            format!("{:?}", object.args),
+        )
+    });
+
+    let mut operations = callables
+        .iter()
+        .filter(|callable| {
+            let same_target = callable.name == target.name;
+            let role = c_step_role_of(&callable.name);
+            let conflicts_with_mined_configuration = role
+                == harness_gen::c_generate::CStepRole::Configure
+                && !protocol_configuration_names.is_empty()
+                && !protocol_configuration_names.contains(&callable.name);
+            // Accessor-only siblings consume scarce sequence slots without
+            // advancing state, and macro-gated introspection APIs are often not
+            // declared in the active build (Expat's XML_GetAttributeInfo exists
+            // only under XML_ATTR_INFO). Keep one when it IS the requested
+            // target, but prefer pumps/mutators around every other target.
+            let accessor_only = c_lifecycle_name_tokens(&callable.name).iter().any(|token| {
+                matches!(
+                    token.as_str(),
+                    "get"
+                        | "query"
+                        | "peek"
+                        | "status"
+                        | "error"
+                        | "count"
+                        | "index"
+                        | "info"
+                        | "current"
+                )
+            });
+            let lower_name = callable.name.to_ascii_lowercase();
+            let support_or_allocator = lower_name.contains("parsebuffer")
+                || lower_name.contains("malloc")
+                || lower_name.contains("realloc")
+                || lower_name.contains("memfree");
+            // A receiver method that frees a SECOND object is not a destructor
+            // for the receiver. Expat's XML_FreeContentModel(parser, model) is
+            // the canonical shape: the model must have been returned by Expat,
+            // while a generic decoder can only fabricate one. Selecting it both
+            // invalid-frees harness storage and (because of the `Free` verb)
+            // incorrectly marks the parser dead. The chosen one-argument handle
+            // destructor remains the dedicated end step.
+            let tokens = c_lifecycle_name_tokens(&callable.name);
+            let releases_nonreceiver_object = callable.params.len() > 1
+                && tokens.iter().any(|token| {
+                    ["free", "destroy", "delete", "release", "dispose"]
+                        .iter()
+                        .any(|verb| token_matches_lifecycle_verb(token, verb, C_END_GLUE_VERBS))
+                });
+            // Reset APIs commonly clear installed callbacks/user-data. Until a
+            // reset recipe can atomically reinstall the stable configuration,
+            // selecting one mid-program silently disables the very callback
+            // paths the expert setup exists to expose.
+            let reset_drops_configuration =
+                has_configuration_surface && lower_name.contains("reset");
+            // The aggregate support calls dominate every format/filter-specific
+            // sibling. Keeping the specifics after `*_all` adds no reachable
+            // behavior, but it consumes setup slots and forces the repair loop
+            // to link dozens of optional codecs. `support_compression_*` is the
+            // deprecated spelling of libarchive's filter support surface.
+            let redundant_specific_support = (has_support_filter_all
+                && ((lower_name.contains("support_filter_")
+                    && !lower_name.contains("support_filter_all"))
+                    || lower_name.contains("support_compression_")))
+                || (has_support_format_all
+                    && lower_name.contains("support_format_")
+                    && !lower_name.contains("support_format_all"));
+            let exact_recipe_step = !exact_libarchive_reader
+                || matches!(
+                    callable.name.as_str(),
+                    "archive_read_next_header"
+                        | "archive_read_data"
+                        | "archive_read_support_filter_all"
+                        | "archive_read_support_format_all"
+                )
+                || same_target;
+            exact_recipe_step
+                && (same_target || !callable.is_static || target.is_static)
+                && receiver_matches(callable)
+                && in_family(&callable.name)
+                && (same_target || !accessor_only)
+                && !conflicts_with_mined_configuration
+                && (same_target
+                    || (!support_or_allocator
+                        && !reset_drops_configuration
+                        && !releases_nonreceiver_object
+                        && !redundant_specific_support))
+                && !(has_combined_element_handler
+                    && (callable
+                        .name
+                        .eq_ignore_ascii_case("XML_SetStartElementHandler")
+                        || callable
+                            .name
+                            .eq_ignore_ascii_case("XML_SetEndElementHandler")))
+                && Some(callable.name.as_str()) != chosen_init
+                && Some(callable.name.as_str()) != chosen_end
         })
         .collect::<Vec<_>>();
-    if let Some(pos) = op_functions
+    operations.sort_by_key(|callable| {
+        let lower = callable.name.to_ascii_lowercase();
+        let role = c_step_role_of(&callable.name);
+        let priority = if callable.name == target.name {
+            0
+        } else if protocol_configuration_names.contains(&callable.name) {
+            1
+        } else if lower.contains("externalentityparsercreate")
+            || lower.contains("support_filter_all")
+            || lower.contains("support_format_all")
+            || lower.contains("elementhandler")
+            || lower.contains("characterdatahandler")
+            || lower.contains("externalentityrefhandler")
+            || lower.contains("userdata")
+        {
+            2
+        } else if lower.contains("parserreset")
+            || lower.contains("next_header")
+            || lower.contains("read_data")
+            || lower.contains("parse")
+            || lower.contains("decode")
+            || lower.contains("process")
+        {
+            3
+        } else if role == harness_gen::c_generate::CStepRole::Configure {
+            4
+        } else {
+            5
+        };
+        (priority, callable.line, callable.name.clone())
+    });
+    operations.dedup_by(|left, right| left.name == right.name);
+    // Configuration does not consume the eight fuzz-program slots: the emitter
+    // runs it once from stable storage before use. Select it independently, then
+    // retain up to eight actual state-machine operations. Otherwise Expat's five
+    // handler setters crowd out parse/resume/stop operations, and libarchive's
+    // support-all calls crowd out header/data pumps.
+    let mut op_steps = operations
         .iter()
-        .position(|function| function.line == target.line && function.name == target.name)
-    {
-        let target_function = op_functions.remove(pos);
-        op_functions.insert(0, target_function);
-    }
-    let op_steps = op_functions
-        .into_iter()
+        .filter(|callable| {
+            c_step_role_of(&callable.name) != harness_gen::c_generate::CStepRole::Configure
+        })
         .take(8)
-        .map(c_lifecycle_function_to_step)
+        .map(|callable| callable.step(true))
         .collect::<Vec<_>>();
+    let mut configuration_families = BTreeSet::new();
+    let mut configuration_count = 0usize;
+    for callable in operations.into_iter().filter(|callable| {
+        c_step_role_of(&callable.name) == harness_gen::c_generate::CStepRole::Configure
+    }) {
+        let mut family = c_lifecycle_name_tokens(&callable.name);
+        family.pop();
+        // `set_input_string` and `set_input_file` are alternative providers,
+        // not cumulative configuration. Run only the highest-ranked observed
+        // member of a shared family; independent handlers/support surfaces have
+        // distinct prefixes and remain cumulative.
+        if !configuration_families.insert(family) {
+            continue;
+        }
+        op_steps.push(callable.step(true));
+        configuration_count += 1;
+        if configuration_count == 8 {
+            break;
+        }
+    }
     if op_steps.is_empty() {
         bail!(
             "C --kind sequence requires at least one operation sharing first parameter '{}'",
-            target_handle
+            handle_param_type
         );
     }
 
+    let mut callback_actions = crate::auto::recipe_mining::callback_actions_for(source_path)
+        .into_iter()
+        .filter_map(|observed| {
+            let callable = callables.iter().find(|callable| {
+                callable.name == observed.action_name
+                    && !callable.is_static
+                    && receiver_matches(callable)
+                    && in_family(&callable.name)
+                    && c_step_role_of(&callable.name)
+                        == harness_gen::c_generate::CStepRole::Operation
+                    && callable.params.len() <= 4
+            })?;
+            Some((observed, callable.step(true)))
+        })
+        .collect::<Vec<_>>();
+    callback_actions.sort_by_key(|(observed, step)| {
+        (
+            observed.configuration_name.clone(),
+            observed.configuration_arg,
+            step.name.clone(),
+        )
+    });
+    let callback_group = callback_actions
+        .iter()
+        .map(|(observed, _)| {
+            (
+                observed.configuration_name.as_str(),
+                observed.configuration_arg,
+            )
+        })
+        .max_by_key(|candidate| {
+            callback_actions
+                .iter()
+                .filter(|(observed, _)| {
+                    observed.configuration_name == candidate.0
+                        && observed.configuration_arg == candidate.1
+                })
+                .count()
+        });
+    let callback_action = callback_group.and_then(|group| {
+        let (primary, step) = callback_actions.iter().find(|(observed, _)| {
+            observed.configuration_name == group.0 && observed.configuration_arg == group.1
+        })?;
+        let alternative_steps = callback_actions
+            .iter()
+            .filter(|(observed, _)| {
+                observed.configuration_name == primary.configuration_name
+                    && observed.configuration_arg == primary.configuration_arg
+                    && observed.action_name != primary.action_name
+            })
+            .map(|(_, step)| step.clone())
+            .take(7)
+            .collect();
+        Some(harness_gen::c_generate::CCallbackAction {
+            step: step.clone(),
+            alternative_steps,
+            configuration_name: primary.configuration_name.clone(),
+            configuration_arg: primary.configuration_arg,
+        })
+    });
+
+    // A flat operation program cannot express a pull parser whose result is
+    // written to an aggregate, must be destroyed after every successful pull,
+    // and carries its own terminal marker. Admit that loop only when all of
+    // those facts were observed together in maintained project code and both
+    // declarations agree on the exact output-pointer type.
+    let output_drain_protocol = observed_output_drain.and_then(|observed| {
+        let target_callable = callables.iter().find(|callable| {
+            callable.name == target.name
+                && (!callable.is_static || target.is_static)
+                && receiver_matches(callable)
+        })?;
+        let target_output = target_callable.params.get(observed.output_argument + 1)?;
+        let cleanup = callables.iter().find(|callable| {
+            callable.name == observed.cleanup_name
+                && !callable.is_static
+                && callable.params.len() == 1
+                && canonical_c_lifecycle_type(&callable.params[0].c_type)
+                    == canonical_c_lifecycle_type(&target_output.c_type)
+                && canonical_c_lifecycle_type(&callable.return_type) == "void"
+        })?;
+        let output_type = canonical_c_lifecycle_type(&target_output.c_type);
+        if !output_type.ends_with('*') || target_output.c_type.contains("const") {
+            return None;
+        }
+        Some(harness_gen::c_generate::COutputDrainProtocol {
+            output_argument: observed.output_argument,
+            cleanup_name: cleanup.name.clone(),
+            cleanup_param_type: cleanup.params[0].c_type.clone(),
+            terminal_field: observed.terminal_field,
+            terminal_value: observed.terminal_value,
+            success_nonzero: crate::auto::recipe_mining::initializer_success_is_nonzero(
+                source_path,
+                &target.name,
+            ),
+        })
+    });
+
+    let handle_type = if init_returns_handle || init_out_handle_argument.is_some() {
+        handle_param_type.clone()
+    } else {
+        c_handle_base_type(target).unwrap_or_else(|| target_key.clone())
+    };
     Ok(CLifecycleCluster {
         handle_type,
+        handle_param_type,
+        init_returns_handle,
+        init_out_handle_argument,
         init_step,
         op_steps,
+        protocol_steps,
+        protocol_objects,
+        receiver_configuration_names,
+        callback_action,
+        output_drain_protocol,
         end_step,
-        requires_source_include,
     })
 }
 
-fn c_lifecycle_function_to_step(
-    function: &c_parser::CFunction,
-) -> harness_gen::c_generate::CLifecycleStep {
-    harness_gen::c_generate::CLifecycleStep {
-        name: function.name.clone(),
-        params: function
-            .params
-            .iter()
-            .skip(1)
-            .map(|param| harness_gen::c_generate::CParameter {
-                name: param.name.clone(),
-                c_type: param.c_type.clone(),
+/// Recover one exact C lifecycle signature from a sibling translation unit or
+/// public header. This is a narrow fallback used only for a name already proven
+/// by the tree-wide lifecycle index; it is not another name-based discovery
+/// pass. The cap and build-directory pruning keep generation bounded.
+fn find_tree_c_callable_signature(
+    source_path: &Path,
+    wanted: &str,
+) -> Option<(String, Vec<String>, u32, bool)> {
+    let wanted = [wanted.to_owned()].into_iter().collect::<BTreeSet<_>>();
+    find_tree_c_callable_signatures(source_path, &wanted)
+        .into_values()
+        .next()
+}
+
+/// Batch form of the signature fallback. Scanning and parsing a 16k-function
+/// tree once per protocol call made SQLite generation effectively quadratic.
+fn find_tree_c_callable_signatures(
+    source_path: &Path,
+    wanted: &BTreeSet<String>,
+) -> BTreeMap<String, (String, Vec<String>, u32, bool)> {
+    let mut found = BTreeMap::new();
+    if wanted.is_empty() {
+        return found;
+    }
+    let Some(root) = crate::auto::recipe_mining::project_root_of(source_path) else {
+        return found;
+    };
+    let mut dirs = vec![root];
+    let mut budget = 4096usize;
+    while let Some(dir) = dirs.pop() {
+        if budget == 0 {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            continue;
+        };
+        let mut entries = entries.flatten().collect::<Vec<_>>();
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
+            let path = entry.path();
+            if path.is_dir() {
+                let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+                if !matches!(
+                    name.as_str(),
+                    ".git" | ".govfuzz-build" | ".govfuzz-build-cov" | "build" | "target"
+                ) {
+                    dirs.push(path);
+                }
+                continue;
+            }
+            let extension = path.extension().and_then(|value| value.to_str());
+            if !matches!(extension, Some("c" | "h")) {
+                continue;
+            }
+            budget -= 1;
+            let Ok(source) = crate::source_text::read_source_text(&path) else {
+                continue;
+            };
+            if !wanted.iter().any(|name| source.contains(name)) {
+                continue;
+            }
+            if let Ok(functions) = c_parser::parse_c_functions(&source) {
+                for function in functions
+                    .into_iter()
+                    .filter(|item| wanted.contains(&item.name))
+                {
+                    found.entry(function.name).or_insert_with(|| {
+                        (
+                            function.return_type,
+                            function
+                                .params
+                                .into_iter()
+                                .map(|param| param.c_type)
+                                .collect(),
+                            function.line,
+                            function.is_static,
+                        )
+                    });
+                }
+            }
+            if let Ok(declarations) = c_parser::parse_c_declarations(&source) {
+                for declaration in declarations
+                    .into_iter()
+                    .filter(|item| wanted.contains(&item.name))
+                {
+                    found.entry(declaration.name).or_insert((
+                        declaration.return_type,
+                        declaration.param_types,
+                        declaration.line,
+                        false,
+                    ));
+                }
+            }
+            if found.len() == wanted.len() {
+                return found;
+            }
+        }
+    }
+    found
+}
+
+fn c_protocol_argument(
+    expression: &str,
+    receiver: &str,
+    parameter_type: &str,
+) -> harness_gen::c_generate::CProtocolArg {
+    use harness_gen::c_generate::CProtocolArg;
+
+    if let Some(literal) = crate::auto::recipe_mining::safe_protocol_literal(expression) {
+        return CProtocolArg::Literal(literal);
+    }
+    let canonical_type = harness_gen::c_decoders::strip_type_decoration(parameter_type);
+    let pointer_shaped = canonical_type.trim().ends_with('*');
+    if let Some(mapped) = c_protocol_transformed_input_argument(expression, pointer_shaped) {
+        return mapped;
+    }
+    let Some(identifier) = c_protocol_plain_identifier(expression) else {
+        return CProtocolArg::Decode;
+    };
+    if identifier == receiver {
+        return CProtocolArg::Receiver;
+    }
+    let lower = identifier.to_ascii_lowercase();
+    if pointer_shaped
+        && matches!(
+            lower.as_str(),
+            "data" | "input" | "bytes" | "buffer" | "buf" | "src" | "source"
+        )
+    {
+        return CProtocolArg::InputData;
+    }
+    if !pointer_shaped
+        && matches!(
+            lower.as_str(),
+            "size" | "len" | "length" | "nbytes" | "data_len" | "input_size"
+        )
+    {
+        return CProtocolArg::InputSize;
+    }
+    CProtocolArg::Decode
+}
+
+fn c_protocol_transformed_input_argument(
+    expression: &str,
+    pointer_shaped: bool,
+) -> Option<harness_gen::c_generate::CProtocolArg> {
+    use harness_gen::c_generate::CProtocolArg;
+
+    let text = strip_c_protocol_outer_parens(c_protocol_strip_casts(expression));
+    if pointer_shaped {
+        if let Some((name, offset)) = parse_c_protocol_index(text.trim_start_matches('&')) {
+            if c_protocol_is_data_name(name) && offset > 0 {
+                return Some(CProtocolArg::InputDataOffset(offset));
+            }
+        }
+        if let Some((left, right)) = text.rsplit_once('+') {
+            let offset =
+                parse_c_protocol_u64(right).and_then(|value| usize::try_from(value).ok())?;
+            if c_protocol_is_data_name(left.trim()) && offset > 0 && offset <= 4096 {
+                return Some(CProtocolArg::InputDataOffset(offset));
+            }
+        }
+        return None;
+    }
+
+    if let Some((left, right)) = text.rsplit_once('-') {
+        let offset = parse_c_protocol_u64(right).and_then(|value| usize::try_from(value).ok())?;
+        if c_protocol_is_size_name(left.trim()) && offset > 0 && offset <= 4096 {
+            return Some(CProtocolArg::InputSizeMinus(offset));
+        }
+    }
+    if let Some((left, right)) = text.rsplit_once('/') {
+        let divisor = parse_c_protocol_u64(right)?;
+        if c_protocol_is_size_name(left.trim()) && (2..=65_536).contains(&divisor) {
+            return Some(CProtocolArg::InputSizeDivisor(divisor));
+        }
+    }
+    let (byte, mask) = if let Some((left, right)) = text.rsplit_once('&') {
+        (
+            strip_c_protocol_outer_parens(left),
+            Some(parse_c_protocol_u64(right)?),
+        )
+    } else {
+        (text, None)
+    };
+    let (name, index) = parse_c_protocol_index(byte)?;
+    (c_protocol_is_data_name(name) && index <= 4096)
+        .then_some(CProtocolArg::InputByte { index, mask })
+}
+
+fn c_protocol_strip_casts(mut text: &str) -> &str {
+    text = text.trim();
+    loop {
+        if !text.starts_with('(') {
+            return text;
+        }
+        let mut depth = 0usize;
+        let mut close = None;
+        for (index, ch) in text.char_indices() {
+            match ch {
+                '(' => depth += 1,
+                ')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        close = Some(index);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let Some(close) = close else { return text };
+        let cast = text[1..close].trim();
+        if cast.is_empty()
+            || !cast.chars().all(|ch| {
+                ch.is_ascii_alphanumeric() || ch.is_ascii_whitespace() || "_*".contains(ch)
             })
-            .collect(),
-        return_type: function.return_type.clone(),
+        {
+            return text;
+        }
+        text = text[close + 1..].trim();
+    }
+}
+
+fn strip_c_protocol_outer_parens(mut text: &str) -> &str {
+    loop {
+        let trimmed = text.trim();
+        if !trimmed.starts_with('(') || !trimmed.ends_with(')') {
+            return trimmed;
+        }
+        let mut depth = 0usize;
+        let mut closes_at_end = false;
+        for (index, byte) in trimmed.bytes().enumerate() {
+            match byte {
+                b'(' => depth += 1,
+                b')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        closes_at_end = index + 1 == trimmed.len();
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !closes_at_end {
+            return trimmed;
+        }
+        text = &trimmed[1..trimmed.len() - 1];
+    }
+}
+
+fn parse_c_protocol_index(expression: &str) -> Option<(&str, usize)> {
+    let expression = expression.trim();
+    let open = expression.find('[')?;
+    let close = expression.rfind(']')?;
+    if close + 1 != expression.len() {
+        return None;
+    }
+    let index = expression[open + 1..close].trim().parse().ok()?;
+    Some((expression[..open].trim(), index))
+}
+
+fn parse_c_protocol_u64(expression: &str) -> Option<u64> {
+    let value = expression.trim().trim_end_matches(['u', 'U', 'l', 'L']);
+    if let Some(hex) = value
+        .strip_prefix("0x")
+        .or_else(|| value.strip_prefix("0X"))
+    {
+        u64::from_str_radix(hex, 16).ok()
+    } else {
+        value.parse().ok()
+    }
+}
+
+fn c_protocol_is_data_name(name: &str) -> bool {
+    matches!(
+        name.trim().to_ascii_lowercase().as_str(),
+        "data" | "input" | "bytes" | "buffer" | "buf" | "src" | "source"
+    )
+}
+
+fn c_protocol_is_size_name(name: &str) -> bool {
+    matches!(
+        name.trim().to_ascii_lowercase().as_str(),
+        "size" | "len" | "length" | "nbytes" | "data_len" | "input_size"
+    )
+}
+
+fn c_protocol_comparison(
+    comparison: crate::auto::recipe_mining::MinedProtocolComparison,
+) -> harness_gen::c_generate::CProtocolComparison {
+    use crate::auto::recipe_mining::MinedProtocolComparison as Mined;
+    use harness_gen::c_generate::CProtocolComparison as Emitted;
+    match comparison {
+        Mined::Equal => Emitted::Equal,
+        Mined::NotEqual => Emitted::NotEqual,
+        Mined::Less => Emitted::Less,
+        Mined::LessEqual => Emitted::LessEqual,
+        Mined::Greater => Emitted::Greater,
+        Mined::GreaterEqual => Emitted::GreaterEqual,
+    }
+}
+
+fn c_protocol_argument_uses_result(
+    expression: &str,
+    prior: &crate::auto::recipe_mining::MinedProtocolCall,
+) -> bool {
+    let compact = |value: &str| {
+        value
+            .chars()
+            .filter(|ch| !ch.is_ascii_whitespace())
+            .collect::<String>()
+    };
+    if compact(expression) == compact(&prior.source_expression) {
+        return true;
+    }
+    prior.assigned_to.as_deref().is_some_and(|assigned| {
+        c_protocol_plain_identifier(expression).as_deref() == Some(assigned)
+    })
+}
+
+/// Peel ordinary leading C casts and return the remaining expression only when
+/// it is one plain identifier. Computed helpers (`siphash(data, size)`) remain
+/// fuzz-decoded rather than being misclassified as a size or buffer mapping.
+fn c_protocol_plain_identifier(expression: &str) -> Option<String> {
+    let text = c_protocol_strip_casts(expression);
+    let text = text.trim_start_matches(['&', '*']).trim();
+    (!text.is_empty()
+        && text
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        && text
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_'))
+    .then(|| text.to_owned())
+}
+
+fn is_exact_libarchive_reader_target(name: &str) -> bool {
+    matches!(
+        name,
+        "archive_read_open_memory"
+            | "archive_read_open_memory2"
+            | "archive_read_open_file"
+            | "archive_read_open_filename"
+            | "archive_read_open_filename_w"
+            | "archive_read_open_filenames"
+            | "archive_read_open_filenames_w"
+    )
+}
+
+/// Classify an op by what it does to the handle's LIFETIME.
+///
+/// Only allocation and deallocation change liveness. `open`/`close` do not:
+/// they attach and detach a source on a handle that is already allocated, which
+/// is an ordinary operation on a live object. libarchive is the clear case —
+/// `archive_read_new` allocates, then `archive_read_open_memory` must be called
+/// ON the live handle, and treating `open` as a re-open would gate it behind the
+/// handle being closed, where it could never run.
+///
+/// So `free`/`destroy` clear liveness and `new`/`create`/`alloc` restore it,
+/// which is exactly the cycle leveldb's own fuzzer spells as `kReopenDb`
+/// (`db.reset()` then re-open).
+pub(crate) fn c_step_role_of(name: &str) -> harness_gen::c_generate::CStepRole {
+    use harness_gen::c_generate::CStepRole;
+    let tokens = c_lifecycle_name_tokens(name);
+    let has = |needles: &[&str]| {
+        needles.iter().any(|needle| {
+            tokens
+                .iter()
+                .any(|token| token_matches_lifecycle_verb(token, needle, C_END_GLUE_VERBS))
+        })
+    };
+    // Configuration is the step every expert harness performs between
+    // construction and use. libarchive needs its support-all calls and Expat
+    // needs handlers installed. Set/configure also takes precedence over a noun
+    // such as "allocator": XML_SetAllocTrackerMaximumAmplification configures a
+    // live parser; it does not allocate/revive one merely because its name
+    // contains an `Alloc` token.
+    if has(&[
+        "set",
+        "support",
+        "register",
+        "enable",
+        "configure",
+        "option",
+        "opt",
+        "handler",
+    ]) {
+        CStepRole::Configure
+    } else if has(&[
+        "free", "destroy", "delete", "release", "dispose", "deinit", "fini",
+    ]) {
+        CStepRole::Close
+    } else if has(&["new", "create", "alloc"]) {
+        CStepRole::Open
+    } else {
+        CStepRole::Operation
     }
 }
 
@@ -3582,8 +5206,11 @@ fn c_lifecycle_function_to_step(
 /// functions + included headers and is specific to this target. A tree-wide entry
 /// only: (a) FILLS a missing `init`/`delete` on a handle the local table already
 /// knows (the §27.2 case: the constructor is declared in a header the target does
-/// not `#include`), or (b) ADDS a handle the local pass never saw at all. It never
-/// overrides a local init/delete.
+/// not `#include`), (b) ADDS a handle the local pass never saw at all, or (c)
+/// replaces a heuristic in-place initializer with a structurally proven returning
+/// constructor. Case (c) matters for opaque APIs such as libarchive: an `open`
+/// operation may look init-like locally, but it cannot allocate the opaque handle
+/// that `archive_read_new()` returns.
 pub(crate) fn merge_tree_c_lifecycle(
     local: &mut Vec<harness_gen::c_generate::CHandleLifecycle>,
     tree: &[harness_gen::c_generate::CHandleLifecycle],
@@ -3595,7 +5222,11 @@ pub(crate) fn merge_tree_c_lifecycle(
             .find(|h| harness_gen::c_decoders::normalize_handle_key(&h.handle_type) == tree_key)
         {
             Some(existing) => {
-                if existing.init.is_none() && tw.init.is_some() {
+                let tree_has_stronger_returning_ctor =
+                    tw.init.is_some() && tw.init_returns_handle && !existing.init_returns_handle;
+                if (existing.init.is_none() || tree_has_stronger_returning_ctor)
+                    && tw.init.is_some()
+                {
                     existing.init = tw.init.clone();
                     existing.init_returns_handle = tw.init_returns_handle;
                     existing.init_args = tw.init_args.clone();
@@ -4023,7 +5654,10 @@ fn cpp_direct_lifecycle_table(
         .collect()
 }
 
-fn c_lifecycle_handle_key(raw: &str, registry: &type_model::TypeRegistry) -> Option<String> {
+pub(crate) fn c_lifecycle_handle_key(
+    raw: &str,
+    registry: &type_model::TypeRegistry,
+) -> Option<String> {
     fn accept(base: Option<String>) -> Option<String> {
         let base = base?;
         let base = base.trim();
@@ -4141,9 +5775,12 @@ fn is_c_bare_pointer_typedef_value(raw: &str, registry: &type_model::TypeRegistr
 /// Neutral argument expressions for calling a returning constructor, or `None`
 /// if the constructor's parameters can't be supplied neutrally. A zero-arg or
 /// `(void)` constructor yields `Some(vec![])`; a constructor whose parameters
-/// are all pointers yields `Some(vec!["NULL"; n])` (the "use defaults" idiom).
-/// Any non-pointer parameter (a size, a flag, a by-value struct) returns `None`
-/// so such constructors are left alone rather than called with a bogus value.
+/// are pointers or scalar configuration values yields neutral `NULL` / `0`
+/// arguments (the "use defaults" idiom). A by-value aggregate still returns
+/// `None`: zero-initializing it without a declaration-backed contract would be
+/// fabrication. Scalar flags and initial capacities are safe to pass as zero;
+/// a constructor that rejects zero simply returns failure and the sequence gate
+/// skips use and teardown.
 pub(crate) fn c_neutral_ctor_args<'a>(types: impl Iterator<Item = &'a str>) -> Option<Vec<String>> {
     let types: Vec<&str> = types.collect();
     if types.is_empty() {
@@ -4163,6 +5800,8 @@ pub(crate) fn c_neutral_ctor_args<'a>(types: impl Iterator<Item = &'a str>) -> O
             || lower.ends_with("_cb")
         {
             args.push("NULL".to_owned());
+        } else if is_c_scalar_type(&canonical) {
+            args.push("0".to_owned());
         } else {
             return None;
         }
@@ -4170,7 +5809,7 @@ pub(crate) fn c_neutral_ctor_args<'a>(types: impl Iterator<Item = &'a str>) -> O
     Some(args)
 }
 
-fn c_handle_base_type(function: &c_parser::CFunction) -> Option<String> {
+pub(crate) fn c_handle_base_type(function: &c_parser::CFunction) -> Option<String> {
     let first = function.params.first()?;
     let canonical = canonical_c_lifecycle_type(&first.c_type);
     let base = canonical.strip_suffix(" *")?.trim();
@@ -4309,11 +5948,15 @@ const C_INIT_GLUE_VERBS: &[&str] = &["new", "create", "open"];
 const C_END_GLUE_VERBS: &[&str] = &["free", "destroy", "close", "delete", "release"];
 
 /// True when `token` is the lifecycle `verb`, or — for a glue-capable verb — a
-/// longer token that STARTS WITH it (`newstate` matches `new`). Non-glue verbs
-/// (`init`, `setup`, `cleanup`, ...) keep strict whole-token matching so a partial
-/// hit can't over-classify.
+/// longer token that glues the object noun to it. Constructors conventionally
+/// put the verb first (`newstate`); destructors also put it last (`regfree`).
+/// Non-glue verbs (`init`, `setup`, `cleanup`, ...) keep strict whole-token
+/// matching so a partial hit can't over-classify.
 fn token_matches_lifecycle_verb(token: &str, verb: &str, glue: &[&str]) -> bool {
-    token == verb || (glue.contains(&verb) && token.len() > verb.len() && token.starts_with(verb))
+    token == verb
+        || (glue.contains(&verb)
+            && token.len() > verb.len()
+            && (token.starts_with(verb) || (glue == C_END_GLUE_VERBS && token.ends_with(verb))))
 }
 
 pub(crate) fn is_c_lifecycle_init(name: &str) -> bool {
@@ -4723,6 +6366,9 @@ fn auto_detect_c_result_cleanup(return_type: &str, target_name: &str) -> Option<
         return Some("if (R) cJSON_Delete(R)".to_owned());
     }
     if stripped.contains("xmlDocPtr") {
+        return Some("if (R) xmlFreeDoc(R)".to_owned());
+    }
+    if return_is_pointer_to(&stripped, "xmlDoc") {
         return Some("if (R) xmlFreeDoc(R)".to_owned());
     }
     if stripped.contains("xmlNodePtr") {
@@ -5169,7 +6815,17 @@ fn collect_cpp_using_namespaces(
                 .collect();
             if let Some(namespaces) = begin_macros.get(&invoked) {
                 for ns in namespaces {
-                    if !found.contains(ns) {
+                    // Configurable inline namespace names often appear literally
+                    // inside another namespace-opening macro, for example
+                    // `inline namespace ABSL_OPTION_INLINE_NAMESPACE_NAME`.  They
+                    // are preprocessor placeholders, not spellable namespaces in
+                    // the harness.  Apply the same filter used by the literal
+                    // scanner to this macro-derived path as well.
+                    let is_macro_placeholder = ns.contains('_')
+                        && ns
+                            .chars()
+                            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_');
+                    if !is_macro_placeholder && !found.contains(ns) {
                         found.push(ns.clone());
                     }
                 }
@@ -5223,7 +6879,12 @@ fn detect_top_level_namespaces_in_text(text: &str) -> Vec<String> {
                 // alias is not a namespace you can `using namespace` at global scope.
                 let after = rest[name.len()..].trim_start();
                 let is_alias = after.starts_with('=');
-                if !name.is_empty() && !is_alias && !found.contains(&name) {
+                let is_macro_placeholder = name.contains('_')
+                    && name
+                        .chars()
+                        .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_');
+                if !name.is_empty() && !is_alias && !is_macro_placeholder && !found.contains(&name)
+                {
                     found.push(name);
                 }
             }
@@ -5796,6 +7457,7 @@ fn write_cpp_per_tu_context(output_dir: &Path, contexts: &[PerTuCompileContext])
         &[
             ("MAIN", "$(CXX)", "$(CXXFLAGS)", true),
             ("AFL", "$(AFLPP_CXX)", "$(AFLPP_CXXFLAGS)", false),
+            ("COV", "$(COV_CXX)", "$(COV_CXXFLAGS)", true),
             ("DIFF", "$(DIFF_CXX)", "$(DIFF_CXXFLAGS)", true),
         ],
         true,
@@ -5944,6 +7606,7 @@ pub(crate) fn prepare_repair_per_tu_context(
         &[
             ("MAIN", "$(CXX)", "$(CXXFLAGS)", true),
             ("AFL", "$(AFLPP_CXX)", "$(AFLPP_CXXFLAGS)", false),
+            ("COV", "$(COV_CXX)", "$(COV_CXXFLAGS)", true),
             ("DIFF", "$(DIFF_CXX)", "$(DIFF_CXXFLAGS)", true),
         ]
     } else {
@@ -7118,7 +8781,7 @@ fn resolve_compile_database_path(directory: &Path, value: &str) -> String {
     harness_gen::build_safety::make_path(&resolved)
 }
 
-fn split_compile_command(command: &str) -> Vec<String> {
+pub(crate) fn split_compile_command(command: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();
     let mut chars = command.chars().peekable();
@@ -7220,7 +8883,15 @@ pub(crate) fn is_partial_impl_header(header: &str) -> bool {
         return true;
     }
     let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    stem.ends_with("-inl") || stem.ends_with("_inl") || stem.ends_with(".inc")
+    stem.ends_with("-inl")
+        || stem.ends_with("_inl")
+        || stem.ends_with(".inc")
+        // Macro-instantiation fragments such as msgpack's
+        // `unpack_template.h` deliberately `#error` unless an enclosing header
+        // defines their type/function macros first. Flattening them into the
+        // harness as standalone includes loses that setup context.
+        || stem.ends_with("-template")
+        || stem.ends_with("_template")
 }
 
 fn is_translation_unit_include(path: &str) -> bool {
@@ -7417,6 +9088,15 @@ fn direct_project_includes(source: &str, include_dirs: &[PathBuf]) -> Vec<String
         else {
             continue;
         };
+        // Compile databases legitimately publish `-isystem` roots alongside
+        // project `-I` roots. Those paths are needed by the compiler, but their
+        // implementation headers must never be flattened into generated source:
+        // explicitly including libstdc++ `bits/*` dependencies out of order
+        // breaks otherwise valid headers (RE2 + Abseil's <atomic> was the real
+        // reproducer). The original public header will include them correctly.
+        if is_host_toolchain_header(&resolved) {
+            continue;
+        }
         // A feature-gated OpenMP source TU (`#pragma omp` / `<omp.h>`) only compiles
         // with `-fopenmp`; the harness never enables it, so dropping it from the
         // include closure keeps the core target buildable (base64 `lib_openmp.c`).
@@ -7426,6 +9106,19 @@ fn direct_project_includes(source: &str, include_dirs: &[PathBuf]) -> Vec<String
         includes.push(header);
     }
     includes
+}
+
+fn is_host_toolchain_header(path: &Path) -> bool {
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    [
+        Path::new("/usr/include"),
+        Path::new("/usr/lib/gcc"),
+        Path::new("/usr/lib/llvm"),
+        Path::new("/lib/gcc"),
+        Path::new("/Library/Developer/CommandLineTools"),
+    ]
+    .iter()
+    .any(|root| canonical.starts_with(root))
 }
 
 /// Cap on transitive header-closure traversal (mirrors the type-def closure).
@@ -8005,7 +9698,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         target_compile_sources(&source_path)
     };
     let build_context = cpp_build_context_for_source(&source_path);
-    let compile_flags = build_context.encoded_flags();
+    let mut compile_flags = build_context.encoded_flags();
     let eager_context_sources =
         if build_context.extra_sources.len() <= MAX_EAGER_BUILD_CONTEXT_SOURCES {
             build_context.extra_sources.as_slice()
@@ -8271,6 +9964,31 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
     } else {
         "free_direct"
     };
+    // A mixed Clang/GCC installation can leave clang++ pointing at a newer,
+    // absent GCC include tree. Header preflight already repairs that layout, but
+    // the generated Makefile previously omitted the proven include flags and
+    // then failed on its own `<limits>` include (reproduced on TinyXML2). Carry
+    // the same recovery into the artifact that users actually build. This runs
+    // after project-header discovery so libstdc++'s internal include directories
+    // never masquerade as project roots or get copied into `target_includes`.
+    let cxx = compile_flags
+        .iter()
+        .find_map(|flag| flag.strip_prefix(BUILD_CONTEXT_COMPILER_PREFIX))
+        .unwrap_or("clang++")
+        .to_owned();
+    let stdlib_probe_flags = compile_flags
+        .iter()
+        .filter(|flag| !flag.starts_with("@govfuzz-"))
+        .cloned()
+        .collect::<Vec<_>>();
+    let stdlib_include_flags =
+        crate::build::detect_cpp_stdlib_include_flags_for(&cxx, &stdlib_probe_flags);
+    if !stdlib_include_flags.is_empty() {
+        compile_flags.extend(stdlib_include_flags);
+        if let Some(search_path) = crate::build::detect_libstdcxx_search_path() {
+            compile_flags.push(format!("{BUILD_CONTEXT_LDFLAG_PREFIX}-L{search_path}"));
+        }
+    }
     let common = CppHarnessGenerationCommon {
         harness_id: id,
         output_dir: output_dir.clone(),
@@ -8297,7 +10015,16 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             &lifecycle_registry,
             &args.decoder_limits.cpp_limits(),
         )?;
-        if lifecycle_steps.is_empty() && constructor_params.is_empty() && factory_plan.is_none() {
+        let protocol_steps = if factory_plan.is_none() && receiver_class_override.is_none() {
+            cpp_mined_protocol_steps(&source_path, &function, &functions)
+        } else {
+            Vec::new()
+        };
+        if lifecycle_steps.is_empty()
+            && protocol_steps.is_empty()
+            && constructor_params.is_empty()
+            && factory_plan.is_none()
+        {
             // A target-only "sequence" is just a more fragile direct harness.
             // In auto mode, returning an error activates generate_harness_for's
             // direct fallback immediately instead of compiling an empty sequence
@@ -8326,6 +10053,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
                 result_cleanup: common.result_cleanup,
                 constructor_params,
                 lifecycle_steps,
+                protocol_steps,
                 type_defs: common.type_defs,
                 default_constructible_classes,
                 parameter_constructions,
@@ -8415,6 +10143,140 @@ struct CppHarnessGenerationCommon {
     using_namespaces: Vec<String>,
     result_cleanup: Option<String>,
     type_defs: Vec<c_parser::CTypeDefs>,
+}
+
+fn cpp_mined_protocol_steps(
+    source_path: &Path,
+    target: &cpp_parser::CppFunction,
+    functions: &[cpp_parser::CppFunction],
+) -> Vec<harness_gen::cpp_generate::CppProtocolStep> {
+    let Some(class_name) = target.api.class_name.as_deref() else {
+        return Vec::new();
+    };
+    crate::auto::recipe_mining::cpp_protocol_traces_for(source_path)
+        .into_iter()
+        .filter(|trace| trace.iter().any(|call| call.name == target.name))
+        .filter(|trace| trace.len() <= 16)
+        .find_map(|trace| {
+            let mut steps = Vec::new();
+            for call in trace {
+                let marks_target = call.name == target.name;
+                let declaration = if marks_target && call.arguments.len() <= target.params.len() {
+                    target
+                } else {
+                    functions.iter().find(|candidate| {
+                        candidate.name == call.name
+                            && candidate.api.class_name.as_deref() == Some(class_name)
+                            && candidate.api.namespace_path == target.api.namespace_path
+                            && candidate.api.member_access.as_deref() == Some("public")
+                            && !candidate.api.is_constructor
+                            && !candidate.api.is_destructor
+                            && !candidate.is_static
+                            && candidate.params.len() == call.arguments.len()
+                            && harness_gen::cpp_generate::cpp_callable_member_name(&candidate.name)
+                            && harness_gen::cpp_generate::cpp_return_type_emittable(
+                                &candidate.return_type,
+                            )
+                    })?
+                };
+                let args = declaration
+                    .params
+                    .iter()
+                    .enumerate()
+                    .map(|(index, parameter)| {
+                        let observed = call.arguments.get(index).map(String::as_str);
+                        if marks_target {
+                            cpp_mined_target_protocol_argument(observed, parameter)
+                        } else {
+                            cpp_mined_protocol_argument(
+                                observed.unwrap_or_default(),
+                                &parameter.cpp_type,
+                            )
+                        }
+                    })
+                    .collect();
+                steps.push(harness_gen::cpp_generate::CppProtocolStep {
+                    step: harness_gen::cpp_generate::CppLifecycleStep {
+                        name: declaration.name.clone(),
+                        params: declaration
+                            .params
+                            .iter()
+                            .map(|parameter| harness_gen::cpp_generate::CppParameter {
+                                name: parameter.name.clone(),
+                                cpp_type: parameter.cpp_type.clone(),
+                            })
+                            .collect(),
+                        return_type: declaration.return_type.clone(),
+                    },
+                    args,
+                    marks_target,
+                });
+            }
+            (steps.len() >= 2 && steps.iter().any(|step| step.marks_target)).then_some(steps)
+        })
+        .unwrap_or_default()
+}
+
+fn cpp_mined_target_protocol_argument(
+    expression: Option<&str>,
+    parameter: &cpp_parser::CppParamDescriptor,
+) -> harness_gen::cpp_generate::CppProtocolArg {
+    let normalized_type = parameter.cpp_type.to_ascii_lowercase();
+    let lower_name = parameter.name.to_ascii_lowercase();
+    let byte_pointer = normalized_type.contains('*')
+        && normalized_type.contains("const")
+        && ["char", "void", "uint8", "byte", "unsigned char"]
+            .iter()
+            .any(|ty| normalized_type.contains(ty));
+    if byte_pointer {
+        return harness_gen::cpp_generate::CppProtocolArg::InputData;
+    }
+    if !normalized_type.contains('*')
+        && !normalized_type.contains('&')
+        && ["size", "len", "length", "count", "bytes"]
+            .iter()
+            .any(|name| lower_name == *name || lower_name.ends_with(name))
+    {
+        return harness_gen::cpp_generate::CppProtocolArg::InputSize;
+    }
+    expression.map_or(
+        harness_gen::cpp_generate::CppProtocolArg::Decode,
+        |expression| cpp_mined_protocol_argument(expression, &parameter.cpp_type),
+    )
+}
+
+fn cpp_mined_protocol_argument(
+    expression: &str,
+    cpp_type: &str,
+) -> harness_gen::cpp_generate::CppProtocolArg {
+    if let Some(literal) = crate::auto::recipe_mining::safe_protocol_literal(expression) {
+        return harness_gen::cpp_generate::CppProtocolArg::Literal(literal);
+    }
+    let identifier = expression.trim();
+    if identifier
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        let lower = identifier.to_ascii_lowercase();
+        let normalized_type = cpp_type.to_ascii_lowercase();
+        if ["data", "bytes", "buffer", "buf", "input", "src"]
+            .iter()
+            .any(|name| lower == *name || lower.ends_with(name))
+            && normalized_type.contains("const")
+            && normalized_type.contains('*')
+        {
+            return harness_gen::cpp_generate::CppProtocolArg::InputData;
+        }
+        if ["size", "len", "length", "count"]
+            .iter()
+            .any(|name| lower == *name || lower.ends_with(name))
+            && !normalized_type.contains('*')
+            && !normalized_type.contains('&')
+        {
+            return harness_gen::cpp_generate::CppProtocolArg::InputSize;
+        }
+    }
+    harness_gen::cpp_generate::CppProtocolArg::Decode
 }
 
 fn cpp_lifecycle_steps(
@@ -10598,15 +12460,18 @@ fn push_unique_string(values: &mut Vec<String>, value: String) {
 
 #[cfg(test)]
 mod tests {
+    use super::c_step_role_of;
     use super::{
         auto_detect_c_headers, auto_detect_c_result_cleanup, auto_detect_project_includes,
         bare_library_resolves, build_harness_ast, c_build_flags_for_source,
-        c_constructor_drive_plan, c_direct_lifecycle_table, c_signature_needs_project_header,
-        c_va_list_variadic_wrapper, cmake_define_enables_std_module,
-        collect_c_type_defs_for_harness, collect_cpp_using_namespaces, compile_database_candidates,
-        compute_default_id, cpp_default_constructible_parameter_classes,
-        cpp_namespace_begin_macros, detect_strdup_family_free, detect_top_level_namespaces_in_text,
-        extract_compile_database_flags, find_project_header_declaring_target, generate_for_path,
+        c_constructor_drive_plan, c_direct_lifecycle_table, c_protocol_argument,
+        c_protocol_plain_identifier, c_signature_needs_project_header, c_va_list_variadic_wrapper,
+        cmake_define_enables_std_module, collect_c_type_defs_for_harness,
+        collect_cpp_using_namespaces, compile_database_candidates, compute_default_id,
+        cpp_default_constructible_parameter_classes, cpp_namespace_begin_macros,
+        detect_strdup_family_free, detect_top_level_namespaces_in_text,
+        exact_public_c_sequence_cluster, extract_compile_database_flags,
+        find_project_header_declaring_target, find_tree_c_callable_signature, generate_for_path,
         infer_cmake_build_context, infer_cmake_c_build_context, is_c_lifecycle_end,
         is_c_lifecycle_handle_type, is_c_lifecycle_init, is_c_scalar_type,
         is_harness_incompatible_flag, is_msvc_crt_model_define, is_non_library_dir,
@@ -11581,6 +13446,13 @@ mod tests {
             !found.contains(&"Namespace".to_owned()),
             "macro-body namespace must be ignored: {found:?}"
         );
+        let placeholder = detect_top_level_namespaces_in_text(
+            "namespace ABSL_OPTION_INLINE_NAMESPACE_NAME { struct X {}; }\n",
+        );
+        assert!(
+            placeholder.is_empty(),
+            "an all-caps macro placeholder is not a spellable namespace: {placeholder:?}"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -11601,6 +13473,51 @@ inline namespace v12 {
         let namespaces = collect_cpp_using_namespaces(&texts, &macros);
         assert_eq!(namespaces.first().map(String::as_str), Some("fmt"));
         assert!(namespaces.iter().any(|namespace| namespace == "detail"));
+
+        let absl_config = r#"#define ABSL_NAMESPACE_BEGIN \
+namespace absl { \
+inline namespace ABSL_OPTION_INLINE_NAMESPACE_NAME {
+ABSL_NAMESPACE_BEGIN
+"#;
+        let texts = vec![absl_config.to_owned()];
+        let macros = cpp_namespace_begin_macros(&texts);
+        let namespaces = collect_cpp_using_namespaces(&texts, &macros);
+        assert!(namespaces.iter().any(|namespace| namespace == "absl"));
+        assert!(
+            !namespaces
+                .iter()
+                .any(|namespace| namespace == "ABSL_OPTION_INLINE_NAMESPACE_NAME"),
+            "macro-derived namespace placeholders must be filtered: {namespaces:?}"
+        );
+    }
+
+    #[test]
+    fn exact_public_sequence_recipe_preempts_generic_lifecycle_inference() {
+        let jpeg = c_parser::CFunction {
+            name: "jpeg_read_header".to_owned(),
+            params: vec![
+                c_parser::CParamDescriptor {
+                    name: "cinfo".to_owned(),
+                    c_type: "j_decompress_ptr".to_owned(),
+                },
+                c_parser::CParamDescriptor {
+                    name: "require_image".to_owned(),
+                    c_type: "boolean".to_owned(),
+                },
+            ],
+            ..Default::default()
+        };
+        let cluster = exact_public_c_sequence_cluster(&jpeg)
+            .expect("jpeg_read_header has a maintained public protocol");
+        assert_eq!(cluster.handle_type, "struct jpeg_decompress_struct");
+        assert!(cluster.op_steps.is_empty());
+
+        let unrelated = c_parser::CFunction {
+            name: "read_header".to_owned(),
+            params: jpeg.params,
+            ..Default::default()
+        };
+        assert!(exact_public_c_sequence_cluster(&unrelated).is_none());
     }
 
     #[test]
@@ -11695,7 +13612,11 @@ inline namespace v12 {
         )
         .expect("callback and pointer constructor args are nullable");
         assert_eq!(args, vec!["NULL", "NULL", "NULL"]);
-        assert!(super::c_neutral_ctor_args(["size_t"].into_iter()).is_none());
+        assert_eq!(
+            super::c_neutral_ctor_args(["int", "size_t"].into_iter()).unwrap(),
+            vec!["0", "0"]
+        );
+        assert!(super::c_neutral_ctor_args(["struct options"].into_iter()).is_none());
     }
 
     #[test]
@@ -11850,6 +13771,18 @@ inline namespace v12 {
         assert_eq!(
             auto_detect_c_result_cleanup("CJSON_PUBLIC(cJSON_bool)", "cJSON_Compare"),
             None
+        );
+    }
+
+    #[test]
+    fn libxml_document_pointer_spelling_uses_document_cleanup() {
+        assert_eq!(
+            auto_detect_c_result_cleanup("xmlDoc *", "xmlReadMemory").as_deref(),
+            Some("if (R) xmlFreeDoc(R)")
+        );
+        assert_eq!(
+            auto_detect_c_result_cleanup("xmlDocPtr", "xmlReadMemory").as_deref(),
+            Some("if (R) xmlFreeDoc(R)")
         );
     }
 
@@ -12162,6 +14095,20 @@ inline namespace v12 {
     }
 
     #[test]
+    fn c_direct_lifecycle_table_recognizes_noun_glued_free() {
+        let functions =
+            c_parser::parse_c_functions("void pcre2_regfree(regex_t *preg) { (void)preg; }")
+                .unwrap();
+        let table = c_direct_lifecycle_table(&functions, &[], &type_model::TypeRegistry::default());
+        let entry = table
+            .iter()
+            .find(|entry| entry.handle_type == "regex_t")
+            .expect("delete-only output lifecycle");
+        assert_eq!(entry.init, None);
+        assert_eq!(entry.delete.as_deref(), Some("pcre2_regfree"));
+    }
+
+    #[test]
     fn tree_lifecycle_fills_equivalent_elaborated_tag_entry() {
         use harness_gen::c_generate::CHandleLifecycle;
 
@@ -12186,6 +14133,131 @@ inline namespace v12 {
         assert_eq!(local[0].init.as_deref(), Some("mi_heap_new"));
         assert!(local[0].init_returns_handle);
         assert_eq!(local[0].delete.as_deref(), Some("mi_heap_delete"));
+    }
+
+    #[test]
+    fn tree_returning_constructor_replaces_heuristic_in_place_init() {
+        use harness_gen::c_generate::CHandleLifecycle;
+
+        let mut local = vec![CHandleLifecycle {
+            handle_type: "struct archive".to_owned(),
+            init: Some("archive_read_open1".to_owned()),
+            delete: Some("archive_read_free".to_owned()),
+            init_returns_handle: false,
+            init_args: Vec::new(),
+        }];
+        let tree = vec![CHandleLifecycle {
+            handle_type: "archive".to_owned(),
+            init: Some("archive_read_new".to_owned()),
+            delete: Some("archive_read_free".to_owned()),
+            init_returns_handle: true,
+            init_args: Vec::new(),
+        }];
+
+        merge_tree_c_lifecycle(&mut local, &tree);
+
+        assert_eq!(local.len(), 1);
+        assert_eq!(local[0].init.as_deref(), Some("archive_read_new"));
+        assert!(local[0].init_returns_handle);
+        assert_eq!(local[0].delete.as_deref(), Some("archive_read_free"));
+    }
+
+    #[test]
+    fn sequence_uses_tree_lifecycle_when_macro_decorated_prototypes_are_missing() {
+        use c_parser::{CFunction, CParamDescriptor};
+        use harness_gen::c_generate::CHandleLifecycle;
+
+        let target = CFunction {
+            name: "archive_read_open_memory".to_owned(),
+            line: 56,
+            return_type: "int".to_owned(),
+            params: vec![
+                CParamDescriptor {
+                    name: "archive".to_owned(),
+                    c_type: "struct archive *".to_owned(),
+                },
+                CParamDescriptor {
+                    name: "data".to_owned(),
+                    c_type: "const void *".to_owned(),
+                },
+                CParamDescriptor {
+                    name: "size".to_owned(),
+                    c_type: "size_t".to_owned(),
+                },
+            ],
+            ..Default::default()
+        };
+        let tree = vec![CHandleLifecycle {
+            handle_type: "archive".to_owned(),
+            init: Some("archive_read_new".to_owned()),
+            delete: Some("archive_read_free".to_owned()),
+            init_returns_handle: true,
+            init_args: Vec::new(),
+        }];
+        let deprecated_sibling = CFunction {
+            name: "archive_read_open_file".to_owned(),
+            line: 57,
+            return_type: "int".to_owned(),
+            params: vec![
+                CParamDescriptor {
+                    name: "archive".to_owned(),
+                    c_type: "struct archive *".to_owned(),
+                },
+                CParamDescriptor {
+                    name: "filename".to_owned(),
+                    c_type: "const char *".to_owned(),
+                },
+                CParamDescriptor {
+                    name: "block_size".to_owned(),
+                    c_type: "size_t".to_owned(),
+                },
+            ],
+            ..Default::default()
+        };
+        let functions = vec![target.clone(), deprecated_sibling];
+
+        let cluster = super::c_lifecycle_steps(
+            &target,
+            &functions,
+            &[],
+            &[],
+            &tree,
+            false,
+            Path::new("/nonexistent/archive_read_open_memory.c"),
+        )
+        .expect("tree lifecycle should make the opaque sequence constructible");
+
+        assert!(cluster.init_returns_handle);
+        assert_eq!(
+            cluster.init_step.as_ref().map(|step| step.name.as_str()),
+            Some("archive_read_new")
+        );
+        assert_eq!(
+            cluster.end_step.as_ref().map(|step| step.name.as_str()),
+            Some("archive_read_free")
+        );
+        assert!(cluster
+            .op_steps
+            .iter()
+            .any(|step| step.name == "archive_read_open_memory"));
+        for required in [
+            "archive_read_next_header",
+            "archive_read_data",
+            "archive_read_support_filter_all",
+            "archive_read_support_format_all",
+        ] {
+            assert!(
+                cluster.op_steps.iter().any(|step| step.name == required),
+                "macro-decorated public reader operation {required} must be present"
+            );
+        }
+        assert!(
+            cluster
+                .op_steps
+                .iter()
+                .all(|step| step.name != "archive_read_open_file"),
+            "the exact reader recipe must not compile unrelated deprecated sibling calls"
+        );
     }
 
     #[test]
@@ -13026,6 +15098,26 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn tree_lifecycle_signature_fallback_finds_sibling_initializer_definition() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir(root.path().join("tests")).unwrap();
+        fs::create_dir(root.path().join("src")).unwrap();
+        let target = root.path().join("src/parser.c");
+        fs::write(&target, "int yaml_parser_parse(void *p) { return p != 0; }").unwrap();
+        fs::write(
+            root.path().join("src/api.c"),
+            "int yaml_parser_initialize(yaml_parser_t *parser) { return parser != 0; }",
+        )
+        .unwrap();
+
+        let signature = find_tree_c_callable_signature(&target, "yaml_parser_initialize")
+            .expect("sibling definition is part of the proven tree lifecycle");
+        assert_eq!(signature.0, "int");
+        assert_eq!(signature.1, ["yaml_parser_t *"]);
+        assert!(!signature.3);
+    }
+
+    #[test]
     fn auto_detect_project_includes_finds_sibling_include_dir() {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -13137,6 +15229,16 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn toolchain_headers_are_not_flattened_as_project_dependencies() {
+        assert!(super::is_host_toolchain_header(Path::new(
+            "/usr/include/c++/13/bits/atomic_base.h"
+        )));
+        assert!(!super::is_host_toolchain_header(Path::new(
+            "/tmp/project/include/re2/regexp.h"
+        )));
+    }
+
+    #[test]
     fn auto_detect_c_headers_preserves_config_before_same_stem_api() {
         let root = temp_dir("source-header-order");
         let source = root.join("legacy.cpp");
@@ -13200,6 +15302,8 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
         );
         assert!(is_partial_impl_header("json_valueiterator.inl"));
         assert!(is_partial_impl_header("foo.tcc"));
+        assert!(is_partial_impl_header("msgpack/unpack_template.h"));
+        assert!(is_partial_impl_header("internal/parse-template.h"));
         assert!(!is_partial_impl_header("json/value.h"));
     }
 
@@ -13540,6 +15644,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args).unwrap();
         let main_c = fs::read_to_string(out.join("H-CUSTOM/main.c")).unwrap();
@@ -13589,6 +15694,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: DecoderLimitArgs::default(),
             force: false,
+            archive_backed: false,
         };
 
         // Default cap (16): the historical container element-count bound.
@@ -13704,6 +15810,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         let err = run(args).expect_err("generic-package target must be refused");
         assert!(
@@ -13748,6 +15855,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args).expect("private-child direct target must use a child harness, not be refused");
         // No public bridge; a private-child-subprogram harness spec + body. Ada is
@@ -13806,6 +15914,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args).expect("private-type-sig private-child target must use a child harness");
         // No bridge; instead a private-child-subprogram harness spec + body.
@@ -13856,6 +15965,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         let err = run(args).expect_err("non-direct private child must still be refused");
         assert!(
@@ -13916,6 +16026,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args).expect("generic codec package must be instantiated, not skipped");
         let main_adb = fs::read_to_string(out.join("H-CODEC/main.adb")).unwrap();
@@ -13981,6 +16092,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args)
             .expect("generic-package op with a synthesizable record param must not be skipped");
@@ -14045,6 +16157,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args).expect("out param of a private type must be declared bare, not skipped");
         let main_adb = fs::read_to_string(out.join("H-OUTPRIV/main.adb")).unwrap();
@@ -14097,6 +16210,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         run(args).expect("generic encoder subprogram must be instantiated");
         let main_adb = fs::read_to_string(out.join("H-ENC/main.adb")).unwrap();
@@ -14147,6 +16261,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
         let err = run(args).expect_err("generic subprogram target must be refused");
         assert!(
@@ -14389,6 +16504,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         let error = run(args).unwrap_err();
@@ -14421,6 +16537,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14475,6 +16592,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14524,6 +16642,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -14575,6 +16694,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14640,6 +16760,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14706,6 +16827,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14770,6 +16892,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14836,6 +16959,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14891,6 +17015,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14945,6 +17070,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -14997,6 +17123,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).expect("harness generation finds the dependency constructor");
@@ -15050,6 +17177,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -15093,6 +17221,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -15143,6 +17272,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15216,6 +17346,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15258,6 +17389,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15328,6 +17460,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15391,6 +17524,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15482,6 +17616,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15494,7 +17629,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
-    fn generate_c_sequence_harness_includes_static_init_end_source() {
+    fn generate_c_sequence_harness_uses_header_complete_private_static_lifecycle() {
         let root = temp_dir("c-sequence-static-lifecycle");
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
@@ -15533,30 +17668,23 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
         let main = fs::read_to_string(root.join("out/H-CSEQ-STATIC-LIFE/main.c")).unwrap();
         assert!(
             main.contains("#include \"session.c\""),
-            "static lifecycle helpers need the defining source included into main.c:\n{main}"
+            "same-TU lifecycle is usable when the handle is complete in the public header:\n{main}"
         );
-        assert!(main.contains("session_init(&_gf_handle"));
         assert!(main.contains("session_step(&_gf_handle"));
+        assert!(main.contains("session_init(&_gf_handle"));
         assert!(main.contains("session_end(&_gf_handle"));
-        assert!(
-            !main.contains("extern int session_init"),
-            "included static init should not also get an external prototype:\n{main}"
-        );
-        assert!(
-            !main.contains("extern void session_end"),
-            "included static end should not also get an external prototype:\n{main}"
-        );
 
         let makefile = fs::read_to_string(root.join("out/H-CSEQ-STATIC-LIFE/Makefile")).unwrap();
         assert!(
             !makefile.contains(&source.display().to_string()),
-            "static lifecycle source should not be linked as a separate translation unit:\n{makefile}"
+            "a whole-TU include must not also link the same definitions:\n{makefile}"
         );
     }
 
@@ -15601,6 +17729,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15686,6 +17815,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15802,6 +17932,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15863,6 +17994,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -15942,6 +18074,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .expect("the owner TU supplies the header's missing context");
 
@@ -15999,6 +18132,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap_err()
         .to_string();
@@ -16056,6 +18190,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16551,6 +18686,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16596,6 +18732,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16644,6 +18781,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16681,6 +18819,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -16725,6 +18864,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16773,6 +18913,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16869,6 +19010,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16907,6 +19049,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -16989,6 +19132,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
                 tree_type_defs: None,
                 decoder_limits: Default::default(),
                 force: false,
+                archive_backed: false,
             })
             .expect_err("non-synthesizable class parameter must stop before build");
             assert!(
@@ -17031,6 +19175,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17087,6 +19232,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
                 tree_type_defs: None,
                 decoder_limits: Default::default(),
                 force: false,
+                archive_backed: false,
             })?;
             Ok(fs::read_to_string(temp.join(format!("out/H-X-P99-{tag}/main.cpp"))).unwrap())
         }
@@ -17210,6 +19356,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17300,6 +19447,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17355,6 +19503,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17401,6 +19550,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17448,6 +19598,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .expect("Latin-1 comments must not block C++ harness generation");
 
@@ -17485,6 +19636,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -17531,6 +19683,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17579,6 +19732,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -17623,6 +19777,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -17820,6 +19975,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17861,6 +20017,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -17911,6 +20068,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         };
 
         run(args).unwrap();
@@ -17972,6 +20130,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -18046,6 +20205,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -18092,6 +20252,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .expect_err("an empty lifecycle must route auto to the direct fallback");
         assert!(error
@@ -18136,6 +20297,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
         let main = fs::read_to_string(temp.join("out/H-X-CTOR/main.cpp")).unwrap();
@@ -18182,6 +20344,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap_err();
         let message = error.to_string();
@@ -18227,6 +20390,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap_err();
         assert!(error.to_string().contains("cannot construct"), "{error}");
@@ -18274,6 +20438,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap_err();
         let message = error.to_string();
@@ -18320,6 +20485,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
         let main = fs::read_to_string(temp.join("out/H-X-BLOCKED/main.cpp")).unwrap();
@@ -18382,6 +20548,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -18474,6 +20641,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -18544,6 +20712,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap();
 
@@ -18606,6 +20775,7 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             tree_type_defs: None,
             decoder_limits: Default::default(),
             force: false,
+            archive_backed: false,
         })
         .unwrap_err();
 
@@ -18661,4 +20831,93 @@ package body State is
    end Top;
 end State;
 "#;
+
+    #[test]
+    fn only_allocation_and_deallocation_change_handle_liveness() {
+        use harness_gen::c_generate::CStepRole;
+        // libarchive: `archive_read_new` allocates, and `archive_read_open_memory`
+        // then runs ON the live handle. Treating `open` as a re-open would gate
+        // it behind the handle being CLOSED, where it could never run — which is
+        // exactly how libarchive lost its opener.
+        assert_eq!(c_step_role_of("archive_read_new"), CStepRole::Open);
+        assert_eq!(
+            c_step_role_of("archive_read_open_memory"),
+            CStepRole::Operation
+        );
+        assert_eq!(
+            c_step_role_of("archive_read_next_header"),
+            CStepRole::Operation
+        );
+        assert_eq!(c_step_role_of("archive_read_free"), CStepRole::Close);
+
+        // Deallocation then allocation is the cycle leveldb's own fuzzer spells
+        // as `kReopenDb`.
+        assert_eq!(c_step_role_of("db_destroy"), CStepRole::Close);
+        assert_eq!(c_step_role_of("db_create"), CStepRole::Open);
+        assert_eq!(
+            c_step_role_of("pcre2_regfree"),
+            CStepRole::Close,
+            "noun+free destructor names must remain visible to lifecycle pairing"
+        );
+        assert_eq!(
+            c_step_role_of("XML_SetAllocTrackerMaximumAmplification"),
+            CStepRole::Configure,
+            "a Set* API must not be mistaken for a constructor because its subject is an allocator"
+        );
+
+        // `close` detaches a source; it does not deallocate, so it stays an
+        // ordinary op on a live handle.
+        assert_eq!(c_step_role_of("archive_read_close"), CStepRole::Operation);
+    }
+
+    #[test]
+    fn mined_protocol_arguments_map_only_plain_input_expressions() {
+        use harness_gen::c_generate::CProtocolArg;
+
+        assert_eq!(
+            c_protocol_argument("(const XML_Char *)data", "p", "const XML_Char *"),
+            CProtocolArg::InputData
+        );
+        assert_eq!(
+            c_protocol_argument("(int)size", "p", "int"),
+            CProtocolArg::InputSize
+        );
+        assert_eq!(
+            c_protocol_argument("(const char *)(data + 1)", "p", "const char *"),
+            CProtocolArg::InputDataOffset(1)
+        );
+        assert_eq!(
+            c_protocol_argument("size - 1", "p", "size_t"),
+            CProtocolArg::InputSizeMinus(1)
+        );
+        assert_eq!(
+            c_protocol_argument("size / 2", "p", "size_t"),
+            CProtocolArg::InputSizeDivisor(2)
+        );
+        assert_eq!(
+            c_protocol_argument("data[0] & 7", "p", "unsigned"),
+            CProtocolArg::InputByte {
+                index: 0,
+                mask: Some(7),
+            }
+        );
+        assert_eq!(
+            c_protocol_argument("p", "p", "void *"),
+            CProtocolArg::Receiver
+        );
+        assert_eq!(
+            c_protocol_argument("NULL", "p", "const char *"),
+            CProtocolArg::Literal("NULL".to_owned())
+        );
+        assert_eq!(
+            c_protocol_argument("siphash24(data, size, key)", "p", "unsigned long"),
+            CProtocolArg::Decode,
+            "computed helper expressions must never be lifted or mistaken for Size"
+        );
+        assert_eq!(
+            c_protocol_plain_identifier("(int)size").as_deref(),
+            Some("size")
+        );
+        assert!(c_protocol_plain_identifier("size + 1").is_none());
+    }
 }

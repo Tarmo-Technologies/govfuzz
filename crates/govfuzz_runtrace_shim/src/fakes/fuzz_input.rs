@@ -84,8 +84,10 @@ fn load() -> Option<&'static Shared> {
 /// publish the current iteration's fuzz bytes. The shim's faking
 /// path will then serve these bytes back through fake fds / sockets.
 ///
-/// Safe to call with a null pointer or zero size — both become a
-/// no-op. Safe to call concurrently with [`read_into`] from other
+/// Safe to call with a null pointer or zero size. A null pointer with a
+/// non-zero size is ignored; a zero-size publication still resets deterministic
+/// per-input state and publishes an explicitly empty fake-resource buffer.
+/// Safe to call concurrently with [`read_into`] from other
 /// threads; readers see either the old or new buffer, never a
 /// partial state.
 ///
@@ -97,10 +99,26 @@ fn load() -> Option<&'static Shared> {
 /// need to remain valid after `govfuzz_shim_set_fuzz_input` returns.
 #[no_mangle]
 pub unsafe extern "C" fn govfuzz_shim_set_fuzz_input(data: *const u8, size: libc::size_t) {
-    if data.is_null() || size == 0 {
+    if size == 0 {
+        // Empty corpus entries are real libFuzzer iterations too. Without this
+        // reset, an empty reproducer inherits the RNG stream left by the previous
+        // testcase in a persistent process but starts from the seed in standalone
+        // replay, violating the determinism contract.
+        crate::hooks::determinism::reset_for_input(&[]);
+        if let Ok(mut guard) = LIVE_INPUT.lock() {
+            *guard = Some(LiveInput { bytes: Vec::new() });
+        }
+        CURSOR.store(0, Ordering::Relaxed);
+        return;
+    }
+    if data.is_null() {
         return;
     }
     let slice = std::slice::from_raw_parts(data, size);
+    // The harness runs many testcases in one persistent process. Reset fake RNG
+    // state from THIS input before target execution so a saved testcase replays
+    // independently of the corpus prefix that happened to precede it.
+    crate::hooks::determinism::reset_for_input(slice);
     let mut guard = match LIVE_INPUT.lock() {
         Ok(g) => g,
         Err(_) => return,
@@ -121,14 +139,17 @@ pub fn read_into(out: &mut [u8]) -> usize {
     // self-deadlock. On contention, fall through to the mmap'd shared buffer.
     if let Ok(guard) = LIVE_INPUT.try_lock() {
         if let Some(live) = guard.as_ref() {
-            if !live.bytes.is_empty() {
-                let cursor = CURSOR.fetch_add(out.len(), Ordering::Relaxed);
-                let len = live.bytes.len();
-                for (i, slot) in out.iter_mut().enumerate() {
-                    *slot = live.bytes[(cursor + i) % len];
-                }
-                return out.len();
+            if live.bytes.is_empty() {
+                // Some(empty) is an explicit current testcase, not "no live
+                // publication". Never fall through to a stale shared buffer.
+                return 0;
             }
+            let cursor = CURSOR.fetch_add(out.len(), Ordering::Relaxed);
+            let len = live.bytes.len();
+            for (i, slot) in out.iter_mut().enumerate() {
+                *slot = live.bytes[(cursor + i) % len];
+            }
+            return out.len();
         }
     }
     // Fallback: mmap'd shared memfd.
@@ -168,14 +189,15 @@ pub fn read_keyed(key: u64, out: &mut [u8]) -> usize {
     // mmap on contention rather than deadlocking (see read_into).
     if let Ok(guard) = LIVE_INPUT.try_lock() {
         if let Some(live) = guard.as_ref() {
-            if !live.bytes.is_empty() {
-                let len = live.bytes.len();
-                let base = (key as usize) % len;
-                for (i, slot) in out.iter_mut().enumerate() {
-                    *slot = live.bytes[(base + i) % len];
-                }
-                return out.len();
+            if live.bytes.is_empty() {
+                return 0;
             }
+            let len = live.bytes.len();
+            let base = (key as usize) % len;
+            for (i, slot) in out.iter_mut().enumerate() {
+                *slot = live.bytes[(base + i) % len];
+            }
+            return out.len();
         }
     }
     let Some(shared) = load() else {
@@ -327,7 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn null_or_empty_publish_is_noop() {
+    fn null_nonempty_publish_is_noop() {
         let _guard = TEST_LOCK.lock().unwrap();
         reset();
         unsafe {
@@ -336,6 +358,23 @@ mod tests {
         // No env vars set, no live buffer => read_into returns 0.
         let mut out = [0u8; 4];
         assert_eq!(read_into(&mut out), 0);
+        reset();
+    }
+
+    #[test]
+    fn empty_publish_shadows_the_previous_testcase() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        reset();
+        let payload = b"previous";
+        unsafe {
+            govfuzz_shim_set_fuzz_input(payload.as_ptr(), payload.len());
+            govfuzz_shim_set_fuzz_input(std::ptr::null(), 0);
+        }
+        let mut sequential = [0u8; 8];
+        let mut keyed = [0u8; 8];
+        assert_eq!(read_into(&mut sequential), 0);
+        assert_eq!(read_keyed(7, &mut keyed), 0);
+        assert!(taint_span(b"previous", 4).is_none());
         reset();
     }
 

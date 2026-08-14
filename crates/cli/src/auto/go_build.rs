@@ -156,6 +156,13 @@ pub fn build_go_harness(
         // silently treated as a package pattern and ignored.
         if cover {
             cmd.args(["-cover", "-covermode=atomic"]);
+            // `-cover` alone instruments only the packages being BUILT, which
+            // here is just the generated harness `main` — the target library
+            // arrives as a dependency through the module `replace` and would be
+            // left uninstrumented, so the lane's "real edge coverage" would
+            // measure the harness fuzzing itself. `-coverpkg` widens
+            // instrumentation to the target module.
+            cmd.arg(format!("-coverpkg={module_path}/..."));
         }
         if let Some(overlay) = overlay {
             cmd.arg(format!("-overlay={}", overlay.display()));

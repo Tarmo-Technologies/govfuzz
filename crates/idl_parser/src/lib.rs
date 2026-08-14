@@ -4,6 +4,7 @@ pub mod ada_emit;
 pub mod ast;
 pub mod error;
 pub mod lexer;
+mod literal;
 mod parser;
 pub mod preprocessor;
 pub mod ros_interface;

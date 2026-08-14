@@ -6,12 +6,14 @@
 
 pub mod assertion;
 pub mod cmplog;
+pub mod determinism;
 pub mod dl;
 pub mod dlsym;
 pub mod env;
 pub mod format;
 pub mod fs;
 pub mod identity;
+pub mod ioctl;
 pub mod mem;
 pub mod mqueue;
 pub mod net;

@@ -185,14 +185,85 @@ fn walk_errors(node: tree_sitter::Node<'_>, count: &mut usize) {
 }
 
 pub fn parse_c_functions(source: &str) -> Result<Vec<CFunction>, CParseError> {
+    let source = mask_c_contract_annotations(source);
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&tree_sitter_c::LANGUAGE.into())
         .map_err(|_| CParseError::Grammar)?;
-    let tree = parser.parse(source, None).ok_or(CParseError::Parse)?;
+    let tree = parser.parse(&source, None).ok_or(CParseError::Parse)?;
     let mut functions = Vec::new();
     collect_functions(tree.root_node(), source.as_bytes(), None, &mut functions);
     Ok(functions)
+}
+
+/// Replace source-level bounds/nullability contracts with whitespace before
+/// feeding C to tree-sitter. A contract between a pointer star and its name,
+/// such as `uint8_t * WEBP_COUNTED_BY(size) output`, is otherwise parsed as a
+/// function declarator: the harness sees a callback named after the annotation
+/// argument instead of a byte buffer named `output`. Keep byte and newline
+/// positions stable so all source spans and line numbers remain valid.
+fn mask_c_contract_annotations(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let mut out = bytes.to_vec();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if !(bytes[index] as char).is_ascii_alphabetic() && bytes[index] != b'_' {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        index += 1;
+        while index < bytes.len()
+            && ((bytes[index] as char).is_ascii_alphanumeric() || bytes[index] == b'_')
+        {
+            index += 1;
+        }
+        let name = &source[start..index];
+        let upper = name.to_ascii_uppercase();
+        let is_contract = [
+            "COUNTED_BY",
+            "SIZED_BY",
+            "BOUNDED_BY",
+            "NULLABLE",
+            "NONNULL",
+            "NOESCAPE",
+        ]
+        .iter()
+        .any(|marker| upper.contains(marker));
+        let mut open = index;
+        while open < bytes.len() && bytes[open].is_ascii_whitespace() {
+            open += 1;
+        }
+        if !is_contract || bytes.get(open) != Some(&b'(') {
+            continue;
+        }
+        let mut depth = 0usize;
+        let mut end = open;
+        while end < bytes.len() {
+            match bytes[end] {
+                b'(' => depth += 1,
+                b')' => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        end += 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            end += 1;
+        }
+        if depth != 0 {
+            continue;
+        }
+        for byte in &mut out[start..end] {
+            if *byte != b'\n' && *byte != b'\r' {
+                *byte = b' ';
+            }
+        }
+        index = end;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| source.to_owned())
 }
 
 /// M22: a tolerant extractor for **K&R / pre-ANSI C** function definitions.
@@ -1026,7 +1097,7 @@ fn prepare_c_declaration_source(source: &str) -> String {
 }
 
 pub fn parse_c_declarations(source: &str) -> Result<Vec<CDeclaration>, CParseError> {
-    let source = prepare_c_declaration_source(source);
+    let source = mask_c_contract_annotations(&prepare_c_declaration_source(source));
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&tree_sitter_c::LANGUAGE.into())
@@ -1705,7 +1776,21 @@ fn field_descriptor(
         "pointer_declarator" => {
             let inner = node.child_by_field_name("declarator")?;
             let mut descriptor = field_descriptor(inner, source, base_type)?;
-            descriptor.c_type = format!("{} *", descriptor.c_type);
+            // In an array-of-pointers declarator (`T *items[N]`) tree-sitter's
+            // wrapper order can visit the array before the pointer. Appending
+            // `*` after the recovered `[N]` spells `T[N] *`, which the type
+            // model resolves as an array of T and makes codegen assign scalars
+            // into pointer slots. Pointer decoration binds to the element and
+            // therefore belongs before the first array suffix.
+            descriptor.c_type = if let Some(open) = descriptor.c_type.find('[') {
+                format!(
+                    "{} *{}",
+                    descriptor.c_type[..open].trim_end(),
+                    &descriptor.c_type[open..]
+                )
+            } else {
+                format!("{} *", descriptor.c_type)
+            };
             Some(descriptor)
         }
         "array_declarator" => {
@@ -2410,6 +2495,29 @@ fn function_return_type(def: tree_sitter::Node<'_>, source: &[u8]) -> String {
                 .map(normalize_return_type_prefix)
         })
         .unwrap_or_default();
+    // As with extern declarations above, an unknown linkage/calling-convention
+    // macro can make tree-sitter start the function_definition after the real
+    // builtin type. PCRE2's definition is the representative shape:
+    // `PCRE2POSIX_EXP_DEFN int PCRE2_CALL_CONVENTION pcre2_regcomp(...)`.
+    // Recover from the physical line prefix when it restores a concrete type;
+    // otherwise the generated harness tries to declare a local variable whose
+    // "type" is just the empty calling-convention macro.
+    if let Some(declarator) = def.child_by_field_name("declarator") {
+        let line_start = source[..def.start_byte()]
+            .iter()
+            .rposition(|byte| *byte == b'\n')
+            .map_or(0, |index| index.saturating_add(1));
+        if let Ok(prefix) = std::str::from_utf8(&source[line_start..declarator.start_byte()]) {
+            let recovered = normalize_return_type_prefix(prefix);
+            let has_type_marker = |text: &str| {
+                text.split_whitespace()
+                    .any(|part| is_c_builtin_type_word(part) || is_c_tag_keyword(part))
+            };
+            if has_type_marker(&recovered) && !has_type_marker(&return_type) {
+                return_type = recovered;
+            }
+        }
+    }
     if return_type.is_empty() {
         return_type = type_node
             .utf8_text(source)
@@ -3232,6 +3340,48 @@ mod tests {
     }
 
     #[test]
+    fn parse_c_functions_recovers_builtin_before_calling_convention_macro() {
+        let fns = parse_c_functions(
+            "PCRE2POSIX_EXP_DEFN int PCRE2_CALL_CONVENTION\n\
+             pcre2_regcomp(void *preg, const char *pattern, int cflags) { return 0; }",
+        )
+        .unwrap();
+        assert_eq!(fns.len(), 1);
+        assert_eq!(fns[0].name, "pcre2_regcomp");
+        assert_eq!(fns[0].return_type, "int");
+    }
+
+    #[test]
+    fn parse_c_functions_masks_counted_by_pointer_contracts() {
+        let fns = parse_c_functions(
+            "uint8_t *WebPDecodeRGBAInto(\n\
+               const uint8_t * WEBP_COUNTED_BY(data_size) data, size_t data_size,\n\
+               uint8_t * WEBP_COUNTED_BY(output_size) output, size_t output_size,\n\
+               int stride) { return output; }",
+        )
+        .unwrap();
+        assert_eq!(fns.len(), 1);
+        assert_eq!(fns[0].params[0].name, "data");
+        assert_eq!(fns[0].params[0].c_type, "const uint8_t *");
+        assert_eq!(fns[0].params[2].name, "output");
+        assert_eq!(fns[0].params[2].c_type, "uint8_t *");
+    }
+
+    #[test]
+    fn parse_c_declarations_masks_counted_by_pointer_contracts() {
+        let decls = parse_c_declarations(
+            "uint8_t *WebPDecodeRGBAInto(const uint8_t * WEBP_COUNTED_BY(n) data, size_t n,\
+                                         uint8_t * WEBP_COUNTED_BY(cap) output, size_t cap);",
+        )
+        .unwrap();
+        assert_eq!(decls.len(), 1);
+        assert_eq!(
+            decls[0].param_types,
+            vec!["const uint8_t *", "size_t", "uint8_t *", "size_t"]
+        );
+    }
+
+    #[test]
     fn parse_c_declarations_finds_extern_prototypes() {
         let decls = parse_c_declarations(
             "extern int decoder_feed(decoder_t *d, const uint8_t *buf, size_t len);\n\
@@ -3971,6 +4121,17 @@ mod tests {
             .find(|f| f.name == "handlers")
             .expect("callback-array field must not be dropped");
         assert_eq!(handlers.c_type, "void (*)(int)[4]");
+    }
+
+    #[test]
+    fn struct_array_of_pointers_keeps_pointer_on_element_type() {
+        let defs = parse_c_type_defs(
+            "struct object { unsigned char *trash_stack[2]; const char *names[3]; };",
+        )
+        .expect("parses");
+        let object = defs.structs.iter().find(|s| s.name == "object").unwrap();
+        assert_eq!(object.fields[0].c_type, "unsigned char *[2]");
+        assert_eq!(object.fields[1].c_type, "char *[3]");
     }
 
     #[test]

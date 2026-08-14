@@ -247,21 +247,36 @@ fn classify(ev: &RuntraceEvent) -> Option<Capability> {
         }
         | RuntraceEvent::FileMissing {
             path, taint_offset, ..
-        } => Capability {
-            kind: "filesystem-path",
-            operand: path.clone(),
-            tainted: taint_offset.is_some(),
-        },
-        RuntraceEvent::PathChecked { path, .. } => Capability {
-            kind: "filesystem-path",
-            operand: path.clone(),
-            tainted: false,
-        },
-        RuntraceEvent::FileDeleted { path, .. } => Capability {
-            kind: "filesystem-delete",
-            operand: path.clone(),
-            tainted: false,
-        },
+        } => {
+            if runtrace::is_govfuzz_owned_resource(path) {
+                return None;
+            }
+            Capability {
+                kind: "filesystem-path",
+                operand: path.clone(),
+                tainted: taint_offset.is_some(),
+            }
+        }
+        RuntraceEvent::PathChecked { path, .. } => {
+            if runtrace::is_govfuzz_owned_resource(path) {
+                return None;
+            }
+            Capability {
+                kind: "filesystem-path",
+                operand: path.clone(),
+                tainted: false,
+            }
+        }
+        RuntraceEvent::FileDeleted { path, .. } => {
+            if runtrace::is_govfuzz_owned_resource(path) {
+                return None;
+            }
+            Capability {
+                kind: "filesystem-delete",
+                operand: path.clone(),
+                tainted: false,
+            }
+        }
         RuntraceEvent::NetworkUnreachable { address, .. } => Capability {
             kind: "network-connect",
             operand: address.clone(),
@@ -279,11 +294,16 @@ fn classify(ev: &RuntraceEvent) -> Option<Capability> {
             operand: format.clone(),
             tainted: *controlled,
         },
-        RuntraceEvent::InsecureTempFile { path, .. } => Capability {
-            kind: "insecure-temp",
-            operand: path.clone(),
-            tainted: false,
-        },
+        RuntraceEvent::InsecureTempFile { path, .. } => {
+            if runtrace::is_govfuzz_owned_resource(path) {
+                return None;
+            }
+            Capability {
+                kind: "insecure-temp",
+                operand: path.clone(),
+                tainted: false,
+            }
+        }
         RuntraceEvent::EnvVarAccess { name, .. } | RuntraceEvent::EnvVarMissing { name, .. } => {
             Capability {
                 kind: "env-read",
@@ -504,6 +524,22 @@ mod tests {
         assert_eq!(open.kind, "filesystem-path");
         assert!(open.tainted);
         assert_eq!(cwe_for(open.kind), "CWE-22");
+    }
+
+    #[test]
+    fn classify_ignores_harness_owned_tempfile_actions() {
+        let opened = RuntraceEvent::FileOpened {
+            syscall: "open".into(),
+            fd: 3,
+            path: "/tmp/gf_inAbC123".into(),
+            taint_offset: None,
+        };
+        let deleted = RuntraceEvent::FileDeleted {
+            syscall: "unlink".into(),
+            path: "/tmp/gf_inAbC123".into(),
+        };
+        assert_eq!(classify(&opened), None);
+        assert_eq!(classify(&deleted), None);
     }
 
     #[test]

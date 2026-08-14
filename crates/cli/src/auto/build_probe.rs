@@ -9,9 +9,10 @@
 //! wiring (cFS config dirs + generated CCSDS headers, seL4/Zephyr CMake).
 //!
 //! Tiers (detected by marker file at the tree root):
-//! * **CMake** — `cmake -S <tree> -B <tree>/.govfuzz-build
-//!   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON` (configure only): CMake writes the DB
-//!   directly and runs codegen during configure.
+//! * **CMake** — configure an instrumented static build, request CMake's file-api
+//!   codemodel, then build only its static-library targets. This yields the DB,
+//!   generated headers, and sanitizer/coverage-compatible archives without
+//!   paying to compile project tests/tools.
 //! * **Meson** — `meson setup <tree>/.govfuzz-build <tree>` (configure only):
 //!   Meson writes the DB into the build dir natively and runs codegen.
 //! * **MSBuild** — parse `.vcxproj` XML for include dirs/defines/sources (no
@@ -32,7 +33,8 @@
 //! (`--probe-build`) and runs under govfuzz's sandbox when one is available,
 //! degrading to a direct run otherwise (matching the auto-sandbox policy).
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -41,7 +43,145 @@ use std::process::Command;
 /// `compile_database_candidates` in `generate_harness`, so the produced DB is
 /// found without any extra plumbing.
 pub const PROBE_DIR: &str = ".govfuzz-build";
+const COVERAGE_PROBE_DIR: &str = ".govfuzz-build-cov";
 const PROBE_REQUIREMENTS_FILE: &str = "missing-requirements.json";
+const PROBE_ARTIFACTS_FILE: &str = "govfuzz-artifacts.json";
+
+/// Exact native instrumentation requested for project artifacts produced by an
+/// opt-in build probe. A prebuilt archive is useful for closing a link only if
+/// it was compiled with the same coverage/sanitizer contract as the harness;
+/// otherwise the engine sees the wrapper but not the library it is meant to
+/// explore (and `--sanitizers none` can fail on stale ASan references).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ProbeInstrumentation {
+    cc: String,
+    cxx: String,
+    c_flags: Vec<String>,
+    cxx_flags: Vec<String>,
+    #[serde(default)]
+    linker_flags: Vec<String>,
+}
+
+impl ProbeInstrumentation {
+    fn for_selection(selection: &multicore_fuzz::SanitizerSelection) -> Self {
+        use multicore_fuzz::{Sanitizer, SanitizerSelection};
+
+        let sanitizer_name = |sanitizer: Sanitizer| match sanitizer {
+            Sanitizer::Asan => "address",
+            Sanitizer::Msan => "memory",
+            Sanitizer::Ubsan => "undefined",
+            Sanitizer::Tsan => "thread",
+            Sanitizer::Lsan => "leak",
+        };
+        let selected = match selection {
+            SanitizerSelection::Default => Some(vec![Sanitizer::Asan, Sanitizer::Ubsan]),
+            SanitizerSelection::None => None,
+            SanitizerSelection::Set(set) => Some(set.clone()),
+        };
+        let has_ubsan = selected
+            .as_ref()
+            .is_some_and(|set| set.contains(&Sanitizer::Ubsan));
+        let mut common = vec![
+            "-O1".to_owned(),
+            "-g".to_owned(),
+            "-ffunction-sections".to_owned(),
+            "-fdata-sections".to_owned(),
+        ];
+        if let Some(set) = selected {
+            if !set.is_empty() {
+                common.push(format!(
+                    "-fsanitize={}",
+                    set.into_iter()
+                        .map(sanitizer_name)
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ));
+                if has_ubsan {
+                    common.push("-fno-sanitize=function,vptr,alignment".to_owned());
+                }
+            }
+        }
+        common.push("-fsanitize-coverage=trace-pc-guard,trace-cmp".to_owned());
+        let mut cxx_flags = common.clone();
+        cxx_flags.push("-Wno-reserved-user-defined-literal".to_owned());
+        cxx_flags.extend(crate::build::detect_cpp_stdlib_include_flags_for(
+            "clang++", &cxx_flags,
+        ));
+        let linker_flags = crate::build::detect_libstdcxx_search_path()
+            .map(|path| vec![format!("-L{path}")])
+            .unwrap_or_default();
+        Self {
+            cc: "clang".to_owned(),
+            cxx: "clang++".to_owned(),
+            c_flags: common,
+            cxx_flags,
+            linker_flags,
+        }
+    }
+
+    /// Source-based coverage is a separate project build. Reusing the primary
+    /// ASan/UBSan archive in `make cov` does not merely omit library line data:
+    /// it fails to link because that lane intentionally has no sanitizer
+    /// runtime. Keeping a second archive also avoids burdening the hot fuzz
+    /// binary with profile counters and `.profraw` writes.
+    fn for_source_coverage() -> Self {
+        let common = vec![
+            "-O0".to_owned(),
+            "-g".to_owned(),
+            "-ffunction-sections".to_owned(),
+            "-fdata-sections".to_owned(),
+            "-fprofile-instr-generate".to_owned(),
+            "-fcoverage-mapping".to_owned(),
+        ];
+        let mut cxx_flags = common.clone();
+        cxx_flags.push("-Wno-reserved-user-defined-literal".to_owned());
+        cxx_flags.extend(crate::build::detect_cpp_stdlib_include_flags_for(
+            "clang++", &cxx_flags,
+        ));
+        let linker_flags = crate::build::detect_libstdcxx_search_path()
+            .map(|path| vec![format!("-L{path}")])
+            .unwrap_or_default();
+        Self {
+            cc: "clang".to_owned(),
+            cxx: "clang++".to_owned(),
+            c_flags: common,
+            cxx_flags,
+            linker_flags,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ProbeArtifactManifest {
+    schema_version: u32,
+    instrumentation: ProbeInstrumentation,
+    build_attempted: bool,
+    build_succeeded: bool,
+}
+
+fn write_probe_artifact_manifest(
+    tree: &Path,
+    instrumentation: &ProbeInstrumentation,
+    build_succeeded: bool,
+) {
+    write_artifact_manifest_at(&tree.join(PROBE_DIR), instrumentation, build_succeeded);
+}
+
+fn write_artifact_manifest_at(
+    probe_dir: &Path,
+    instrumentation: &ProbeInstrumentation,
+    build_succeeded: bool,
+) {
+    let manifest = ProbeArtifactManifest {
+        schema_version: 1,
+        instrumentation: instrumentation.clone(),
+        build_attempted: true,
+        build_succeeded,
+    };
+    if let Ok(bytes) = serde_json::to_vec_pretty(&manifest) {
+        let _ = crate::auto::report::atomic_write(&probe_dir.join(PROBE_ARTIFACTS_FILE), &bytes);
+    }
+}
 
 /// A precise dependency/tool failure observed while running the project's own
 /// build probe. The requirements scanner folds this sidecar into the durable
@@ -146,6 +286,54 @@ pub fn detect_build_system(tree: &Path) -> BuildSystem {
         return BuildSystem::SCons;
     }
     BuildSystem::None
+}
+
+/// Find a single nested project root under a packaging/wrapper directory.
+/// Source drops commonly unpack as `<wrapper>/<project>/CMakeLists.txt`; probing
+/// only the user-supplied wrapper silently misses the real build and degrades to
+/// stubs. Ambiguous monorepos are deliberately left alone rather than choosing
+/// one component arbitrarily.
+fn unique_nested_build_root(tree: &Path) -> Option<PathBuf> {
+    let mut stack = vec![(tree.to_path_buf(), 0usize)];
+    let mut found = Vec::new();
+    while let Some((dir, depth)) = stack.pop() {
+        if depth >= 3 {
+            continue;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        let mut children = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect::<Vec<_>>();
+        children.sort();
+        for child in children.into_iter().rev() {
+            let name = child
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            if name.starts_with('.')
+                || matches!(
+                    name.as_str(),
+                    "build" | "builds" | "target" | "out" | "dist" | "node_modules"
+                )
+            {
+                continue;
+            }
+            if detect_build_system(&child) != BuildSystem::None {
+                found.push(child);
+                if found.len() > 1 {
+                    return None;
+                }
+            } else {
+                stack.push((child, depth + 1));
+            }
+        }
+    }
+    found.pop()
 }
 
 /// The build command run under compiler interception for a build system with no
@@ -395,7 +583,7 @@ fn clcompile_sources(xml: &str) -> Vec<String> {
     out
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct ProbeEntry {
     directory: PathBuf,
     file: PathBuf,
@@ -578,19 +766,52 @@ fn real_compiler() -> Option<String> {
 /// the resolved `bwrap`/`firejail` binary to wrap the build in, or `None` for a
 /// direct run (caller's policy). Best-effort: any failure logs a warning and
 /// returns `None` so auto proceeds with its existing detection/repair path.
-pub fn probe_build(tree: &Path, sandbox_program: Option<&Path>) -> Option<PathBuf> {
-    let probe_dir = tree.join(PROBE_DIR);
+pub fn probe_build(
+    tree: &Path,
+    sandbox_program: Option<&Path>,
+    sanitizers: &multicore_fuzz::SanitizerSelection,
+) -> Option<PathBuf> {
+    let root_build_system = detect_build_system(tree);
+    let nested_root = (root_build_system == BuildSystem::None)
+        .then(|| unique_nested_build_root(tree))
+        .flatten();
+    let build_root = nested_root.as_deref().unwrap_or(tree);
+    if build_root != tree {
+        gfeprintln!(
+            "govfuzz auto: --probe-build: using the sole nested project root {}",
+            build_root.display()
+        );
+    }
+    let probe_dir = build_root.join(PROBE_DIR);
+    // This directory is govfuzz-owned build output. Reusing a CMakeCache or an
+    // archive from a prior sanitizer selection can make configuration lie about
+    // its compiler and can link ASan objects into a `--sanitizers none` harness.
+    // Start each explicit probe from a clean, exact build context.
+    if probe_dir.exists() && std::fs::remove_dir_all(&probe_dir).is_err() {
+        return None;
+    }
     if std::fs::create_dir_all(&probe_dir).is_err() {
         return None;
     }
     let _ = std::fs::remove_file(probe_dir.join(PROBE_REQUIREMENTS_FILE));
     let db = probe_dir.join("compile_commands.json");
-    match detect_build_system(tree) {
-        BuildSystem::CMake => probe_cmake(tree, &probe_dir, &db, sandbox_program),
-        BuildSystem::Meson => probe_meson(tree, &probe_dir, &db, sandbox_program),
-        BuildSystem::MSBuild => probe_msbuild(tree, &db),
-        BuildSystem::Make => probe_make(tree, &probe_dir, &db, sandbox_program),
-        BuildSystem::Ninja => probe_ninja(tree, &db, sandbox_program),
+    let instrumentation = ProbeInstrumentation::for_selection(sanitizers);
+    let build_system = detect_build_system(build_root);
+    if build_system == BuildSystem::CMake {
+        request_cmake_file_api(&probe_dir);
+    }
+    let recovered = match build_system {
+        BuildSystem::CMake => probe_cmake(
+            build_root,
+            &probe_dir,
+            &db,
+            sandbox_program,
+            &instrumentation,
+        ),
+        BuildSystem::Meson => probe_meson(build_root, &probe_dir, &db, sandbox_program),
+        BuildSystem::MSBuild => probe_msbuild(build_root, &db),
+        BuildSystem::Make => probe_make(build_root, &probe_dir, &db, sandbox_program),
+        BuildSystem::Ninja => probe_ninja(build_root, &db, sandbox_program),
         bs @ (BuildSystem::Bazel | BuildSystem::SCons) => {
             // No native compile DB: run the build's own command under compiler
             // interception (the PATH shim + LD_PRELOAD exec shim recover flags).
@@ -598,7 +819,7 @@ pub fn probe_build(tree: &Path, sandbox_program: Option<&Path>) -> Option<PathBu
             gfeprintln!(
                 "govfuzz auto: --probe-build: intercepting `{command}` to recover compile flags"
             );
-            probe_build_command(tree, command, sandbox_program)
+            probe_build_command(build_root, command, sandbox_program, sanitizers)
         }
         BuildSystem::None => {
             gfeprintln!(
@@ -608,7 +829,105 @@ pub fn probe_build(tree: &Path, sandbox_program: Option<&Path>) -> Option<PathBu
             );
             None
         }
+    };
+    if build_root != tree {
+        // Requirements are normally recorded beside the probe output. Mirror
+        // them to the scanned wrapper root so the final dependency checkpoint
+        // does not lose configure/build failures from the nested project.
+        for requirement in load_probe_requirements(build_root) {
+            record_probe_requirement(tree, requirement);
+        }
     }
+    recovered
+}
+
+fn request_cmake_file_api(probe_dir: &Path) {
+    let query = probe_dir.join(".cmake/api/v1/query/codemodel-v2");
+    if let Some(parent) = query.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(query, b"");
+}
+
+/// Static-library target names from CMake's file-api codemodel. Building these
+/// instead of `all` avoids compiling hundreds of test/tool objects after the
+/// reusable library is already complete. The query is requested before
+/// configure; malformed/unsupported replies simply return an empty list and the
+/// caller retains its `all` fallback.
+fn cmake_static_library_target_artifacts(probe_dir: &Path) -> Vec<(String, Vec<PathBuf>)> {
+    let reply = probe_dir.join(".cmake/api/v1/reply");
+    let mut indexes: Vec<PathBuf> = std::fs::read_dir(&reply)
+        .ok()
+        .into_iter()
+        .flat_map(|entries| entries.flatten())
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("index-") && name.ends_with(".json"))
+        })
+        .collect();
+    indexes.sort();
+    let index: serde_json::Value = indexes
+        .last()
+        .and_then(|path| std::fs::read(path).ok())
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or(serde_json::Value::Null);
+    let Some(codemodel_file) = index
+        .get("objects")
+        .and_then(|objects| objects.as_array())
+        .and_then(|objects| {
+            objects.iter().find_map(|object| {
+                (object.get("kind").and_then(|kind| kind.as_str()) == Some("codemodel"))
+                    .then(|| object.get("jsonFile").and_then(|file| file.as_str()))
+                    .flatten()
+            })
+        })
+    else {
+        return Vec::new();
+    };
+    let codemodel: serde_json::Value = std::fs::read(reply.join(codemodel_file))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or(serde_json::Value::Null);
+    let mut targets = Vec::new();
+    for target in codemodel
+        .pointer("/configurations/0/targets")
+        .and_then(|targets| targets.as_array())
+        .into_iter()
+        .flatten()
+    {
+        let Some(file) = target.get("jsonFile").and_then(|file| file.as_str()) else {
+            continue;
+        };
+        let detail: serde_json::Value = std::fs::read(reply.join(file))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or(serde_json::Value::Null);
+        if detail.get("type").and_then(|kind| kind.as_str()) == Some("STATIC_LIBRARY") {
+            if let Some(name) = detail.get("name").and_then(|name| name.as_str()) {
+                let artifacts = detail
+                    .get("artifacts")
+                    .and_then(|artifacts| artifacts.as_array())
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|artifact| artifact.get("path").and_then(|path| path.as_str()))
+                    .map(PathBuf::from)
+                    .collect();
+                targets.push((name.to_owned(), artifacts));
+            }
+        }
+    }
+    targets.sort_by(|left, right| left.0.cmp(&right.0));
+    targets.dedup_by(|left, right| left.0 == right.0);
+    targets
+}
+
+fn cmake_static_library_targets(probe_dir: &Path) -> Vec<String> {
+    cmake_static_library_target_artifacts(probe_dir)
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect()
 }
 
 /// Run the project's own Ada build (`alr build`, else `gprbuild`) so it
@@ -677,6 +996,7 @@ fn probe_cmake(
     probe_dir: &Path,
     db: &Path,
     sandbox_program: Option<&Path>,
+    instrumentation: &ProbeInstrumentation,
 ) -> Option<PathBuf> {
     if !find_on_path("cmake") {
         gfeprintln!("govfuzz auto: --probe-build: cmake not on PATH; skipping CMake probe");
@@ -693,7 +1013,14 @@ fn probe_cmake(
         );
         return None;
     }
-    let args = cmake_probe_args(tree, probe_dir, cfg!(windows), find_on_path("ninja"));
+    let cmake_source = cmake_source_with_local_dependencies(tree, probe_dir);
+    let args = cmake_probe_args(
+        &cmake_source,
+        probe_dir,
+        cfg!(windows),
+        find_on_path("ninja"),
+        instrumentation,
+    );
     // Capture (rather than inherit) cmake's output so a missing-dependency
     // configure abort can be reported ACTIONABLY (§26.2). The output is replayed
     // to the parent streams afterwards so build progress/errors stay visible.
@@ -712,6 +1039,29 @@ fn probe_cmake(
     let _ = std::io::stdout().write_all(&output.stdout);
     let _ = std::io::stderr().write_all(&output.stderr);
     if db.is_file() {
+        // Configure alone recovers flags but produces no library to reuse. Build
+        // the project now, under the same opt-in sandbox and with clang's exact
+        // harness instrumentation. A partial build is still valuable: library
+        // targets normally precede optional tools/tests, and any archive left on
+        // disk can close a stateful harness in one link instead of a 16-round
+        // source-addition cascade.
+        let static_targets = cmake_static_library_targets(probe_dir);
+        let mut build_args = vec![
+            "cmake".to_owned(),
+            "--build".to_owned(),
+            probe_dir.display().to_string(),
+            "--parallel".to_owned(),
+        ];
+        if !static_targets.is_empty() {
+            build_args.push("--target".to_owned());
+            build_args.extend(static_targets.iter().cloned());
+            gfeprintln!(
+                "govfuzz auto: --probe-build: building {} static library target(s), skipping project tests/tools",
+                static_targets.len()
+            );
+        }
+        let build_succeeded = run_build(tree, &build_args, &[], sandbox_program);
+        write_probe_artifact_manifest(tree, instrumentation, build_succeeded);
         return Some(db.to_path_buf());
     }
     // No database means the configure failed. The single most common — and most
@@ -809,12 +1159,783 @@ const RECOVERED_ARTIFACT_MAX_DEPTH: u32 = 6;
 /// nested `build/lib/libfoo.a` is found; deterministically sorted.
 pub fn discover_static_libraries(tree: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
+    // Autotools/configure projects commonly build their reusable archive in
+    // the source root even though govfuzz keeps interception metadata under
+    // `.govfuzz-build` (SQLite's `libsqlite3.a` is the representative case).
+    // Inspect direct children only: recursive source-tree archive discovery
+    // would accidentally mix vendored/host-platform libraries into the link.
+    collect_static_libraries(tree, RECOVERED_ARTIFACT_MAX_DEPTH, &mut out);
     for sub in RECOVERED_ARTIFACT_DIRS {
         collect_static_libraries(&tree.join(sub), 0, &mut out);
+    }
+    for probe in probe_dirs_under(tree) {
+        collect_static_libraries(&probe, 0, &mut out);
     }
     out.sort();
     out.dedup();
     out
+}
+
+/// Archives produced by THIS govfuzz probe under the exact native
+/// sanitizer/coverage selection in force for the current run. These may be
+/// linked proactively: unlike an arbitrary `build/libfoo.a`, their object code
+/// participates in the same edge map and sanitizer runtime as the generated
+/// harness. A partial project build is acceptable when it left a usable archive
+/// behind; many projects build the library successfully and fail only while
+/// linking optional tools/tests.
+pub fn compatible_probe_static_libraries(
+    tree: &Path,
+    selection: &multicore_fuzz::SanitizerSelection,
+) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let expected = ProbeInstrumentation::for_selection(selection);
+    for probe in probe_dirs_under(tree) {
+        let compatible = std::fs::read(probe.join(PROBE_ARTIFACTS_FILE))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<ProbeArtifactManifest>(&bytes).ok())
+            .is_some_and(|manifest| {
+                manifest.schema_version == 1
+                    && manifest.build_attempted
+                    && manifest.instrumentation == expected
+            });
+        if compatible {
+            collect_static_libraries(&probe, 0, &mut out);
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// Govfuzz-owned primary probe directories at the scan root or beneath a
+/// shallow packaging wrapper. This is intentionally much narrower than a walk
+/// for arbitrary build directories: the exact directory name plus its
+/// instrumentation manifest is the trust/compatibility boundary.
+fn probe_dirs_under(tree: &Path) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    let mut stack = vec![(tree.to_path_buf(), 0u32)];
+    while let Some((dir, depth)) = stack.pop() {
+        let direct = dir.join(PROBE_DIR);
+        if direct.is_dir() {
+            found.push(direct);
+        }
+        if depth >= 3 {
+            continue;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+            if name.starts_with('.')
+                || matches!(
+                    name.as_str(),
+                    "build" | "builds" | "target" | "out" | "dist" | "node_modules"
+                )
+            {
+                continue;
+            }
+            stack.push((path, depth + 1));
+        }
+    }
+    found.sort();
+    found.dedup();
+    found
+}
+
+/// Whether `path` is a static library inside govfuzz's owned primary build
+/// probe. Coverage replay treats these specially: they contain the fuzz lane's
+/// sanitizer/edge instrumentation and therefore cannot be passed unchanged to
+/// the source-coverage link.
+pub fn is_probe_static_library(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("a"))
+        && owning_probe_tree_and_relative(path).is_some()
+}
+
+fn owning_probe_tree_and_relative(path: &Path) -> Option<(PathBuf, PathBuf)> {
+    let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    for ancestor in path.ancestors() {
+        if ancestor.file_name().and_then(|name| name.to_str()) == Some(PROBE_DIR) {
+            let tree = ancestor.parent()?.to_path_buf();
+            let relative = path.strip_prefix(ancestor).ok()?.to_path_buf();
+            return Some((tree, relative));
+        }
+    }
+    None
+}
+
+/// Build (once per project/target) and return the source-coverage counterpart of
+/// a primary CMake probe archive. The CMake file API maps the concrete archive
+/// back to its target, so replay builds exactly that target rather than `all`.
+///
+/// Returning `None` is deliberate: linking the primary ASan archive into the
+/// coverage lane is neither an equivalent program nor, in practice, linkable.
+/// Coverage replay must report no measurement when an exact variant cannot be
+/// produced.
+pub fn coverage_variant_for_probe_archive(archive: &Path) -> Option<PathBuf> {
+    let (tree, relative) = owning_probe_tree_and_relative(archive)?;
+    if detect_build_system(&tree) != BuildSystem::CMake {
+        return coverage_variant_for_intercept_archive(&tree, archive, &relative);
+    }
+    if !find_on_path("cmake") {
+        return None;
+    }
+    let coverage_probe = tree.join(COVERAGE_PROBE_DIR);
+    let instrumentation = ProbeInstrumentation::for_source_coverage();
+    let compatible_configuration = std::fs::read(coverage_probe.join(PROBE_ARTIFACTS_FILE))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<ProbeArtifactManifest>(&bytes).ok())
+        .is_some_and(|manifest| {
+            manifest.schema_version == 1
+                && manifest.build_attempted
+                && manifest.build_succeeded
+                && manifest.instrumentation == instrumentation
+        });
+
+    // A target with a large static dependency closure can build every archive
+    // while resolving the first member (RE2 builds its in-tree Abseil closure
+    // this way).  The remaining members already have exact, same-relative-path
+    // counterparts in the compatible coverage tree.  Return those artifacts
+    // directly: requiring the primary tree's optional file-API/link metadata
+    // again makes a usable coverage archive disappear when CMake cleans or
+    // omits metadata for just one transitive target.
+    let same_relative_coverage_archive = coverage_probe.join(&relative);
+    if compatible_configuration && same_relative_coverage_archive.is_file() {
+        return Some(same_relative_coverage_archive);
+    }
+
+    let primary_probe = tree.join(PROBE_DIR);
+    let primary_archive = primary_probe.join(&relative);
+    let primary_archive = primary_archive.canonicalize().unwrap_or(primary_archive);
+    let (target, artifact_relative) = cmake_static_library_target_artifacts(&primary_probe)
+        .into_iter()
+        .find_map(|(target, artifacts)| {
+            artifacts.into_iter().find_map(|artifact| {
+                let candidate = primary_probe.join(&artifact);
+                let candidate = candidate.canonicalize().unwrap_or(candidate);
+                (candidate == primary_archive).then_some((target.clone(), artifact))
+            })
+        })
+        // A generated dependency-closure superproject can lose CMake's file-API
+        // reply even though its ordinary Make metadata is complete.  The target
+        // link script is an equally exact mapping: it names both the CMake target
+        // (`CMakeFiles/<target>.dir`) and the concrete archive written by `ar`.
+        .or_else(|| cmake_archive_target_from_link_script(&primary_probe, &primary_archive))?;
+
+    if !compatible_configuration {
+        if coverage_probe.exists() && std::fs::remove_dir_all(&coverage_probe).is_err() {
+            return None;
+        }
+        std::fs::create_dir_all(&coverage_probe).ok()?;
+        request_cmake_file_api(&coverage_probe);
+        let cmake_source = cmake_source_with_local_dependencies(&tree, &coverage_probe);
+        let configure = cmake_probe_args(
+            &cmake_source,
+            &coverage_probe,
+            cfg!(windows),
+            find_on_path("ninja"),
+            &instrumentation,
+        );
+        let sandbox = resolve_sandbox_program();
+        let configured = run_build(&tree, &configure, &[], sandbox.as_deref());
+        // Some dependency superprojects generate a complete, usable build graph
+        // and compile database, then return failure solely because an install()
+        // export cannot include vendored targets (RE2 + in-tree Abseil).  This is
+        // irrelevant to a named archive build.  Match the primary probe's
+        // partial-configure policy: proceed only when CMake left concrete build
+        // metadata that can execute the exact target below.
+        let usable_partial_configuration = coverage_probe.join("compile_commands.json").is_file()
+            && (coverage_probe.join("Makefile").is_file()
+                || coverage_probe.join("build.ninja").is_file());
+        if !configured && !usable_partial_configuration {
+            write_artifact_manifest_at(&coverage_probe, &instrumentation, false);
+            return None;
+        }
+        // The configuration itself is now reusable. The target build below
+        // overwrites this with `false` if it fails.
+        write_artifact_manifest_at(&coverage_probe, &instrumentation, true);
+    }
+
+    let coverage_archive = coverage_probe.join(artifact_relative);
+    if !coverage_archive.is_file() {
+        let build = vec![
+            "cmake".to_owned(),
+            "--build".to_owned(),
+            coverage_probe.display().to_string(),
+            "--parallel".to_owned(),
+            "--target".to_owned(),
+            target.clone(),
+        ];
+        gfeprintln!(
+            "govfuzz auto: coverage replay: building CMake target `{target}` with source coverage"
+        );
+        let sandbox = resolve_sandbox_program();
+        let succeeded = run_build(&tree, &build, &[], sandbox.as_deref());
+        write_artifact_manifest_at(&coverage_probe, &instrumentation, succeeded);
+        if !succeeded || !coverage_archive.is_file() {
+            return None;
+        }
+    }
+    Some(coverage_archive)
+}
+
+/// Recover `(target, artifact-relative-path)` from CMake's generated link.txt
+/// files when its optional file-API reply is absent. Paths in link scripts are
+/// interpreted relative to the sub-build directory that owns `CMakeFiles`, just
+/// as generated Makefiles execute them.
+fn cmake_archive_target_from_link_script(
+    probe_dir: &Path,
+    archive: &Path,
+) -> Option<(String, PathBuf)> {
+    let archive = archive
+        .canonicalize()
+        .unwrap_or_else(|_| archive.to_path_buf());
+    let mut stack = vec![(probe_dir.to_path_buf(), 0usize)];
+    while let Some((dir, depth)) = stack.pop() {
+        let entries = std::fs::read_dir(&dir).ok()?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if depth < 12 {
+                    stack.push((path, depth + 1));
+                }
+                continue;
+            }
+            if path.file_name().and_then(|name| name.to_str()) != Some("link.txt") {
+                continue;
+            }
+            let target_dir = path.parent()?;
+            let target_component = target_dir.file_name()?.to_str()?;
+            let Some(target) = target_component.strip_suffix(".dir") else {
+                continue;
+            };
+            let cmake_files = target_dir.parent()?;
+            if cmake_files.file_name().and_then(|name| name.to_str()) != Some("CMakeFiles") {
+                continue;
+            }
+            let command_dir = cmake_files.parent()?;
+            let text = std::fs::read_to_string(&path).ok()?;
+            for token in split_cmake_link_command(&text) {
+                let candidate = PathBuf::from(&token);
+                if !candidate.extension().is_some_and(|ext| {
+                    ext.eq_ignore_ascii_case("a") || ext.eq_ignore_ascii_case("lib")
+                }) {
+                    continue;
+                }
+                let candidate = if candidate.is_absolute() {
+                    candidate
+                } else {
+                    command_dir.join(candidate)
+                };
+                let candidate = candidate.canonicalize().unwrap_or(candidate);
+                if candidate == archive {
+                    let relative = archive.strip_prefix(probe_dir).ok()?.to_path_buf();
+                    return Some((target.to_owned(), relative));
+                }
+            }
+        }
+    }
+    None
+}
+
+fn split_cmake_link_command(command: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut chars = command.chars().peekable();
+    let mut quote = None;
+    while let Some(ch) = chars.next() {
+        match (quote, ch) {
+            (Some(expected), actual) if expected == actual => quote = None,
+            (Some(_), '\\') => {
+                if let Some(next) = chars.next() {
+                    current.push(next);
+                }
+            }
+            (Some(_), actual) => current.push(actual),
+            (None, '\'' | '"') => quote = Some(ch),
+            (None, '\\') => {
+                if let Some(next) = chars.next() {
+                    current.push(next);
+                }
+            }
+            (None, actual) if actual.is_whitespace() => {
+                if !current.is_empty() {
+                    args.push(std::mem::take(&mut current));
+                }
+            }
+            (None, actual) => current.push(actual),
+        }
+    }
+    if !current.is_empty() {
+        args.push(current);
+    }
+    args
+}
+
+/// Rebuild the exact members of an archive produced by a compiler-intercepted
+/// configure/Make build with Clang source coverage. The intercepted compile DB
+/// preserves each member's real flags and working directory; matching `ar t`
+/// member names to `-o` outputs avoids accidentally archiving tool/test `main`
+/// objects that happened to be built by the same command.
+fn coverage_variant_for_intercept_archive(
+    tree: &Path,
+    archive: &Path,
+    relative: &Path,
+) -> Option<PathBuf> {
+    let coverage_probe = tree.join(COVERAGE_PROBE_DIR);
+    let coverage_archive = coverage_probe.join(relative);
+    let instrumentation = ProbeInstrumentation::for_source_coverage();
+    let compatible = std::fs::read(coverage_probe.join(PROBE_ARTIFACTS_FILE))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<ProbeArtifactManifest>(&bytes).ok())
+        .is_some_and(|manifest| {
+            manifest.schema_version == 1
+                && manifest.build_attempted
+                && manifest.build_succeeded
+                && manifest.instrumentation == instrumentation
+        });
+    if compatible && coverage_archive.is_file() {
+        return Some(coverage_archive);
+    }
+
+    let ar = ["llvm-ar", "ar"]
+        .into_iter()
+        .find_map(|program| which::which(program).ok())?;
+    let members_output = Command::new(&ar).arg("t").arg(archive).output().ok()?;
+    if !members_output.status.success() {
+        return None;
+    }
+    let members = String::from_utf8_lossy(&members_output.stdout)
+        .lines()
+        .filter_map(|line| Path::new(line).file_name()?.to_str().map(str::to_owned))
+        .collect::<BTreeSet<_>>();
+    if members.is_empty() {
+        return None;
+    }
+    let entries: Vec<ProbeEntry> =
+        std::fs::read(tree.join(PROBE_DIR).join("compile_commands.json"))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())?;
+    let mut selected = BTreeMap::<String, ProbeEntry>::new();
+    for entry in entries {
+        if !entry.arguments.iter().any(|arg| arg == "-c") {
+            continue;
+        }
+        let output = compile_output_name(&entry.arguments).or_else(|| {
+            entry
+                .file
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .map(|stem| format!("{stem}.o"))
+        });
+        let Some(output) = output else { continue };
+        if members.contains(&output) {
+            selected.entry(output).or_insert(entry);
+        }
+    }
+    if selected.len() != members.len() {
+        return None;
+    }
+
+    if coverage_probe.exists() && std::fs::remove_dir_all(&coverage_probe).is_err() {
+        return None;
+    }
+    let objects = coverage_probe.join("intercept-objects");
+    std::fs::create_dir_all(&objects).ok()?;
+    let mut built_objects = Vec::new();
+    for (index, (member, entry)) in selected.into_iter().enumerate() {
+        let object = objects.join(format!("{index}-{member}"));
+        let compiler = if matches!(
+            entry.file.extension().and_then(|value| value.to_str()),
+            Some("cc" | "cpp" | "cxx" | "c++" | "C")
+        ) {
+            "clang++"
+        } else {
+            "clang"
+        };
+        let mut args = Vec::new();
+        let mut skip_next = false;
+        for argument in entry.arguments.into_iter().skip(1) {
+            if skip_next {
+                skip_next = false;
+                continue;
+            }
+            if argument == "-o" {
+                skip_next = true;
+                continue;
+            }
+            if argument.starts_with("-o")
+                || argument.starts_with("-O")
+                || argument.starts_with("-fsanitize")
+                || argument.starts_with("-fno-sanitize")
+                || argument.starts_with("-fprofile-instr")
+                || argument == "-fcoverage-mapping"
+            {
+                continue;
+            }
+            args.push(argument);
+        }
+        args.extend(instrumentation.c_flags.iter().cloned());
+        args.push("-o".to_owned());
+        args.push(object.display().to_string());
+        let status = Command::new(compiler)
+            .args(&args)
+            .current_dir(&entry.directory)
+            .status()
+            .ok()?;
+        if !status.success() {
+            write_artifact_manifest_at(&coverage_probe, &instrumentation, false);
+            return None;
+        }
+        built_objects.push(object);
+    }
+    std::fs::create_dir_all(coverage_archive.parent()?).ok()?;
+    let status = Command::new(ar)
+        .arg("rcs")
+        .arg(&coverage_archive)
+        .args(&built_objects)
+        .status()
+        .ok()?;
+    write_artifact_manifest_at(&coverage_probe, &instrumentation, status.success());
+    status.success().then_some(coverage_archive)
+}
+
+fn compile_output_name(arguments: &[String]) -> Option<String> {
+    for (index, argument) in arguments.iter().enumerate() {
+        let output = if argument == "-o" {
+            arguments.get(index + 1)?.as_str()
+        } else if argument.starts_with("-o") && argument.len() > 2 {
+            &argument[2..]
+        } else {
+            continue;
+        };
+        return Path::new(output)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(str::to_owned);
+    }
+    None
+}
+
+/// Exact library-file dependencies CMake used when linking an executable that
+/// consumes `archive`. Static archives intentionally carry no transitive-link
+/// metadata: linking libarchive.a without the zlib/bzip2/lzma/etc. entries from
+/// CMake's link line merely trades internal undefined symbols for external ones,
+/// which the repair loop then (incorrectly) stubs. Reuse the concrete resolved
+/// `.so`/`.a` paths CMake already proved, in their original order.
+pub fn probe_archive_link_dependencies(tree: &Path, archive: &Path) -> Vec<PathBuf> {
+    let probe = owning_probe_tree_and_relative(archive)
+        .map(|(owner, _)| owner.join(PROBE_DIR))
+        .unwrap_or_else(|| tree.join(PROBE_DIR));
+    let mut link_files = Vec::new();
+    collect_named_files(&probe, 0, "link.txt", &mut link_files);
+    link_files.sort();
+    let mut dependencies = Vec::new();
+    for link_file in link_files {
+        let Ok(text) = std::fs::read_to_string(&link_file) else {
+            continue;
+        };
+        let cwd = cmake_link_working_dir(&link_file).unwrap_or(&probe);
+        dependencies.extend(libraries_from_cmake_link_text(&text, cwd, archive));
+    }
+    dependencies.extend(intercept_archive_link_dependencies(tree, archive));
+    let archive = archive
+        .canonicalize()
+        .unwrap_or_else(|_| archive.to_path_buf());
+    dependencies.retain(|path| path.canonicalize().unwrap_or_else(|_| path.clone()) != archive);
+    let mut seen = BTreeSet::new();
+    dependencies.retain(|path| seen.insert(path.clone()));
+    dependencies
+}
+
+/// Library files used by a successful compiler-intercepted consumer of an
+/// archive member. Autotools archives do not have CMake `link.txt` metadata;
+/// the intercepted executable/shared-library command is the equivalent source
+/// of truth (`sqlite3.c ... -lz` for SQLite). Resolve `-lfoo` through the same
+/// compiler so the harness receives a concrete file and preserves the existing
+/// extra-source/link ordering machinery.
+fn intercept_archive_link_dependencies(tree: &Path, archive: &Path) -> Vec<PathBuf> {
+    let ar = ["llvm-ar", "ar"]
+        .into_iter()
+        .find_map(|program| which::which(program).ok());
+    let Some(ar) = ar else { return Vec::new() };
+    let Ok(member_output) = Command::new(ar).arg("t").arg(archive).output() else {
+        return Vec::new();
+    };
+    if !member_output.status.success() {
+        return Vec::new();
+    }
+    let members = String::from_utf8_lossy(&member_output.stdout)
+        .lines()
+        .filter_map(|line| Path::new(line).file_name()?.to_str().map(str::to_owned))
+        .collect::<BTreeSet<_>>();
+    if members.is_empty() {
+        return Vec::new();
+    }
+
+    let log = tree
+        .join(PROBE_DIR)
+        .join("intercept")
+        .join("cc-invocations.log");
+    let Ok(log) = std::fs::read_to_string(log) else {
+        return Vec::new();
+    };
+    let archive_name = archive.file_name();
+    let mut dependencies = Vec::new();
+    for entry in parse_intercept_log(&log) {
+        if entry
+            .arguments
+            .iter()
+            .any(|argument| matches!(argument.as_str(), "-c" | "-E" | "-S"))
+        {
+            continue;
+        }
+        let uses_archive = entry.arguments.iter().any(|argument| {
+            let path = Path::new(argument);
+            path.file_name() == archive_name
+                || (is_source_arg(argument)
+                    && path
+                        .file_stem()
+                        .and_then(|stem| stem.to_str())
+                        .is_some_and(|stem| members.contains(&format!("{stem}.o"))))
+                || path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| members.contains(name))
+        });
+        if uses_archive {
+            dependencies.extend(libraries_from_intercept_arguments(&entry));
+        }
+    }
+    dependencies
+}
+
+fn libraries_from_intercept_arguments(entry: &ProbeEntry) -> Vec<PathBuf> {
+    let mut search_dirs = Vec::new();
+    let mut library_names = Vec::new();
+    let mut direct = Vec::new();
+    let mut index = 1;
+    while index < entry.arguments.len() {
+        let argument = &entry.arguments[index];
+        if argument == "-L" {
+            if let Some(value) = entry.arguments.get(index + 1) {
+                search_dirs.push(resolve_against(&entry.directory, value));
+                index += 2;
+                continue;
+            }
+        } else if let Some(value) = argument.strip_prefix("-L") {
+            if !value.is_empty() {
+                search_dirs.push(resolve_against(&entry.directory, value));
+            }
+        } else if argument == "-l" {
+            if let Some(value) = entry.arguments.get(index + 1) {
+                library_names.push(value.clone());
+                index += 2;
+                continue;
+            }
+        } else if let Some(value) = argument.strip_prefix("-l") {
+            if !value.is_empty() && !value.starts_with(':') {
+                library_names.push(value.to_owned());
+            }
+        } else if is_library_file_token(argument) {
+            let path = resolve_against(&entry.directory, argument);
+            if path.is_file() {
+                direct.push(path);
+            }
+        }
+        index += 1;
+    }
+
+    for name in library_names {
+        let filenames = [
+            format!("lib{name}.so"),
+            format!("lib{name}.a"),
+            format!("lib{name}.dylib"),
+        ];
+        let from_search = search_dirs
+            .iter()
+            .flat_map(|dir| filenames.iter().map(move |filename| dir.join(filename)))
+            .find(|path| path.is_file());
+        let resolved = from_search.or_else(|| {
+            let compiler = entry.arguments.first()?;
+            filenames.iter().find_map(|filename| {
+                let output = Command::new(compiler)
+                    .arg(format!("-print-file-name={filename}"))
+                    .output()
+                    .ok()?;
+                if !output.status.success() {
+                    return None;
+                }
+                let value = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+                let path = PathBuf::from(value);
+                (path.is_absolute() && path.is_file()).then_some(path)
+            })
+        });
+        if let Some(path) = resolved {
+            direct.push(path);
+        }
+    }
+    direct
+}
+
+fn collect_named_files(dir: &Path, depth: u32, name: &str, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if depth < RECOVERED_ARTIFACT_MAX_DEPTH + 2 {
+                collect_named_files(&path, depth + 1, name, out);
+            }
+        } else if path.file_name().and_then(|part| part.to_str()) == Some(name) {
+            out.push(path);
+        }
+    }
+}
+
+fn cmake_link_working_dir(link_file: &Path) -> Option<&Path> {
+    let mut cursor = link_file.parent()?;
+    loop {
+        if cursor.file_name().and_then(|name| name.to_str()) == Some("CMakeFiles") {
+            return cursor.parent();
+        }
+        cursor = cursor.parent()?;
+    }
+}
+
+fn is_library_file_token(token: &str) -> bool {
+    let lower = token.to_ascii_lowercase();
+    lower.ends_with(".a")
+        || lower.ends_with(".lib")
+        || lower.ends_with(".dylib")
+        || lower.contains(".so")
+}
+
+fn libraries_from_cmake_link_text(text: &str, cwd: &Path, archive: &Path) -> Vec<PathBuf> {
+    let archive = archive
+        .canonicalize()
+        .unwrap_or_else(|_| archive.to_path_buf());
+    let resolve = |token: &str| {
+        let token = token.trim_matches(['\'', '"']);
+        let path = PathBuf::from(token);
+        let path = if path.is_absolute() {
+            path
+        } else {
+            cwd.join(path)
+        };
+        path.canonicalize().unwrap_or(path)
+    };
+    let mut lines_with_archive = Vec::new();
+    for line in text.lines() {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
+        if tokens
+            .iter()
+            .filter(|token| is_library_file_token(token))
+            .map(|token| resolve(token))
+            .any(|path| path == archive)
+        {
+            lines_with_archive.push(tokens);
+        }
+    }
+    lines_with_archive
+        .into_iter()
+        .flat_map(|tokens| tokens.into_iter())
+        .filter(|token| is_library_file_token(token))
+        .map(resolve)
+        .filter(|path| path != &archive && path.is_file())
+        .collect()
+}
+
+/// Defined global symbols in each static archive, demangled when the host `nm`
+/// supports it. Indexing once per target lets repair choose the ONE archive that
+/// actually supplies a failed symbol instead of adding every `*.a` found under a
+/// build tree (which is both slow and prone to unrelated duplicate definitions).
+pub fn index_static_library_symbols(libraries: &[PathBuf]) -> BTreeMap<PathBuf, BTreeSet<String>> {
+    let nm = ["llvm-nm", "nm"]
+        .into_iter()
+        .find_map(|program| which::which(program).ok());
+    let Some(nm) = nm else {
+        return BTreeMap::new();
+    };
+    let mut index = BTreeMap::new();
+    for library in libraries {
+        let output = Command::new(&nm)
+            .args(["-g", "--defined-only", "-C"])
+            .arg(library)
+            .output();
+        let Ok(output) = output else {
+            continue;
+        };
+        if !output.status.success() {
+            continue;
+        }
+        let symbols = parse_nm_defined_symbols(&String::from_utf8_lossy(&output.stdout));
+        if !symbols.is_empty() {
+            index.insert(library.clone(), symbols);
+        }
+    }
+    index
+}
+
+fn parse_nm_defined_symbols(output: &str) -> BTreeSet<String> {
+    const DEFINED_KINDS: &str = "AaBbCcDdGgIiNnPpRrSsTtVvWw";
+    let mut symbols = BTreeSet::new();
+    for line in output.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        let Some(kind_index) = fields.iter().position(|field| {
+            field.len() == 1
+                && field
+                    .chars()
+                    .next()
+                    .is_some_and(|kind| DEFINED_KINDS.contains(kind))
+        }) else {
+            continue;
+        };
+        if kind_index + 1 >= fields.len() {
+            continue;
+        }
+        symbols.insert(fields[kind_index + 1..].join(" "));
+    }
+    symbols
+}
+
+fn symbol_matches(defined: &str, requested: &str) -> bool {
+    let defined = defined.trim().trim_start_matches('_');
+    let requested = requested.trim().trim_start_matches('_');
+    defined == requested
+        || defined
+            .strip_prefix(requested)
+            .is_some_and(|suffix| suffix.starts_with('('))
+        || requested
+            .strip_prefix(defined)
+            .is_some_and(|suffix| suffix.starts_with('('))
+}
+
+pub fn static_libraries_defining_any(
+    index: &BTreeMap<PathBuf, BTreeSet<String>>,
+    requested: impl IntoIterator<Item = impl AsRef<str>>,
+) -> Vec<PathBuf> {
+    let requested: Vec<String> = requested
+        .into_iter()
+        .map(|symbol| symbol.as_ref().to_owned())
+        .collect();
+    index
+        .iter()
+        .filter(|(_, defined)| {
+            requested.iter().any(|requested| {
+                defined
+                    .iter()
+                    .any(|defined| symbol_matches(defined, requested))
+            })
+        })
+        .map(|(path, _)| path.clone())
+        .collect()
 }
 
 fn collect_static_libraries(dir: &Path, depth: u32, out: &mut Vec<PathBuf>) {
@@ -896,6 +2017,100 @@ fn collect_generated_header_dirs(dir: &Path, depth: u32, out: &mut Vec<PathBuf>)
     }
 }
 
+/// Build a CMake project through a tiny generated superproject when it declares
+/// a required package whose source is already available locally. This closes
+/// the common offline monorepo/vendor-cache shape without editing the checkout
+/// or fetching from the network. RE2 + Abseil is the representative case: RE2
+/// explicitly accepts an existing `absl::base` target before `find_package`, so
+/// adding the sibling source first is its supported integration path.
+fn cmake_source_with_local_dependencies(tree: &Path, probe_dir: &Path) -> PathBuf {
+    let cmake = std::fs::read_to_string(tree.join("CMakeLists.txt")).unwrap_or_default();
+    if !cmake.contains("find_package(absl") {
+        return tree.to_path_buf();
+    }
+    let Some(abseil) = local_abseil_source(tree) else {
+        return tree.to_path_buf();
+    };
+    let wrapper = probe_dir.join("govfuzz-wrapper-src");
+    if std::fs::create_dir_all(&wrapper).is_err() {
+        return tree.to_path_buf();
+    }
+    let quote = |path: &Path| {
+        path.display()
+            .to_string()
+            .replace('\\', "/")
+            .replace('"', "\\\"")
+    };
+    let re2_link_probe = wrapper.join("govfuzz-re2-link-probe.cc");
+    if std::fs::write(
+        &re2_link_probe,
+        "#include <re2/re2.h>\nint main() { re2::RE2 re(\"a\"); return re.ok() ? 0 : 1; }\n",
+    )
+    .is_err()
+    {
+        return tree.to_path_buf();
+    }
+    let source = format!(
+        "cmake_minimum_required(VERSION 3.22)\n\
+         project(govfuzz_local_dependency_closure LANGUAGES C CXX)\n\
+         set(ABSL_BUILD_TESTING OFF CACHE BOOL \"\" FORCE)\n\
+         set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL \"\" FORCE)\n\
+         # This is an analysis build, not an install tree. RE2's install export\n\
+         # cannot legally export sibling in-tree Abseil targets and otherwise\n\
+         # makes CMake return failure after generating a usable build graph.\n\
+         set(RE2_INSTALL OFF CACHE BOOL \"\" FORCE)\n\
+         add_subdirectory(\"{}\" \"${{CMAKE_BINARY_DIR}}/govfuzz-deps/absl\")\n\
+         add_subdirectory(\"{}\" \"${{CMAKE_BINARY_DIR}}/govfuzz-project\")\n\
+         if(TARGET re2::re2)\n\
+           # A static archive has no transitive-link metadata. Keep an excluded\n\
+           # consumer in the generated build graph so its link.txt records the\n\
+           # exact ordered Abseil closure CMake resolved for RE2.\n\
+           add_executable(govfuzz_dependency_probe EXCLUDE_FROM_ALL \"{}\")\n\
+           target_link_libraries(govfuzz_dependency_probe PRIVATE re2::re2)\n\
+         endif()\n",
+        quote(&abseil),
+        quote(tree),
+        quote(&re2_link_probe),
+    );
+    if std::fs::write(wrapper.join("CMakeLists.txt"), source).is_err() {
+        return tree.to_path_buf();
+    }
+    gfeprintln!(
+        "govfuzz auto: CMake dependency closure: supplying local Abseil source {}",
+        abseil.display()
+    );
+    wrapper
+}
+
+fn local_abseil_source(tree: &Path) -> Option<PathBuf> {
+    let mut candidates = ["third_party", "third-party", "vendor", "vendors", "deps"]
+        .into_iter()
+        .flat_map(|base| {
+            ["abseil-cpp", "absl"]
+                .into_iter()
+                .map(move |name| tree.join(base).join(name))
+        })
+        .collect::<Vec<_>>();
+    if let Some(parent) = tree.parent() {
+        candidates.extend([parent.join("abseil-cpp"), parent.join("absl")]);
+        if let Ok(entries) = std::fs::read_dir(parent) {
+            candidates.extend(entries.flatten().filter_map(|entry| {
+                let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+                (name.starts_with("abseil-cpp-") || name.starts_with("absl-"))
+                    .then_some(entry.path())
+            }));
+        }
+    }
+    if let Some(roots) = std::env::var_os("GOVFUZZ_DEPENDENCY_ROOTS") {
+        for root in std::env::split_paths(&roots) {
+            candidates.extend([root.join("abseil-cpp"), root.join("absl"), root]);
+        }
+    }
+    candidates.into_iter().find(|candidate| {
+        candidate.join("CMakeLists.txt").is_file() && candidate.join("absl").is_dir()
+    })
+}
+
 /// CMake configure args for the compile-database probe. On Windows the default
 /// generator is the Visual Studio generator, which ignores
 /// `CMAKE_EXPORT_COMPILE_COMMANDS` (it never writes compile_commands.json); Ninja
@@ -904,7 +2119,13 @@ fn collect_generated_header_dirs(dir: &Path, depth: u32, out: &mut Vec<PathBuf>)
 /// govfuzz's clang-based harness build — rather than MSVC `/I`/`/D`. On Unix the
 /// default (Makefiles) generator already emits the database. Pure so it is
 /// unit-testable off-Windows.
-fn cmake_probe_args(tree: &Path, probe_dir: &Path, windows: bool, ninja: bool) -> Vec<String> {
+fn cmake_probe_args(
+    tree: &Path,
+    probe_dir: &Path,
+    windows: bool,
+    ninja: bool,
+    instrumentation: &ProbeInstrumentation,
+) -> Vec<String> {
     let mut args = vec![
         "cmake".to_owned(),
         "-S".to_owned(),
@@ -912,14 +2133,24 @@ fn cmake_probe_args(tree: &Path, probe_dir: &Path, windows: bool, ninja: bool) -
         "-B".to_owned(),
         probe_dir.display().to_string(),
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON".to_owned(),
+        "-DBUILD_SHARED_LIBS=OFF".to_owned(),
+        "-DBUILD_TESTING=OFF".to_owned(),
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON".to_owned(),
+        format!("-DCMAKE_C_COMPILER={}", instrumentation.cc),
+        format!("-DCMAKE_CXX_COMPILER={}", instrumentation.cxx),
+        format!("-DCMAKE_C_FLAGS={}", instrumentation.c_flags.join(" ")),
+        format!("-DCMAKE_CXX_FLAGS={}", instrumentation.cxx_flags.join(" ")),
     ];
-    if windows && ninja {
+    if !instrumentation.linker_flags.is_empty() {
+        let flags = instrumentation.linker_flags.join(" ");
         args.extend([
-            "-G".to_owned(),
-            "Ninja".to_owned(),
-            "-DCMAKE_C_COMPILER=clang".to_owned(),
-            "-DCMAKE_CXX_COMPILER=clang++".to_owned(),
+            format!("-DCMAKE_EXE_LINKER_FLAGS={flags}"),
+            format!("-DCMAKE_SHARED_LINKER_FLAGS={flags}"),
+            format!("-DCMAKE_MODULE_LINKER_FLAGS={flags}"),
         ]);
+    }
+    if windows && ninja {
+        args.extend(["-G".to_owned(), "Ninja".to_owned()]);
     }
     args
 }
@@ -1110,7 +2341,16 @@ fn is_cross_compiler_name(name: &str) -> bool {
 /// execs the ABSOLUTE real compiler — no PATH re-lookup, so the shim (which lives
 /// on PATH under the compiler's own name) is never re-entered. `real_abs` is
 /// single-quoted so a path with spaces still execs.
+#[cfg(test)]
 fn intercept_wrapper_script(real_abs: &str) -> String {
+    intercept_wrapper_script_with_flags(real_abs, &[])
+}
+
+fn intercept_wrapper_script_with_flags(real_abs: &str, extra_flags: &[String]) -> String {
+    let flags = extra_flags
+        .iter()
+        .map(|flag| format!(" '{}'", flag.replace('\'', "'\\''")))
+        .collect::<String>();
     format!(
         "#!/bin/sh\n\
          {{\n\
@@ -1119,8 +2359,9 @@ fn intercept_wrapper_script(real_abs: &str) -> String {
          for a in \"$@\"; do printf 'ARG %s\\n' \"$a\"; done\n\
          printf 'ENDREC\\n'\n\
          }} >> \"$GF_CC_LOG\"\n\
-         exec '{real}' \"$@\"\n",
-        real = real_abs
+         exec '{real}' \"$@\"{flags}\n",
+        real = real_abs,
+        flags = flags
     )
 }
 
@@ -1235,6 +2476,7 @@ pub fn probe_build_command(
     tree: &Path,
     command: &str,
     sandbox_program: Option<&Path>,
+    sanitizers: &multicore_fuzz::SanitizerSelection,
 ) -> Option<PathBuf> {
     let probe_dir = tree.join(PROBE_DIR);
     let intercept_dir = probe_dir.join("intercept");
@@ -1246,11 +2488,36 @@ pub fn probe_build_command(
     let _ = std::fs::remove_file(&log);
 
     let mut wrote_any = false;
+    let instrumentation = ProbeInstrumentation::for_selection(sanitizers);
     let mut cc_shim: Option<PathBuf> = None;
     let mut cxx_shim: Option<PathBuf> = None;
     for (name, real) in collect_intercept_targets() {
         let shim = intercept_dir.join(&name);
-        if std::fs::write(&shim, intercept_wrapper_script(&real.display().to_string())).is_err() {
+        let standard_c = matches!(name.as_str(), "cc" | "gcc" | "clang");
+        let standard_cxx = matches!(name.as_str(), "c++" | "g++" | "clang++");
+        let instrumented_real = if standard_c {
+            which::which(&instrumentation.cc).unwrap_or_else(|_| real.clone())
+        } else if standard_cxx {
+            which::which(&instrumentation.cxx).unwrap_or_else(|_| real.clone())
+        } else {
+            real.clone()
+        };
+        let extra_flags = if standard_c {
+            instrumentation.c_flags.as_slice()
+        } else if standard_cxx {
+            instrumentation.cxx_flags.as_slice()
+        } else {
+            &[]
+        };
+        if std::fs::write(
+            &shim,
+            intercept_wrapper_script_with_flags(
+                &instrumented_real.display().to_string(),
+                extra_flags,
+            ),
+        )
+        .is_err()
+        {
             continue;
         }
         #[cfg(unix)]
@@ -1263,6 +2530,13 @@ pub fn probe_build_command(
             cc_shim = Some(shim.clone());
         }
         if cxx_shim.is_none() && matches!(name.as_str(), "c++" | "g++" | "clang++") {
+            cxx_shim = Some(shim.clone());
+        }
+        // The injected instrumentation contract is Clang-specific. Prefer its
+        // shim even when `/usr/bin/cc`/`c++` were encountered first.
+        if name == "clang" {
+            cc_shim = Some(shim.clone());
+        } else if name == "clang++" {
             cxx_shim = Some(shim.clone());
         }
     }
@@ -1279,6 +2553,9 @@ pub fn probe_build_command(
         cc_shim.as_deref(),
         cxx_shim.as_deref(),
     );
+    env.push(("CFLAGS".to_owned(), instrumentation.c_flags.join(" ")));
+    env.push(("CXXFLAGS".to_owned(), instrumentation.cxx_flags.join(" ")));
+    env.push(("LDFLAGS".to_owned(), instrumentation.linker_flags.join(" ")));
     // Also catch compilers the PATH shim cannot shadow — those invoked by
     // ABSOLUTE path (vendor RTOS toolchains, a Bazel toolchain) or via
     // `posix_spawn` (ninja/cmake) — by LD_PRELOAD-ing the exec-interposing shim.
@@ -1298,12 +2575,14 @@ pub fn probe_build_command(
             env.push(("LD_PRELOAD".to_owned(), chained));
         }
     }
-    run_build(
+    let build_succeeded = run_build(
         tree,
         &["sh".to_owned(), "-c".to_owned(), command.to_owned()],
         &env,
         sandbox_program,
     );
+    mirror_root_static_libraries(tree, &probe_dir);
+    write_artifact_manifest_at(&probe_dir, &instrumentation, build_succeeded);
 
     let log_text = std::fs::read_to_string(&log).ok()?;
     let entries = dedup_intercept_entries(parse_intercept_log(&log_text));
@@ -1318,6 +2597,31 @@ pub fn probe_build_command(
     let json = serde_json::to_vec_pretty(&entries).ok()?;
     std::fs::write(&db, json).ok()?;
     Some(db)
+}
+
+/// Configure/Autotools builds often leave their archive beside `configure`
+/// while govfuzz's compiler log and trust manifest live in `.govfuzz-build`.
+/// Mirror only direct root archives into the owned probe directory so the
+/// normal compatible-artifact path can select them proactively.
+fn mirror_root_static_libraries(tree: &Path, probe_dir: &Path) {
+    let artifact_dir = probe_dir.join("intercept-artifacts");
+    let Ok(entries) = std::fs::read_dir(tree) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let source = entry.path();
+        if !source.is_file()
+            || !source
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("a"))
+        {
+            continue;
+        }
+        if std::fs::create_dir_all(&artifact_dir).is_err() {
+            return;
+        }
+        let _ = std::fs::copy(&source, artifact_dir.join(entry.file_name()));
+    }
 }
 
 /// Locate `libgovfuzz_cc_intercept.so` — `$GOVFUZZ_CC_INTERCEPT` override, else a
@@ -1335,12 +2639,12 @@ fn locate_cc_intercept_so() -> Option<PathBuf> {
     so.is_file().then_some(so)
 }
 
-/// Collapse records that refer to the same translation unit (normalized `file`),
-/// keeping the richest (most arguments). The PATH shim and the LD_PRELOAD `exec`
-/// interposer can each log the same compile — and the interposer can see one
-/// name-based compile via several `exec*` variants — so this is what makes
-/// running both together (and the interposer's broad hooking) safe. First-seen
-/// order is preserved.
+/// Collapse records that refer to the same translation unit (normalized `file`).
+/// Prefer a compiler DRIVER invocation over Clang's expanded `-cc1` child even
+/// when the latter has more arguments: driver flags are portable/replayable and
+/// its default `foo.c -> foo.o` output names correspond to archive members,
+/// whereas a cc1 record commonly names an ephemeral `/tmp/foo-XXXX.o`. Among
+/// records at the same layer, keep the richest. First-seen order is preserved.
 fn dedup_intercept_entries(entries: Vec<ProbeEntry>) -> Vec<ProbeEntry> {
     use std::collections::HashMap;
     let mut order: Vec<String> = Vec::new();
@@ -1348,7 +2652,7 @@ fn dedup_intercept_entries(entries: Vec<ProbeEntry>) -> Vec<ProbeEntry> {
     for entry in entries {
         let key = entry.file.to_string_lossy().into_owned();
         match best.get(&key) {
-            Some(prev) if prev.arguments.len() >= entry.arguments.len() => {}
+            Some(prev) if !intercept_entry_is_better(&entry, prev) => {}
             Some(_) => {
                 best.insert(key, entry);
             }
@@ -1362,6 +2666,19 @@ fn dedup_intercept_entries(entries: Vec<ProbeEntry>) -> Vec<ProbeEntry> {
         .into_iter()
         .filter_map(|key| best.remove(&key))
         .collect()
+}
+
+fn intercept_entry_is_better(candidate: &ProbeEntry, current: &ProbeEntry) -> bool {
+    let candidate_internal = candidate
+        .arguments
+        .iter()
+        .any(|argument| argument == "-cc1");
+    let current_internal = current.arguments.iter().any(|argument| argument == "-cc1");
+    match (candidate_internal, current_internal) {
+        (false, true) => true,
+        (true, false) => false,
+        _ => candidate.arguments.len() > current.arguments.len(),
+    }
 }
 
 /// Build the `Command` for a probe build in `cwd` with `env`, wrapped in the
@@ -1425,15 +2742,24 @@ fn run_build(
     args: &[String],
     env: &[(String, String)],
     sandbox_program: Option<&Path>,
-) {
+) -> bool {
     let mut command = build_command(cwd, args, env, sandbox_program);
     match command.status() {
-        Ok(status) if status.success() => {}
-        Ok(status) => gfeprintln!(
-            "govfuzz auto: --probe-build: `{}` exited with {status} (a partial build can still yield a usable compile database)",
-            args.join(" ")
-        ),
-        Err(error) => gfeprintln!("govfuzz auto: --probe-build: failed to run `{}`: {error}", args.join(" ")),
+        Ok(status) if status.success() => true,
+        Ok(status) => {
+            gfeprintln!(
+                "govfuzz auto: --probe-build: `{}` exited with {status} (a partial build can still yield usable compile metadata/artifacts)",
+                args.join(" ")
+            );
+            false
+        }
+        Err(error) => {
+            gfeprintln!(
+                "govfuzz auto: --probe-build: failed to run `{}`: {error}",
+                args.join(" ")
+            );
+            false
+        }
     }
 }
 
@@ -1520,24 +2846,274 @@ mod tests {
     fn cmake_probe_forces_ninja_and_clang_on_windows_only() {
         let tree = Path::new("/src");
         let probe = Path::new("/probe");
+        let instrumentation =
+            ProbeInstrumentation::for_selection(&multicore_fuzz::SanitizerSelection::Default);
         // Unix keeps the default (Makefiles) generator — it already emits the DB.
-        let lin = cmake_probe_args(tree, probe, false, true);
+        let lin = cmake_probe_args(tree, probe, false, true, &instrumentation);
         assert!(lin
             .iter()
             .any(|a| a == "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"));
+        assert!(lin.iter().any(|a| a == "-DBUILD_SHARED_LIBS=OFF"));
+        assert!(lin.iter().any(|a| {
+            a.contains("CMAKE_C_FLAGS=")
+                && a.contains("-fsanitize=address,undefined")
+                && a.contains("-fsanitize-coverage=trace-pc-guard,trace-cmp")
+        }));
         assert!(
             !lin.iter().any(|a| a == "-G"),
             "unix must not pin a generator: {lin:?}"
         );
         // Windows with ninja: force Ninja + clang so the DB is actually written
         // (the VS generator ignores the export flag) with gcc-style flags.
-        let win = cmake_probe_args(tree, probe, true, true).join(" ");
+        let win = cmake_probe_args(tree, probe, true, true, &instrumentation).join(" ");
         assert!(win.contains("-G Ninja"), "windows must pin Ninja: {win}");
         assert!(win.contains("CMAKE_C_COMPILER=clang"), "{win}");
         assert!(win.contains("CMAKE_CXX_COMPILER=clang++"), "{win}");
         // Windows without ninja: fall back to the default generator (best effort).
-        let win_no_ninja = cmake_probe_args(tree, probe, true, false);
+        let win_no_ninja = cmake_probe_args(tree, probe, true, false, &instrumentation);
         assert!(!win_no_ninja.iter().any(|a| a == "-G"));
+    }
+
+    #[test]
+    fn cmake_probe_wraps_a_required_locally_available_abseil_source() {
+        let root = tmpdir();
+        let project = root.join("re2");
+        let abseil = root.join("abseil-cpp");
+        let probe = project.join(PROBE_DIR);
+        fs::create_dir_all(&probe).unwrap();
+        fs::create_dir_all(abseil.join("absl")).unwrap();
+        fs::create_dir_all(&project).unwrap();
+        fs::write(
+            project.join("CMakeLists.txt"),
+            "if(NOT TARGET absl::base)\nfind_package(absl REQUIRED)\nendif()\n",
+        )
+        .unwrap();
+        fs::write(
+            abseil.join("CMakeLists.txt"),
+            "cmake_minimum_required(VERSION 3.22)\n",
+        )
+        .unwrap();
+
+        let source = cmake_source_with_local_dependencies(&project, &probe);
+        assert_ne!(source, project);
+        let wrapper = fs::read_to_string(source.join("CMakeLists.txt")).unwrap();
+        assert!(wrapper.contains("add_subdirectory"), "{wrapper}");
+        assert!(wrapper.contains(&abseil.display().to_string()), "{wrapper}");
+        assert!(
+            wrapper.contains(&project.display().to_string()),
+            "{wrapper}"
+        );
+        assert!(wrapper.contains("re2::re2"), "{wrapper}");
+        assert!(wrapper.contains("set(RE2_INSTALL OFF"), "{wrapper}");
+        assert!(source.join("govfuzz-re2-link-probe.cc").is_file());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn sanitizer_selection_produces_an_exact_probe_contract() {
+        use multicore_fuzz::{Sanitizer, SanitizerSelection};
+        let none = ProbeInstrumentation::for_selection(&SanitizerSelection::None);
+        assert!(none
+            .c_flags
+            .iter()
+            .any(|flag| flag.contains("sanitize-coverage")));
+        assert!(!none
+            .c_flags
+            .iter()
+            .any(|flag| flag.starts_with("-fsanitize=")));
+
+        let asan =
+            ProbeInstrumentation::for_selection(&SanitizerSelection::Set(vec![Sanitizer::Asan]));
+        assert!(asan.c_flags.iter().any(|flag| flag == "-fsanitize=address"));
+        assert!(!asan
+            .c_flags
+            .iter()
+            .any(|flag| flag.starts_with("-fno-sanitize=")));
+
+        let default = ProbeInstrumentation::for_selection(&SanitizerSelection::Default);
+        assert!(default
+            .c_flags
+            .iter()
+            .any(|flag| flag == "-fsanitize=address,undefined"));
+        assert!(default
+            .c_flags
+            .iter()
+            .any(|flag| flag == "-fno-sanitize=function,vptr,alignment"));
+    }
+
+    #[test]
+    fn nm_parser_and_archive_selection_handle_c_and_demangled_cpp() {
+        let symbols = parse_nm_defined_symbols(
+            "libx.a(one.o):\n0000000000000000 T archive_read_support_format_all\n\
+             0000000000000010 W YAML::Emitter::Write(char const*, unsigned long)\n\
+                              U ignored_undefined\n",
+        );
+        assert!(symbols.contains("archive_read_support_format_all"));
+        assert!(symbols.contains("YAML::Emitter::Write(char const*, unsigned long)"));
+        assert!(!symbols.contains("ignored_undefined"));
+
+        let mut index = BTreeMap::new();
+        index.insert(PathBuf::from("/build/libarchive.a"), symbols);
+        assert_eq!(
+            static_libraries_defining_any(&index, ["archive_read_support_format_all"]),
+            vec![PathBuf::from("/build/libarchive.a")]
+        );
+        assert_eq!(
+            static_libraries_defining_any(&index, ["YAML::Emitter::Write"]),
+            vec![PathBuf::from("/build/libarchive.a")]
+        );
+        assert!(static_libraries_defining_any(&index, ["archive_read_support_format"]).is_empty());
+    }
+
+    #[test]
+    fn cmake_link_metadata_recovers_static_archive_dependencies_in_order() {
+        let root = tmpdir();
+        let cwd = root.join("tool");
+        fs::create_dir_all(root.join("lib")).unwrap();
+        fs::create_dir_all(&cwd).unwrap();
+        let archive = root.join("lib/libparser.a");
+        let zlib = root.join("lib/libz.so");
+        let crypto = root.join("lib/libcrypto.so");
+        fs::write(&archive, b"!<arch>\n").unwrap();
+        fs::write(&zlib, b"so").unwrap();
+        fs::write(&crypto, b"so").unwrap();
+        let link = format!(
+            "clang tool.o -o tool ../lib/libparser.a {} {}\n",
+            zlib.display(),
+            crypto.display()
+        );
+        assert_eq!(
+            libraries_from_cmake_link_text(&link, &cwd, &archive),
+            vec![zlib, crypto]
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn compatible_probe_archives_require_the_exact_instrumentation_manifest() {
+        let root = tmpdir();
+        let probe = root.join(PROBE_DIR);
+        fs::create_dir_all(&probe).unwrap();
+        fs::write(probe.join("libparser.a"), b"!<arch>\n").unwrap();
+        let default = multicore_fuzz::SanitizerSelection::Default;
+        write_probe_artifact_manifest(&root, &ProbeInstrumentation::for_selection(&default), false);
+        assert_eq!(
+            compatible_probe_static_libraries(&root, &default),
+            vec![probe.join("libparser.a")],
+            "a partial build's archive is valid when its instrumentation matches"
+        );
+        assert!(compatible_probe_static_libraries(
+            &root,
+            &multicore_fuzz::SanitizerSelection::None
+        )
+        .is_empty());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn nested_probe_archives_are_visible_from_a_wrapper_scan_root() {
+        let wrapper = tmpdir();
+        let probe = wrapper.join("project").join(PROBE_DIR);
+        fs::create_dir_all(&probe).unwrap();
+        let archive = probe.join("libnested.a");
+        fs::write(&archive, b"!<arch>\n").unwrap();
+        let selection = multicore_fuzz::SanitizerSelection::Default;
+        write_artifact_manifest_at(
+            &probe,
+            &ProbeInstrumentation::for_selection(&selection),
+            true,
+        );
+
+        assert_eq!(
+            compatible_probe_static_libraries(&wrapper, &selection),
+            vec![archive.clone()]
+        );
+        assert!(discover_static_libraries(&wrapper).contains(&archive));
+        let _ = fs::remove_dir_all(wrapper);
+    }
+
+    #[test]
+    fn cmake_probe_builds_and_indexes_an_instrumented_static_library() {
+        if !find_on_path("cmake") || !find_on_path("clang") || !find_on_path("clang++") {
+            eprintln!("skipping: cmake/clang toolchain unavailable");
+            return;
+        }
+        let root = tmpdir();
+        fs::write(
+            root.join("CMakeLists.txt"),
+            "cmake_minimum_required(VERSION 3.16)\n\
+             project(gf_probe CXX)\n\
+             add_library(gf_parser STATIC parser.cpp)\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("parser.cpp"),
+            "#include <string>\n\
+             extern \"C\" int gf_parser_open(const unsigned char *p, unsigned long n) {\n\
+                 std::string marker = \"cpp-probe\";\n\
+                 return p && n ? p[0] : 0;\n\
+             }\n",
+        )
+        .unwrap();
+        let selection = multicore_fuzz::SanitizerSelection::Default;
+        let db = probe_build(&root, None, &selection).expect("CMake probe");
+        assert!(db.is_file());
+        assert_eq!(
+            cmake_static_library_targets(&root.join(PROBE_DIR)),
+            vec!["gf_parser".to_owned()]
+        );
+        assert_eq!(
+            cmake_static_library_target_artifacts(&root.join(PROBE_DIR)),
+            vec![(
+                "gf_parser".to_owned(),
+                vec![PathBuf::from("libgf_parser.a")]
+            )]
+        );
+        let compile_db = fs::read_to_string(db).unwrap();
+        assert!(
+            compile_db.contains("-fsanitize-coverage=trace-pc-guard,trace-cmp"),
+            "project TU must carry engine coverage instrumentation: {compile_db}"
+        );
+
+        let archives = compatible_probe_static_libraries(&root, &selection);
+        assert_eq!(archives.len(), 1, "instrumented archive: {archives:?}");
+        let index = index_static_library_symbols(&archives);
+        assert_eq!(
+            static_libraries_defining_any(&index, ["gf_parser_open"]),
+            archives,
+            "the target-owning archive must be selectable without linking unrelated libraries"
+        );
+
+        let primary_archive = &archives[0];
+        assert!(is_probe_static_library(primary_archive));
+        // The generated link script is a complete fallback when CMake omits or
+        // an external cleanup removes its optional file-API reply.
+        let reply = root.join(PROBE_DIR).join(".cmake/api/v1/reply");
+        let _ = fs::remove_dir_all(reply);
+        let coverage_archive = coverage_variant_for_probe_archive(primary_archive)
+            .expect("exact CMake source-coverage counterpart");
+        assert!(coverage_archive.is_file());
+        assert!(coverage_archive.starts_with(root.join(COVERAGE_PROBE_DIR)));
+        let coverage_db =
+            fs::read_to_string(root.join(COVERAGE_PROBE_DIR).join("compile_commands.json"))
+                .unwrap();
+        assert!(coverage_db.contains("-fprofile-instr-generate"));
+        assert!(coverage_db.contains("-fcoverage-mapping"));
+        assert!(
+            !coverage_db.contains("-fsanitize=address"),
+            "coverage archive must not retain the primary sanitizer lane: {coverage_db}"
+        );
+        // Once the exact coverage artifact exists, replay must not depend on
+        // optional metadata surviving in the primary build tree.  Real CMake
+        // dependency closures can omit/clean one transitive target's metadata
+        // after building all of its archives.
+        let _ = fs::remove_dir_all(root.join(PROBE_DIR).join("CMakeFiles"));
+        assert_eq!(
+            coverage_variant_for_probe_archive(primary_archive).as_deref(),
+            Some(coverage_archive.as_path()),
+            "the exact coverage target is cached"
+        );
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
@@ -1644,6 +3220,28 @@ mod tests {
         let _ = fs::remove_dir_all(&c);
         // Natively-probed systems return no interception command.
         assert_eq!(interception_build_command(BuildSystem::CMake), None);
+    }
+
+    #[test]
+    fn sole_nested_project_root_is_found_but_monorepo_is_not_guessed() {
+        let wrapper = tmpdir();
+        let project = wrapper.join("expat");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join("CMakeLists.txt"), "project(expat)\n").unwrap();
+        assert_eq!(
+            unique_nested_build_root(&wrapper).as_deref(),
+            Some(project.as_path())
+        );
+
+        let second = wrapper.join("another-library");
+        fs::create_dir_all(&second).unwrap();
+        fs::write(second.join("meson.build"), "project('other', 'c')\n").unwrap();
+        assert_eq!(
+            unique_nested_build_root(&wrapper),
+            None,
+            "an ambiguous monorepo needs an explicit scan root"
+        );
+        let _ = fs::remove_dir_all(&wrapper);
     }
 
     #[test]
@@ -1758,28 +3356,61 @@ mod tests {
         assert_eq!(out[1].file, PathBuf::from("/p/b.c"));
         // The richest record (the one carrying -Iinc) wins.
         assert!(out[0].arguments.iter().any(|a| a == "-Iinc"), "{out:?}");
+
+        let out = dedup_intercept_entries(vec![
+            mk("/p/a.c", &["clang", "-c", "a.c"]),
+            mk(
+                "/p/a.c",
+                &[
+                    "clang",
+                    "-cc1",
+                    "-internal-isystem",
+                    "/usr/include",
+                    "-o",
+                    "/tmp/a-random.o",
+                    "a.c",
+                ],
+            ),
+        ]);
+        assert!(
+            !out[0].arguments.iter().any(|argument| argument == "-cc1"),
+            "the replayable driver command must beat a richer cc1 child: {out:?}"
+        );
     }
 
     #[test]
     fn intercepts_a_real_custom_build_into_a_compile_db() {
         // Needs a host C compiler; skip cleanly when absent (matches govfuzz's
         // toolchain-gated test policy).
-        if real_compiler().is_none() {
+        if real_compiler().is_none()
+            || which::which("clang").is_err()
+            || (which::which("llvm-ar").is_err() && which::which("ar").is_err())
+        {
             return;
         }
         let root = tmpdir();
         fs::create_dir_all(root.join("inc")).unwrap();
         fs::write(root.join("foo.c"), "int foo(int x){return x+1;}\n").unwrap();
+        fs::write(
+            root.join("consumer.c"),
+            "int foo(int); int main(void){return foo(1) != 2;}\n",
+        )
+        .unwrap();
         // A custom build script that invokes the compiler BY NAME (the case
         // CC/CXX-env interception alone would miss).
         fs::write(
             root.join("build.sh"),
-            "#!/bin/sh\ncc -Iinc -DFOO=1 -c foo.c -o foo.o\n",
+            "#!/bin/sh\ncc -Iinc -DFOO=1 -c foo.c -o foo.o\nar rcs libfoo.a foo.o\ncc consumer.c libfoo.a -lm -o consumer\n",
         )
         .unwrap();
         // Direct run (no sandbox) for determinism in CI.
-        let db = probe_build_command(&root, "sh build.sh", None)
-            .expect("interception must produce a compile database");
+        let db = probe_build_command(
+            &root,
+            "sh build.sh",
+            None,
+            &multicore_fuzz::SanitizerSelection::None,
+        )
+        .expect("interception must produce a compile database");
         let text = fs::read_to_string(&db).unwrap();
         assert!(text.contains("foo.c"), "db must reference the TU:\n{text}");
         assert!(
@@ -1789,6 +3420,29 @@ mod tests {
         assert!(
             text.contains("-DFOO=1"),
             "db must capture the define:\n{text}"
+        );
+        let primary = root.join(PROBE_DIR).join("intercept-artifacts/libfoo.a");
+        assert!(
+            primary.is_file(),
+            "root archive must enter owned probe storage"
+        );
+        assert!(
+            compatible_probe_static_libraries(&root, &multicore_fuzz::SanitizerSelection::None)
+                .contains(&primary),
+            "mirrored archive must carry the exact instrumentation manifest"
+        );
+        let coverage = coverage_variant_for_probe_archive(&primary)
+            .expect("intercepted archive must have a source-coverage variant");
+        assert!(coverage.is_file());
+        assert!(
+            probe_archive_link_dependencies(&root, &primary)
+                .iter()
+                .any(|path| path.file_name().is_some_and(|name| name == "libm.so")),
+            "intercepted consumer link must preserve the archive's -lm dependency"
+        );
+        assert_eq!(
+            compile_output_name(&["clang".to_owned(), "-ofoo.o".to_owned()]).as_deref(),
+            Some("foo.o")
         );
         let _ = fs::remove_dir_all(&root);
     }

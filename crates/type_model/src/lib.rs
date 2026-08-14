@@ -584,13 +584,13 @@ impl TypeRegistry {
     /// or a typedef chain that resolves to one. The signature preserves
     /// parameter spelling because C codegen needs it for trampoline prototypes.
     pub fn function_pointer_signature(&self, raw: &str) -> Option<String> {
-        if raw.contains("(*") {
+        if function_pointer_declarator(raw).is_some() {
             return Some(canonical_function_pointer_signature(raw));
         }
         let mut current = normalize(raw);
         for _ in 0..=MAX_RESOLVE_DEPTH {
             let underlying = self.lookup_named(&*self.typedefs, &current)?;
-            if underlying.contains("(*") {
+            if function_pointer_declarator(underlying).is_some() {
                 return Some(canonical_function_pointer_signature(underlying));
             }
             current = normalize(underlying);
@@ -620,7 +620,7 @@ impl TypeRegistry {
     fn resolve_uncached(&self, raw: &str, depth: usize, memo: &mut ResolveMemo) -> TypeShape {
         // Function-pointer spellings (`T (*)(...)`, `T (*name)(...)`)
         // checked on the raw text — normalization respaces `*`.
-        if raw.contains("(*") {
+        if function_pointer_declarator(raw).is_some() {
             // An array of function pointers — `RET (*)(...)[N]` (a callback table
             // struct field, `void (*handlers[N])(int)`) — resolves to an array whose
             // element is a function pointer, so the decoder fills every slot with a
@@ -854,11 +854,58 @@ fn normalize(raw: &str) -> String {
 }
 
 fn canonical_function_pointer_signature(raw: &str) -> String {
-    raw.split_whitespace()
+    let normalized = raw
+        .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
         .trim()
-        .to_owned()
+        .to_owned();
+    let Some((open, close)) = function_pointer_declarator(&normalized) else {
+        return normalized;
+    };
+    let declarator = &normalized[open + 1..close];
+    let Some(star) = declarator.find('*') else {
+        return normalized;
+    };
+    // Drop calling-convention/export tokens between `(` and `*` while retaining
+    // an optional callback name after it:
+    //   void (XMLCALL *)(...)       -> void (*)(...)
+    //   int (__cdecl *visit)(...)   -> int (*visit)(...)
+    let after_star = declarator[star + 1..].trim();
+    format!(
+        "{}(*{}){}",
+        &normalized[..open],
+        after_star,
+        &normalized[close + 1..]
+    )
+}
+
+/// Locate the parenthesized pointer declarator in a function-pointer spelling.
+/// Unlike a literal `(*` check, this accepts calling-convention macros between
+/// the opening parenthesis and star (`void (XMLCALL *)(...)`,
+/// `int (__cdecl *cb)(int)`).
+fn function_pointer_declarator(raw: &str) -> Option<(usize, usize)> {
+    let bytes = raw.as_bytes();
+    let mut open = 0usize;
+    while open < bytes.len() {
+        if bytes[open] != b'(' {
+            open += 1;
+            continue;
+        }
+        let mut close = open + 1;
+        while close < bytes.len() && bytes[close] != b')' && bytes[close] != b'(' {
+            close += 1;
+        }
+        if close < bytes.len()
+            && bytes[close] == b')'
+            && raw[open + 1..close].contains('*')
+            && raw[close + 1..].trim_start().starts_with('(')
+        {
+            return Some((open, close));
+        }
+        open += 1;
+    }
+    None
 }
 
 fn qualified_leaf(normalized: &str) -> Option<&str> {
@@ -1184,6 +1231,22 @@ mod tests {
         assert_eq!(
             reg.function_pointer_signature("int (*)(void)").as_deref(),
             Some("int (*)(void)")
+        );
+    }
+
+    #[test]
+    fn resolves_calling_convention_function_pointer_typedef_signature() {
+        let defs = c_parser::parse_c_type_defs(
+            "typedef void (XMLCALL *XML_StartElementHandler)(void *userData, const char *name);",
+        )
+        .unwrap();
+        let reg = TypeRegistry::from_defs([&defs]);
+
+        assert_eq!(reg.resolve("XML_StartElementHandler"), TypeShape::FuncPtr);
+        assert_eq!(
+            reg.function_pointer_signature("XML_StartElementHandler")
+                .as_deref(),
+            Some("void (*)(void *userData, const char *name)")
         );
     }
 

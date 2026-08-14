@@ -387,6 +387,10 @@ fn select_c_decoder_inner(
         return Ok(emission);
     }
 
+    if let Some(emission) = typed_character_string(c_type, name) {
+        return Ok(emission);
+    }
+
     if let Some(signature) = registry.function_pointer_signature(c_type) {
         return callback_trampoline(c_type, name, &signature);
     }
@@ -534,6 +538,7 @@ fn build_callback_trampoline(
     let trampoline = format!("_gf_{}_trampoline", sanitize_ident(name));
     let mut decl_params = Vec::new();
     let mut param_names = Vec::new();
+    let mut callback_context = None::<String>;
     let mut body = String::new();
     for (index, param) in parsed.params.iter().enumerate() {
         // A variadic `...` (tinycbor's `CborStreamFunction(void *, const char *,
@@ -550,6 +555,18 @@ fn build_callback_trampoline(
             Some(param_name) => {
                 decl_params.push(param.clone());
                 body.push_str(&format!("    (void){param_name};\n"));
+                let lower_name = param_name.to_ascii_lowercase();
+                let lower_param = param.to_ascii_lowercase();
+                if callback_context.is_none()
+                    && !lower_param.contains("const")
+                    && lower_param.contains("void")
+                    && lower_param.contains('*')
+                    && ["user", "userdata", "user_data", "context", "ctx", "opaque"]
+                        .iter()
+                        .any(|candidate| lower_name == *candidate)
+                {
+                    callback_context = Some(param_name.clone());
+                }
                 param_names.push(param_name);
             }
             None => {
@@ -559,6 +576,9 @@ fn build_callback_trampoline(
                 param_names.push(synthesized);
             }
         }
+    }
+    if let Some(context) = callback_context.as_deref() {
+        body.push_str(&format!("    GOVFUZZ_CALLBACK_OBSERVE({context});\n"));
     }
     let params = if decl_params.is_empty() {
         "void".to_owned()
@@ -598,8 +618,13 @@ fn build_callback_trampoline(
             .collect::<Vec<_>>()
             .join(" ")
     };
+    let callback_observer_fallback = if callback_context.is_some() {
+        "#ifndef GOVFUZZ_CALLBACK_OBSERVE\n#define GOVFUZZ_CALLBACK_OBSERVE(context) ((void)(context))\n#endif\n"
+    } else {
+        ""
+    };
     let support = format!(
-        "typedef {};\nstatic {} {}({}) {{\n{}}}",
+        "typedef {};\n{callback_observer_fallback}static {} {}({}) {{\n{}}}",
         signature.replacen("(*)", &format!("(*{typedef_name})"), 1),
         parsed.return_type,
         trampoline,
@@ -955,9 +980,16 @@ fn legacy_select_c_decoder(c_type: &str, name: &str) -> Option<CParamEmission> {
             c_type: "const char *".to_owned(),
             free: Some(format!("free({name})")),
         }),
+        // A WRITABLE `char *` is an output/in-out buffer. Its required capacity
+        // is stated at the call site, never in the signature, so sizing the
+        // ALLOCATION from the input turns any write by the callee into a
+        // guaranteed heap overflow attributed to the target — measured on
+        // libexpat's `getXMLCharset(const char *, char *charset)`, which
+        // `strcpy`s 9 bytes into whatever it is given. Fixed capacity, still
+        // fuzz-filled.
         "char *" | "char*" => Some(CParamEmission {
             support: None,
-            decl: format!("char *{name} = gf_c_string(&Cur, 4096)"),
+            decl: format!("char *{name} = gf_c_string_out(&Cur, 4096)"),
             arg: name.to_owned(),
             c_type: "char *".to_owned(),
             free: Some(format!("free({name})")),
@@ -1095,7 +1127,16 @@ fn emit_top_level_value(
             Ok(name.to_owned())
         }
         TypeShape::CString => {
-            ctx.push(format!("char *{name} = gf_c_string(&Cur, 4096)"));
+            // A WRITABLE `char *` is an output/in-out buffer whose required
+            // capacity lives at the call site, not in the signature, so its
+            // ALLOCATION must not be fuzzer-sized — see `gf_c_string_out`. A
+            // `const char *` is input-only and keeps the length-driven decode.
+            let decoder = if is_const_pointee(c_type) {
+                "gf_c_string"
+            } else {
+                "gf_c_string_out"
+            };
+            ctx.push(format!("char *{name} = {decoder}(&Cur, 4096)"));
             ctx.cleanups.push(format!("free({name})"));
             Ok(name.to_owned())
         }
@@ -1138,6 +1179,32 @@ fn emit_top_level_value(
             "opaque type '{raw}' for parameter '{name}' needs lifecycle support (Phase C)"
         ))),
     }
+}
+
+/// Whether `raw` resolves to a record with a function-pointer member, directly
+/// or through a nested record or array.
+///
+/// Such a record cannot be fabricated from fuzz bytes: the callee dispatches
+/// through the member and lands on a fuzzer-chosen address, which is a harness
+/// defect reported as a target crash.
+fn record_contains_function_pointer(registry: &TypeRegistry, raw: &str) -> bool {
+    fn walk(shape: &TypeShape, seen: &mut HashSet<String>) -> bool {
+        match shape {
+            TypeShape::FuncPtr => true,
+            TypeShape::Array { elem, .. } => walk(elem, seen),
+            // A pointer FIELD is left NULL or separately decoded rather than
+            // being read out of the fuzz bytes, so it is not itself a dispatch
+            // hazard unless it is a function pointer (handled above).
+            TypeShape::Struct { name, fields } | TypeShape::Union { name, fields } => {
+                if !name.is_empty() && !seen.insert(name.clone()) {
+                    return false;
+                }
+                fields.iter().any(|field| walk(&field.shape, seen))
+            }
+            _ => false,
+        }
+    }
+    walk(&registry.resolve(raw), &mut HashSet::new())
 }
 
 fn emit_top_level_pointer(
@@ -1347,7 +1414,20 @@ fn emit_top_level_pointer(
             // being skipped. The const-pointee gate keeps mutable handle pointers
             // — which the callee may write through, and which are not the input —
             // out of this path; a lifecycle pair (checked above) handles those.
+            // ...but only for a PLAIN-DATA record. A struct carrying function
+            // pointers (libexpat's `struct encoding`, whose `SCANNER scanners[]`
+            // members are called through) is not a wire format: pointing it at
+            // fuzz bytes makes the callee call a fuzzer-chosen address, so every
+            // resulting crash is manufactured by the harness. Measured on expat,
+            // where `(const ENCODING *)Data` produced ASan reports against a
+            // library OSS-Fuzz has fuzzed for years.
             if raw != "void" && is_const_pointee(c_type) {
+                if record_contains_function_pointer(ctx.registry, raw) {
+                    return Err(CDecoderError::new(format!(
+                        "opaque type '{raw}' for pointer parameter '{name}' holds function \
+                         pointers; backing it with fuzz bytes would call a fuzzer-chosen address"
+                    )));
+                }
                 ctx.push(format!("{c_type} {name} = ({c_type})Data"));
                 return Ok(name.to_owned());
             }
@@ -1865,6 +1945,46 @@ fn pointer_base_owned(c_type: &str) -> Option<String> {
         .map(storage_c_type)
 }
 
+/// Decode a read-only pointer through a character-named typedef as a typed,
+/// NUL-terminated string. Headers commonly hide the active character width
+/// behind conditional typedefs (`XML_Char`, `TCHAR`, `UChar`). The raw parser
+/// can see an inactive wide typedef first, so resolving the pointee merely as a
+/// scalar and passing `&one_scalar` lets strlen-like consumers walk off the
+/// stack. Keeping the declared element type makes this safe in both narrow and
+/// wide builds.
+fn typed_character_string(c_type: &str, name: &str) -> Option<CParamEmission> {
+    if !is_const_pointee(c_type) {
+        return None;
+    }
+    let base = pointer_base_owned(c_type)?;
+    let leaf = base
+        .rsplit("::")
+        .next()
+        .unwrap_or(&base)
+        .to_ascii_lowercase();
+    let character_named = matches!(leaf.as_str(), "tchar" | "uchar")
+        || leaf.ends_with("_char")
+        || leaf.ends_with("char_t");
+    if !character_named || base.split_whitespace().count() != 1 {
+        return None;
+    }
+    let len = format!("_gf_len_{name}");
+    let index = format!("_gf_i_{name}");
+    Some(CParamEmission {
+        support: None,
+        decl: format!(
+            "size_t {len} = gf_bounded_length(&Cur, 0, 4096); \
+             {base} *{name} = ({base} *)calloc({len} + 1, sizeof({base})); \
+             for (size_t {index} = 0; {name} && {index} < {len}; ++{index}) {{ \
+                 {name}[{index}] = ({base})gf_u8(&Cur); \
+             }}"
+        ),
+        arg: name.to_owned(),
+        c_type: emit_c_type(c_type),
+        free: Some(format!("free({name})")),
+    })
+}
+
 fn array_base_c_type(c_type: &str) -> Option<&str> {
     c_type.find('[').map(|open| c_type[..open].trim())
 }
@@ -1894,7 +2014,7 @@ fn scalar_shape_c_type(shape: &TypeShape) -> Option<String> {
     )
 }
 
-/// Strip leading declaration-specifier noise from a type string so it is usable
+/// Strip declaration-specifier noise from a type string so it is usable
 /// as a result-variable or parameter declaration. C/C++ functions carry storage
 /// (`static`/`inline`/`constexpr`), calling-convention (`__vectorcall`), and
 /// decoration macros (`SIMDJSON_INLINE`, `HB_UNUSED`, `simdjson_warn_unused`,
@@ -1911,7 +2031,7 @@ pub fn strip_type_decoration(ty: &str) -> String {
     // illegally applies to a local result variable; the bare inner type is what
     // we want. Then remove `__attribute__((...))` / `__declspec(...)` runs.
     let unwrapped = unwrap_type_macro(ty);
-    let cleaned = remove_attr_runs(&unwrapped);
+    let cleaned = remove_annotation_macro_runs(&remove_attr_runs(&unwrapped));
     let toks: Vec<&str> = cleaned.split_whitespace().collect();
     if toks.len() <= 1 {
         return cleaned.trim().to_owned();
@@ -1920,7 +2040,85 @@ pub fn strip_type_decoration(ty: &str) -> String {
     while i + 1 < toks.len() && is_leading_decl_noise(toks[i]) {
         i += 1;
     }
-    toks[i..].join(" ")
+    // Calling-convention macros can sit BETWEEN a function's return type and
+    // name, which tree-sitter records at the end of the return type:
+    // `XML_Parser XMLCALL XML_ExternalEntityParserCreate(...)`. Leaving XMLCALL
+    // on a local result also prevents type-identity matching from recognizing
+    // the returned value as a derived XML_Parser handle.
+    let mut end = toks.len();
+    while end > i + 1 && is_leading_decl_noise(toks[end - 1]) {
+        end -= 1;
+    }
+    toks[i..end].join(" ")
+}
+
+/// Remove bounds/nullability annotation macros embedded after a parameter's
+/// core type (`const uint8_t * WEBP_COUNTED_BY(size)`). They are source-level
+/// contracts, not part of the C declarator. Leaving the parentheses in the type
+/// makes the registry misclassify the byte pointer as a function pointer and
+/// codegen emits a callback trampoline in place of input/output storage.
+///
+/// Keep this deliberately narrower than "all uppercase macros": a project may
+/// use a function-like macro as its actual type. Annotation names have a small,
+/// recognizable vocabulary and removing them preserves the declared core type.
+fn remove_annotation_macro_runs(ty: &str) -> String {
+    let bytes = ty.as_bytes();
+    let mut out = String::with_capacity(ty.len());
+    let mut index = 0usize;
+    while index < bytes.len() {
+        if !(bytes[index] as char).is_ascii_alphabetic() && bytes[index] != b'_' {
+            out.push(bytes[index] as char);
+            index += 1;
+            continue;
+        }
+        let start = index;
+        index += 1;
+        while index < bytes.len()
+            && ((bytes[index] as char).is_ascii_alphanumeric() || bytes[index] == b'_')
+        {
+            index += 1;
+        }
+        let name = &ty[start..index];
+        let mut open = index;
+        while open < bytes.len() && (bytes[open] as char).is_ascii_whitespace() {
+            open += 1;
+        }
+        let upper = name.to_ascii_uppercase();
+        let annotation = [
+            "COUNTED_BY",
+            "SIZED_BY",
+            "BOUNDED_BY",
+            "NULLABLE",
+            "NONNULL",
+            "NOESCAPE",
+        ]
+        .iter()
+        .any(|marker| upper.contains(marker));
+        if annotation && bytes.get(open) == Some(&b'(') {
+            let mut depth = 0usize;
+            let mut end = open;
+            while end < bytes.len() {
+                match bytes[end] {
+                    b'(' => depth += 1,
+                    b')' => {
+                        depth = depth.saturating_sub(1);
+                        if depth == 0 {
+                            end += 1;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+                end += 1;
+            }
+            if depth == 0 {
+                index = end;
+                continue;
+            }
+        }
+        out.push_str(name);
+    }
+    out
 }
 
 /// Unwrap a function-like export macro that wraps the *entire* type, e.g.
@@ -2765,7 +2963,7 @@ fn is_control_flag_param_name(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     matches!(
         n.as_str(),
-        "flags" | "flag" | "mode" | "modes" | "options" | "option" | "opts"
+        "flags" | "flag" | "cflags" | "eflags" | "mode" | "modes" | "options" | "option" | "opts"
     ) || n.ends_with("_flags")
         || n.ends_with("_flag")
         || n.ends_with("_mode")
@@ -2847,6 +3045,12 @@ mod tests {
         let suffixed = select_c_decoder_with_registry("uint32_t", "parse_flags", &registry(""))
             .expect("supported");
         assert_eq!(suffixed.decl, "uint32_t parse_flags = 0");
+        let posix_compile =
+            select_c_decoder_with_registry("int", "cflags", &registry("")).expect("supported");
+        assert_eq!(posix_compile.decl, "int cflags = 0");
+        let posix_exec =
+            select_c_decoder_with_registry("int", "eflags", &registry("")).expect("supported");
+        assert_eq!(posix_exec.decl, "int eflags = 0");
         // control_flag_pinned itself only matches discriminator names + integer types.
         assert!(control_flag_pinned("int", "width").is_none());
         assert!(control_flag_pinned("int", "level").is_none());
@@ -2936,8 +3140,18 @@ mod tests {
         // surface there is.
         assert_eq!(strip_type_decoration("JNIEXPORT jint"), "jint");
         assert_eq!(strip_type_decoration("EGLAPI EGLBoolean"), "EGLBoolean");
-        // Still LEADING-only by contract: a calling-convention macro that TRAILS
-        // the return type is a different shape, and a lone token is never noise.
+        // Calling-convention macros may trail the return type (between type and
+        // function name) and must be stripped too; a lone token is never noise.
+        assert_eq!(strip_type_decoration("XML_Parser XMLCALL"), "XML_Parser");
+        assert_eq!(strip_type_decoration("void JNICALL"), "void");
+        assert_eq!(
+            strip_type_decoration("const uint8_t * WEBP_COUNTED_BY(data_size)"),
+            "const uint8_t *"
+        );
+        assert_eq!(
+            strip_type_decoration("uint8_t * WEBP_COUNTED_BY(output_size)"),
+            "uint8_t *"
+        );
         assert_eq!(strip_type_decoration("JNICALL"), "JNICALL");
         // Function-like export macros that take the type as an argument (cJSON's
         // `CJSON_PUBLIC(cJSON *)`, `MYLIB_API(int)`) wrap the whole type and must
@@ -3051,6 +3265,23 @@ mod tests {
     }
 
     #[test]
+    fn character_typedef_pointer_gets_a_typed_nul_terminated_string() {
+        // Expat conditionally typedefs XML_Char to wchar_t, unsigned short, or
+        // char. The raw header contains all three branches; codegen must remain
+        // safe regardless of which one the compiler selects.
+        let reg = registry(
+            "typedef wchar_t XML_Char; typedef unsigned short XML_Char; \
+             typedef char XML_Char;",
+        );
+        let e = select_c_decoder_with_registry("const XML_Char *", "context", &reg)
+            .expect("a character typedef pointer should decode");
+        assert!(e.decl.contains("XML_Char *context"), "{}", e.decl);
+        assert!(e.decl.contains("calloc") && e.decl.contains("sizeof(XML_Char)"));
+        assert!(!e.decl.contains("_gf_out_context"), "{}", e.decl);
+        assert_eq!(e.free.as_deref(), Some("free(context)"));
+    }
+
+    #[test]
     fn array_typedef_struct_field_is_decoded_elementwise() {
         // tcpdump declares header fields with array typedefs
         // (`typedef unsigned char nd_uint8_t[1];`). The field type spelling
@@ -3083,6 +3314,79 @@ mod tests {
         let reg = registry("struct unrelated { int x; };");
         let e = select_c_decoder_with_registry("const widget_t *", "msg", &reg)
             .expect("const opaque pointer should overlay the fuzz input");
+        assert!(
+            e.decl.contains("(const widget_t *)Data"),
+            "expected byte overlay of the input, got: {}",
+            e.decl
+        );
+    }
+
+    #[test]
+    fn a_writable_char_buffer_gets_a_fixed_capacity_not_a_fuzzer_chosen_one() {
+        // libexpat's `getXMLCharset(const char *buf, char *charset)` does
+        // `strcpy(charset, "us-ascii")`; its only real caller passes
+        // `char buf[CHARSET_MAX]`. A fuzzer-chosen allocation for `charset` can
+        // be 1 byte, so ASan fires on correct library code.
+        let reg = registry("struct unrelated { int x; };");
+        let out = select_c_decoder_with_registry("char *", "charset", &reg)
+            .expect("a writable char buffer should decode");
+        assert!(
+            out.decl.contains("gf_c_string_out(&Cur, 4096)"),
+            "an output buffer needs a FIXED capacity, got: {}",
+            out.decl
+        );
+
+        // The input-only case must keep its length-driven decode.
+        let input = select_c_decoder_with_registry("const char *", "buf", &reg)
+            .expect("a const char buffer should decode");
+        assert!(
+            input.decl.contains("gf_c_string(&Cur, 4096)")
+                && !input.decl.contains("gf_c_string_out"),
+            "a const input string must keep the length-driven decode, got: {}",
+            input.decl
+        );
+    }
+
+    #[test]
+    fn const_pointer_to_a_record_of_function_pointers_is_refused() {
+        // libexpat's `const ENCODING *`: `struct encoding` is a dispatch vtable
+        // whose `SCANNER scanners[]` members are CALLED. Overlaying fuzz bytes
+        // makes the callee jump to a fuzzer-chosen address, so every crash is
+        // manufactured — measured as ASan reports against expat, a library
+        // OSS-Fuzz has fuzzed for years. Refusing the parameter is correct.
+        let reg = registry(
+            "typedef int(*SCANNER)(const char *); \
+             struct encoding { SCANNER scanners[2]; int minBytesPerChar; }; \
+             typedef struct encoding ENCODING;",
+        );
+        assert!(
+            record_contains_function_pointer(&reg, "ENCODING"),
+            "a record whose members are called through must be recognised"
+        );
+        // When the definition IS visible the decoder builds the struct and
+        // installs trampolines, which is safe. What must never happen is the
+        // raw-byte overlay, whichever path is taken.
+        let e = select_c_decoder_with_registry("const ENCODING *", "enc", &reg)
+            .expect("a visible vtable record is constructible via trampolines");
+        assert!(
+            !e.decl.contains(")Data"),
+            "a vtable-shaped record must never be overlaid on fuzz input, got: {}",
+            e.decl
+        );
+        assert!(
+            e.support.is_some_and(|s| s.contains("trampoline")),
+            "its function-pointer members must be given real trampolines"
+        );
+    }
+
+    #[test]
+    fn a_plain_data_record_is_not_mistaken_for_a_vtable() {
+        // The guard must not cost the genuine wire-format case. A POD packet
+        // header has no dispatch members, so an opaque one stays overlaid.
+        let reg = registry("struct pkt_hdr { unsigned char ver; unsigned short len; };");
+        assert!(!record_contains_function_pointer(&reg, "struct pkt_hdr"));
+        let e = select_c_decoder_with_registry("const widget_t *", "msg", &reg)
+            .expect("an opaque plain-data pointer should still overlay the fuzz input");
         assert!(
             e.decl.contains("(const widget_t *)Data"),
             "expected byte overlay of the input, got: {}",

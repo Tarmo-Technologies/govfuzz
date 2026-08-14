@@ -2138,7 +2138,7 @@ fn attempt_builds_and_fuzzes_c_void_output_capacity_and_input_pair() {
     }
     let main = fs::read_to_string(result.harness_dir.join("main.c")).unwrap();
     assert!(main.contains("void * pOut_buf = (void *)malloc"));
-    assert!(main.contains("size_t out_buf_len = (size_t)_gf_cap_pOut_buf"));
+    assert!(main.contains("size_t out_buf_len = (size_t)(pOut_buf ? _gf_cap_pOut_buf : 0)"));
     assert!(main.contains("const void * pSrc_buf = (const void *)Data"));
     assert!(main.contains("size_t src_buf_len = (size_t)Size"));
     assert!(
@@ -2253,7 +2253,9 @@ fn attempt_builds_and_fuzzes_cpp_void_output_capacity_and_input_pair() {
     }
     let main = fs::read_to_string(result.harness_dir.join("main.cpp")).unwrap();
     assert!(main.contains("void * pOut_buf = (void *)malloc"));
-    assert!(main.contains("std::size_t out_buf_len = (std::size_t)_gf_cap_pOut_buf"));
+    assert!(
+        main.contains("std::size_t out_buf_len = (std::size_t)(pOut_buf ? _gf_cap_pOut_buf : 0)")
+    );
     assert!(main.contains("const void * pSrc_buf = (const void *)Data"));
     assert!(main.contains("std::size_t src_buf_len = (std::size_t)Size"));
     assert!(
@@ -2370,7 +2372,8 @@ fn attempt_builds_and_fuzzes_cpp_void_output_length_pointer_and_input_pair() {
     }
     let main = fs::read_to_string(result.harness_dir.join("main.cpp")).unwrap();
     assert!(main.contains("void * pOut_buf = (void *)malloc"));
-    assert!(main.contains("std::size_t _gf_out_pOut_len = (std::size_t)_gf_cap_pOut_buf"));
+    assert!(main
+        .contains("std::size_t _gf_out_pOut_len = (std::size_t)(pOut_buf ? _gf_cap_pOut_buf : 0)"));
     assert!(main.contains("std::size_t *pOut_len = &_gf_out_pOut_len"));
     assert!(main.contains("const void * pSrc_buf = (const void *)Data"));
     assert!(main.contains("std::size_t src_buf_len = (std::size_t)Size"));

@@ -109,6 +109,24 @@ pub struct CppLifecycleStep {
     pub return_type: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CppProtocolArg {
+    Decode,
+    InputData,
+    InputSize,
+    Literal(String),
+}
+
+/// A declaration-checked member call observed in a maintained test/fuzzer.
+/// Unlike the random lifecycle suffix, protocol steps are emitted once in their
+/// observed order and can retain input bindings and literal state transitions.
+#[derive(Debug, Clone)]
+pub struct CppProtocolStep {
+    pub step: CppLifecycleStep,
+    pub args: Vec<CppProtocolArg>,
+    pub marks_target: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct GenerateCppSequenceArgs {
     pub harness_id: String,
@@ -126,6 +144,7 @@ pub struct GenerateCppSequenceArgs {
     pub result_cleanup: Option<String>,
     pub constructor_params: Vec<CppParameter>,
     pub lifecycle_steps: Vec<CppLifecycleStep>,
+    pub protocol_steps: Vec<CppProtocolStep>,
     pub type_defs: Vec<c_parser::CTypeDefs>,
     /// See `GenerateCppDirectArgs::default_constructible_classes` (#353).
     pub default_constructible_classes: Vec<String>,
@@ -302,6 +321,9 @@ fn render_cpp_harness(
 struct CppTemplateContext {
     harness_id: String,
     qualified_target_name: String,
+    /// Exact public RE2 parser lifecycle: whole-input string view, canonical
+    /// parser flags, caller-owned status, and intrusive result release.
+    expert_re2_parse: bool,
     /// Turbofish type-argument suffix for an instantiated template target —
     /// `"<int>"`, `"<std::string, double>"`, or empty for a non-template
     /// (#455 / §27.5). Appended directly after `qualified_target_name` in the
@@ -384,6 +406,7 @@ struct CppTemplateContext {
     result_cleanup: Option<String>,
     lifecycle_steps: Vec<CppLifecycleStepEmission>,
     lifecycle_step_count: usize,
+    protocol_steps: Vec<CppProtocolStepEmission>,
     /// True for a free-function byte-stream decoder (`decode(uint8_t byte, ...)`,
     /// PX4 st24_decode/sumd_decode): feed the whole fuzz input through the target
     /// one byte at a time so the stateful protocol machine is driven. `params`
@@ -404,6 +427,16 @@ struct CppLifecycleStepEmission {
     return_type: String,
     return_type_present: bool,
     result_name: String,
+}
+
+#[derive(Debug, Serialize)]
+struct CppProtocolStepEmission {
+    name: String,
+    params: Vec<CParamEmission>,
+    return_type: String,
+    return_type_present: bool,
+    result_name: String,
+    marks_target: bool,
 }
 
 /// Template-level factory context: serialised into the Tera template so the
@@ -487,7 +520,10 @@ fn build_cpp_param_decoders(
                     .join(" ");
                 out.push(CParamEmission {
                     support: None,
-                    decl: format!("{len_type} {} = ({len_type})Size", params[1].name),
+                    decl: format!(
+                        "{len_type} {} = ({len_type})({} ? Size : 0)",
+                        params[1].name, params[0].name
+                    ),
                     arg: params[1].name.clone(),
                     c_type: len_type,
                     free: None,
@@ -539,14 +575,31 @@ fn build_cpp_param_decoders(
                 .split_whitespace()
                 .collect::<Vec<_>>()
                 .join(" ");
-            let buf_decl = format!("{buf_type} {} = ({buf_type})Data", buf.name);
-            let len_decl = format!("{len_type} {} = ({len_type})Size", len.name);
+            let const_buffer = is_const_cpp_pointer_type(&buf_type);
+            let buf_decl = if const_buffer {
+                format!("{buf_type} {} = ({buf_type})Data", buf.name)
+            } else {
+                format!(
+                    "size_t _gf_cap_{} = Size <= (1024 * 1024) ? (size_t)Size : (1024 * 1024); \
+                     {buf_type} {} = ({buf_type})malloc(_gf_cap_{} ? _gf_cap_{} : 1); \
+                     if ({} && _gf_cap_{}) memcpy({}, Data, _gf_cap_{})",
+                    buf.name, buf.name, buf.name, buf.name, buf.name, buf.name, buf.name, buf.name
+                )
+            };
+            let len_decl = if const_buffer {
+                format!("{len_type} {} = ({len_type})Size", len.name)
+            } else {
+                format!(
+                    "{len_type} {} = ({len_type})({} ? _gf_cap_{} : 0)",
+                    len.name, buf.name, buf.name
+                )
+            };
             out.push(CParamEmission {
                 support: None,
                 decl: buf_decl,
                 arg: buf.name.clone(),
                 c_type: buf_type.clone(),
-                free: None,
+                free: (!const_buffer).then(|| format!("free({})", buf.name)),
             });
             out.push(CParamEmission {
                 support: None,
@@ -745,8 +798,9 @@ fn pair_cpp_output_buffer_length(
         c_type: buf_type,
         free: Some(format!("free({buf_name})")),
     };
-    let len_decl =
-        format!("{len_base} {len_storage} = ({len_base}){cap_name}; {len_base} *{len_name} = &{len_storage}");
+    let len_decl = format!(
+        "{len_base} {len_storage} = ({len_base})({buf_name} ? {cap_name} : 0); {len_base} *{len_name} = &{len_storage}"
+    );
     let len_emission = CParamEmission {
         support: None,
         decl: len_decl,
@@ -782,7 +836,7 @@ fn pair_cpp_output_buffer_capacity(
         c_type: buf_type,
         free: Some(format!("free({buf_name})")),
     };
-    let len_decl = format!("{len_type} {len_name} = ({len_type}){cap_name}");
+    let len_decl = format!("{len_type} {len_name} = ({len_type})({buf_name} ? {cap_name} : 0)");
     let len_emission = CParamEmission {
         support: None,
         decl: len_decl,
@@ -828,6 +882,7 @@ fn build_cpp_context<'a>(
         parameter_constructions: &args.parameter_constructions,
         receiver_class_override: args.receiver_class_override.as_deref(),
         lifecycle_steps: Vec::new(),
+        protocol_steps: Vec::new(),
         handle_lifecycle,
         factory_plan: args.factory_plan.as_ref(),
         decoder_limits: args.decoder_limits,
@@ -843,6 +898,8 @@ fn build_cpp_sequence_context(
         .with_default_constructible_classes(args.default_constructible_classes.iter().cloned());
     let lifecycle_steps =
         build_lifecycle_step_emissions(&args.lifecycle_steps, &registry, args.decoder_limits)?;
+    let protocol_steps =
+        build_cpp_protocol_emissions(&args.protocol_steps, &registry, args.decoder_limits)?;
     build_cpp_context_common(CppContextInput {
         harness_id: &args.harness_id,
         source_path: &args.source_path,
@@ -862,6 +919,7 @@ fn build_cpp_sequence_context(
         parameter_constructions: &args.parameter_constructions,
         receiver_class_override: args.receiver_class_override.as_deref(),
         lifecycle_steps,
+        protocol_steps,
         handle_lifecycle: &[],
         factory_plan: args.factory_plan.as_ref(),
         decoder_limits: args.decoder_limits,
@@ -891,6 +949,7 @@ struct CppContextInput<'a> {
     parameter_constructions: &'a [(String, type_model::ClassConstruction)],
     receiver_class_override: Option<&'a str>,
     lifecycle_steps: Vec<CppLifecycleStepEmission>,
+    protocol_steps: Vec<CppProtocolStepEmission>,
     /// Init/delete FREE-function lifecycles for opaque-handle parameters (an
     /// opaque `void`-typedef pointer the fuzzer can't synthesize, built via a
     /// `new`/`free` pair instead). Empty for harnesses without such a param.
@@ -1036,6 +1095,7 @@ fn build_cpp_context_common(
     input: CppContextInput<'_>,
 ) -> Result<CppTemplateContext, HarnessGenError> {
     validate_cpp_build_inputs(&input)?;
+    let expert_re2_parse = is_exact_re2_regexp_parse(&input);
     let input_references_type_defs = cpp_params_reference_type_defs(&input);
     let registry = TypeRegistry::from_defs(input.type_defs.iter())
         .with_cpp_lookup_scopes(cpp_lexical_lookup_scopes(input.target))
@@ -1078,6 +1138,7 @@ fn build_cpp_context_common(
     let byte_stream = !input.target.api.is_method
         && input.constructor_params.is_empty()
         && input.lifecycle_steps.is_empty()
+        && input.protocol_steps.is_empty()
         && is_cpp_byte_stream_decoder(&input.target.name, effective_params);
     let literal_operator = is_cpp_literal_operator(&input.target.name);
     let params = if byte_stream {
@@ -1122,6 +1183,7 @@ fn build_cpp_context_common(
     };
     let build_context = split_cpp_build_context_flags(input.compile_flags);
     let lifecycle_steps = input.lifecycle_steps;
+    let protocol_steps = input.protocol_steps;
     let factory_param_emissions: Vec<&CParamEmission> = factory
         .as_ref()
         .map(|f| f.params.iter().collect())
@@ -1130,7 +1192,8 @@ fn build_cpp_context_common(
         .iter()
         .chain(constructor_params.iter())
         .chain(factory_param_emissions.iter().copied())
-        .chain(lifecycle_steps.iter().flat_map(|step| step.params.iter()));
+        .chain(lifecycle_steps.iter().flat_map(|step| step.params.iter()))
+        .chain(protocol_steps.iter().flat_map(|step| step.params.iter()));
     let mut uses_array = false;
     let mut uses_bitset = false;
     let mut uses_chrono = false;
@@ -1231,7 +1294,6 @@ fn build_cpp_context_common(
             input.target.name
         )
     };
-
     // A receiver instance is needed only for an actual member function, and
     // its type is the full qualifier path (namespace(s) + (nested) class),
     // e.g. `Json::Value`, `acme::v2::XmlReader`. `is_method` is the
@@ -1337,6 +1399,7 @@ fn build_cpp_context_common(
     Ok(CppTemplateContext {
         harness_id: input.harness_id.to_owned(),
         qualified_target_name,
+        expert_re2_parse,
         target_template_suffix,
         target_name: input.target.name.clone(),
         forward_namespace: input.target.qualifier_path.join("::"),
@@ -1410,9 +1473,26 @@ fn build_cpp_context_common(
         result_cleanup: input.result_cleanup.map(str::to_owned),
         lifecycle_steps,
         lifecycle_step_count,
+        protocol_steps,
         byte_stream,
         factory,
     })
+}
+
+/// Deliberately narrow gate for RE2's public low-level parser contract. The
+/// generic decoder consumes control bytes before the pattern, leaves the
+/// class-nested ParseFlags spelling unqualified, and cannot infer Regexp's
+/// intrusive `Decref()` ownership. This exact declaration/header shape is safe
+/// to drive the same way as RE2's maintained callers and fuzz harnesses.
+fn is_exact_re2_regexp_parse(input: &CppContextInput<'_>) -> bool {
+    input.target.name == "Parse"
+        && input.target.qualifier_path == ["re2", "Regexp"]
+        && input.target.params.len() == 3
+        && input.target_includes.iter().any(|header| {
+            Path::new(header)
+                .file_name()
+                .is_some_and(|name| name == "regexp.h")
+        })
 }
 
 /// A free-function byte-stream decoder: a `parse`/`decode`-named function whose
@@ -1625,6 +1705,124 @@ fn build_lifecycle_step_emissions(
             })
         })
         .collect()
+}
+
+fn build_cpp_protocol_emissions(
+    steps: &[CppProtocolStep],
+    registry: &TypeRegistry,
+    limits: CppDecoderLimits,
+) -> Result<Vec<CppProtocolStepEmission>, HarnessGenError> {
+    steps
+        .iter()
+        .enumerate()
+        .map(|(step_index, observed)| {
+            if observed.step.params.len() != observed.args.len()
+                || !cpp_callable_member_name(&observed.step.name)
+                || !cpp_return_type_emittable(&observed.step.return_type)
+            {
+                return Err(HarnessGenError::UnsupportedParamType(format!(
+                    "invalid mined C++ protocol step '{}'",
+                    observed.step.name
+                )));
+            }
+            let renamed = observed
+                .step
+                .params
+                .iter()
+                .enumerate()
+                .map(|(param_index, param)| CppParameter {
+                    name: scoped_param_name(
+                        "_gf_protocol",
+                        Some(step_index),
+                        param_index,
+                        &param.name,
+                    ),
+                    cpp_type: param.cpp_type.clone(),
+                })
+                .collect::<Vec<_>>();
+            let mut params =
+                build_cpp_param_decoders(&renamed, registry, &[], &limits, false, false)?;
+            for ((emission, parameter), recipe) in params
+                .iter_mut()
+                .zip(&observed.step.params)
+                .zip(&observed.args)
+            {
+                match recipe {
+                    CppProtocolArg::Decode => {}
+                    CppProtocolArg::InputData => {
+                        let ty = crate::c_decoders::strip_type_decoration(&parameter.cpp_type);
+                        if !ty.contains('*') || !ty.split_whitespace().any(|token| token == "const")
+                        {
+                            return Err(HarnessGenError::UnsupportedParamType(format!(
+                                "mined C++ input-data argument '{}' is not a const pointer",
+                                parameter.cpp_type
+                            )));
+                        }
+                        emission.decl = "/* bound directly to the fuzz input */".to_owned();
+                        emission.arg = format!("reinterpret_cast<{ty}>(Data)");
+                        emission.free = None;
+                    }
+                    CppProtocolArg::InputSize => {
+                        if !is_length_cpp_param(&parameter.cpp_type) {
+                            return Err(HarnessGenError::UnsupportedParamType(format!(
+                                "mined C++ input-size argument '{}' is not integral",
+                                parameter.cpp_type
+                            )));
+                        }
+                        let ty = crate::c_decoders::strip_type_decoration(&parameter.cpp_type);
+                        emission.decl = "/* bound directly to the fuzz input size */".to_owned();
+                        emission.arg = format!("static_cast<{ty}>(Size)");
+                        emission.free = None;
+                    }
+                    CppProtocolArg::Literal(value) => {
+                        if !safe_cpp_protocol_literal(value) {
+                            return Err(HarnessGenError::UnsupportedParamType(format!(
+                                "unsafe mined C++ protocol literal '{value}'"
+                            )));
+                        }
+                        emission.decl = "/* expert-observed literal */".to_owned();
+                        emission.arg = value.clone();
+                        emission.free = None;
+                    }
+                }
+            }
+            let return_type = observed.step.return_type.trim().to_owned();
+            let return_type_present = !return_type.is_empty() && return_type != "void";
+            Ok(CppProtocolStepEmission {
+                name: observed.step.name.clone(),
+                params,
+                return_type: if return_type_present {
+                    return_type
+                } else {
+                    "void".to_owned()
+                },
+                return_type_present,
+                result_name: format!("_gf_protocol{step_index}_result"),
+                marks_target: observed.marks_target,
+            })
+        })
+        .collect()
+}
+
+fn safe_cpp_protocol_literal(value: &str) -> bool {
+    let value = value.trim();
+    if matches!(value, "true" | "false" | "nullptr" | "NULL") {
+        return true;
+    }
+    if (value.starts_with('"') && value.ends_with('"'))
+        || (value.starts_with('\'') && value.ends_with('\''))
+    {
+        return value.len() >= 2;
+    }
+    let number = value.trim_start_matches(['+', '-']);
+    !number.is_empty()
+        && number
+            .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_digit())
+        && number
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'x' | b'X'))
 }
 
 fn lifecycle_param_name(step_index: usize, param_index: usize, raw: &str) -> String {
@@ -2077,6 +2275,122 @@ mod tests {
     }
 
     #[test]
+    fn re2_parse_uses_whole_input_flags_status_and_intrusive_cleanup() {
+        let out = temp_dir("cpp-re2-parse");
+        let include = out.join("include");
+        fs::create_dir_all(include.join("re2")).unwrap();
+        fs::write(
+            include.join("re2/regexp.h"),
+            r#"
+                #include <string_view>
+                namespace absl { using string_view = std::string_view; }
+                namespace re2 {
+                class RegexpStatus {};
+                class Regexp {
+                 public:
+                  enum ParseFlags { LikePerl = 1 };
+                  static Regexp *Parse(absl::string_view, ParseFlags, RegexpStatus *);
+                  void Decref();
+                };
+                }
+            "#,
+        )
+        .unwrap();
+        let runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../c_runtime")
+            .canonicalize()
+            .unwrap();
+        let mut target = cppfunction("Parse");
+        target.qualifier_path = vec!["re2".to_owned(), "Regexp".to_owned()];
+        target.api.namespace_path = vec!["re2".to_owned()];
+        target.api.class_name = Some("Regexp".to_owned());
+        target.api.is_method = true;
+        target.is_static = true;
+        target.params = vec![
+            cpp_parser::CppParamDescriptor {
+                name: "pattern".to_owned(),
+                cpp_type: "absl::string_view".to_owned(),
+            },
+            cpp_parser::CppParamDescriptor {
+                name: "flags".to_owned(),
+                cpp_type: "ParseFlags".to_owned(),
+            },
+            cpp_parser::CppParamDescriptor {
+                name: "status".to_owned(),
+                cpp_type: "RegexpStatus *".to_owned(),
+            },
+        ];
+        let args = GenerateCppDirectArgs {
+            decoder_limits: Default::default(),
+            force: false,
+            harness_id: "H-CPP-RE2".to_owned(),
+            output_dir: out.join("harness"),
+            source_path: out.join("parse.cc"),
+            target,
+            params: vec![
+                CppParameter {
+                    name: "pattern".to_owned(),
+                    cpp_type: "absl::string_view".to_owned(),
+                },
+                CppParameter {
+                    name: "flags".to_owned(),
+                    cpp_type: "int".to_owned(),
+                },
+                CppParameter {
+                    name: "status".to_owned(),
+                    cpp_type: "int *".to_owned(),
+                },
+            ],
+            return_type: "re2::Regexp *".to_owned(),
+            target_includes: vec!["re2/regexp.h".to_owned()],
+            target_includes_dirs: vec![include.clone()],
+            target_sources: Vec::new(),
+            compile_flags: Vec::new(),
+            c_runtime_include: runtime.clone(),
+            using_namespaces: Vec::new(),
+            result_cleanup: None,
+            constructor_params: Vec::new(),
+            type_defs: Vec::new(),
+            default_constructible_classes: Vec::new(),
+            parameter_constructions: Vec::new(),
+            receiver_class_override: None,
+            factory_plan: None,
+        };
+
+        let result = generate_cpp_direct_harness(args).unwrap();
+        let main = fs::read_to_string(&result.main_cpp).unwrap();
+        assert!(
+            main.contains("reinterpret_cast<const char *>(Data), Size"),
+            "{main}"
+        );
+        assert!(main.contains("re2::Regexp::LikePerl"), "{main}");
+        assert!(main.contains("re2::RegexpStatus _gf_status"), "{main}");
+        assert!(main.contains("if (R) R->Decref()"), "{main}");
+        assert!(!main.contains("gf_cursor Cur ="), "{main}");
+
+        if let Some(cxx_flags) = clangxx_compile_flags("cpp-re2-parse") {
+            let output = Command::new("clang++")
+                .args(&cxx_flags)
+                .arg("-std=c++17")
+                .arg("-I")
+                .arg(include)
+                .arg("-I")
+                .arg(runtime)
+                .arg("-c")
+                .arg(&result.main_cpp)
+                .arg("-o")
+                .arg(out.join("re2-harness.o"))
+                .output()
+                .expect("spawn clang++");
+            assert!(
+                output.status.success(),
+                "clang++ failed:\n{}\n{main}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[test]
     fn user_defined_literal_operator_binds_length_to_buffer_size() {
         // nlohmann `operator"" _json_pointer(const char8_t *s, std::size_t n)`: by
         // [lex.ext] `n` is the literal's exact length, so it MUST bind to the
@@ -2122,7 +2436,7 @@ mod tests {
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         // The length param tracks the buffer, never an independent fuzzed length.
         assert!(
-            main.contains("std::size_t n = (std::size_t)Size"),
+            main.contains("std::size_t n = (std::size_t)(s ? Size : 0)"),
             "UDL length must bind to Size, not a decoupled fuzzed length:\n{main}"
         );
         assert!(
@@ -2827,6 +3141,32 @@ mod tests {
                 cpp_type: "const std::string &".to_owned(),
             }],
             lifecycle_steps: Vec::new(),
+            protocol_steps: vec![
+                CppProtocolStep {
+                    step: CppLifecycleStep {
+                        name: "configure".to_owned(),
+                        params: vec![CppParameter {
+                            name: "mode".to_owned(),
+                            cpp_type: "int".to_owned(),
+                        }],
+                        return_type: "void".to_owned(),
+                    },
+                    args: vec![CppProtocolArg::Literal("7".to_owned())],
+                    marks_target: false,
+                },
+                CppProtocolStep {
+                    step: CppLifecycleStep {
+                        name: "parse".to_owned(),
+                        params: vec![CppParameter {
+                            name: "input".to_owned(),
+                            cpp_type: "std::string_view".to_owned(),
+                        }],
+                        return_type: "int".to_owned(),
+                    },
+                    args: vec![CppProtocolArg::Decode],
+                    marks_target: true,
+                },
+            ],
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
             parameter_constructions: Vec::new(),
@@ -2836,10 +3176,25 @@ mod tests {
 
         let result = generate_cpp_sequence_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_cpp).unwrap();
+        let makefile = fs::read_to_string(&result.makefile).unwrap();
 
         assert!(main.contains("std::string _gf_ctor_seed"));
         assert!(main.contains("gov::Parser _gf_receiver(_gf_ctor_seed);"));
-        assert!(main.contains("_gf_receiver.parse(input);"));
+        assert!(main.contains("_gf_receiver.parse(_gf_protocol1_input);"));
+        assert!(
+            !main.contains("GOVFUZZ_KEEP_RESULT(R);"),
+            "a mined protocol names per-step results, so no nonexistent direct-call R may remain: {main}"
+        );
+        let configure = main.find("_gf_receiver.configure(7)").unwrap();
+        let parse = main.find("_gf_receiver.parse(").unwrap();
+        assert!(
+            configure < parse,
+            "expert protocol order must be retained: {main}"
+        );
+        assert!(
+            makefile.contains("cov: main_cov") && makefile.contains("$(COV_CXX)"),
+            "C++ protocols must remain measurable by coverage replay: {makefile}"
+        );
     }
 
     #[test]
@@ -2932,14 +3287,22 @@ mod tests {
         assert!(main.contains("int LLVMFuzzerTestOneInput"));
         assert!(makefile.contains("ifeq ($(origin CXX), default)"));
         assert!(makefile.contains("CXX = clang++"));
-        assert!(makefile.contains(".PHONY: all afl diff syntaxcheck clean"));
+        assert!(makefile.contains(".PHONY: all afl cov diff syntaxcheck clean"));
         assert!(makefile.contains("AFLPP_CXX ?= afl-clang-fast++"));
         assert!(makefile.contains("afl: main_afl"));
+        assert!(makefile.contains("cov: main_cov"));
+        assert!(makefile.contains("COV_CXX ?= clang++"));
         // The two-compiler differential build target.
         assert!(makefile.contains("diff: main_diff"));
         assert!(makefile.contains("DIFF_CXX ?= clang++"));
         assert!(makefile.contains("govfuzz_driver.o: $(GOVFUZZ_DRIVER_SOURCE)"));
-        assert!(makefile.contains("$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS) -c"));
+        // The driver TU is compiled as C with the driver flags. It also needs the
+        // POSIX feature-test macros: the driver calls `mkstemp`/`ftruncate`, and a
+        // strict `-std=` from the project's compile database otherwise leaves them
+        // undeclared.
+        assert!(makefile.contains("$(CXX) -x c $(GOVFUZZ_DRIVER_CFLAGS)"));
+        assert!(makefile.contains("$(FEATURE_TEST_FLAGS) -c -o $@ $(GOVFUZZ_DRIVER_SOURCE)"));
+        assert!(makefile.contains("FEATURE_TEST_FLAGS ?= -D_GNU_SOURCE -D_DEFAULT_SOURCE"));
         assert!(makefile.contains("-DGOVFUZZ_EXTERNAL_DRIVER -o $@ main.cpp"));
         // The afl target is declared; target sources live in the recipe, not the
         // prerequisites (an absolute Windows source path carries a drive-letter
@@ -3702,6 +4065,16 @@ mod tests {
             paired.contains(")Data") && paired.contains(")Size"),
             "data/len must still pair to (Data, Size): {paired}"
         );
+        // A mutable input/in-out pair needs a writable copy. Pointing it at
+        // libFuzzer's const Data makes a legitimate in-place write look like a
+        // target bug. The length must also collapse to zero if malloc fails.
+        let mutable = decls(&[("data", "uint8_t *"), ("len", "size_t")]);
+        assert!(
+            mutable.contains("uint8_t * data = (uint8_t *)malloc(_gf_cap_data")
+                && mutable.contains("memcpy(data, Data, _gf_cap_data)")
+                && mutable.contains("len = (size_t)(data ? _gf_cap_data : 0)"),
+            "mutable data/len must use a coherent writable copy: {mutable}"
+        );
     }
 
     #[test]
@@ -3812,7 +4185,8 @@ mod tests {
         let result = generate_cpp_direct_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         assert!(main.contains("void * pOut_buf = (void *)malloc"));
-        assert!(main.contains("std::size_t out_buf_len = (std::size_t)_gf_cap_pOut_buf"));
+        assert!(main
+            .contains("std::size_t out_buf_len = (std::size_t)(pOut_buf ? _gf_cap_pOut_buf : 0)"));
         assert!(main.contains("const void * pSrc_buf = (const void *)Data"));
         assert!(main.contains("std::size_t src_buf_len = (std::size_t)Size"));
         assert!(
@@ -3869,7 +4243,9 @@ mod tests {
         let result = generate_cpp_direct_harness(args).unwrap();
         let main = fs::read_to_string(&result.main_cpp).unwrap();
         assert!(main.contains("void * pOut_buf = (void *)malloc"));
-        assert!(main.contains("std::size_t _gf_out_pOut_len = (std::size_t)_gf_cap_pOut_buf"));
+        assert!(main.contains(
+            "std::size_t _gf_out_pOut_len = (std::size_t)(pOut_buf ? _gf_cap_pOut_buf : 0)"
+        ));
         assert!(main.contains("std::size_t *pOut_len = &_gf_out_pOut_len"));
         assert!(main.contains("const void * pSrc_buf = (const void *)Data"));
         assert!(main.contains("std::size_t src_buf_len = (std::size_t)Size"));
@@ -5397,6 +5773,7 @@ mod tests {
                     return_type: "int".to_owned(),
                 },
             ],
+            protocol_steps: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
             parameter_constructions: Vec::new(),
@@ -5453,6 +5830,7 @@ mod tests {
             result_cleanup: None,
             constructor_params: Vec::new(),
             lifecycle_steps: Vec::new(),
+            protocol_steps: Vec::new(),
             type_defs: Vec::new(),
             default_constructible_classes: Vec::new(),
             parameter_constructions: Vec::new(),

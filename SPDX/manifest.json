@@ -155,6 +155,110 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "benchmarks/harness-parity-20/expert/brotli.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/cjson.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/cmark.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/expat.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/inih.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/jansson.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/json-c.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libarchive.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libcsv.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libjpeg-turbo.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libpng.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libucl.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libwebp.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libxml2.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/libyaml.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/lua.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/lz4.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/miniz.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/msgpack-c.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/pcre2.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/sqlite.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/tomlc99.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/utf8proc.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/yyjson.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/zlib.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-20/expert/zstd.c",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "benchmarks/harnesses/afl_persistent.c",
       "license": "Apache-2.0"
     },
@@ -2760,6 +2864,10 @@
     },
     {
       "path": "crates/idl_parser/src/lib.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/idl_parser/src/literal.rs",
       "license": "Apache-2.0"
     },
     {

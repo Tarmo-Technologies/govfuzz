@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "cmark.h"
 #include <stdint.h>
 

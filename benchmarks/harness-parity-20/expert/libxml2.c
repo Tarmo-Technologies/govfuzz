@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <limits.h>

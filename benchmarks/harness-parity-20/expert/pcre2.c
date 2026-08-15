@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include <pcre2posix.h>
 #include <stdint.h>
 #include <stdlib.h>

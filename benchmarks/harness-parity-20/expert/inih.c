@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "ini.h"
 #include <stdint.h>
 static int value(void *u, const char *s, const char *n, const char *v) {(void)u;(void)s;(void)n;(void)v;return 1;}

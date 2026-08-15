@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "snappy.h"
 #include <cstdint>
 #include <string>

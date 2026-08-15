@@ -60,9 +60,9 @@ real expert harnesses and closed their missing semantics:
   generic successful-feed completion step that acquires and releases the
   parser-owned result object.
 - libcsv's lifecycle remains declaration-derived across opaque source-local
-  receiver definitions: `init → parse → fini → free` is emitted and entered,
-  leaving 24 short-campaign expert-only lines rather than regressing to a direct
-  target call.
+  receiver definitions. A retained protocol now also treats omitted
+  configuration as evidence that the example intentionally uses API defaults,
+  rather than injecting unrelated setters with fuzz-decoded values.
 
 The ten-project expansion exercised different API shapes rather than adding
 near-duplicates: annotated image buffers, POSIX regex output objects, C++
@@ -87,6 +87,18 @@ The largest before/after movements were:
   `regfree`: 2,813/2,696 lines and only eight expert-only lines.
 - Snappy, cmark, and tomlc99 reached exact parity; Lua exceeds its expert
   baseline after unrelated lexical test calls were excluded from the protocol.
+
+### Post-suite targeted validation
+
+After the 30-project table was frozen, the libcsv residual exposed a general
+protocol-selection error: its mined example used the library defaults, but the
+generic operation alphabet still added every same-family setter. Three fresh,
+independent 15-second comparisons after the fix each produced the same result:
+214 generated lines versus 197 expert lines, zero expert-only lines, and 17
+generated-only lines. The emitted lifecycle is the expert-shaped
+`init → parse → fini → free` sequence and contains no unevidenced setter. The
+checked 30-project table remains the reproducible five-second suite result; this
+focused measurement is recorded separately rather than mixing campaign lengths.
 
 ## Method
 
@@ -153,6 +165,9 @@ the two map the same bytes into different argument structures.
 - Mined lexical protocols retain only the selected target, declaration-checked
   configuration, target-result dependencies, and evidenced non-owning
   finalizers; a single sample-sized target call is rebound to the full fuzz span.
+- A retained protocol's omitted configuration is preserved as use of the API
+  defaults. Only setters actually present in the declaration-checked trace are
+  admitted, while targets without a retained trace keep exploratory setters.
 - Expert coverage builds recover direct source closures from the generated
   Makefile, closing multi-file oracle failures such as Snappy without adding
   project-specific source lists.
@@ -192,10 +207,10 @@ the two map the same bytes into different argument structures.
    declaration-checked protocol IR.
 
 3. **Bootstrap format-valid corpora and measure lane stability.** libarchive's
-   remaining 40 lines and libcsv's 24 fluctuate in five-second campaigns even
-   though the corresponding expert operations are present. Seed each retained
-   protocol lane with minimal public-format exemplars, repeat seeds, and report
-   confidence intervals so corpus luck is not mistaken for a harness deficit.
+   remaining 40 lines fluctuate in five-second campaigns even though the
+   corresponding expert operations are present. Seed each retained protocol
+   lane with minimal public-format exemplars, repeat seeds, and report confidence
+   intervals so corpus luck is not mistaken for a harness deficit.
 
 4. **Model multi-plane and callback-owned output geometry.** The new checked
    geometry path covers interleaved decode-into APIs. Planar image/audio outputs,
@@ -225,7 +240,7 @@ typedef-aware flag rule also pinned real enum modes and Windows `BOOL` inputs;
 it is now restricted to direct integers or explicitly flag-shaped scalar/enum
 typedefs. Real-project reruns verify target entry for every updated row.
 
-- The final CLI, harness-generator, and C-parser library suites passed: 1,629,
+- The final CLI, harness-generator, and C-parser library suites passed: 1,631,
   597, and 69 tests respectively. The broader workspace library validation also
   passed its 80 runtrace-shim tests and all IDL/fake-CORBA unit tests.
 - `m10_fake_corba`: 17/17 passed, including legacy/annotated IDL mapping and

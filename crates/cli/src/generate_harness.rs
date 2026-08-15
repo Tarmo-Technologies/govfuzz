@@ -4564,9 +4564,13 @@ fn c_lifecycle_steps(
         .filter(|callable| {
             let same_target = callable.name == target.name;
             let role = c_step_role_of(&callable.name);
+            // A retained call trace is evidence for the complete setup used by
+            // that protocol. An empty configuration-name set means the example
+            // used the API defaults; it is not permission to inject every
+            // same-family setter with independently decoded values.
             let conflicts_with_mined_configuration = role
                 == harness_gen::c_generate::CStepRole::Configure
-                && !protocol_configuration_names.is_empty()
+                && !protocol_steps.is_empty()
                 && !protocol_configuration_names.contains(&callable.name);
             // Accessor-only siblings consume scarce sequence slots without
             // advancing state, and macro-gated introspection APIs are often not
@@ -17736,6 +17740,80 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr),
             main
+        );
+    }
+
+    #[test]
+    fn mined_protocol_without_configuration_keeps_api_defaults() {
+        let root = temp_dir("c-sequence-mined-defaults");
+        let src = root.join("src");
+        let tests = root.join("tests");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&tests).unwrap();
+        let header = src.join("parser.h");
+        let source = src.join("parser.c");
+        fs::write(
+            &header,
+            "#include <stddef.h>\n\
+             struct parser { int mode; int total; };\n\
+             int parser_init(struct parser *p);\n\
+             int parser_set_mode(struct parser *p, int mode);\n\
+             size_t parser_parse(struct parser *p, const void *data, size_t size);\n\
+             int parser_fini(struct parser *p);\n\
+             void parser_free(struct parser *p);\n",
+        )
+        .unwrap();
+        fs::write(
+            &source,
+            "#include \"parser.h\"\n\
+             int parser_init(struct parser *p) { p->mode = 7; p->total = 0; return 0; }\n\
+             int parser_set_mode(struct parser *p, int mode) { p->mode = mode; return 0; }\n\
+             size_t parser_parse(struct parser *p, const void *data, size_t size) { (void)data; p->total += (int)size; return size; }\n\
+             int parser_fini(struct parser *p) { return p->total; }\n\
+             void parser_free(struct parser *p) { p->total = 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            tests.join("example.c"),
+            "#include \"../src/parser.h\"\n\
+             void parse_example(const void *data, size_t size) {\n\
+               struct parser p;\n\
+               if (parser_init(&p) != 0) return;\n\
+               (void)parser_parse(&p, data, size);\n\
+               (void)parser_fini(&p);\n\
+               parser_free(&p);\n\
+             }\n",
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source,
+            target: Some("parser_parse".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CSEQ-DEFAULTS".to_owned()),
+            kind: "sequence".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+            archive_backed: false,
+        })
+        .unwrap();
+
+        let main = fs::read_to_string(root.join("out/H-CSEQ-DEFAULTS/main.c")).unwrap();
+        assert!(main.contains("parser_parse(&_gf_handle"), "{main}");
+        assert!(main.contains("parser_fini(&_gf_handle"), "{main}");
+        assert!(main.contains("parser_free(&_gf_handle"), "{main}");
+        assert!(
+            !main.contains("parser_set_mode(&_gf_handle"),
+            "a mined protocol that uses defaults must not gain an unevidenced setter:\n{main}"
         );
     }
 

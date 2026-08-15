@@ -1752,16 +1752,22 @@ fn protocol_calls(text: &str) -> Vec<MinedProtocolCall> {
 /// attempting to lift arbitrary control flow. Braces, a direct call comparison,
 /// and a self-contained literal or macro-like constant are all required.
 fn enclosing_protocol_condition(text: &str, call_start: usize) -> Option<MinedProtocolCondition> {
-    protocol_predicate_atoms(enclosing_protocol_if_expression(text, call_start)?)
+    let (expression, inverted) = enclosing_protocol_if_branch(text, call_start)?;
+    let mut condition = protocol_predicate_atoms(expression)
         .into_iter()
-        .find_map(parse_protocol_condition)
+        .find_map(parse_protocol_condition)?;
+    if inverted {
+        condition.comparison = negate_protocol_comparison(condition.comparison);
+    }
+    Some(condition)
 }
 
 fn enclosing_protocol_input_condition(
     text: &str,
     call_start: usize,
 ) -> Option<MinedProtocolInputCondition> {
-    protocol_predicate_atoms(enclosing_protocol_if_expression(text, call_start)?)
+    let (expression, inverted) = enclosing_protocol_if_branch(text, call_start)?;
+    let mut condition = protocol_predicate_atoms(expression)
         .into_iter()
         .filter_map(parse_protocol_input_condition)
         // A byte predicate carries its own bounds check during emission and is
@@ -1771,7 +1777,11 @@ fn enclosing_protocol_input_condition(
                 condition.source,
                 MinedProtocolInputSource::Byte { .. }
             ))
-        })
+        })?;
+    if inverted {
+        condition.comparison = negate_protocol_comparison(condition.comparison);
+    }
+    Some(condition)
 }
 
 fn protocol_predicate_atoms(expression: &str) -> Vec<&str> {
@@ -1789,8 +1799,12 @@ fn protocol_predicate_atoms(expression: &str) -> Vec<&str> {
     out
 }
 
-fn enclosing_protocol_if_expression(text: &str, call_start: usize) -> Option<&str> {
-    let bytes = text.as_bytes();
+/// Return the closest enclosing `if` predicate and whether the call is in its
+/// direct `else` branch. This is a deliberately small control-flow slice: it
+/// preserves the common two-way expert protocol without attempting to model an
+/// arbitrary CFG. Negating the comparison makes calls from the two arms
+/// mutually exclusive when codegen replays the otherwise lexical call list.
+fn enclosing_protocol_if_branch(text: &str, call_start: usize) -> Option<(&str, bool)> {
     let mut search = call_start;
     while let Some(open_brace) = text[..search].rfind('{') {
         let close_brace = matching_delimiter(text, open_brace, b'{', b'}')?;
@@ -1799,26 +1813,55 @@ fn enclosing_protocol_if_expression(text: &str, call_start: usize) -> Option<&st
             continue;
         }
 
-        let mut close_paren = open_brace;
-        while close_paren > 0 && (bytes[close_paren - 1] as char).is_ascii_whitespace() {
-            close_paren -= 1;
+        if let Some(expression) = protocol_if_expression_before_brace(text, open_brace) {
+            return Some((expression, false));
         }
-        if close_paren == 0 || bytes[close_paren - 1] != b')' {
-            search = open_brace;
-            continue;
+        if let Some(expression) = protocol_else_expression_before_brace(text, open_brace) {
+            return Some((expression, true));
         }
-        close_paren -= 1;
-        let open_paren = matching_open_paren(text, close_paren)?;
-        let keyword = text[..open_paren]
-            .trim_end()
-            .rsplit_once(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
-            .map_or_else(|| text[..open_paren].trim(), |(_, tail)| tail);
-        if keyword != "if" {
-            search = open_brace;
-            continue;
-        }
+        search = open_brace;
+    }
+    None
+}
 
-        return Some(text[open_paren + 1..close_paren].trim());
+fn protocol_if_expression_before_brace(text: &str, open_brace: usize) -> Option<&str> {
+    let bytes = text.as_bytes();
+    let mut close_paren = open_brace;
+    while close_paren > 0 && (bytes[close_paren - 1] as char).is_ascii_whitespace() {
+        close_paren -= 1;
+    }
+    if close_paren == 0 || bytes[close_paren - 1] != b')' {
+        return None;
+    }
+    close_paren -= 1;
+    let open_paren = matching_open_paren(text, close_paren)?;
+    let keyword = text[..open_paren]
+        .trim_end()
+        .rsplit_once(|ch: char| !ch.is_ascii_alphanumeric() && ch != '_')
+        .map_or_else(|| text[..open_paren].trim(), |(_, tail)| tail);
+    (keyword == "if").then(|| text[open_paren + 1..close_paren].trim())
+}
+
+fn protocol_else_expression_before_brace(text: &str, open_brace: usize) -> Option<&str> {
+    let before_else = text[..open_brace].trim_end().strip_suffix("else")?;
+    if before_else
+        .chars()
+        .next_back()
+        .is_some_and(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+    {
+        return None;
+    }
+    let close_if = before_else.trim_end().len().checked_sub(1)?;
+    if text.as_bytes().get(close_if) != Some(&b'}') {
+        return None;
+    }
+
+    let mut search = close_if;
+    while let Some(open_if) = text[..search].rfind('{') {
+        if matching_delimiter(text, open_if, b'{', b'}') == Some(close_if) {
+            return protocol_if_expression_before_brace(text, open_if);
+        }
+        search = open_if;
     }
     None
 }
@@ -1949,6 +1992,17 @@ fn reverse_protocol_comparison(comparison: MinedProtocolComparison) -> MinedProt
         MinedProtocolComparison::LessEqual => MinedProtocolComparison::GreaterEqual,
         MinedProtocolComparison::Greater => MinedProtocolComparison::Less,
         MinedProtocolComparison::GreaterEqual => MinedProtocolComparison::LessEqual,
+    }
+}
+
+fn negate_protocol_comparison(comparison: MinedProtocolComparison) -> MinedProtocolComparison {
+    match comparison {
+        MinedProtocolComparison::Equal => MinedProtocolComparison::NotEqual,
+        MinedProtocolComparison::NotEqual => MinedProtocolComparison::Equal,
+        MinedProtocolComparison::Less => MinedProtocolComparison::GreaterEqual,
+        MinedProtocolComparison::LessEqual => MinedProtocolComparison::Greater,
+        MinedProtocolComparison::Greater => MinedProtocolComparison::LessEqual,
+        MinedProtocolComparison::GreaterEqual => MinedProtocolComparison::Less,
     }
 }
 
@@ -2934,6 +2988,89 @@ mod tests {
                 comparison: MinedProtocolComparison::GreaterEqual,
                 value: "STATUS_READY".to_owned(),
             })
+        );
+    }
+
+    #[test]
+    fn protocol_else_arms_receive_inverse_input_guards() {
+        let traces = mine_protocol_traces(
+            r#"
+                void drive(Parser p, const unsigned char *data, size_t size) {
+                    if (size % 2) {
+                        parse(p, data, size, MODE_STREAM);
+                    } else {
+                        parse(p, data, size, MODE_FINAL);
+                    }
+                    finish(p);
+                }
+            "#,
+        );
+        let trace = traces
+            .iter()
+            .find(|trace| trace.first().is_some_and(|call| call.receiver == "p"))
+            .expect("branching protocol trace");
+        let parses = trace
+            .iter()
+            .filter(|call| call.name == "parse")
+            .collect::<Vec<_>>();
+        assert_eq!(parses.len(), 2);
+        assert_eq!(
+            parses[0].input_condition,
+            Some(MinedProtocolInputCondition {
+                source: MinedProtocolInputSource::Size {
+                    input_name: "size".to_owned(),
+                },
+                transform: MinedProtocolInputTransform::Modulo(2),
+                comparison: MinedProtocolComparison::NotEqual,
+                value: "0".to_owned(),
+            })
+        );
+        assert_eq!(
+            parses[1].input_condition,
+            Some(MinedProtocolInputCondition {
+                source: MinedProtocolInputSource::Size {
+                    input_name: "size".to_owned(),
+                },
+                transform: MinedProtocolInputTransform::Modulo(2),
+                comparison: MinedProtocolComparison::Equal,
+                value: "0".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn protocol_else_arms_receive_inverse_result_guards() {
+        let traces = mine_protocol_traces(
+            r#"
+                void drive(Parser p) {
+                    if (parse(p) >= STATUS_READY) {
+                        consume(p);
+                    } else {
+                        recover(p);
+                    }
+                    finish(p);
+                }
+            "#,
+        );
+        let trace = traces
+            .iter()
+            .find(|trace| trace.first().is_some_and(|call| call.receiver == "p"))
+            .expect("branching protocol trace");
+        assert_eq!(
+            trace
+                .iter()
+                .find(|call| call.name == "consume")
+                .and_then(|call| call.condition.as_ref())
+                .map(|condition| condition.comparison),
+            Some(MinedProtocolComparison::GreaterEqual)
+        );
+        assert_eq!(
+            trace
+                .iter()
+                .find(|call| call.name == "recover")
+                .and_then(|call| call.condition.as_ref())
+                .map(|condition| condition.comparison),
+            Some(MinedProtocolComparison::Less)
         );
     }
 

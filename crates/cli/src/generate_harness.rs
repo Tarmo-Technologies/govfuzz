@@ -17818,6 +17818,87 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
     }
 
     #[test]
+    fn mined_protocol_preserves_mutually_exclusive_if_else_arms() {
+        let root = temp_dir("c-sequence-mined-branches");
+        let src = root.join("src");
+        let tests = root.join("tests");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&tests).unwrap();
+        let header = src.join("parser.h");
+        let source = src.join("parser.c");
+        fs::write(
+            &header,
+            "#include <stddef.h>\n\
+             #define PARSER_STREAM 0\n\
+             #define PARSER_FINAL 1\n\
+             struct parser { int total; };\n\
+             int parser_init(struct parser *p);\n\
+             size_t parser_parse(struct parser *p, const void *data, size_t size, int mode);\n\
+             void parser_free(struct parser *p);\n",
+        )
+        .unwrap();
+        fs::write(
+            &source,
+            "#include \"parser.h\"\n\
+             int parser_init(struct parser *p) { p->total = 0; return 0; }\n\
+             size_t parser_parse(struct parser *p, const void *data, size_t size, int mode) { (void)data; p->total += (int)size + mode; return size; }\n\
+             void parser_free(struct parser *p) { p->total = 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            tests.join("example.c"),
+            "#include \"../src/parser.h\"\n\
+             void parse_example(const void *data, size_t size) {\n\
+               struct parser p;\n\
+               if (parser_init(&p) != 0) return;\n\
+               if (size % 2) {\n\
+                 (void)parser_parse(&p, data, size, PARSER_STREAM);\n\
+               } else {\n\
+                 (void)parser_parse(&p, data, size, PARSER_FINAL);\n\
+               }\n\
+               parser_free(&p);\n\
+             }\n",
+        )
+        .unwrap();
+
+        run(GenerateHarnessArgs {
+            source,
+            target: Some("parser_parse".to_owned()),
+            target_line: None,
+            output: root.join("out"),
+            id: Some("H-CSEQ-BRANCHES".to_owned()),
+            kind: "sequence".to_owned(),
+            source_roots: Vec::new(),
+            project: None,
+            source_trees: Vec::new(),
+            extra_sources: Vec::new(),
+            extra_includes: Vec::new(),
+            cleanup: None,
+            template_instantiate: Vec::new(),
+            tree_type_defs: None,
+            decoder_limits: Default::default(),
+            force: false,
+            archive_backed: false,
+        })
+        .unwrap();
+
+        let main = fs::read_to_string(root.join("out/H-CSEQ-BRANCHES/main.c")).unwrap();
+        assert_eq!(
+            main.matches("parser_parse(&_gf_handle").count(),
+            2,
+            "both expert branch arms must survive as target calls:\n{main}"
+        );
+        assert!(
+            main.contains("if (((uint64_t)Cur.size % 2u) != 0)"),
+            "the true arm must retain its input predicate:\n{main}"
+        );
+        assert!(
+            main.contains("if (((uint64_t)Cur.size % 2u) == 0)"),
+            "the else arm must receive the inverse predicate:\n{main}"
+        );
+    }
+
+    #[test]
     fn generate_c_sequence_harness_excludes_static_same_handle_helpers() {
         let root = temp_dir("c-sequence-static-helper");
         let src = root.join("src");

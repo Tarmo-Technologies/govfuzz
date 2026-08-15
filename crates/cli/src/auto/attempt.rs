@@ -4650,11 +4650,9 @@ fn c_auto_sequence_candidate(
         defs.push(tree.clone());
     }
     let registry = type_model::TypeRegistry::from_defs(defs.iter());
-    let Some(target_handle) = target.params.first().and_then(|param| {
+    let target_handle = target.params.first().and_then(|param| {
         crate::generate_harness::c_lifecycle_handle_key(&param.c_type, &registry)
-    }) else {
-        return false;
-    };
+    });
     if crate::generate_harness::c_step_role_of(&target.name)
         == harness_gen::c_generate::CStepRole::Open
         || is_c_lifecycle_end(&target.name)
@@ -4667,10 +4665,12 @@ fn c_auto_sequence_candidate(
     // siblings as sequence operations lets `regexec` run first on a zeroed,
     // never-compiled regex. Keep that shape direct, where target success guards
     // cleanup. Both returning and in-place constructors from the tree qualify.
-    if tree_lifecycle.iter().any(|entry| {
-        entry.init.is_some()
-            && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
-                == harness_gen::c_decoders::normalize_handle_key(&target_handle)
+    if target_handle.as_ref().is_some_and(|target_handle| {
+        tree_lifecycle.iter().any(|entry| {
+            entry.init.is_some()
+                && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
+                    == harness_gen::c_decoders::normalize_handle_key(target_handle)
+        })
     }) {
         return true;
     }
@@ -4679,13 +4679,44 @@ fn c_auto_sequence_candidate(
     // handle misses returning constructors: their handle is the return value and
     // their parameters are allocator/config inputs. The table also excludes
     // private-static helpers and never promotes a destructor-only entry.
-    crate::generate_harness::c_direct_lifecycle_table(&functions, &[], &registry)
-        .iter()
-        .any(|entry| {
-            entry.init.is_some()
-                && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
-                    == harness_gen::c_decoders::normalize_handle_key(&target_handle)
-        })
+    if target_handle.as_ref().is_some_and(|target_handle| {
+        crate::generate_harness::c_direct_lifecycle_table(&functions, &[], &registry)
+            .iter()
+            .any(|entry| {
+                entry.init.is_some()
+                    && harness_gen::c_decoders::normalize_handle_key(&entry.handle_type)
+                        == harness_gen::c_decoders::normalize_handle_key(target_handle)
+            })
+    }) {
+        return true;
+    }
+
+    // Ranking runs before the harness include closure is assembled. A public
+    // lifecycle can therefore be fully visible by signature in this source
+    // while the receiver's aggregate body lives only in its sibling header.
+    // TypeRegistry then sees an opaque forward declaration and cannot form the
+    // semantic handle key used above. Exact canonical receiver equality plus a
+    // public init AND destructor is still sufficient proof for choosing the
+    // sequence path; generation later resolves completeness from the headers.
+    let target_receiver =
+        crate::generate_harness::canonical_c_lifecycle_type(&target.params[0].c_type);
+    if !target_receiver.ends_with('*') {
+        return false;
+    }
+    let same_receiver = |function: &c_parser::CFunction| {
+        !function.is_static
+            && function.params.first().is_some_and(|param| {
+                crate::generate_harness::canonical_c_lifecycle_type(&param.c_type)
+                    == target_receiver
+            })
+    };
+    let has_init = functions.iter().any(|function| {
+        same_receiver(function) && crate::generate_harness::is_c_lifecycle_init(&function.name)
+    });
+    let has_end = functions.iter().any(|function| {
+        same_receiver(function) && crate::generate_harness::is_c_lifecycle_end(&function.name)
+    });
+    has_init && has_end
 }
 
 #[cfg(test)]
@@ -4728,6 +4759,42 @@ mod c_auto_sequence_candidate_tests {
         assert!(
             c_auto_sequence_candidate(&candidate, None, &[]),
             "the sequence harness must construct the opaque handle through DecoderCreateInstance"
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn public_in_place_lifecycle_enables_sequence_with_opaque_source_receiver() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("govfuzz-c-sequence-in-place-{nonce}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("csv.c");
+        std::fs::write(
+            &source,
+            "struct csv_parser;\n\
+             int csv_init(struct csv_parser *p, unsigned char options) { return 0; }\n\
+             void csv_free(struct csv_parser *p) {}\n\
+             unsigned long csv_parse(struct csv_parser *p, const void *s, unsigned long n) { return n; }\n",
+        )
+        .unwrap();
+        let candidate = Candidate {
+            harness_id: "H-CCSV".to_owned(),
+            lang: Lang::C,
+            source_path: source,
+            line: 4,
+            name: "csv_parse".to_owned(),
+            score: 1,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        assert!(
+            c_auto_sequence_candidate(&candidate, None, &[]),
+            "an exact public init/free receiver pair is enough to request sequence generation"
         );
         std::fs::remove_dir_all(dir).ok();
     }

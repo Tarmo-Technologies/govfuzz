@@ -128,7 +128,7 @@ fn replay_one(
     let mut unmeasured = 0usize;
     let mut harness_timeouts = 0usize;
     'inputs: for input in inputs.flatten() {
-        if replayed >= MAX_INPUTS {
+        if replayed >= MAX_INPUTS || harness_timeouts >= TSAN_TIMEOUT_LIMIT {
             break;
         }
         let path = input.path();
@@ -203,6 +203,13 @@ fn replay_one(
         }
         if never_completed {
             unmeasured += 1;
+            // The timeout budget is harness-wide. Once consumed, no remaining
+            // input can produce a measured replay without exceeding that bound;
+            // spending another full timeout on each queue entry turns a 16-run
+            // ceiling into MAX_INPUTS * timeout in the worst case.
+            if harness_timeouts >= TSAN_TIMEOUT_LIMIT {
+                break 'inputs;
+            }
         }
     }
 
@@ -447,6 +454,47 @@ mod tests {
             TSAN_RUN_RETRIES + 1,
             "expected the initial run plus its retry budget"
         );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn harness_timeout_budget_stops_the_remaining_corpus() {
+        let tmp = std::env::temp_dir().join(format!(
+            "govfuzz-tsan-harness-timeout-budget-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let work = tmp.join("work");
+        let hdir = work.join("harnesses").join("H-C0001");
+        let queue = work.join("corpus").join("H-C0001").join("queue");
+        std::fs::create_dir_all(&hdir).unwrap();
+        std::fs::create_dir_all(&queue).unwrap();
+        for index in 0..(TSAN_TIMEOUT_LIMIT + 10) {
+            std::fs::write(queue.join(format!("seed-{index:03}")), b"input").unwrap();
+        }
+        std::fs::write(hdir.join("Makefile"), "tsan:\n\tchmod +x main_tsan\n").unwrap();
+        std::fs::write(
+            hdir.join("main_tsan"),
+            "#!/bin/sh\n\
+             attempts=\"$(dirname \"$0\")/attempts\"\n\
+             count=0\n\
+             [ ! -f \"$attempts\" ] || count=$(cat \"$attempts\")\n\
+             printf '%s\\n' \"$((count + 1))\" > \"$attempts\"\n\
+             sleep 5\n",
+        )
+        .unwrap();
+
+        let result = run_tsan_replay_with(&work, Duration::from_millis(10));
+        let attempts: usize = std::fs::read_to_string(hdir.join("attempts"))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        assert_eq!(attempts, TSAN_TIMEOUT_LIMIT);
+        assert_eq!(result.unmeasured, 4);
 
         let _ = std::fs::remove_dir_all(&tmp);
     }

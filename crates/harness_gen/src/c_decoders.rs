@@ -359,7 +359,7 @@ fn select_c_decoder_inner(
         return Ok(emission);
     }
 
-    if let Some(emission) = control_flag_pinned(c_type, name) {
+    if let Some(emission) = control_flag_pinned(c_type, name, registry) {
         return Ok(emission);
     }
 
@@ -2963,12 +2963,53 @@ fn is_control_flag_param_name(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     matches!(
         n.as_str(),
-        "flags" | "flag" | "cflags" | "eflags" | "mode" | "modes" | "options" | "option" | "opts"
+        "flags"
+            | "flag"
+            | "flg"
+            | "cflags"
+            | "eflags"
+            | "mode"
+            | "modes"
+            | "options"
+            | "option"
+            | "opts"
     ) || n.ends_with("_flags")
         || n.ends_with("_flag")
         || n.ends_with("_mode")
         || n.ends_with("_options")
         || n.ends_with("_opts")
+}
+
+/// Type aliases often carry stronger discriminator evidence than abbreviated
+/// parameter names: `yyjson_read_flag flg`, `png_uint_32 transform`, and similar
+/// APIs expose an integer/enum domain through the typedef while the parameter is
+/// merely `f`/`flg`. Accept only explicit flag-shaped type identifiers; the
+/// resolved scalar/enum check in [`control_flag_pinned`] prevents an aggregate
+/// such as `struct flag_set` from being initialized as an integer.
+fn is_control_flag_type_name(c_type: &str) -> bool {
+    let normalized = c_type
+        .split_whitespace()
+        .filter(|token| {
+            !matches!(
+                *token,
+                "const" | "volatile" | "restrict" | "register" | "enum"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    if normalized.contains('*') || normalized.contains('&') || normalized.contains('[') {
+        return false;
+    }
+    let identifier = normalized
+        .rsplit("::")
+        .next()
+        .unwrap_or(&normalized)
+        .to_ascii_lowercase();
+    matches!(identifier.as_str(), "flag" | "flags")
+        || identifier.ends_with("_flag")
+        || identifier.ends_with("_flags")
+        || identifier.ends_with("_flag_t")
+        || identifier.ends_with("_flags_t")
 }
 
 /// Pin a control-flag / mode / options DISCRIMINATOR integer to 0 (the default
@@ -2979,8 +3020,13 @@ fn is_control_flag_param_name(name: &str) -> bool {
 /// function). Fuzzing the discriminator full-range trips a reserved/invalid bit and
 /// produces an OOB deref or a wild jump — a harness artifact, since the real caller
 /// passes a documented (usually 0) flag value. Only plain integer scalars qualify.
-fn control_flag_pinned(c_type: &str, name: &str) -> Option<CParamEmission> {
-    if !is_control_flag_param_name(name) {
+fn control_flag_pinned(
+    c_type: &str,
+    name: &str,
+    registry: &TypeRegistry,
+) -> Option<CParamEmission> {
+    let flag_shaped_type = is_control_flag_type_name(c_type);
+    if !is_control_flag_param_name(name) && !flag_shaped_type {
         return None;
     }
     let normalized = c_type
@@ -2988,7 +3034,7 @@ fn control_flag_pinned(c_type: &str, name: &str) -> Option<CParamEmission> {
         .filter(|token| !matches!(*token, "const" | "volatile" | "restrict" | "register"))
         .collect::<Vec<_>>()
         .join(" ");
-    let is_integer = matches!(
+    let direct_integer = matches!(
         normalized.as_str(),
         "int"
             | "signed int"
@@ -3012,7 +3058,17 @@ fn control_flag_pinned(c_type: &str, name: &str) -> Option<CParamEmission> {
             | "uint64_t"
             | "size_t"
     );
-    if !is_integer {
+    // Preserve the legacy name heuristic's integer-only boundary. A parameter
+    // named `mode` may be a real enum domain, and `BOOL flag` is often actual
+    // input rather than a reserved-bit mask. Only an explicitly flag-shaped
+    // typedef supplies enough declaration evidence to extend the rule through
+    // aliases/enums.
+    let resolved_flag_scalar = flag_shaped_type
+        && matches!(
+            registry.resolve(c_type),
+            TypeShape::Scalar(_) | TypeShape::Enum { .. }
+        );
+    if !direct_integer && !resolved_flag_scalar {
         return None;
     }
     Some(scalar(name, &normalized, "0"))
@@ -3052,11 +3108,22 @@ mod tests {
             select_c_decoder_with_registry("int", "eflags", &registry("")).expect("supported");
         assert_eq!(posix_exec.decl, "int eflags = 0");
         // control_flag_pinned itself only matches discriminator names + integer types.
-        assert!(control_flag_pinned("int", "width").is_none());
-        assert!(control_flag_pinned("int", "level").is_none());
+        let empty = registry("");
+        assert!(control_flag_pinned("int", "width", &empty).is_none());
+        assert!(control_flag_pinned("int", "level", &empty).is_none());
         // A `char *` named `mode` (an fopen-style mode string) is NOT an integer
         // discriminator, so it stays a string decode.
-        assert!(control_flag_pinned("char *", "mode").is_none());
+        assert!(control_flag_pinned("char *", "mode", &empty).is_none());
+        // The typedef is the declaration-level evidence when the parameter name
+        // is abbreviated. This is yyjson's public `yyjson_read_flag flg` shape.
+        let flag_registry = registry("typedef uint32_t yyjson_read_flag;");
+        let typedef_flag =
+            select_c_decoder_with_registry("yyjson_read_flag", "flg", &flag_registry)
+                .expect("typedef flag supported");
+        assert_eq!(typedef_flag.decl, "yyjson_read_flag flg = 0");
+        // Flag-shaped aggregates are not scalar discriminators.
+        let aggregate_registry = registry("struct flag_set { int enabled; };");
+        assert!(control_flag_pinned("struct flag_set", "flg", &aggregate_registry).is_none());
         // A real numeric param is still fuzzed end-to-end.
         let w = select_c_decoder_with_registry("int", "width", &registry("")).expect("supported");
         assert!(w.decl.contains("gf_i32(&Cur)"), "{}", w.decl);

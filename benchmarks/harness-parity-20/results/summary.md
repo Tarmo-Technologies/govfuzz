@@ -2,8 +2,8 @@
 
 - Projects attempted: 30
 - Comparable auto/expert measurements: 30
-- Expert parity or better: 16/30
-- Mean generated/expert covered-line ratio: 1.130
+- Expert parity or better: 19/30
+- Mean generated/expert covered-line ratio: 1.106
 
 | Project | Result | Auto | Expert | Ratio | Expert-only |
 |---|---:|---:|---:|---:|---:|
@@ -14,13 +14,13 @@
 | inih | generated_exceeds_expert | 150 | 149 | 1.007 | 0 |
 | jansson | expert_has_marginal_coverage | 1005 | 1007 | 0.998 | 7 |
 | json-c | expert_has_marginal_coverage | 1243 | 1136 | 1.094 | 3 |
-| libarchive | expert_has_marginal_coverage | 6755 | 4756 | 1.420 | 98 |
-| libcsv | expert_has_marginal_coverage | 204 | 197 | 1.036 | 24 |
+| libarchive | expert_has_marginal_coverage | 6774 | 6444 | 1.051 | 40 |
+| libcsv | expert_has_marginal_coverage | 193 | 197 | 0.980 | 24 |
 | libjpeg-turbo | expert_parity | 368 | 368 | 1.000 | 0 |
 | libpng | expert_has_marginal_coverage | 596 | 530 | 1.125 | 3 |
-| libucl | expert_has_marginal_coverage | 1627 | 1644 | 0.990 | 17 |
-| libwebp | expert_has_marginal_coverage | 1058 | 985 | 1.074 | 35 |
-| libxml2 | expert_has_marginal_coverage | 8253 | 8020 | 1.029 | 123 |
+| libucl | expert_parity | 1623 | 1623 | 1.000 | 0 |
+| libwebp | generated_exceeds_expert | 1174 | 1042 | 1.127 | 0 |
+| libxml2 | expert_has_marginal_coverage | 8193 | 8185 | 1.001 | 3 |
 | libyaml | generated_exceeds_expert | 1925 | 1890 | 1.019 | 0 |
 | lua | generated_exceeds_expert | 79 | 52 | 1.519 | 0 |
 | lz4 | expert_has_marginal_coverage | 345 | 178 | 1.938 | 6 |
@@ -34,6 +34,6 @@
 | tinyxml2 | generated_exceeds_expert | 733 | 602 | 1.218 | 0 |
 | tomlc99 | expert_parity | 913 | 913 | 1.000 | 0 |
 | utf8proc | generated_exceeds_expert | 365 | 201 | 1.816 | 0 |
-| yyjson | expert_has_marginal_coverage | 1109 | 846 | 1.311 | 87 |
+| yyjson | expert_parity | 919 | 919 | 1.000 | 0 |
 | zlib | expert_parity | 252 | 252 | 1.000 | 0 |
 | zstd | expert_parity | 371 | 371 | 1.000 | 0 |

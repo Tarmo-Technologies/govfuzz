@@ -376,6 +376,16 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endfor %}
     if ({{ expert_stream_pump.open_step.result_name }} == ARCHIVE_OK) {
         int _gf_stream_fatal = 0;
+{%- if expert_stream_pump.skip_step %}
+        /* Complementary stream semantics. Lane 0 drains payload bytes through
+         * the ordinary read API; lane 1 uses the public skip transition. Both
+         * are valid reader protocols and reach distinct filter/finalization
+         * paths. The portfolio engine seeds and scores each lane separately. */
+        size_t _gf_stream_lane = 0;
+        if (Size >= {{ op_ctrl_len }}) {
+            _gf_stream_lane = (size_t)Data[Size - {{ op_ctrl_len }}] % 2;
+        }
+{%- endif %}
         unsigned char {{ expert_stream_pump.data_buffer_name }}[{{ expert_stream_pump.data_buffer_bytes }}];
         for (size_t _gf_entry_index = 0; _gf_entry_index < {{ expert_stream_pump.entry_cap }}; ++_gf_entry_index) {
 {%- for p in expert_stream_pump.header_step.params %}
@@ -395,6 +405,19 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
             if ({{ expert_stream_pump.header_step.result_name }} == ARCHIVE_RETRY) {
                 continue;
             }
+{%- if expert_stream_pump.skip_step %}
+            if (_gf_stream_lane == 1) {
+                {{ expert_stream_pump.skip_step.return_type }} {{ expert_stream_pump.skip_step.result_name }} = {{ expert_stream_pump.skip_step.name }}({{ expert_stream_pump.skip_step.receiver }}{% for p in expert_stream_pump.skip_step.params %}, {{ p.arg }}{% endfor %});
+                GOVFUZZ_KEEP_RESULT({{ expert_stream_pump.skip_step.result_name }});
+                if ({{ expert_stream_pump.skip_step.result_name }} == ARCHIVE_FATAL) {
+                    _gf_stream_fatal = 1;
+                }
+                if (_gf_stream_fatal) {
+                    break;
+                }
+                continue;
+            }
+{%- endif %}
             for (size_t _gf_data_index = 0; _gf_data_index < {{ expert_stream_pump.data_cap }}; ++_gf_data_index) {
                 {{ expert_stream_pump.data_step.return_type }} {{ expert_stream_pump.data_step.result_name }} = {{ expert_stream_pump.data_step.name }}({{ expert_stream_pump.data_step.receiver }}, {{ expert_stream_pump.data_buffer_name }}, sizeof({{ expert_stream_pump.data_buffer_name }}));
                 GOVFUZZ_KEEP_RESULT({{ expert_stream_pump.data_step.result_name }});
@@ -473,7 +496,7 @@ int govfuzz_run_one(const uint8_t *Data, size_t Size) {
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
-{%- if protocol_portfolio_lanes > 1 %}
+{%- if protocol_portfolio_lanes > 1 and mined_protocol_objects | length > 0 %}
     /* Ranked specialized protocol portfolio. The generator and engine reserve
      * one control byte ahead of the operation program and seed every lane. The
      * primary recipe always runs; one additional expert-observed object topology

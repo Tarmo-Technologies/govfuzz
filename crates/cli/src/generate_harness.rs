@@ -2501,7 +2501,7 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         .parent()
         .map(Path::to_path_buf)
         .unwrap_or_else(|| PathBuf::from("."));
-    let result_cleanup = args
+    let mut result_cleanup = args
         .cleanup
         .clone()
         .or_else(|| {
@@ -2808,6 +2808,10 @@ fn run_c_direct(args: &GenerateHarnessArgs) -> Result<()> {
         &target_includes,
         &target_includes_dirs,
     );
+    if result_cleanup.is_none() {
+        result_cleanup =
+            detect_success_result_object_cleanup(&invocation_function, &visible_c_declarations);
+    }
     let sequence_cluster = if args.kind == "sequence" {
         Some(
             if let Some(cluster) = exact_public_c_sequence_cluster(&function) {
@@ -3873,7 +3877,7 @@ fn c_lifecycle_steps(
     // wide-path form is public only on Windows while the POSIX source keeps a
     // static compatibility definition. On the whole-TU sequence path those
     // conditions can leave the declaration index with the requested open call
-    // but without the four public operations required by the documented reader
+    // but without the five public operations required by the documented reader
     // protocol. Supply their exact signatures for this exact API family. This is
     // the same bounded recipe recognized by harness_gen; it deliberately does
     // not infer arbitrary `next`/`read` calls by name.
@@ -3911,6 +3915,13 @@ fn c_lifecycle_steps(
                         c_type: "size_t".to_owned(),
                     },
                 ],
+                is_static: false,
+            },
+            Callable {
+                name: "archive_read_data_skip".to_owned(),
+                line: target.line,
+                return_type: "int".to_owned(),
+                params: vec![receiver.clone()],
                 is_static: false,
             },
             Callable {
@@ -4576,6 +4587,7 @@ fn c_lifecycle_steps(
                     callable.name.as_str(),
                     "archive_read_next_header"
                         | "archive_read_data"
+                        | "archive_read_data_skip"
                         | "archive_read_support_filter_all"
                         | "archive_read_support_format_all"
                 )
@@ -6386,6 +6398,66 @@ fn auto_detect_c_result_cleanup(return_type: &str, target_name: &str) -> Option<
     // libpng row buffers, libjpeg structures - skip for now: their free
     // functions take a struct context, not a raw pointer.
     None
+}
+
+/// Recover the common `feed/add_chunk -> get_object -> unref` completion
+/// protocol for a direct handle-consuming parser target.
+///
+/// A successful boolean feed call often leaves the completed document owned by
+/// the parser until a public getter transfers a reference to the caller. Merely
+/// freeing the parser misses validation/copy/refcount paths that expert harnesses
+/// routinely exercise. The recipe is intentionally narrow: a boolean target
+/// name must expose a recognized streaming suffix, the getter name is derived
+/// from the same public family prefix, its receiver type must exactly match the
+/// target's first parameter, and a one-argument public release declaration must
+/// exactly match the getter's pointer return type.
+fn detect_success_result_object_cleanup(
+    target: &c_parser::CFunction,
+    declarations: &[c_parser::CDeclaration],
+) -> Option<String> {
+    let return_type = canonical_c_lifecycle_type(&target.return_type);
+    if !matches!(return_type.as_str(), "bool" | "_Bool") {
+        return None;
+    }
+    let receiver = target.params.first()?;
+    if !canonical_c_lifecycle_type(&receiver.c_type).ends_with('*') {
+        return None;
+    }
+    let family = ["_add_chunk", "_parse_chunk", "_feed"]
+        .iter()
+        .find_map(|suffix| target.name.strip_suffix(suffix))?;
+    let getter_name = format!("{family}_get_object");
+    let getter = declarations.iter().find(|candidate| {
+        candidate.name == getter_name
+            && candidate.param_types.len() == 1
+            && canonical_c_lifecycle_type(&candidate.param_types[0])
+                == canonical_c_lifecycle_type(&receiver.c_type)
+            && canonical_c_lifecycle_type(&candidate.return_type).ends_with('*')
+    })?;
+    let object_type = canonical_c_lifecycle_type(&harness_gen::c_decoders::strip_type_decoration(
+        &getter.return_type,
+    ));
+    let release = declarations
+        .iter()
+        .filter(|candidate| {
+            let name = candidate.name.to_ascii_lowercase();
+            candidate.param_types.len() == 1
+                && canonical_c_lifecycle_type(&candidate.return_type) == "void"
+                && canonical_c_lifecycle_type(&candidate.param_types[0]) == object_type
+                && [
+                    "unref", "decref", "deref", "free", "delete", "destroy", "release",
+                ]
+                .iter()
+                .any(|verb| name.contains(verb))
+        })
+        .min_by_key(|candidate| candidate.name.len())?;
+    let receiver_name =
+        harness_gen::c_decoders::sanitize_or_synthesize_param_name(&receiver.name, 0);
+    Some(format!(
+        "if (R) {{ {object_type} _gf_result_object = {getter_name}({receiver_name}); \
+         if (_gf_result_object) {}(_gf_result_object); }}",
+        release.name
+    ))
 }
 
 /// Base type identifier of a C return type, for deallocator pairing:
@@ -12469,15 +12541,16 @@ mod tests {
         cmake_define_enables_std_module, collect_c_type_defs_for_harness,
         collect_cpp_using_namespaces, compile_database_candidates, compute_default_id,
         cpp_default_constructible_parameter_classes, cpp_namespace_begin_macros,
-        detect_strdup_family_free, detect_top_level_namespaces_in_text,
-        exact_public_c_sequence_cluster, extract_compile_database_flags,
-        find_project_header_declaring_target, find_tree_c_callable_signature, generate_for_path,
-        infer_cmake_build_context, infer_cmake_c_build_context, is_c_lifecycle_end,
-        is_c_lifecycle_handle_type, is_c_lifecycle_init, is_c_scalar_type,
-        is_harness_incompatible_flag, is_msvc_crt_model_define, is_non_library_dir,
-        link_flag_from_build_token, locate_c_runtime, merge_dependency_packages_and_subprograms,
-        merge_tree_c_lifecycle, numeric_token_byte_encodings, pick_c_target, pick_cpp_target,
-        preflight_header_includes, push_build_compile_flag, recover_library_translation_units,
+        detect_strdup_family_free, detect_success_result_object_cleanup,
+        detect_top_level_namespaces_in_text, exact_public_c_sequence_cluster,
+        extract_compile_database_flags, find_project_header_declaring_target,
+        find_tree_c_callable_signature, generate_for_path, infer_cmake_build_context,
+        infer_cmake_c_build_context, is_c_lifecycle_end, is_c_lifecycle_handle_type,
+        is_c_lifecycle_init, is_c_scalar_type, is_harness_incompatible_flag,
+        is_msvc_crt_model_define, is_non_library_dir, link_flag_from_build_token, locate_c_runtime,
+        merge_dependency_packages_and_subprograms, merge_tree_c_lifecycle,
+        numeric_token_byte_encodings, pick_c_target, pick_cpp_target, preflight_header_includes,
+        push_build_compile_flag, recover_library_translation_units,
         resolve_cpp_member_access_from_headers, resolve_cpp_namespace_qualified_free_functions,
         run, select_subprogram, self_prefixed_include_roots, source_defines_main,
         source_header_visibility_flags, source_path_is_foreign_platform, CompileCommandEntry,
@@ -13787,6 +13860,57 @@ ABSL_NAMESPACE_BEGIN
     }
 
     #[test]
+    fn boolean_stream_feed_acquires_and_releases_completed_object() {
+        use c_parser::{CDeclaration, CFunction, CParamDescriptor};
+
+        let target = CFunction {
+            name: "ucl_parser_add_chunk".to_owned(),
+            return_type: "bool".to_owned(),
+            params: vec![
+                CParamDescriptor {
+                    name: "parser".to_owned(),
+                    c_type: "struct ucl_parser *".to_owned(),
+                },
+                CParamDescriptor {
+                    name: "data".to_owned(),
+                    c_type: "const unsigned char *".to_owned(),
+                },
+                CParamDescriptor {
+                    name: "len".to_owned(),
+                    c_type: "size_t".to_owned(),
+                },
+            ],
+            ..Default::default()
+        };
+        let declarations = vec![
+            CDeclaration {
+                name: "ucl_parser_get_object".to_owned(),
+                return_type: "UCL_EXTERN ucl_object_t *".to_owned(),
+                param_types: vec!["struct ucl_parser *".to_owned()],
+                ..Default::default()
+            },
+            CDeclaration {
+                name: "ucl_object_unref".to_owned(),
+                return_type: "void".to_owned(),
+                param_types: vec!["ucl_object_t *".to_owned()],
+                ..Default::default()
+            },
+        ];
+
+        let cleanup = detect_success_result_object_cleanup(&target, &declarations)
+            .expect("public getter/releaser protocol");
+        assert!(cleanup.contains("if (R)"));
+        assert!(
+            cleanup.contains("ucl_object_t * _gf_result_object = ucl_parser_get_object(parser)")
+        );
+        assert!(cleanup.contains("ucl_object_unref(_gf_result_object)"));
+
+        let mut wrong_result = target.clone();
+        wrong_result.return_type = "int".to_owned();
+        assert!(detect_success_result_object_cleanup(&wrong_result, &declarations).is_none());
+    }
+
+    #[test]
     fn strdup_family_return_is_freed_with_plain_free() {
         // utf8.h's `utf8dup`/`utf8ndup` return a malloc'd buffer freed with plain
         // free(); there is no `<type>_free`, so the result was dropped and
@@ -14243,6 +14367,7 @@ ABSL_NAMESPACE_BEGIN
         for required in [
             "archive_read_next_header",
             "archive_read_data",
+            "archive_read_data_skip",
             "archive_read_support_filter_all",
             "archive_read_support_format_all",
         ] {

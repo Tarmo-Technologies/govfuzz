@@ -666,6 +666,19 @@ fn load_seed_inputs(seed_files: &[PathBuf], seed_dirs: &[PathBuf], cap: usize) -
     seeds
 }
 
+fn sanitizer_replay_enabled(
+    selection: &multicore_fuzz::SanitizerSelection,
+    sanitizer: multicore_fuzz::Sanitizer,
+) -> bool {
+    match selection {
+        // Preserve the historical default matrix when the operator did not
+        // select a sanitizer policy explicitly.
+        multicore_fuzz::SanitizerSelection::Default => true,
+        multicore_fuzz::SanitizerSelection::None => false,
+        multicore_fuzz::SanitizerSelection::Set(selected) => selected.contains(&sanitizer),
+    }
+}
+
 pub fn run(args: AutoArgs) -> i32 {
     if args.list_fakes {
         print!("{}", crate::list_fakes::render());
@@ -2263,7 +2276,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // separate MSan build to surface uninitialized-memory reads (CWE-457) that
     // ASan/UBSan miss — no second fuzz loop. Runs before the confirmation join so an
     // MSan crash can also confirm a static finding at the same site.
-    let msan = crate::auto::msan::run_msan_replay(&work);
+    let msan = if sanitizer_replay_enabled(&options.sanitizers, multicore_fuzz::Sanitizer::Msan) {
+        crate::auto::msan::run_msan_replay(&work)
+    } else {
+        0
+    };
     if msan > 0 {
         gfeprintln!(
             "govfuzz auto: MemorySanitizer — {msan} uninitialized-memory read(s) found by corpus replay"
@@ -2273,7 +2290,11 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // ThreadSanitizer corpus replay (C): replay the ASan pass's corpus through a
     // separate TSan build to surface data races (CWE-362) that ASan/UBSan miss — no
     // second fuzz loop. Only targets that spawn threads per input surface a race.
-    let tsan = crate::auto::tsan::run_tsan_replay(&work);
+    let tsan = if sanitizer_replay_enabled(&options.sanitizers, multicore_fuzz::Sanitizer::Tsan) {
+        crate::auto::tsan::run_tsan_replay(&work)
+    } else {
+        crate::auto::tsan::TsanReplay::default()
+    };
     if tsan.findings > 0 {
         gfeprintln!(
             "govfuzz auto: ThreadSanitizer — {} data race(s) found by corpus replay",
@@ -4478,6 +4499,23 @@ fn build_error_brief(err: &build_classifier::BuildErrorKind) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_sanitizer_policy_controls_post_campaign_replays() {
+        use multicore_fuzz::{Sanitizer, SanitizerSelection};
+
+        assert!(sanitizer_replay_enabled(
+            &SanitizerSelection::Default,
+            Sanitizer::Tsan
+        ));
+        assert!(!sanitizer_replay_enabled(
+            &SanitizerSelection::None,
+            Sanitizer::Tsan
+        ));
+        let selected = SanitizerSelection::Set(vec![Sanitizer::Msan]);
+        assert!(sanitizer_replay_enabled(&selected, Sanitizer::Msan));
+        assert!(!sanitizer_replay_enabled(&selected, Sanitizer::Tsan));
+    }
 
     #[test]
     fn ranked_target_output_propagates_broken_pipe_without_panicking() {

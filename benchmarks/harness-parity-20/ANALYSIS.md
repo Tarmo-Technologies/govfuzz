@@ -9,18 +9,17 @@ harnessability and protocol gaps are closed.
 
 - 30 pinned real projects were attempted; all 30 produced comparable
   auto/expert implementation-line measurements.
-- 16/30 had no expert-only line (`expert_parity`,
+- 19/30 had no expert-only line (`expert_parity`,
   `generated_exceeds_expert`).
-- 21/30 were exact or within seven expert-only lines; 26/30 were within 25.
-- Generated harnesses covered 50,470 comparable implementation lines versus
-  46,780 for the expert harnesses. The mean generated/expert ratio was 1.130
-  and the median was 1.013.
+- 25/30 were exact or within seven expert-only lines; 29/30 were within 25.
+- Generated harnesses covered 50,340 comparable implementation lines versus
+  48,742 for the expert harnesses. The mean generated/expert ratio was 1.106
+  and the median was 1.001.
 - Ratio alone is not parity: the authoritative gap signal is the set of
-  expert-only lines. The 30 comparisons contain 440 expert-only lines; 308 are
-  concentrated in libxml2, libarchive, and yyjson, where the generated harness
-  also reaches 2,803 implementation lines the expert harnesses do not.
+  expert-only lines. The 30 comparisons now contain 123 expert-only lines, down
+  from 440. No remaining project has more than 40, and 19 have none.
 
-The largest validated improvement in the final iteration was libpng. Before
+An earlier large validated improvement was libpng. Before
 public field-precondition mining, the zeroed `png_image` failed its version gate
 and covered 44 comparable lines versus the expert's 521, with 504 expert-only
 lines. Mining and declaration-checking `image.version = PNG_IMAGE_VERSION`
@@ -41,20 +40,46 @@ The gap-closing pass added six further real-code results:
   moved Brotli and Zstd to exact parity in focused reruns (1,527/1,527 and
   371/371 respectively).
 
+The follow-up pass measured the largest remaining deficits against the same
+real expert harnesses and closed their missing semantics:
+
+- yyjson moved from 87 expert-only lines to exact 919/919 parity by treating
+  public `*_flag`/`*_flg` typedefs as scalar control domains while refusing to
+  pin aggregate options.
+- libxml2 moved from 123 expert-only lines to three by recognizing optional
+  in-memory parser metadata (`URL`, encoding, and related context strings) and
+  passing null when no independent metadata source exists.
+- libarchive now preserves both useful stream-consumption modes in a two-lane
+  portfolio: bounded data draining and public entry skipping. Expert-only lines
+  fell from 98 to 40; both lanes found unique coverage in the focused run.
+- WebP moved from 35 expert-only lines to generated-exceeds-expert
+  (1,174/1,042 with no expert-only line) by probing public image dimensions and
+  deriving checked output stride/capacity, with a fuzzed fallback when the probe
+  rejects the input.
+- libucl moved from 17 expert-only lines to exact 1,623/1,623 parity through a
+  generic successful-feed completion step that acquires and releases the
+  parser-owned result object.
+- libcsv's lifecycle remains declaration-derived across opaque source-local
+  receiver definitions: `init → parse → fini → free` is emitted and entered,
+  leaving 24 short-campaign expert-only lines rather than regressing to a direct
+  target call.
+
 The ten-project expansion exercised different API shapes rather than adding
 near-duplicates: annotated image buffers, POSIX regex output objects, C++
 multi-file overloads, header-inline object lifecycles, Lua VM state, streaming
 CSV finalization, and parser-owned result graphs. All ten now build, enter the
 selected target, fuzz, and produce comparable expert coverage. Five have no
-expert-only line; their mean generated/expert ratio is 1.069. The largest
-before/after movements were:
+expert-only line in the initial expansion run; seven do after the follow-up.
+The largest before/after movements were:
 
 - WebP moved from callback-shaped bogus parameters and 159 covered lines to a
-  coherent `(data, size, output, capacity, stride)` harness covering 1,058 lines
-  versus the expert's 985.
+  coherent, public-geometry-derived decode-into harness covering 1,174 lines
+  versus the expert's 1,042, with no expert-only line.
 - libcsv moved from a target-never-entered polarity inversion and 86 expert-only
-  lines to 204/197 covered lines with 24 expert-only lines, including the mined
+  lines to 193/197 covered lines with 24 expert-only lines, including the mined
   `parse → fini → free` protocol.
+- libucl's parser-owned result acquisition and release now make its generated
+  and expert coverage sets identical at 1,623 lines.
 - msgpack moved from an uninitialized/unreleased output object to exact parity
   through header-inline `init → target → destroy` lifecycle recovery.
 - PCRE2 moved from an uncompilable return-type declaration, then an unsafe
@@ -135,36 +160,48 @@ the two map the same bytes into different argument structures.
   expert runner can emit `source:line` coverage. It accepts a single file or a
   per-harness directory, so interpreted/JVM ecosystems are not forced through a
   fake C/C++ build path.
+- Scalar control flags are inferred from declaration names and flag typedefs,
+  including common abbreviations, without mistaking aggregate configuration
+  objects for bitmasks.
+- Optional metadata trailing a proven in-memory `(buffer, length)` input is
+  modeled as null unless a declaration-checked source exists.
+- Stream protocols may retain complementary drain and skip lanes when both are
+  public, receiver-compatible, bounded, and coverage-productive.
+- Successful boolean feed APIs can acquire and release a returned object graph
+  through public same-family getter/destructor pairs.
+- Decode-into APIs with public image-info probes derive overflow-checked output
+  dimensions, stride, and capacity while retaining a safe fallback path for
+  malformed inputs.
+- Explicit `--sanitizers none` now disables post-campaign sanitizer replays,
+  and TSan replay stops the remaining corpus when its global timeout budget is
+  exhausted instead of spending a fresh timeout on every input.
 
 ## Remaining shortcomings, ordered by value
 
-1. **Union complementary semantic modes.** libxml2, libarchive, and yyjson
-   account for 308 of the remaining 440 expert-only lines, despite a combined
-   generated-only surplus of 2,803 lines. The next useful lever is a portfolio
-   oracle that
-   retains both argument/configuration mappings when each contributes unique
-   implementation coverage, rather than choosing one winner from a scalar
-   total.
-
-2. **Derive output geometry from public probe APIs.** WebP's generated harness
-   exceeds the expert's total coverage but retains 35 expert-only lines because
-   it fuzzes output stride/capacity while the expert calls `GetInfo` and derives
-   `stride = width * channels`, `capacity = stride * height`. Generalize this as
-   a declaration-checked `probe(input, size, &dims...) → checked allocation →
-   decode-into` protocol for image/media APIs.
-
-3. **Trace control flow rather than lexical call lists.** The current miner can
+1. **Trace control flow rather than lexical call lists.** The current miner can
    represent useful predicates, repetitions, and alternatives, but cannot yet
    retain arbitrary loop topology. A small declaration-checked CFG/SSA slice
    around the selected call would reduce residual alternative states without
    copying entire upstream harnesses.
 
-4. **Generalize exact public recipes from declarations and documentation.** The
+2. **Generalize exact public recipes from declarations and documentation.** The
    narrow library recipes are intentionally signature-gated and safe, but a new
    library with the same public protocol will not automatically inherit them.
    Promote their common pieces—out-handle success predicates, macro-shaped
-   constructors, output cleanup, and terminal conditions—into declaration-
-   checked protocol IR.
+   constructors, dimension probes, output cleanup, and terminal conditions—into
+   declaration-checked protocol IR.
+
+3. **Bootstrap format-valid corpora and measure lane stability.** libarchive's
+   remaining 40 lines and libcsv's 24 fluctuate in five-second campaigns even
+   though the corresponding expert operations are present. Seed each retained
+   protocol lane with minimal public-format exemplars, repeat seeds, and report
+   confidence intervals so corpus luck is not mistaken for a harness deficit.
+
+4. **Model multi-plane and callback-owned output geometry.** The new checked
+   geometry path covers interleaved decode-into APIs. Planar image/audio outputs,
+   caller-supplied row callbacks, and APIs whose probe returns a richer public
+   descriptor still need a bounded allocation graph rather than independent
+   pointer guesses.
 
 5. **Measure semantic and bug-finding parity.** Add multiple deterministic
    seeds and 30–120 second campaigns, compare edge sets plus sanitizer/oracle
@@ -174,14 +211,22 @@ the two map the same bytes into different argument structures.
 
 ## Audit of code pushed today
 
-The only commit dated 2026-08-14 in the local history was `8879267` (`fix(idl):
-parse the IDL projects ship, and emit Ada that GNAT accepts`). No functional
-defect was found in that commit after the expanded validation below. “Bug-free”
-cannot be proven by testing, but the parser/emitter changes and their GNAT-backed
+The audit covered the day's functional commits: `8879267` (`fix(idl): parse the
+IDL projects ship, and emit Ada that GNAT accepts`), `3533b5c` (`feat(auto):
+close expert harness parity gaps`), and this follow-up. The automated dependency
+updates were also included in the workspace build. “Bug-free” cannot be proven
+by testing, but the changed parser/emitter, auto-harness, replay, and GNAT-backed
 paths are passing.
 
-- The final CLI, harness-generator, and C-parser library suites passed: 1,625,
-  595, and 69 tests respectively. The broader workspace library validation also
+The follow-up validation caught and fixed two regressions before publication.
+The first WebP geometry version rejected malformed probe inputs before target
+entry; it now retains a safe generic capacity/stride fallback. The first
+typedef-aware flag rule also pinned real enum modes and Windows `BOOL` inputs;
+it is now restricted to direct integers or explicitly flag-shaped scalar/enum
+typedefs. Real-project reruns verify target entry for every updated row.
+
+- The final CLI, harness-generator, and C-parser library suites passed: 1,629,
+  597, and 69 tests respectively. The broader workspace library validation also
   passed its 80 runtrace-shim tests and all IDL/fake-CORBA unit tests.
 - `m10_fake_corba`: 17/17 passed, including legacy/annotated IDL mapping and
   GNAT-available build paths.

@@ -391,21 +391,30 @@ pub fn generate_c_sequence_harness(
         ),
     )?;
     if context.protocol_portfolio_lanes > 1 {
-        let mut lanes = vec!["    {\"lane\": 0, \"rank\": 0, \"recipe\": \"primary\"}".to_owned()];
-        lanes.extend(
-            context
-                .mined_protocol_objects
-                .iter()
-                .enumerate()
-                .map(|(index, object)| {
+        let lanes = if context
+            .expert_stream_pump
+            .as_ref()
+            .is_some_and(|pump| pump.skip_step.is_some())
+        {
+            vec![
+                "    {\"lane\": 0, \"rank\": 0, \"recipe\": \"stream_drain\"}".to_owned(),
+                "    {\"lane\": 1, \"rank\": 1, \"recipe\": \"stream_skip\"}".to_owned(),
+            ]
+        } else {
+            let mut lanes =
+                vec!["    {\"lane\": 0, \"rank\": 0, \"recipe\": \"primary\"}".to_owned()];
+            lanes.extend(context.mined_protocol_objects.iter().enumerate().map(
+                |(index, object)| {
                     format!(
                         "    {{\"lane\": {}, \"rank\": {}, \"recipe\": \"{}\"}}",
                         index + 1,
                         index + 1,
                         object.constructor.name
                     )
-                }),
-        );
+                },
+            ));
+            lanes
+        };
         fs::write(
             args.output_dir.join(PROTOCOL_PORTFOLIO_FILE),
             format!(
@@ -598,6 +607,8 @@ struct CExpertStreamPump {
     open_step: CSequenceStepEmission,
     header_step: CSequenceStepEmission,
     data_step: CSequenceStepEmission,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skip_step: Option<CSequenceStepEmission>,
     data_buffer_name: String,
     data_buffer_bytes: usize,
     entry_cap: usize,
@@ -1085,6 +1096,30 @@ fn build_param_decoders(
                 i += 1;
                 continue;
             }
+        }
+        // An in-memory parser commonly accepts optional metadata after its
+        // canonical `(buffer, length)` pair: a base URL/URI and an explicit
+        // character encoding. Maintained callers pass NULL to request automatic
+        // detection/default resolution. Fabricating a non-NULL random string is
+        // not extra input coverage; it forces nearly every execution through an
+        // invalid-encoding or malformed-base early exit (xmlReadMemory is the
+        // representative shape). Restrict this to a parser that already consumed
+        // a real buffer/length pair, so a standalone URL/encoding API remains
+        // fuzzable.
+        if pair_consumed
+            && looks_like_in_memory_input_function(function_name)
+            && is_nullable_memory_metadata_param(&params[i])
+        {
+            let ty = emit_c_type(&params[i].c_type);
+            out.push(CParamEmission {
+                support: None,
+                decl: format!("{ty} {} = NULL", params[i].name),
+                arg: params[i].name.clone(),
+                c_type: ty,
+                free: None,
+            });
+            i += 1;
+            continue;
         }
         // A printf-style FORMAT parameter of a VARIADIC function: the last fixed
         // `char *` immediately before the `...` (the parser drops the ellipsis but
@@ -2343,15 +2378,37 @@ fn looks_like_explicit_binary_pointer(c_type: &str) -> bool {
         || compact.contains("std::byte*")
 }
 
-fn looks_like_in_memory_input_function(name: &str) -> bool {
+pub(crate) fn looks_like_in_memory_input_function(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
-    lower.contains("_memory")
+    lower.contains("memory")
         || lower.contains("_mem_")
         || lower.ends_with("_mem")
-        || lower.contains("_buffer")
+        || lower.contains("buffer")
         || lower.ends_with("_bytes")
         || lower.contains("write_data")
         || lower.contains("send_data")
+}
+
+fn is_nullable_memory_metadata_param(param: &CParameter) -> bool {
+    let c_type = canonical_c_type(&param.c_type).to_ascii_lowercase();
+    let is_const_char_pointer =
+        c_type.contains('*') && (c_type.contains("const char") || c_type.contains("char const"));
+    if !is_const_char_pointer {
+        return false;
+    }
+    let name = param.name.to_ascii_lowercase();
+    matches!(
+        name.as_str(),
+        "url"
+            | "uri"
+            | "base_url"
+            | "base_uri"
+            | "document_url"
+            | "document_uri"
+            | "encoding"
+            | "charset"
+            | "character_encoding"
+    )
 }
 
 fn looks_outputish(name: &str) -> bool {
@@ -2583,6 +2640,80 @@ fn validate_c_sequence_build_inputs(args: &GenerateCSequenceArgs) -> Result<(), 
     Ok(())
 }
 
+/// Bind WebP's interleaved decode-into output geometry to the encoded image.
+///
+/// The family has a stable five-argument contract:
+/// `(encoded, encoded_size, output, output_capacity, output_stride)`. Its public
+/// `WebPGetInfo` sibling returns the two dimensions needed to derive the final
+/// three arguments. Keeping this as a narrow declaration-shaped recipe avoids
+/// guessing that an arbitrary `stride` parameter is pixel geometry.
+fn bind_webp_interleaved_output_geometry(
+    target_name: &str,
+    source_params: &[CParameter],
+    registry: &TypeRegistry,
+    emissions: &mut [CParamEmission],
+) {
+    let bytes_per_pixel = match target_name {
+        "WebPDecodeRGBInto" | "WebPDecodeBGRInto" => 3,
+        "WebPDecodeRGBAInto" | "WebPDecodeARGBInto" | "WebPDecodeBGRAInto" => 4,
+        _ => return,
+    };
+    if source_params.len() != 5
+        || emissions.len() != 5
+        || !is_raw_buffer_param(&source_params[0].c_type, registry)
+        || !(is_length_param(&source_params[1].c_type)
+            || registry_resolves_to_length(&source_params[1].c_type, registry))
+        || !is_output_buffer_param(&source_params[2].c_type, registry)
+        || !(is_length_param(&source_params[3].c_type)
+            || registry_resolves_to_length(&source_params[3].c_type, registry))
+        || source_params[4].c_type.contains('*')
+        || !matches!(
+            registry.resolve(&source_params[4].c_type),
+            TypeShape::Scalar(_)
+        )
+    {
+        return;
+    }
+
+    let input = emissions[0].arg.clone();
+    let input_size = emissions[1].arg.clone();
+    let output = emissions[2].arg.clone();
+    let output_type = emissions[2].c_type.clone();
+    let capacity = emissions[3].arg.clone();
+    let capacity_type = emissions[3].c_type.clone();
+    let stride = emissions[4].arg.clone();
+    let stride_type = emissions[4].c_type.clone();
+
+    emissions[2].decl = format!(
+        "int _gf_image_width = 0; int _gf_image_height = 0; \
+         int _gf_image_geometry_valid = WebPGetInfo({input}, {input_size}, \
+             &_gf_image_width, &_gf_image_height) && \
+             _gf_image_width > 0 && _gf_image_height > 0 && \
+             _gf_image_width <= 4096 && _gf_image_height <= 4096; \
+         size_t _gf_image_stride = 0; size_t _gf_image_capacity = 0; \
+         if (_gf_image_geometry_valid) {{ \
+             _gf_image_stride = (size_t)_gf_image_width * {bytes_per_pixel}u; \
+             if ((size_t)_gf_image_height <= (16u << 20) / _gf_image_stride) \
+                 _gf_image_capacity = _gf_image_stride * (size_t)_gf_image_height; \
+             else _gf_image_geometry_valid = 0; \
+         }} \
+         size_t _gf_generic_capacity = Size < (1024 * 1024) ? \
+             Size + 65536 : (1024 * 1024 + 65536); \
+         size_t _gf_output_capacity = _gf_image_geometry_valid ? \
+             _gf_image_capacity : _gf_generic_capacity; \
+         {output_type} {output} = ({output_type})malloc(\
+             _gf_output_capacity ? _gf_output_capacity : 1)"
+    );
+    emissions[3].decl = format!(
+        "{capacity_type} {capacity} = ({capacity_type})(\
+         {output} ? _gf_output_capacity : 0)"
+    );
+    emissions[4].decl = format!(
+        "{stride_type} {stride} = _gf_image_geometry_valid ? \
+         ({stride_type})_gf_image_stride : ({stride_type})gf_i32(&Cur)"
+    );
+}
+
 fn build_c_context(args: &GenerateCDirectArgs) -> Result<CTemplateContext, HarnessGenError> {
     validate_c_build_inputs(args)?;
     let (
@@ -2617,6 +2748,21 @@ fn build_c_context(args: &GenerateCDirectArgs) -> Result<CTemplateContext, Harne
         &args.target.name,
         args.force,
     )?;
+
+    // Some decode-into APIs expose an output pointer, its capacity, and row
+    // stride as three separate parameters even though all three are derived
+    // from dimensions in the encoded input. Independent fuzz scalars make a
+    // coherent output surface vanishingly rare. For the declaration-stable
+    // WebP interleaved family, use its public metadata probe to derive bounded
+    // geometry exactly as a maintained caller does. This is deliberately
+    // signature- and symbol-gated; planar YUV needs a different multi-plane
+    // allocation model and remains on the generic decoder.
+    bind_webp_interleaved_output_geometry(
+        &args.target.name,
+        decoder_params,
+        &registry,
+        &mut params,
+    );
 
     // Strip storage/calling-convention/decoration noise off the return type so a
     // `<type> R = ...` result capture is valid (`__vectorcall`, `SIMDJSON_INLINE`).
@@ -3392,7 +3538,12 @@ fn build_c_sequence_context(
         })
         .unwrap_or_default();
 
-    let protocol_portfolio_lanes = if mined_protocol_objects.is_empty() {
+    let protocol_portfolio_lanes = if expert_stream_pump
+        .as_ref()
+        .is_some_and(|pump| pump.skip_step.is_some())
+    {
+        2
+    } else if mined_protocol_objects.is_empty() {
         1
     } else {
         mined_protocol_objects.len() + 1
@@ -3602,6 +3753,14 @@ fn libarchive_expert_stream_pump(
         .iter()
         .find(|step| step.name == "archive_read_data")?
         .clone();
+    let mut skip_step = op_steps
+        .iter()
+        .find(|step| {
+            step.name == "archive_read_data_skip"
+                && step.return_type_present
+                && step.params.is_empty()
+        })
+        .cloned();
     if !(open_step.return_type_present
         && header_step.return_type_present
         && data_step.return_type_present)
@@ -3630,11 +3789,20 @@ fn libarchive_expert_stream_pump(
         };
         step.receiver_selector = None;
     }
+    if let Some(step) = &mut skip_step {
+        step.receiver = if args.init_returns_handle || args.init_out_handle_argument.is_some() {
+            "_gf_handle".to_owned()
+        } else {
+            "&_gf_handle".to_owned()
+        };
+        step.receiver_selector = None;
+    }
 
     Some(CExpertStreamPump {
         open_step,
         header_step,
         data_step,
+        skip_step,
         data_buffer_name: "_gf_archive_data_buffer".to_owned(),
         data_buffer_bytes: 4096,
         entry_cap: 256,
@@ -6796,6 +6964,139 @@ mod tests {
     }
 
     #[test]
+    fn in_memory_parser_uses_null_for_optional_url_and_encoding_metadata() {
+        let params = vec![
+            CParameter {
+                name: "buffer".to_owned(),
+                c_type: "const char *".to_owned(),
+            },
+            CParameter {
+                name: "size".to_owned(),
+                c_type: "int".to_owned(),
+            },
+            CParameter {
+                name: "URL".to_owned(),
+                c_type: "const char *".to_owned(),
+            },
+            CParameter {
+                name: "encoding".to_owned(),
+                c_type: "const char *".to_owned(),
+            },
+            CParameter {
+                name: "options".to_owned(),
+                c_type: "int".to_owned(),
+            },
+        ];
+        let emissions = build_param_decoders(
+            &params,
+            &TypeRegistry::default(),
+            &[],
+            None,
+            false,
+            false,
+            DecoderLimits::default(),
+            "xmlReadMemory",
+            false,
+        )
+        .expect("xmlReadMemory-shaped parser params");
+        assert!(emissions[0].decl.contains("Data"));
+        assert!(emissions[1].decl.contains("Size"));
+        assert_eq!(emissions[2].decl, "const char * URL = NULL");
+        assert_eq!(emissions[3].decl, "const char * encoding = NULL");
+        assert_eq!(emissions[4].decl, "int options = 0");
+
+        // Without a preceding memory buffer/length pair, the same names may be
+        // required inputs and must remain ordinary decoded strings.
+        let standalone = build_param_decoders(
+            &params[2..4],
+            &TypeRegistry::default(),
+            &[],
+            None,
+            false,
+            false,
+            DecoderLimits::default(),
+            "setEncoding",
+            false,
+        )
+        .expect("standalone metadata params");
+        assert!(standalone[0].decl.contains("gf_c_string"));
+        assert!(standalone[1].decl.contains("gf_c_string"));
+    }
+
+    #[test]
+    fn webp_interleaved_decode_derives_bounded_output_geometry() {
+        let params = vec![
+            CParameter {
+                name: "data".to_owned(),
+                c_type: "const uint8_t *".to_owned(),
+            },
+            CParameter {
+                name: "data_size".to_owned(),
+                c_type: "size_t".to_owned(),
+            },
+            CParameter {
+                name: "output".to_owned(),
+                c_type: "uint8_t *".to_owned(),
+            },
+            CParameter {
+                name: "output_size".to_owned(),
+                c_type: "size_t".to_owned(),
+            },
+            CParameter {
+                name: "output_stride".to_owned(),
+                c_type: "int".to_owned(),
+            },
+        ];
+        let registry = TypeRegistry::default();
+        let mut emissions = build_param_decoders(
+            &params,
+            &registry,
+            &[],
+            None,
+            false,
+            false,
+            DecoderLimits::default(),
+            "WebPDecodeRGBAInto",
+            false,
+        )
+        .expect("WebP decode-into params");
+
+        bind_webp_interleaved_output_geometry(
+            "WebPDecodeRGBAInto",
+            &params,
+            &registry,
+            &mut emissions,
+        );
+        assert!(emissions[2]
+            .decl
+            .contains("WebPGetInfo(data, data_size, &_gf_image_width, &_gf_image_height)"));
+        assert!(emissions[2]
+            .decl
+            .contains("_gf_image_stride = (size_t)_gf_image_width * 4u"));
+        assert!(emissions[2].decl.contains("(16u << 20)"));
+        assert!(emissions[2].decl.contains("_gf_generic_capacity"));
+        assert!(emissions[3].decl.contains("_gf_output_capacity"));
+        assert!(emissions[4].decl.contains("_gf_image_geometry_valid ?"));
+        assert!(emissions[4].decl.contains("gf_i32(&Cur)"));
+
+        let mut planar = build_param_decoders(
+            &params,
+            &registry,
+            &[],
+            None,
+            false,
+            false,
+            DecoderLimits::default(),
+            "WebPDecodeYUVInto",
+            false,
+        )
+        .expect("stand-in planar params");
+        bind_webp_interleaved_output_geometry("WebPDecodeYUVInto", &params, &registry, &mut planar);
+        assert!(!planar[2].decl.contains("WebPGetInfo"));
+        assert!(planar[4].decl.contains("gf_i32"));
+    }
+
+    #[test]
     fn typed_pointer_with_non_count_neighbor_is_not_mis_paired_as_array() {
         // `(int *out, int flags)` — the second int is a bitmap, not a count, so the
         // typed-array pairing must NOT fire (no `_gf_n_out`); the params fall to the
@@ -8947,6 +9248,7 @@ mod tests {
             int archive_read_open_memory(struct archive *, const void *, size_t);
             int archive_read_next_header(struct archive *, struct archive_entry **);
             la_ssize_t archive_read_data(struct archive *, void *, size_t);
+            int archive_read_data_skip(struct archive *);
             int archive_read_free(struct archive *);
         "#;
         let defs = c_parser::parse_c_type_defs(header_source).unwrap();
@@ -9010,6 +9312,12 @@ mod tests {
                     role: CStepRole::Operation,
                 },
                 CLifecycleStep {
+                    name: "archive_read_data_skip".to_owned(),
+                    params: Vec::new(),
+                    return_type: "int".to_owned(),
+                    role: CStepRole::Operation,
+                },
+                CLifecycleStep {
                     name: "archive_read_support_filter_all".to_owned(),
                     params: Vec::new(),
                     return_type: "int".to_owned(),
@@ -9050,7 +9358,10 @@ mod tests {
             type_defs: vec![defs],
         };
         let mut wide_args = args.clone();
-        let main = fs::read_to_string(&generate_c_sequence_harness(args).unwrap().main_c).unwrap();
+        let generated = generate_c_sequence_harness(args).unwrap();
+        let main = fs::read_to_string(&generated.main_c).unwrap();
+        let layout = fs::read_to_string(out.join(SEQUENCE_LAYOUT_FILE)).unwrap();
+        let portfolio = fs::read_to_string(out.join(PROTOCOL_PORTFOLIO_FILE)).unwrap();
 
         let configured = main.find("archive_read_support_format_all").unwrap();
         let opened = main.find("archive_read_open_memory(_gf_handle").unwrap();
@@ -9066,6 +9377,15 @@ mod tests {
         assert!(main.contains("_gf_data_index < 4096"), "{main}");
         assert!(main.contains("== ARCHIVE_RETRY"), "{main}");
         assert!(main.contains("== ARCHIVE_FATAL"), "{main}");
+        assert!(
+            main.contains("_gf_stream_lane") && main.contains("archive_read_data_skip(_gf_handle)"),
+            "the reader portfolio must preserve both valid skip and drain semantics:\n{main}"
+        );
+        assert!(layout.contains("\"portfolio_lanes\": 2"), "{layout}");
+        assert!(
+            portfolio.contains("stream_drain") && portfolio.contains("stream_skip"),
+            "{portfolio}"
+        );
         assert!(
             main.contains("const void * _gf_step0_arg1 = (const void *)Data")
                 && main.contains("size_t _gf_step0_arg2 = (size_t)Size"),

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include <expat.h>
 #include <stdint.h>
 static void start(void *u, const XML_Char *n, const XML_Char **a) {(void)u;(void)n;(void)a;}

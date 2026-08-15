@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "src/yyjson.h"
 #include <stdint.h>
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {

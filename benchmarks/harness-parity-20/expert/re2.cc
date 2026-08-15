@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "re2/regexp.h"
 #include <cstdint>
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {

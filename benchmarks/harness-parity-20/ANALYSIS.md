@@ -168,6 +168,9 @@ the two map the same bytes into different argument structures.
 - A retained protocol's omitted configuration is preserved as use of the API
   defaults. Only setters actually present in the declaration-checked trace are
   admitted, while targets without a retained trace keep exploratory setters.
+- Direct `if/else` protocol arms retain complementary input/result predicates,
+  so mutually exclusive expert operations no longer become one impossible
+  lexical sequence. The miner deliberately leaves arbitrary CFGs out of scope.
 - Expert coverage builds recover direct source closures from the generated
   Makefile, closing multi-file oracle failures such as Snappy without adding
   project-specific source lists.
@@ -193,11 +196,12 @@ the two map the same bytes into different argument structures.
 
 ## Remaining shortcomings, ordered by value
 
-1. **Trace control flow rather than lexical call lists.** The current miner can
-   represent useful predicates, repetitions, and alternatives, but cannot yet
-   retain arbitrary loop topology. A small declaration-checked CFG/SSA slice
-   around the selected call would reduce residual alternative states without
-   copying entire upstream harnesses.
+1. **Trace richer control flow rather than lexical call lists.** The current
+   miner represents useful predicates, repetitions, and direct two-arm
+   alternatives, but cannot yet retain `else if` conjunctions, early exits, or
+   arbitrary loop topology. A small declaration-checked CFG/SSA slice around
+   the selected call would reduce residual alternative states without copying
+   entire upstream harnesses.
 
 2. **Generalize exact public recipes from declarations and documentation.** The
    narrow library recipes are intentionally signature-gated and safe, but a new
@@ -240,9 +244,13 @@ typedef-aware flag rule also pinned real enum modes and Windows `BOOL` inputs;
 it is now restricted to direct integers or explicitly flag-shaped scalar/enum
 typedefs. Real-project reruns verify target entry for every updated row.
 
-- The final CLI, harness-generator, and C-parser library suites passed: 1,631,
+- The final CLI, harness-generator, and C-parser library suites passed: 1,634,
   597, and 69 tests respectively. The broader workspace library validation also
   passed its 80 runtrace-shim tests and all IDL/fake-CORBA unit tests.
+- A fresh five-project real-code regression slice kept Expat, libarchive, zlib,
+  libucl, and libcsv buildable, target-entered, fuzzed, and expert-comparable;
+  zlib/libucl remained exact, libcsv retained zero expert-only lines, and
+  libarchive's known residual remained 40 lines.
 - `m10_fake_corba`: 17/17 passed, including legacy/annotated IDL mapping and
   GNAT-available build paths.
 - `auto_legacy_audit_fixes`: 2/2 passed, including mixed K&R/ANSI discovery and

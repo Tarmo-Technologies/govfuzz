@@ -4650,9 +4650,11 @@ fn c_auto_sequence_candidate(
         defs.push(tree.clone());
     }
     let registry = type_model::TypeRegistry::from_defs(defs.iter());
-    let target_handle = target.params.first().and_then(|param| {
-        crate::generate_harness::c_lifecycle_handle_key(&param.c_type, &registry)
-    });
+    let Some(target_receiver_param) = target.params.first() else {
+        return false;
+    };
+    let target_handle =
+        crate::generate_harness::c_lifecycle_handle_key(&target_receiver_param.c_type, &registry);
     if crate::generate_harness::c_step_role_of(&target.name)
         == harness_gen::c_generate::CStepRole::Open
         || is_c_lifecycle_end(&target.name)
@@ -4699,24 +4701,50 @@ fn c_auto_sequence_candidate(
     // public init AND destructor is still sufficient proof for choosing the
     // sequence path; generation later resolves completeness from the headers.
     let target_receiver =
-        crate::generate_harness::canonical_c_lifecycle_type(&target.params[0].c_type);
+        crate::generate_harness::canonical_c_lifecycle_type(&target_receiver_param.c_type);
     if !target_receiver.ends_with('*') {
         return false;
     }
-    let same_receiver = |function: &c_parser::CFunction| {
-        !function.is_static
-            && function.params.first().is_some_and(|param| {
-                crate::generate_harness::canonical_c_lifecycle_type(&param.c_type)
-                    == target_receiver
-            })
+    let exact_receiver = |function: &c_parser::CFunction| {
+        function.params.first().is_some_and(|param| {
+            crate::generate_harness::canonical_c_lifecycle_type(&param.c_type) == target_receiver
+        })
     };
+    let same_public_receiver =
+        |function: &c_parser::CFunction| !function.is_static && exact_receiver(function);
     let has_init = functions.iter().any(|function| {
-        same_receiver(function) && crate::generate_harness::is_c_lifecycle_init(&function.name)
+        same_public_receiver(function)
+            && crate::generate_harness::is_c_lifecycle_init(&function.name)
     });
     let has_end = functions.iter().any(|function| {
-        same_receiver(function) && crate::generate_harness::is_c_lifecycle_end(&function.name)
+        same_public_receiver(function)
+            && crate::generate_harness::is_c_lifecycle_end(&function.name)
     });
-    has_init && has_end
+    if has_init && has_end {
+        return true;
+    }
+
+    // A same-file static initializer is callable when the sequence harness
+    // deliberately includes the defining .c file. Mirror generation's key
+    // safety rail here: the receiver must be complete in the source's normal
+    // header closure, and an exact init/end pair must exist. This admits a
+    // legitimate expert white-box protocol without manufacturing a private,
+    // header-opaque object from zeroed bytes.
+    let has_private_init = functions.iter().any(|function| {
+        function.is_static
+            && exact_receiver(function)
+            && crate::generate_harness::is_c_lifecycle_init(&function.name)
+    });
+    let has_matching_end = functions.iter().any(|function| {
+        exact_receiver(function) && crate::generate_harness::is_c_lifecycle_end(&function.name)
+    });
+    has_private_init
+        && has_matching_end
+        && crate::generate_harness::c_handle_defined_in_source_headers(
+            &target_receiver_param.c_type,
+            &c.source_path,
+            &source,
+        )
 }
 
 #[cfg(test)]
@@ -4868,6 +4896,32 @@ mod c_auto_sequence_candidate_tests {
             !c_auto_sequence_candidate(&candidate, None, &[]),
             "a destructor alone cannot prove an initially live sequence handle"
         );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn zero_parameter_target_stays_direct_without_panicking() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("govfuzz-c-zero-param-{nonce}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("clock.c");
+        std::fs::write(&source, "unsigned clock_tick(void) { return 1; }\n").unwrap();
+        let candidate = Candidate {
+            harness_id: "H-CZERO".to_owned(),
+            lang: Lang::C,
+            source_path: source,
+            line: 1,
+            name: "clock_tick".to_owned(),
+            score: 1,
+            is_static: false,
+            foreign_guard: None,
+            input_reachability: None,
+            dialect: None,
+        };
+        assert!(!c_auto_sequence_candidate(&candidate, None, &[]));
         std::fs::remove_dir_all(dir).ok();
     }
 

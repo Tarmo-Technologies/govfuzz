@@ -3657,6 +3657,48 @@ fn c_handle_defined_in_headers(
     c_type_has_complete_definition(handle_type, &defs)
 }
 
+/// Conservative preflight for auto-ranking a whole-TU C sequence harness.
+///
+/// Harness generation may call file-private lifecycle helpers only when the
+/// receiver is complete in a header from the target source's normal include
+/// closure. Keep that same proof available to the earlier auto lane selector;
+/// otherwise it either misses a sound expert-style white-box harness or asks
+/// sequence generation to fabricate an opaque receiver.
+pub(crate) fn c_handle_defined_in_source_headers(
+    handle_type: &str,
+    source_path: &Path,
+    source: &str,
+) -> bool {
+    let Some(target_dir) = source_path.parent() else {
+        return false;
+    };
+    let compile_flags = c_build_flags_for_source(source_path);
+    let mut include_dirs = vec![target_dir.to_path_buf()];
+    for include_dir in auto_detect_project_includes(source_path) {
+        if !include_dirs.contains(&include_dir) {
+            include_dirs.push(include_dir);
+        }
+    }
+    for include_dir in self_prefixed_include_roots(source_path) {
+        if !include_dirs.contains(&include_dir) {
+            include_dirs.push(include_dir);
+        }
+    }
+    for include_dir in include_dirs_from_compile_flags(&compile_flags) {
+        if !include_dirs.contains(&include_dir) {
+            include_dirs.push(include_dir);
+        }
+    }
+    let mut header_includes =
+        ordered_c_harness_headers(source_path, target_dir, source, &include_dirs);
+    header_includes.retain(|header| {
+        !is_cpp_only_header(header)
+            && !is_partial_impl_header(header)
+            && !is_translation_unit_include(header)
+    });
+    c_handle_defined_in_headers(handle_type, source_path, &header_includes, &include_dirs)
+}
+
 /// Follow header typedefs to a concrete struct/union and require its body, not
 /// merely a forward declaration. `TypeRegistry::resolve` intentionally models a
 /// forward-declared tag as struct-shaped in some paths, which is sufficient for

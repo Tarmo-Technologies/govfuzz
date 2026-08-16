@@ -33,6 +33,12 @@ pub struct PhpFunction {
     pub line: u32,
     /// The first parameter's name (without the leading `$`).
     pub first_param: String,
+    /// Declared type of the first input parameter, or empty when untyped.
+    pub first_param_type: String,
+    /// Parameters that have neither a default nor a variadic marker. The current
+    /// harness supplies one decoded input, so functions requiring more are not
+    /// directly callable.
+    pub required_param_count: usize,
 }
 
 /// Whether the first parameter's name marks the function as NOT a string input
@@ -53,8 +59,54 @@ fn non_input_first_param(name: &str) -> bool {
 impl PhpFunction {
     /// A function is fuzzable when it has an input-channel first parameter.
     pub fn is_fuzzable(&self) -> bool {
-        !self.first_param.is_empty() && !non_input_first_param(&self.first_param)
+        !self.first_param.is_empty()
+            && !non_input_first_param(&self.first_param)
+            && self.required_param_count <= 1
+            && supported_input_type(&self.first_param_type)
     }
+}
+
+fn supported_input_type(ty: &str) -> bool {
+    if ty.is_empty() {
+        return true;
+    }
+    ty.trim_start_matches('?').split('|').any(|part| {
+        let part = part.trim();
+        matches!(
+            part.to_ascii_lowercase().as_str(),
+            "mixed"
+                | "string"
+                | "int"
+                | "integer"
+                | "bool"
+                | "boolean"
+                | "float"
+                | "double"
+                | "array"
+        ) || php_class_type(part)
+    })
+}
+
+fn php_class_type(ty: &str) -> bool {
+    let bare = ty.trim_start_matches('\\');
+    !bare.is_empty()
+        && bare.split('\\').all(|part| {
+            !part.is_empty()
+                && part.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+                && part.chars().all(is_ident_char)
+        })
+        && !matches!(
+            bare.to_ascii_lowercase().as_str(),
+            "self"
+                | "static"
+                | "parent"
+                | "void"
+                | "never"
+                | "null"
+                | "callable"
+                | "iterable"
+                | "object"
+        )
 }
 
 /// Strip PHP comments (`//`, `#`, `/* */`) and string CONTENTS (so `function`/`{`/`}`
@@ -125,6 +177,7 @@ pub fn parse_php(source: &str) -> Vec<PhpFunction> {
     let mut out: Vec<PhpFunction> = Vec::new();
     let mut seen = std::collections::HashSet::new();
     let mut namespace = String::new();
+    let mut imported_types = std::collections::HashMap::<String, String>::new();
     // The current class scope: (fq-name, brace-depth-at-open). PHP is brace-delimited,
     // so a class body is between its `{` and the matching `}`.
     let mut class_stack: Vec<(String, i32)> = Vec::new();
@@ -142,6 +195,12 @@ pub fn parse_php(source: &str) -> Vec<PhpFunction> {
                 .collect();
             if !ns.is_empty() {
                 namespace = ns;
+                imported_types.clear();
+            }
+        }
+        if class_stack.is_empty() {
+            if let Some((alias, qualified)) = parse_type_import(t) {
+                imported_types.insert(alias, qualified);
             }
         }
         // `class Name` / `abstract class Name` / `final class Name` / `trait` / `interface`.
@@ -158,6 +217,8 @@ pub fn parse_php(source: &str) -> Vec<PhpFunction> {
         if let Some(mut f) =
             parse_function_header(t, line_no, class_stack.last().map(|(n, _)| n.as_str()))
         {
+            f.first_param_type =
+                resolve_type_name(&f.first_param_type, &namespace, &imported_types);
             // Namespace a free function.
             if f.class.is_empty() && !namespace.is_empty() {
                 f.name = format!("{namespace}\\{}", f.func);
@@ -184,6 +245,63 @@ pub fn parse_php(source: &str) -> Vec<PhpFunction> {
         }
     }
     out
+}
+
+fn parse_type_import(line: &str) -> Option<(String, String)> {
+    let body = line.strip_prefix("use ")?.trim().strip_suffix(';')?.trim();
+    if body.starts_with("function ") || body.starts_with("const ") || body.contains('{') {
+        return None;
+    }
+    let (qualified, alias) = if let Some((qualified, alias)) = body.rsplit_once(" as ") {
+        (qualified.trim(), alias.trim())
+    } else {
+        (body, body.rsplit('\\').next()?)
+    };
+    php_class_type(qualified).then(|| {
+        (
+            alias.to_owned(),
+            format!("\\{}", qualified.trim_start_matches('\\')),
+        )
+    })
+}
+
+fn resolve_type_name(
+    ty: &str,
+    namespace: &str,
+    imported_types: &std::collections::HashMap<String, String>,
+) -> String {
+    let nullable = ty.starts_with('?');
+    let body = ty.trim_start_matches('?');
+    let resolved = body
+        .split('|')
+        .map(|part| {
+            let part = part.trim();
+            let lower = part.to_ascii_lowercase();
+            if matches!(
+                lower.as_str(),
+                "mixed"
+                    | "string"
+                    | "int"
+                    | "integer"
+                    | "bool"
+                    | "boolean"
+                    | "float"
+                    | "double"
+                    | "array"
+            ) || part.starts_with('\\')
+            {
+                part.to_owned()
+            } else if let Some(imported) = imported_types.get(part) {
+                imported.clone()
+            } else if php_class_type(part) && !namespace.is_empty() {
+                format!("\\{namespace}\\{part}")
+            } else {
+                part.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("|");
+    format!("{}{resolved}", if nullable { "?" } else { "" })
 }
 
 /// Recognize a class/trait/interface header and return the type name.
@@ -250,7 +368,15 @@ fn parse_function_header(t: &str, line_no: u32, class: Option<&str>) -> Option<P
     }
     let paren = rest.find('(')?;
     let params = parse_params(&rest[paren..]);
-    let first_param = params.into_iter().next().unwrap_or_default();
+    let first_param = params
+        .first()
+        .map(|param| param.name.clone())
+        .unwrap_or_default();
+    let first_param_type = params
+        .first()
+        .map(|param| param.ty.clone())
+        .unwrap_or_default();
+    let required_param_count = params.iter().filter(|param| param.required).count();
 
     let (class_fq, is_static, needs_instance, display) = match class {
         Some(c) => {
@@ -277,13 +403,21 @@ fn parse_function_header(t: &str, line_no: u32, class: Option<&str>) -> Option<P
         needs_instance,
         line: line_no,
         first_param,
+        first_param_type,
+        required_param_count,
     })
 }
 
 /// The parameter names from a `(...)` list starting at `s` (which begins with `(`).
 /// Type hints, defaults, `&` refs, variadics, and visibility-promoted params are
 /// reduced to the bare `$name` (the `$` is dropped).
-fn parse_params(s: &str) -> Vec<String> {
+struct PhpParam {
+    name: String,
+    ty: String,
+    required: bool,
+}
+
+fn parse_params(s: &str) -> Vec<PhpParam> {
     let inner = match s.strip_prefix('(') {
         Some(rest) => rest.split(')').next().unwrap_or(""),
         None => return Vec::new(),
@@ -293,11 +427,23 @@ fn parse_params(s: &str) -> Vec<String> {
         .filter_map(|p| {
             // The parameter variable is the token after the last `$`.
             let dollar = p.rfind('$')?;
-            let name: String = p[dollar + 1..]
+            let after_dollar = &p[dollar + 1..];
+            let name: String = after_dollar
                 .chars()
                 .take_while(|&c| is_ident_char(c))
                 .collect();
-            (!name.is_empty()).then_some(name)
+            if name.is_empty() {
+                return None;
+            }
+            let prefix = p[..dollar]
+                .trim()
+                .trim_end_matches('&')
+                .trim_end_matches("...")
+                .trim();
+            let ty = prefix.split_whitespace().last().unwrap_or("").to_owned();
+            let variadic = p[..dollar].trim_end().ends_with("...");
+            let required = !variadic && !after_dollar[name.len()..].contains('=');
+            Some(PhpParam { name, ty, required })
         })
         .collect()
 }
@@ -410,5 +556,31 @@ mod tests {
     fn typed_param_reduced_to_name() {
         let f = &parse_php("<?php\nfunction f(string $input, int $n = 0) { return $input; }\n")[0];
         assert_eq!(f.first_param, "input");
+        assert_eq!(f.first_param_type, "string");
+        assert_eq!(f.required_param_count, 1);
+    }
+
+    #[test]
+    fn unsupported_or_multiple_required_parameters_are_not_candidates() {
+        assert!(parse_php("<?php\nfunction f(object $input) {}\n").is_empty());
+        assert!(parse_php("<?php\nfunction f(string $input, int $required) {}\n").is_empty());
+        assert_eq!(
+            parse_php("<?php\nfunction f(array $input, int $optional = 1) {}\n")[0]
+                .first_param_type,
+            "array"
+        );
+    }
+
+    #[test]
+    fn imported_value_object_type_is_resolved_and_fuzzable() {
+        let source = "<?php\nnamespace Monolog\\Formatter;\nuse Monolog\\LogRecord;\nclass ChromePHPFormatter {\n  public function format(LogRecord $record) {}\n}\n";
+        let functions = parse_php(source);
+        assert_eq!(functions.len(), 1);
+        assert_eq!(
+            functions[0].name,
+            "Monolog\\Formatter\\ChromePHPFormatter#format"
+        );
+        assert_eq!(functions[0].first_param_type, "\\Monolog\\LogRecord");
+        assert!(functions[0].is_fuzzable());
     }
 }

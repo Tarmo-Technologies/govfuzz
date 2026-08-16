@@ -131,6 +131,19 @@ pub struct CScoreBreakdown {
     /// (`uncompress`/`inflate`/`decompress`). Keeps `LZ4_compress_*` /
     /// `deflate*` from out-ranking `LZ4_decompress_safe` / `inflate`.
     pub compressor_name: i32,
+    /// Bonus for a public-looking whole-input entry (`*_from_memory`,
+    /// `*_from_buffer`, `*_from_bytes`, `*_from_string`). These APIs usually own
+    /// the complete decode/parse pipeline, while a shorter-arity `decode_buffer`
+    /// function is often one narrow codec stage with an output buffer supplied by
+    /// the caller. Expert harnesses consistently start at the whole-artifact
+    /// boundary because it reaches more format logic from the same fuzz bytes.
+    pub end_to_end_raw_input: i32,
+    /// Additional breadth bonus when the action connects directly to the
+    /// `from_*` boundary (`load_from_memory`, `parse_from_string`) rather than a
+    /// format-specific sub-entry (`load_gif_from_memory`). The general entry
+    /// exercises dispatch plus every supported sub-format and is the surface an
+    /// expert normally chooses first.
+    pub general_format_entry: i32,
     pub total: i32,
 }
 
@@ -261,8 +274,8 @@ fn is_allocator_free_primitive(name: &str) -> bool {
 }
 
 fn score_cpp_function(f: &cpp_parser::CppFunction) -> (CScoreBreakdown, InputReachability) {
-    let params: Vec<(&str, &str)> = f
-        .params
+    let effective_params = f.effective_required_params();
+    let params: Vec<(&str, &str)> = effective_params
         .iter()
         .map(|p| (p.name.as_str(), p.cpp_type.as_str()))
         .collect();
@@ -324,6 +337,7 @@ fn score_from_signature(
 ) -> (CScoreBreakdown, InputReachability) {
     let mut b = CScoreBreakdown::default();
     let reachability = classify_input_reachability(name, params);
+    let lower_name = name.to_ascii_lowercase();
 
     // Only a read-only *untrusted-input* buffer earns the buffer bonus. A
     // non-`const` output buffer (a serializer's destination) is NOT an attacker
@@ -339,6 +353,11 @@ fn score_from_signature(
         .iter()
         .filter(|(n, t)| is_length_param(t) || is_length_name(n))
         .count();
+    let named_typedef_buffer = length_param_count > 0
+        && name_has_parser_keyword(&lower_name)
+        && params
+            .iter()
+            .any(|(param_name, ty)| is_named_const_byte_buffer(param_name, ty));
     // The classic C parser idiom takes a NON-const byte pointer it tokenizes in
     // place (`toml_parse(char *toml, ...)`, `json_parse(char *)`). The const-only
     // rule above misses it, leaving the real public entry point scoring near zero
@@ -351,7 +370,8 @@ fn score_from_signature(
         && params
             .iter()
             .any(|(_, t)| is_byte_pointer(&normalize_type(t)));
-    let has_input_buffer = untrusted_buffer_count > 0 || mutable_input_buffer;
+    let has_input_buffer =
+        untrusted_buffer_count > 0 || mutable_input_buffer || named_typedef_buffer;
     if has_input_buffer {
         b.buffer_param = 30;
     }
@@ -371,7 +391,6 @@ fn score_from_signature(
         b.error_code_return = 10;
     }
 
-    let lower_name = name.to_ascii_lowercase();
     if name_has_parser_keyword(&lower_name) {
         b.parse_decode_name = 15;
     }
@@ -426,6 +445,16 @@ fn score_from_signature(
         b.compressor_name = -25;
     }
 
+    if has_input_buffer
+        && (length_param_count > 0 || has_self_describing_buffer)
+        && name_is_end_to_end_raw_entry(&lower_name)
+    {
+        b.end_to_end_raw_input = 30;
+        if name_is_general_end_to_end_entry(&lower_name) {
+            b.general_format_entry = 10;
+        }
+    }
+
     b.total = b.buffer_param
         + b.length_param_with_buffer
         + b.error_code_return
@@ -434,8 +463,33 @@ fn score_from_signature(
         + b.arity_in_sweet_spot
         + b.no_attacker_input
         + b.needs_prebuilt_context
-        + b.compressor_name;
+        + b.compressor_name
+        + b.end_to_end_raw_input
+        + b.general_format_entry;
     (b, reachability)
+}
+
+/// Naming convention for an API that accepts one complete untrusted artifact.
+/// Requiring both the parser keyword (checked by the caller's input-buffer gate)
+/// and an explicit `from_*` boundary avoids promoting arbitrary memory helpers.
+fn name_is_end_to_end_raw_entry(name: &str) -> bool {
+    name_has_parser_keyword(name)
+        && ["from_memory", "from_buffer", "from_bytes", "from_string"]
+            .iter()
+            .any(|marker| name.contains(marker))
+}
+
+fn name_is_general_end_to_end_entry(name: &str) -> bool {
+    [
+        "parse_from_",
+        "load_from_",
+        "read_from_",
+        "decode_from_",
+        "deserialize_from_",
+        "unmarshal_from_",
+    ]
+    .iter()
+    .any(|marker| name.contains(marker))
 }
 
 /// A COMPRESSION-direction codec name. Compression turns the caller's own
@@ -558,18 +612,23 @@ fn is_prebuilt_input_context(name: &str, raw: &str) -> bool {
 /// untrusted buffer wins; otherwise a serializer name marks an output function;
 /// otherwise there is no proven attacker input.
 pub fn classify_input_reachability(name: &str, params: &[(&str, &str)]) -> InputReachability {
-    let has_untrusted_buffer = params.iter().any(|(_, t)| is_untrusted_input_buffer(t));
+    let lower_name = name.to_ascii_lowercase();
+    let has_length = params
+        .iter()
+        .any(|(n, t)| is_length_param(t) || is_length_name(n));
+    let has_untrusted_buffer = params.iter().any(|(_, t)| is_untrusted_input_buffer(t))
+        || (has_length
+            && name_has_parser_keyword(&lower_name)
+            && params
+                .iter()
+                .any(|(param_name, ty)| is_named_const_byte_buffer(param_name, ty)));
     if has_untrusted_buffer {
         return InputReachability::AttackerReachable;
     }
-    let lower_name = name.to_ascii_lowercase();
     // A non-`const` byte buffer paired with a length under a parser/decoder name
     // is the C idiom for an in-place / mutable input buffer (some decoders write
     // back into the frame they parse) — treat as attacker-reachable.
     let has_output_buffer = params.iter().any(|(_, t)| is_output_buffer(t));
-    let has_length = params
-        .iter()
-        .any(|(n, t)| is_length_param(t) || is_length_name(n));
     if has_output_buffer
         && has_length
         && name_has_parser_keyword(&lower_name)
@@ -594,6 +653,24 @@ pub fn classify_input_reachability(name: &str, params: &[(&str, &str)]) -> Input
         return InputReachability::OutputSerializer;
     }
     InputReachability::ReachabilityUnproven
+}
+
+/// A byte typedef the lightweight ranker cannot resolve (`stbi_uc`, `BYTE_T`)
+/// still exposes its role through the canonical `(const T *buffer, len)` parser
+/// shape. The harness generator resolves the typedef registry later; recognizing
+/// the name here keeps the public end-to-end entry above an internal raw helper.
+fn is_named_const_byte_buffer(name: &str, raw: &str) -> bool {
+    let ty = normalize_type(raw);
+    if ty.matches('*').count() != 1 || !ty.contains("const") {
+        return false;
+    }
+    let name = name.trim_matches('_').to_ascii_lowercase();
+    matches!(
+        name.as_str(),
+        "data" | "buf" | "buffer" | "bytes" | "input" | "src" | "source" | "memory"
+    ) || name.ends_with("_data")
+        || name.ends_with("_buffer")
+        || name.ends_with("_bytes")
 }
 
 /// A single-byte scalar (`uint8_t`/`unsigned char`/`char`/`u8`) — the per-call
@@ -659,12 +736,16 @@ fn is_untrusted_input_buffer(raw: &str) -> bool {
         return t.contains("span<const") || t.contains("span< const");
     }
     if t.contains("std::string") {
-        // By-value / const-ref string is input; a mutable `std::string &` is output.
-        return !t.contains('&') || t.contains("const");
+        // By-value / const-ref / rvalue-ref string is input. Only a mutable
+        // LVALUE reference is an output accumulator; a forwarding-reference
+        // parser specialized as `std::string&&` consumes attacker bytes.
+        let lvalue_reference = t.trim_end().ends_with('&') && !t.trim_end().ends_with("&&");
+        return !lvalue_reference || t.contains("const");
     }
     if is_byte_container(&t) {
-        // By-value / const-ref byte container is input; a mutable ref is output.
-        return !t.contains('&') || t.contains("const");
+        // Same rule for owning byte containers.
+        let lvalue_reference = t.trim_end().ends_with('&') && !t.trim_end().ends_with("&&");
+        return !lvalue_reference || t.contains("const");
     }
     false
 }
@@ -680,31 +761,32 @@ fn is_output_buffer(raw: &str) -> bool {
         return !(t.contains("span<const") || t.contains("span< const"));
     }
     if t.contains("std::string") || is_byte_container(&t) {
-        return t.contains('&') && !t.contains("const");
+        return t.trim_end().ends_with('&')
+            && !t.trim_end().ends_with("&&")
+            && !t.contains("const");
     }
     false
 }
 
 fn name_has_serializer_keyword(name: &str) -> bool {
-    [
-        "write",
-        "send",
-        "serialize",
-        "serialise",
-        "encode",
-        "marshal",
-        "pack",
-        "emit",
-        "format",
-        "to_buf",
-        "to_bytes",
-        "to_byte",
-        "put_",
-        "_put",
-        "dump",
-    ]
-    .iter()
-    .any(|kw| name.contains(kw))
+    let leaf = name.rsplit("::").next().unwrap_or(name);
+    crate::name_semantics::has_action_stem(
+        leaf,
+        &[
+            "write",
+            "send",
+            "serialize",
+            "serialise",
+            "encode",
+            "marshal",
+            "pack",
+            "emit",
+            "format",
+            "to",
+            "put",
+            "dump",
+        ],
+    )
 }
 
 fn is_length_param(raw: &str) -> bool {
@@ -838,29 +920,30 @@ fn is_fixed_width_scalar_suffix(s: &str) -> bool {
 }
 
 fn name_has_parser_keyword(name: &str) -> bool {
-    [
-        "parse",
-        "decode",
-        "read",
-        "load",
-        "process",
-        "deserialize",
-        "unmarshal",
-        "consume",
-        "scan",
-        // Decompression / container entry points consume untrusted bytes just like
-        // a parser (`uncompress`, `inflate`, `unpack`, `extract` an archive/blob).
-        // Without these, codec libraries' real entry (zlib's `uncompress`) ranked
-        // far below internal `read_*` helpers whose names already matched.
-        "decompress",
-        "uncompress",
-        "inflate",
-        "unpack",
-        "extract",
-        "demux",
-    ]
-    .iter()
-    .any(|kw| name.contains(kw))
+    crate::name_semantics::has_action_stem(
+        name,
+        &[
+            "parse",
+            "decode",
+            "read",
+            "load",
+            "process",
+            "deserialize",
+            "unmarshal",
+            "consume",
+            "scan",
+            // Decompression / container entry points consume untrusted bytes just like
+            // a parser (`uncompress`, `inflate`, `unpack`, `extract` an archive/blob).
+            // Without these, codec libraries' real entry (zlib's `uncompress`) ranked
+            // far below internal `read_*` helpers whose names already matched.
+            "decompress",
+            "uncompress",
+            "inflate",
+            "unpack",
+            "extract",
+            "demux",
+        ],
+    )
 }
 
 /// A name carrying an explicit "not the public attack surface" marker — an
@@ -999,6 +1082,7 @@ mod tests {
                 .map(|(n, t)| CppParamDescriptor {
                     name: (*n).to_owned(),
                     cpp_type: (*t).to_owned(),
+                    has_default: false,
                 })
                 .collect(),
             qualifier_path: Vec::new(),
@@ -1094,6 +1178,20 @@ mod tests {
         let ranked = rank_cpp_targets(std::slice::from_ref(&resolved));
         assert_eq!(ranked.len(), 1, "a resolved template must be surfaced");
         assert_eq!(ranked[0].name, "parse_as");
+    }
+
+    #[test]
+    fn cpp_rvalue_string_parser_is_an_attacker_input_not_an_output_buffer() {
+        let (score, reachability) = score_from_signature(
+            "basic_json::parse",
+            "basic_json",
+            &[("input", "std::string &&")],
+        );
+        assert_eq!(reachability, InputReachability::AttackerReachable);
+        assert_eq!(score.buffer_param, 30);
+        assert_eq!(score.length_param_with_buffer, 15);
+        assert_eq!(score.parse_decode_name, 15);
+        assert!(score.total > 50, "{score:?}");
     }
 
     #[test]
@@ -1406,6 +1504,59 @@ mod tests {
             b.length_param_with_buffer, 15,
             "a length recognised only by its name (`data_len`) must still count"
         );
+    }
+
+    #[test]
+    fn public_parser_with_const_byte_typedef_buffer_is_reachable() {
+        let functions = c_parser::parse_c_functions(
+            "typedef unsigned char stbi_uc;\n\
+             stbi_uc *stbi_load_from_memory(stbi_uc const *buffer, int len, int *x, int *y, int *channels, int desired) { return 0; }\n",
+        )
+        .unwrap();
+        let ranked = rank_c_targets(&functions);
+        let target = ranked
+            .iter()
+            .find(|target| target.name == "stbi_load_from_memory")
+            .unwrap();
+        assert_eq!(
+            target.input_reachability,
+            InputReachability::AttackerReachable
+        );
+        assert_eq!(target.breakdown.buffer_param, 30);
+        assert_eq!(target.breakdown.length_param_with_buffer, 15);
+    }
+
+    #[test]
+    fn parser_action_matching_rejects_incidental_substrings() {
+        assert!(name_has_parser_keyword("image_load_from_memory"));
+        assert!(name_has_parser_keyword("Parser::decodeFrame"));
+        assert!(!name_has_parser_keyword("download_audio"));
+        assert!(!name_has_parser_keyword("thread_pool"));
+        assert!(!name_has_serializer_keyword("rewrite_header"));
+    }
+
+    #[test]
+    fn whole_artifact_memory_entry_outranks_narrow_output_buffer_decoder() {
+        let source = "typedef unsigned char image_byte;\n\
+            image_byte *image_load_from_memory(image_byte const *buffer, int len, int *x, int *y, int *channels, int desired) { return 0; }\n\
+            int image_zlib_decode_buffer(char *output, int output_len, char const *input, int input_len) { return 0; }\n";
+        let functions = c_parser::parse_c_functions(source).unwrap();
+        let ranked = rank_c_targets(&functions);
+        assert_eq!(ranked[0].name, "image_load_from_memory");
+        assert_eq!(ranked[0].breakdown.end_to_end_raw_input, 30);
+        assert_eq!(ranked[0].breakdown.general_format_entry, 10);
+        assert_eq!(ranked[1].breakdown.end_to_end_raw_input, 0);
+    }
+
+    #[test]
+    fn general_whole_artifact_entry_outranks_format_specific_variant() {
+        let source = "typedef unsigned char image_byte;\n\
+            image_byte *image_load_from_memory(image_byte const *buffer, int len, int *x, int *y, int *channels, int desired) { return 0; }\n\
+            image_byte *image_load_gif_from_memory(image_byte const *buffer, int len, int **delays, int *x, int *y, int *frames, int *channels, int desired) { return 0; }\n";
+        let ranked = rank_c_targets(&c_parser::parse_c_functions(source).unwrap());
+        assert_eq!(ranked[0].name, "image_load_from_memory");
+        assert!(ranked[0].breakdown.general_format_entry > 0);
+        assert_eq!(ranked[1].breakdown.general_format_entry, 0);
     }
 
     #[test]

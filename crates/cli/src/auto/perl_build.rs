@@ -154,6 +154,7 @@ pub fn build_perl_harness(
         Command::new(&perl)
             .arg("-c")
             .arg(&harness_path)
+            .current_dir(&auto_dir)
             .env("PERL5LIB", &perl5lib),
         Duration::from_secs(30),
     );
@@ -186,6 +187,7 @@ pub fn build_perl_harness(
         Command::new(&perl)
             .arg("-e")
             .arg(format!("require q{{{}}}; 1", harness_path.display()))
+            .current_dir(&auto_dir)
             .env("PERL5LIB", &perl5lib),
         Duration::from_secs(30),
     );
@@ -331,8 +333,21 @@ fn generate_harness(target_abs: &Path, call: &str, sub_name: &str) -> String {
          \x20   }}\n\
          }}\n\
          \n\
+         my $govfuzz_target_entered = 0;\n\
+         sub govfuzz_mark_target_entry {{\n\
+         \x20   return if $govfuzz_target_entered;\n\
+         \x20   my $path = $ENV{{GOVFUZZ_TARGET_ENTRY_SHM}} or return;\n\
+         \x20   if (open(my $entry, '>', $path)) {{\n\
+         \x20       binmode($entry);\n\
+         \x20       print {{$entry}} \"\\x01\";\n\
+         \x20       close($entry);\n\
+         \x20       $govfuzz_target_entered = 1;\n\
+         \x20   }}\n\
+         }}\n\
+         \n\
          sub govfuzz_run_one {{\n\
          \x20   my ($data) = @_;\n\
+         \x20   govfuzz_mark_target_entry();\n\
          \x20   {call};\n\
          }}\n\
          1;\n",
@@ -369,6 +384,10 @@ mod tests {
         assert!(h.contains("require q{/proj/lib/My/P.pm}"));
         assert!(h.contains("My::P::parse($data)"));
         assert!(h.contains("sub govfuzz_run_one"));
+        assert!(
+            h.contains("govfuzz_mark_target_entry();\n    My::P::parse($data)"),
+            "entry checkpoint must immediately precede the selected call: {h}"
+        );
     }
 
     #[test]

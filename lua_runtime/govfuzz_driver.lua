@@ -176,7 +176,9 @@ if os.getenv("GOVFUZZ_FRAMED") then
     flush_cov()
     control:write("\1") -- sync byte
     count = count + 1
-    if count & 0x1FF == 0 then dump_covered() end
+    -- Exponentially spaced early checkpoints keep short campaigns from losing
+    -- all line evidence before the old 512-input checkpoint.
+    if (count & (count - 1)) == 0 or (count & 0x1FF) == 0 then dump_covered() end
   end
 else
   local data
@@ -189,3 +191,4 @@ else
   run_input(data)
   flush_cov()
 end
+dump_covered()

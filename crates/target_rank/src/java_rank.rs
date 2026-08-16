@@ -72,6 +72,8 @@ pub struct JavaScoreBreakdown {
     /// e.g. commons-codec `new DecoderException(String)`): an exception type has no
     /// fuzzable processing, so it shouldn't consume a `--max-targets` slot.
     pub exception_type_ctor: i32,
+    /// Penalty for assertion/logging/reporting helpers that only accept a string.
+    pub low_value_helper_name: i32,
     pub total: i32,
 }
 
@@ -132,11 +134,11 @@ fn score_java_method(m: &JavaMethod) -> (JavaScoreBreakdown, InputReachability) 
         b.byte_channel_param = 30;
     }
 
-    if name_is_security_sink(&lower) {
+    if name_is_security_sink(&m.name) {
         b.security_sink_name = 25;
     }
 
-    if name_has_parser_keyword(&lower) {
+    if name_has_parser_keyword(&m.name) {
         b.parser_name = 15;
     }
 
@@ -172,6 +174,9 @@ fn score_java_method(m: &JavaMethod) -> (JavaScoreBreakdown, InputReachability) 
     if m.is_constructor && name_is_throwable_type(&m.name) {
         b.exception_type_ctor = -40;
     }
+    if crate::name_semantics::is_low_value_helper(&m.name) {
+        b.low_value_helper_name = -35;
+    }
 
     b.total = b.existing_fuzz_entry
         + b.byte_channel_param
@@ -182,7 +187,8 @@ fn score_java_method(m: &JavaMethod) -> (JavaScoreBreakdown, InputReachability) 
         + b.getter_or_writer_name
         + b.no_byte_channel
         + b.arity_in_sweet_spot
-        + b.exception_type_ctor;
+        + b.exception_type_ctor
+        + b.low_value_helper_name;
     (b, reachability)
 }
 
@@ -256,10 +262,7 @@ fn name_has_parser_keyword(name: &str) -> bool {
         "read",
         "load",
         "deserialize",
-        "frombytes",
-        "fromstring",
-        "fromjson",
-        "fromxml",
+        "from",
         "decompress",
         "inflate",
         "unpack",
@@ -267,7 +270,7 @@ fn name_has_parser_keyword(name: &str) -> bool {
         "lex",
         "tokenize",
     ];
-    KEYWORDS.iter().any(|kw| name.contains(kw)) || name.starts_with("from")
+    crate::name_semantics::has_action_stem(name, KEYWORDS)
 }
 
 /// A Java security sink: the method name marks a classic injection/deserialization
@@ -296,7 +299,19 @@ fn name_is_security_sink(name: &str) -> bool {
         "render",
         "template",
     ];
-    SINKS.iter().any(|kw| name.contains(kw))
+    crate::name_semantics::has_action_stem(name, SINKS)
+        || [
+            &["read", "object"][..],
+            &["read", "value"][..],
+            &["read", "external"][..],
+            &["from", "xml"][..],
+            &["parse", "xml"][..],
+            &["for", "name"][..],
+            &["load", "class"][..],
+            &["new", "instance"][..],
+        ]
+        .iter()
+        .any(|sequence| crate::name_semantics::has_token_sequence(name, sequence))
 }
 
 /// A getter / `toString`-ish / writer name: emits the program's own data, not the
@@ -442,6 +457,18 @@ mod tests {
         let ranked = rank_java_targets(&[plain, sink]);
         assert_eq!(ranked[0].name, "readObject");
         assert!(by_name(&ranked, "readObject").breakdown.security_sink_name > 0);
+    }
+
+    #[test]
+    fn download_and_fail_are_not_mistaken_for_parser_surfaces() {
+        let ranked = rank_java_targets(&[
+            jm("downloadFile", &[("file", "java.io.File")]),
+            jm("fail", &[("message", "String")]),
+            jm("parseDocument", &[("data", "byte[]")]),
+        ]);
+        assert_eq!(ranked[0].name, "parseDocument");
+        assert_eq!(by_name(&ranked, "downloadFile").breakdown.parser_name, 0);
+        assert!(by_name(&ranked, "fail").breakdown.low_value_helper_name < 0);
     }
 
     #[test]

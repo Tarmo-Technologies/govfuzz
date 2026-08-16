@@ -183,9 +183,12 @@ pub fn generate_java_direct_harness(
 
 fn render_harness(decls: &[String], call: &str) -> String {
     let body = if decls.is_empty() {
-        format!("        {call};\n")
+        format!("        govfuzzMarkTargetEntry();\n        {call};\n")
     } else {
-        format!("{}\n        {call};\n", decls.join("\n"))
+        format!(
+            "{}\n        govfuzzMarkTargetEntry();\n        {call};\n",
+            decls.join("\n")
+        )
     };
     let helpers = if body.contains(TEMP_FILE_CALL) {
         TEMP_FILE_HELPER
@@ -199,6 +202,16 @@ fn render_harness(decls: &[String], call: &str) -> String {
          \n\
          public final class {HARNESS_CLASS} {{\n\
          {helpers}\
+         \x20   private static boolean govfuzzTargetEntered;\n\
+         \x20   private static void govfuzzMarkTargetEntry() {{\n\
+         \x20       if (govfuzzTargetEntered) return;\n\
+         \x20       String path = System.getenv(\"GOVFUZZ_TARGET_ENTRY_SHM\");\n\
+         \x20       if (path == null || path.isEmpty()) return;\n\
+         \x20       try {{\n\
+         \x20           java.nio.file.Files.write(java.nio.file.Paths.get(path), new byte[] {{ 1 }});\n\
+         \x20           govfuzzTargetEntered = true;\n\
+         \x20       }} catch (java.io.IOException ignored) {{ }}\n\
+         \x20   }}\n\
          \x20   /** Decode-and-call entry the govfuzz JVM driver invokes per input.\n\
          \x20    *  Declares `throws Throwable` so a target's CHECKED exceptions\n\
          \x20    *  (IOException, ParseException, DecoderException, …) compile and\n\
@@ -808,6 +821,9 @@ mod tests {
         assert!(h
             .harness_java
             .contains("var a0 = c.consumeRemainingAsBytes();"));
+        assert!(h
+            .harness_java
+            .contains("govfuzzMarkTargetEntry();\n        com.acme.JsonParser.parse(a0);"));
         assert!(h.harness_java.contains("com.acme.JsonParser.parse(a0);"));
         assert_eq!(h.harness_class, "govfuzzgen.Harness");
     }

@@ -164,7 +164,10 @@ def _framed_loop(run_one):
         # dump no-ops unless the covered set grew (coverage plateaus, so writes are
         # rare after warmup) and unless GOVFUZZ_COVERED_LINES is set.
         _count += 1
-        if (_count & 0x1FF) == 0:
+        # Persist at exponentially spaced early checkpoints, then every 512
+        # inputs. Short campaigns used to die before the first 512-input dump
+        # and therefore lost all line evidence despite entering the target.
+        if (_count & (_count - 1)) == 0 or (_count & 0x1FF) == 0:
             govfuzz_cov.dump_covered_lines()
 
 
@@ -174,6 +177,7 @@ def main():
     run_one = _load_run_one()
     if os.environ.get("GOVFUZZ_FRAMED") is not None:
         _framed_loop(run_one)
+        govfuzz_cov.dump_covered_lines()
         return
     # Per-spawn single-input replay.
     if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
@@ -182,6 +186,7 @@ def main():
     else:
         data = sys.stdin.buffer.read()
     _run_input(run_one, data)
+    govfuzz_cov.dump_covered_lines()
 
 
 if __name__ == "__main__":

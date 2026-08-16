@@ -116,6 +116,27 @@ fn is_ident_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
 }
 
+/// Lua's function-statement target grammar is an identifier followed by zero or
+/// more `.identifier` components and, optionally, one final `:identifier`.
+/// Keeping that restriction for assignment-form functions is important after
+/// normalization: a line such as `require("pkg").parse = function(input)` becomes
+/// `require(").parse = function(input)`.  Treating the call expression as a table
+/// qualifier invents a target that cannot be resolved from the loaded module.
+fn valid_function_target(target: &str) -> bool {
+    let valid_identifier = |identifier: &str| {
+        !identifier.is_empty()
+            && identifier.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+            && identifier.chars().all(is_ident_char)
+    };
+    let valid_dot_chain = |chain: &str| chain.split('.').all(valid_identifier);
+    match target.split_once(':') {
+        Some((table, method)) => {
+            !method.contains(['.', ':']) && valid_dot_chain(table) && valid_identifier(method)
+        }
+        None => valid_dot_chain(target),
+    }
+}
+
 /// Scan Lua source for callable, fuzzable functions.
 pub fn parse_lua(source: &str) -> Vec<LuaFunction> {
     let lines = normalize(source);
@@ -161,6 +182,10 @@ fn parse_function_header(t: &str, line_no: u32) -> Option<LuaFunction> {
         }
         (lhs, &after_fn[paren..])
     };
+
+    if !valid_function_target(target) {
+        return None;
+    }
 
     // Split the target into an optional table qualifier and the field/name.
     let (is_global, is_method, field) = if let Some(colon) = target.rfind(':') {
@@ -317,6 +342,22 @@ mod tests {
         assert_eq!(f.field, "parse");
         assert!(!f.is_global);
         assert_eq!(f.first_param, "s");
+    }
+
+    #[test]
+    fn assignment_on_call_result_is_not_invented_as_a_callable_target() {
+        let src = r#"
+local parse = require("cmp.utils.snippet").parse
+require("cmp.utils.snippet").parse = function(input)
+  return input
+end
+function M.snippet_fix(snippet)
+  return snippet
+end
+"#;
+        let functions = parse_lua(src);
+        assert_eq!(functions.len(), 1);
+        assert_eq!(functions[0].name, "M.snippet_fix");
     }
 
     #[test]

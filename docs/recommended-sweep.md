@@ -19,14 +19,18 @@ govfuzz auto /path/to/source-tree \
   --debug
 ```
 
-Read the outcome in `govfuzz_work/auto/summary.txt`; the full report is
-`auto/run.md` and `auto/run.json`, findings are in `auto/findings.csv`.
+Read `govfuzz_work/FINDINGS.md` first; the top-level `findings.csv` is the
+machine-readable root-cause index and `findings/` holds full evidence bundles.
+The campaign/coverage report remains in `auto/run.md`, `auto/run.json`, and
+`auto/summary.txt`.
 
 ## What each flag does, and how to size it
 
 | Flag | Why it is here |
 |---|---|
 | `--work-dir govfuzz_work` | Everything the run produces — harnesses, corpora, findings, reports. **Keep it OUTSIDE the tree being scanned**, or the next run discovers GovFuzz's own generated harnesses as targets. |
+| `--max-work-dir-mb 4096` | Default campaign-wide allocated-size ceiling. Once reached, GovFuzz preserves completed/in-flight evidence but starts no new targets; `0` disables it. Parallel in-flight targets can cause a bounded overshoot. |
+| `--max-corpus-mb 64` | Per-target retained coverage-corpus ceiling, applied to memory and `corpus/<id>/queue/`. It never deletes finding testcases. Raise it for deep, large-object formats when disk permits. |
 | `--jobs 4` | Candidates built and fuzzed concurrently. Default is half the host's cores. Peak memory is roughly `jobs × --rss-limit-mb`, so on a small or cgroup-capped box lower it before raising it. Ada targets build serially regardless — they share one staged source tree. |
 | `--per-target-time 60` | Per-target fuzz wall clock, split across the three passes (empty / rng / fuzz-driven) under one shared deadline. This is the libFuzzer `-max_total_time` / AFL `-V` knob. 60s finds shallow bugs; raise it for a real campaign. |
 | `--campaign-time 3600` | Hard outer cap for the whole sweep, charged from the first build attempt — discovery and preflight are not billed to it, so a large tree that takes minutes to index still fuzzes. Once exceeded, no new targets are started (the in-flight one finishes). |
@@ -39,6 +43,12 @@ Read the outcome in `govfuzz_work/auto/summary.txt`; the full report is
 | `--debug` | Capture a backtrace if GovFuzz itself panics, keep going past a file that crashes it, and enrich `bug-report.json`. Cheap; leave it on. |
 
 ## Variations worth knowing
+
+- **Reclaiming disk safely.** `govfuzz clean govfuzz_work --compact` removes
+  disposable compiler caches and scratch files while preserving findings,
+  reports, corpora, checkpoints, generated harness source, and replay binaries.
+  `--corpus`, `--reports`, `--findings`, and `--all` are separate, explicit
+  deletion scopes.
 
 - **Untrusted source.** Drop `--unsafe-search-and-run-build-commands`. GovFuzz
   still recovers what it can from `compile_commands.json` and its own probes.
@@ -59,7 +69,8 @@ Read the outcome in `govfuzz_work/auto/summary.txt`; the full report is
 
 ## Reading the result honestly
 
-`summary.txt` separates outcomes on purpose:
+`FINDINGS.md` is the primary handoff. `summary.txt` then separates coverage
+outcomes on purpose:
 
 - **built+fuzzed** — a harness was built and really executed the target.
 - **static-only / report_only** — GovFuzz could not build it and fell back to

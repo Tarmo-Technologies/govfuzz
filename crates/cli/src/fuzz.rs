@@ -397,14 +397,31 @@ pub(crate) struct CorpusLimits {
     pub(crate) bytes: usize,
 }
 
-pub(crate) fn corpus_limits(max_len: usize) -> CorpusLimits {
-    let bytes = crate::resource_limits::dynamic_bytes(
-        "GOVFUZZ_MAX_CORPUS_BYTES",
-        64,
-        64 * crate::resource_limits::MIB,
-        128 * crate::resource_limits::MIB,
-        2 * 1024 * crate::resource_limits::MIB,
+/// `govfuzz auto` publishes its explicit per-target disk/memory corpus budget
+/// here because programmatic fuzz passes run on worker threads. Standalone
+/// `govfuzz fuzz` leaves this at zero and retains its memory-derived behavior.
+static AUTO_CORPUS_BYTES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+pub(crate) fn set_auto_corpus_limit_mib(mib: usize) {
+    AUTO_CORPUS_BYTES.store(
+        mib.saturating_mul(crate::resource_limits::MIB),
+        std::sync::atomic::Ordering::SeqCst,
     );
+}
+
+pub(crate) fn corpus_limits(max_len: usize) -> CorpusLimits {
+    let auto_bytes = AUTO_CORPUS_BYTES.load(std::sync::atomic::Ordering::SeqCst);
+    let bytes = if auto_bytes > 0 {
+        auto_bytes
+    } else {
+        crate::resource_limits::dynamic_bytes(
+            "GOVFUZZ_MAX_CORPUS_BYTES",
+            64,
+            64 * crate::resource_limits::MIB,
+            128 * crate::resource_limits::MIB,
+            2 * 1024 * crate::resource_limits::MIB,
+        )
+    };
     let estimated_entry_bytes = max_len.clamp(1024, 64 * 1024);
     let derived_entries = (bytes / estimated_entry_bytes).clamp(4096, 262_144);
     let entries =
@@ -2117,7 +2134,8 @@ fn run_builtin_with_progress(
     let finding_dedup_limit = max_finding_dedup_keys();
     let start = Instant::now();
     let mut last_tick = Instant::now();
-    let mut corpus = CorpusManager::new(prepared.work_dir.clone());
+    let mut corpus = CorpusManager::new(prepared.work_dir.clone())
+        .with_retention_limits(corpus_limits.entries, corpus_limits.bytes);
     // Interpreted lanes (Python/Perl) run the target under an interpreter whose OWN
     // file activity the shim traces; there the resource-leak oracle is taint-gated
     // to avoid flagging the interpreter's fixed env/stdlib opens as target leaks.

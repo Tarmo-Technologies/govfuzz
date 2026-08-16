@@ -9,7 +9,7 @@ use crate::auto::attempt::AttemptOptions;
 use crate::auto::candidate::Lang;
 use crate::auto::decl_index::DeclarationIndex;
 use crate::auto::discovery::DirFilter;
-use crate::auto::report::write_reports;
+use crate::auto::report::{write_reports, write_reports_with_output_limit};
 use crate::target_filter::{path_matches_exclusion, ExcludeCategory};
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -51,8 +51,16 @@ RECOMMENDED SWEEP:
   --sloc FILE  per-language SLOC breakdown (.json for JSON)
   --debug      backtrace on a govfuzz-internal panic; enriches the bug report
 
-  Read govfuzz_work/auto/summary.txt first. Full guide: RECOMMENDED-SWEEP.md
+  Read govfuzz_work/FINDINGS.md first. Full guide: RECOMMENDED-SWEEP.md
   (docs/recommended-sweep.md in the repository).";
+
+fn parse_positive_mib(value: &str) -> std::result::Result<usize, String> {
+    value
+        .parse::<usize>()
+        .ok()
+        .filter(|parsed| *parsed > 0)
+        .ok_or_else(|| format!("expected a positive MiB value, got {value:?}"))
+}
 
 #[derive(Debug, clap::Args)]
 #[command(after_help = RECOMMENDED_SWEEP, after_long_help = RECOMMENDED_SWEEP)]
@@ -63,6 +71,19 @@ pub struct AutoArgs {
     /// Work directory. Default ./govfuzz_work/.
     #[arg(long, default_value = "govfuzz_work")]
     pub work_dir: PathBuf,
+
+    /// Stop starting new targets once the GovFuzz work directory reaches this
+    /// allocated size in MiB. Completed and in-flight targets are preserved and
+    /// reported, so parallel jobs can overshoot by their final artifacts. Default
+    /// 4096 MiB; pass 0 to disable. Findings are never deleted to satisfy the cap.
+    #[arg(long = "max-work-dir-mb", default_value_t = crate::auto::storage::DEFAULT_MAX_WORK_DIR_MIB)]
+    pub max_work_dir_mb: u64,
+
+    /// Maximum retained coverage corpus per target, in MiB. This bounds both the
+    /// in-memory mutation pool and `corpus/<harness-id>/queue/` written to disk.
+    /// Findings/testcases are separate and are never discarded by this limit.
+    #[arg(long = "max-corpus-mb", default_value_t = 64, value_parser = parse_positive_mib)]
+    pub max_corpus_mb: usize,
 
     /// Explicit discovery-cache file, overriding the default
     /// `<work-dir>/discovery-cache.json`. Pin it to a stable absolute path so the
@@ -853,9 +874,36 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     for note in crate::auto::config::apply(&mut args, &path).map_err(|e| anyhow::anyhow!("{e}"))? {
         gfeprintln!("govfuzz auto: {note}");
     }
+    if args.max_corpus_mb == 0 {
+        anyhow::bail!("--max-corpus-mb must be at least 1");
+    }
     let work_state = crate::auto::work_state::prepare(&work, args.resume)
         .with_context(|| format!("prepare generated state under {}", work.display()))?;
     gfeprintln!("govfuzz auto: work-directory state: {work_state}");
+    // Repair work directories produced by older releases that retained one
+    // private Cargo target tree per Rust harness. This preserves result.json,
+    // generated source, findings, corpora, and the final replayable executable.
+    let compacted = crate::auto::storage::compact_build_caches(&work)
+        .with_context(|| format!("compact transient build caches under {}", work.display()))?;
+    if compacted.reclaimed_bytes() > 0 {
+        gfeprintln!(
+            "govfuzz auto: reclaimed {} from {} stale Rust build cache(s); replay binaries and findings preserved",
+            crate::auto::storage::human_bytes(compacted.reclaimed_bytes()),
+            compacted.removed_paths,
+        );
+    }
+    crate::fuzz::set_auto_corpus_limit_mib(args.max_corpus_mb);
+    let output_budget = crate::auto::storage::WorkDirBudget::new(&work, args.max_work_dir_mb)
+        .with_context(|| format!("measure work directory {}", work.display()))?;
+    if output_budget.exhausted() {
+        gfeprintln!(
+            "govfuzz auto: work directory is already {} (limit {}); no new targets will start. \
+             Use `govfuzz clean {} --compact`, raise --max-work-dir-mb, or pass 0 to disable the cap.",
+            crate::auto::storage::human_bytes(output_budget.last_bytes()),
+            crate::auto::storage::human_bytes(output_budget.max_bytes()),
+            work.display(),
+        );
+    }
     if let Err(error) = crate::support_report::write_auto_context(&work, &args, work_state) {
         gfeprintln!("warning: could not checkpoint privacy-safe support context: {error}");
     }
@@ -1919,6 +1967,14 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                 // seeded with resumed successes so a resumed run honours the same cap.
                 let mut fuzz_successes = already_fuzzed;
                 for (i, candidate) in candidates.into_iter().enumerate() {
+                    if output_budget.exhausted() {
+                        console.println(&format!(
+                            "govfuzz auto: --max-work-dir-mb reached at {}; stopping after {} of {total} target(s) and writing the report",
+                            crate::auto::storage::human_bytes(output_budget.last_bytes()),
+                            results.len(),
+                        ));
+                        break;
+                    }
                     // The operator pressed `q`: stop handing out candidates. Every
                     // target completed so far is already persisted, and the run
                     // continues into reporting rather than dying with the process.
@@ -2076,6 +2132,18 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                         )
                     })?;
                     results.push(result);
+                    if output_budget
+                        .checkpoint(&work)
+                        .with_context(|| format!("measure work directory {}", work.display()))?
+                    {
+                        console.println(&format!(
+                            "govfuzz auto: --max-work-dir-mb reached at {} (limit {}); \
+                             preserving this target and stopping before the next",
+                            crate::auto::storage::human_bytes(output_budget.last_bytes()),
+                            crate::auto::storage::human_bytes(output_budget.max_bytes()),
+                        ));
+                        break;
+                    }
                 }
                 results
             } else {
@@ -2092,6 +2160,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
                     &status,
                     &console,
                     live_tty,
+                    &output_budget,
                 )?
             };
             Ok(results)
@@ -2166,8 +2235,15 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
             console.println(&format!(
                 "govfuzz auto: --force: skipping the forced pass over {} target(s) — \
                  --campaign-time is already spent. The unforced results stand; raise \
-                 --campaign-time to give forcing its own budget.",
+                --campaign-time to give forcing its own budget.",
                 retry.len()
+            ));
+        } else if output_budget.exhausted() {
+            console.println(&format!(
+                "govfuzz auto: --force: skipping the forced pass over {} target(s) — \
+                 --max-work-dir-mb is already reached at {}",
+                retry.len(),
+                crate::auto::storage::human_bytes(output_budget.last_bytes()),
             ));
         } else if cap_left == Some(0) {
             console.println(
@@ -2485,7 +2561,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     let finished_at = Utc::now().to_rfc3339();
     crate::auto::discovery::gfprof("auto:post_sweep", _tpost);
     let _twr = std::time::Instant::now();
-    write_reports(
+    write_reports_with_output_limit(
         &path,
         &results,
         &work,
@@ -2498,6 +2574,7 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         args.static_dynamic,
         args.force,
         stopped_by_operator,
+        output_budget.exhausted(),
     )?;
     crate::auto::discovery::gfprof("auto:write_reports", _twr);
 
@@ -2532,6 +2609,9 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
 
     let rendered = summary.render();
     gfeprintln!();
+    // Findings are the operator's primary deliverable: show the severe digest
+    // before campaign mechanics and blocker diagnostics.
+    gfeprint!("{}", crate::auto::triage::render_top_findings(&work, 8));
     gfeprint!("{rendered}");
     // Persist the same block next to the reports so it survives the
     // scrollback and can be grepped/attached later.
@@ -2574,10 +2654,8 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
         }
     }
 
-    // End-of-run UX: the most severe findings (what matters, with a reproduce command)
-    // followed by a next-steps triage (aggregate failure causes → the exact lever),
-    // so the operator doesn't have to open run.json / the SARIF to know what to do.
-    gfeprint!("{}", crate::auto::triage::render_top_findings(&work, 8));
+    // End-of-run UX: aggregate failure causes → the exact lever. The findings
+    // digest is intentionally printed before the summary above.
     gfeprint!(
         "{}",
         crate::auto::triage::render_triage(&crate::auto::triage::TriageInputs {
@@ -2598,6 +2676,24 @@ fn run_inner(mut args: AutoArgs) -> Result<i32> {
     // fuzz run (the campaign already succeeded), so it only warns.
     if args.sbom {
         emit_campaign_sbom(&path, &work);
+    }
+
+    // Normal completion performs the same evidence-preserving compaction offered
+    // by `govfuzz clean --compact`. Failed/interrupted runs can invoke that command
+    // later; findings, reports, corpora, checkpoints, source, and replay binaries
+    // are never part of this automatic cleanup.
+    match crate::auto::storage::compact_work_dir(&work) {
+        Ok(compacted) if compacted.reclaimed_bytes() > 0 => gfeprintln!(
+            "govfuzz auto: final cleanup reclaimed {} from {} disposable path(s)",
+            crate::auto::storage::human_bytes(compacted.reclaimed_bytes()),
+            compacted.removed_paths,
+        ),
+        Ok(_) => {}
+        Err(error) => gfeprintln!(
+            "warning: final work-directory cleanup failed for {}: {error}; run `govfuzz clean {} --compact` later",
+            work.display(),
+            work.display(),
+        ),
     }
 
     // Keep this as the final terminal feedback: it is the handoff list an
@@ -3054,6 +3150,7 @@ fn run_parallel_sweep(
     status: &std::sync::Arc<crate::auto::run_status::RunStatus>,
     console: &crate::auto::dashboard::Console,
     live_tty: bool,
+    output_budget: &crate::auto::storage::WorkDirBudget,
 ) -> Result<Vec<crate::auto::attempt::AttemptResult>> {
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Mutex;
@@ -3152,6 +3249,10 @@ fn run_parallel_sweep(
         for slot in 0..worker_count {
             scope.spawn(move || loop {
                 if stopped.load(Ordering::SeqCst) {
+                    break;
+                }
+                if output_budget.exhausted() {
+                    stopped.store(true, Ordering::SeqCst);
                     break;
                 }
                 // `q`: finish what is in flight, start nothing new.
@@ -3305,24 +3406,60 @@ fn run_parallel_sweep(
                 // handed back to the final collector. This is the difference
                 // between preserving completed parallel targets and losing the
                 // whole batch when the parent is killed before all workers join.
-                if let Ok(completed) = &result {
-                    crate::auto::report::persist_target_result(work, completed, options.force);
-                    let mut checkpoint = dependency_checkpoint.lock().unwrap();
-                    if let Err(error) = crate::auto::report::checkpoint_dependency_result(
-                        source_root,
-                        work,
-                        &mut checkpoint,
-                        completed,
-                    ) {
+                if result.is_ok() {
+                    let completed_id;
+                    let dependency_result;
+                    {
+                        let completed = result.as_ref().expect("checked Ok above");
+                        completed_id = completed.candidate.harness_id.clone();
+                        crate::auto::report::persist_target_result(work, completed, options.force);
+                        let mut checkpoint = dependency_checkpoint.lock().unwrap();
+                        dependency_result = crate::auto::report::checkpoint_dependency_result(
+                            source_root,
+                            work,
+                            &mut checkpoint,
+                            completed,
+                        );
+                    }
+                    if let Err(error) = dependency_result {
                         let _g = stderr_lock.lock().unwrap();
                         console.println(&format!(
                             "warning: could not checkpoint offline requirements after {}: {error:#}",
-                            completed.candidate.harness_id
+                            completed_id
                         ));
                         result = Err(anyhow::anyhow!(
                             "could not checkpoint offline requirements after {}: {error:#}",
-                            completed.candidate.harness_id
+                            completed_id
                         ));
+                    }
+                    if result.is_ok() {
+                        let was_exhausted = output_budget.exhausted();
+                        match output_budget.checkpoint(work) {
+                            Ok(true) => {
+                                stopped.store(true, Ordering::SeqCst);
+                                if !was_exhausted {
+                                    let _g = stderr_lock.lock().unwrap();
+                                    console.println(&format!(
+                                        "govfuzz auto: --max-work-dir-mb reached at {} (limit {}); \
+                                         preserving in-flight targets and starting no new ones",
+                                        crate::auto::storage::human_bytes(output_budget.last_bytes()),
+                                        crate::auto::storage::human_bytes(output_budget.max_bytes()),
+                                    ));
+                                }
+                            }
+                            Ok(false) => {}
+                            Err(error) => {
+                                let _g = stderr_lock.lock().unwrap();
+                                console.println(&format!(
+                                    "warning: could not measure work directory after {}: {error}",
+                                    completed_id
+                                ));
+                                result = Err(anyhow::anyhow!(
+                                    "could not enforce --max-work-dir-mb after {}: {error}",
+                                    completed_id
+                                ));
+                            }
+                        }
                     }
                 }
                 // The collector below returns the FIRST error and discards every
@@ -3341,6 +3478,8 @@ fn run_parallel_sweep(
     if done < n {
         let why = if status.quitting() {
             "operator pressed q"
+        } else if output_budget.exhausted() {
+            "--max-work-dir-mb reached"
         } else {
             "--max-targets success cap or --campaign-time deadline reached"
         };
@@ -3590,6 +3729,26 @@ impl AutoSummary {
         let harness_root = crate::auto::layout::harness_root(&self.work);
         let mut s = String::new();
 
+        let _ = writeln!(s, "GovFuzz findings");
+        let _ = writeln!(s, "  Findings:     {}", self.findings);
+        let _ = writeln!(
+            s,
+            "  START HERE:   {}",
+            self.work.join("FINDINGS.md").display()
+        );
+        let _ = writeln!(
+            s,
+            "  CSV index:    {}",
+            self.work.join("findings.csv").display()
+        );
+        if self.findings > 0 {
+            let _ = writeln!(
+                s,
+                "  Evidence:     {}/",
+                self.work.join("findings").display()
+            );
+        }
+        let _ = writeln!(s);
         let _ = writeln!(s, "GovFuzz auto summary");
         let _ = writeln!(s, "  Source:       {}", self.source.display());
         let _ = writeln!(s, "  Mode:         {}", self.mode.as_str());
@@ -3669,7 +3828,6 @@ impl AutoSummary {
         if !langs.is_empty() {
             let _ = writeln!(s, "  Languages:    {}", langs.join(", "));
         }
-        let _ = writeln!(s, "  Findings:     {}", self.findings);
         let _ = writeln!(s, "  Executions:   {}", self.executions);
         // #405: campaign throughput — executions ÷ measured fuzz wall. Shown
         // only when some wall was measured (a no-fuzz reporting run has none).
@@ -3696,7 +3854,7 @@ impl AutoSummary {
         }
 
         let _ = writeln!(s);
-        let _ = writeln!(s, "Output:");
+        let _ = writeln!(s, "Other output:");
         let _ = writeln!(s, "  report:    {}", auto_dir.join("run.md").display());
         let _ = writeln!(s, "             {}", auto_dir.join("run.json").display());
         let _ = writeln!(
@@ -3804,8 +3962,8 @@ fn capped_target_count(total: usize, max_targets: Option<usize>) -> usize {
     max_targets.map_or(total, |cap| total.min(cap))
 }
 
-/// Apply `--max-attempts` by taking the best candidates of EVERY language rather
-/// than the top of one flat ranking.
+/// Apply `--max-attempts` by taking candidates from every language and source
+/// file rather than the top of one flat ranking.
 ///
 /// Scores are comparable within a language, not across them, so a flat prefix
 /// can be entirely one lane. scrcpy is a C project whose Android server is
@@ -3813,8 +3971,9 @@ fn capped_target_count(total: usize, max_targets: Option<usize>) -> usize {
 /// not installed, all of them failed, and the 876 C targets underneath — the
 /// reason anyone fuzzes scrcpy — were never inspected. Round-robin by language,
 /// preserving rank order inside each, so a budget can never be spent entirely on
-/// one lane's doomed prefix. With a single language present this is exactly the
-/// old truncation.
+/// one lane's doomed prefix. Within a lane, source-file round-robin prevents ten
+/// methods on one unloadable class (for example a Ruby CLI missing Thor) from
+/// consuming the whole cap before an independent parser/helper file is tried.
 fn cap_candidates_across_languages(
     candidates: Vec<crate::auto::candidate::Candidate>,
     cap: usize,
@@ -3833,7 +3992,11 @@ fn cap_candidates_across_languages(
             .push((rank, candidate));
     }
     let mut queues: Vec<std::vec::IntoIter<(usize, crate::auto::candidate::Candidate)>> =
-        by_language.into_values().map(Vec::into_iter).collect();
+        by_language
+            .into_values()
+            .map(diversify_candidates_across_sources)
+            .map(Vec::into_iter)
+            .collect();
     // Start with the lane holding the overall top-ranked candidate so the single
     // best target is still attempted first.
     queues.sort_by_key(|q| {
@@ -3863,6 +4026,44 @@ fn cap_candidates_across_languages(
     // candidates survive the cap, not the order they are tried in.
     picked.sort_by_key(|(rank, _)| *rank);
     picked.into_iter().map(|(_, candidate)| candidate).collect()
+}
+
+fn diversify_candidates_across_sources(
+    candidates: Vec<(usize, crate::auto::candidate::Candidate)>,
+) -> Vec<(usize, crate::auto::candidate::Candidate)> {
+    use std::collections::BTreeMap;
+    let mut by_source: BTreeMap<
+        std::path::PathBuf,
+        Vec<(usize, crate::auto::candidate::Candidate)>,
+    > = BTreeMap::new();
+    for candidate in candidates {
+        by_source
+            .entry(candidate.1.source_path.clone())
+            .or_default()
+            .push(candidate);
+    }
+    let mut queues: Vec<_> = by_source.into_values().map(Vec::into_iter).collect();
+    queues.sort_by_key(|queue| {
+        queue
+            .as_slice()
+            .first()
+            .map(|(rank, _)| *rank)
+            .unwrap_or(usize::MAX)
+    });
+    let mut diversified = Vec::new();
+    loop {
+        let mut progressed = false;
+        for queue in &mut queues {
+            if let Some(candidate) = queue.next() {
+                diversified.push(candidate);
+                progressed = true;
+            }
+        }
+        if !progressed {
+            break;
+        }
+    }
+    diversified
 }
 
 /// Default candidate concurrency: half the host's parallelism, at least 1.
@@ -4865,6 +5066,36 @@ mod tests {
     }
 
     #[test]
+    fn output_limits_have_safe_defaults_and_parse_overrides() {
+        use clap::Parser as _;
+        #[derive(clap::Parser)]
+        struct TestCli {
+            #[command(flatten)]
+            auto: AutoArgs,
+        }
+        let defaults = TestCli::try_parse_from(["govfuzz", "tree"]).unwrap().auto;
+        assert_eq!(
+            defaults.max_work_dir_mb,
+            crate::auto::storage::DEFAULT_MAX_WORK_DIR_MIB
+        );
+        assert_eq!(defaults.max_corpus_mb, 64);
+
+        let set = TestCli::try_parse_from([
+            "govfuzz",
+            "tree",
+            "--max-work-dir-mb",
+            "1024",
+            "--max-corpus-mb",
+            "16",
+        ])
+        .unwrap()
+        .auto;
+        assert_eq!(set.max_work_dir_mb, 1024);
+        assert_eq!(set.max_corpus_mb, 16);
+        assert!(TestCli::try_parse_from(["govfuzz", "tree", "--max-corpus-mb", "0"]).is_err());
+    }
+
+    #[test]
     fn lang_selector_maps_every_variant_to_its_lane() {
         use crate::auto::candidate::LangSelector;
         assert_eq!(LangSelector::Ada.to_lang(), Lang::Ada);
@@ -5408,7 +5639,7 @@ mod tests {
             "the top-ranked target still leads"
         );
 
-        // One language present: identical to the old truncation.
+        // One language and one source file: identical to the old truncation.
         let single: Vec<_> = candidates
             .iter()
             .filter(|c| c.lang == Lang::C)
@@ -5417,6 +5648,28 @@ mod tests {
         let capped = cap_candidates_across_languages(single.clone(), 7);
         let ids = |cs: &[Candidate]| cs.iter().map(|c| c.harness_id.clone()).collect::<Vec<_>>();
         assert_eq!(ids(&capped), ids(&single[..7]));
+
+        // One language but several files: an unloadable class/file cannot spend
+        // every attempt before independent surfaces are inspected.
+        let mut ruby = Vec::new();
+        for i in 0..8 {
+            let mut item = candidate("/p/lib/cli.rb", i + 1, &format!("H-UCLI{i}"));
+            item.lang = Lang::Ruby;
+            item.score = 100 - i as i32;
+            ruby.push(item);
+        }
+        for (index, source) in ["/p/lib/pane.rb", "/p/lib/project.rb"].iter().enumerate() {
+            let mut item = candidate(source, 1, &format!("H-UOTHER{index}"));
+            item.lang = Lang::Ruby;
+            item.score = 80 - index as i32;
+            ruby.push(item);
+        }
+        let capped = cap_candidates_across_languages(ruby, 3);
+        let files = capped
+            .iter()
+            .map(|candidate| candidate.source_path.as_path())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(files.len(), 3, "attempt cap must diversify source files");
 
         // A cap at or above the candidate count changes nothing.
         assert_eq!(

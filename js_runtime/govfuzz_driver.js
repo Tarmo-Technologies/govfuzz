@@ -208,9 +208,22 @@ function reportFinding(err, rule) {
 }
 
 let runOne = null;
+let targetEntered = false;
 // The bytes of the input currently being processed (latin1), for the sink taint
 // check. Set per input before the target runs.
 let currentInput = '';
+
+function markTargetEntry() {
+  if (targetEntered) return;
+  const path = process.env.GOVFUZZ_TARGET_ENTRY_SHM;
+  if (!path) return;
+  try {
+    fs.writeFileSync(path, Buffer.from([1]));
+    targetEntered = true;
+  } catch (_) {
+    // Entry evidence must never change target behavior.
+  }
+}
 
 // --- taint-confirmed sink detectors (the JS analog of govfuzz's native GF-431
 // command-injection oracle) --------------------------------------------------
@@ -320,10 +333,13 @@ function checkPrototypePollution() {
   }
 }
 
-function runInput(buf) {
+async function runInput(buf) {
   currentInput = buf.toString('latin1');
   try {
-    runOne(buf);
+    // Await thenables as well as native promises. This keeps rejected async
+    // parser calls inside the same finding classifier and, for path-backed
+    // targets, keeps the materialized resource alive until the read completes.
+    await runOne(buf);
   } catch (err) {
     const c = classify(err);
     if (c.finding) {
@@ -346,7 +362,7 @@ function runInput(buf) {
 // --- harness resolution -----------------------------------------------------
 // The launcher sets GOVFUZZ_JS_MODULE (absolute path to the target) and
 // GOVFUZZ_JS_EXPORT (the dotted export path, e.g. "parse" or "Foo.bar") and
-// GOVFUZZ_JS_ARG ("buffer" | "string"). `runOne(buf)` decodes and calls it.
+// GOVFUZZ_JS_ARG ("buffer" | "string" | "path"). `runOne(buf)` decodes and calls it.
 function loadRunOne() {
   const modPath = process.env.GOVFUZZ_JS_MODULE;
   const exportPath = process.env.GOVFUZZ_JS_EXPORT || '';
@@ -383,9 +399,34 @@ function loadRunOne() {
   }
   const bound = fn.bind(recv);
   if (argKind === 'string') {
-    return (buf) => bound(buf.toString('utf8'));
+    return (buf) => {
+      const arg = buf.toString('utf8');
+      markTargetEntry();
+      return bound(arg);
+    };
   }
-  return (buf) => bound(buf);
+  if (argKind === 'path') {
+    return async (buf) => {
+      // An expert feeds file parsers by materializing the bytes, not by treating
+      // arbitrary bytes as a filename. Create the resource before the entry
+      // checkpoint so setup failure can never masquerade as target execution.
+      const os = require('os');
+      const path = require('path');
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'govfuzz-js-'));
+      const inputPath = path.join(dir, 'input');
+      try {
+        fs.writeFileSync(inputPath, buf);
+        markTargetEntry();
+        return await bound(inputPath);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    };
+  }
+  return (buf) => {
+    markTargetEntry();
+    return bound(buf);
+  };
 }
 
 // --- framed protocol --------------------------------------------------------
@@ -421,7 +462,7 @@ async function framedLoop() {
     if (n < 0) break;
     const data = n > 0 ? readExact(0, n) : Buffer.alloc(0);
     if (data === null) break;
-    runInput(data);
+    await runInput(data);
     await covFold();
     fs.writeSync(ctrl, one, 0, 1, null); // sync byte
   }
@@ -476,8 +517,9 @@ function main() {
       input = Buffer.alloc(0);
     }
   }
-  runInput(input);
-  covFold().then(() => process.exit(0));
+  runInput(input)
+    .then(() => covFold())
+    .then(() => process.exit(0));
 }
 
 main();

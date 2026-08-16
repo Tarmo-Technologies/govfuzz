@@ -1,0 +1,17 @@
+language	repo	commit	expert_harness	expert_surface	pre_fix_auto_surface	expert_lever
+ada	AdaCore/Ada_Drivers_Library	81c04806d267fc12116a6f746c8e05012cef0484	expert/ada/adl_basename.adb	Filesystem.Fat.Basename	Filesystem.Fat.Basename	direct bounded string mapping
+c	nothings/stb	31c1ad37456438565541f4919958214b6e762fb4	expert/c/stb_image.c	stbi_load_from_memory	stbi_zlib_decode_buffer	public end-to-end image decoder plus cleanup
+cpp	nlohmann/json	227c5cdfb106e235796ca70bd90e68dd585b6e78	expert/cpp/nlohmann_json.cc	nlohmann::json::parse	operator literal _json	public parser rather than literal helper
+rust	ajeetdsouza/zoxide	cf086b057dfcc7c306450c70829b2788a3e64219	expert/rust/zoxide_db.rs	Database::open_dir	current_dir	materialized database file and deserialize path
+java	TheAlgorithms/Java	ad1de6b0bc2c7a6892c83eaf2a3b1a3755e82289	expert/java/TheAlgorithmsPostfix.java	PostfixEvaluator.evaluatePostfix	PostfixEvaluator.evaluatePostfix	direct UTF-8 mapping
+python	public-apis/public-apis	c4cfee67d61923e500d64ca382f499ff93e52ba8	expert/python/public_apis_links.py	find_links_in_text	get_host_from_link	regex extraction rather than shallow host splitting
+perl	brendangregg/FlameGraph	41fee1f99f9276008b7cd112fca19dc3ea84ac32	expert/perl/flamegraph_parse_integer.pl	parse_integer	parse_integer	direct scalar mapping
+go	spf13/cobra	adbc8813901bba65827259daa8e22ff94ec1f30e	expert/go/cobra_execute_test.go	Command.Execute	AddTemplateFunc	constructed command state and NUL-delimited arguments
+cobol	jmsdnns/webbol	df59fc9070c4fa6ca30843f8c9b316bc5de13687	expert/cobol/webbol_file_ops.c	FILE-OPS	FILE-OPS	materialized input file and output operands
+fortran	wavebitscientific/functional-fortran	2457a66531b3b803db36928fec21d74a20434830	expert/fortran/functional_arrstr.f90	functional::arrstr	functional::arrstr	assumed-shape descriptor with full input extent
+csharp	jasontaylordev/CleanArchitecture	43831e20374677b81f93bb08923eff3245b7195f	expert/csharp/CleanArchitectureColour.cs	Colour.From	Colour.From	separate instrumented library and documented rejection
+js	affaan-m/ECC	4e973d3eaf92d97f8d2e2d8abb39d8bdc8711b38	expert/js/ecc_read_json.mjs	readJson	contextMdPath	materialized JSON file rather than path construction
+ts	vuejs/vue	9e88707940088cb1f4cd7dd210c9168a50dc347c	expert/ts/vue_parse_filters.ts	parseFilters	baseWarn	compiler parser rather than logging helper
+ruby	tmuxinator/tmuxinator	6d021f7befee0278155d16444bb8323008299997	expert/ruby/tmuxinator_project.rb	Project.load	blocked in Cli	Bundler dependencies plus materialized YAML config
+lua	LazyVim/LazyVim	459a4c3b1059671e766a46c7cc223827dc67e3d0	expert/lua/lazyvim_snippet.lua	M.snippet_fix	M.add_missing_snippet_docs	pure snippet transform with minimal vim grammar stub
+php	Seldaek/monolog	57eb1028342134e701e77c617565d51b6e5a2a53	expert/php/monolog_chrome.php	ChromePHPFormatter::format	ChromePHPFormatter::formatBatch	construct LogRecord instead of untyped array elements

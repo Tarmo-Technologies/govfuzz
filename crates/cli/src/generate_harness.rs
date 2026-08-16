@@ -9785,6 +9785,11 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
             );
         }
     }
+    // A direct call should not fabricate policy/callback arguments the library
+    // already defaulted. Resolve a concrete template specialization first, then
+    // retain only the required prefix so ranking, preflight and emitted calls use
+    // the same minimal public API contract.
+    function.params = function.effective_required_params();
 
     let id = args
         .id
@@ -9949,6 +9954,7 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         &target_includes,
         &target_includes_dirs,
     );
+    specialize_cpp_default_template_owner(&mut function, &type_defs);
     // Tree-wide fallback (see the C path): resolve types the include closure
     // left opaque, without overriding any in-scope definition.
     if let Some(tree) = &args.tree_type_defs {
@@ -10244,6 +10250,79 @@ fn run_cpp_direct(args: &GenerateHarnessArgs) -> Result<()> {
         println!("  Makefile -> {}", result.makefile.display());
     }
     Ok(())
+}
+
+/// A namespace-visible alias such as `using json = basic_json<>` proves that the
+/// selected class template has a legal empty/default specialization. Structural
+/// parsing sees the injected class name (`basic_json`) inside its body, which is
+/// not nameable as a type from the harness. Re-spell the owner and injected-class
+/// return/parameter references as `basic_json<>`; the surrounding namespace path
+/// (or generated `using namespace`) remains unchanged.
+fn specialize_cpp_default_template_owner(
+    function: &mut cpp_parser::CppFunction,
+    type_defs: &[c_parser::CTypeDefs],
+) -> bool {
+    let Some(class_name) = function.api.class_name.clone() else {
+        return false;
+    };
+    if class_name.contains('<') {
+        return false;
+    }
+    let expected = format!("{class_name}<>");
+    let compact = |value: &str| {
+        value
+            .chars()
+            .filter(|character| !character.is_ascii_whitespace())
+            .collect::<String>()
+    };
+    let proven = type_defs
+        .iter()
+        .flat_map(|defs| &defs.typedefs)
+        .any(|alias| {
+            let underlying = compact(&alias.underlying);
+            underlying == expected || underlying.ends_with(&format!("::{expected}"))
+        });
+    if !proven {
+        return false;
+    }
+    let specialized = expected;
+    if let Some(last) = function.qualifier_path.last_mut() {
+        if last == &class_name {
+            *last = specialized.clone();
+        }
+    }
+    function.api.class_name = Some(specialized.clone());
+    function.return_type = replace_cpp_identifier(&function.return_type, &class_name, &specialized);
+    for parameter in &mut function.params {
+        parameter.cpp_type = replace_cpp_identifier(&parameter.cpp_type, &class_name, &specialized);
+    }
+    true
+}
+
+fn replace_cpp_identifier(raw: &str, needle: &str, replacement: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    let mut token = String::new();
+    let flush = |token: &mut String, out: &mut String| {
+        if token.is_empty() {
+            return;
+        }
+        if token == needle {
+            out.push_str(replacement);
+        } else {
+            out.push_str(token);
+        }
+        token.clear();
+    };
+    for character in raw.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' {
+            token.push(character);
+        } else {
+            flush(&mut token, &mut out);
+            out.push(character);
+        }
+    }
+    flush(&mut token, &mut out);
+    out
 }
 
 struct CppHarnessGenerationCommon {
@@ -10631,8 +10710,8 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
     let base_defs = type_model::TypeRegistry::from_defs(type_defs.iter());
     let mut blocked = std::collections::HashSet::new();
     for function in functions {
-        let parameter_types = function
-            .params
+        let effective_params = function.effective_required_params();
+        let parameter_types = effective_params
             .iter()
             .map(|parameter| parameter.cpp_type.clone())
             .collect::<Vec<_>>();
@@ -10656,8 +10735,10 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
             .clone()
             .with_cpp_lookup_scopes(scopes.clone())
             .with_default_constructible_classes(defaults.clone());
+        let mut effective_function = function.clone();
+        effective_function.params = effective_params.clone();
         let recipes = resolve_cpp_parameter_constructions(
-            function,
+            &effective_function,
             functions,
             &class_infos,
             &base_registry,
@@ -10669,7 +10750,7 @@ pub(crate) fn cpp_known_blocked_signatures_for_discovery(
             .with_cpp_lookup_scopes(scopes)
             .with_default_constructible_classes(defaults)
             .with_class_constructions(recipes);
-        let known_blocked = function.params.iter().any(|parameter| {
+        let known_blocked = effective_params.iter().any(|parameter| {
             if harness_gen::cpp_generate::cpp_parameter_type_supported_with_registry(
                 &parameter.cpp_type,
                 &registry,
@@ -19528,6 +19609,39 @@ Codec *make_codec(int variant) { (void)variant; return nullptr; }
                 .unwrap();
             assert!(status.success(), "verified public default must compile");
         }
+    }
+
+    #[test]
+    fn cpp_default_alias_proves_nameable_class_template_specialization() {
+        let source = r#"
+LIB_JSON_TPL_DECLARATION
+class basic_json
+{
+  public:
+    template<typename InputType>
+    static basic_json parse(InputType&& input, bool strict = true)
+    {
+        (void)input; (void)strict; return {};
+    }
+};
+"#;
+        let mut function = cpp_parser::parse_cpp_functions(source)
+            .expect("functions parse")
+            .into_iter()
+            .find(|candidate| candidate.name == "parse")
+            .expect("parse member");
+        function.params = function.effective_required_params();
+        let defs = cpp_parser::parse_cpp_type_defs("using json = basic_json<>;")
+            .expect("default alias parses");
+        assert!(super::specialize_cpp_default_template_owner(
+            &mut function,
+            &[defs]
+        ));
+        assert_eq!(function.qualifier_path, ["basic_json<>"]);
+        assert_eq!(function.api.class_name.as_deref(), Some("basic_json<>"));
+        assert_eq!(function.return_type, "basic_json<>");
+        assert_eq!(function.params.len(), 1);
+        assert_eq!(function.params[0].cpp_type, "std::string &&");
     }
 
     /// #99: an opaque class parameter that is not default-constructible is built

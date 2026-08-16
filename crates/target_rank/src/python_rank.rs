@@ -41,6 +41,11 @@ pub struct PythonScoreBreakdown {
     pub needs_receiver: i32,
     /// Penalty for a getter / `__repr__` / writer / setter name.
     pub getter_or_writer_name: i32,
+    /// Penalty for wrappers whose input is a path/filename. Until the lane
+    /// materializes a resource, a pure text parser is both deeper and more honest.
+    pub resource_path_wrapper: i32,
+    /// Penalty for logging/error/reporting helpers that merely accept a string.
+    pub low_value_helper_name: i32,
     /// Penalty when there is no attacker-controlled channel at all.
     pub no_byte_channel: i32,
     pub total: i32,
@@ -119,16 +124,15 @@ fn is_byte_channel(p: &python_parser::PyParam) -> bool {
     INPUT_NAMES.contains(&n.as_str())
 }
 
-fn name_is_parser(lower: &str) -> bool {
+fn name_is_parser(name: &str) -> bool {
     const KW: &[&str] = &[
         "parse",
         "decode",
-        "loads",
         "load",
         "read",
         "deserialize",
         "unmarshal",
-        "from_",
+        "from",
         "scan",
         "tokenize",
         "lex",
@@ -137,13 +141,14 @@ fn name_is_parser(lower: &str) -> bool {
         "consume",
         "ingest",
         "process",
-        "handle",
         "deserialise",
-        "fromstring",
-        "frombytes",
-        "parse_",
+        "find",
+        "extract",
+        "match",
+        "validat",
+        "normaliz",
     ];
-    KW.iter().any(|k| lower.contains(k))
+    crate::name_semantics::has_action_stem(name, KW)
 }
 
 fn name_is_getter_or_writer(lower: &str) -> bool {
@@ -169,7 +174,7 @@ fn score(f: &PyFunction) -> (PythonScoreBreakdown, InputReachability) {
         b.no_byte_channel = -25;
     }
 
-    if name_is_parser(&lower) {
+    if name_is_parser(&f.name) {
         b.parser_name = 25;
     }
 
@@ -191,6 +196,19 @@ fn score(f: &PyFunction) -> (PythonScoreBreakdown, InputReachability) {
     if name_is_getter_or_writer(&lower) {
         b.getter_or_writer_name = -20;
     }
+    if crate::name_semantics::is_low_value_helper(&f.name) {
+        b.low_value_helper_name = -35;
+    }
+    if f.params.iter().any(|param| {
+        let name = param.name.to_ascii_lowercase();
+        matches!(
+            name.as_str(),
+            "path" | "filepath" | "file_path" | "filename" | "file_name"
+        ) || name.ends_with("_path")
+            || name.ends_with("_filename")
+    }) {
+        b.resource_path_wrapper = -20;
+    }
 
     b.total = b.byte_channel_param
         + b.parser_name
@@ -198,6 +216,8 @@ fn score(f: &PyFunction) -> (PythonScoreBreakdown, InputReachability) {
         + b.callable_without_receiver
         + b.needs_receiver
         + b.getter_or_writer_name
+        + b.resource_path_wrapper
+        + b.low_value_helper_name
         + b.no_byte_channel;
 
     let reach = if has_channel {
@@ -263,5 +283,46 @@ mod tests {
         let t = rank("class C:\n    @staticmethod\n    def decode(data: bytes): pass\n");
         assert!(t[0].is_static);
         assert_eq!(t[0].name, "C.decode");
+    }
+
+    #[test]
+    fn extractor_outranks_shallow_getter() {
+        let t = rank(
+            "def get_host_from_link(link): return link\n\
+             def find_links_in_text(text): return []\n",
+        );
+        assert_eq!(t[0].name, "find_links_in_text");
+        assert!(t[0].score > t[1].score);
+    }
+
+    #[test]
+    fn pure_text_extractor_outranks_file_wrapper_without_materialization() {
+        let t = rank(
+            "def find_links_in_file(filename: str): return []\n\
+             def find_links_in_text(text: str): return []\n",
+        );
+        assert_eq!(t[0].name, "find_links_in_text");
+        let wrapper = t
+            .iter()
+            .find(|target| target.name == "find_links_in_file")
+            .unwrap();
+        assert!(wrapper.breakdown.resource_path_wrapper < 0);
+    }
+
+    #[test]
+    fn incidental_load_and_low_value_debug_names_are_demoted() {
+        let t = rank(
+            "def download_audio(url: str): return url\n\
+             def debug(message: str): return message\n\
+             def parse_audio(data: bytes): return data\n",
+        );
+        assert_eq!(t[0].name, "parse_audio");
+        let download = t
+            .iter()
+            .find(|target| target.name == "download_audio")
+            .unwrap();
+        assert_eq!(download.breakdown.parser_name, 0);
+        let debug = t.iter().find(|target| target.name == "debug").unwrap();
+        assert!(debug.breakdown.low_value_helper_name < 0);
     }
 }

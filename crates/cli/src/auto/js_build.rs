@@ -77,13 +77,17 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
         Ok(p) => p,
         Err(_) => candidate.source_path.clone(),
     };
+    let load_cwd = crate::auto::layout::harness_dir(work_dir, harness_id);
+    if let Err(error) = std::fs::create_dir_all(&load_cwd) {
+        return JsBuildResult::Failed(format!("create {}: {error}", load_cwd.display()));
+    }
 
     // Syntax + load smoke-test: the module must parse AND `require` at runtime.
     // `node -c` only checks syntax; a module whose `require('...')` cannot resolve
     // (an npm dependency not installed — `side-channel`, etc.) parses fine but dies
     // at startup, which would silently fuzz 0 inputs. Skip it cleanly with the
     // reason (mirrors the Python lane's import check).
-    if let Some(reason) = js_module_load_error(&module_abs) {
+    if let Some(reason) = js_module_load_error(&module_abs, &load_cwd) {
         return JsBuildResult::Skip(reason);
     }
 
@@ -92,10 +96,10 @@ pub fn build_js_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
 
 /// `None` if the module parses and `require`s cleanly, else a skip reason. Catches
 /// both syntax errors and unresolved runtime `require`s (missing npm dependencies).
-fn js_module_load_error(module_abs: &Path) -> Option<String> {
+fn js_module_load_error(module_abs: &Path, load_cwd: &Path) -> Option<String> {
     // `node -c` first (cheap, no side effects) for a precise syntax message.
     let mut syntax_check = Command::new("node");
-    syntax_check.arg("-c").arg(module_abs);
+    syntax_check.arg("-c").arg(module_abs).current_dir(load_cwd);
     // A syntax check reads USER JavaScript, so it gets a real budget rather than
     // the probe timeout — but a budget all the same.
     if let Ok(out) = crate::command_output::output_with_timeout(
@@ -116,7 +120,8 @@ fn js_module_load_error(module_abs: &Path) -> Option<String> {
         Command::new("node")
             .arg("-e")
             .arg("require(process.argv[1])")
-            .arg(module_abs),
+            .arg(module_abs)
+            .current_dir(load_cwd),
         Duration::from_secs(30),
     )
     .ok()?;
@@ -162,7 +167,7 @@ fn emit_js_harness(
          # inherits them across this exec. The driver records V8 precise block coverage\n\
          # into the file-backed GOVFUZZ_COV_SHM map and speaks the framed protocol.\n\
          # GOVFUZZ_JS_MODULE = the target module; GOVFUZZ_JS_EXPORT = the export path;\n\
-         # GOVFUZZ_JS_ARG = buffer|string (how the fuzz bytes reach the first param).\n\
+         # GOVFUZZ_JS_ARG = buffer|string|path (how fuzz bytes reach the first param).\n\
          GOVFUZZ_JS_MODULE=\"{module}\" \\\n\
          GOVFUZZ_JS_EXPORT=\"{export_path}\" \\\n\
          GOVFUZZ_JS_ARG=\"{arg}\" \\\n\
@@ -208,6 +213,7 @@ fn js_export_load_error(main_path: &Path, export_path: &str) -> Option<String> {
     let out = crate::command_output::output_with_timeout(
         Command::new(main_path)
             .env("GOVFUZZ_JS_LOAD_ONLY", "1")
+            .current_dir(main_path.parent().unwrap_or_else(|| Path::new(".")))
             .stdin(std::process::Stdio::null()),
         Duration::from_secs(30),
     )
@@ -365,7 +371,7 @@ pub fn build_ts_harness(candidate: &Candidate, work_dir: &Path, harness_id: &str
     }
     // Smoke-test the transpiled module parses AND loads (external node_modules
     // requires resolvable) — else it would fuzz 0 inputs. Skip cleanly otherwise.
-    if let Some(reason) = js_module_load_error(&out_js) {
+    if let Some(reason) = js_module_load_error(&out_js, &hdir) {
         return JsBuildResult::Skip(reason);
     }
     emit_js_harness(work_dir, harness_id, &runtime, &out_js, &func)
@@ -382,4 +388,70 @@ fn make_executable(path: &Path) -> std::io::Result<()> {
 #[cfg(not(unix))]
 fn make_executable(_path: &Path) -> std::io::Result<()> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_driver_checkpoints_immediately_before_the_selected_export() {
+        let runtime = locate_js_runtime().expect("js_runtime locatable in-tree");
+        let driver = std::fs::read_to_string(runtime.join("govfuzz_driver.js")).unwrap();
+        assert!(
+            driver.contains("markTargetEntry();\n      return bound(arg);"),
+            "string export call lacks an entry checkpoint"
+        );
+        assert!(
+            driver.contains("markTargetEntry();\n    return bound(buf);"),
+            "buffer export call lacks an entry checkpoint"
+        );
+        let write = driver.find("fs.writeFileSync(inputPath, buf);").unwrap();
+        let path_call = driver.find("return await bound(inputPath);").unwrap();
+        let checkpoint = driver[write..path_call]
+            .find("markTargetEntry();")
+            .map(|offset| write + offset)
+            .unwrap();
+        assert!(write < checkpoint && checkpoint < path_call);
+        assert!(driver.contains("fs.rmSync(dir, { recursive: true, force: true })"));
+        assert!(
+            driver.contains("await runOne(buf);"),
+            "promise rejections must pass through finding classification"
+        );
+    }
+
+    #[test]
+    fn async_path_target_keeps_materialized_input_until_promise_settles() {
+        let Some(node) = which::which("node").ok() else {
+            return;
+        };
+        let runtime = locate_js_runtime().expect("js_runtime locatable in-tree");
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("target.js");
+        let input = temp.path().join("input.bin");
+        std::fs::write(
+            &target,
+            "const fs = require('fs');\n\
+             exports.readLater = async function(filePath) {\n\
+               await new Promise((resolve) => setTimeout(resolve, 20));\n\
+               const data = fs.readFileSync(filePath);\n\
+               if (data.toString('utf8') !== 'kept alive') throw new Error('wrong data');\n\
+             };\n",
+        )
+        .unwrap();
+        std::fs::write(&input, b"kept alive").unwrap();
+        let output = Command::new(node)
+            .arg(runtime.join("govfuzz_driver.js"))
+            .arg(&input)
+            .env("GOVFUZZ_JS_MODULE", &target)
+            .env("GOVFUZZ_JS_EXPORT", "readLater")
+            .env("GOVFUZZ_JS_ARG", "path")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "async file target failed after cleanup: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }

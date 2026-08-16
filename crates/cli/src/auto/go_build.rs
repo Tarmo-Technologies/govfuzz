@@ -71,6 +71,7 @@ pub fn build_go_harness(
     // value — it exists for every Go type, and taking its address satisfies a
     // pointer receiver without passing nil (which would panic on first field
     // access — our fault, not the target's).
+    let state_feeder = target_rank::go_rank::find_stateful_byte_feeder(&func, &siblings);
     let receiver = match receiver_synthesis(&func, &siblings, force) {
         Ok(r) => r,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
@@ -94,7 +95,7 @@ pub fn build_go_harness(
 
     // Build the decode/call body; an unsupported required param type skips cleanly
     // (unforced) or is synthesized as its zero value (forced).
-    let call = match generate_call(&func, receiver.as_ref(), force) {
+    let call = match generate_call(&func, receiver.as_ref(), state_feeder, force) {
         Ok(c) => c,
         Err(reason) => return GoBuildResult::Failed { reason, skip: true },
     };
@@ -148,13 +149,14 @@ pub fn build_go_harness(
     // the harness can read per-input executed-block sets via `runtime/coverage` and
     // fold them into govfuzz's shared edge map — the same coverage-guided feedback
     // the C/Rust/Python/Perl lanes get. `atomic` is required by `WriteCounters`.
-    let run_build = |overlay: Option<&Path>, cover: bool| {
+    let coverage_patterns = coverage_package_patterns(&module_path, &import_path);
+    let run_build = |overlay: Option<&Path>, cover_pattern: Option<&str>| {
         let mut cmd = Command::new(&go);
         cmd.args(["build", "-o"]).arg(&bin);
         // Flags MUST precede the `.` package argument — `go build` stops parsing
         // flags at the first non-flag, so an `-overlay` placed after `.` is
         // silently treated as a package pattern and ignored.
-        if cover {
+        if let Some(pattern) = cover_pattern {
             cmd.args(["-cover", "-covermode=atomic"]);
             // `-cover` alone instruments only the packages being BUILT, which
             // here is just the generated harness `main` — the target library
@@ -162,7 +164,7 @@ pub fn build_go_harness(
             // left uninstrumented, so the lane's "real edge coverage" would
             // measure the harness fuzzing itself. `-coverpkg` widens
             // instrumentation to the target module.
-            cmd.arg(format!("-coverpkg={module_path}/..."));
+            cmd.arg(format!("-coverpkg={pattern}"));
         }
         if let Some(overlay) = overlay {
             cmd.arg(format!("-overlay={}", overlay.display()));
@@ -176,19 +178,36 @@ pub fn build_go_harness(
             std::time::Duration::from_secs(30 * 60),
         )
     };
-    let mut use_cover = true;
-    let mut build = run_build(None, use_cover);
-    // Never lose a target over the coverage instrumentation: if the `-cover` build
-    // fails where a plain one might not, retry black-box (the harness then folds no
-    // edges — graceful degradation to the old behavior).
-    if use_cover
-        && build
+    let build_failed = |build: &Result<std::process::Output, std::io::Error>| {
+        build
             .as_ref()
-            .is_ok_and(|out| !out.status.success() || !bin.is_file())
-    {
-        use_cover = false;
-        build = run_build(None, false);
-    }
+            .map_or(true, |out| !out.status.success() || !bin.is_file())
+    };
+    // Module-wide coverage is deepest, but real modules often contain unrelated
+    // platform-only commands/packages (`windows`, `iter`, generated tools). A
+    // `{module}/...` instrumentation failure used to jump directly to a blind
+    // build even though the selected package itself was perfectly coverable.
+    // Retry the exact imported package first: that is the scope an expert harness
+    // needs to prove and guide execution of the selected target body.
+    let build_with_coverage_fallback = |overlay: Option<&Path>| {
+        let mut patterns = coverage_patterns.iter();
+        let mut build = run_build(
+            overlay,
+            Some(patterns.next().expect("module coverage pattern")),
+        );
+        for pattern in patterns {
+            if !build_failed(&build) {
+                break;
+            }
+            build = run_build(overlay, Some(pattern));
+        }
+        if build_failed(&build) {
+            run_build(overlay, None)
+        } else {
+            build
+        }
+    };
+    let mut build = build_with_coverage_fallback(None);
     // Many modern modules DECLARE a newer `go` directive than the installed
     // toolchain but never use its features. Under GOTOOLCHAIN=local that
     // directive HARD-fails the build ("module … requires go >= 1.2x"), which
@@ -202,7 +221,7 @@ pub fn build_go_harness(
     });
     if version_gated {
         if let Some(overlay) = write_lowered_go_overlay(&auto_dir, &mod_root, &go) {
-            build = run_build(Some(&overlay), use_cover);
+            build = build_with_coverage_fallback(Some(&overlay));
         }
     }
     match build {
@@ -367,6 +386,18 @@ fn harness_module_path(module_path: &str) -> String {
     format!("{base}/govfuzzharness")
 }
 
+/// Coverage scopes in preference order. The module-wide pattern captures calls
+/// through sibling packages; the exact target package is the robust fallback
+/// when unrelated platform/generated packages make `{module}/...` unbuildable.
+fn coverage_package_patterns(module_path: &str, import_path: &str) -> Vec<String> {
+    let module = format!("{}/...", module_path.trim_end_matches('/'));
+    let mut patterns = vec![module];
+    if patterns[0] != import_path {
+        patterns.push(import_path.to_owned());
+    }
+    patterns
+}
+
 /// The placeholder version the harness `require`s the module under test at.
 ///
 /// The `replace` beside it points at the real tree, so this version is never
@@ -485,6 +516,19 @@ fn receiver_synthesis(
         }));
     }
 
+    // A public feeder followed by a zero-argument terminal is a real stateful
+    // construction path. The addressable zero value is initialized through the
+    // type's own API before the target call, so unlike an arbitrary `--force`
+    // receiver it is not labeled synthetic. Cobra's `Command.SetArgs -> Execute`
+    // is the canonical example and matches an expert harness's sequence.
+    if target_rank::go_rank::find_stateful_byte_feeder(func, siblings).is_some() {
+        return Ok(Some(GoReceiver {
+            setup: format!("\tvar recv tgt.{bare}\n"),
+            callee: "(&recv)".to_owned(),
+            forced: None,
+        }));
+    }
+
     if !force {
         return Err(format!(
             "Go method `{}` needs a receiver value and its type `{bare}` has no no-arg \
@@ -524,6 +568,7 @@ fn find_go_constructor<'a>(bare: &str, siblings: &'a [GoFunc]) -> Option<&'a GoF
 fn generate_call(
     func: &GoFunc,
     receiver: Option<&GoReceiver>,
+    state_feeder: Option<&GoFunc>,
     force: bool,
 ) -> Result<GoCall, String> {
     let n = func.params.len();
@@ -536,9 +581,28 @@ fn generate_call(
             forced.push(detail.clone());
         }
     }
+    if let Some(feeder) = state_feeder {
+        let receiver = receiver.ok_or_else(|| {
+            format!(
+                "Go state feeder `{}` requires a receiver for `{}`",
+                feeder.name, func.name
+            )
+        })?;
+        let input = decode_for_param(feeder, 0, true).ok_or_else(|| {
+            format!(
+                "unsupported Go state-feeder parameter type `{}` (skipped)",
+                feeder.params[0].ty
+            )
+        })?;
+        lines.push_str(&format!("\tstateInput := {input}\n"));
+        lines.push_str(&format!(
+            "\t{}.{}(stateInput)\n",
+            receiver.callee, feeder.name
+        ));
+    }
     for (i, p) in func.params.iter().enumerate() {
         let last = i + 1 == n;
-        let expr = match decode_for_type(&p.ty, last) {
+        let expr = match decode_for_param(func, i, last) {
             Some(expr) => expr,
             None if force => {
                 // No decoder for this type. The Go zero value exists for EVERY type,
@@ -570,6 +634,7 @@ fn generate_call(
         Some(receiver) => format!("{}.{}", receiver.callee, func.name),
         None => format!("tgt.{}", func.name),
     };
+    lines.push_str("\tgovfuzzMarkTargetEntry()\n");
     lines.push_str(&format!("\t{callee}({})\n", args.join(", ")));
     Ok(GoCall {
         body: lines,
@@ -706,6 +771,10 @@ fn decode_for_type(ty: &str, last: bool) -> Option<String> {
             }
         }
         "[]rune" => "[]rune(string(c.rest()))".to_owned(),
+        // Command/state-machine argument vectors use NUL as an unambiguous
+        // separator, matching the expert Cobra harness and preserving arbitrary
+        // spaces inside individual arguments.
+        "[]string" => "c.args()".to_owned(),
         "io.Reader" | "io.ReadCloser" => "bytes.NewReader(c.rest())".to_owned(),
         "bool" => "(c.u8()&1 == 1)".to_owned(),
         "byte" | "uint8" => "c.u8()".to_owned(),
@@ -736,6 +805,33 @@ fn decode_for_type(ty: &str, last: bool) -> Option<String> {
     })
 }
 
+/// Decode with enough call-site context to distinguish parser output slots from
+/// arbitrary `interface{}` values. An expert passes a pointer for
+/// `Unmarshal(data, out)` but attacker-controlled bytes for registry/value APIs;
+/// treating every interface as an output pointer made shallow setters look more
+/// harnessable than they really were.
+fn decode_for_param(func: &GoFunc, index: usize, last: bool) -> Option<String> {
+    let param = func.params.get(index)?;
+    let ty = param.ty.trim();
+    if ty != "interface{}" && ty != "any" {
+        return decode_for_type(ty, last);
+    }
+    let name = func.name.to_ascii_lowercase();
+    let param_name = param.name.to_ascii_lowercase();
+    let parser_output =
+        (name.contains("unmarshal") || name.contains("decode") || name.contains("deserialize"))
+            && (index > 0
+                || matches!(
+                    param_name.as_str(),
+                    "out" | "dst" | "result" | "value" | "v"
+                ));
+    Some(if parser_output {
+        "new(interface{})".to_owned()
+    } else {
+        "append([]byte(nil), c.rest()...)".to_owned()
+    })
+}
+
 /// The full harness `main.go`. All imports are referenced inside cursor methods so
 /// none is "unused" regardless of which decode paths a given target uses.
 fn generate_main_go(import_path: &str, body: &str) -> String {
@@ -754,6 +850,7 @@ import (
 	"os"
 	"runtime/coverage"
 	"runtime/debug"
+	"strings"
 	"syscall"
 
 	tgt "{import_path}"
@@ -918,6 +1015,10 @@ func (c *cur) bytesField() []byte {{
 	return r
 }}
 
+// args maps one byte stream to a command/state-machine argument vector. NUL is
+// not accepted inside command-line arguments, so it is a lossless field boundary.
+func (c *cur) args() []string {{ return strings.Split(string(c.rest()), "\\x00") }}
+
 // f64 decodes a float (and keeps the math import referenced even when no float
 // param is decoded by a given target).
 func (c *cur) f64() float64 {{ return math.Float64frombits(uint64(c.i64())) }}
@@ -932,6 +1033,21 @@ func (c *cur) ctx() context.Context {{ return context.Background() }}
 
 // reader keeps the io import referenced even when no io.Reader param is decoded.
 var _ = io.EOF
+
+var govfuzzTargetEntered bool
+
+func govfuzzMarkTargetEntry() {{
+	if govfuzzTargetEntered {{
+		return
+	}}
+	path := os.Getenv("GOVFUZZ_TARGET_ENTRY_SHM")
+	if path == "" {{
+		return
+	}}
+	if os.WriteFile(path, []byte{{1}}, 0o600) == nil {{
+		govfuzzTargetEntered = true
+	}}
+}}
 
 func runOne(data []byte) {{
 	defer func() {{
@@ -1024,13 +1140,16 @@ mod tests {
     }
 
     fn plain(f: &GoFunc) -> Result<GoCall, String> {
-        generate_call(f, None, false)
+        generate_call(f, None, None, false)
     }
 
     #[test]
     fn generates_typed_call_for_bytes() {
         let call = plain(&func("ParseRecord", &[("data", "[]byte")], false)).unwrap();
         assert!(call.body.contains("a0 := c.rest()"));
+        assert!(call
+            .body
+            .contains("govfuzzMarkTargetEntry()\n\ttgt.ParseRecord(a0)"));
         assert!(call.body.contains("tgt.ParseRecord(a0)"));
         assert!(call.forced_detail.is_none(), "nothing synthesized");
     }
@@ -1077,7 +1196,7 @@ mod tests {
             &[("data", "[]byte"), ("opts", "map[string]Option")],
             false,
         );
-        let call = generate_call(&target, None, true).unwrap();
+        let call = generate_call(&target, None, None, true).unwrap();
         assert!(
             call.body.contains("var z1 map[string]tgt.Option"),
             "{}",
@@ -1101,7 +1220,7 @@ mod tests {
             "with no constructor to find, unforced is still a clean skip"
         );
         let receiver = receiver_synthesis(&method, &[], true).unwrap().unwrap();
-        let call = generate_call(&method, Some(&receiver), true).unwrap();
+        let call = generate_call(&method, Some(&receiver), None, true).unwrap();
         assert!(call.body.contains("var recv tgt.Decoder"), "{}", call.body);
         assert!(call.body.contains("(&recv).Feed(a0)"), "{}", call.body);
         assert!(
@@ -1125,7 +1244,7 @@ mod tests {
             .expect("a constructor makes this drivable unforced")
             .expect("a method has a receiver");
         assert!(receiver.forced.is_none(), "a real value is not forced");
-        let call = generate_call(&method, Some(&receiver), false).unwrap();
+        let call = generate_call(&method, Some(&receiver), None, false).unwrap();
         assert!(
             call.body.contains("recv := tgt.NewDecoder()"),
             "{}",
@@ -1142,7 +1261,7 @@ mod tests {
         let receiver = receiver_synthesis(&method, std::slice::from_ref(&by_value), false)
             .unwrap()
             .unwrap();
-        let call = generate_call(&method, Some(&receiver), false).unwrap();
+        let call = generate_call(&method, Some(&receiver), None, false).unwrap();
         assert!(call.body.contains("(&recv).Feed(a0)"), "{}", call.body);
 
         // Only the `New…` convention counts, and only for the right type: an
@@ -1157,6 +1276,36 @@ mod tests {
                 "must not be treated as a constructor for Decoder"
             );
         }
+    }
+
+    #[test]
+    fn stateful_argument_feeder_initializes_receiver_before_terminal_call() {
+        let mut execute = func("Execute", &[], true);
+        execute.receiver_type = Some("*Command".to_owned());
+        let mut set_args = func("SetArgs", &[("args", "[]string")], true);
+        set_args.receiver_type = Some("*Command".to_owned());
+        let siblings = vec![set_args.clone(), execute.clone()];
+
+        let receiver = receiver_synthesis(&execute, &siblings, false)
+            .expect("public state feeder makes the receiver constructible")
+            .expect("method receiver");
+        assert!(receiver.forced.is_none());
+        let call = generate_call(&execute, Some(&receiver), Some(&set_args), false).unwrap();
+        assert!(call.body.contains("var recv tgt.Command"), "{}", call.body);
+        assert!(
+            call.body.contains("stateInput := c.args()"),
+            "{}",
+            call.body
+        );
+        assert!(
+            call.body.contains("(&recv).SetArgs(stateInput)"),
+            "{}",
+            call.body
+        );
+        assert!(call
+            .body
+            .contains("govfuzzMarkTargetEntry()\n\t(&recv).Execute()"));
+        assert!(call.forced_detail.is_none());
     }
 
     #[test]
@@ -1219,6 +1368,27 @@ mod tests {
         assert_eq!(
             compute_import_path("github.com/x/proj", root, rootf),
             "github.com/x/proj"
+        );
+    }
+
+    #[test]
+    fn coverage_falls_back_from_module_graph_to_exact_target_package() {
+        assert_eq!(
+            coverage_package_patterns(
+                "github.com/example/project",
+                "github.com/example/project/internal/parser"
+            ),
+            vec![
+                "github.com/example/project/...".to_owned(),
+                "github.com/example/project/internal/parser".to_owned(),
+            ]
+        );
+        assert_eq!(
+            coverage_package_patterns("github.com/example/project", "github.com/example/project"),
+            vec![
+                "github.com/example/project/...".to_owned(),
+                "github.com/example/project".to_owned(),
+            ]
         );
     }
 

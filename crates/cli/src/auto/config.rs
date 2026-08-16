@@ -24,6 +24,7 @@ pub const CONFIG_FILE_NAME: &str = ".govfuzz.toml";
 const DEFAULT_PER_TARGET_TIME: u64 = 60;
 const DEFAULT_JOBS: usize = 1;
 const DEFAULT_MAX_LEN: &str = "auto";
+const DEFAULT_MAX_CORPUS_MIB: usize = 64;
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
@@ -33,6 +34,8 @@ pub struct AutoConfig {
     pub max_targets: Option<usize>,
     pub jobs: Option<usize>,
     pub rss_limit_mb: Option<usize>,
+    pub max_work_dir_mb: Option<u64>,
+    pub max_corpus_mb: Option<usize>,
     pub cxx_std: Option<String>,
     pub max_len: Option<String>,
     pub timeout: Option<String>,
@@ -109,6 +112,19 @@ pub fn apply(args: &mut AutoArgs, tree_root: &Path) -> Result<Vec<String>, Strin
     if let Some(v) = config.rss_limit_mb {
         if args.rss_limit_mb == super::cli::default_auto_rss_limit_mb() {
             args.rss_limit_mb = v;
+        }
+    }
+    if let Some(v) = config.max_work_dir_mb {
+        if args.max_work_dir_mb == super::storage::DEFAULT_MAX_WORK_DIR_MIB {
+            args.max_work_dir_mb = v;
+        }
+    }
+    if let Some(v) = config.max_corpus_mb {
+        if v == 0 {
+            return Err("max-corpus-mb must be at least 1".to_owned());
+        }
+        if args.max_corpus_mb == DEFAULT_MAX_CORPUS_MIB {
+            args.max_corpus_mb = v;
         }
     }
     if let Some(v) = config.cxx_std {

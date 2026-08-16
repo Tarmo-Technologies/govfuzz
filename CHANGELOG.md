@@ -2,6 +2,44 @@
 
 # Changelog
 
+## 0.2.31 - 2026-08-15
+
+**Large auto campaigns are now bounded, compactable, and findings-first.** The
+reported 40+ GiB work directory from v0.2.27 was reproducible from retained Rust
+Cargo `target/` trees: one real candidate consumed about 589 MiB, multiplied once
+per attempted harness. The build now removes those intermediates on every return
+path after the final replay binary has consumed them, startup compacts legacy
+trees, and `govfuzz clean <work> --compact` reclaims caches/scratch without
+deleting findings, reports, corpora, checkpoints, generated source, or replay
+binaries. `--max-work-dir-mb` defaults to a 4096 MiB allocated-size admission
+ceiling (`0` disables), while `--max-corpus-mb` defaults to 64 MiB per target for
+both active and persisted coverage corpora. Finding testcases are never evicted.
+
+Findings now lead every handoff: `<work>/FINDINGS.md` is impact ordered and carries
+evidence, remediation, and replay commands; root `<work>/findings.csv` is the
+grouped machine index; full evidence remains in `<work>/findings/`; and the old
+`auto/findings.csv` path is kept as an identical compatibility alias. The terminal
+and `run.md` point there before campaign coverage and blockers.
+
+**A pinned 200-project, all-language audit closed expert-harness setup gaps with
+measured controls.** The durable run completed 200/200 rows, proved entry for 118
+selected calls, and covered 105 project bodies. Focused final-binary Go and C++
+reruns produce an explicitly labeled 113/200 cross-run composite. The independent
+expert set entered and covered 16/16 endpoints; exact normalized semantic target
+selection rose from 6/16 to 13/16. The generators now checkpoint immediately
+before calls; rank identifier tokens rather than substrings; materialize file
+operands for JavaScript/Ruby/COBOL; await JavaScript promises; mine Go feeder →
+terminal sequences; construct typed PHP object graphs; support common C++ member
+templates/defaults; emit Fortran character-array descriptors; isolate C# target
+IL; and retry exact-package Go coverage before black-box fallback.
+
+The checked-in benchmark pins every repository/revision and includes one expert
+driver per language plus durable runners and comparison scripts. Its residual
+report names the remaining manual-harness territory: private Rust in-crate
+targets, full generated/platform build graphs, framework hosts and unavailable
+packages, coupled scientific array shapes, and general multi-step resource
+protocols.
+
 ## 0.2.30 - 2026-07-31
 
 **A freshly built executable is no longer a coin flip to launch.** The kernel

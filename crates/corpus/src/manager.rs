@@ -3,16 +3,49 @@
 use crate::{classify, compute_signature, resolve_handler, Classification, Signature};
 use event_log::{EndEvent, Event, HandlerEvent, MockEvent, RaiseEvent, Testcase, TopLevelEvent};
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 
 pub struct CorpusManager {
     root: PathBuf,
+    retention: Option<RetentionLimits>,
+    usage: HashMap<String, RetentionUsage>,
+    seen_unpersisted: HashSet<(String, String)>,
+}
+
+#[derive(Clone, Copy)]
+struct RetentionLimits {
+    entries: usize,
+    bytes: u64,
+}
+
+#[derive(Clone, Copy, Default)]
+struct RetentionUsage {
+    queue_entries: usize,
+    bytes: u64,
 }
 
 impl CorpusManager {
     pub fn new(root: PathBuf) -> Self {
-        Self { root }
+        Self {
+            root,
+            retention: None,
+            usage: HashMap::new(),
+            seen_unpersisted: HashSet::new(),
+        }
+    }
+
+    /// Bound all files retained under one harness's corpus directory. Event
+    /// signatures are covered as well as the end-of-run coverage queue; without
+    /// this, `record()` could bypass the fuzzer pool's byte cap and grow the work
+    /// directory indefinitely.
+    pub fn with_retention_limits(mut self, entries: usize, bytes: usize) -> Self {
+        self.retention = Some(RetentionLimits {
+            entries,
+            bytes: u64::try_from(bytes).unwrap_or(u64::MAX),
+        });
+        self
     }
 
     pub fn record(
@@ -38,13 +71,23 @@ impl CorpusManager {
                 let signature = compute_signature(&testcase, handler.as_ref());
                 let sig_hex = signature.hex();
                 let sig_path = sigs_dir.join(&sig_hex);
-                let class = if sig_path.exists() {
+                let memory_key = (harness_id.to_owned(), sig_hex.clone());
+                let class = if sig_path.exists() || self.seen_unpersisted.contains(&memory_key) {
                     SignatureClass::Duplicate
                 } else {
-                    fs::write(&sig_path, &sig_hex)?;
-                    fs::write(queue_dir.join(format!("{sig_hex}.bin")), input)?;
-                    if is_swallowed(classification) {
-                        fs::write(swallowed_dir.join(format!("{sig_hex}.bin")), input)?;
+                    self.seen_unpersisted.insert(memory_key);
+                    let swallowed = is_swallowed(classification);
+                    let lengths = if swallowed {
+                        vec![sig_hex.len(), input.len(), input.len()]
+                    } else {
+                        vec![sig_hex.len(), input.len()]
+                    };
+                    if self.reserve(harness_id, 1, &lengths)? {
+                        fs::write(&sig_path, &sig_hex)?;
+                        fs::write(queue_dir.join(format!("{sig_hex}.bin")), input)?;
+                        if swallowed {
+                            fs::write(swallowed_dir.join(format!("{sig_hex}.bin")), input)?;
+                        }
                     }
                     SignatureClass::New
                 };
@@ -71,7 +114,7 @@ impl CorpusManager {
     /// fully explains the run's reported coverage and is replayable through a
     /// neutral coverage build / `corpus minimize`.
     pub fn persist_coverage_corpus<I, B>(
-        &self,
+        &mut self,
         harness_id: &str,
         inputs: I,
     ) -> Result<usize, CorpusError>
@@ -94,11 +137,91 @@ impl CorpusManager {
             if path.exists() {
                 continue;
             }
+            if !self.reserve(harness_id, 1, &[bytes.len()])? {
+                continue;
+            }
             fs::write(&path, bytes)?;
             written += 1;
         }
         Ok(written)
     }
+
+    fn reserve(
+        &mut self,
+        harness_id: &str,
+        queue_entries: usize,
+        file_lengths: &[usize],
+    ) -> Result<bool, CorpusError> {
+        let Some(limits) = self.retention else {
+            return Ok(true);
+        };
+        if !self.usage.contains_key(harness_id) {
+            let root = self.root.join("corpus").join(harness_id);
+            self.usage
+                .insert(harness_id.to_owned(), retention_usage(&root)?);
+        }
+        let usage = self.usage.get_mut(harness_id).expect("inserted above");
+        let added_bytes = file_lengths.iter().fold(0_u64, |total, length| {
+            total.saturating_add(estimated_allocated_bytes(*length))
+        });
+        if usage.queue_entries.saturating_add(queue_entries) > limits.entries
+            || usage.bytes.saturating_add(added_bytes) > limits.bytes
+        {
+            return Ok(false);
+        }
+        usage.queue_entries = usage.queue_entries.saturating_add(queue_entries);
+        usage.bytes = usage.bytes.saturating_add(added_bytes);
+        Ok(true)
+    }
+}
+
+fn retention_usage(root: &std::path::Path) -> Result<RetentionUsage, CorpusError> {
+    let mut usage = RetentionUsage::default();
+    if !root.exists() {
+        return Ok(usage);
+    }
+    let queue = root.join("queue");
+    let mut pending = vec![root.to_path_buf()];
+    while let Some(path) = pending.pop() {
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
+        usage.bytes = usage
+            .bytes
+            .saturating_add(metadata_allocated_bytes(&metadata));
+        if metadata.is_dir() && !metadata.file_type().is_symlink() {
+            for entry in fs::read_dir(&path)? {
+                let entry = entry?;
+                let child = entry.path();
+                if path == queue && child.is_file() {
+                    usage.queue_entries = usage.queue_entries.saturating_add(1);
+                }
+                pending.push(child);
+            }
+        }
+    }
+    Ok(usage)
+}
+
+#[cfg(unix)]
+fn metadata_allocated_bytes(metadata: &fs::Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt;
+    metadata.blocks().saturating_mul(512)
+}
+
+#[cfg(not(unix))]
+fn metadata_allocated_bytes(metadata: &fs::Metadata) -> u64 {
+    metadata.len()
+}
+
+/// Conservative pre-write allocation estimate for the common 4 KiB filesystem
+/// block. The campaign-wide work-dir guard measures actual blocks afterward.
+fn estimated_allocated_bytes(length: usize) -> u64 {
+    const BLOCK: u64 = 4096;
+    let length = u64::try_from(length).unwrap_or(u64::MAX);
+    length.max(1).saturating_add(BLOCK - 1) / BLOCK * BLOCK
 }
 
 /// Lowercase-hex of a digest, for content-hash corpus filenames.
@@ -347,7 +470,7 @@ mod tests {
     #[test]
     fn persist_coverage_corpus_writes_content_hashed_dedups_and_skips_empty() {
         let root = temp_dir("persist");
-        let manager = CorpusManager::new(root.clone());
+        let mut manager = CorpusManager::new(root.clone());
 
         // Two distinct inputs + a duplicate of the first + an empty input.
         let written = manager
@@ -387,6 +510,35 @@ mod tests {
             .persist_coverage_corpus("harness", vec![b"alpha".to_vec()])
             .unwrap();
         assert_eq!(again, 0, "re-persisting an existing input is a no-op");
+    }
+
+    #[test]
+    fn retention_limit_bounds_event_and_coverage_queue_together() {
+        let root = temp_dir("bounded");
+        let mut manager = CorpusManager::new(root.clone()).with_retention_limits(1, 1024 * 1024);
+
+        let first = manager
+            .record("harness", b"event-input", &swallowed_events(1))
+            .unwrap();
+        let second = manager
+            .record("harness", b"second-event", &swallowed_events(2))
+            .unwrap();
+        assert_eq!(first[0].class, SignatureClass::New);
+        assert_eq!(second[0].class, SignatureClass::New);
+
+        let coverage_written = manager
+            .persist_coverage_corpus("harness", vec![b"coverage-input".to_vec()])
+            .unwrap();
+        assert_eq!(coverage_written, 0, "the shared queue entry cap is full");
+        let queue = root.join("corpus/harness/queue");
+        assert_eq!(fs::read_dir(queue).unwrap().count(), 1);
+
+        // A signature dropped only because retention was full is still deduped in
+        // memory; repeated events must not masquerade as fresh corpus progress.
+        let duplicate = manager
+            .record("harness", b"second-event", &swallowed_events(2))
+            .unwrap();
+        assert_eq!(duplicate[0].class, SignatureClass::Duplicate);
     }
 
     #[test]

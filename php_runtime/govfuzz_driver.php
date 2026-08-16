@@ -162,7 +162,11 @@ if (getenv('GOVFUZZ_FRAMED') !== false) {
         fwrite($control, "\x01"); // sync byte
         fflush($control);
         $count++;
-        if (($count & 0x1FF) === 0) gf_dump_covered();
+        // Exponentially spaced early checkpoints keep short campaigns from
+        // losing all line evidence before the old 512-input checkpoint.
+        if (($count & ($count - 1)) === 0 || ($count & 0x1FF) === 0) {
+            gf_dump_covered();
+        }
     }
 } else {
     $data = '';
@@ -174,3 +178,4 @@ if (getenv('GOVFUZZ_FRAMED') !== false) {
     gf_run_input($data === false ? '' : $data);
     gf_flush_cov();
 }
+gf_dump_covered();

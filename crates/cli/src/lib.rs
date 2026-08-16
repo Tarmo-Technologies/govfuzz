@@ -231,7 +231,7 @@ enum Command {
     Ci(ci::CiArgs),
     /// Manage distributed runner profiles (list/select/handoff/lease/plan/validate)
     Runners(runners::RunnersArgs),
-    /// Remove selected work-directory subdirectories (build, corpus, reports, findings)
+    /// Compact or remove selected work-directory outputs (build, corpus, reports, findings)
     Clean(clean::CleanArgs),
     /// Compare discovered targets against a prior auto/run.json to surface coverage blockers (diagnostics)
     Introspect(introspect::IntrospectArgs),

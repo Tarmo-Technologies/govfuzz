@@ -398,21 +398,17 @@ fn name_has_parser_keyword(name: &str) -> bool {
         "read",
         "load",
         "deserialize",
-        "from_bytes",
-        "from_slice",
-        "from_str",
-        "from_reader",
-        "from_utf8",
-        "from_json",
+        "from",
         "decompress",
         "inflate",
         "unpack",
         "scan",
         "lex",
     ];
-    // `from_*` constructors are common parse entry points; catch the generic
-    // shape too (`from_xml`, `from_der`).
-    KEYWORDS.iter().any(|kw| name.contains(kw)) || name.starts_with("from_")
+    // `from_*` constructors are common parse entry points; identifier-token
+    // matching retains that shape without treating `download` as `load` or
+    // `thread` as `read`.
+    crate::name_semantics::has_action_stem(name, KEYWORDS)
 }
 
 /// A getter / `Display`-ish / writer name: emits the program's own data, not the
@@ -744,6 +740,18 @@ mod tests {
     fn from_bytes_constructor_gets_parser_bonus() {
         let ranked = rank_rust_targets(&[rf("from_bytes", &[("data", "&[u8]")])]);
         assert!(ranked[0].breakdown.parser_name > 0);
+    }
+
+    #[test]
+    fn incidental_load_and_read_substrings_get_no_parser_bonus() {
+        let ranked = rank_rust_targets(&[
+            rf("download_audio", &[("data", "&[u8]")]),
+            rf("thread_pool", &[("data", "&[u8]")]),
+            rf("parse_audio", &[("data", "&[u8]")]),
+        ]);
+        assert_eq!(ranked[0].name, "parse_audio");
+        assert_eq!(by_name(&ranked, "download_audio").breakdown.parser_name, 0);
+        assert_eq!(by_name(&ranked, "thread_pool").breakdown.parser_name, 0);
     }
 
     #[test]

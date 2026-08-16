@@ -22,6 +22,11 @@ pub enum PhpBuildResult {
     Failed { reason: String, skip: bool },
 }
 
+struct PhpCall {
+    setup: String,
+    invocation: String,
+}
+
 fn probe_php() -> Option<PathBuf> {
     which::which("php").ok()
 }
@@ -61,6 +66,11 @@ pub fn build_php_harness(
         .source_path
         .canonicalize()
         .unwrap_or_else(|_| candidate.source_path.clone());
+    let target_dir = target_abs
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let load_roots = crate::auto::script_load_roots::module_load_roots(source_root, &target_dir);
 
     let auto_dir = crate::auto::layout::harness_dir(work_dir, harness_id);
     if let Err(e) = std::fs::create_dir_all(&auto_dir) {
@@ -79,7 +89,7 @@ pub fn build_php_harness(
         };
     }
 
-    let harness_src = generate_harness(&target_abs, &call);
+    let harness_src = generate_harness(&target_abs, &load_roots, &call);
     let harness_path = auto_dir.join("govfuzzgen.php");
     if let Err(e) = std::fs::write(&harness_path, &harness_src) {
         return PhpBuildResult::Failed {
@@ -117,7 +127,8 @@ pub fn build_php_harness(
     let smoke = crate::command_output::output_with_timeout(
         Command::new(&php)
             .arg("-r")
-            .arg(format!("require '{}';", harness_path.display())),
+            .arg(format!("require '{}';", harness_path.display()))
+            .current_dir(&auto_dir),
         Duration::from_secs(30),
     );
     match smoke {
@@ -136,6 +147,44 @@ pub fn build_php_harness(
                 reason: format!("could not run require smoke-test: {e}"),
                 skip: false,
             };
+        }
+    }
+
+    if func.needs_instance {
+        let code = format!(
+            "require '{}'; $r = new \\ReflectionClass('{}'); \
+             if (!$r->isInstantiable()) {{ fwrite(STDERR, 'receiver class is not instantiable'); exit(2); }} \
+             $c = $r->getConstructor(); \
+             if ($c && $c->getNumberOfRequiredParameters() > 0) {{ \
+                 fwrite(STDERR, 'receiver constructor requires ' . $c->getNumberOfRequiredParameters() . ' argument(s)'); exit(2); \
+             }}",
+            harness_path.display(),
+            func.class
+        );
+        match crate::command_output::output_with_timeout(
+            Command::new(&php)
+                .arg("-r")
+                .arg(code)
+                .current_dir(&auto_dir),
+            Duration::from_secs(30),
+        ) {
+            Ok(out) if out.status.success() => {}
+            Ok(out) => {
+                return PhpBuildResult::Failed {
+                    reason: format!(
+                        "target `{}` has no safe default receiver: {}",
+                        candidate.name,
+                        String::from_utf8_lossy(&out.stderr).trim()
+                    ),
+                    skip: true,
+                };
+            }
+            Err(error) => {
+                return PhpBuildResult::Failed {
+                    reason: format!("could not inspect PHP receiver: {error}"),
+                    skip: false,
+                };
+            }
         }
     }
 
@@ -182,7 +231,7 @@ pub fn build_php_harness(
 /// Resolve the target function + the PHP call expression. A free function or a
 /// `static` method is called directly; an instance method constructs a no-arg
 /// receiver (`(new Class())->method(...)`).
-fn resolve_target(candidate: &Candidate) -> Result<(PhpFunction, String), String> {
+fn resolve_target(candidate: &Candidate) -> Result<(PhpFunction, PhpCall), String> {
     let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let funcs = parse_php(&source);
@@ -193,31 +242,158 @@ fn resolve_target(candidate: &Candidate) -> Result<(PhpFunction, String), String
         .cloned()
         .ok_or_else(|| format!("target `{}` no longer present in source", candidate.name))?;
 
-    let call = if f.class.is_empty() {
+    let argument = php_input_expression(&f.first_param_type).ok_or_else(|| {
+        format!(
+            "target `{}` has unsupported input type `{}`",
+            candidate.name, f.first_param_type
+        )
+    })?;
+
+    let mut setup = format!("$govfuzz_arg = {argument};");
+    let invocation = if f.class.is_empty() {
         // A free function; `f.name` is the (possibly namespaced) name.
-        format!("return \\{}($data);", f.name)
+        format!("return \\{}($govfuzz_arg);", f.name)
     } else if f.is_static {
-        format!("return {}::{}($data);", f.class, f.func)
+        format!("return {}::{}($govfuzz_arg);", f.class, f.func)
     } else {
-        format!("return (new {}())->{}($data);", f.class, f.func)
+        setup.push_str(&format!("\n    $govfuzz_receiver = new {}();", f.class));
+        format!("return $govfuzz_receiver->{}($govfuzz_arg);", f.func)
     };
-    Ok((f, call))
+    Ok((f, PhpCall { setup, invocation }))
+}
+
+fn php_input_expression(ty: &str) -> Option<String> {
+    let mut types = ty
+        .trim_start_matches('?')
+        .split('|')
+        .map(|part| part.trim().to_ascii_lowercase());
+    if ty.is_empty()
+        || types
+            .clone()
+            .any(|part| part == "mixed" || part == "string")
+    {
+        return Some("$data".to_owned());
+    }
+    if types.clone().any(|part| part == "int" || part == "integer") {
+        return Some("unpack('q', str_pad(substr($data, 0, 8), 8, \"\\0\"))[1]".to_owned());
+    }
+    if types
+        .clone()
+        .any(|part| part == "bool" || part == "boolean")
+    {
+        return Some("$data !== '' && (ord($data[0]) & 1) !== 0".to_owned());
+    }
+    if types
+        .clone()
+        .any(|part| part == "float" || part == "double")
+    {
+        return Some("unpack('e', str_pad(substr($data, 0, 8), 8, \"\\0\"))[1]".to_owned());
+    }
+    if types.any(|part| part == "array") {
+        return Some("array_values(unpack('C*', $data))".to_owned());
+    }
+    let class = ty
+        .trim_start_matches('?')
+        .split('|')
+        .map(str::trim)
+        .find(|part| {
+            let lower = part.to_ascii_lowercase();
+            !matches!(
+                lower.as_str(),
+                "mixed"
+                    | "string"
+                    | "int"
+                    | "integer"
+                    | "bool"
+                    | "boolean"
+                    | "float"
+                    | "double"
+                    | "array"
+                    | "null"
+            )
+        })?;
+    Some(format!(
+        "$govfuzz_make_value('{}', $data)",
+        class.replace('\'', "\\\\'")
+    ))
 }
 
 /// Emit `govfuzzgen.php` returning a `run_one($data)` closure that `require`s the
 /// target and calls the function.
-fn generate_harness(target_abs: &Path, call: &str) -> String {
+fn generate_harness(target_abs: &Path, load_roots: &[PathBuf], call: &PhpCall) -> String {
+    let roots = load_roots
+        .iter()
+        .map(|root| format!("'{}'", root.display()))
+        .collect::<Vec<_>>()
+        .join(", ");
     format!(
         "<?php\n\
          // SPDX-License-Identifier: Apache-2.0\n\
          // Generated by govfuzz (native PHP lane). Loads the target and passes the\n\
          // fuzz bytes as a string. Do not edit.\n\
+         $govfuzz_roots = [{roots}];\n\
+         foreach ($govfuzz_roots as $govfuzz_root) {{\n\
+         \x20   $autoload = $govfuzz_root . '/vendor/autoload.php';\n\
+         \x20   if (is_file($autoload)) {{ require_once $autoload; break; }}\n\
+         }}\n\
+         spl_autoload_register(function(string $class) use ($govfuzz_roots): void {{\n\
+         \x20   $parts = explode('\\\\', ltrim($class, '\\\\'));\n\
+         \x20   foreach ($govfuzz_roots as $root) {{\n\
+         \x20       for ($drop = 0; $drop < count($parts); $drop++) {{\n\
+         \x20           $candidate = $root . '/' . implode('/', array_slice($parts, $drop)) . '.php';\n\
+         \x20           if (is_file($candidate)) {{ require_once $candidate; return; }}\n\
+         \x20       }}\n\
+         \x20   }}\n\
+         }});\n\
          require_once '{target}';\n\
-         return function(string $data) {{\n\
-         \x20   {call}\n\
+         $govfuzz_make_value = function(string $type, string $data, int $depth = 0) use (&$govfuzz_make_value) {{\n\
+         \x20   if ($depth > 4) throw new \\TypeError('constructor graph is too deep');\n\
+         \x20   $lower = strtolower(ltrim($type, '\\\\'));\n\
+         \x20   if ($lower === 'string' || $lower === 'mixed') return $data;\n\
+         \x20   if ($lower === 'int' || $lower === 'integer') return unpack('q', str_pad(substr($data, 0, 8), 8, \"\\0\"))[1];\n\
+         \x20   if ($lower === 'bool' || $lower === 'boolean') return $data !== '' && (ord($data[0]) & 1) !== 0;\n\
+         \x20   if ($lower === 'float' || $lower === 'double') return unpack('e', str_pad(substr($data, 0, 8), 8, \"\\0\"))[1];\n\
+         \x20   if ($lower === 'array') return array_values(unpack('C*', $data));\n\
+         \x20   if (is_a($type, \\DateTimeInterface::class, true)) return new \\DateTimeImmutable();\n\
+         \x20   if (enum_exists($type)) {{\n\
+         \x20       $cases = $type::cases();\n\
+         \x20       if (!$cases) throw new \\TypeError('enum has no cases');\n\
+         \x20       return $cases[$data === '' ? 0 : ord($data[0]) % count($cases)];\n\
+         \x20   }}\n\
+         \x20   $reflection = new \\ReflectionClass($type);\n\
+         \x20   if (!$reflection->isInstantiable()) throw new \\TypeError(\"type $type is not instantiable\");\n\
+         \x20   $constructor = $reflection->getConstructor();\n\
+         \x20   if (!$constructor) return $reflection->newInstance();\n\
+         \x20   $arguments = [];\n\
+         \x20   foreach ($constructor->getParameters() as $parameter) {{\n\
+         \x20       if ($parameter->isDefaultValueAvailable()) break;\n\
+         \x20       $parameter_type = $parameter->getType();\n\
+         \x20       if ($parameter_type instanceof \\ReflectionUnionType) {{\n\
+         \x20           $named = array_values(array_filter($parameter_type->getTypes(), fn($candidate) => $candidate->getName() !== 'null'))[0] ?? null;\n\
+         \x20       }} else {{ $named = $parameter_type; }}\n\
+         \x20       if (!$named instanceof \\ReflectionNamedType) throw new \\TypeError('unsupported constructor parameter');\n\
+         \x20       $arguments[] = $govfuzz_make_value($named->getName(), $data, $depth + 1);\n\
+         \x20   }}\n\
+         \x20   return $reflection->newInstanceArgs($arguments);\n\
+         }};\n\
+         $govfuzz_target_entered = false;\n\
+         $govfuzz_mark_target_entry = function() use (&$govfuzz_target_entered): void {{\n\
+         \x20   if ($govfuzz_target_entered) return;\n\
+         \x20   $path = getenv('GOVFUZZ_TARGET_ENTRY_SHM');\n\
+         \x20   if (!$path) return;\n\
+         \x20   if (@file_put_contents($path, \"\\x01\", LOCK_EX) !== false) {{\n\
+         \x20       $govfuzz_target_entered = true;\n\
+         \x20   }}\n\
+         }};\n\
+         return function(string $data) use ($govfuzz_mark_target_entry, $govfuzz_make_value) {{\n\
+         \x20   {setup}\n\
+         \x20   $govfuzz_mark_target_entry();\n\
+         \x20   {invocation}\n\
          }};\n",
         target = target_abs.display(),
-        call = call,
+        roots = roots,
+        setup = call.setup,
+        invocation = call.invocation,
     )
 }
 
@@ -242,11 +418,36 @@ mod tests {
     fn harness_requires_target_and_returns_closure() {
         let h = generate_harness(
             Path::new("/proj/src/Toml.php"),
-            "return \\Toml\\parse($data);",
+            &[PathBuf::from("/proj/src"), PathBuf::from("/proj")],
+            &PhpCall {
+                setup: "$govfuzz_arg = $data;".to_owned(),
+                invocation: "return \\Toml\\parse($govfuzz_arg);".to_owned(),
+            },
         );
         assert!(h.contains("require_once '/proj/src/Toml.php'"));
-        assert!(h.contains("return \\Toml\\parse($data);"));
+        assert!(h.contains("$govfuzz_arg = $data;"));
+        assert!(h.contains("return \\Toml\\parse($govfuzz_arg);"));
         assert!(h.contains("return function(string $data)"));
+        assert!(h.contains("spl_autoload_register"));
+        assert!(h.contains("'/proj/src', '/proj'"));
+        assert!(
+            h.contains("$govfuzz_mark_target_entry();\n    return \\Toml\\parse($govfuzz_arg);"),
+            "entry checkpoint must immediately precede the selected call: {h}"
+        );
+    }
+
+    #[test]
+    fn object_argument_is_constructed_before_entry_checkpoint() {
+        let expression = php_input_expression("\\Monolog\\LogRecord").unwrap();
+        assert!(expression.contains("$govfuzz_make_value('\\Monolog\\LogRecord'"));
+        let call = PhpCall {
+            setup: format!("$govfuzz_arg = {expression};"),
+            invocation: "return $receiver->format($govfuzz_arg);".to_owned(),
+        };
+        let harness = generate_harness(Path::new("/tmp/Formatter.php"), &[], &call);
+        let argument = harness.find("$govfuzz_arg =").unwrap();
+        let checkpoint = harness.find("$govfuzz_mark_target_entry();").unwrap();
+        assert!(argument < checkpoint, "{harness}");
     }
 
     #[test]

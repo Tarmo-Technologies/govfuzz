@@ -365,10 +365,20 @@ fn abi_symbol(name: &str, module: Option<&str>) -> String {
 /// self-contained `__sanitizer_cov_trace_pc` hook feeding the shared edge map
 /// (gfortran emits trace-pc, which the govfuzz Linux driver — trace-pc-guard —
 /// does not otherwise provide).
-fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> String {
+fn glue_source(
+    entry: &str,
+    args: &[FortranArg],
+    result: FortranResult,
+    array_wrapper: bool,
+) -> String {
     let primary = args
         .iter()
-        .position(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
+        .position(|a| {
+            matches!(
+                a.kind,
+                FortranArgKind::CharBuffer { .. } | FortranArgKind::CharArray { .. }
+            )
+        })
         .unwrap_or(0);
     // A length operand: an integer named *LEN*/*N*/*SIZE*/*COUNT*, else the integer
     // right after the primary buffer.
@@ -396,6 +406,16 @@ fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> Strin
     for (i, a) in args.iter().enumerate() {
         let var = format!("gf_a{i}");
         match a.kind {
+            FortranArgKind::CharArray { .. } if array_wrapper => {
+                decls.push_str(&format!(
+                    "    char *{var} = (char *)malloc(Size ? Size : 1);\n"
+                ));
+                fills.push_str(&format!(
+                    "    if (!{var}) return 0;\n    if (Size) memcpy({var}, Data, Size);\n    gf_primary_len = Size;\n"
+                ));
+                frees.push_str(&format!("    free({var});\n"));
+                call_args.push(var);
+            }
             FortranArgKind::CharBuffer { len } => {
                 if i == primary && len == 0 {
                     // Assumed-length `CHARACTER*(*)`: the hidden length IS the byte
@@ -447,7 +467,7 @@ fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> Strin
             // A Derived arg only reaches here for a NON-primary operand of an
             // otherwise-fuzzable procedure (a Derived on the target itself makes it
             // un-fuzzable and it is never built); pass a zeroed scratch like Other.
-            FortranArgKind::Other | FortranArgKind::Derived => {
+            FortranArgKind::CharArray { .. } | FortranArgKind::Other | FortranArgKind::Derived => {
                 decls.push_str(&format!("    static unsigned char {var}[256];\n"));
                 fills.push_str(&format!("    memset({var}, 0, sizeof {var});\n"));
                 call_args.push(format!("(void *){var}"));
@@ -459,18 +479,25 @@ fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> Strin
     let extern_params: Vec<&str> = args
         .iter()
         .map(|a| match a.kind {
-            FortranArgKind::CharBuffer { .. } => "char *",
+            FortranArgKind::CharBuffer { .. } | FortranArgKind::CharArray { .. } => "char *",
             FortranArgKind::Integer => "int *",
             FortranArgKind::Other | FortranArgKind::Derived => "void *",
         })
         .collect();
-    let hidden_count = args
-        .iter()
-        .filter(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
-        .count();
+    let hidden_count = if array_wrapper {
+        0
+    } else {
+        args.iter()
+            .filter(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
+            .count()
+    };
     let mut extern_sig: Vec<String> = extern_params.iter().map(|s| s.to_string()).collect();
     for _ in 0..hidden_count {
         extern_sig.push("size_t".to_owned());
+    }
+    if array_wrapper {
+        extern_sig.push("size_t".to_owned());
+        all_args.push("Size".to_owned());
     }
     // A `character`-returning function's gfortran C ABI prepends a hidden result
     // argument the caller must supply (verified empirically). Two forms:
@@ -532,6 +559,7 @@ fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> Strin
          #include <fcntl.h>\n\
          #include <sys/mman.h>\n\
          extern void {entry}({extern_sig});\n\
+         extern void govfuzz_target_enter(void);\n\
          /* gfortran instruments with -fsanitize-coverage=trace-pc (no guard); the\n\
          \x20* govfuzz Linux driver only provides trace-pc-guard, so define the\n\
          \x20* trace-pc hook here, writing into the same shared edge map the engine\n\
@@ -563,11 +591,66 @@ fn glue_source(entry: &str, args: &[FortranArg], result: FortranResult) -> Strin
          \x20   size_t gf_primary_len = 0; (void)gf_primary_len; (void)Data;\n\
          {decls}\
          {fills}\
+         \x20   govfuzz_target_enter();\n\
          \x20   {entry}({call});\n\
          {frees}\
          \x20   return 0;\n\
          }}\n"
     )
+}
+
+fn array_wrapper_source(proc: &crate::auto::fortran::FortranProc) -> Option<String> {
+    let module = proc.module.as_deref()?;
+    let [arg] = proc.args.as_slice() else {
+        return None;
+    };
+    if !matches!(arg.kind, FortranArgKind::CharArray { len: 1 })
+        || !matches!(proc.result, FortranResult::AllocChar)
+    {
+        return None;
+    }
+    Some(format!(
+        "! SPDX-License-Identifier: Apache-2.0\n\
+         ! Generated ABI adapter: construct the compiler's assumed-shape descriptor\n\
+         ! in Fortran, then expose a stable C pointer+length boundary to the fuzzer.\n\
+         module govfuzz_array_wrapper_mod\n\
+         \x20 use iso_c_binding\n\
+         \x20 use {module}, only: govfuzz_target => {target}\n\
+         \x20 implicit none\n\
+         contains\n\
+         \x20 subroutine govfuzz_fortran_array_entry(data, count) bind(C, name=\"govfuzz_fortran_array_entry\")\n\
+         \x20   type(c_ptr), value :: data\n\
+         \x20   integer(c_size_t), value :: count\n\
+         \x20   character(kind=c_char), pointer :: input(:)\n\
+         \x20   character(len=:), allocatable :: output\n\
+         \x20   call c_f_pointer(data, input, [int(count)])\n\
+         \x20   output = govfuzz_target(input)\n\
+         \x20 end subroutine govfuzz_fortran_array_entry\n\
+         end module govfuzz_array_wrapper_mod\n",
+        target = proc.name,
+    ))
+}
+
+fn compile_array_wrapper(source: &Path, object: &Path, hdir: &Path, moddir: &Path) -> bool {
+    crate::command_output::output_with_timeout(
+        Command::new("gfortran")
+            .args(["-O1", "-g", "-fsanitize=address"])
+            .arg("-fsanitize-coverage=trace-pc,trace-cmp")
+            .arg("-ffree-line-length-none")
+            .arg("-J")
+            .arg(hdir)
+            .arg("-I")
+            .arg(hdir)
+            .arg("-I")
+            .arg(moddir)
+            .arg("-c")
+            .arg(source)
+            .arg("-o")
+            .arg(object),
+        std::time::Duration::from_secs(10 * 60),
+    )
+    .map(|output| output.status.success() && object.is_file())
+    .unwrap_or(false)
 }
 
 /// Build the Fortran harness for `candidate` into `harnesses/<harness_id>/`.
@@ -665,9 +748,45 @@ pub fn build_fortran_harness(
         fortran_o
     };
 
-    let entry = abi_symbol(&proc.name, proc.module.as_deref());
+    let has_array_arg = proc
+        .args
+        .iter()
+        .any(|arg| matches!(arg.kind, FortranArgKind::CharArray { .. }));
+    let mut wrapper_object = None;
+    let entry = if has_array_arg {
+        let Some(wrapper) = array_wrapper_source(proc) else {
+            return FortranBuildResult::Skip(format!(
+                "{}: character-array dummy needs a Fortran descriptor; automatic \
+                 bind(C) adaptation currently supports one len=1 array returning \
+                 an allocatable character string",
+                candidate.name
+            ));
+        };
+        let wrapper_source = hdir.join("govfuzz_array_wrapper.f90");
+        let wrapper_o = hdir.join("govfuzz_array_wrapper.o");
+        if let Err(error) = std::fs::write(&wrapper_source, wrapper) {
+            return FortranBuildResult::Failed(format!("write Fortran array wrapper: {error}"));
+        }
+        if !compile_array_wrapper(&wrapper_source, &wrapper_o, &hdir, &moddir) {
+            return FortranBuildResult::Failed(
+                "gfortran failed to compile the assumed-shape array ABI wrapper".to_owned(),
+            );
+        }
+        wrapper_object = Some(wrapper_o);
+        "govfuzz_fortran_array_entry".to_owned()
+    } else {
+        abi_symbol(&proc.name, proc.module.as_deref())
+    };
     let glue_c = hdir.join("fortran_glue.c");
-    if let Err(e) = std::fs::write(&glue_c, glue_source(&entry, &proc.args, proc.result)) {
+    let glue_result = if has_array_arg {
+        FortranResult::NonChar
+    } else {
+        proc.result
+    };
+    if let Err(e) = std::fs::write(
+        &glue_c,
+        glue_source(&entry, &proc.args, glue_result, has_array_arg),
+    ) {
         return FortranBuildResult::Failed(format!("write glue: {e}"));
     }
 
@@ -675,6 +794,9 @@ pub fn build_fortran_harness(
     // module resolves that module's procedures (its `.o` provides them). The target's
     // own object is compiled above; exclude its module `.o` to avoid a duplicate.
     let mut target_sources = vec![fortran_o.clone(), glue_c.clone()];
+    if let Some(wrapper) = wrapper_object {
+        target_sources.push(wrapper);
+    }
     target_sources.extend(project_module_objects(&moddir, &candidate.source_path));
 
     let gen_result = harness_gen::c_generate::generate_c_direct_harness(
@@ -980,7 +1102,7 @@ end module m
             arg("BUF", FortranArgKind::CharBuffer { len: 0 }),
             arg("N", FortranArgKind::Integer),
         ];
-        let g = glue_source("scan_", &args, FortranResult::NonChar);
+        let g = glue_source("scan_", &args, FortranResult::NonChar, false);
         // extern has 2 explicit args + 1 hidden size_t for the character arg.
         assert!(g.contains("extern void scan_(char *, int *, size_t);"));
         // Assumed-length: hidden length is the byte count; N gets it too.
@@ -990,6 +1112,9 @@ end module m
         assert!(g.contains("char *gf_a0 = (char *)malloc(Size ? Size : 1)"));
         // trace-pc coverage hook present.
         assert!(g.contains("void __sanitizer_cov_trace_pc(void)"));
+        assert!(g.contains(
+            "govfuzz_target_enter();\n    scan_(gf_a0, &gf_a1, (size_t)gf_primary_len);"
+        ));
     }
 
     #[test]
@@ -999,7 +1124,7 @@ end module m
         // allocating only `Size` and passing hidden length 80 overran it (ASan
         // heap-overflow FALSE POSITIVE).
         let args = vec![arg("DSN", FortranArgKind::CharBuffer { len: 80 })];
-        let g = glue_source("nasopn_", &args, FortranResult::NonChar);
+        let g = glue_source("nasopn_", &args, FortranResult::NonChar, false);
         assert!(g.contains("char *gf_a0 = (char *)malloc(80);"));
         assert!(g.contains("memset(gf_a0, ' ', 80);"));
         assert!(g.contains("gf_primary_len = Size < 80 ? Size : 80;"));
@@ -1011,7 +1136,7 @@ end module m
     #[test]
     fn glue_assumed_length_uses_byte_count_as_hidden_len() {
         let args = vec![arg("S", FortranArgKind::CharBuffer { len: 0 })];
-        let g = glue_source("f_", &args, FortranResult::NonChar);
+        let g = glue_source("f_", &args, FortranResult::NonChar, false);
         assert!(g.contains("extern void f_(char *, size_t);"));
         assert!(g.contains("f_(gf_a0, (size_t)gf_primary_len);"));
     }
@@ -1028,6 +1153,7 @@ end module m
             "__csv_utilities_MOD_lowercase_string",
             &args,
             FortranResult::ValueChar { fixed_len: 0 },
+            false,
         );
         // Hidden result pair (char*, size_t) is prepended to BOTH the extern and call.
         assert!(g.contains(
@@ -1047,7 +1173,12 @@ end module m
         // size_t* len, char* str, size_t str_len)` — the callee mallocs the result. The
         // glue passes address-of pointers and frees the callee-allocated buffer.
         let args = vec![arg("STR", FortranArgKind::CharBuffer { len: 0 })];
-        let g = glue_source("__m_strings_MOD_upper", &args, FortranResult::AllocChar);
+        let g = glue_source(
+            "__m_strings_MOD_upper",
+            &args,
+            FortranResult::AllocChar,
+            false,
+        );
         assert!(g.contains("extern void __m_strings_MOD_upper(char **, size_t *, char *, size_t);"));
         assert!(g.contains(
             "__m_strings_MOD_upper(&gf_res_data, &gf_res_len, gf_a0, (size_t)gf_primary_len);"
@@ -1056,5 +1187,32 @@ end module m
         assert!(g.contains("free(gf_res_data);"));
         // The callee allocates; the glue must NOT pre-allocate a result buffer here.
         assert!(!g.contains("malloc(gf_res_len)"));
+    }
+
+    #[test]
+    fn assumed_shape_character_array_uses_fortran_descriptor_wrapper() {
+        let proc = crate::auto::fortran::FortranProc {
+            name: "arrstr".to_owned(),
+            line: 1,
+            args: vec![arg("ARRAY", FortranArgKind::CharArray { len: 1 })],
+            module: Some("functional".to_owned()),
+            public: true,
+            result: FortranResult::AllocChar,
+        };
+        let wrapper = array_wrapper_source(&proc).expect("supported wrapper");
+        assert!(wrapper.contains("use functional, only: govfuzz_target => arrstr"));
+        assert!(wrapper.contains("call c_f_pointer(data, input, [int(count)])"));
+        assert!(wrapper.contains("output = govfuzz_target(input)"));
+
+        let glue = glue_source(
+            "govfuzz_fortran_array_entry",
+            &proc.args,
+            FortranResult::NonChar,
+            true,
+        );
+        assert!(glue.contains("extern void govfuzz_fortran_array_entry(char *, size_t);"));
+        assert!(glue.contains("malloc(Size ? Size : 1)"));
+        assert!(glue.contains("govfuzz_fortran_array_entry(gf_a0, Size);"));
+        assert!(!glue.contains("(size_t)1"));
     }
 }

@@ -8,12 +8,16 @@
 use std::path::Path;
 use std::process::Command;
 
+mod support;
+
 fn clang_available() -> bool {
     which::which("clang").is_ok()
 }
 
 fn govfuzz() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_govfuzz"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_govfuzz"));
+    support::configure_runtrace_shim(&mut command);
+    command
 }
 
 /// Overflow gated behind the magic bytes "BOOM"; also reads env var APP_MODE.

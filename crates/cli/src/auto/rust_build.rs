@@ -3174,6 +3174,11 @@ pub fn build_rust_harness(
 
     // cargo build the staticlib.
     let target_dir = crate_dir.join("target");
+    // Cargo's private target tree is only an intermediate: the staticlib is
+    // linked into `<harness>/main` below. Keeping it used hundreds of MiB per
+    // Rust candidate on real projects (and tens of GiB per sweep), so remove it
+    // on every return path after the link/build attempt.
+    let _target_cleanup = CargoTargetCleanup::new(target_dir.clone());
     let build = crate::command_output::output_with_timeout(
         Command::new(&toolchain.cargo)
             .arg(&toolchain.channel_arg)
@@ -3421,6 +3426,7 @@ fn build_in_crate(
 
     // Build the copied crate (now a staticlib exporting `govfuzz_run_one`).
     let target_dir = crate_copy.join("target");
+    let _target_cleanup = CargoTargetCleanup::new(target_dir.clone());
     let build = crate::command_output::output_with_timeout(
         Command::new(&toolchain.cargo)
             .arg(&toolchain.channel_arg)
@@ -3518,6 +3524,55 @@ fn build_in_crate(
         };
     }
     RustBuildResult::Built
+}
+
+/// Deletes a Cargo target directory after its final static library has been
+/// consumed. `GOVFUZZ_KEEP_BUILD_ARTIFACTS=1` is an emergency debugging escape
+/// hatch; normal users retain the generated source and final replay binary.
+struct CargoTargetCleanup {
+    path: PathBuf,
+    enabled: bool,
+}
+
+impl CargoTargetCleanup {
+    fn new(path: PathBuf) -> Self {
+        let keep = std::env::var("GOVFUZZ_KEEP_BUILD_ARTIFACTS")
+            .ok()
+            .is_some_and(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "yes" | "on"
+                )
+            });
+        Self {
+            path,
+            enabled: !keep,
+        }
+    }
+
+    #[cfg(test)]
+    fn enabled(path: PathBuf) -> Self {
+        Self {
+            path,
+            enabled: true,
+        }
+    }
+}
+
+impl Drop for CargoTargetCleanup {
+    fn drop(&mut self) {
+        if !self.enabled {
+            return;
+        }
+        if let Err(error) = std::fs::remove_dir_all(&self.path) {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                gfeprintln!(
+                    "warning: could not remove transient Rust build cache {}: {error}",
+                    self.path.display()
+                );
+            }
+        }
+    }
 }
 
 /// Recursively copy `src` into `dst`, skipping any directory whose file name is in
@@ -4345,6 +4400,16 @@ fn find_staticlib(target_dir: &Path, host_triple: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cargo_target_cleanup_removes_intermediate_tree() {
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("target");
+        std::fs::create_dir_all(target.join("debug/deps")).unwrap();
+        std::fs::write(target.join("debug/deps/lib.a"), "large cache").unwrap();
+        drop(CargoTargetCleanup::enabled(target.clone()));
+        assert!(!target.exists());
+    }
 
     #[test]
     fn emit_harness_crate_renames_a_hyphenated_target_package() {

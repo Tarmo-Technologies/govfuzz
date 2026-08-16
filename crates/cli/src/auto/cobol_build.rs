@@ -252,21 +252,56 @@ fn length_param_index(params: &[CobolParam], primary: usize) -> Option<usize> {
     }
 }
 
+fn materialized_path_param_index(params: &[CobolParam]) -> Option<usize> {
+    let path = params.iter().position(|param| {
+        matches!(param.kind, CobolParamKind::Bytes { .. }) && {
+            let name = param.name.to_ascii_uppercase();
+            name.contains("PATH") || name.contains("FILE-NAME") || name.contains("FILENAME")
+        }
+    })?;
+    let has_output_buffer = params.iter().enumerate().any(|(index, param)| {
+        index != path && matches!(param.kind, CobolParamKind::Bytes { .. }) && {
+            let name = param.name.to_ascii_uppercase();
+            name.contains("BUFFER") || name.contains("CONTENT") || name.contains("OUTPUT")
+        }
+    });
+    has_output_buffer.then_some(path)
+}
+
 /// The `LLVMFuzzerTestOneInput` glue that drives every `USING` operand.
 fn multi_param_glue(entry: &str, params: &[CobolParam]) -> String {
+    // A path plus a separate output buffer is a read-file protocol, not a path
+    // parser. An expert harness materializes the fuzz bytes as a real file and
+    // passes its stable path; feeding arbitrary bytes as the filename exercises
+    // almost nothing beyond OPEN's error branch.
+    let materialized_path = materialized_path_param_index(params);
     let primary = params
         .iter()
         .position(|p| matches!(p.kind, CobolParamKind::Bytes { .. }))
         .unwrap_or(0);
-    let len_idx = length_param_index(params, primary);
+    let len_idx = materialized_path
+        .is_none()
+        .then(|| length_param_index(params, primary))
+        .flatten();
 
     let mut decls = String::new();
     let mut fills = String::new();
+    let mut cleanup = String::new();
     let mut args: Vec<String> = Vec::new();
     for (i, p) in params.iter().enumerate() {
         let var = format!("gf_b{i}");
         let is_primary = i == primary;
         match p.kind {
+            CobolParamKind::Bytes { len: Some(n) } if Some(i) == materialized_path => {
+                let n = n.max(1);
+                decls.push_str(&format!(
+                    "    static unsigned char {var}[{n}];\n    char gf_temp_path[] = \"/tmp/govfuzz-cobol-XXXXXX\";\n    int gf_temp_created = 0;\n"
+                ));
+                fills.push_str(&format!(
+                    "    memset({var}, ' ', {n});\n    {{ int _fd = mkstemp(gf_temp_path); if (_fd >= 0) {{ size_t _off = 0; while (_off < Size) {{ ssize_t _w = write(_fd, Data + _off, Size - _off); if (_w <= 0) break; _off += (size_t)_w; }} close(_fd); gf_temp_created = 1; size_t _pn = strlen(gf_temp_path); if (_pn > {n}) _pn = {n}; memcpy({var}, gf_temp_path, _pn); gf_primary_len = Size; }} }}\n"
+                ));
+                cleanup.push_str("    if (gf_temp_created) unlink(gf_temp_path);\n");
+            }
             CobolParamKind::Bytes { len: Some(n) } if is_primary => {
                 let n = n.max(1);
                 decls.push_str(&format!("    static unsigned char {var}[{n}];\n"));
@@ -318,6 +353,7 @@ fn multi_param_glue(entry: &str, params: &[CobolParam]) -> String {
          #include <unistd.h>\n\
          #include <libcob.h>\n\
          extern int {entry}({extern_sig});\n\
+         extern void govfuzz_target_enter(void);\n\
          /* Interpose exit(): a libcob runtime check (EC-BOUND-*, EC-SIZE-*, zero\n\
          \x20* divide, ...) reports a COBOL-semantic defect via a nonzero exit, which\n\
          \x20* govfuzz would classify as an input REJECTION not a crash. ONLY while a\n\
@@ -336,12 +372,15 @@ fn multi_param_glue(entry: &str, params: &[CobolParam]) -> String {
          \x20   size_t gf_primary_len = 0; (void)gf_primary_len; (void)Data;\n\
          {decls}\
          {fills}\
+         \x20   govfuzz_target_enter();\n\
          \x20   gf_in_target = 1;\n\
          \x20   int gf_rc = {entry}({call_args});\n\
          \x20   gf_in_target = 0;\n\
+         {cleanup}\
          \x20   return gf_rc;\n\
          }}\n",
-        n = params.len()
+        n = params.len(),
+        cleanup = cleanup,
     )
 }
 
@@ -619,6 +658,32 @@ static int\t\tcheckquery_0__ (cob_u8_t *, cob_u8_t *, cob_u8_t *, cob_u8_t *);
         assert!(g.contains("gf_b1[4-1-_k]"));
         // in-target guard so the end-of-run leak check is not a phantom crash.
         assert!(g.contains("gf_in_target = 1;"));
+        assert!(g.contains(
+            "govfuzz_target_enter();\n    gf_in_target = 1;\n    int gf_rc = JSON__PARSE"
+        ));
+    }
+
+    #[test]
+    fn read_file_protocol_materializes_fuzz_bytes() {
+        let params = vec![
+            param("LS-FILE-PATH", CobolParamKind::Bytes { len: Some(512) }),
+            param(
+                "LS-FILE-BUFFER",
+                CobolParamKind::Bytes { len: Some(65_536) },
+            ),
+            param("LS-FILE-SIZE", CobolParamKind::Numeric { width: 4 }),
+            param("LS-RETURN-CODE", CobolParamKind::Numeric { width: 1 }),
+        ];
+        assert_eq!(materialized_path_param_index(&params), Some(0));
+        let glue = multi_param_glue("FILE__OPS", &params);
+        assert!(glue.contains("mkstemp(gf_temp_path)"), "{glue}");
+        assert!(glue.contains("write(_fd, Data + _off"), "{glue}");
+        assert!(glue.contains("memcpy(gf_b0, gf_temp_path, _pn)"), "{glue}");
+        assert!(glue.contains("if (gf_temp_created) unlink(gf_temp_path);"));
+        assert!(
+            !glue.contains("gf_b2[4-1-_k]"),
+            "FILE-SIZE is an output, not the input-path length"
+        );
     }
 
     #[test]

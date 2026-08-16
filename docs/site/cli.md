@@ -476,9 +476,11 @@ govfuzz build govfuzz_work --harness H-CPP000A --c-engine afl++
 govfuzz fuzz govfuzz_work --harness H-CPP000A --engine afl++ --time 30s --seed-input smoke
 ```
 
-`govfuzz clean` is conservative when no scope is selected. Use `--build`,
-`--corpus`, `--reports`, `--findings`, or `--all` to remove only known
-GovFuzz-owned subtrees under the work directory.
+`govfuzz clean` is conservative when no scope is selected. Use `--compact` to
+remove disposable compiler caches and scratch files while preserving findings,
+reports, corpora, checkpoints, generated source, and replay binaries. Use
+`--build`, `--corpus`, `--reports`, `--findings`, or `--all` for explicit deletion
+scopes under the work directory.
 
 ## Auto
 
@@ -490,9 +492,11 @@ auto-stubs missing headers and undefined symbols so previously-unbuildable code
 builds, runs a three-pass fuzz cascade against each built harness with the
 runtime virtualisation shim loaded on supported Linux targets (not
 Java/C#/JavaScript/TypeScript or cross/emulated targets), and writes a
-persistent fuzz lab plus
-`run.md`, `run.json`, and a
-`needed_for_build` ledger.
+persistent fuzz lab. Findings take the top level: start with
+`<work>/FINDINGS.md`, use `<work>/findings.csv` for a grouped machine-readable
+index, and inspect `<work>/findings/` for evidence bundles. Campaign mechanics,
+coverage, and the `needed_for_build` ledger remain under `<work>/auto/` in
+`run.md` and `run.json`.
 
 ```sh
 govfuzz auto path/to/src --work-dir govfuzz_work --per-target-time 60
@@ -501,6 +505,8 @@ govfuzz auto path/to/src --work-dir govfuzz_work --per-target-time 60
 Flags:
 
 - `--work-dir <DIR>` — output root. Default `./govfuzz_work/`.
+- `--max-work-dir-mb <MiB>` — stop starting new targets when the allocated work-directory size reaches this ceiling. Default `4096`; `0` disables. Findings are preserved, and parallel in-flight targets may finish past the ceiling.
+- `--max-corpus-mb <MiB>` — per-target retained corpus ceiling for memory and disk. Default `64`; finding testcases are separate and are not discarded.
 - `--per-target-time <SECS>` — the **total** per-target fuzz wall, split evenly across the passes (`auto` runs empty / rng / fuzz-driven) under one shared deadline, so the per-target wall ≈ this regardless of pass count. Default `60`. libFuzzer `-max_total_time` / AFL `-V` parity (#402). When more than one engine runs for a target (see `--engine`), this budget splits evenly across the engines too.
 - `--engine <builtin[,afl++]>` — fuzz engine(s) for the per-target fuzz phase, comma-separated. `builtin` (default) is the in-process coverage-guided engine. `afl++` drives AFL++ on the **auto-recovered** build — `auto` runs `make afl` to produce the afl-instrumented `main_afl`, then `afl-fuzz`; crashes fold into the same findings pipeline and the pass is attributed to `afl++` in `run.json`. `--engine builtin,afl++` runs BOTH per target, splitting `--per-target-time` evenly. AFL applies to **native C/C++ targets only** (Ada/Rust/Java, and cross-compiled C/C++, fall back to the builtin engine, logged — never a silent skip). If `afl-fuzz`/`afl-clang-fast` are not on PATH, the run warns once and falls back to builtin. Unlike `govfuzz build`/`fuzz --engine afl++`, this needs no separate steps and works on trees that don't build as-is, because `auto` recovers the build first.
 - `--per-target-finding-count <N>` — stop a target's cascade as soon as it has produced N *distinct* findings (crash signatures), or when `--per-target-time` is spent, whichever first. Checked mid-pass (stops the instant the Nth lands; remaining passes skipped). `1` ≈ libFuzzer stop-on-first-crash. Unset by default (collect every finding).

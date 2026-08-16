@@ -364,6 +364,7 @@ fn build_call_body(
     }
     // Suppress an unused-cursor warning when there are zero parameters.
     body.push_str("    let _ = &mut c;\n");
+    body.push_str("    unsafe { govfuzz_target_enter(); }\n");
     body.push_str(&call);
     body.push('\n');
     Ok(body)
@@ -620,6 +621,8 @@ fn render_harness_rs(body: &str) -> String {
          // with the C fork-server driver (`main.c`). The builtin engine drives it.\n\
          #![allow(unused_imports, unused_variables, unused_mut, dead_code)]\n\
          \n\
+         unsafe extern \"C\" {{ fn govfuzz_target_enter(); }}\n\
+         \n\
          /// Decode-and-call entry the C driver invokes once per fuzz input.\n\
          /// `data`/`len` borrow the engine's input for the duration of the call.\n\
          #[no_mangle]\n\
@@ -825,6 +828,12 @@ mod tests {
         let h = generate_rust_direct_harness(&args).unwrap();
         assert!(h.harness_rs.contains("pub extern \"C\" fn govfuzz_run_one"));
         assert!(h.harness_rs.contains("rust_runtime::Cursor::new"));
+        assert!(h
+            .harness_rs
+            .contains("unsafe extern \"C\" { fn govfuzz_target_enter(); }"));
+        assert!(h
+            .harness_rs
+            .contains("unsafe { govfuzz_target_enter(); }\n    let _ = mycrate::parse(&a0);"));
         // The single &[u8] gets the rest of the input and is passed by reference.
         assert!(h.harness_rs.contains("c.rest_bytes()"), "{}", h.harness_rs);
         assert!(

@@ -108,10 +108,13 @@ pub fn build_lua_harness(
     // silent zero-exec run. `-e "assert(loadfile(...))"` checks syntax; then actually
     // running it loads the target.
     let smoke = crate::command_output::output_with_timeout(
-        Command::new(&lua).arg("-e").arg(format!(
-            "local f=assert(loadfile('{}')); f()",
-            harness_path.display()
-        )),
+        Command::new(&lua)
+            .arg("-e")
+            .arg(format!(
+                "local f=assert(loadfile('{}')); f()",
+                harness_path.display()
+            ))
+            .current_dir(&auto_dir),
         Duration::from_secs(30),
     );
     match smoke {
@@ -211,7 +214,19 @@ fn generate_harness(target_abs: &Path, load_roots: &[std::path::PathBuf], call: 
          -- fuzz bytes as a string. Do not edit.\n\
          package.path = '{search}' .. package.path\n\
          local mod = dofile('{target}')\n\
+         local govfuzz_target_entered = false\n\
+         local function govfuzz_mark_target_entry()\n\
+         \x20 if govfuzz_target_entered then return end\n\
+         \x20 local path = os.getenv('GOVFUZZ_TARGET_ENTRY_SHM')\n\
+         \x20 if not path then return end\n\
+         \x20 local entry = io.open(path, 'wb')\n\
+         \x20 if not entry then return end\n\
+         \x20 entry:write(string.char(1))\n\
+         \x20 entry:close()\n\
+         \x20 govfuzz_target_entered = true\n\
+         end\n\
          return function(data)\n\
+         \x20 govfuzz_mark_target_entry()\n\
          \x20 {call}\n\
          end\n",
         search = search,
@@ -250,6 +265,10 @@ mod tests {
         assert!(h.contains("local mod = dofile('/proj/lib/toml.lua')"));
         assert!(h.contains("return mod['parse'](data)"));
         assert!(h.contains("return function(data)"));
+        assert!(
+            h.contains("  govfuzz_mark_target_entry()\n  return mod['parse'](data)"),
+            "entry checkpoint must immediately precede the selected call: {h}"
+        );
         assert!(h.contains("package.path = '/proj/lib/?.lua"));
         // A package laid out as `<root>/<name>/init.lua` must resolve too.
         assert!(h.contains("/proj/lib/?/init.lua"));

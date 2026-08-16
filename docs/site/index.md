@@ -61,6 +61,9 @@ source-generated harnesses and a permissively licensed core.
 - [Engine Parity Benchmark](./engine-parity-benchmark/) — the planted-bug
   time-to-first-crash suite for cold magic-byte / gated-parser solving, and the
   current baseline.
+- [200-Project Expert Harness Parity](./harness-parity-audit/) — automatic
+  harnesses measured against independently written expert drivers in all sixteen
+  languages, the levers closed, and the residual manual-harness gaps.
 - [Runtime Virtualisation](./runtime-virtualisation/) — the LD_PRELOAD shim
   that fakes the missing environment around a fuzz target, plus the
   three-pass cascade and replay envelope.

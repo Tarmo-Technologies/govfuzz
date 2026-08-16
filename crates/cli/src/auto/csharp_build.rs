@@ -473,19 +473,36 @@ fn decode_expr(kind: CSharpParamKind, raw_type: &str, name: &str) -> String {
 
 /// Generate the `GovfuzzEntry.Run(byte[])` shim: a static call into the target.
 fn generate_entry(method: &CSharpMethod, receiver_kind: Receiver) -> String {
-    let receiver = match receiver_kind {
-        Receiver::Static => format!("global::{}", method.type_name),
-        Receiver::New => format!("new global::{}()", method.type_name),
-        Receiver::Uninitialized => format!(
-            "((global::{}) GovfuzzUninitialized(typeof(global::{})))",
-            method.type_name, method.type_name
+    let (receiver_setup, receiver) = match receiver_kind {
+        Receiver::Static => (String::new(), format!("global::{}", method.type_name)),
+        Receiver::New => (
+            format!(
+                "    var govfuzzReceiver = new global::{}();\n",
+                method.type_name
+            ),
+            "govfuzzReceiver".to_owned(),
+        ),
+        Receiver::Uninitialized => (
+            format!(
+                "    var govfuzzReceiver = ((global::{}) GovfuzzUninitialized(typeof(global::{})));\n",
+                method.type_name, method.type_name
+            ),
+            "govfuzzReceiver".to_owned(),
         ),
     };
-    let args: Vec<String> = method
+    let decoded_args: Vec<String> = method
         .params
         .iter()
         .map(|p| decode_expr(p.kind, &p.raw_type, &p.name))
         .collect();
+    let arg_setup = decoded_args
+        .iter()
+        .enumerate()
+        .map(|(index, expression)| format!("    var govfuzzArg{index} = {expression};\n"))
+        .collect::<String>();
+    let args = (0..decoded_args.len())
+        .map(|index| format!("govfuzzArg{index}"))
+        .collect::<Vec<_>>();
     // `--force` only. Resolved by reflection rather than named directly so the shim
     // compiles against ANY target framework: `RuntimeHelpers.GetUninitializedObject`
     // is .NET 5+, `FormatterServices.GetUninitializedObject` is the older spelling
@@ -511,12 +528,26 @@ fn generate_entry(method: &CSharpMethod, receiver_kind: Receiver) -> String {
          namespace Govfuzzgen {{\n\
          \x20 public static class GovfuzzEntry {{\n\
          {helper}\
+         \x20   static bool GovfuzzTargetEntered;\n\
+         \x20   static void GovfuzzMarkTargetEntry() {{\n\
+         \x20     if (GovfuzzTargetEntered) return;\n\
+         \x20     var path = System.Environment.GetEnvironmentVariable(\"GOVFUZZ_TARGET_ENTRY_SHM\");\n\
+         \x20     if (string.IsNullOrEmpty(path)) return;\n\
+         \x20     try {{ System.IO.File.WriteAllBytes(path, new byte[] {{ 1 }}); GovfuzzTargetEntered = true; }}\n\
+         \x20     catch (System.IO.IOException) {{ }}\n\
+         \x20     catch (System.UnauthorizedAccessException) {{ }}\n\
+         \x20   }}\n\
          \x20   public static void Run(byte[] data) {{\n\
+         {receiver_setup}\
+         {arg_setup}\
+         \x20     GovfuzzMarkTargetEntry();\n\
          \x20     {receiver}.{method}({args});\n\
          \x20   }}\n\
          \x20 }}\n\
          }}\n",
         helper = helper,
+        receiver_setup = receiver_setup,
+        arg_setup = arg_setup,
         receiver = receiver,
         method = method.method,
         args = args.join(", "),
@@ -664,6 +695,18 @@ fn error_source_files(build_output: &str) -> Vec<PathBuf> {
     out
 }
 
+/// Normalize one project-wide using for source-inclusion recovery. Visual Studio
+/// commonly writes `GlobalUsings.cs` as UTF-8 with a BOM; `str::trim` does not
+/// remove U+FEFF, so the first (often foundational) namespace used to disappear
+/// when that file was ejected. The remaining sources then failed misleadingly
+/// with "type or namespace not found" even though their defining file remained.
+fn recoverable_global_using(line: &str) -> Option<String> {
+    let trimmed = line.trim().trim_start_matches('\u{feff}').trim_start();
+    trimmed
+        .starts_with("global using")
+        .then(|| trimmed.to_owned())
+}
+
 fn xml_attribute(attrs: &str, name: &str) -> Option<String> {
     let needle = format!("{name}=\"");
     let at = attrs.find(&needle)?;
@@ -696,30 +739,8 @@ fn generate_csproj(target_csproj: &Path, linkage: &TargetLinkage) -> String {
             "<ProjectReference Include=\"{target}\" />",
             target = target_csproj.display(),
         ),
-        TargetLinkage::SourceInclusion { excluded } => {
-            let dir = target_csproj
-                .parent()
-                .map(Path::to_path_buf)
-                .unwrap_or_default();
-            let packages: String = effective_package_references(target_csproj)
-                .into_iter()
-                .map(|(name, version)| {
-                    format!(
-                        "\n\x20   <PackageReference Include=\"{name}\" Version=\"{version}\" />"
-                    )
-                })
-                .collect();
-            let mut exclude = format!("{dir}/bin/**/*.cs;{dir}/obj/**/*.cs", dir = dir.display());
-            for path in excluded {
-                exclude.push(';');
-                exclude.push_str(&path.display().to_string());
-            }
-            format!(
-                "<Compile Include=\"{dir}/**/*.cs\" Exclude=\"{exclude}\" />{packages}",
-                dir = dir.display(),
-                exclude = exclude,
-                packages = packages,
-            )
+        TargetLinkage::SourceInclusion { .. } => {
+            "<ProjectReference Include=\"target/govfuzz_target.csproj\" />".to_owned()
         }
     };
     let target_framework = format!("net{}.0", host_max_net_major());
@@ -736,7 +757,7 @@ fn generate_csproj(target_csproj: &Path, linkage: &TargetLinkage) -> String {
          \x20   <OutputType>Exe</OutputType>\n\
          \x20   <TargetFramework>{target_framework}</TargetFramework>\n\
          \x20   <LangVersion>latest</LangVersion>\n\
-         \x20   <EnableDefaultCompileItems>true</EnableDefaultCompileItems>\n\
+         \x20   <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n\
          \x20   <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n\
          \x20   <Nullable>disable</Nullable>\n\
          \x20   <AssemblyName>govfuzz_harness</AssemblyName>\n\
@@ -747,11 +768,54 @@ fn generate_csproj(target_csproj: &Path, linkage: &TargetLinkage) -> String {
          \x20   <SatelliteResourceLanguages>en</SatelliteResourceLanguages>\n\
          \x20 </PropertyGroup>\n\
          \x20 <ItemGroup>\n\
+         \x20   <Compile Include=\"Driver.cs;GovfuzzEntry.cs\" />\n\
          \x20   <PackageReference Include=\"SharpFuzz\" Version=\"2.3.0\" />\n\
          \x20   {reference}\n\
          \x20 </ItemGroup>\n\
          </Project>\n",
         reference = reference,
+    )
+}
+
+/// Target-only library for source inclusion. Keeping Driver/GovfuzzEntry in a
+/// separate executable is essential: SharpFuzz must instrument project code but
+/// not the driver that initializes `Trace.SharedMem` before any instrumented edge
+/// executes.
+fn generate_source_target_csproj(target_csproj: &Path, excluded: &[PathBuf]) -> String {
+    let dir = target_csproj
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_default();
+    let packages: String = effective_package_references(target_csproj)
+        .into_iter()
+        .map(|(name, version)| {
+            format!("\n    <PackageReference Include=\"{name}\" Version=\"{version}\" />")
+        })
+        .collect();
+    let mut exclude = format!("{dir}/bin/**/*.cs;{dir}/obj/**/*.cs", dir = dir.display());
+    for path in excluded {
+        exclude.push(';');
+        exclude.push_str(&path.display().to_string());
+    }
+    format!(
+        "<Project Sdk=\"Microsoft.NET.Sdk\">\n\
+         \x20 <PropertyGroup>\n\
+         \x20   <TargetFramework>net{host}.0</TargetFramework>\n\
+         \x20   <LangVersion>latest</LangVersion>\n\
+         \x20   <EnableDefaultCompileItems>true</EnableDefaultCompileItems>\n\
+         \x20   <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n\
+         \x20   <Nullable>disable</Nullable>\n\
+         \x20   <AssemblyName>govfuzz_target</AssemblyName>\n\
+         \x20   <GenerateAssemblyInfo>false</GenerateAssemblyInfo>\n\
+         \x20   <ImplicitUsings>enable</ImplicitUsings>\n\
+         \x20   <NoWarn>$(NoWarn);CS0618;CS0612;CS8032</NoWarn>\n\
+         \x20 </PropertyGroup>\n\
+         \x20 <ItemGroup>\n\
+         \x20   <Compile Include=\"{dir}/**/*.cs\" Exclude=\"{exclude}\" />{packages}\n\
+         \x20 </ItemGroup>\n\
+         </Project>\n",
+        host = host_max_net_major(),
+        dir = dir.display(),
     )
 }
 
@@ -817,6 +881,7 @@ pub fn build_csharp_harness(
 
     let hdir = crate::auto::layout::harness_dir(work_dir, harness_id);
     let proj_dir = hdir.join("proj");
+    let source_target_dir = proj_dir.join("target");
     let out_dir = hdir.join("out");
     if let Err(e) = std::fs::create_dir_all(&proj_dir) {
         return CSharpBuildResult::Failed(format!("create {}: {e}", proj_dir.display()));
@@ -857,6 +922,20 @@ pub fn build_csharp_harness(
         generate_csproj(&target_csproj, &linkage),
     ) {
         return CSharpBuildResult::Failed(format!("write harness csproj: {e}"));
+    }
+    if let TargetLinkage::SourceInclusion { excluded } = &linkage {
+        if let Err(error) = std::fs::create_dir_all(&source_target_dir) {
+            return CSharpBuildResult::Failed(format!(
+                "create source target {}: {error}",
+                source_target_dir.display()
+            ));
+        }
+        if let Err(error) = std::fs::write(
+            source_target_dir.join("govfuzz_target.csproj"),
+            generate_source_target_csproj(&target_csproj, excluded),
+        ) {
+            return CSharpBuildResult::Failed(format!("write source target csproj: {error}"));
+        }
     }
 
     // Build. `--nologo`, restore from the local NuGet cache; keep the CLI quiet.
@@ -911,7 +990,7 @@ pub fn build_csharp_harness(
         // Ejecting the whole GlobalUsings.cs would strip EVERY project-wide
         // using — including `System.Collections.Concurrent` — and break files
         // that were compiling fine.
-        let recovered_path = proj_dir.join("GovfuzzRecoveredUsings.cs");
+        let recovered_path = source_target_dir.join("GovfuzzRecoveredUsings.cs");
         let rejected_usings = error_lines_in_file(&output, &recovered_path);
         if !rejected_usings.is_empty() {
             recovered_usings = recovered_usings
@@ -935,11 +1014,10 @@ pub fn build_csharp_harness(
         for path in &failing {
             if let Ok(text) = std::fs::read_to_string(path) {
                 for line in text.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.starts_with("global using")
-                        && !recovered_usings.iter().any(|u| u == trimmed)
-                    {
-                        new_usings.push(trimmed.to_owned());
+                    if let Some(using) = recoverable_global_using(line) {
+                        if !recovered_usings.iter().any(|present| present == &using) {
+                            new_usings.push(using);
+                        }
                     }
                 }
             }
@@ -966,17 +1044,17 @@ pub fn build_csharp_harness(
         );
         excluded.extend(failing);
         if let Err(e) = std::fs::write(
-            proj_dir.join("govfuzz_harness.csproj"),
-            generate_csproj(&target_csproj, &linkage),
+            source_target_dir.join("govfuzz_target.csproj"),
+            generate_source_target_csproj(&target_csproj, excluded),
         ) {
-            return CSharpBuildResult::Failed(format!("rewrite harness csproj: {e}"));
+            return CSharpBuildResult::Failed(format!("rewrite source target csproj: {e}"));
         }
     }
 
     // Instrument the assembly the target's IL actually landed in: its own when
     // the project was referenced, the harness itself under source-inclusion.
     let asm = match linkage {
-        TargetLinkage::SourceInclusion { .. } => "govfuzz_harness".to_owned(),
+        TargetLinkage::SourceInclusion { .. } => "govfuzz_target".to_owned(),
         TargetLinkage::ProjectReference { .. } => target_assembly_name(&target_csproj),
     };
     let target_dll = out_dir.join(format!("{asm}.dll"));
@@ -1095,12 +1173,28 @@ mod tests {
     }
 
     #[test]
+    fn recovers_first_global_using_after_utf8_bom() {
+        assert_eq!(
+            recoverable_global_using("\u{feff}global using Acme.Domain.Common;"),
+            Some("global using Acme.Domain.Common;".to_owned())
+        );
+        assert_eq!(recoverable_global_using("using System;"), None);
+    }
+
+    #[test]
     fn entry_static_byte_array() {
         let src = generate_entry(
             &m(true, vec![p(CSharpParamKind::Bytes, "byte[]")]),
             Receiver::Static,
         );
-        assert!(src.contains("global::Acme.Parser.Parse(data)"));
+        assert!(src.contains("var govfuzzArg0 = data;"));
+        assert!(src.contains("global::Acme.Parser.Parse(govfuzzArg0)"));
+        let checkpoint = src.find("GovfuzzMarkTargetEntry();").unwrap();
+        let call = src.find("global::Acme.Parser.Parse(govfuzzArg0)").unwrap();
+        assert!(
+            checkpoint < call,
+            "checkpoint must precede target call: {src}"
+        );
         assert!(
             !src.contains("GovfuzzUninitialized"),
             "no forced helper: {src}"
@@ -1113,7 +1207,8 @@ mod tests {
             &m(false, vec![p(CSharpParamKind::Str, "string")]),
             Receiver::New,
         );
-        assert!(src.contains("new global::Acme.Parser().Parse("));
+        assert!(src.contains("var govfuzzReceiver = new global::Acme.Parser();"));
+        assert!(src.contains("govfuzzReceiver.Parse(govfuzzArg0)"));
         assert!(src.contains("System.Text.Encoding.UTF8.GetString(data)"));
         assert!(
             !src.contains("GovfuzzUninitialized"),
@@ -1130,11 +1225,10 @@ mod tests {
             Receiver::Uninitialized,
         );
         assert!(
-            src.contains(
-                "((global::Acme.Parser) GovfuzzUninitialized(typeof(global::Acme.Parser))).Parse("
-            ),
+            src.contains("var govfuzzReceiver = ((global::Acme.Parser) GovfuzzUninitialized(typeof(global::Acme.Parser)));"),
             "{src}"
         );
+        assert!(src.contains("govfuzzReceiver.Parse(govfuzzArg0)"), "{src}");
         // Resolved by reflection so the shim compiles on any TFM: the modern
         // primitive is .NET 5+, the FormatterServices spelling covers older ones.
         assert!(src.contains("RuntimeHelpers"), "{src}");
@@ -1441,16 +1535,27 @@ mod tests {
                 excluded: Vec::new(),
             },
         );
-        assert!(out.contains("<Compile Include="), "{out}");
-        assert!(out.contains("Exclude="), "bin/obj must be excluded: {out}");
-        assert!(!out.contains("ProjectReference"), "{out}");
+        assert!(
+            out.contains("<ProjectReference Include=\"target/govfuzz_target.csproj\""),
+            "{out}"
+        );
+        assert!(
+            out.contains("<Compile Include=\"Driver.cs;GovfuzzEntry.cs\""),
+            "{out}"
+        );
+        let target_out = generate_source_target_csproj(&csproj, &[]);
+        assert!(target_out.contains("<Compile Include="), "{target_out}");
+        assert!(
+            target_out.contains("Exclude="),
+            "bin/obj must be excluded: {target_out}"
+        );
         // Packages the project declares carry over so its types still resolve;
         // a centrally-versioned entry has no version to copy and is skipped.
         assert!(
-            out.contains("Include=\"YamlDotNet\" Version=\"15.1.0\""),
-            "{out}"
+            target_out.contains("Include=\"YamlDotNet\" Version=\"15.1.0\""),
+            "{target_out}"
         );
-        assert!(!out.contains("Central"), "{out}");
+        assert!(!target_out.contains("Central"), "{target_out}");
         // The harness itself targets a framework this host can build.
         assert!(out.contains(&format!("<TargetFramework>net{}.0", host_max_net_major())));
     }

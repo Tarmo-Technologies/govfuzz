@@ -66,6 +66,8 @@ their own interpreters with in-process edge coverage.
 | Flag | Default | Purpose |
 |---|---|---|
 | `--work-dir <DIR>` | `./govfuzz_work/` | Output root |
+| `--max-work-dir-mb <MiB>` | `4096` | Stop starting new targets once the allocated work-directory size reaches the ceiling. Completed and in-flight targets are preserved and reported, so parallel jobs can overshoot by their final artifacts. `0` disables the ceiling; findings are never deleted to meet it |
+| `--max-corpus-mb <MiB>` | `64` | Per-target retained coverage-corpus ceiling for both memory and `corpus/<harness-id>/queue/`. Finding testcases are separate and always preserved |
 | `--config <PATH>` | auto-load `.govfuzz.toml` | Load run options from a TOML file so a project's runs are reproducible; CLI flags always override it. Keys are the flag names in kebab-case (`per-target-time = 30`, `cxx-std = "gnu++14"`, `extra-include = ["deps/inc"]`). Without this flag, a `.govfuzz.toml` in the scanned tree root is auto-loaded — but since that tree is untrusted, an auto-loaded config honors only SAFE knobs; the build-EXECUTING keys (`build-command`, `run-untrusted`, `unsafe-search-and-run-build-commands`) are ignored unless the config is passed explicitly with `--config` |
 | `--dry-run` | off | Plan only: discover + rank targets, run the toolchain preflight, report the build-recovery plan, then EXIT without building or fuzzing — validate scope, config, and toolchains before a long run |
 | `--per-target-time <SECS>` | `60` | **Total** per-target fuzz wall, split evenly across the passes under one shared deadline (so the per-target wall ≈ this, not × pass count). libFuzzer `-max_total_time` / AFL `-V` parity (#402) |
@@ -119,6 +121,57 @@ their own interpreters with in-process edge coverage.
 | `--mode reporting\|attacking` | `reporting` | Actionability profile and, in attacking mode, target scheduling |
 | `--verbose` / `-v` | off | Per-target outcome detail: skip/fail reason, repairs applied, per-pass exec/finding counts |
 
+## Outputs and disk cleanup
+
+The primary human handoff is `<work>/FINDINGS.md`, ordered by impact with source
+locations, confidence, evidence links, remediation, and replay commands.
+`<work>/findings.csv` is the machine-readable root-cause index and
+`<work>/findings/` contains complete evidence bundles. Historical integrations
+can continue reading `<work>/auto/findings.csv`. Campaign mechanics and coverage
+caveats remain in `auto/run.md`, `run.json`, and `summary.txt`.
+
+GovFuzz deletes Rust Cargo `target/` trees as soon as their final replay harness
+is linked. To reclaim the same caches from an older/interrupted run plus scratch
+files, without deleting findings, reports, corpora, result checkpoints, generated
+source, or replay binaries, run:
+
+```sh
+govfuzz clean govfuzz_work --compact
+```
+
+At startup, `auto` also removes stale private Cargo target trees left by older
+GovFuzz releases. At the end of a run it compacts disposable scratch data. The
+4 GiB work-directory ceiling is based on allocated filesystem blocks, does not
+follow symlinks, and stops target admission instead of deleting evidence. Targets
+already running are allowed to finish, so parallel runs can overshoot the limit
+by their final artifacts. The report records that the output limit stopped the
+campaign; `--max-work-dir-mb 0` disables only this admission ceiling.
+
+## Expert-parity harness behavior
+
+The auto generators checkpoint entry immediately before the selected call in all
+sixteen lanes. A driver that merely decodes input, loads a module, or runs setup is
+reported as built-but-not-entered rather than successful fuzzing. Target ranking is
+identifier-token aware and prioritizes public parsers, decoders, whole-artifact
+entrypoints, and stateful execution surfaces while demoting debug/reporting helpers.
+
+The lane-specific generators also recover call setup an expert would normally
+write by hand: path arguments are backed by temporary files in JavaScript, Ruby,
+and COBOL; asynchronous JavaScript calls are awaited before cleanup; Go can mine a
+one-input feeder followed by a zero-argument terminal; PHP recursively constructs
+bounded typed value objects; C++ supports defaulted arguments, common public member
+templates, and byte-string instantiation; Fortran emits descriptors for assumed-
+shape character arrays; and C# instruments project IL in a separate target
+assembly. Go coverage retries the exact selected package when module-wide
+instrumentation is blocked by unrelated platform packages.
+
+These behaviors and their residual limits are measured in the
+[200-project expert-parity audit](./harness-parity-audit.md). They do not make
+every project automatically harnessable: private Rust in-crate targets, generated
+or platform-specific build graphs, framework hosts, scientific arrays with coupled
+dimensions, and general constructor/feed/execute/cleanup protocols remain explicit
+gaps rather than silently fabricated successes.
+
 ### Scaling to large trees
 
 The default sweep — every discovered target, the full three-pass cascade, one
@@ -148,11 +201,12 @@ coverage.
 
 For a 10M+ SLOC tree, 8 GiB is a practical minimum only for a deliberately
 serial run (`--jobs 1`, normally `--rss-limit-mb 1536`); 16 GiB is recommended
-for whole-tree static analysis and build recovery. The in-memory mutation corpus
-defaults to 1/64 of currently available host/cgroup memory (64 MiB..2 GiB per
-active target), and the entry allowance is derived from that byte budget and
-`--max-len`. Set `GOVFUZZ_MAX_CORPUS_BYTES` and
-`GOVFUZZ_MAX_CORPUS_ENTRIES` for exact operator-defined limits. Captured target
+for whole-tree static analysis and build recovery. Under `auto`, each target's
+in-memory and persisted coverage corpus shares the explicit `--max-corpus-mb`
+budget (64 MiB by default), and its entry allowance is derived from that byte
+budget and `--max-len`. `GOVFUZZ_MAX_CORPUS_ENTRIES` can impose a stricter entry
+count; standalone `govfuzz fuzz` retains the memory-derived
+`GOVFUZZ_MAX_CORPUS_BYTES` behavior. Captured target
 diagnostics/event deltas use memory-aware defaults with explicit environment
 overrides. Discovery still retains a compact
 declaration/candidate index and final reports retain attempted-target metadata,
@@ -164,7 +218,8 @@ The memory-aware defaults can all be replaced when a target needs more depth:
 
 | Environment override | Controls |
 |---|---|
-| `GOVFUZZ_MAX_CORPUS_BYTES`, `GOVFUZZ_MAX_CORPUS_ENTRIES` | Per-active-target mutation corpus retention |
+| `--max-corpus-mb`, `GOVFUZZ_MAX_CORPUS_ENTRIES` | Per-auto-target mutation and on-disk coverage-corpus retention |
+| `GOVFUZZ_MAX_CORPUS_BYTES` | Standalone `govfuzz fuzz` mutation-corpus bytes |
 | `GOVFUZZ_MAX_SOURCE_FILE_BYTES`, `GOVFUZZ_MAX_FILE_BYTES` | Auto/discovery and static-analysis source-file admission |
 | `GOVFUZZ_MAX_SUBPROCESS_OUTPUT_BYTES`, `GOVFUZZ_MAX_HARNESS_OUTPUT_BYTES` | Build-command and target-diagnostic capture per stream |
 | `GOVFUZZ_MAX_EVENT_DELTA_BYTES`, `GOVFUZZ_MAX_RUNTRACE_PARSE_BYTES` | Dynamic runtrace data admitted per execution/log |
@@ -469,8 +524,10 @@ wipe state.
 The coverage-guided corpus is persisted to `corpus/<harness-id>/queue/`
 (content-hash-named, seeds included) at the end of each run (#401), so it
 survives across passes and runs and stays replayable for coverage measurement
-and `corpus minimize`. Every pass after the first reseeds from this queue (capped
-at 256), so deep code reached once stays reachable instead of each pass
+and `corpus minimize`. The queue and the active mutation pool share the
+`--max-corpus-mb` retention ceiling; finding testcases are stored separately and
+are never evicted by it. Every pass after the first reseeds from a bounded subset
+of this queue, so deep code reached once stays reachable instead of each pass
 restarting from the tiny built-in seeds.
 
 ## Limitations
@@ -501,9 +558,14 @@ restarting from the tiny built-in seeds.
   still partial and usually need a wrapper or more manual flags.
 - **Go coverage fallback.** Go normally gets real block feedback from
   `go build -cover -covermode=atomic`; each input's executed-block set is folded
-  into the shared edge map. If that instrumented build or counter format is not
-  usable, the lane retries/builds safely in black-box mode instead of discarding
-  the target or inventing coverage.
+  into the shared edge map. If module-wide `-coverpkg` fails, the lane retries the
+  exact selected package before falling back safely to black-box mode instead of
+  discarding the target or inventing coverage.
+- **Expert-only setup remains possible.** Private Rust targets that require an
+  in-package harness, complex generated/platform build graphs, framework hosts,
+  coherent scientific array/dimension synthesis, and longer state/resource
+  protocols can still require a manual wrapper. See the
+  [expert-parity audit](./harness-parity-audit.md) for measured residuals.
 
 See [Runtime Virtualisation](../runtime-virtualisation/) for the shim's
 intercept list, env-var contract, and replay envelope.

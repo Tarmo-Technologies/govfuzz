@@ -79,6 +79,12 @@ pub enum FortranArgKind {
     /// `character(len=K)` (possibly an array) — the fuzzable byte buffer. `len`
     /// is the per-element character length (`0` = assumed `len=*`).
     CharBuffer { len: usize },
+    /// An assumed/explicit-shape character array. Non-`BIND(C)` procedures take
+    /// a compiler descriptor, not the raw pointer accepted by scalar CHARACTER.
+    /// The build lane routes the supported one-array/string-result form through
+    /// a generated Fortran `bind(C)` wrapper; treating it as CharBuffer is an ABI
+    /// mismatch that can report a launcher success without driving the array.
+    CharArray { len: usize },
     /// `integer` scalar — a length/count operand.
     Integer,
     /// A `type(...)` / `class(...)` derived-type argument — a caller-built object
@@ -110,20 +116,33 @@ impl FortranProc {
             && self
                 .args
                 .iter()
-                .any(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
+                .any(|a| {
+                    matches!(
+                        a.kind,
+                        FortranArgKind::CharBuffer { .. } | FortranArgKind::CharArray { .. }
+                    )
+                })
     }
 
     pub fn primary_buffer_index(&self) -> Option<usize> {
-        self.args
-            .iter()
-            .position(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
+        self.args.iter().position(|a| {
+            matches!(
+                a.kind,
+                FortranArgKind::CharBuffer { .. } | FortranArgKind::CharArray { .. }
+            )
+        })
     }
 
     /// Count of `character` arguments (each contributes a hidden length in the ABI).
     pub fn char_arg_count(&self) -> usize {
         self.args
             .iter()
-            .filter(|a| matches!(a.kind, FortranArgKind::CharBuffer { .. }))
+            .filter(|a| {
+                matches!(
+                    a.kind,
+                    FortranArgKind::CharBuffer { .. } | FortranArgKind::CharArray { .. }
+                )
+            })
             .count()
     }
 }
@@ -201,8 +220,11 @@ fn decl_kind(spec: &str) -> FortranArgKind {
         return FortranArgKind::Derived;
     }
     if s.starts_with("CHARACTER") {
-        return FortranArgKind::CharBuffer {
-            len: char_len(s).unwrap_or(1),
+        let len = char_len(s).unwrap_or(1);
+        return if s.contains("DIMENSION(") || s.contains("DIMENSION (") {
+            FortranArgKind::CharArray { len }
+        } else {
+            FortranArgKind::CharBuffer { len }
         };
     }
     if s.starts_with("INTEGER") {
@@ -676,6 +698,24 @@ end subroutine scan
         assert_eq!(char_len("CHARACTER*8"), Some(8));
         assert_eq!(char_len("CHARACTER(LEN=*)"), Some(0));
         assert_eq!(char_len("CHARACTER, INTENT(IN)"), Some(1));
+    }
+
+    #[test]
+    fn assumed_shape_character_array_is_not_scalar_abi() {
+        let src = "\
+module m
+contains
+function arrstr(array) result(string)
+  character(len=1), dimension(:), intent(in) :: array
+  character(len=:), allocatable :: string
+  string = ''
+end function arrstr
+end module m
+";
+        let proc = &parse_fortran(src)[0];
+        assert_eq!(proc.args[0].kind, FortranArgKind::CharArray { len: 1 });
+        assert_eq!(proc.result, FortranResult::AllocChar);
+        assert!(proc.is_fuzzable());
     }
 
     #[test]

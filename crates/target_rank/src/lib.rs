@@ -6,6 +6,7 @@ pub mod c_rank;
 pub mod go_rank;
 pub mod heuristics;
 pub mod java_rank;
+pub mod name_semantics;
 pub mod perl_rank;
 pub mod python_rank;
 pub mod rank;

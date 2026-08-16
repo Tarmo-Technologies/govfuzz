@@ -29,6 +29,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -119,6 +120,35 @@ internal static unsafe class Driver
 
     private static string[] _expected = Array.Empty<string>();
     private static string _targetNamespace = "";
+
+    // Keep the SharpFuzz runtime bridge late-bound. Source-inclusion now places
+    // project code in a separate target assembly, and a static Trace-field access
+    // from the driver can make the instrumentation probe mistake the reference
+    // closure for an already instrumented assembly. Reflection keeps the target
+    // clean until its instrumentation pass while retaining the same zero-copy map.
+    private static Type TraceType =>
+        Type.GetType("SharpFuzz.Common.Trace, SharpFuzz.Common", throwOnError: true)!;
+
+    private static void SetTraceField(string name, object value)
+    {
+        var field = TraceType.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingFieldException(TraceType.FullName, name);
+        field.SetValue(null, value);
+    }
+
+    private static void ResetTracePreviousLocation()
+    {
+        var field = TraceType.GetField("PrevLocation", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingFieldException(TraceType.FullName, "PrevLocation");
+        field.SetValue(null, Activator.CreateInstance(field.FieldType));
+    }
+
+    private static void SetTraceSharedMemory(byte* pointer)
+    {
+        var field = TraceType.GetField("SharedMem", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingFieldException(TraceType.FullName, "SharedMem");
+        SetTraceField("SharedMem", Pointer.Box(pointer, field.FieldType));
+    }
 
     // Minimum target (non-infrastructure) stack frames a NullReferenceException must
     // traverse before it is a genuine null-dereference defect rather than a shallow
@@ -222,7 +252,7 @@ internal static unsafe class Driver
 
     private static void RunInput(byte[] data)
     {
-        SharpFuzz.Common.Trace.PrevLocation = 0;
+        ResetTracePreviousLocation();
         try
         {
             Govfuzzgen.GovfuzzEntry.Run(data);
@@ -260,7 +290,7 @@ internal static unsafe class Driver
                 close(fd);
                 if (p != (IntPtr)(-1) && p != IntPtr.Zero)
                 {
-                    SharpFuzz.Common.Trace.SharedMem = (byte*)p;
+                    SetTraceSharedMemory((byte*)p);
                     return;
                 }
             }
@@ -268,9 +298,9 @@ internal static unsafe class Driver
         // Fallback: private, discarded map (crash-isolation replay or unset env).
         IntPtr anon = mmap(IntPtr.Zero, (IntPtr)CovBits, PROT_READ | PROT_WRITE,
             MAP_PRIVATE | MAP_ANONYMOUS, -1, IntPtr.Zero);
-        SharpFuzz.Common.Trace.SharedMem = anon == (IntPtr)(-1)
+        SetTraceSharedMemory(anon == (IntPtr)(-1)
             ? (byte*)Marshal.AllocHGlobal(CovBits)
-            : (byte*)anon;
+            : (byte*)anon);
     }
 
     private static bool ReadExact(int fd, byte[] buf, int n)

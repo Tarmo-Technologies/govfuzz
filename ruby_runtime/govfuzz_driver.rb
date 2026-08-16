@@ -156,7 +156,9 @@ if ENV.key?('GOVFUZZ_FRAMED')
     gf_flush_cov
     ctl.write("\x01") # sync byte
     count += 1
-    gf_dump_covered if (count & 0x1FF).zero?
+    # Exponentially spaced early checkpoints keep short campaigns from losing
+    # all line evidence before the old 512-input checkpoint.
+    gf_dump_covered if (count & (count - 1)).zero? || (count & 0x1FF).zero?
   end
 else
   data =
@@ -168,3 +170,4 @@ else
   gf_run_input(data || ''.b)
   gf_flush_cov
 end
+gf_dump_covered

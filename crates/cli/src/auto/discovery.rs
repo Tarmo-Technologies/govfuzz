@@ -2370,13 +2370,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 if !prog.is_fuzzable() {
                     continue;
                 }
+                let score = dynamic_target_score(&prog.program_id);
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-B", path, prog.line, &prog.program_id),
                     lang: Lang::Cobol,
                     source_path: path.to_path_buf(),
                     line: prog.line,
                     name: prog.program_id,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2393,13 +2394,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 if !proc.is_fuzzable() {
                     continue;
                 }
+                let score = dynamic_target_score(&proc.name);
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-F", path, proc.line, &proc.name),
                     lang: Lang::Fortran,
                     source_path: path.to_path_buf(),
                     line: proc.line,
                     name: proc.name,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2417,13 +2419,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                     continue;
                 }
                 let name = method.qualified();
+                let score = dynamic_target_score(&name);
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-S", path, method.line, &name),
                     lang: Lang::CSharp,
                     source_path: path.to_path_buf(),
                     line: method.line,
                     name,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2442,13 +2445,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
                 ("H-N", Lang::Js)
             };
             for func in crate::auto::js::parse_js(&source) {
+                let score = dynamic_target_score(&func.name);
                 out.push(Candidate {
                     harness_id: stable_harness_id(prefix, path, func.line, &func.name),
                     lang: cand_lang,
                     source_path: path.to_path_buf(),
                     line: func.line,
                     name: func.name,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2461,13 +2465,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // candidate, driven via the Ruby framed driver (see `crate::auto::ruby` /
             // `ruby_build`). The first argument is the attacker-controlled input.
             for m in crate::auto::ruby::parse_ruby(&source) {
+                let score = dynamic_target_score(&m.name);
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-U", path, m.line, &m.name),
                     lang: Lang::Ruby,
                     source_path: path.to_path_buf(),
                     line: m.line,
                     name: m.name,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2480,13 +2485,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // candidate, driven via the Lua framed driver (see `crate::auto::lua` /
             // `lua_build`). The first argument is the attacker-controlled input.
             for f in crate::auto::lua::parse_lua(&source) {
+                let score = dynamic_target_score(&f.name);
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-V", path, f.line, &f.name),
                     lang: Lang::Lua,
                     source_path: path.to_path_buf(),
                     line: f.line,
                     name: f.name,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2499,13 +2505,14 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
             // input-channel argument is a candidate, driven via the PHP framed driver
             // (see `crate::auto::php` / `php_build`).
             for f in crate::auto::php::parse_php(&source) {
+                let score = dynamic_target_score(&f.name);
                 out.push(Candidate {
                     harness_id: stable_harness_id("H-W", path, f.line, &f.name),
                     lang: Lang::Php,
                     source_path: path.to_path_buf(),
                     line: f.line,
                     name: f.name,
-                    score: 50,
+                    score,
                     is_static: false,
                     foreign_guard: None,
                     input_reachability: Some(target_rank::InputReachability::AttackerReachable),
@@ -2515,6 +2522,117 @@ fn discover_file(path: &Path, out: &mut Vec<Candidate>, preprocess: PreprocessMo
         }
     }
     Ok(())
+}
+
+/// Semantic prior for lanes whose parsers do not expose typed score features.
+/// A human starts with parsers/decoders/validators and avoids logging, path
+/// construction, registry mutation, and lifecycle helpers. Equal score=50 made
+/// alphabetical order choose `baseWarn` over Vue's compiler/parser and
+/// `contextMdPath` over ECC's JSON/transform surfaces: build successes with very
+/// little bug-finding value. This prior changes ordering only; backfill can still
+/// reach every candidate when no cap is requested.
+fn dynamic_target_score(name: &str) -> i32 {
+    let qualified = name.to_ascii_lowercase();
+    let leaf_name = name
+        .rsplit(['#', '.', ':'])
+        .find(|part| !part.is_empty())
+        .unwrap_or(name);
+    let leaf = leaf_name.to_ascii_lowercase();
+    let mut score = 50;
+    if target_rank::name_semantics::has_action_stem(
+        leaf_name,
+        &[
+            "parse",
+            "read",
+            "load",
+            "decode",
+            "deserialize",
+            "unmarshal",
+            "tokenize",
+            "lexer",
+            "compile",
+            "evaluate",
+            "validate",
+            "verify",
+            "decompress",
+        ],
+    ) {
+        score += 45;
+    } else if target_rank::name_semantics::has_action_stem(
+        leaf_name,
+        &[
+            "sanitize",
+            "normaliz",
+            "compress",
+            "escape",
+            "filter",
+            "format",
+            "extract",
+            "match",
+            "fix",
+            "expand",
+            "detect",
+            "render",
+            "transform",
+            "convert",
+        ],
+    ) {
+        score += 25;
+    }
+    if leaf == "from" || leaf.starts_with("from_") || leaf.starts_with("fromstr") {
+        score += 15;
+    }
+    if target_rank::name_semantics::has_action_stem(
+        leaf_name,
+        &[
+            "json",
+            "xml",
+            "yaml",
+            "toml",
+            "url",
+            "header",
+            "message",
+            "record",
+            "snippet",
+            "expression",
+            "document",
+            "payload",
+            "packet",
+        ],
+    ) {
+        score += 10;
+    }
+    if target_rank::name_semantics::is_low_value_helper(leaf_name) {
+        score -= 35;
+    }
+    if leaf.ends_with("path") || leaf.ends_with("filename") || leaf.ends_with("dirname") {
+        score -= 25;
+    }
+    if [
+        "get",
+        "set",
+        "add",
+        "remove",
+        "delete",
+        "register",
+        "mark",
+        "commands",
+        "completions",
+        "start",
+        "stop",
+    ]
+    .iter()
+    .any(|prefix| leaf == *prefix || leaf.starts_with(&format!("{prefix}_")))
+    {
+        score -= 20;
+    }
+    if ["vim.", "vscode.", "ngx.", "kong."]
+        .iter()
+        .any(|prefix| qualified.starts_with(prefix))
+    {
+        score -= 45;
+    }
+    score
 }
 
 fn c_signature(f: &c_parser::CFunction) -> String {
@@ -3116,6 +3234,11 @@ fn is_default_non_library_dir(name: &str) -> bool {
             | "unittests"
             | "gtest"
             | "googletest"
+            // RSpec's conventional test directories. Without these, helpers such
+            // as `spec/factories/yaml_load` can out-rank the production parser
+            // they merely call, and then fail on test-only gems/FactoryBot.
+            | "spec"
+            | "specs"
             | "example"
             | "examples"
             | "sample"
@@ -3543,6 +3666,35 @@ fn is_foreign_arch_backend_dir(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dynamic_lanes_prioritize_semantic_parsers_over_shallow_helpers() {
+        assert!(dynamic_target_score("parseJson") > dynamic_target_score("baseWarn"));
+        assert!(dynamic_target_score("transformToClaude") > dynamic_target_score("contextMdPath"));
+        assert!(dynamic_target_score("detectErrors") > dynamic_target_score("debug"));
+        assert!(dynamic_target_score("Thing#from_string") > dynamic_target_score("Thing#set_path"));
+        assert!(
+            dynamic_target_score("snippet_fix") > dynamic_target_score("add_missing_snippet_docs")
+        );
+        assert!(
+            dynamic_target_score("ChromePHPFormatter#format")
+                > dynamic_target_score("ChromePHPFormatter#get_class")
+        );
+        assert!(
+            dynamic_target_score("parseFilters") > dynamic_target_score("convertEnumeratedValue")
+        );
+        assert!(dynamic_target_score("M.snippet_fix") > dynamic_target_score("vscode.json_decode"));
+        assert!(dynamic_target_score("M.snippet_fix") > dynamic_target_score("M.expand"));
+        assert_eq!(
+            dynamic_target_score("download_audio"),
+            dynamic_target_score("plain_audio")
+        );
+        assert_eq!(
+            dynamic_target_score("mariadb_threadpool"),
+            dynamic_target_score("mariadb_pool")
+        );
+        assert!(dynamic_target_score("parse_audio") > dynamic_target_score("debug"));
+    }
     use std::fs;
     use std::path::PathBuf;
 
@@ -4114,6 +4266,14 @@ mod tests {
         assert!(!is_default_non_library_dir("tls"));
         assert!(!is_default_non_library_dir("types"));
         assert!(!is_default_non_library_dir("transport"));
+    }
+
+    #[test]
+    fn rspec_directories_are_non_library() {
+        assert!(is_default_non_library_dir("spec"));
+        assert!(is_default_non_library_dir("specs"));
+        assert!(is_default_non_library_dir("Spec"));
+        assert!(!is_default_non_library_dir("specification"));
     }
 
     #[test]

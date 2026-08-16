@@ -33,6 +33,10 @@ pub enum JsArgKind {
     Buffer,
     /// A UTF-8 `string` (chosen when the first parameter name reads text-like).
     Str,
+    /// A temporary file containing the fuzz bytes. Selected for path/file-name
+    /// parameters so file parsers receive content, not an arbitrary nonexistent
+    /// filename.
+    FilePath,
 }
 
 impl JsArgKind {
@@ -40,6 +44,7 @@ impl JsArgKind {
         match self {
             JsArgKind::Buffer => "buffer",
             JsArgKind::Str => "string",
+            JsArgKind::FilePath => "path",
         }
     }
 }
@@ -51,9 +56,15 @@ impl JsArgKind {
 /// round-trips through a `String()`/`.toString()` a text parser may call).
 fn infer_arg_kind(first_param: &str) -> JsArgKind {
     let p = first_param.to_ascii_lowercase();
+    if ["path", "filepath", "file_path", "filename", "file_name"]
+        .iter()
+        .any(|name| p == *name || p.ends_with(name))
+    {
+        return JsArgKind::FilePath;
+    }
     let text_like = [
         "str", "string", "text", "source", "src", "input", "code", "json", "xml", "html", "yaml",
-        "url", "uri", "path", "line", "content", "s",
+        "url", "uri", "line", "content", "s",
     ];
     let byte_like = [
         "buf", "buffer", "bytes", "data", "chunk", "payload", "raw", "blob",
@@ -1144,6 +1155,8 @@ exports.tokenize = tokenize;
         assert_eq!(infer_arg_kind("bytes"), JsArgKind::Buffer);
         assert_eq!(infer_arg_kind("source"), JsArgKind::Str);
         assert_eq!(infer_arg_kind("html"), JsArgKind::Str);
+        assert_eq!(infer_arg_kind("filePath"), JsArgKind::FilePath);
+        assert_eq!(infer_arg_kind("config_filename"), JsArgKind::FilePath);
         assert_eq!(infer_arg_kind("x"), JsArgKind::Buffer); // unknown -> Buffer default
     }
 

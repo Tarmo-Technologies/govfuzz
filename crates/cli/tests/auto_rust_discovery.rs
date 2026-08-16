@@ -282,5 +282,26 @@ fn rust_target_builds_and_fuzzes_natively_and_finds_planted_crash() {
         );
     }
 
+    // Cargo target trees are compiler intermediates, not user output. The final
+    // replay binary above must survive while the per-harness caches are gone.
+    for attempt in attempts {
+        let Some(harness_id) = attempt.get("harness_id").and_then(|value| value.as_str()) else {
+            continue;
+        };
+        let harness = tmp.join("harnesses").join(harness_id);
+        assert!(
+            !harness.join("rust_harness/target").exists(),
+            "external Rust Cargo cache must be cleaned: {}",
+            harness.display()
+        );
+        assert!(
+            !harness.join("incrate/target").exists(),
+            "in-crate Rust Cargo cache must be cleaned: {}",
+            harness.display()
+        );
+    }
+    assert!(tmp.join("FINDINGS.md").is_file());
+    assert!(tmp.join("findings.csv").is_file());
+
     let _ = std::fs::remove_dir_all(&tmp);
 }

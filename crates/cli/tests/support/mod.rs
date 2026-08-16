@@ -41,10 +41,17 @@ pub fn govfuzz_cargo_command() -> Command {
     // the auto loop's shim locator finds nothing, runtrace silently disables,
     // and env-injection cascades never fire. Build the shim once and point
     // the locator at it via $GOVFUZZ_RUNTRACE_SHIM (which it checks first).
+    configure_runtrace_shim(&mut cmd);
+    cmd
+}
+
+/// Ensure a command that launches govfuzz can find the runtrace shim from a
+/// clean Cargo target directory. The CLI does not link the cdylib directly, so
+/// Cargo does not guarantee that it is built beside `CARGO_BIN_EXE_govfuzz`.
+pub fn configure_runtrace_shim(cmd: &mut Command) {
     if let Some(shim) = runtrace_shim_path() {
         cmd.env("GOVFUZZ_RUNTRACE_SHIM", shim);
     }
-    cmd
 }
 
 /// Build the release runtrace-shim cdylib (the profile

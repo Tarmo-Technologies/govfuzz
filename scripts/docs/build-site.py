@@ -32,6 +32,7 @@ PAGES = [
     Page("comparison-2026-07", "comparison-2026-07.md", "Comparison: July 2026"),
     Page("libfuzzer-parity", "libfuzzer-parity.md", "libFuzzer Parity"),
     Page("engine-parity-benchmark", "engine-parity-benchmark.md", "Engine Benchmark"),
+    Page("harness-parity-audit", "harness-parity-audit.md", "Expert Harness Parity"),
     Page("whitepaper", "whitepaper.md", "White Paper"),
     Page("vulnerability-coverage", "vulnerability-coverage.md", "Vulnerability Coverage"),
     Page("static-cwe-coverage", "static-cwe-coverage.md", "Static CWE Coverage"),

@@ -4,6 +4,9 @@
 pub struct CppParamDescriptor {
     pub name: String,
     pub cpp_type: String,
+    /// The declaration supplies a default argument, so a direct caller may omit
+    /// this parameter when it and every following parameter are defaulted.
+    pub has_default: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -39,6 +42,61 @@ pub struct CppFunction {
     /// `template_type_params`. The presence of args is what lifts the template
     /// out of the ranker's "unsupported" filter and drives a turbofish call.
     pub instantiation_args: Vec<String>,
+}
+
+impl CppFunction {
+    /// Parameters a minimal direct call must supply, with a resolved template
+    /// specialization substituted into their types. C++ only permits defaults on
+    /// a trailing suffix, but trimming defensively stops at the first required
+    /// parameter from the end so malformed/recovered declarations stay intact.
+    pub fn effective_required_params(&self) -> Vec<CppParamDescriptor> {
+        let mut required_len = self.params.len();
+        while required_len > 0 && self.params[required_len - 1].has_default {
+            required_len -= 1;
+        }
+        self.params[..required_len]
+            .iter()
+            .map(|parameter| CppParamDescriptor {
+                name: parameter.name.clone(),
+                cpp_type: substitute_template_identifiers(
+                    &parameter.cpp_type,
+                    &self.template_type_params,
+                    &self.instantiation_args,
+                ),
+                has_default: parameter.has_default,
+            })
+            .collect()
+    }
+}
+
+fn substitute_template_identifiers(raw: &str, params: &[String], args: &[String]) -> String {
+    if params.is_empty() || params.len() != args.len() {
+        return raw.to_owned();
+    }
+    let mut out = String::with_capacity(raw.len());
+    let mut token = String::new();
+    let flush = |token: &mut String, out: &mut String| {
+        if token.is_empty() {
+            return;
+        }
+        let replacement = params
+            .iter()
+            .position(|parameter| parameter == token)
+            .map(|index| args[index].as_str())
+            .unwrap_or(token.as_str());
+        out.push_str(replacement);
+        token.clear();
+    };
+    for character in raw.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' {
+            token.push(character);
+        } else {
+            flush(&mut token, &mut out);
+            out.push(character);
+        }
+    }
+    flush(&mut token, &mut out);
+    out
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize)]
@@ -607,6 +665,118 @@ fn blank_class_modifier_macros(source: &str) -> String {
     String::from_utf8(out).unwrap_or_else(|_| source.to_owned())
 }
 
+/// Blank a standalone macro that expands to a class template declaration, such
+/// as nlohmann/json's `NLOHMANN_BASIC_JSON_TPL_DECLARATION` immediately before
+/// `class basic_json`. Without the macro definition available to the structural
+/// parser, tree-sitter recovers the class body as free functions and loses both
+/// member visibility and static dispatch. The narrow suffix and the following
+/// `class`/`struct` requirement avoid touching ordinary all-caps declarations.
+fn blank_class_template_declaration_macros(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let is_ident = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
+    let mut spans = Vec::new();
+    let mut cursor = 0usize;
+    while cursor < bytes.len() {
+        if !is_ident(bytes[cursor]) || (cursor > 0 && is_ident(bytes[cursor - 1])) {
+            cursor += 1;
+            continue;
+        }
+        let start = cursor;
+        while cursor < bytes.len() && is_ident(bytes[cursor]) {
+            cursor += 1;
+        }
+        let token = &source[start..cursor];
+        if !(token.ends_with("_TPL_DECLARATION") || token.ends_with("_TEMPLATE_DECLARATION")) {
+            continue;
+        }
+        let line_start = source[..start].rfind('\n').map_or(0, |line| line + 1);
+        if source[line_start..start].trim_start().starts_with('#') {
+            continue;
+        }
+        let mut next = cursor;
+        while next < bytes.len() && bytes[next].is_ascii_whitespace() {
+            next += 1;
+        }
+        let followed_by_class = bytes[next..].starts_with(b"class")
+            && bytes
+                .get(next + 5)
+                .is_some_and(|byte| byte.is_ascii_whitespace());
+        let followed_by_struct = bytes[next..].starts_with(b"struct")
+            && bytes
+                .get(next + 6)
+                .is_some_and(|byte| byte.is_ascii_whitespace());
+        if followed_by_class || followed_by_struct {
+            spans.push((start, cursor));
+        }
+    }
+    if spans.is_empty() {
+        return source.to_owned();
+    }
+    let mut out = bytes.to_vec();
+    for (start, end) in spans {
+        for byte in &mut out[start..end] {
+            *byte = b' ';
+        }
+    }
+    String::from_utf8(out).unwrap_or_else(|_| source.to_owned())
+}
+
+/// Normalize macro access labels (`JSON_PRIVATE_UNLESS_TESTED:`) to real C++
+/// access specifiers while preserving byte/line offsets. Such labels occur inside
+/// otherwise ordinary class bodies; leaving one opaque can make tree-sitter turn
+/// the entire class into an ERROR and detach every later public member.
+fn normalize_macro_access_specifiers(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let is_ident = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'_';
+    let mut replacements = Vec::new();
+    let mut cursor = 0usize;
+    while cursor < bytes.len() {
+        if !is_ident(bytes[cursor]) || (cursor > 0 && is_ident(bytes[cursor - 1])) {
+            cursor += 1;
+            continue;
+        }
+        let start = cursor;
+        while cursor < bytes.len() && is_ident(bytes[cursor]) {
+            cursor += 1;
+        }
+        let token = &source[start..cursor];
+        let line_start = source[..start].rfind('\n').map_or(0, |line| line + 1);
+        if source[line_start..start].trim_start().starts_with('#') {
+            continue;
+        }
+        let mut colon = cursor;
+        while colon < bytes.len() && matches!(bytes[colon], b' ' | b'\t' | b'\r') {
+            colon += 1;
+        }
+        if bytes.get(colon) != Some(&b':') {
+            continue;
+        }
+        let access = if token.contains("PRIVATE") {
+            "private:"
+        } else if token.contains("PROTECTED") {
+            "protected:"
+        } else if token.contains("PUBLIC") {
+            "public:"
+        } else {
+            continue;
+        };
+        if colon + 1 - start >= access.len() {
+            replacements.push((start, colon + 1, access));
+        }
+    }
+    if replacements.is_empty() {
+        return source.to_owned();
+    }
+    let mut out = bytes.to_vec();
+    for (start, end, access) in replacements {
+        for byte in &mut out[start..end] {
+            *byte = b' ';
+        }
+        out[start..start + access.len()].copy_from_slice(access.as_bytes());
+    }
+    String::from_utf8(out).unwrap_or_else(|_| source.to_owned())
+}
+
 /// Blank bare namespace-delimiter macro invocations — identifiers ending in
 /// `_NAMESPACE_BEGIN` / `_NAMESPACE_END` / `_NS_BEGIN` / `_NS_END`
 /// (`NLOHMANN_JSON_NAMESPACE_BEGIN`, `ASIO_NS_BEGIN`, …) that stand in
@@ -707,7 +877,9 @@ fn blank_namespace_delimiter_macros(source: &str) -> String {
 /// tree-sitter still index the ORIGINAL source.
 fn prepare_cpp_source(source: &str) -> String {
     blank_function_decoration_macros(&blank_function_like_decoration_macros(
-        &blank_class_modifier_macros(&blank_namespace_delimiter_macros(source)),
+        &blank_class_modifier_macros(&blank_class_template_declaration_macros(
+            &normalize_macro_access_specifiers(&blank_namespace_delimiter_macros(source)),
+        )),
     ))
 }
 
@@ -809,9 +981,233 @@ pub fn parse_cpp_functions(source: &str) -> Result<Vec<CppFunction>, CppParseErr
             reconcile_recovered_scope(&mut functions, extra);
         }
     }
+    if had_errors {
+        reconcile_macro_template_class_scope(
+            &mut functions,
+            recover_macro_template_class_functions(source),
+        );
+    }
     annotate_overload_sets(&mut functions);
     annotate_template_instantiations(&mut functions, source);
+    infer_byte_input_member_template_instantiations(&mut functions);
     Ok(functions)
+}
+
+/// Reparse macro-declared template classes as bounded standalone slices when a
+/// malformed/unexpanded surrounding header collapses into one giant ERROR node.
+/// This is common in macro-heavy header-only libraries: individual method bodies
+/// remain visible to tree-sitter, but their class receiver is lost. The macro
+/// marker and a same-indentation `};` bound the slice; no arbitrary class is
+/// recovered textually.
+fn recover_macro_template_class_functions(source: &str) -> Vec<CppFunction> {
+    let mut recovered = Vec::new();
+    for class in macro_template_class_slices(source) {
+        let slice = &source[class.start..class.end];
+        let Ok((mut functions, _)) = collect_cpp_functions_raw(slice) else {
+            continue;
+        };
+        let line_offset = source[..class.start]
+            .bytes()
+            .filter(|byte| *byte == b'\n')
+            .count() as u32;
+        for function in &mut functions {
+            function.line = function.line.saturating_add(line_offset);
+            // A static function lexically inside a class cannot be a friend/free
+            // function. Restore that unambiguous receiver even when other opaque
+            // statement macros leave the standalone slice's root as ERROR.
+            if !function.api.is_method && function.is_static {
+                function.qualifier_path = vec![class.name.clone()];
+                function.api = cpp_api_metadata(
+                    &function.name,
+                    &function.qualifier_path,
+                    0,
+                    function.api.is_template,
+                );
+                let access = macro_class_access_at(source, &class, function.line);
+                function.api.member_access = Some(access.to_owned());
+                if access != "public" {
+                    function
+                        .api
+                        .unsupported
+                        .push("non_public_member".to_owned());
+                }
+            }
+        }
+        recovered.extend(functions);
+    }
+    recovered
+}
+
+fn reconcile_macro_template_class_scope(
+    functions: &mut Vec<CppFunction>,
+    recovered: Vec<CppFunction>,
+) {
+    for function in recovered {
+        if let Some(existing) = functions
+            .iter_mut()
+            .find(|candidate| candidate.name == function.name && candidate.line == function.line)
+        {
+            if function.api.is_method && !existing.api.is_method {
+                *existing = function;
+            }
+        } else {
+            functions.push(function);
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MacroTemplateClassSlice {
+    start: usize,
+    end: usize,
+    name: String,
+    default_access: &'static str,
+}
+
+fn macro_template_class_slices(source: &str) -> Vec<MacroTemplateClassSlice> {
+    let mut lines = Vec::new();
+    let mut offset = 0usize;
+    for line in source.split_inclusive('\n') {
+        lines.push((offset, line));
+        offset += line.len();
+    }
+    if offset < source.len() || source.is_empty() {
+        lines.push((offset, &source[offset..]));
+    }
+    let macro_marker = |token: &str| {
+        token.ends_with("_TPL_DECLARATION") || token.ends_with("_TEMPLATE_DECLARATION")
+    };
+    let mut slices = Vec::new();
+    for (index, (_, line)) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || !macro_marker(trimmed) {
+            continue;
+        }
+        let Some((class_line_index, class_offset_in_line, class_kind, class_name)) = lines
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .find_map(|(candidate_index, (_, candidate))| {
+                let trimmed = candidate.trim_start();
+                if trimmed.is_empty() || trimmed.starts_with("//") {
+                    return None;
+                }
+                let (kind, rest) = trimmed
+                    .strip_prefix("class ")
+                    .map(|rest| ("class", rest))
+                    .or_else(|| trimmed.strip_prefix("struct ").map(|rest| ("struct", rest)))?;
+                let name = rest
+                    .chars()
+                    .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
+                    .collect::<String>();
+                (!name.is_empty()).then_some((
+                    candidate_index,
+                    candidate.len().saturating_sub(trimmed.len()),
+                    kind,
+                    name,
+                ))
+            })
+        else {
+            continue;
+        };
+        let (class_line_start, _) = lines[class_line_index];
+        let class_start = class_line_start + class_offset_in_line;
+        let class_indent = class_offset_in_line;
+        let Some((closing_index, _)) =
+            lines
+                .iter()
+                .enumerate()
+                .skip(class_line_index + 1)
+                .find(|(_, (_, candidate))| {
+                    let trimmed = candidate.trim_start();
+                    let indent = candidate.len().saturating_sub(trimmed.len());
+                    indent <= class_indent && trimmed.starts_with("};")
+                })
+        else {
+            continue;
+        };
+        let (closing_start, closing_line) = lines[closing_index];
+        slices.push(MacroTemplateClassSlice {
+            start: class_start,
+            end: closing_start + closing_line.len(),
+            name: class_name,
+            default_access: if class_kind == "struct" {
+                "public"
+            } else {
+                "private"
+            },
+        });
+    }
+    slices.sort_by_key(|class| (class.start, class.end));
+    slices.dedup_by_key(|class| (class.start, class.end));
+    slices
+}
+
+fn macro_class_access_at(
+    source: &str,
+    class: &MacroTemplateClassSlice,
+    function_line: u32,
+) -> &'static str {
+    let class_line = source[..class.start]
+        .bytes()
+        .filter(|byte| *byte == b'\n')
+        .count() as u32
+        + 1;
+    let relative_end = function_line.saturating_sub(class_line) as usize;
+    let mut labels = Vec::new();
+    for line in source[class.start..class.end]
+        .lines()
+        .take(relative_end + 1)
+    {
+        let trimmed = line.trim_start();
+        let access = if trimmed.starts_with("public:") {
+            Some("public")
+        } else if trimmed.starts_with("private:")
+            || cpp_access_macro_kind(trimmed) == Some("private")
+        {
+            Some("private")
+        } else if trimmed.starts_with("protected:")
+            || cpp_access_macro_kind(trimmed) == Some("protected")
+        {
+            Some("protected")
+        } else if cpp_access_macro_kind(trimmed) == Some("public") {
+            Some("public")
+        } else {
+            None
+        };
+        if let Some(access) = access {
+            labels.push((line.len().saturating_sub(trimmed.len()), access));
+        }
+    }
+    let Some(min_indent) = labels.iter().map(|(indent, _)| *indent).min() else {
+        return class.default_access;
+    };
+    labels
+        .into_iter()
+        .rev()
+        .find(|(indent, _)| *indent == min_indent)
+        .map(|(_, access)| access)
+        .unwrap_or(class.default_access)
+}
+
+fn cpp_access_macro_kind(line: &str) -> Option<&'static str> {
+    let token = line.split(':').next()?.trim();
+    if token.is_empty()
+        || !token
+            .bytes()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
+    {
+        return None;
+    }
+    if token.contains("PRIVATE") {
+        Some("private")
+    } else if token.contains("PROTECTED") {
+        Some("protected")
+    } else if token.contains("PUBLIC") {
+        Some("public")
+    } else {
+        None
+    }
 }
 
 /// Reconcile the native parse against a conditional-blanked re-parse (`extra`) to
@@ -928,6 +1324,49 @@ fn annotate_template_instantiations(functions: &mut [CppFunction], source: &str)
             .find(|(name, args)| name == &f.name && args.len() == f.template_type_params.len())
         {
             f.instantiation_args = args.clone();
+        }
+    }
+}
+
+/// Resolve the conservative member-template shape an expert commonly uses for a
+/// whole-input parser: a public static `parse`/`decode`/`deserialize` method whose
+/// only required operand is one unconstrained template type. `std::string` is a
+/// bounded, owning byte channel and trailing policy/callback parameters retain
+/// their library defaults. Other member templates remain unresolved and filtered.
+fn infer_byte_input_member_template_instantiations(functions: &mut [CppFunction]) {
+    for function in functions {
+        if !function.api.is_template
+            || !function.api.is_method
+            || !function.is_static
+            || function.api.member_access.as_deref() != Some("public")
+            || !function.instantiation_args.is_empty()
+            || function.template_type_params.len() != 1
+            || !matches!(
+                function.name.to_ascii_lowercase().as_str(),
+                "parse" | "decode" | "deserialize"
+            )
+        {
+            continue;
+        }
+        let mut required_len = function.params.len();
+        while required_len > 0 && function.params[required_len - 1].has_default {
+            required_len -= 1;
+        }
+        if required_len != 1 {
+            continue;
+        }
+        let type_parameter = &function.template_type_params[0];
+        let operand = function.params[0]
+            .cpp_type
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        let referent = operand
+            .trim_start_matches("const ")
+            .trim_end_matches('&')
+            .trim();
+        if referent == type_parameter {
+            function.instantiation_args = vec!["std::string".to_owned()];
         }
     }
 }
@@ -2230,7 +2669,10 @@ fn function_param_types(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec
     let mut out = Vec::new();
     let mut cursor = params_node.walk();
     for child in params_node.children(&mut cursor) {
-        if child.kind() != "parameter_declaration" {
+        if !matches!(
+            child.kind(),
+            "parameter_declaration" | "optional_parameter_declaration"
+        ) {
             continue;
         }
         let mut span = child
@@ -2238,6 +2680,14 @@ fn function_param_types(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec
             .map(str::trim)
             .unwrap_or("")
             .to_owned();
+        if let Some(default_value) = child.child_by_field_name("default_value") {
+            span = std::str::from_utf8(&source[child.start_byte()..default_value.start_byte()])
+                .map(str::trim)
+                .unwrap_or("")
+                .trim_end_matches('=')
+                .trim_end()
+                .to_owned();
+        }
         if span == "void" || span.is_empty() {
             continue;
         }
@@ -3280,7 +3730,10 @@ fn function_params(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec<CppP
     let mut params = Vec::new();
     let mut cursor = list.walk();
     for child in list.children(&mut cursor) {
-        if child.kind() != "parameter_declaration" {
+        if !matches!(
+            child.kind(),
+            "parameter_declaration" | "optional_parameter_declaration"
+        ) {
             continue;
         }
         let declarator_node = child.child_by_field_name("declarator");
@@ -3334,6 +3787,8 @@ fn function_params(declarator: tree_sitter::Node<'_>, source: &[u8]) -> Vec<CppP
         params.push(CppParamDescriptor {
             name,
             cpp_type: full_type,
+            has_default: child.kind() == "optional_parameter_declaration"
+                || child.child_by_field_name("default_value").is_some(),
         });
     }
     params
@@ -5166,6 +5621,84 @@ template <typename T> T parse_as(const std::string &s) { return T(); }
         let parse_as = funcs.iter().find(|f| f.name == "parse_as").expect("found");
         assert_eq!(parse_as.template_type_params, vec!["T".to_owned()]);
         assert!(parse_as.instantiation_args.is_empty());
+    }
+
+    #[test]
+    fn macro_declared_class_member_parser_gets_string_specialization_and_defaults() {
+        let src = r#"
+LIB_VALUE_TPL_DECLARATION
+class basic_value
+{
+    LIB_PRIVATE_UNLESS_TESTED:
+    int hidden() const { return 0; }
+  public:
+    template<typename InputType>
+    static basic_value parse(InputType&& input,
+                             int policy = 0,
+                             bool strict = true)
+    {
+        (void)input; (void)policy; (void)strict;
+        return {};
+    }
+};
+"#;
+        let functions = parse_cpp_functions(src).expect("macro-templated class parses");
+        let parse = functions
+            .iter()
+            .find(|function| function.name == "parse")
+            .expect("parse member survives structural recovery");
+        assert!(parse.api.is_method, "{parse:?}");
+        assert!(parse.is_static, "{parse:?}");
+        assert_eq!(parse.api.class_name.as_deref(), Some("basic_value"));
+        assert_eq!(parse.api.member_access.as_deref(), Some("public"));
+        assert_eq!(parse.template_type_params, ["InputType"]);
+        assert_eq!(parse.instantiation_args, ["std::string"]);
+        assert!(!parse.params[0].has_default);
+        assert!(parse.params[1].has_default);
+        assert!(parse.params[2].has_default);
+        let required = parse.effective_required_params();
+        assert_eq!(required.len(), 1, "{required:?}");
+        assert_eq!(required[0].cpp_type, "std::string &&");
+    }
+
+    #[test]
+    fn macro_template_class_slice_recovers_member_from_broken_outer_tree() {
+        let src = r#"
+BROKEN_OUTER_MACRO(
+LIB_VALUE_TPL_DECLARATION
+class basic_value
+{
+    LIB_PRIVATE_UNLESS_TESTED:
+    static int hidden(const char* input) { return input != nullptr; }
+  public:
+    template<typename InputType>
+    static basic_value parse(InputType&& input, bool strict = true)
+    {
+        (void)input; (void)strict;
+        return {};
+    }
+};
+"#;
+        let functions = parse_cpp_functions(src).expect("broken outer tree is recoverable");
+        let parse = functions
+            .iter()
+            .find(|function| function.name == "parse")
+            .expect("parse member is recovered from the bounded class slice");
+        assert!(parse.api.is_method, "{parse:?}");
+        assert_eq!(parse.api.class_name.as_deref(), Some("basic_value"));
+        assert_eq!(parse.api.member_access.as_deref(), Some("public"));
+        assert_eq!(parse.instantiation_args, ["std::string"]);
+
+        let hidden = functions
+            .iter()
+            .find(|function| function.name == "hidden")
+            .expect("private member remains discoverable for diagnostics");
+        assert_eq!(hidden.api.member_access.as_deref(), Some("private"));
+        assert!(hidden
+            .api
+            .unsupported
+            .iter()
+            .any(|reason| reason == "non_public_member"));
     }
 
     #[test]

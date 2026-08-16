@@ -153,6 +153,10 @@ fn is_ident_char(c: char) -> bool {
 enum Frame {
     Module(String),
     Class(String),
+    /// `class << self` makes ordinary `def name` declarations singleton
+    /// methods on the enclosing class/module. It contributes no path component,
+    /// but changes the call shape from `Klass.new.name` to `Klass.name`.
+    SingletonClass,
     Def,
     Anon,
 }
@@ -264,7 +268,12 @@ fn parse_def(
 
     // An instance method (not `self.`, defined inside a class) needs a receiver.
     let inside_class = stack.iter().any(|f| matches!(f, Frame::Class(_)));
-    let needs_instance = !self_method && inside_class;
+    let inside_singleton_class = stack
+        .iter()
+        .rev()
+        .take_while(|frame| !matches!(frame, Frame::Def))
+        .any(|frame| matches!(frame, Frame::SingletonClass));
+    let needs_instance = !self_method && inside_class && !inside_singleton_class;
 
     // A private instance method isn't externally callable — skip it (the accessibility
     // rule shared with the other lanes).
@@ -398,7 +407,7 @@ fn apply_block_delta(
     if first_tok == "class" {
         let after = t["class".len()..].trim_start();
         if after.starts_with("<<") {
-            stack.push(Frame::Anon); // singleton class `class << self`
+            stack.push(Frame::SingletonClass);
         } else if let Some(name) = named_after(t, "class") {
             stack.push(Frame::Class(name));
         } else {
@@ -410,10 +419,26 @@ fn apply_block_delta(
     // Other block openers that need an `end`: keyword-led statements, or a trailing
     // `do` (a block). A line can also close what it opens (`3.times do ... end`), so
     // only push when the line does not itself contain a matching `end`.
-    let opens = opens_block_keyword(first_tok) || ends_with_do(t);
+    let opens = opens_block_keyword(first_tok) || opens_rhs_keyword(t) || ends_with_do(t);
     if opens && !line_self_closes(t) {
         stack.push(Frame::Anon);
     }
+}
+
+/// Ruby permits expression blocks on the right-hand side of an assignment:
+/// `path = if condition ... end`. Missing that opener makes the closing `end`
+/// pop the enclosing class and turns all following instance methods into bogus
+/// module functions.
+fn opens_rhs_keyword(t: &str) -> bool {
+    ["if", "unless", "case", "begin"].iter().any(|keyword| {
+        let needle = format!("= {keyword}");
+        t.find(&needle).is_some_and(|at| {
+            t[at + needle.len()..]
+                .chars()
+                .next()
+                .is_none_or(char::is_whitespace)
+        })
+    })
 }
 
 /// Whether a `module X`/`class X` line names X; returns the (possibly namespaced)
@@ -540,6 +565,26 @@ end
     }
 
     #[test]
+    fn singleton_class_method_is_callable_without_instance() {
+        let src = "\
+module Tmuxinator
+  class Project
+    class << self
+      def load(path, options = {})
+        path
+      end
+    end
+  end
+end
+";
+        let m = &parse_ruby(src)[0];
+        assert_eq!(m.name, "Tmuxinator::Project.load");
+        assert_eq!(m.receiver_path, "Tmuxinator::Project");
+        assert_eq!(m.method, "load");
+        assert!(!m.needs_instance);
+    }
+
+    #[test]
     fn instance_method_needs_receiver() {
         let src = "\
 class Parser
@@ -609,6 +654,29 @@ end
         assert_eq!(m.name, "M::C#scan");
         assert_eq!(m.receiver_path, "M::C");
         assert!(m.needs_instance);
+    }
+
+    #[test]
+    fn rhs_expression_block_does_not_pop_the_enclosing_class() {
+        let src = "\
+module M
+  class C
+    def public_method(text)
+      path = if text.empty?
+        'empty'
+      end
+      path
+    end
+    private
+    def helper(text)
+      text
+    end
+  end
+end
+";
+        let methods = parse_ruby(src);
+        let names: Vec<&str> = methods.iter().map(|method| method.name.as_str()).collect();
+        assert_eq!(names, vec!["M::C#public_method"]);
     }
 
     #[test]

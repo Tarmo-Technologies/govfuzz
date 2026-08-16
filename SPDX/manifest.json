@@ -259,6 +259,22 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "benchmarks/harness-parity-200/expert/ada/adl_basename.adb",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-200/expert/c/stb_image.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-200/expert/cobol/webbol_file_ops.c",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "benchmarks/harness-parity-200/expert/rust/zoxide_db.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "benchmarks/harnesses/afl_persistent.c",
       "license": "Apache-2.0"
     },
@@ -1264,6 +1280,10 @@
     },
     {
       "path": "crates/cli/src/auto/sink_oracle.rs",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "crates/cli/src/auto/storage.rs",
       "license": "Apache-2.0"
     },
     {
@@ -3391,6 +3411,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "crates/target_rank/src/name_semantics.rs",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "crates/target_rank/src/perl_rank.rs",
       "license": "Apache-2.0"
     },
@@ -3540,6 +3564,10 @@
     },
     {
       "path": "docs/site/fortran.md",
+      "license": "Apache-2.0"
+    },
+    {
+      "path": "docs/site/harness-parity-audit.md",
       "license": "Apache-2.0"
     },
     {

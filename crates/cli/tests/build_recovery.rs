@@ -9,6 +9,8 @@
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
+mod support;
+
 /// Directory under the repo root that holds fixtures and scenarios.
 /// Cargo runs integration tests with CWD == crate root
 /// (`crates/cli/`), so we walk two levels up to reach the workspace
@@ -345,6 +347,7 @@ fn build_recovery_scenarios() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let scenarios = discover_scenarios();
     assert!(
         !scenarios.is_empty(),
@@ -519,6 +522,7 @@ fn invoke_govfuzz_auto(
         // without ballooning the suite beyond a few minutes for a dozen scenarios.
         .arg("--per-target-time")
         .arg("3");
+    support::configure_runtrace_shim(&mut cmd);
     for target in targets {
         cmd.arg("--target").arg(target);
     }
@@ -596,6 +600,7 @@ fn smoke_extract_fixture_compiles() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let fixture = harness_root().join("fixtures/miniz");
     let work = tempfile::Builder::new()
         .prefix("govfuzz-build-recovery-smoke-")
@@ -630,6 +635,7 @@ fn smoke_no_removals_does_not_fail_build() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let fixture = harness_root().join("fixtures/miniz");
     let work = tempfile::Builder::new()
         .prefix("govfuzz-build-recovery-no-removals-")
@@ -692,6 +698,7 @@ fn cpp_stdlib_type_resolves_via_real_include() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let work = tempfile::Builder::new()
         .prefix("govfuzz-cpp-stdlib-")
         .tempdir()
@@ -753,6 +760,7 @@ fn missing_build_config_macro_is_defined_and_surfaced() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let work = tempfile::Builder::new()
         .prefix("govfuzz-macro-")
         .tempdir()
@@ -818,6 +826,7 @@ fn static_target_does_not_double_include_guardless_header() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let work = tempfile::Builder::new()
         .prefix("govfuzz-guardless-")
         .tempdir()
@@ -879,6 +888,7 @@ fn non_static_target_with_source_only_struct_param_is_skipped_not_failed() {
     if skip_if_no_toolchain() {
         return;
     }
+    let _fuzz_guard = support::fuzz_serial_guard();
     let work = tempfile::Builder::new()
         .prefix("govfuzz-source-only-type-")
         .tempdir()

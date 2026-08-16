@@ -36,6 +36,8 @@ pub struct PerlScoreBreakdown {
     pub needs_receiver: i32,
     /// Penalty for a getter / writer / accessor name.
     pub getter_or_writer_name: i32,
+    /// Penalty for logging/error/reporting helpers with shallow string handling.
+    pub low_value_helper_name: i32,
     pub total: i32,
 }
 
@@ -84,7 +86,7 @@ pub fn rank_perl_targets(subs: &[PerlSub]) -> Vec<PerlTarget> {
     targets
 }
 
-fn name_is_parser(lower: &str) -> bool {
+fn name_is_parser(name: &str) -> bool {
     const KW: &[&str] = &[
         "parse",
         "decode",
@@ -92,19 +94,18 @@ fn name_is_parser(lower: &str) -> bool {
         "load",
         "deserialize",
         "unmarshal",
-        "from_",
+        "from",
         "scan",
         "lex",
         "tokenize",
         "unpack",
         "process",
-        "handle",
         "convert",
         "expand",
         "split",
         "extract",
     ];
-    KW.iter().any(|k| lower.contains(k))
+    crate::name_semantics::has_action_stem(name, KW)
 }
 
 fn name_is_getter_or_writer(lower: &str) -> bool {
@@ -122,7 +123,7 @@ fn score(s: &PerlSub) -> PerlScoreBreakdown {
     let mut b = PerlScoreBreakdown::default();
     let lower = s.name.to_ascii_lowercase();
     b.string_sink = 10;
-    if name_is_parser(&lower) {
+    if name_is_parser(&s.name) {
         b.parser_name = 25;
     }
     if s.is_method {
@@ -133,11 +134,15 @@ fn score(s: &PerlSub) -> PerlScoreBreakdown {
     if name_is_getter_or_writer(&lower) {
         b.getter_or_writer_name = -20;
     }
+    if crate::name_semantics::is_low_value_helper(&s.qualified()) {
+        b.low_value_helper_name = -35;
+    }
     b.total = b.parser_name
         + b.string_sink
         + b.callable_without_receiver
         + b.needs_receiver
-        + b.getter_or_writer_name;
+        + b.getter_or_writer_name
+        + b.low_value_helper_name;
     b
 }
 
@@ -168,6 +173,50 @@ mod tests {
         assert_eq!(
             t[0].input_reachability,
             InputReachability::AttackerReachable
+        );
+    }
+
+    #[test]
+    fn incidental_read_and_reload_substrings_are_not_parser_actions() {
+        let t = rank(
+            "package P;\n\
+             sub mariadb_threadpool { my $s = shift; $s }\n\
+             sub already_included { my $s = shift; $s }\n\
+             sub cpl_reload { my $s = shift; $s }\n\
+             sub parse_integer { my $s = shift; $s }\n1;\n",
+        );
+        assert_eq!(t[0].name, "P::parse_integer");
+        for name in [
+            "P::mariadb_threadpool",
+            "P::already_included",
+            "P::cpl_reload",
+        ] {
+            assert_eq!(
+                t.iter()
+                    .find(|target| target.name == name)
+                    .unwrap()
+                    .breakdown
+                    .parser_name,
+                0,
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn reporting_package_demotes_generic_run_method() {
+        let t = rank(
+            "package App::PhaseReporter;\nsub run { my $s = shift; $s }\n\
+             package Parser;\nsub parse { my $s = shift; $s }\n1;\n",
+        );
+        assert_eq!(t[0].name, "Parser::parse");
+        assert!(
+            t.iter()
+                .find(|target| target.name == "App::PhaseReporter::run")
+                .unwrap()
+                .breakdown
+                .low_value_helper_name
+                < 0
         );
     }
 }

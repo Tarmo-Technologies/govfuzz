@@ -202,6 +202,8 @@ fn auto_args_from_ci(args: &CiArgs, scoped_files: &[PathBuf]) -> AutoArgs {
     AutoArgs {
         path: args.path.clone(),
         work_dir: args.work_dir.clone(),
+        max_work_dir_mb: crate::auto::storage::DEFAULT_MAX_WORK_DIR_MIB,
+        max_corpus_mb: 64,
         discovery_cache: None,
         config: None,
         project: None,

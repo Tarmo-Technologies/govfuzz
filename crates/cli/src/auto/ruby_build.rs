@@ -83,7 +83,7 @@ pub fn build_ruby_harness(
         };
     };
 
-    let (method, call) = match resolve_target(candidate) {
+    let (method, call, materialize_file) = match resolve_target(candidate) {
         Ok(r) => r,
         Err(reason) => return RubyBuildResult::Failed { reason, skip: true },
     };
@@ -124,7 +124,7 @@ pub fn build_ruby_harness(
     // never scans them. Used here only for the build-time `require` smoke test.
     let roots = crate::auto::script_load_roots::module_load_roots(source_root, &target_dir);
     let load_paths = crate::auto::script_load_roots::join_roots(&roots, ':');
-    let harness_src = generate_harness(&target_abs, &roots, &call);
+    let harness_src = generate_harness_for_shape(&target_abs, &roots, &call, &[], materialize_file);
     let harness_path = auto_dir.join("govfuzzgen.rb");
     if let Err(e) = std::fs::write(&harness_path, &harness_src) {
         return RubyBuildResult::Failed {
@@ -175,6 +175,7 @@ pub fn build_ruby_harness(
             Command::new(&ruby)
                 .arg("-e")
                 .arg(format!("require '{}'", harness_path.display()))
+                .current_dir(&auto_dir)
                 .env("RUBYLIB", &load_paths),
             Duration::from_secs(30),
         );
@@ -204,6 +205,7 @@ pub fn build_ruby_harness(
                 Command::new(&ruby)
                     .arg("-e")
                     .arg(format!("require '{require_path}'"))
+                    .current_dir(&auto_dir)
                     .env("RUBYLIB", &load_paths),
                 Duration::from_secs(30),
             );
@@ -229,7 +231,8 @@ pub fn build_ruby_harness(
             break;
         }
         preludes.push(require_path);
-        let harness_src = generate_harness_with_preludes(&target_abs, &roots, &call, &preludes);
+        let harness_src =
+            generate_harness_for_shape(&target_abs, &roots, &call, &preludes, materialize_file);
         if let Err(e) = std::fs::write(&harness_path, &harness_src) {
             return RubyBuildResult::Failed {
                 reason: format!("write harness {}: {e}", harness_path.display()),
@@ -252,6 +255,70 @@ pub fn build_ruby_harness(
         Err(e) => {
             return RubyBuildResult::Failed {
                 reason: format!("could not run require smoke-test: {e}"),
+                skip: false,
+            };
+        }
+    }
+
+    // Loading a file proves only that constants resolve. An expert harness also
+    // verifies that its receiver can actually be created and that one decoded
+    // positional input satisfies the selected method's arity. Reflection does
+    // that without running constructors or mutating project state.
+    let receiver = if method.receiver_path.is_empty() {
+        "Object"
+    } else {
+        method.receiver_path.as_str()
+    };
+    let target_reflection = if method.needs_instance {
+        format!("klass.instance_method(:{})", method.method)
+    } else if method.receiver_path.is_empty() {
+        format!("Object.instance_method(:{})", method.method)
+    } else {
+        format!("klass.method(:{})", method.method)
+    };
+    let constructor_check = if method.needs_instance {
+        "ctor = klass.instance_method(:initialize); \
+         bad_ctor = ctor.parameters.any? { |kind, _| kind == :req || kind == :keyreq }; \
+         abort('receiver constructor requires arguments') if bad_ctor; "
+    } else {
+        ""
+    };
+    let reflection = format!(
+        "require '{}'; klass = {}; {} target = {}; \
+         params = target.parameters; \
+         required = params.count {{ |kind, _| kind == :req }}; \
+         required_keywords = params.any? {{ |kind, _| kind == :keyreq }}; \
+         positional = params.any? {{ |kind, _| [:req, :opt, :rest].include?(kind) }}; \
+         abort('method is not callable with one positional input') \
+           if required > 1 || required_keywords || !positional;",
+        harness_path.display(),
+        receiver,
+        constructor_check,
+        target_reflection,
+    );
+    match crate::command_output::output_with_timeout(
+        Command::new(&ruby)
+            .arg("--disable-gems")
+            .arg("-e")
+            .arg(reflection)
+            .current_dir(&auto_dir)
+            .env("RUBYLIB", &load_paths),
+        Duration::from_secs(30),
+    ) {
+        Ok(out) if out.status.success() => {}
+        Ok(out) => {
+            return RubyBuildResult::Failed {
+                reason: format!(
+                    "target `{}` has no safe one-input call shape: {}",
+                    candidate.name,
+                    String::from_utf8_lossy(&out.stderr).trim()
+                ),
+                skip: true,
+            };
+        }
+        Err(error) => {
+            return RubyBuildResult::Failed {
+                reason: format!("could not inspect Ruby call shape: {error}"),
                 skip: false,
             };
         }
@@ -310,7 +377,7 @@ pub fn build_ruby_harness(
 /// Resolve the target method + the Ruby call expression. A top-level or module
 /// (`self.`) method is called directly; an instance method constructs a no-arg
 /// receiver (`Klass.new.method`).
-fn resolve_target(candidate: &Candidate) -> Result<(RubyMethod, String), String> {
+fn resolve_target(candidate: &Candidate) -> Result<(RubyMethod, String, bool), String> {
     let source = crate::source_text::read_source_text(&candidate.source_path)
         .map_err(|e| format!("read {}: {e}", candidate.source_path.display()))?;
     let methods = parse_ruby(&source);
@@ -321,15 +388,33 @@ fn resolve_target(candidate: &Candidate) -> Result<(RubyMethod, String), String>
         .cloned()
         .ok_or_else(|| format!("target `{}` no longer present in source", candidate.name))?;
 
+    let materialize_file = ruby_param_is_file_path(&m.first_param);
+    let argument = if materialize_file {
+        "file.path"
+    } else {
+        "data"
+    };
     let call = if m.receiver_path.is_empty() {
         // Top-level method (a private method on Object) — callable directly.
-        format!("{}(data)", m.method)
+        format!("{}({argument})", m.method)
     } else if m.needs_instance {
-        format!("{}.new.{}(data)", m.receiver_path, m.method)
+        format!("{}.new.{}({argument})", m.receiver_path, m.method)
     } else {
-        format!("{}.{}(data)", m.receiver_path, m.method)
+        format!("{}.{}({argument})", m.receiver_path, m.method)
     };
-    Ok((m, call))
+    Ok((m, call, materialize_file))
+}
+
+/// A Ruby parameter named as a path/file is a resource handle, not the file's
+/// contents. Expert harnesses materialize the fuzz bytes and pass a temporary
+/// path; passing the raw bytes as a pathname only explores ENOENT rejection.
+fn ruby_param_is_file_path(param: &str) -> bool {
+    let name = param.trim_start_matches(['*', '&']).to_ascii_lowercase();
+    matches!(
+        name.as_str(),
+        "path" | "file" | "filename" | "filepath" | "file_path"
+    ) || name.ends_with("_path")
+        || name.ends_with("_file")
 }
 
 /// Emit `govfuzzgen.rb` defining a global `govfuzz_run_one(data)` that loads the
@@ -388,15 +473,27 @@ fn underscore(name: &str) -> String {
     out
 }
 
+#[cfg(test)]
 fn generate_harness(target_abs: &Path, load_roots: &[std::path::PathBuf], call: &str) -> String {
     generate_harness_with_preludes(target_abs, load_roots, call, &[])
 }
 
+#[cfg(test)]
 fn generate_harness_with_preludes(
     target_abs: &Path,
     load_roots: &[std::path::PathBuf],
     call: &str,
     preludes: &[String],
+) -> String {
+    generate_harness_for_shape(target_abs, load_roots, call, preludes, false)
+}
+
+fn generate_harness_for_shape(
+    target_abs: &Path,
+    load_roots: &[std::path::PathBuf],
+    call: &str,
+    preludes: &[String],
+    materialize_file: bool,
 ) -> String {
     // Pushed in reverse so the FIRST root ends up first after the unshifts: the
     // target's own package root must beat a sibling package that defines the
@@ -416,21 +513,51 @@ fn generate_harness_with_preludes(
         .iter()
         .map(|path| format!("begin; require '{path}'; rescue Exception; end\n"))
         .collect();
+    let tempfile_require = if materialize_file {
+        "require 'tempfile'\n"
+    } else {
+        ""
+    };
+    let run_body = if materialize_file {
+        format!(
+            "  Tempfile.create(['govfuzz-input', '.bin']) do |file|\n\
+             \x20   file.binmode\n\
+             \x20   file.write(data)\n\
+             \x20   file.flush\n\
+             \x20   govfuzz_mark_target_entry\n\
+             \x20   {call}\n\
+             \x20 end"
+        )
+    } else {
+        format!("  govfuzz_mark_target_entry\n  {call}")
+    };
     format!(
         "# SPDX-License-Identifier: Apache-2.0\n\
          # Generated by govfuzz (native Ruby lane). Loads the target and passes the\n\
          # fuzz bytes as a String. Do not edit.\n\
          {path_setup}\
          {prelude_setup}\
+         {tempfile_require}\
          require '{target}'\n\
          \n\
+         $govfuzz_target_entered = false\n\
+         def govfuzz_mark_target_entry\n\
+         \x20 return if $govfuzz_target_entered\n\
+         \x20 path = ENV['GOVFUZZ_TARGET_ENTRY_SHM']\n\
+         \x20 return unless path\n\
+         \x20 File.binwrite(path, \"\\x01\")\n\
+         \x20 $govfuzz_target_entered = true\n\
+         rescue StandardError\n\
+         end\n\
+         \n\
          def govfuzz_run_one(data)\n\
-         \x20 {call}\n\
+         {run_body}\n\
          end\n",
         path_setup = path_setup,
         prelude_setup = prelude_setup,
+        tempfile_require = tempfile_require,
         target = target_abs.display(),
-        call = call,
+        run_body = run_body,
     )
 }
 
@@ -464,6 +591,10 @@ mod tests {
         assert!(h.contains("require '/proj/lib/toml.rb'"));
         assert!(h.contains("Toml.parse(data)"));
         assert!(h.contains("def govfuzz_run_one(data)"));
+        assert!(
+            h.contains("  govfuzz_mark_target_entry\n  Toml.parse(data)"),
+            "entry checkpoint must immediately precede the selected call: {h}"
+        );
         assert!(h.contains("$LOAD_PATH.unshift('/proj/lib')"));
         assert!(h.contains("$LOAD_PATH.unshift('/proj')"));
         // Nearest-first: the package root must be searched before the checkout.
@@ -473,6 +604,25 @@ mod tests {
             lib_at > root_at,
             "the package root must be unshifted last so it searches first"
         );
+    }
+
+    #[test]
+    fn path_parameters_are_backed_by_a_materialized_tempfile() {
+        assert!(ruby_param_is_file_path("path"));
+        assert!(ruby_param_is_file_path("config_file"));
+        assert!(!ruby_param_is_file_path("text"));
+
+        let harness = generate_harness_for_shape(
+            Path::new("/proj/lib/project.rb"),
+            &[std::path::PathBuf::from("/proj/lib")],
+            "Project.load(file.path)",
+            &[],
+            true,
+        );
+        assert!(harness.contains("require 'tempfile'"));
+        assert!(harness.contains("file.binmode\n    file.write(data)\n    file.flush"));
+        assert!(harness
+            .contains("file.flush\n    govfuzz_mark_target_entry\n    Project.load(file.path)"));
     }
 
     #[test]

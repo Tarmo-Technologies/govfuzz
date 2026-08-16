@@ -2310,14 +2310,17 @@ mod tests {
             cpp_parser::CppParamDescriptor {
                 name: "pattern".to_owned(),
                 cpp_type: "absl::string_view".to_owned(),
+                has_default: false,
             },
             cpp_parser::CppParamDescriptor {
                 name: "flags".to_owned(),
                 cpp_type: "ParseFlags".to_owned(),
+                has_default: false,
             },
             cpp_parser::CppParamDescriptor {
                 name: "status".to_owned(),
                 cpp_type: "RegexpStatus *".to_owned(),
+                has_default: false,
             },
         ];
         let args = GenerateCppDirectArgs {

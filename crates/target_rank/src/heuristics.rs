@@ -159,7 +159,6 @@ fn type_is_untrusted_input(type_ref: &TypeRef) -> bool {
 /// from out-ranking the XML `Parse`. `image`/`put`/`encode` are intentionally
 /// excluded as too ambiguous (an image-format parser, a container insert).
 pub fn has_serializer_subprogram_name(_ast: &StructuralAst, sp: &Subprogram) -> i32 {
-    let n = sp.name.to_ascii_lowercase();
     const KW: &[&str] = &[
         "write",
         "print",
@@ -168,19 +167,15 @@ pub fn has_serializer_subprogram_name(_ast: &StructuralAst, sp: &Subprogram) -> 
         "serialise",
         "emit",
         "output",
-        "to_string",
-        "to_json",
-        "to_xml",
-        "to_stream",
+        "to",
     ];
-    KW.iter().any(|kw| n.contains(kw)) as i32
+    crate::name_semantics::has_action_stem(&sp.name, KW) as i32
 }
 
 /// The subprogram NAME marks a parse/read/load entry point. Distinguishes the
 /// real parser from same-shape data manipulators (a `Set`/`Merge` that also
 /// takes a `String` key).
 pub fn has_parser_subprogram_name(_ast: &StructuralAst, sp: &Subprogram) -> i32 {
-    let n = sp.name.to_ascii_lowercase();
     const KW: &[&str] = &[
         "parse",
         "read",
@@ -189,10 +184,9 @@ pub fn has_parser_subprogram_name(_ast: &StructuralAst, sp: &Subprogram) -> i32 
         "lex",
         "scan",
         "deserialize",
-        "from_string",
-        "from_json",
+        "from",
     ];
-    KW.iter().any(|kw| n.contains(kw)) as i32
+    crate::name_semantics::has_action_stem(&sp.name, KW) as i32
 }
 
 pub fn has_range_constrained_scalar(_ast: &StructuralAst, sp: &Subprogram) -> i32 {
@@ -821,6 +815,11 @@ mod tests {
         let neutral = subprogram(3, "Merge", SubprogramOwner::LibraryLevel, None);
         assert_eq!(has_parser_subprogram_name(&ast, &neutral), 0);
         assert_eq!(has_serializer_subprogram_name(&ast, &neutral), 0);
+
+        let download = subprogram(4, "Download_File", SubprogramOwner::LibraryLevel, None);
+        assert_eq!(has_parser_subprogram_name(&ast, &download), 0);
+        let rewrite = subprogram(5, "Rewrite_Header", SubprogramOwner::LibraryLevel, None);
+        assert_eq!(has_serializer_subprogram_name(&ast, &rewrite), 0);
     }
 
     #[test]

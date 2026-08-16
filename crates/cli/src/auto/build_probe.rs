@@ -489,9 +489,10 @@ fn vcxproj_entries(vcxproj: &Path) -> Vec<ProbeEntry> {
             .replace("$(MSBuildProjectDirectory)", &proj_dir_rendered)
             .replace("$(SolutionDir)", &proj_dir_slash)
     };
-    // Union every declared include dir + define across the file. Over-approxing
-    // is harmless — extra `-I`/`-D` never break a build — and sidesteps having to
-    // model per-configuration `Condition=` selection.
+    // Union declared include dirs + defines across configurations because this
+    // static probe cannot evaluate arbitrary MSBuild `Condition=` expressions.
+    // Unknown property-dependent tokens are discarded below; ordinary conflicts
+    // remain visible to the normal compile/repair diagnostics.
     let mut include_dirs: Vec<String> = Vec::new();
     for raw in tag_values(&text, "AdditionalIncludeDirectories") {
         for piece in raw.split(';') {
@@ -499,7 +500,16 @@ fn vcxproj_entries(vcxproj: &Path) -> Vec<ProbeEntry> {
             if piece.is_empty() || piece.starts_with("%(") {
                 continue;
             }
-            let abs = resolve_against(proj_dir, &resolve_macros(piece));
+            let piece = resolve_macros(piece);
+            // Configuration-dependent MSBuild properties such as `$(IntDir)`
+            // and `$(OutDir)` have no value in this static, cross-platform
+            // probe. Passing them through creates a bogus absolute path and,
+            // correctly, trips Makefile injection protection on `$`. Drop only
+            // the unresolved token; the project/source include roots remain.
+            if contains_unresolved_msbuild_placeholder(&piece) {
+                continue;
+            }
+            let abs = resolve_against(proj_dir, &piece);
             let s = harness_gen::build_safety::make_path(&abs);
             if !include_dirs.contains(&s) {
                 include_dirs.push(s);
@@ -516,6 +526,9 @@ fn vcxproj_entries(vcxproj: &Path) -> Vec<ProbeEntry> {
         for piece in raw.split(';') {
             let piece = piece.trim();
             if piece.is_empty() || piece.starts_with("%(") {
+                continue;
+            }
+            if contains_unresolved_msbuild_placeholder(piece) {
                 continue;
             }
             if !defines.contains(&piece.to_owned()) {
@@ -543,6 +556,10 @@ fn vcxproj_entries(vcxproj: &Path) -> Vec<ProbeEntry> {
         });
     }
     entries
+}
+
+fn contains_unresolved_msbuild_placeholder(value: &str) -> bool {
+    value.contains("$(") || value.contains("%(")
 }
 
 /// Inner texts of every `<TAG ...>...</TAG>` occurrence (tolerates attributes on
@@ -3476,8 +3493,8 @@ mod tests {
 <Project>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions Condition="'$(Config)'=='Release'">PARSERLIB_BUILD;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions Condition="'$(Config)'=='Release'">PARSERLIB_BUILD;WIN32;CACHE_DIR=$(IntDir);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -3504,6 +3521,14 @@ mod tests {
         assert!(
             !args.contains("%("),
             "inherited %(...) placeholders dropped: {args}"
+        );
+        assert!(
+            !args.contains("$(IntDir)"),
+            "unresolved MSBuild properties are dropped, not emitted into make: {args}"
+        );
+        assert!(
+            !args.contains("CACHE_DIR"),
+            "a define with an unresolved property is dropped as one token: {args}"
         );
         assert_eq!(entries[0].file, root.join("src").join("parser.c"));
     }

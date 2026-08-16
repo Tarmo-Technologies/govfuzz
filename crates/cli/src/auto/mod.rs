@@ -71,6 +71,7 @@ pub mod rust_build;
 pub mod script_load_roots;
 pub mod shim_path;
 pub mod sink_oracle;
+pub mod storage;
 pub mod triage;
 pub mod tsan;
 pub mod vcs_recovery;

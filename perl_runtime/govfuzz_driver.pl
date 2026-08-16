@@ -107,7 +107,11 @@ if (defined $ENV{GOVFUZZ_FRAMED}) {
         syswrite($CTL, "\x01");    # sync byte
         # Periodically persist covered lines for negative fuzz-confirmation (no-op
         # unless the set grew / GOVFUZZ_COVERED_LINES is set; coverage plateaus).
-        Devel::GovfuzzCov::dump_covered_lines() if (++$count & 0x1FF) == 0;
+        ++$count;
+        # Exponentially spaced early checkpoints keep short campaigns from
+        # losing all line evidence before the old 512-input checkpoint.
+        Devel::GovfuzzCov::dump_covered_lines()
+            if (($count & ($count - 1)) == 0 || ($count & 0x1FF) == 0);
     }
 } else {
     my $data;
@@ -123,3 +127,4 @@ if (defined $ENV{GOVFUZZ_FRAMED}) {
     run_input(defined($data) ? $data : '');
     Devel::GovfuzzCov::flush();
 }
+Devel::GovfuzzCov::dump_covered_lines();

@@ -8,6 +8,8 @@
 use std::path::Path;
 use std::process::Command;
 
+mod support;
+
 fn clang_available() -> bool {
     which::which("clang").is_ok()
 }
@@ -39,7 +41,9 @@ fn input_triggered_command_exec_is_profiled_as_capability() {
     let _ = std::fs::remove_dir_all(&work);
     let src = work.with_extension("src.c");
     std::fs::write(&src, GATED_EXEC_C).unwrap();
-    let out = Command::new(env!("CARGO_BIN_EXE_govfuzz"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_govfuzz"));
+    support::configure_runtrace_shim(&mut command);
+    let out = command
         .arg("snippet")
         .arg(&src)
         .arg("--lang")

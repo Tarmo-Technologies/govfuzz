@@ -6,16 +6,18 @@ Every field `govfuzz auto` emits for a finding, what it means, and how to read i
 
 ## Where the data lives
 
-A run writes, under `<work-dir>/auto/`:
+A run puts findings at the work-directory root and campaign mechanics under
+`<work-dir>/auto/`:
 
 | Artifact | What it is |
 |---|---|
-| `run.md` | Human-readable run summary (targets built/fuzzed/skipped, findings, missing build deps). |
-| `run.json` | The same, machine-readable. |
-| `findings.csv` | One row per finding — see [findings.csv](#findingscsv). |
-| `<...>/findings/F-NNNN-<sig>/finding.json` | The full per-finding record (all fields below). |
-| `<...>/findings/F-NNNN-<sig>/testcase.bin` | The crashing input (the reproducer). |
-| `<...>/findings/F-NNNN-<sig>/replay.py` | Standalone replay script (runs the harness on the testcase). |
+| `FINDINGS.md` | Primary impact-ordered human finding digest, with evidence links and replay commands. |
+| `findings.csv` | Top-level root-cause index (one row per grouped issue) — see [findings.csv](#findingscsv). `auto/findings.csv` is retained as a compatibility alias. |
+| `findings/F-NNNN-<sig>/finding.json` | The full per-finding record (all fields below). |
+| `findings/F-NNNN-<sig>/testcase.bin` | The crashing input (the reproducer). |
+| `findings/F-NNNN-<sig>/replay.py` | Standalone replay script (runs the harness on the testcase). |
+| `auto/run.md` | Human-readable campaign summary (targets built/fuzzed/skipped and missing build deps). |
+| `auto/run.json` | The same, machine-readable. |
 
 The per-finding writeup in `run.md` is a rendering of `finding.json`; this doc
 describes the underlying fields.
@@ -128,22 +130,31 @@ with the sanitizer env set, reproducing the crash.
 
 ## findings.csv
 
-One row per finding (header always present; header-only when there are no findings):
+One row per root-cause issue, grouped by `cluster_key_full` (header always
+present; header-only when there are no findings). The most severe observation is
+the representative row; `count` and `member_finding_ids` preserve everything
+collapsed into it. `FINDINGS.md` presents the same groups in impact order.
 
-| Column | Source field |
+| Column | Meaning / source |
 |---|---|
-| `id` | `id` |
-| `harness_id` | `harness_id` |
-| `exception_name` | `exception.name` |
-| `sanitizer` | `exception.sanitizer` |
-| `classification` | `classification` |
-| `impact` | `actionability.impact` |
-| `confidence` | `actionability.confidence` |
-| `verdict` | `actionability.verdict` |
-| `cwe` | `actionability.cwe` |
-| `sink_file` / `sink_line` / `sink_function` | `actionability.sink` |
-| `fix_location` | `actionability.fix_location` (or `no source location resolved`) |
-| `signature` | `signature` |
+| `id` | Representative finding `id` |
+| `count` | Number of observations collapsed into this root-cause row |
+| `harness_id` | Representative `harness_id` |
+| `rule_id` / `message` | Detector id and one-line defect description |
+| `exception_name` / `sanitizer` | Representative `exception.name` and `exception.sanitizer` (blank for non-crash findings) |
+| `classification` | Representative `classification` |
+| `confirmation` | Strongest evidence in the group: fuzz-confirmed, fuzz, reachable, or static |
+| `impact` / `confidence` / `verdict` | Representative actionability fields; forced/stub-heavy groups are confidence-floored to low |
+| `cwe` | Union of the group's CWE ids, separated by semicolons |
+| `source` / `data_flow` | Input origin and the source-to-sink path when available |
+| `sink_file` / `sink_line` / `sink_function` | Representative `actionability.sink` |
+| `entity` | Affected program entity or symbol |
+| `remediation` | Suggested fix / patch guidance |
+| `signature` | Representative finding signature |
+| `member_finding_ids` | Semicolon-separated member ids when `count > 1`; blank for a singleton |
+| `stub_total` / `stub_blind` / `stub_declared` / `linked_real` | How much generated scaffolding stood between the harness and real dependency code; blank means not measured, not zero |
+| `scan_type` | Optional with `--static-dynamic`: `static-dynamic` when any grouped member came from static analysis, otherwise `dynamic` |
+| `forced` | Optional with `--force`: the forced/stub-artifact caveat for the group |
 
 ---
 

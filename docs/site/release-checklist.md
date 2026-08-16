@@ -29,6 +29,11 @@ runtimes. This checklist is mandatory for every version.
       against the same `--work-dir`, and they work locally with `--resume`.
 - [ ] Build-context invalidation is documented (GPR, `compile_commands.json`,
       IDL, `--project`, and the harness-affecting options).
+- [ ] `RELEASE_NOTES.md` documents the default work-directory/corpus ceilings,
+      non-destructive compaction, and the root-level `FINDINGS.md` handoff.
+- [ ] A smoke `auto` run leaves no private Rust Cargo `target/` tree, preserves
+      finding evidence through `govfuzz clean <work> --compact`, and writes both
+      root-level finding indexes.
 - [ ] No secrets or absolute host paths appear in the archive.
 
 ## Post-release

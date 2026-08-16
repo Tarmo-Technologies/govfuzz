@@ -355,7 +355,8 @@ govfuzz auto examples/swallowed_constraint_error --work-dir /tmp/gf-ada --per-ta
 When the sweep finishes it prints a summary — duration, outcome breakdown, file/
 language counts, findings, executions, throughput, coverage edges, and where every
 output landed — and writes it to `<work-dir>/auto/summary.txt`. Detailed reports
-are at `<work-dir>/auto/run.md` and `run.json`. If the summary ends in a
+start at `<work-dir>/FINDINGS.md` and `<work-dir>/findings.csv`; campaign and
+coverage details are at `<work-dir>/auto/run.md` and `run.json`. If the summary ends in a
 `⚠ WARNING: N target(s) fuzzed STUB-ONLY` line, those targets fuzzed blind stubs
 rather than real library code, so a clean result there is a **false clean** —
 inspect the `stub_execution` block in `run.json` before trusting it.

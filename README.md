@@ -42,8 +42,9 @@ Point `auto` at a source tree — including code that does not build:
 
 That discovers and ranks fuzzable functions, generates typed harnesses and stubs, recovers the
 build context (`compile_commands.json`, CMake/Meson/Ninja/Visual Studio, or any
-`--build-command`), fuzzes each target with a coverage-guided engine, and writes findings
-(JSON/Markdown/SARIF/JUnit/CSV) under `govfuzz_work/auto/`.
+`--build-command`), fuzzes each target with a coverage-guided engine, and writes the
+impact-ordered finding handoff at `govfuzz_work/FINDINGS.md`, its CSV index beside it,
+and campaign/coverage reports under `govfuzz_work/auto/`.
 
 ### The recommended sweep
 
@@ -79,9 +80,18 @@ govfuzz auto /path/to/source-tree \
 | `--sloc sloc.txt` | Per-language SLOC breakdown (`.json` for JSON). |
 | `--debug` | Backtrace on a govfuzz-internal panic; enriches the bug report. |
 
-Read `govfuzz_work/auto/summary.txt` first: it separates **built+fuzzed** from
-**static-only**, **skipped**, and **forced**, and prints a residual-blocker histogram
-saying why anything that did not fuzz did not fuzz.
+Read `govfuzz_work/FINDINGS.md` first. It puts the impact-ordered findings,
+locations, confidence, evidence links, suggested fixes, and replay commands in one
+place; `findings.csv` is the top-level machine-readable index. Then read
+`auto/summary.txt` for **built+fuzzed**, **static-only**, **skipped**, and
+**forced** coverage caveats.
+
+Auto-runs cap each retained target corpus at 64 MiB and stop starting new targets
+when the work directory reaches 4 GiB by default. Tune these with
+`--max-corpus-mb` and `--max-work-dir-mb` (`0` disables only the work-directory
+ceiling). GovFuzz removes transient Rust Cargo caches automatically. To compact an
+older or interrupted work directory without deleting findings, corpora, reports,
+checkpoints, or replay binaries, run `govfuzz clean govfuzz_work --compact`.
 
 ### Watching and steering a live sweep
 

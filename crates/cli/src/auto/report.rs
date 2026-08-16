@@ -51,6 +51,11 @@ struct Summary {
     /// tree has 3 unreachable targets" and "somebody stopped watching".
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     stopped_by_operator: bool,
+    /// The work-directory retention ceiling stopped target admission. In-flight
+    /// targets were allowed to finish, so this is a clean partial campaign, not
+    /// an internal error or operator cancellation.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    output_limit_reached: bool,
     /// `--resume`: targets skipped this run because they already completed in a
     /// prior sweep over the same work-dir (their artifacts remain on disk). 0 when
     /// not resuming. Included in `discovered`.
@@ -492,6 +497,39 @@ pub fn write_reports(
     force: bool,
     stopped_by_operator: bool,
 ) -> Result<()> {
+    write_reports_with_output_limit(
+        source_root,
+        results,
+        work_dir,
+        started_at,
+        finished_at,
+        partial,
+        mode,
+        resumed,
+        discovered_total,
+        static_dynamic,
+        force,
+        stopped_by_operator,
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn write_reports_with_output_limit(
+    source_root: &Path,
+    results: &[AttemptResult],
+    work_dir: &Path,
+    started_at: &str,
+    finished_at: &str,
+    partial: bool,
+    mode: actionability::RunMode,
+    resumed: usize,
+    discovered_total: usize,
+    static_dynamic: bool,
+    force: bool,
+    stopped_by_operator: bool,
+    output_limit_reached: bool,
+) -> Result<()> {
     let auto_dir = work_dir.join("auto");
     std::fs::create_dir_all(&auto_dir)?;
 
@@ -535,6 +573,7 @@ pub fn write_reports(
         discovered_total,
         dropped_by_cap: discovered_total - attempted,
         stopped_by_operator,
+        output_limit_reached,
         resumed,
         ..Summary::default()
     };
@@ -1307,8 +1346,155 @@ fn write_findings_csv(
             .and_then(|f| stub_by_harness.get(&f.harness_id));
         out.push_str(&render_issue_row(group, static_dynamic, force, stub));
     }
-    std::fs::write(auto_dir.join("findings.csv"), out)?;
+    // Keep the historical auto/findings.csv path for integrations, while making
+    // findings a first-class top-level output for humans and automation.
+    std::fs::write(auto_dir.join("findings.csv"), &out)?;
+    std::fs::write(work_dir.join("findings.csv"), &out)?;
+    std::fs::write(
+        work_dir.join("FINDINGS.md"),
+        render_findings_markdown(&groups, work_dir),
+    )?;
     Ok(())
+}
+
+fn render_findings_markdown(groups: &[Vec<CsvFinding>], work_dir: &Path) -> String {
+    use std::fmt::Write;
+
+    let observations: usize = groups.iter().map(Vec::len).sum();
+    let mut out = String::from("# GovFuzz findings\n\n");
+    if groups.is_empty() {
+        out.push_str(
+            "No findings were emitted in this run. This is not a coverage guarantee; review \
+             `auto/run.md` for targets that were skipped, failed to build, or were not entered.\n",
+        );
+        return out;
+    }
+
+    let _ = writeln!(
+        out,
+        "**{} root-cause issue(s)** from {} finding observation(s), ordered by impact.\n",
+        groups.len(),
+        observations,
+    );
+    out.push_str(
+        "The CSV index is [`findings.csv`](findings.csv); complete evidence bundles are under \
+         [`findings/`](findings/). The full campaign and coverage caveats are in \
+         [`auto/run.md`](auto/run.md).\n\n",
+    );
+
+    let mut ordered: Vec<&Vec<CsvFinding>> = groups.iter().collect();
+    ordered.sort_by_key(|group| {
+        group
+            .iter()
+            .map(|finding| csv_impact_rank(finding.impact))
+            .min()
+            .unwrap_or(u8::MAX)
+    });
+    for (index, group) in ordered.into_iter().enumerate() {
+        let representative = group
+            .iter()
+            .min_by_key(|finding| csv_impact_rank(finding.impact))
+            .unwrap_or(&group[0]);
+        let title = if !representative.message.trim().is_empty() {
+            markdown_single_line(&representative.message)
+        } else if !representative.rule_id.trim().is_empty() {
+            representative.rule_id.clone()
+        } else if !representative.exception_name.trim().is_empty() {
+            markdown_single_line(&representative.exception_name)
+        } else {
+            representative.id.clone()
+        };
+        let confirmation = group
+            .iter()
+            .map(|finding| finding.confirmation.as_str())
+            .max_by_key(|value| confirmation_rank(value))
+            .unwrap_or("static");
+        let mut cwes = Vec::new();
+        for finding in group {
+            for cwe in &finding.cwe {
+                if !cwes.contains(cwe) {
+                    cwes.push(cwe.clone());
+                }
+            }
+        }
+        let _ = writeln!(
+            out,
+            "## {}. [{}] {}\n",
+            index + 1,
+            representative.impact.as_str().to_ascii_uppercase(),
+            title,
+        );
+        let _ = writeln!(out, "- Finding: `{}`", representative.id);
+        if !representative.rule_id.is_empty() {
+            let _ = writeln!(out, "- Rule: `{}`", representative.rule_id);
+        }
+        let _ = writeln!(
+            out,
+            "- Evidence: {} · confidence {} · verdict {}",
+            confirmation,
+            representative.confidence.as_str(),
+            representative.verdict.as_str(),
+        );
+        if !cwes.is_empty() {
+            let _ = writeln!(
+                out,
+                "- CWE: {}",
+                cwes.iter()
+                    .map(|id| format!("CWE-{id}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+        if !representative.sink_file.is_empty() {
+            let line = if representative.sink_line.is_empty() {
+                String::new()
+            } else {
+                format!(":{}", representative.sink_line)
+            };
+            let function = if representative.sink_function.is_empty() {
+                String::new()
+            } else {
+                format!(" in `{}`", representative.sink_function)
+            };
+            let _ = writeln!(
+                out,
+                "- Location: `{}`{}{}",
+                markdown_single_line(&representative.sink_file),
+                line,
+                function,
+            );
+        }
+        if group.len() > 1 {
+            let _ = writeln!(out, "- Collapsed observations: {}", group.len());
+        }
+        if !representative.remediation.is_empty() {
+            let _ = writeln!(
+                out,
+                "- Suggested fix: {}",
+                markdown_single_line(&representative.remediation)
+            );
+        }
+        let finding_dir = work_dir.join("findings").join(&representative.id);
+        let _ = writeln!(
+            out,
+            "- Evidence bundle: [`findings/{0}/`](findings/{0}/)",
+            representative.id
+        );
+        let _ = writeln!(
+            out,
+            "- Reproduce: `govfuzz replay --finding {}`\n",
+            finding_dir.display()
+        );
+    }
+    out
+}
+
+fn markdown_single_line(value: &str) -> String {
+    value
+        .replace(['\r', '\n'], " ")
+        .replace('`', "'")
+        .trim()
+        .to_owned()
 }
 
 /// Load + backfill one finding into a [`CsvFinding`]. Returns `None` when the file
@@ -3016,6 +3202,25 @@ fn render_md(r: &RunJson<'_>) -> String {
     let _ = writeln!(s, "Source: {}", r.source_root.display());
     let _ = writeln!(s, "Mode: {}", r.mode.as_str());
     let _ = writeln!(s);
+    let _ = writeln!(s, "## Findings");
+    if r.summary.findings > 0 {
+        let _ = writeln!(
+            s,
+            "**{} finding observation(s). Start with [`FINDINGS.md`](../FINDINGS.md).**",
+            r.summary.findings
+        );
+        let _ = writeln!(
+            s,
+            "Machine-readable root-cause index: [`findings.csv`](../findings.csv). Complete evidence bundles: [`findings/`](../findings/)."
+        );
+    } else {
+        let _ = writeln!(
+            s,
+            "No findings were emitted. Review the target outcomes below before treating the run as clean."
+        );
+    }
+    let _ = writeln!(s);
+    let _ = writeln!(s, "## Campaign summary");
     let _ = writeln!(s, "Discovered: {}", r.summary.discovered);
     // #102: a run with zero candidates but parser failures must say WHY, so a
     // parser regression on a large tree is never read as an unexplained clean no-op.
@@ -3042,6 +3247,8 @@ fn render_md(r: &RunJson<'_>) -> String {
     if r.summary.dropped_by_cap > 0 {
         let reason = if r.summary.stopped_by_operator {
             "not attempted — the operator stopped the run"
+        } else if r.summary.output_limit_reached {
+            "not attempted — --max-work-dir-mb reached"
         } else {
             "dropped by --max-targets/--campaign-time cap"
         };
@@ -4196,6 +4403,52 @@ mod tests {
     }
 
     #[test]
+    fn output_ceiling_is_durable_and_names_the_right_stop_reason() {
+        let result = AttemptResult {
+            candidate: cand("H-C0001"),
+            outcome: Outcome::Built {
+                repairs: vec![],
+                retries: 0,
+            },
+            harness_dir: PathBuf::from("/h"),
+        };
+        let work = std::env::temp_dir().join(format!(
+            "govfuzz-report-output-cap-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        write_reports_with_output_limit(
+            Path::new("/src"),
+            std::slice::from_ref(&result),
+            &work,
+            "T0",
+            "T1",
+            false,
+            actionability::RunMode::Reporting,
+            0,
+            4,
+            false,
+            false,
+            false,
+            true,
+        )
+        .unwrap();
+        let json: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(work.join("auto/run.json")).unwrap()).unwrap();
+        assert_eq!(json["summary"]["output_limit_reached"], true);
+        assert_eq!(json["summary"]["dropped_by_cap"], 3);
+        let md = std::fs::read_to_string(work.join("auto/run.md")).unwrap();
+        assert!(
+            md.contains("3 not attempted — --max-work-dir-mb reached"),
+            "{md}"
+        );
+        assert!(!md.contains("dropped by --max-targets"), "{md}");
+        let _ = std::fs::remove_dir_all(&work);
+    }
+
+    #[test]
     fn missing_ada_symbol_with_empty_unit_is_dropped() {
         // GNAT occasionally emits the symbol with no enclosing unit
         // context (regex captured "Harness" alone). The aggregator
@@ -4975,6 +5228,20 @@ mod tests {
         let cells: Vec<&str> = rows[0].split(',').collect();
         assert_eq!(cells[1], "2", "count collapses both members");
         assert_eq!(cells[21], "F-0001-aaaa;F-0002-bbbb", "member ids preserved");
+        assert_eq!(
+            std::fs::read_to_string(work.join("findings.csv")).unwrap(),
+            csv,
+            "top-level findings.csv is the canonical convenience alias"
+        );
+        let findings_md = std::fs::read_to_string(work.join("FINDINGS.md")).unwrap();
+        assert!(
+            findings_md.contains("1 root-cause issue(s)"),
+            "{findings_md}"
+        );
+        assert!(
+            findings_md.contains("govfuzz replay --finding"),
+            "{findings_md}"
+        );
 
         std::fs::remove_dir_all(&work).ok();
     }
@@ -5006,6 +5273,12 @@ mod tests {
         .unwrap();
         let csv = std::fs::read_to_string(work.join("auto/findings.csv")).unwrap();
         assert_eq!(csv, FINDINGS_CSV_HEADER);
+        assert_eq!(
+            std::fs::read_to_string(work.join("findings.csv")).unwrap(),
+            FINDINGS_CSV_HEADER
+        );
+        let md = std::fs::read_to_string(work.join("FINDINGS.md")).unwrap();
+        assert!(md.contains("No findings were emitted"), "{md}");
         std::fs::remove_dir_all(&work).ok();
     }
 

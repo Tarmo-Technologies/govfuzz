@@ -558,10 +558,9 @@ pub enum Outcome {
     /// The process executed only generated decoding, blind stubs, or bailed out
     /// before reaching the selected project endpoint — so it must NOT be counted
     /// as a fuzz success even though it ran normally. This outcome is emitted only
-    /// for lanes that actually instrument target entry (C/C++/Ada — the templates
-    /// inject `GOVFUZZ_TARGET_ENTER`/`AdaFuzz.Probe.Target_Entry`); interpreted and
-    /// managed lanes have no entry probe, so their absence of proof is "not
-    /// instrumented", never "not entered", and they keep `built_and_fuzzed`.
+    /// for lanes that actually instrument target entry. Every supported generator
+    /// now emits an exact-call checkpoint (native templates, scripting wrappers,
+    /// or managed/translated shims), so absence of proof is a real miss.
     /// All pass metrics + runtrace evidence are preserved for diagnosis.
     BuiltNotEntered {
         repairs: Vec<Repair>,
@@ -1046,14 +1045,31 @@ fn write_source_dictionary(
 /// probe that fires immediately before the selected project endpoint — C/C++
 /// (`GOVFUZZ_TARGET_ENTER`, compiled into `main` via `-DGOVFUZZ_EXTERNAL_DRIVER`)
 /// and Ada (`AdaFuzz.Probe.Target_Entry`, emitted unconditionally by the `.adb`
-/// templates). Interpreted and managed lanes (Rust/Go/Java/Python/Perl/Ruby/Lua/
-/// PHP/JS/C#/COBOL/Fortran) speak the framed protocol for coverage but do NOT
-/// emit a target-entry event, so their `target_entry_observed` is always false;
-/// the #95 success invariant must NOT be applied to them, because absence of
-/// proof there is "not instrumented", not "not entered".
+/// templates). The scripting lanes checkpoint in their generated call wrapper
+/// immediately before the selected endpoint. Managed/translated lanes emit the
+/// same checkpoint from their generated Rust/Go/Java/C#/COBOL/Fortran shim. The
+/// success invariant therefore applies uniformly across every supported lane.
 pub(crate) fn harness_emits_target_entry_proof(lang: crate::auto::candidate::Lang) -> bool {
     use crate::auto::candidate::Lang;
-    matches!(lang, Lang::C | Lang::Cpp | Lang::Ada)
+    matches!(
+        lang,
+        Lang::C
+            | Lang::Cpp
+            | Lang::Ada
+            | Lang::Python
+            | Lang::Perl
+            | Lang::Js
+            | Lang::Ts
+            | Lang::Ruby
+            | Lang::Lua
+            | Lang::Php
+            | Lang::Rust
+            | Lang::Java
+            | Lang::Go
+            | Lang::Cobol
+            | Lang::Fortran
+            | Lang::CSharp
+    )
 }
 
 /// #95: decide whether a built+fuzzed cascade must be DEMOTED to
@@ -1061,12 +1077,10 @@ pub(crate) fn harness_emits_target_entry_proof(lang: crate::auto::candidate::Lan
 /// `(entry_miss, reason)` pair, or `None` when the run is a legitimate
 /// `built_and_fuzzed`.
 ///
-/// Returns `None` (no demotion) when the lane does not instrument target entry
-/// (interpreted/managed lanes have no entry probe, so absence of proof is "not
-/// instrumented", not "not entered"), when no entry-instrumented (builtin-engine)
-/// pass ran so entry could not be proven either way (e.g. an afl-only native
-/// cascade), or when at least one pass DID observe target entry. Otherwise the
-/// target was genuinely never entered and the sub-reason names why.
+/// Returns `None` (no demotion) when no entry-instrumented (builtin-engine) pass
+/// ran so entry could not be proven either way (e.g. an afl-only native cascade),
+/// or when at least one pass DID observe target entry. Otherwise the target was
+/// genuinely never entered and the sub-reason names why.
 pub(crate) fn entry_miss_classification(
     lang: crate::auto::candidate::Lang,
     pass_runs: &[PassRun],
@@ -3263,17 +3277,14 @@ fn run_attempt(
                         findings,
                     );
                 }
-                // #95: target entry is a fuzz-SUCCESS invariant. C/C++/Ada
-                // harnesses inject a target-entry probe (`GOVFUZZ_TARGET_ENTER` /
-                // `AdaFuzz.Probe.Target_Entry`) that fires immediately before the
-                // selected project endpoint, so a genuine fuzz of the library hits
-                // it. If an entry-instrumented (builtin-engine) pass ran but NO
+                // #95: target entry is a fuzz-SUCCESS invariant. Every generated
+                // lane injects a checkpoint immediately before the selected project
+                // endpoint, so a genuine fuzz of the library hits it. If an
+                // entry-instrumented (builtin-engine) pass ran but NO
                 // pass ever observed entry, the process executed only generated
                 // decoding, blind stubs, or bailed out before the endpoint — record
                 // `built_not_entered` (NOT `built_and_fuzzed`) so a stub-only or
-                // decode-rejected run can never be counted as fuzzed. Interpreted
-                // and managed lanes have no entry probe, so this is a no-op for them
-                // (see `entry_miss_classification`).
+                // decode-rejected run can never be counted as fuzzed.
                 if let Some((entry_miss, reason)) =
                     entry_miss_classification(candidate.lang, &pass_runs, stub_exec.stub_only)
                 {
@@ -4148,9 +4159,9 @@ fn run_fuzz_with_runtrace(
             "GOVFUZZ_COV_SHM".to_owned(),
             harness_dir.join("coverage.shm").display().to_string(),
         ),
-        // Independent one-byte target-entry proof. The generated C/C++
-        // harness checkpoints immediately before the selected call; Ada emits
-        // the equivalent event through AdaFuzz.Probe. Keeping this separate
+        // Independent one-byte target-entry proof. Every generated harness
+        // checkpoints immediately before the selected call; Ada emits the
+        // equivalent event through AdaFuzz.Probe. Keeping this separate
         // prevents driver-only execution/coverage from masquerading as a
         // successfully fuzzed endpoint.
         (
@@ -4202,27 +4213,26 @@ fn run_fuzz_with_runtrace(
             harness_dir.join("cmp_progress.shm").display().to_string(),
         ));
     }
-    // The native Java, C#, and JavaScript lanes run the target inside a managed
-    // runtime (JVM / .NET CLR / Node V8) launched by a wrapper script. LD_PRELOAD-ing
-    // the runtrace shim into `java`/`dotnet`/`node` would intercept the runtime's OWN
-    // libc calls (class/assembly/module loading file opens, the .NET host's
-    // `access()`→`open()` on libhostfxr.so, Node's `stat()`→`open()` on every
-    // `require`, sockets, …) and the runtrace resource/open/TOCTOU oracles would fire
-    // on normal runtime activity — false positives (e.g. GF-418 on the .NET host's
-    // own startup). Each lane gets coverage from its own instrumentation (bytecode
-    // agent / SharpFuzz IL / V8 block coverage → GOVFUZZ_COV_SHM, kept above) and
-    // crash detection from the driver's hard-halt (exit 86), so none needs the shim.
-    // Under the shim the CLR's heavy startup I/O also blows past the fork-server
-    // handshake window, collapsing the run to slow per-spawn execs.
-    let is_managed_harness = std::fs::read_to_string(harness_dir.join("main"))
+    // Interpreter/VM launchers own coverage and finding classification. Preloading
+    // the native shim into them intercepts the runtime's OWN libc activity before
+    // the target is called (imports, assembly loads, locale probes, GC/runtime string
+    // comparisons). Besides false behavioral events, CPython can emit megabytes of
+    // startup cmplog and miss a short campaign's handshake entirely. Native lanes
+    // retain the shim; managed/scripting lanes use their language-aware drivers.
+    let owns_runtime_instrumentation = std::fs::read_to_string(harness_dir.join("main"))
         .map(|s| {
             s.contains("GOVFUZZ_JVM_LAUNCHER")
                 || s.contains("GOVFUZZ_CS_LAUNCHER")
                 || s.contains("GOVFUZZ_JS_LAUNCHER")
+                || s.contains("GOVFUZZ_PY_LAUNCHER")
+                || s.contains("GOVFUZZ_PL_LAUNCHER")
+                || s.contains("GOVFUZZ_RB_LAUNCHER")
+                || s.contains("GOVFUZZ_LUA_LAUNCHER")
+                || s.contains("GOVFUZZ_PHP_LAUNCHER")
         })
         .unwrap_or(false);
-    if cross_wrapper.is_some() || is_managed_harness {
-        // no shim for emulated targets or the managed (JVM / .NET / Node) lanes
+    if cross_wrapper.is_some() || owns_runtime_instrumentation {
+        // no shim for emulated targets or interpreter/VM lanes
     } else if let Some(shim) = crate::auto::shim_path::locate() {
         let ld_preload = crate::auto::shim_path::ld_preload_value_with(
             &shim,
@@ -8940,10 +8950,27 @@ mod throughput_tests {
     }
 
     #[test]
-    fn entry_miss_native_with_entry_stays_a_fuzz_success() {
+    fn entry_miss_instrumented_with_entry_stays_a_fuzz_success() {
         use crate::auto::candidate::Lang;
         // At least one pass observed entry -> genuine built_and_fuzzed, no demotion.
-        for lang in [Lang::C, Lang::Cpp, Lang::Ada] {
+        for lang in [
+            Lang::C,
+            Lang::Cpp,
+            Lang::Ada,
+            Lang::Python,
+            Lang::Perl,
+            Lang::Js,
+            Lang::Ts,
+            Lang::Ruby,
+            Lang::Lua,
+            Lang::Php,
+            Lang::Rust,
+            Lang::Java,
+            Lang::Go,
+            Lang::Cobol,
+            Lang::Fortran,
+            Lang::CSharp,
+        ] {
             assert!(
                 entry_miss_classification(lang, &[pass(10, 1.0), pass_entered(490)], false)
                     .is_none(),
@@ -8965,40 +8992,32 @@ mod throughput_tests {
     }
 
     #[test]
-    fn entry_miss_never_demotes_interpreted_or_managed_lanes() {
+    fn entry_miss_demotes_every_supported_lane_without_a_checkpoint_hit() {
         use crate::auto::candidate::Lang;
-        // CRITICAL #95 guard: interpreted/managed lanes have NO target-entry probe,
-        // so their `target_entry_observed` is always false. They must NEVER be
-        // demoted — doing so would regress every Ruby/Python/JS/Go/... success to
-        // built_not_entered. `harness_emits_target_entry_proof` gates this.
         let passes = vec![pass(1000, 1.0)];
         for lang in [
-            Lang::Rust,
-            Lang::Java,
+            Lang::C,
+            Lang::Cpp,
+            Lang::Ada,
             Lang::Python,
             Lang::Perl,
-            Lang::Go,
-            Lang::Cobol,
-            Lang::Fortran,
-            Lang::CSharp,
             Lang::Js,
             Lang::Ts,
             Lang::Ruby,
             Lang::Lua,
             Lang::Php,
+            Lang::Rust,
+            Lang::Java,
+            Lang::Go,
+            Lang::Cobol,
+            Lang::Fortran,
+            Lang::CSharp,
         ] {
-            assert!(
-                entry_miss_classification(lang, &passes, false).is_none(),
-                "{lang:?} is not entry-instrumented and must not be demoted"
-            );
-            assert!(
-                entry_miss_classification(lang, &passes, true).is_none(),
-                "{lang:?} stub-only run must still not be demoted (no entry probe)"
-            );
-            assert!(!harness_emits_target_entry_proof(lang), "{lang:?}");
-        }
-        for lang in [Lang::C, Lang::Cpp, Lang::Ada] {
             assert!(harness_emits_target_entry_proof(lang), "{lang:?}");
+            assert!(
+                entry_miss_classification(lang, &passes, false).is_some(),
+                "{lang:?} missed checkpoint must be demoted"
+            );
         }
     }
 

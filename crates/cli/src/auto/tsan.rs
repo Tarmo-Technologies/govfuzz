@@ -476,23 +476,33 @@ mod tests {
             std::fs::write(queue.join(format!("seed-{index:03}")), b"input").unwrap();
         }
         std::fs::write(hdir.join("Makefile"), "tsan:\n\tchmod +x main_tsan\n").unwrap();
+        // Every run here is killed for exceeding the timeout, so the attempt
+        // must be recorded before the kill lands. The original script forked
+        // `dirname` and `cat` to do a read-modify-write inside a 10ms budget,
+        // and on a loaded runner the kill won at some point in the middle:
+        // CI saw 6 attempts recorded out of 16 actually made.
+        //
+        // Record with one shell builtin and an append — no forks, nothing to
+        // read back — and give the spawn a budget that is not racing process
+        // startup. 250ms still times out unmistakably against `sleep 5`, so
+        // what the test asserts is unchanged.
+        let attempts_path = hdir.join("attempts");
         std::fs::write(
             hdir.join("main_tsan"),
-            "#!/bin/sh\n\
-             attempts=\"$(dirname \"$0\")/attempts\"\n\
-             count=0\n\
-             [ ! -f \"$attempts\" ] || count=$(cat \"$attempts\")\n\
-             printf '%s\\n' \"$((count + 1))\" > \"$attempts\"\n\
-             sleep 5\n",
+            format!(
+                "#!/bin/sh\n\
+                 printf 'x\\n' >> '{}'\n\
+                 sleep 5\n",
+                attempts_path.display()
+            ),
         )
         .unwrap();
 
-        let result = run_tsan_replay_with(&work, Duration::from_millis(10));
-        let attempts: usize = std::fs::read_to_string(hdir.join("attempts"))
+        let result = run_tsan_replay_with(&work, Duration::from_millis(250));
+        let attempts = std::fs::read_to_string(&attempts_path)
             .unwrap()
-            .trim()
-            .parse()
-            .unwrap();
+            .lines()
+            .count();
         assert_eq!(attempts, TSAN_TIMEOUT_LIMIT);
         assert_eq!(result.unmeasured, 4);
 

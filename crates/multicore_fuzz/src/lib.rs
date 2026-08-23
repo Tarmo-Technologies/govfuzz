@@ -288,6 +288,13 @@ pub fn run_multicore(config: &MulticoreConfig) -> Result<MulticoreSummary, Multi
         }
     }
 
+    // The loop above pushes each report as its worker exits, so the order is
+    // whatever the scheduler produced. Sort by worker_id before anything reads
+    // it: the campaign summary is a published artifact (diffing two runs must
+    // not show phantom churn) and `sync_worker_corpora` imports corpora in this
+    // order, so leaving it racy makes the sync accounting order-dependent too.
+    per_worker.sort_by_key(|report| report.worker_id);
+
     let total_findings: usize = per_worker.iter().map(|r| r.findings_count).sum();
     let unique_findings = unique_finding_count(&per_worker);
     let sync = sync_worker_corpora(
@@ -845,6 +852,52 @@ mod tests {
     #[test]
     fn worker_count_fixed_n_returns_n() {
         assert_eq!(WorkerCount::Fixed(7).resolve().unwrap(), 7);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn per_worker_reports_are_ordered_by_worker_id_not_completion() {
+        use std::os::unix::fs::PermissionsExt;
+
+        // The reaping loop polls `try_wait` and pushes each report as the
+        // worker exits, so completion order is a race. Stagger it so worker 0
+        // is guaranteed to finish last: an unsorted report would lead with
+        // worker 1, making both the campaign summary artifact and every
+        // consumer that indexes `per_worker[i]` nondeterministic.
+        let work = tempdir("worker-order");
+        let script = work.join("stagger.sh");
+        std::fs::write(
+            &script,
+            "#!/bin/sh\nif [ \"$GOVFUZZ_WORKER_ID\" = \"0\" ]; then sleep 1; fi\nexit 0\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let config = MulticoreConfig {
+            work_dir: work.clone(),
+            harness_id: "H-ORDER".to_owned(),
+            workers: WorkerCount::Fixed(2),
+            per_worker_iterations: None,
+            // Zero disables deadline enforcement, so the loop reaps both
+            // workers on their own schedule rather than killing the sleeper.
+            time_budget: Duration::from_secs(0),
+            govfuzz_bin: script,
+            per_worker_env: Vec::new(),
+            extra_worker_args: Vec::new(),
+            kill_grace: None,
+        };
+
+        let summary = run_multicore(&config).expect("staggered campaign completes");
+        assert_eq!(summary.workers_started, 2);
+        assert_eq!(
+            summary
+                .per_worker
+                .iter()
+                .map(|r| r.worker_id)
+                .collect::<Vec<_>>(),
+            vec![0, 1],
+            "per_worker must be ordered by worker_id, not by exit order"
+        );
     }
 
     #[test]

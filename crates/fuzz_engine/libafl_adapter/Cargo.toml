@@ -24,4 +24,4 @@ corpus = { path = "../../corpus" }
 event_log = { path = "../../event_log" }
 fuzz_engine_builtin = { path = "../builtin" }
 libafl = { version = "0.13.2", default-features = false, features = ["std"], optional = true }
-libafl_bolts = { version = "0.13.2", default-features = false, features = ["std"], optional = true }
+libafl_bolts = { version = "0.16.1", default-features = false, features = ["std"], optional = true }

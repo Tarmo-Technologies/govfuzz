@@ -36,3 +36,11 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # The extension host runs the Node that ships inside VS Code's Electron
+      # (engines.vscode ^1.90.0 -> Node 20.x), and CI pins node-version: 20.
+      # Hold @types/node on the matching major so the type checker keeps
+      # rejecting APIs the host does not actually provide.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major

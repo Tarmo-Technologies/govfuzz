@@ -56,6 +56,26 @@ jobs:
       - name: Test workspace
         run: cargo test --workspace
 
+      # `cargo build/test --workspace` compiles default features only, so every
+      # `#[cfg(feature = ...)]` block is invisible to the steps above. That
+      # matters most for `libafl-engine`: its crates are `optional = true`, so
+      # they are not even fetched, and a dependency bump that breaks the
+      # bindings would merge on a fully green CI run. Dependabot proposed
+      # exactly that (libafl 0.13 -> 0.16, four compile errors behind the flag).
+      #
+      # `nyx-engine` is deliberately excluded: it is an unfinished placeholder
+      # whose entry point is `unreachable!()` until the real libnyx integration
+      # lands, so enabling it is *supposed* to fail.
+      - name: Build and test optional features
+        env:
+          # probe_gnat_actions' build script rejects the `enabled` feature
+          # outside these profiles, by design.
+          GOVFUZZ_PROFILE: external-tools
+        run: |
+          cargo build -p fuzz_engine_libafl_adapter --features libafl-engine
+          cargo test -p fuzz_engine_libafl_adapter --features libafl-engine
+          cargo test -p probe_gnat_actions --features enabled
+
       - name: Validate confidence model
         run: cargo test -p confidence_model -- --nocapture
 

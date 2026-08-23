@@ -8,6 +8,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn replay(finding_dir: &Path, harness_path: &Path) -> Result<ReplayResult, ReplayError> {
@@ -729,8 +730,28 @@ fn temp_event_path() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
+    temp_event_path_from(nonce)
+}
+
+/// Build the event-file path for a given clock reading.
+///
+/// The pid and the clock alone do not make this unique. Rust runs the tests of
+/// one target as threads of a single process, so the pid is shared, and two
+/// threads that read the clock inside the same tick get the same path — at
+/// which point one replay reads the other's events, and whichever `TempEventFile`
+/// drops first deletes the file the other is still about to read. Those are
+/// exactly the two shapes this has failed as on CI: a `Mismatch` carrying the
+/// other test's signature, and `Io(NotFound)`.
+///
+/// Clock granularity is not something to rely on here — it is far coarser on
+/// some virtualized hosts than the nanosecond unit suggests, which is why this
+/// reproduces on CI and effectively never on a developer box. The counter makes
+/// uniqueness within the process independent of the clock entirely.
+fn temp_event_path_from(nonce: u128) -> PathBuf {
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+    let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
     std::env::temp_dir().join(format!(
-        "govfuzz-replay-events-{}-{nonce}.bin",
+        "govfuzz-replay-events-{}-{nonce}-{sequence}.bin",
         std::process::id()
     ))
 }
@@ -761,7 +782,7 @@ impl Drop for TempEventFile {
 mod tests {
     use super::{
         computed_signatures, replay, signatures_for_input, signatures_for_input_with_runner,
-        temp_event_path, HarnessRunner, ReplayError, SandboxConfig,
+        temp_event_path, temp_event_path_from, HarnessRunner, ReplayError, SandboxConfig,
     };
     use corpus::{compute_signature, Signature};
     use event_log::{HandlerEvent, Testcase, TopLevelEvent};
@@ -813,6 +834,36 @@ mod tests {
             .file_name()
             .and_then(|name| name.to_str())
             .is_some_and(|name| name.starts_with("govfuzz-replay-events-")));
+    }
+
+    #[test]
+    fn temp_event_path_is_unique_when_the_clock_does_not_advance() {
+        // Pin the clock reading rather than racing threads, so this is a
+        // deterministic red before the fix instead of a flaky one: two replays
+        // landing in the same tick must still get separate files, or they read
+        // and delete each other's events.
+        let first = temp_event_path_from(1_700_000_000_000_000_000);
+        let second = temp_event_path_from(1_700_000_000_000_000_000);
+
+        assert_ne!(
+            first, second,
+            "two replays reading the clock in the same tick must not share an event file"
+        );
+    }
+
+    #[test]
+    fn concurrent_temp_event_paths_are_all_distinct() {
+        // The real shape: tests of one target are threads of one process, so
+        // the pid is shared and only this function keeps them apart.
+        let threads = (0..16)
+            .map(|_| std::thread::spawn(temp_event_path))
+            .collect::<Vec<_>>();
+        let paths = threads
+            .into_iter()
+            .map(|handle| handle.join().expect("path thread joins"))
+            .collect::<std::collections::BTreeSet<_>>();
+
+        assert_eq!(paths.len(), 16, "event paths collided across threads");
     }
 
     #[test]

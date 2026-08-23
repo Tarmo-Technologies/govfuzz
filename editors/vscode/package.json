@@ -98,8 +98,8 @@
     "test": "npm run compile && node --test out/test/*.test.js"
   },
   "devDependencies": {
-    "@types/node": "^20.12.12",
-    "@types/vscode": "1.125.0",
+    "@types/node": "^20.19.43",
+    "@types/vscode": "1.134.0",
     "typescript": "^5.5.4"
   }
 }

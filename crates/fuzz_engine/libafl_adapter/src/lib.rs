@@ -234,11 +234,17 @@ pub mod libafl_engine {
 
     pub type GovfuzzInput = BytesInput;
     pub type GovfuzzCorpus = InMemoryCorpus<GovfuzzInput>;
-    pub type GovfuzzState = StdState<GovfuzzInput, GovfuzzCorpus, StdRand, GovfuzzCorpus>;
+    // libafl 0.16 reordered these parameters: 0.13's `StdState<I, C, R, SC>`
+    // became `StdState<C, I, R, SC>`, corpus first. The argument order of
+    // `StdState::new` is unchanged, so only the alias moves.
+    pub type GovfuzzState = StdState<GovfuzzCorpus, GovfuzzInput, StdRand, GovfuzzCorpus>;
     pub type GovfuzzEventObserver =
         ExplicitTracking<StdMapObserver<'static, u8, false>, true, false>;
+    // Also 0.16: the minimizer alias gained an input parameter
+    // (`<CS, I, O>`), and `QueueScheduler` dropped its own — it is now generic
+    // over `(I, S)` at the impl rather than the type.
     pub type GovfuzzScheduler =
-        IndexesLenTimeMinimizerScheduler<QueueScheduler<GovfuzzState>, GovfuzzEventObserver>;
+        IndexesLenTimeMinimizerScheduler<QueueScheduler, GovfuzzInput, GovfuzzEventObserver>;
 
     pub fn new_event_observer(config: &LibAflEngineConfig) -> GovfuzzEventObserver {
         StdMapObserver::owned(

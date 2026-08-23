@@ -44,3 +44,9 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # @types/vscode declares the API surface the extension compiles against
+      # and must never exceed engines.vscode — `vsce package` rejects the
+      # manifest outright when it does. It is pinned exactly, in lockstep with
+      # engines.vscode, so raising the supported VS Code floor stays a
+      # deliberate edit rather than an automated bump.
+      - dependency-name: "@types/vscode"

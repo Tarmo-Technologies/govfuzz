@@ -3643,6 +3643,10 @@
       "license": "Apache-2.0"
     },
     {
+      "path": "docs/site/target-ranking.md",
+      "license": "Apache-2.0"
+    },
+    {
       "path": "docs/site/vulnerability-coverage.md",
       "license": "Apache-2.0"
     },

@@ -294,6 +294,10 @@ the exact line the scanner flagged.
 
 ## Discovery
 
+See [Target Ranking](target-ranking.md) for the scheduling objective, exact
+language-specific weights, call-graph adjustment, worked comparison, testing,
+and current limitations.
+
 Walks the source tree with the same exclusions the `scan` subcommand uses
 (`.git`, `target`, `build`, `govfuzz_work`, `harnesses`,
 `generated_harnesses`, `node_modules`). Per-file dispatch by extension:

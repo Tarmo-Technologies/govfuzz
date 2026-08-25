@@ -524,6 +524,7 @@ them all.
 - [Installation](docs/site/install.md) — from source, prebuilt binaries, offline, Windows.
 - [Recommended sweep](docs/recommended-sweep.md) — the one command to start with, what every flag buys, and how to size it.
 - [`govfuzz auto`](docs/site/auto.md) — end-to-end, scaling to large trees, force-fuzz, static integration.
+- [Target ranking](docs/site/target-ranking.md) — scoring pipeline, exact weights, worked comparison, tests, and limitations.
 - [PR-native CI](docs/site/ci.md) — the GitHub Action, diff-scoping, and the confirmed-findings gate.
 - [C/C++ guide](docs/site/c-cpp.md) — prerequisites, supported parameter shapes, limits.
 - [COBOL guide](docs/site/cobol.md) and [Fortran guide](docs/site/fortran.md) — translated/compiler lanes, coverage, oracles, and limits.

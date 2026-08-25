@@ -25,6 +25,7 @@ PAGES = [
     Page("architecture", "architecture.md", "Architecture"),
     Page("cli", "cli.md", "CLI"),
     Page("auto", "auto.md", "Auto"),
+    Page("target-ranking", "target-ranking.md", "Target Ranking"),
     Page("run-modes", "run-modes.md", "Run Modes"),
     Page("ci", "ci.md", "CI"),
     Page("llm", "llm.md", "LLM and MCP"),

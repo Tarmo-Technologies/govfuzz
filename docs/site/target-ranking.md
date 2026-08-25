@@ -109,7 +109,7 @@ explained and tested.
 
 | Primary class | Signal | Weight | Engineering rationale |
 |---|---|---:|---|
-| Harness feasibility | Read-only attacker-input buffer | +30 | Primary evidence that fuzz bytes can be mapped directly without confusing input with output storage |
+| Harness feasibility | Read-only attacker-input byte buffer | +30 | Strongest signature-level evidence that arbitrary testcase bytes can cross the target boundary directly; read-only direction helps distinguish consumed input from output storage |
 | Harness feasibility | Length paired with a buffer, or self-describing input | +15 | Makes the byte channel coherent and constructible; supporting evidence rather than a target by itself |
 | Harness feasibility | Error-code-shaped return | +10 | Supplies observable accept/reject behavior, but says less about target breadth |
 | Target value | Parser/decoder action token | +15 | Adds semantic input-processing intent with less authority than a concrete input channel |
@@ -127,6 +127,23 @@ Known non-callable C++ targets, including inaccessible members and unresolved
 templates, are filtered before scoring. Allocator free/reallocation primitives
 are also excluded because fabricating their pointer ownership would create
 harness artifacts.
+
+Why is the byte-buffer signal worth 30? A fuzzing engine fundamentally produces
+bytes. A target that accepts those bytes directly gives the generator a short,
+low-assumption path from testcase to project code: allocate the testcase,
+preserve every byte, and pass its address. The read-only type qualifier is also
+directional evidence that the function consumes the buffer; without that
+evidence, a mutable pointer may instead be destination storage for a serializer.
+This makes the signal more authoritative than a suggestive name (`+15`) or
+convenient arity (`+5`), so it receives one of the largest base bonuses.
+
+The 30 points do not mean that the function is vulnerable, broad, or even a
+complete target. A matching length or self-describing type supplies another 15
+points because the buffer still needs a coherent extent. Name, whole-artifact,
+call-graph, and runtime evidence answer different questions. The implementation
+also recognizes mutable in-place parser buffers, but only after additional
+parser and length evidence classifies them as attacker input; an ordinary output
+buffer does not receive this bonus.
 
 Implementation: [`c_rank.rs`](https://github.com/Tarmo-Technologies/govfuzz/blob/main/crates/target_rank/src/c_rank.rs).
 

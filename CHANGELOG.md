@@ -356,6 +356,12 @@ Follow-up to 0.2.22, from a second full 500-project sweep (`results-0728/`: 482
 measured, **1,212,086 targets discovered, 3,638 attempted, 1,069 built+fuzzed —
 29.4%**, 366 findings, all 16 lanes).
 
+> **Corrected 2026-08-25.** Those totals roll up every row file in
+> `results-0728/`, including 27 for repositories the lane check later replaced
+> from the ranked pool. Scored over the pinned `corpus.tsv` the run is 457
+> measured, 1,182,129 discovered, 3,449 attempted, 984 built+fuzzed — 28.5%,
+> 329 findings. The defects described below are unaffected.
+
 The headline defect is a crash, not a gap. **carbon-language/carbon-lang was
 SIGKILLed during discovery in BOTH `list targets` and `auto`** — govfuzz
 produced no target list at all, which is worse than any residual blocker,

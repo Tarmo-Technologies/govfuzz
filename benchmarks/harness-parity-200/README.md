@@ -3,7 +3,7 @@
 
 This audit measures govfuzz auto-harnessing against independent expert drivers
 across all sixteen supported languages. It is deliberately distinct from both
-the 534-project estate sweep and the 30-project native line-coverage suite:
+the 500-project estate sweep and the 30-project native line-coverage suite:
 
 - the estate sweep asks whether any generated target builds and executes;
 - the native suite deeply compares C/C++ implementation-line sets;

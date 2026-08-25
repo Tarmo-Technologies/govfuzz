@@ -25,8 +25,19 @@ single pinned binary over the whole corpus.
   point was reached. A build that links against stubs and executes none of the
   project's own code is recorded separately (`fuzzed_stub_only`), never folded
   into the headline.
+- **Basis**: the results table and its totals are rolled up over the 500
+  repositories pinned in `corpus.tsv` and nothing else. `results/` holds 534 row
+  files because the lane check replaced repositories from the ranked pool as the
+  campaign ran, and the superseded rows were never deleted; 35 of them name
+  repositories that are no longer in the pinned corpus. Those rows are excluded
+  here. Of the 500 pinned repositories, 499 produced a row and 438 produced a
+  measurable `auto` run — the rest were rejected by the lane check or timed out
+  before reporting. The `--force` A/B below is scored separately, as a pairwise
+  per-repository delta over the 126 projects measured in both arms.
 
-Everything needed to re-run it is in `benchmarks/campaign-2026-07-25/`.
+Everything needed to re-run it is in `benchmarks/campaign-2026-07-25/`. Re-runs
+report against the pinned corpus, so they reproduce the table below rather than
+the larger all-rows totals a bare `aggregate.py` over `results/` prints.
 
 ## What the sweep is measuring
 
@@ -100,55 +111,57 @@ where there were six.
 
 ## Results
 
-534 projects measured, 156,861,059 lines of code, 1,048,530 fuzzable targets discovered, **zero harnesses written by hand**.
+438 projects measured out of 500 pinned, 152,772,744 lines of code, 1,033,736 fuzzable targets discovered, **zero harnesses written by hand**.
 
-| Language | Projects | SLOC | Targets found | Attempted | Fuzzed | Rate | Findings |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Java | 39 | 8,585,082 | 258,463 | 240 | 45 | 19% | 3 |
-| C | 62 | 58,369,970 | 211,934 | 414 | 95 | 23% | 56 |
-| Rust | 40 | 10,958,714 | 139,262 | 236 | 56 | 24% | 10 |
-| Go | 40 | 13,252,595 | 117,922 | 366 | 63 | 17% | 17 |
-| C++ | 59 | 15,274,203 | 64,876 | 187 | 43 | 23% | 13 |
-| Ada | 26 | 3,109,189 | 42,043 | 212 | 39 | 18% | 6 |
-| Ruby | 23 | 4,464,292 | 41,825 | 211 | 55 | 26% | 0 |
-| Perl | 30 | 3,435,644 | 40,959 | 144 | 86 | 60% | 4 |
-| Python | 43 | 3,893,826 | 37,190 | 384 | 135 | 35% | 12 |
-| Fortran | 20 | 12,808,458 | 24,996 | 124 | 37 | 30% | 159 |
-| PHP | 24 | 4,685,622 | 24,842 | 206 | 109 | 53% | 0 |
-| TypeScript | 25 | 5,159,766 | 12,624 | 210 | 55 | 26% | 2 |
-| Lua | 21 | 3,024,694 | 10,843 | 183 | 54 | 30% | 1 |
-| COBOL | 24 | 2,243,149 | 10,082 | 83 | 27 | 33% | 7 |
-| C# | 25 | 6,002,013 | 5,887 | 180 | 22 | 12% | 4 |
-| JavaScript | 33 | 1,593,842 | 4,782 | 228 | 107 | 47% | 10 |
-| **All 16** | **534** | **156,861,059** | **1,048,530** | **3608** | **1028** | **28%** | **304** |
+`Projects` counts pinned repositories that produced a result row; `Measured` counts those that produced an `auto` run to roll up. `Rate` is fuzzed over attempted.
 
-One repository, `DeusData/codebase-memory-mcp`, contributes 37,987,460 of those lines (24% of the corpus) at roughly 46,000 lines per file — generated or amalgamated content rather than written code. Without it the corpus is 118,873,599 lines, which is the figure to reason about; it is left in because the corpus is star-ranked, not curated.
+| Language | Projects | Measured | SLOC | Targets found | Attempted | Fuzzed | Rate | Findings |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Java | 38 | 37 | 8,580,880 | 258,290 | 237 | 42 | 18% | 2 |
+| C | 59 | 51 | 56,922,324 | 205,601 | 404 | 95 | 24% | 56 |
+| Rust | 40 | 40 | 10,958,714 | 139,262 | 236 | 56 | 24% | 10 |
+| Go | 40 | 39 | 13,252,595 | 117,922 | 366 | 63 | 17% | 17 |
+| C++ | 55 | 27 | 14,625,817 | 64,419 | 174 | 33 | 19% | 4 |
+| Ada | 25 | 22 | 3,108,735 | 42,034 | 203 | 39 | 19% | 6 |
+| Ruby | 22 | 21 | 4,376,372 | 40,810 | 201 | 55 | 27% | 0 |
+| Perl | 20 | 14 | 2,238,429 | 40,161 | 124 | 68 | 55% | 1 |
+| Python | 40 | 36 | 3,565,164 | 32,958 | 354 | 125 | 35% | 11 |
+| Fortran | 20 | 19 | 12,808,458 | 24,996 | 124 | 37 | 30% | 159 |
+| PHP | 22 | 21 | 4,685,622 | 24,842 | 206 | 109 | 53% | 0 |
+| TypeScript | 25 | 25 | 5,159,766 | 12,624 | 210 | 55 | 26% | 2 |
+| Lua | 20 | 19 | 3,005,378 | 10,733 | 173 | 54 | 31% | 1 |
+| COBOL | 18 | 14 | 1,889,093 | 8,415 | 73 | 27 | 37% | 7 |
+| C# | 25 | 25 | 6,002,013 | 5,887 | 180 | 22 | 12% | 4 |
+| JavaScript | 30 | 28 | 1,593,384 | 4,782 | 228 | 107 | 47% | 10 |
+| **All 16** | **499** | **438** | **152,772,744** | **1,033,736** | **3493** | **987** | **28.3%** | **290** |
+
+One repository, `DeusData/codebase-memory-mcp`, contributes 37,987,460 of those lines (25% of the corpus) at roughly 46,000 lines per file — generated or amalgamated content rather than written code. Without it the corpus is 114,785,284 lines, which is the figure to reason about; it is left in because the corpus is star-ranked, not curated.
 
 ### Robustness
 
-Across 534 projects and 3204 surface invocations: **0 panics**, **17 timeouts**. A tool that is run unattended over an estate has to survive every tree in it, including the malformed ones.
+Across the 499 pinned projects and 2,439 surface invocations: **0 panics**, **15 timeouts**. A tool that is run unattended over an estate has to survive every tree in it, including the malformed ones.
 
 ### What blocked the rest
 
 | Targets | Language | Cause |
 |---:|---|---|
-| 179 | typescript | Cannot find module "X"); run "X" |
-| 171 | python | ModuleNotFoundError: No module named "X" |
-| 80 | c | C parameter "X" of type "X" has no byte-buffer decoder after struct sy |
+| 176 | typescript | Cannot find module "X"); run "X" |
+| 167 | python | ModuleNotFoundError: No module named "X" |
+| 78 | c | C parameter "X" of type "X" has no byte-buffer decoder after struct sy |
 | 76 | php | target "X" |
-| 71 | java | Java target "X" parameter #N has an unsupported type "X" |
+| 69 | java | Java target "X" parameter #N has an unsupported type "X" |
 | 58 | go | unsupported Go parameter type "X" |
 | 56 | javascript | Error [ERR_MODULE_NOT_FOUND]: Cannot find package "X" imported from /h |
 | 53 | cpp | [cpp20] blocked_by_non_self_contained_header: "X" cannot be included b |
 | 47 | rust | Rust parameter type "X" has no govfuzz-native byte decoder |
 | 44 | javascript | Cannot find module "X"); run "X" |
-| 38 | cpp | C++ parameter "X" of type "X" has no byte-buffer decoder (auto-harness |
-| 34 | csharp | instance method "X" |
+| 37 | cpp | C++ parameter "X" of type "X" has no byte-buffer decoder (auto-harness |
+| 31 | csharp | instance method "X" |
 
 ## Reading the blocker table
 
 The largest single class is not a govfuzz limitation: it is uninstalled
-dependencies. TypeScript's 179 and Python's 171 top entries are "cannot find
+dependencies. TypeScript's 176 and Python's 167 top entries are "cannot find
 module" — the corpus was cloned and measured without running `npm install` or
 `pip install` for 500 projects, so a target whose module graph reaches a package
 that is not on the machine cannot be loaded. Install the dependencies and those
@@ -163,9 +176,9 @@ actionable with `--install-deps`), and separate it in the triage from the skips
 `--force` is actually for.
 
 What IS a govfuzz limit is the next tier: parameters whose types the project
-never defines (80 in C, 38 in C++, 47 in Rust, 58 in Go), C++ headers that
+never defines (78 in C, 37 in C++, 47 in Rust, 58 in Go), C++ headers that
 cannot be included outside their owning translation unit (53), and instance
-methods whose receiver cannot be constructed (34 in C#). Those are the levers
+methods whose receiver cannot be constructed (31 in C#). Those are the levers
 worth building next, in that order.
 
 ## Honest limits

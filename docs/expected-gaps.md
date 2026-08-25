@@ -2,14 +2,20 @@
 # What GovFuzz still misses, and why
 
 An honest inventory of every class of target GovFuzz does **not** fuzz, sized from
-the 500-project sweep (`benchmarks/campaign-2026-07-25/results-0727/`: 463
-projects measured, 3,594 targets attempted, 1,057 built and fuzzed).
+the 500-project sweep (`benchmarks/campaign-2026-07-25/results-0727/`: 439
+projects measured, 3,420 targets attempted, 983 built and fuzzed).
 
 **Re-measured 2026-07-28** over a full 500-project sweep
-(`results-0728/`: 482 projects measured, 1,212,086 targets discovered, 3,638
-attempted, **1,069 built and fuzzed — 29.4%**, 366 findings, all 16 lanes). The
+(`results-0728/`: 457 projects measured, 1,182,129 targets discovered, 3,449
+attempted, **984 built and fuzzed — 28.5%**, 329 findings, all 16 lanes). The
 class shape below is unchanged; see [What the 2026-07-28 sweep
 changed](#what-the-2026-07-28-sweep-changed) for what it added and closed.
+
+Both figures are scored over the 500 repositories pinned in `corpus.tsv`, the
+basis `docs/site/sweep-500.md` publishes. A bare `aggregate.py` over those
+directories also rolls up rows for repositories the lane check later replaced,
+which reads higher (482 projects and 29.4% for `results-0728/`); see the
+campaign README for why the two differ.
 
 Counts are targets, from the sweep's own residual-blocker histogram. They were
 produced by the binary **before** the 2026-07-27 fix wave, so a class fixed since

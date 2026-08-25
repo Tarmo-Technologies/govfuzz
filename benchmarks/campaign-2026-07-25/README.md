@@ -91,13 +91,26 @@ overwriting the baseline it is being compared to.
 pinned binary, writing to `results-0727/` so `results/` survives as the thing to
 compare with. Read it with `python3 aggregate.py --results results-0727`.
 
-| | 2026-07-26 (`results/`) | 2026-07-27 (`results-0727/`) |
-|---|---:|---:|
-| projects measured | 453 | 463 |
-| targets discovered | 1,048,530 | 1,098,877 |
-| attempted | 3,608 | 3,594 |
-| **built + fuzzed** | **1,028 (28.5%)** | **1,057 (29.4%)** |
-| findings | 304 | 354 |
+Scored over the 500 repositories pinned in `corpus.tsv`, which is the basis
+`docs/site/sweep-500.md` publishes:
+
+| | 2026-07-26 (`results/`) | 2026-07-27 (`results-0727/`) | 2026-07-28 (`results-0728/`) |
+|---|---:|---:|---:|
+| projects measured | 438 | 439 | 457 |
+| targets discovered | 1,033,736 | 1,047,407 | 1,182,129 |
+| attempted | 3,493 | 3,420 | 3,449 |
+| **built + fuzzed** | **987 (28.3%)** | **983 (28.7%)** | **984 (28.5%)** |
+| findings | 290 | 332 | 329 |
+
+**Score a re-run against the pinned corpus, not against the directory.** A bare
+`aggregate.py` rolls up every row file it finds, and each of these directories
+carries rows for repositories the lane check later replaced from the ranked pool
+— 35, 26, and 27 of them respectively. On that all-rows basis the same three
+runs read 453/463/482 projects and 28.5%/29.4%/29.4%, which looks like a rising
+conversion rate. It is not one: the pinned-corpus numbers above are flat to
+within half a point, and the apparent gain is corpus composition drifting
+between runs. The all-rows totals are still what `aggregate.py` prints, so quote
+the basis whenever the number leaves this directory.
 
 Four defects came out of it, each in `CHANGELOG.md`: a cyclic C++ construction
 recipe that consumed 12 GiB and got 22 projects OOM-killed during DISCOVERY,

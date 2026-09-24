@@ -1,5 +1,10 @@
 # govfuzz
 
+> [!IMPORTANT]
+> **govfuzz is no longer maintained.** Development continues as **BHF (Build Harness Fuzz)** at
+> **<https://github.com/Tarmo-Technologies/bhf>** — use `bhf auto` in place of `govfuzz auto`.
+> This repository is archived and read-only.
+
 <div align="center">
   <em><strong>THE POINT-AND-CLICK FUZZER.</strong></em>
   <br><br>
